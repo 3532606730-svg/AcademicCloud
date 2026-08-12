@@ -6,11 +6,11 @@
 
 **Layer 1 — Basic Private Cloud Storage: In Progress**
 
-`L1-E01 — Core Architecture Scaffold` is complete. No database, authentication, storage, or file-management implementation has started.
+`L1-E01 — Core Architecture Scaffold` and `L1-E02 — Database Foundation` are complete. No authentication flow, storage adapter, or file-management API has started.
 
 ## Current Objective
 
-`L1-E01 — Core Architecture Scaffold` is complete. `L1-E02 — Database Foundation` is Ready and awaits the next explicit task-selection instruction.
+`L1-E02 — Database Foundation` is complete. `L1-E03 — Authentication & Authorization` is Ready and awaits the next explicit task-selection instruction.
 
 ## Completed
 
@@ -55,10 +55,17 @@
 - [x] Added backend health/configuration tests and repository type-check/build workflows
 - [x] Verified direct API access, Vite-proxied API access, and the frontend development page
 - [x] Completed `L1-E01 — Core Architecture Scaffold`
+- [x] Added `better-sqlite3` behind the SQLite persistence adapter with WAL, foreign-key, busy-timeout, and full-synchronous safety settings
+- [x] Added ordered, checksummed, atomic SQL migrations with a repeatable `npm run db:migrate` command
+- [x] Added account, folder hierarchy, and logical file/storage metadata models with business-owned repository interfaces
+- [x] Added SQLite repository implementations and an explicit multi-repository transaction boundary
+- [x] Added database constraints for account ownership, parent-folder isolation, lifecycle metadata, object references, and active-name uniqueness
+- [x] Verified owner-scoped repository reads, cross-owner rejection, lifecycle/name/object constraints, cycle prevention, transaction rollback, migration checksums, and failed-migration rollback
+- [x] Completed `L1-E02 — Database Foundation`
 
 ## Current Task
 
-`L1-E01 — Core Architecture Scaffold` is **Done**.
+`L1-E02 — Database Foundation` is **Done**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -87,7 +94,7 @@
 ## Not Started
 
 - [x] core application scaffold
-- [ ] database implementation
+- [x] database foundation
 - [ ] authentication
 - [ ] storage integration
 - [ ] file management
@@ -96,7 +103,7 @@
 
 ## Current Constraints
 
-- Do not start `L1-E02` without a user instruction selecting the Ready task.
+- Do not start `L1-E03` without a user instruction selecting the Ready task.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - No OCR/RAG/connectors.
@@ -104,4 +111,4 @@
 
 ## Next Milestone
 
-`L1-E02 — Database Foundation` is **Ready — starts on a user task-selection instruction such as `开始下一个任务`**. It will define the SQLite persistence boundary, versioned migrations, account/user representation, folder and file metadata models, and integrity constraints. It has not started.
+`L1-E03 — Authentication & Authorization` is **Ready — starts on a user task-selection instruction such as `开始下一个任务`**. It will implement password hashing under the 512 MB constraint, SQLite-backed opaque sessions, authentication routes, protected-route guards, and server-derived ownership context. It has not started.

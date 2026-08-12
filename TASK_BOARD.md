@@ -123,25 +123,39 @@ Completion notes:
 - [x] passed backend tests, repository type-checks, production builds, dependency audit, and live direct/proxied connectivity checks
 - [x] introduced no database, authentication, storage, or file-management business functionality
 
+### L1-E02 — Database Foundation
+
+**Status:** Done
+
+Goal: establish the approved SQLite persistence foundation for account, folder, and file metadata while keeping business modules independent of SQLite APIs.
+
+Completion notes:
+- [x] added `better-sqlite3` only inside the SQLite persistence adapter
+- [x] configured foreign keys, WAL, busy timeout, full synchronous durability, and untrusted schema mode
+- [x] added ordered, checksummed, atomic migrations and a repeatable npm migration command
+- [x] modeled accounts, folder hierarchy, and logical file/storage metadata with explicit lifecycle states
+- [x] added business-owned repository interfaces, SQLite implementations, and a multi-repository transaction boundary
+- [x] enforced same-owner hierarchy references, lifecycle consistency, unique object references, and active-name uniqueness
+- [x] passed 15 tests, repository type-checks, production builds, dependency audit, migration command smoke checks, and SQLite integrity/foreign-key checks
+- [x] introduced no authentication flow, OSS integration, file-management API, or frontend database behavior
+
 ## Ready
 
-### L1-E02 — Database Foundation
+### L1-E03 — Authentication & Authorization
 
 **Status:** Ready — starts on a user task-selection instruction such as `开始下一个任务`
 
-Goal: establish the approved SQLite persistence foundation:
-- persistence and repository boundaries
-- versioned migrations
-- account/user representation
-- folder model
-- file metadata model
-- integrity constraints
+Goal: establish the approved authentication and authorization foundation:
+- password hashing selected and measured for the 512 MB production constraint
+- SQLite-backed opaque sessions
+- login/logout and current-session API behavior
+- protected-route authentication guards
+- server-derived account identity and ownership context
 
-This task has not started. It must not implement authentication flows, OSS integration, or file-management service/API behavior without the relevant approved task scope.
+This task has not started. It must not implement OSS integration, drive/file-management behavior, or frontend file-browser functionality without the relevant approved task scope.
 
 ## Backlog — Layer 1
 
-- L1-E03 Authentication & Authorization
 - L1-E04 Storage Abstraction
 - L1-E05 File Management
 - L1-E06 Frontend Interface

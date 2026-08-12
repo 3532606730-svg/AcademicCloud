@@ -12,7 +12,7 @@ Future layers may add structured academic knowledge management and RAG-based res
 
 **Layer 1 — Basic Private Cloud Storage (in progress)**
 
-The core TypeScript/Fastify/React scaffold is complete. Database, authentication, storage, and file-management behavior remain task-scoped follow-up work.
+The core TypeScript/Fastify/React scaffold and SQLite persistence foundation are complete. Authentication, storage, and file-management behavior remain task-scoped follow-up work.
 
 Read:
 - `AGENTS.md` — mandatory rules
@@ -88,6 +88,14 @@ npm.cmd run dev
 ```
 
 The frontend runs at `http://127.0.0.1:5173` and proxies `/api` to the backend at `http://127.0.0.1:3000`. Runtime defaults are documented in `backend/.env.example`; copy it to `backend/.env` only when local overrides are needed.
+
+Initialize or upgrade the local SQLite schema before database-backed features are used:
+
+```powershell
+npm.cmd run db:migrate
+```
+
+The default database is `database/academiccloud.sqlite`. Database files and their WAL/SHM companions are ignored by Git. Migration files in `database/migrations/` are ordered, checksummed, and immutable after application; add a new migration instead of editing an applied one.
 
 Repository checks:
 
