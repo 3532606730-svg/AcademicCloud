@@ -10,9 +10,9 @@ Future layers may add structured academic knowledge management and RAG-based res
 
 ## Current Status
 
-**Layer 0 — Project Setup**
+**Layer 1 — Basic Private Cloud Storage (in progress)**
 
-No business functionality should be implemented until setup and architecture tasks are approved.
+The core TypeScript/Fastify/React scaffold is complete. Database, authentication, storage, and file-management behavior remain task-scoped follow-up work.
 
 Read:
 - `AGENTS.md` — mandatory rules
@@ -45,7 +45,7 @@ AcademicCloud/
 └── deployment/
 ```
 
-Many directories are intentionally empty during project setup.
+Some directories remain intentionally empty until their approved Layer 1 task begins.
 
 ## Core Principles
 
@@ -77,6 +77,25 @@ Initial storage direction:
 ## Development Rule
 
 Repository files and Git are the source of truth. Chat history is temporary context.
+
+## Local Development
+
+Prerequisites: Node.js `24.16.0` (recorded in `.nvmrc`) and npm.
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
+
+The frontend runs at `http://127.0.0.1:5173` and proxies `/api` to the backend at `http://127.0.0.1:3000`. Runtime defaults are documented in `backend/.env.example`; copy it to `backend/.env` only when local overrides are needed.
+
+Repository checks:
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+npm.cmd run build
+```
 
 ## License
 

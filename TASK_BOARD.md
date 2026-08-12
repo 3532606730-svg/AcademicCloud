@@ -2,9 +2,7 @@
 
 ## Current Phase
 
-**Layer 0 — Project Setup: Complete**
-
-**Next phase:** Layer 1 — Basic Private Cloud Storage implementation
+**Layer 1 — Basic Private Cloud Storage: In Progress**
 
 ## Completed
 
@@ -109,24 +107,40 @@ Completion notes:
 - [x] validated Skill structure and repository discovery path, and performed a read-only simulation of `开始下一个任务`
 - [x] did not create scheduled work or execute `L1-E01`
 
+### L1-E01 — Core Architecture Scaffold
+
+**Status:** Done
+
+Goal: establish the approved minimum Layer 1 application foundation and prove basic frontend-to-backend connectivity.
+
+Completion notes:
+- [x] created npm workspaces for `backend/` and `frontend/` with one committed lockfile
+- [x] fixed the current development runtime at Node.js `24.16.0`
+- [x] added strict shared TypeScript configuration and repository-level development/check scripts
+- [x] added the Fastify platform bootstrap, validated runtime configuration, structured logging, and `GET /api/health`
+- [x] added the React/Vite SPA bootstrap with a same-origin `/api` development proxy
+- [x] documented local setup, runtime configuration, and verification commands
+- [x] passed backend tests, repository type-checks, production builds, dependency audit, and live direct/proxied connectivity checks
+- [x] introduced no database, authentication, storage, or file-management business functionality
+
 ## Ready
 
-### L1-E01 — Core Architecture Scaffold
+### L1-E02 — Database Foundation
 
 **Status:** Ready — starts on a user task-selection instruction such as `开始下一个任务`
 
-Goal: establish the approved minimum Layer 1 application foundation:
-- npm workspace structure for the existing `backend/` and `frontend/` directories
-- TypeScript and configuration foundations
-- Fastify application bootstrap and health check
-- React/Vite SPA bootstrap and basic API connectivity
-- local development workflow
+Goal: establish the approved SQLite persistence foundation:
+- persistence and repository boundaries
+- versioned migrations
+- account/user representation
+- folder model
+- file metadata model
+- integrity constraints
 
-This task has not started. It must not implement database models, authentication, OSS integration, or file-management business functionality without the relevant approved task scope.
+This task has not started. It must not implement authentication flows, OSS integration, or file-management service/API behavior without the relevant approved task scope.
 
 ## Backlog — Layer 1
 
-- L1-E02 Database Foundation
 - L1-E03 Authentication & Authorization
 - L1-E04 Storage Abstraction
 - L1-E05 File Management

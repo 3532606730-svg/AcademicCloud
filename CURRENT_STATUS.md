@@ -4,13 +4,13 @@
 
 ## Current Layer
 
-**Layer 0 — Project Setup: Complete**
+**Layer 1 — Basic Private Cloud Storage: In Progress**
 
-Layer 1 implementation is next but has not started.
+`L1-E01 — Core Architecture Scaffold` is complete. No database, authentication, storage, or file-management implementation has started.
 
 ## Current Objective
 
-`SETUP-004 — Autonomous AcademicCloud Engineering Workflow` is complete. Await an explicit instruction before starting `L1-E01 — Core Architecture Scaffold`.
+`L1-E01 — Core Architecture Scaffold` is complete. `L1-E02 — Database Foundation` is Ready and awaits the next explicit task-selection instruction.
 
 ## Completed
 
@@ -48,10 +48,17 @@ Layer 1 implementation is next but has not started.
 - [x] Validated the repository Skill structure and discovery path, and simulated the `开始下一个任务` recovery flow without executing Layer 1 work
 - [x] Completed `SETUP-004 — Autonomous AcademicCloud Engineering Workflow`
 - [x] Completed Layer 0 — Project Setup
+- [x] Created npm workspaces with one lockfile for `backend/` and `frontend/`
+- [x] Fixed the Layer 1 development runtime at Node.js `24.16.0` and npm `11.13.0`
+- [x] Added the Fastify platform bootstrap, validated environment configuration, structured logging, and `GET /api/health`
+- [x] Added the React/Vite SPA bootstrap and same-origin `/api` development proxy
+- [x] Added backend health/configuration tests and repository type-check/build workflows
+- [x] Verified direct API access, Vite-proxied API access, and the frontend development page
+- [x] Completed `L1-E01 — Core Architecture Scaffold`
 
 ## Current Task
 
-`SETUP-004 — Autonomous AcademicCloud Engineering Workflow` is **Done**.
+`L1-E01 — Core Architecture Scaffold` is **Done**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -79,7 +86,7 @@ Layer 1 implementation is next but has not started.
 
 ## Not Started
 
-- [ ] business code
+- [x] core application scaffold
 - [ ] database implementation
 - [ ] authentication
 - [ ] storage integration
@@ -89,8 +96,7 @@ Layer 1 implementation is next but has not started.
 
 ## Current Constraints
 
-- No Layer 1 implementation has started.
-- Do not start `L1-E01` without a user instruction selecting the Ready task.
+- Do not start `L1-E02` without a user instruction selecting the Ready task.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - No OCR/RAG/connectors.
@@ -98,4 +104,4 @@ Layer 1 implementation is next but has not started.
 
 ## Next Milestone
 
-`L1-E01 — Core Architecture Scaffold` is **Ready — starts on a user task-selection instruction such as `开始下一个任务`**. It will establish only the approved minimal frontend/backend structure, configuration strategy, local development workflow, and health-check/basic API connectivity. It has not started.
+`L1-E02 — Database Foundation` is **Ready — starts on a user task-selection instruction such as `开始下一个任务`**. It will define the SQLite persistence boundary, versioned migrations, account/user representation, folder and file metadata models, and integrity constraints. It has not started.

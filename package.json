@@ -1,0 +1,24 @@
+{
+  "name": "academiccloud",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names api,web --prefix-colors blue,green \"npm run dev --workspace @academiccloud/backend\" \"npm run dev --workspace @academiccloud/frontend\"",
+    "dev:backend": "npm run dev --workspace @academiccloud/backend",
+    "dev:frontend": "npm run dev --workspace @academiccloud/frontend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4",
+    "typescript": "^7.0.2"
+  }
+}
