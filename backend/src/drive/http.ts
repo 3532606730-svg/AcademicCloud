@@ -44,6 +44,10 @@ interface EntriesQuery {
   folderId?: string;
 }
 
+interface DownloadQuery {
+  disposition?: "attachment" | "inline";
+}
+
 function requireOwnerId(account: { id: string } | null): string {
   if (!account) {
     throw new DriveError("not_found");
@@ -311,12 +315,28 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
     },
   );
 
-  app.get<{ Params: FileIdParams }>(
+  app.get<{ Params: FileIdParams; Querystring: DownloadQuery }>(
     "/api/drive/files/:fileId/download",
-    { preHandler: app.authenticate, schema: { params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } } } },
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } },
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          properties: { disposition: { enum: ["attachment", "inline"] } },
+        },
+      },
+    },
     async (request, reply) => {
       try {
-        return { download: await driveService.createDownload(requireOwnerId(request.authAccount), request.params.fileId) };
+        return {
+          download: await driveService.createDownload(
+            requireOwnerId(request.authAccount),
+            request.params.fileId,
+            request.query.disposition ?? "attachment",
+          ),
+        };
       } catch (error: unknown) {
         return sendDriveError(reply, error);
       }

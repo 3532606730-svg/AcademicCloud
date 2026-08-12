@@ -8,5 +8,6 @@ dist/
 Thumbs.db
 .vite/
 coverage/
+output/
 database/*.sqlite
 database/*.sqlite-*

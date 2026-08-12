@@ -17,7 +17,7 @@ Resource JSON deliberately omits `ownerId`, `storageProvider`, and `objectKey`. 
 | `GET /api/drive/uploads?folderId=` | optional active folder ID; pending uploads only | `{ files }` |
 | `POST /api/drive/uploads/:fileId/authorization` | no body; pending upload only | `{ upload }` |
 | `POST /api/drive/uploads/:fileId/complete` | no body | `{ file }` |
-| `GET /api/drive/files/:fileId/download` | active file only | `{ download }` |
+| `GET /api/drive/files/:fileId/download?disposition=` | active file; `attachment` default or `inline` for safe preview types | `{ download }` |
 | `PATCH /api/drive/files/:fileId` | at least one of `{ displayName, folderId }` | `{ file }` |
 | `DELETE /api/drive/files/:fileId` | active file only | `204` (recycle bin) |
 | `POST /api/drive/files/:fileId/restore` | deleted file only | `{ file }` |

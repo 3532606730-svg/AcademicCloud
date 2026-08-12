@@ -31,7 +31,10 @@ export function assertBase64Md5(value: string): void {
   }
 }
 
-export function createContentDisposition(filename: string): string {
+export function createContentDisposition(
+  filename: string,
+  disposition: "attachment" | "inline" = "attachment",
+): string {
   const normalized = filename.normalize("NFC").trim();
 
   if (!normalized || normalized.length > 255 || /[\x00-\x1f\x7f]/.test(normalized)) {
@@ -47,5 +50,5 @@ export function createContentDisposition(filename: string): string {
     `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
   );
 
-  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+  return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
 }

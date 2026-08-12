@@ -12,7 +12,7 @@ Future layers may add structured academic knowledge management and RAG-based res
 
 **Layer 1 — Basic Private Cloud Storage (in progress)**
 
-The core TypeScript/Fastify/React scaffold, SQLite persistence, authentication foundation, and provider-neutral object-storage boundary are complete. File-management behavior remains task-scoped follow-up work.
+The TypeScript/Fastify/React application now includes SQLite persistence, authentication, the provider-neutral object-storage boundary, the authenticated file lifecycle, and a responsive browser interface. Security/reliability hardening and deployment acceptance remain in progress.
 
 Read:
 - `AGENTS.md` — mandatory rules
@@ -116,6 +116,8 @@ The authentication HTTP contract and cookie policy are documented in `docs/api/a
 Object storage is accessed only through `StorageAdapter`. Application-generated opaque keys keep display filenames out of physical storage paths; short-lived exact-object upload and download authorization is implemented by the isolated Alibaba Cloud OSS adapter. Configuration and security boundaries are documented in `docs/architecture/object-storage.md`. Tests use the in-memory adapter or an injected fake OSS client and do not contact cloud services.
 
 The authenticated file-management API now supports folders, direct browser uploads with pending-state verification, active listings, downloads, metadata-only rename/move, recycle-bin deletion and restore, and durable permanent deletion. Its routes, request limits, lifecycle ordering, and stable error codes are documented in `docs/api/file-management.md`.
+
+The React interface recovers sessions, browses folders, calculates MD5 incrementally, uploads directly with progress and retry state, exposes recoverable file actions, and previews a narrow safe media-type set through short-lived inline authorization. Its local limitations, browser data flow, and frontend checks are documented in `docs/architecture/frontend.md`.
 
 ## License
 

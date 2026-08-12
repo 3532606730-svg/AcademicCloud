@@ -188,6 +188,10 @@ test("active files list, download, rename, move, soft-delete, and restore withou
   assert.equal(moved.objectKey, uploaded.objectKey);
   assert.equal(service.listEntries("owner-1", folder.id).files[0]?.displayName, "renamed.pdf");
   assert.match((await service.createDownload("owner-1", moved.id)).url, /^memory:\/\/download/);
+  assert.match(
+    decodeURIComponent((await service.createDownload("owner-1", moved.id, "inline")).url),
+    /response-content-disposition=inline;/,
+  );
   await assert.rejects(service.createDownload("owner-2", moved.id), (error) => error instanceof DriveError && error.code === "not_found");
 
   service.deleteFile("owner-1", moved.id);
@@ -195,6 +199,20 @@ test("active files list, download, rename, move, soft-delete, and restore withou
   assert.equal(service.listRecycle("owner-1").files[0]?.state, "deleted");
   assert.equal((await service.restoreFile("owner-1", moved.id)).state, "active");
   assert.equal(storage.deleteCalls.length, 0);
+});
+
+test("inline authorization is restricted to passive preview media types", async (context) => {
+  const { persistence, service, storage } = fixture(context);
+  const uploaded = await createAndUpload(service, storage);
+  await service.completeUpload("owner-1", uploaded.file.id);
+  const active = persistence.repositories.files.findById("owner-1", uploaded.file.id)!;
+  persistence.repositories.files.update({ ...active, mediaType: "image/svg+xml" }, "active");
+
+  await assert.rejects(
+    service.createDownload("owner-1", uploaded.file.id, "inline"),
+    (error) => error instanceof DriveError && error.code === "invalid_state",
+  );
+  assert.match((await service.createDownload("owner-1", uploaded.file.id)).url, /^memory:\/\/download/);
 });
 
 test("permanent deletion persists purging intent and never purges on provider failure", async (context) => {

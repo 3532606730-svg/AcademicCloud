@@ -24,4 +24,5 @@ test("download content disposition supplies safe ASCII and UTF-8 filenames", () 
   assert.match(disposition, /%E8%92%99%E5%8F%A4/);
   assert.throws(() => createContentDisposition("bad\r\nname.pdf"), /safe filename/);
   assert.doesNotMatch(createContentDisposition("../draft.pdf"), /\.\.%2F|\.\.\//);
+  assert.match(createContentDisposition("paper.pdf", "inline"), /^inline;/);
 });

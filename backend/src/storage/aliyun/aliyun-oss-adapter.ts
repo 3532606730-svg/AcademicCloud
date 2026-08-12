@@ -142,7 +142,10 @@ export class AliyunOssStorageAdapter implements StorageAdapter {
       expiresInSeconds,
       {
         queries: {
-          "response-content-disposition": createContentDisposition(input.downloadFilename),
+          "response-content-disposition": createContentDisposition(
+            input.downloadFilename,
+            input.disposition,
+          ),
         },
       },
       input.objectKey,

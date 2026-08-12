@@ -342,17 +342,26 @@ export class DriveService {
     return activated;
   }
 
-  async createDownload(ownerId: string, fileId: string): Promise<BrowserDownloadAuthorization> {
+  async createDownload(
+    ownerId: string,
+    fileId: string,
+    disposition: "attachment" | "inline" = "attachment",
+  ): Promise<BrowserDownloadAuthorization> {
     const file = this.persistence.repositories.files.findById(ownerId, fileId);
 
     if (!file || file.state !== "active" || file.storageProvider !== this.storage.provider) {
       throw new DriveError("not_found");
     }
 
+    if (disposition === "inline" && !isSafeInlineMediaType(file.mediaType)) {
+      throw new DriveError("invalid_state");
+    }
+
     try {
       return await this.storage.createDownloadAuthorization({
         objectKey: file.objectKey,
         downloadFilename: file.displayName,
+        disposition,
       });
     } catch (error: unknown) {
       throw new DriveError("storage_unavailable", { cause: error });
@@ -538,4 +547,13 @@ export class DriveService {
       throw new DriveError("storage_unavailable");
     }
   }
+}
+
+function isSafeInlineMediaType(mediaType: string | null): boolean {
+  return mediaType === "application/pdf" ||
+    mediaType === "text/plain" ||
+    mediaType === "image/png" ||
+    mediaType === "image/jpeg" ||
+    mediaType === "image/gif" ||
+    mediaType === "image/webp";
 }

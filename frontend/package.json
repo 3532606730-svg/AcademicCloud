@@ -9,17 +9,25 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "spark-md5": "^3.0.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.4",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@types/spark-md5": "^3.0.5",
     "@vitejs/plugin-react": "^6.0.5",
-    "vite": "^8.2.1"
+    "jsdom": "^30.0.1",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
   }
 }

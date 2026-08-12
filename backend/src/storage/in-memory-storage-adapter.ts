@@ -48,7 +48,7 @@ export class InMemoryStorageAdapter implements StorageAdapter {
     assertValidObjectKey(input.objectKey);
     const expiresInSeconds = input.expiresInSeconds ?? 300;
     assertAuthorizationDuration(expiresInSeconds);
-    const disposition = createContentDisposition(input.downloadFilename);
+    const disposition = createContentDisposition(input.downloadFilename, input.disposition);
 
     return {
       method: "GET",

@@ -148,13 +148,64 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
   assert.equal(completed.statusCode, 200);
   assert.equal(completed.json<{ file: { state: string } }>().file.state, "active");
 
+  const inlinePreview = await app.inject({
+    method: "GET",
+    url: `/api/drive/files/${upload.file.id}/download?disposition=inline`,
+    headers: { cookie: ownerCookie },
+  });
+  assert.equal(inlinePreview.statusCode, 200);
+  assert.match(decodeURIComponent(inlinePreview.json<{ download: { url: string } }>().download.url), /disposition=inline;/);
+
+  const invalidDisposition = await app.inject({
+    method: "GET",
+    url: `/api/drive/files/${upload.file.id}/download?disposition=preview`,
+    headers: { cookie: ownerCookie },
+  });
+  assert.equal(invalidDisposition.statusCode, 400);
+  assert.deepEqual(invalidDisposition.json(), { error: "invalid_request" });
+
+  const unsafeUploadResponse = await app.inject({
+    method: "POST",
+    url: "/api/drive/uploads",
+    headers: { cookie: ownerCookie, origin: ORIGIN },
+    payload: {
+      folderId,
+      displayName: "diagram.svg",
+      mediaType: "image/svg+xml",
+      sizeBytes: 7,
+      checksum: { algorithm: "md5", value: MD5 },
+    },
+  });
+  const unsafeUpload = unsafeUploadResponse.json<{ file: { id: string }; upload: { fields: Record<string, string> } }>();
+  storage.putObject({
+    objectKey: unsafeUpload.upload.fields.key!,
+    sizeBytes: 7,
+    etag: "etag-svg",
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "image/svg+xml",
+    modifiedAt: NOW,
+  });
+  assert.equal((await app.inject({
+    method: "POST",
+    url: `/api/drive/uploads/${unsafeUpload.file.id}/complete`,
+    headers: { cookie: ownerCookie, origin: ORIGIN },
+  })).statusCode, 200);
+  const unsafeInline = await app.inject({
+    method: "GET",
+    url: `/api/drive/files/${unsafeUpload.file.id}/download?disposition=inline`,
+    headers: { cookie: ownerCookie },
+  });
+  assert.equal(unsafeInline.statusCode, 409);
+  assert.deepEqual(unsafeInline.json(), { error: "invalid_state" });
+
   const entries = await app.inject({
     method: "GET",
     url: `/api/drive/entries?folderId=${folderId}`,
     headers: { cookie: ownerCookie },
   });
   assert.equal(entries.statusCode, 200);
-  assert.equal(entries.json<{ files: unknown[] }>().files.length, 1);
+  assert.equal(entries.json<{ files: unknown[] }>().files.length, 2);
 
   const foreignEntries = await app.inject({
     method: "GET",

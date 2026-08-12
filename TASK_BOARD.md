@@ -190,11 +190,9 @@ Completion notes:
 - [x] passed 50 tests, repository type-checks, production builds, dependency audit, diff check, and fresh migration/integrity/foreign-key smoke verification
 - [x] created no frontend feature, real cloud resource, credential, background worker, recursive delete, or Layer 2/3 capability
 
-## Ready
-
 ### L1-E06 — Frontend Interface
 
-**Status:** Ready — authorized by the active continuous Layer 1 objective
+**Status:** Done
 
 Goal: implement the usable Layer 1 browser interface over the authenticated file-management API:
 - login and current-session recovery
@@ -203,11 +201,31 @@ Goal: implement the usable Layer 1 browser interface over the authenticated file
 - file/folder rename, move, delete, restore, and recycle-bin actions
 - practical PDF, image, and text preview through short-lived authorized downloads
 
-This task must keep credentials and object-storage secrets out of the bundle, use the existing same-origin API/cookie model, and remain within the approved Layer 1 UI scope.
+Completion notes:
+- [x] added typed same-origin API/session handling with stable user-facing failures and no persisted secrets or signed URLs
+- [x] added incremental MD5, exact policy-field multipart uploads, progress/cancellation/timeout, completion verification, and pending renewal/recovery
+- [x] added responsive folder navigation, destination browsing, active/pending/recycle views, and the approved file/folder actions
+- [x] added safe short-lived previews, native accessible dialogs, labeled controls, focus restoration, reduced-motion handling, and 320 px layouts
+- [x] added 22 deterministic frontend tests and preview HTTP regression coverage
+- [x] passed 51 backend tests, 22 frontend tests, repository type-check/build, dependency audit, diff check, and Playwright browser/visual QA
+- [x] used no real OSS credentials/resources, cloud operation, permanent URL persistence, or Layer 2/3 capability
+
+## Ready
+
+### L1-E07 — Security & Reliability
+
+**Status:** Ready — authorized by the active continuous Layer 1 objective
+
+Goal: harden the completed Layer 1 application and its operating boundaries:
+- security headers, request/log redaction, and audit-safe operational logging
+- bounded cleanup/recovery for expired sessions, abandoned pending uploads, and interrupted permanent deletion
+- dependency/configuration/security verification appropriate to the 512 MB target
+- actionable health/readiness and recovery documentation without adding infrastructure services
+
+This task must preserve the existing module boundaries, avoid real credentials or cloud changes, and keep all cleanup rules conservative and data-safe.
 
 ## Backlog — Layer 1
 
-- L1-E07 Security & Reliability
 - L1-E08 Testing & Deployment
 
 ## Explicitly Deferred

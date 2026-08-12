@@ -1,16 +1,16 @@
 # AcademicCloud Current Status
 
-**Last updated:** 2026-08-12
+**Last updated:** 2026-08-13
 
 ## Current Layer
 
 **Layer 1 — Basic Private Cloud Storage: In Progress**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E05 — File Management` are complete. The backend now exposes the authenticated drive lifecycle; the functional frontend has not started.
+`L1-E01 — Core Architecture Scaffold` through `L1-E06 — Frontend Interface` are complete. The application now exposes the authenticated drive lifecycle through a tested responsive browser interface.
 
 ## Current Objective
 
-`L1-E05 — File Management` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E06 — Frontend Interface` after the clean checkpoint.
+`L1-E06 — Frontend Interface` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E07 — Security & Reliability` after the clean checkpoint.
 
 ## Completed
 
@@ -84,10 +84,17 @@
 - [x] Added strict `/api/drive` schemas, stable client errors, and storage-detail-safe DTOs
 - [x] Documented the file-management API and completed deterministic lifecycle and isolation coverage
 - [x] Completed `L1-E05 — File Management`
+- [x] Added the typed same-origin frontend API and stable client error mapping
+- [x] Added incremental browser MD5 and direct multipart object-storage upload with progress, cancellation, timeout, pending renewal, and completion recovery
+- [x] Added responsive session, folder, active file, pending upload, and recycle-bin views with the approved Layer 1 actions
+- [x] Added short-lived safe inline previews, accessible native dialogs, labeled controls, focus restoration, reduced-motion behavior, and 320 px layouts
+- [x] Added deterministic frontend tests and completed browser/visual QA without real cloud calls or credentials
+- [x] Documented the frontend security/data flow and local adapter limitations
+- [x] Completed `L1-E06 — Frontend Interface`
 
 ## Current Task
 
-`L1-E05 — File Management` is **Done**.
+`L1-E06 — Frontend Interface` is **Done**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -120,7 +127,7 @@
 - [x] authentication and authorization foundation
 - [x] storage integration
 - [x] file management
-- [ ] frontend functionality
+- [x] frontend functionality
 - [ ] deployment
 
 ## Current Constraints
@@ -133,4 +140,4 @@
 
 ## Next Milestone
 
-`L1-E06 — Frontend Interface` is **Ready**. It will implement login, folder browsing, browser-direct uploads with progress and retry state, file/folder actions, recycle-bin workflows, and practical PDF/image/text previews over the completed API.
+`L1-E07 — Security & Reliability` is **Ready**. It will harden the completed Layer 1 application with operational security controls, bounded recovery/cleanup behavior, audit-safe logging, and reliability documentation without changing the approved product scope.

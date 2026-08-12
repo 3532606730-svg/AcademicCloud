@@ -15,6 +15,7 @@ export interface BrowserUploadAuthorization {
 export interface CreateDownloadAuthorizationInput {
   objectKey: string;
   downloadFilename: string;
+  disposition?: "attachment" | "inline";
   expiresInSeconds?: number;
 }
 
