@@ -6,8 +6,13 @@
 
 AcademicCloud is a long-term personal academic digital infrastructure project.
 
-**Current execution phase:** Layer 0 — Project Setup  
+**Current execution phase:** Layer 0 — Project Setup is complete; Layer 1 implementation is next
+
 **Approved product implementation target:** Layer 1 — Basic Private Cloud Storage
+
+## Engineering Workflow
+
+Ordinary AcademicCloud engineering tasks follow `.agents/skills/academiccloud-workflow/SKILL.md`. The skill defines the working method; product and architecture facts remain in the current code, Git history, project documentation, and accepted ADRs.
 
 ## Highest-Priority Rules
 
@@ -78,17 +83,17 @@ Do not use user-facing filenames as trusted physical storage keys.
 ## Working Method
 
 Before changing code:
-1. Read `AGENTS.md`, `PROJECT_SPEC.md`, `CURRENT_STATUS.md`, `TASK_BOARD.md`, and relevant decisions.
-2. Inspect existing code.
+1. Follow the minimal context recovery and task-selection process in `.agents/skills/academiccloud-workflow/SKILL.md`.
+2. Inspect the current task card, project state, Git state, and directly relevant code; consult specifications and ADRs when the task requires them.
 3. State task understanding, expected files/modules to change, and major risks.
 4. Do not broadly refactor without approval.
 
 After implementation:
-1. Run relevant tests/checks.
+1. Run applicable tests and checks.
 2. Fix failures caused by the change.
-3. Update `CURRENT_STATUS.md`, `TASK_BOARD.md`, and `DECISION_LOG.md` only if needed.
-4. Summarize changes and verification.
-5. Do not start the next major task automatically.
+3. Update the task card, `CURRENT_STATUS.md`, and `TASK_BOARD.md`; update decisions only when needed.
+4. Review the diff, create the task-level Git checkpoint, and summarize changes and verification.
+5. Stop at the Epic checkpoint unless the user authorized a broader continuous objective.
 
 ## Documentation and Git
 

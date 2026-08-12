@@ -15,7 +15,7 @@ Deliverables:
 - development rules
 - environment documentation
 
-**Status:** In progress
+**Status:** Complete
 
 ## Layer 1 — Basic Private Cloud Storage
 

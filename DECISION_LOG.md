@@ -109,3 +109,12 @@ Layer 1 uses:
 - the minimum module boundaries `platform`, `auth`, `drive`, `storage`, and `persistence`
 
 Node.js remains on the 24 LTS release line; the exact supported 24.x security patch is selected and recorded when dependencies are installed or production is deployed. `better-sqlite3` is isolated behind persistence so that a future stable and mature `node:sqlite` implementation can be evaluated without changing business modules. Nginx is deployment infrastructure and is not a business-code dependency.
+
+## ADR-008 — Repository-Backed Autonomous AI Engineering Workflow
+
+**Date:** 2026-08-12
+**Status:** Accepted
+
+AcademicCloud uses the repository-scoped `.agents/skills/academiccloud-workflow/SKILL.md` process for ordinary engineering tasks. The AI recovers state from code, Git, project records, and the current task card; executes ordinary technical work autonomously within approved scope; validates and records results; and creates task-level Git checkpoints.
+
+Users retain decisions about product direction, real cost, irreversible real-data risk, accounts and security policy, and severe anomalies. Task cards under `tasks/doing/` and `tasks/done/` are the only Epic-level working-memory system; no parallel handoff or context-document system is introduced.

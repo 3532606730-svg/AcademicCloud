@@ -2,7 +2,9 @@
 
 ## Current Phase
 
-**Layer 0 — Project Setup**
+**Layer 0 — Project Setup: Complete**
+
+**Next phase:** Layer 1 — Basic Private Cloud Storage implementation
 
 ## Completed
 
@@ -89,11 +91,29 @@ Completion notes:
 - [x] recorded the accepted decision in `docs/decisions/ADR-007-layer-1-technical-architecture.md`
 - [x] made no dependency installations, runtime upgrades, framework initialization, or business-code changes
 
+### SETUP-004 — Autonomous AcademicCloud Engineering Workflow
+
+**Status:** Done
+
+Goal: establish the repository-backed AI engineering workflow used to recover context, select and execute approved tasks, validate work, preserve task memory, coordinate subagents safely, maintain project state, and create Git checkpoints.
+
+Completion notes:
+- [x] created `.agents/skills/academiccloud-workflow/SKILL.md`
+- [x] kept the Skill instruction-only with no scripts, references, assets, hooks, daemon, service, index, or additional dependency
+- [x] defined repository source-of-truth precedence and minimum context recovery
+- [x] defined concise `tasks/doing/<TASK-ID>.md` task cards and `tasks/done/` completion movement
+- [x] defined the standard recover, select, plan, execute, verify, review, record, commit, and report lifecycle
+- [x] defined default autonomous authority for ordinary engineering work within approved scope
+- [x] defined mandatory user escalation boundaries
+- [x] defined main-agent orchestration and single-writer subagent safety
+- [x] validated Skill structure and repository discovery path, and performed a read-only simulation of `开始下一个任务`
+- [x] did not create scheduled work or execute `L1-E01`
+
 ## Ready
 
 ### L1-E01 — Core Architecture Scaffold
 
-**Status:** Ready — requires explicit approval
+**Status:** Ready — starts on a user task-selection instruction such as `开始下一个任务`
 
 Goal: establish the approved minimum Layer 1 application foundation:
 - npm workspace structure for the existing `backend/` and `frontend/` directories

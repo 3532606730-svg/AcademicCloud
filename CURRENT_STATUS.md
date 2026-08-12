@@ -4,11 +4,13 @@
 
 ## Current Layer
 
-**Layer 0 — Project Setup**
+**Layer 0 — Project Setup: Complete**
+
+Layer 1 implementation is next but has not started.
 
 ## Current Objective
 
-`SETUP-003 — Layer 1 Technical Architecture Decision` is complete. Await an explicit instruction before starting `L1-E01 — Core Architecture Scaffold`.
+`SETUP-004 — Autonomous AcademicCloud Engineering Workflow` is complete. Await an explicit instruction before starting `L1-E01 — Core Architecture Scaffold`.
 
 ## Completed
 
@@ -40,10 +42,16 @@
 - [x] Received approval for `SETUP-003 — Layer 1 Technical Architecture Decision`
 - [x] Recorded the approved Layer 1 technical baseline in `docs/decisions/ADR-007-layer-1-technical-architecture.md`
 - [x] Completed `SETUP-003 — Layer 1 Technical Architecture Decision`
+- [x] Created the repository-scoped instruction-only `academiccloud-workflow` Skill
+- [x] Defined minimal context recovery, task cards, autonomous authority, subagent write safety, validation, documentation, and Git checkpoints
+- [x] Defined mandatory escalation boundaries for real cost, irreversible data risk, credentials/security, product direction, and severe anomalies
+- [x] Validated the repository Skill structure and discovery path, and simulated the `开始下一个任务` recovery flow without executing Layer 1 work
+- [x] Completed `SETUP-004 — Autonomous AcademicCloud Engineering Workflow`
+- [x] Completed Layer 0 — Project Setup
 
 ## Current Task
 
-`SETUP-003 — Layer 1 Technical Architecture Decision` is **Done**.
+`SETUP-004 — Autonomous AcademicCloud Engineering Workflow` is **Done**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -81,12 +89,13 @@
 
 ## Current Constraints
 
-- No business code during setup.
-- No OSS integration yet.
-- No database implementation yet.
+- No Layer 1 implementation has started.
+- Do not start `L1-E01` without a user instruction selecting the Ready task.
+- Keep work within the approved task, Layer 1 scope, and accepted architecture.
+- Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - No OCR/RAG/connectors.
 - No architecture expansion without approval.
 
 ## Next Milestone
 
-`L1-E01 — Core Architecture Scaffold` is **Ready — requires explicit approval**. It will establish only the approved minimal frontend/backend structure, configuration strategy, local development workflow, and health-check/basic API connectivity. It has not started.
+`L1-E01 — Core Architecture Scaffold` is **Ready — starts on a user task-selection instruction such as `开始下一个任务`**. It will establish only the approved minimal frontend/backend structure, configuration strategy, local development workflow, and health-check/basic API connectivity. It has not started.
