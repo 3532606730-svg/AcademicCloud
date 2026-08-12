@@ -12,7 +12,7 @@ Future layers may add structured academic knowledge management and RAG-based res
 
 **Layer 1 — Basic Private Cloud Storage (in progress)**
 
-The core TypeScript/Fastify/React scaffold, SQLite persistence, and authentication foundation are complete. Storage and file-management behavior remain task-scoped follow-up work.
+The core TypeScript/Fastify/React scaffold, SQLite persistence, authentication foundation, and provider-neutral object-storage boundary are complete. File-management behavior remains task-scoped follow-up work.
 
 Read:
 - `AGENTS.md` — mandatory rules
@@ -112,6 +112,8 @@ npm.cmd run auth:benchmark
 ```
 
 The authentication HTTP contract and cookie policy are documented in `docs/api/authentication.md`. Layer 1 intentionally has no public registration endpoint.
+
+Object storage is accessed only through `StorageAdapter`. Application-generated opaque keys keep display filenames out of physical storage paths; short-lived exact-object upload and download authorization is implemented by the isolated Alibaba Cloud OSS adapter. Configuration and security boundaries are documented in `docs/architecture/object-storage.md`. Tests use the in-memory adapter or an injected fake OSS client and do not contact cloud services.
 
 ## License
 

@@ -157,25 +157,40 @@ Completion notes:
 - [x] passed 28 tests, type-checks, production builds, dependency audit, migration/integrity smoke checks, and the password benchmark
 - [x] introduced no registration, JWT, Redis, OSS, drive API, or frontend feature scope
 
+### L1-E04 — Storage Abstraction
+
+**Status:** Done
+
+Goal: establish a provider-neutral object-storage boundary and a testable Alibaba Cloud OSS adapter without using real credentials or cloud resources.
+
+Completion notes:
+- [x] added the business-owned `StorageAdapter` contract for browser upload/download authorization, metadata lookup, and idempotent deletion
+- [x] generated 256-bit opaque physical object keys with no display filename or client path material
+- [x] added exact-key, exact-size, exact-MIME POST policies with 30-900 second expiry bounds
+- [x] added explicit V4 signed downloads with safely encoded response filenames
+- [x] normalized size, ETag, checksum, MIME type, and modification metadata while preserving ETag/checksum semantics
+- [x] isolated `ali-oss` to the Alibaba client factory and used injected fakes plus an in-memory adapter for deterministic tests
+- [x] validated endpoint, region, bucket, credentials, duration bounds, and production HTTPS
+- [x] passed 40 tests, repository type-checks, production builds, dependency audit, diff check, and a no-network real-SDK V4 signing smoke test
+- [x] created no cloud resources, used no real credentials, and introduced no file-management API or frontend feature
+
 ## Ready
 
-### L1-E04 — Storage Abstraction
+### L1-E05 — File Management
 
 **Status:** Ready — authorized by the active continuous Layer 1 objective
 
-Goal: establish the approved provider-neutral object-storage foundation:
-- `StorageAdapter` contract owned by the storage module
-- Alibaba Cloud OSS adapter isolated behind that contract
-- opaque application-generated object keys
-- short-lived restricted browser-direct upload authorization
-- short-lived signed download authorization
-- provider metadata/integrity lookup needed for upload verification
+Goal: implement the owner-scoped Layer 1 folder and file-management backend over the repository and storage boundaries:
+- folder creation and owner-scoped hierarchy listing
+- pending upload creation and provider metadata verification before activation
+- file listing and short-lived download authorization
+- rename and move operations with conflict handling
+- recoverable soft deletion, recycle-bin listing, restore, and safe permanent deletion
 
-This task has not started. It must not create real cloud resources, use real credentials, or implement drive/file-management service/API behavior without the relevant approved task scope.
+This task must derive ownership from the authenticated server session, never from a client-provided owner ID, and use only mocked/in-memory storage during deterministic verification.
 
 ## Backlog — Layer 1
 
-- L1-E05 File Management
 - L1-E06 Frontend Interface
 - L1-E07 Security & Reliability
 - L1-E08 Testing & Deployment

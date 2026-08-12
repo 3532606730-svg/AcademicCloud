@@ -6,11 +6,11 @@
 
 **Layer 1 — Basic Private Cloud Storage: In Progress**
 
-`L1-E01 — Core Architecture Scaffold`, `L1-E02 — Database Foundation`, and `L1-E03 — Authentication & Authorization` are complete. No storage adapter or file-management API has started.
+`L1-E01 — Core Architecture Scaffold` through `L1-E04 — Storage Abstraction` are complete. No file-management API has started.
 
 ## Current Objective
 
-`L1-E03 — Authentication & Authorization` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E04 — Storage Abstraction` after the clean checkpoint.
+`L1-E04 — Storage Abstraction` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E05 — File Management` after the clean checkpoint.
 
 ## Completed
 
@@ -69,10 +69,17 @@
 - [x] Added application composition for migrations, SQLite, persistence, authentication, and graceful closure
 - [x] Recorded the security baseline in `docs/decisions/ADR-009-authentication-security-baseline.md`
 - [x] Completed `L1-E03 — Authentication & Authorization`
+- [x] Added a provider-neutral `StorageAdapter` contract and deterministic in-memory implementation
+- [x] Added 256-bit opaque application object keys independent of display filenames and paths
+- [x] Added an isolated Alibaba Cloud OSS adapter with exact POST policies and explicit V4 signed downloads
+- [x] Added validated OSS configuration, normalized metadata lookup, and idempotent exact-key deletion
+- [x] Verified OSS integration behavior with injected fakes and a no-network real-SDK signing smoke test
+- [x] Documented storage configuration, credential isolation, checksum semantics, and deferred live-cloud work
+- [x] Completed `L1-E04 — Storage Abstraction`
 
 ## Current Task
 
-`L1-E03 — Authentication & Authorization` is **Done**.
+`L1-E04 — Storage Abstraction` is **Done**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -103,7 +110,7 @@
 - [x] core application scaffold
 - [x] database foundation
 - [x] authentication and authorization foundation
-- [ ] storage integration
+- [x] storage integration
 - [ ] file management
 - [ ] frontend functionality
 - [ ] deployment
@@ -118,4 +125,4 @@
 
 ## Next Milestone
 
-`L1-E04 — Storage Abstraction` is **Ready**. It will define the provider-neutral storage contract, implement the Alibaba Cloud OSS adapter behind that boundary, generate opaque object keys, and provide short-lived restricted upload/download authorization without exposing permanent credentials.
+`L1-E05 — File Management` is **Ready**. It will implement owner-scoped folder and file workflows over the existing repository and storage boundaries: pending upload verification, listing, download authorization, rename, move, recycle bin, restore, and safe permanent deletion.
