@@ -34,11 +34,9 @@ Acceptance criteria:
 - [x] `CURRENT_STATUS.md` matches reality
 - [x] next task is proposed but not automatically executed
 
-## Ready
-
 ### SETUP-002 — Environment Inspection
 
-**Status:** Ready — not started; requires explicit instruction
+**Status:** Done
 
 Goal: inspect the local environment and recommend the minimal Layer 1 setup without implementing business functionality.
 
@@ -50,6 +48,39 @@ Inspect:
 - Docker availability as information only
 - local development constraints
 - 512 MB server-memory implications
+
+Completion notes:
+- [x] confirmed Windows 11 x64 and local Git state
+- [x] confirmed Node.js `v24.16.0`, `npm.cmd`, and `npx.cmd` availability
+- [x] confirmed that no standard Python development environment is available
+- [x] recorded disk-space, GitHub TLS, and PowerShell execution-policy risks without changing the system
+- [x] assessed the 512 MB Ubuntu server constraint and recommended a lightweight Layer 1 architecture
+- [x] made no installations, configuration changes, or business-code changes
+
+## Ready
+
+### SETUP-003 — Layer 1 Technical Architecture Decision
+
+**Status:** Ready — not started; requires explicit instruction
+
+Goal: compare and determine the minimum technical stack for Layer 1, including:
+- backend runtime/framework
+- frontend strategy
+- database
+- package manager
+- authentication approach
+- local development model
+- production deployment model
+
+Decision priorities:
+- modularity
+- low resource usage
+- compatibility with the 512 MB Ubuntu server
+- compatibility with the current Windows development environment
+- maintainability
+- avoidance of over-engineering
+
+This is an architecture-decision task. Do not install frameworks, create business code, or begin Layer 1 implementation without separate approval.
 
 ## Backlog — Layer 1
 

@@ -8,7 +8,7 @@
 
 ## Current Objective
 
-Chat 00 / Project Knowledge Setup is complete. Await an explicit instruction before starting `SETUP-002`.
+`SETUP-002 — Environment Inspection` is complete. Await an explicit instruction before starting `SETUP-003 — Layer 1 Technical Architecture Decision`.
 
 ## Completed
 
@@ -33,14 +33,27 @@ Chat 00 / Project Knowledge Setup is complete. Await an explicit instruction bef
 - [x] Initialized Git at the `AcademicCloud/` project root on branch `main`
 - [x] Received approval for `SETUP-001 — Project Knowledge Setup`
 - [x] Completed Chat 00 / Project Knowledge Setup
+- [x] Inspected the local development environment without installing or configuring software
+- [x] Received approval for `SETUP-002 — Environment Inspection`
+- [x] Completed `SETUP-002 — Environment Inspection`
 
 ## Current Task
 
-`SETUP-001 — Project Knowledge Setup` is **Done**. Chat 00 is complete.
+`SETUP-002 — Environment Inspection` is **Done**.
+
+## Confirmed Environment Facts
+
+- Local operating system: Windows 11 x64.
+- Node.js `v24.16.0` is available.
+- `npm.cmd` and `npx.cmd` are available.
+- No standard Python development environment is currently available; the discovered LibreOffice-embedded Python is not the project runtime.
+- Docker, WSL, PostgreSQL, Redis, and similar infrastructure are not currently required dependencies.
+- The C: drive has approximately 9.6 GiB free; dependency and cache size should remain controlled.
+- GitHub HTTPS currently has a certificate-trust error. Record this as an environment risk for later handling; do not change VPN, certificates, or network configuration without approval.
+- The target Ubuntu server has 512 MB RAM, so Layer 1 architecture and deployment must remain lightweight.
 
 ## Not Started
 
-- [ ] environment inspection
 - [ ] Layer 1 technology-stack decision
 - [ ] business code
 - [ ] database implementation
@@ -60,4 +73,4 @@ Chat 00 / Project Knowledge Setup is complete. Await an explicit instruction bef
 
 ## Next Milestone
 
-`SETUP-002 — Environment Inspection` is the next task, but it has not started and requires an explicit instruction.
+`SETUP-003 — Layer 1 Technical Architecture Decision` is ready but has not started and requires an explicit instruction. It will compare and decide the minimum Layer 1 technical stack without implementing it.
