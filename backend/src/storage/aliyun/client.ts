@@ -30,5 +30,6 @@ export function createAliyunOssClient(config: AliyunOssConfig): AliyunOssClientP
     ...(config.stsToken ? { stsToken: config.stsToken } : {}),
     secure: new URL(config.endpoint).protocol === "https:",
     authorizationV4: true,
+    timeout: config.requestTimeoutMilliseconds,
   });
 }

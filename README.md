@@ -117,6 +117,13 @@ Object storage is accessed only through `StorageAdapter`. Application-generated 
 
 The authenticated file-management API now supports folders, direct browser uploads with pending-state verification, active listings, downloads, metadata-only rename/move, recycle-bin deletion and restore, and durable permanent deletion. Its routes, request limits, lifecycle ordering, and stable error codes are documented in `docs/api/file-management.md`.
 
+The API now has secure response headers, secret-safe structured/audit logs, bounded provider calls, revision-based lifecycle CAS, and an explicit stale-state recovery command. The default maintenance run is read-only; operational rules and residual risks are documented in `docs/architecture/security-reliability.md`.
+
+```powershell
+npm.cmd run maintenance
+npm.cmd run maintenance -- --apply
+```
+
 The React interface recovers sessions, browses folders, calculates MD5 incrementally, uploads directly with progress and retry state, exposes recoverable file actions, and previews a narrow safe media-type set through short-lived inline authorization. Its local limitations, browser data flow, and frontend checks are documented in `docs/architecture/frontend.md`.
 
 ## License

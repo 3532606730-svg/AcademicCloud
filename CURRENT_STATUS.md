@@ -6,11 +6,11 @@
 
 **Layer 1 — Basic Private Cloud Storage: In Progress**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E06 — Frontend Interface` are complete. The application now exposes the authenticated drive lifecycle through a tested responsive browser interface.
+`L1-E01 — Core Architecture Scaffold` through `L1-E07 — Security & Reliability` are complete. The application now exposes the authenticated drive lifecycle through a tested responsive browser interface and a conservative operational recovery boundary.
 
 ## Current Objective
 
-`L1-E06 — Frontend Interface` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E07 — Security & Reliability` after the clean checkpoint.
+`L1-E07 — Security & Reliability` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E08 — Testing & Deployment` after the clean checkpoint.
 
 ## Completed
 
@@ -91,10 +91,16 @@
 - [x] Added deterministic frontend tests and completed browser/visual QA without real cloud calls or credentials
 - [x] Documented the frontend security/data flow and local adapter limitations
 - [x] Completed `L1-E06 — Frontend Interface`
+- [x] Added secure API response headers, stable parser/not-found behavior, database-only readiness, request bounds, secret-safe logs, and stable authentication/drive audit events
+- [x] Added revision-based file CAS, authorization-bound MD5, renewal freshness, provider-verified deletion, and durable uncertain-result recovery in `purging`
+- [x] Added bounded expired-session pruning and a serial one-shot stale-state maintenance command that defaults to dry-run
+- [x] Added full protected/origin/owner isolation matrices plus restart, provider-fault, ambiguous-object, integrity, and redaction coverage
+- [x] Documented security/reliability operations, resource bounds, maintenance procedure, and residual OSS deletion risk
+- [x] Completed `L1-E07 — Security & Reliability`
 
 ## Current Task
 
-`L1-E06 — Frontend Interface` is **Done**.
+`L1-E07 — Security & Reliability` is **Done**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -128,6 +134,7 @@
 - [x] storage integration
 - [x] file management
 - [x] frontend functionality
+- [x] security and reliability hardening
 - [ ] deployment
 
 ## Current Constraints
@@ -140,4 +147,4 @@
 
 ## Next Milestone
 
-`L1-E07 — Security & Reliability` is **Ready**. It will harden the completed Layer 1 application with operational security controls, bounded recovery/cleanup behavior, audit-safe logging, and reliability documentation without changing the approved product scope.
+`L1-E08 — Testing & Deployment` is **Ready**. It will execute final Layer 1 acceptance, add the production deployment and backup/recovery artifacts, and validate the documented deployment path without using real credentials or mutating the live server unless separately authorized.

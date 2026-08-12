@@ -12,5 +12,6 @@ export interface RepositorySet {
 export interface Persistence {
   repositories: RepositorySet;
   runInTransaction<T>(work: (repositories: RepositorySet) => T): T;
+  isReady(): boolean;
   close(): void;
 }

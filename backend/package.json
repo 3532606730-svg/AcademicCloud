@@ -13,6 +13,8 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "db:migrate": "tsx --env-file-if-exists=.env src/persistence/sqlite/migrate.ts",
+    "maintenance": "tsx --env-file-if-exists=.env src/maintenance/main.ts",
+    "maintenance:prod": "node dist/maintenance/main.js",
     "auth:benchmark": "tsx scripts/password-benchmark.ts"
   },
   "dependencies": {

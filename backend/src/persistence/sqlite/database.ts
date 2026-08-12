@@ -23,3 +23,19 @@ export function openSqliteDatabase(filename: string): SqliteDatabase {
 
   return database;
 }
+
+export function openSqliteDatabaseReadOnly(filename: string): SqliteDatabase {
+  const resolvedFilename = resolve(filename);
+  const database = new Database(resolvedFilename, {
+    fileMustExist: true,
+    readonly: true,
+    timeout: 5_000,
+  });
+
+  database.pragma("foreign_keys = ON");
+  database.pragma("busy_timeout = 5000");
+  database.pragma("query_only = ON");
+  database.pragma("trusted_schema = OFF");
+
+  return database;
+}

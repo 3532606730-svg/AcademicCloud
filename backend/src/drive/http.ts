@@ -9,6 +9,15 @@ const idSchema = { type: "string", pattern: ID_PATTERN, minLength: 1, maxLength:
 const nullableIdSchema = { anyOf: [idSchema, { type: "null" }] } as const;
 const nameSchema = { type: "string", minLength: 1, maxLength: 255 } as const;
 
+const LIFECYCLE_AUDIT_EVENTS = new Map([
+  ["DELETE /api/drive/folders/:folderId", "drive.folder_soft_delete"],
+  ["POST /api/drive/folders/:folderId/restore", "drive.folder_restore"],
+  ["POST /api/drive/uploads/:fileId/complete", "drive.upload_complete"],
+  ["DELETE /api/drive/files/:fileId", "drive.file_soft_delete"],
+  ["POST /api/drive/files/:fileId/restore", "drive.file_restore"],
+  ["DELETE /api/drive/files/:fileId/permanent", "drive.file_permanent_delete"],
+]);
+
 interface FolderBody {
   name: string;
   parentId?: string | null;
@@ -113,6 +122,41 @@ function sendDriveError(reply: FastifyReply, error: unknown) {
 }
 
 export async function registerDriveHttp(app: FastifyInstance, driveService: DriveService): Promise<void> {
+  app.addHook("onResponse", async (request, reply) => {
+    const route = request.routeOptions.url;
+    const accountId = request.authAccount?.id;
+
+    if (!route?.startsWith("/api/drive") || !accountId) return;
+
+    if (reply.statusCode === 404) {
+      request.log.warn(
+        {
+          audit: {
+            event: "drive.owner_scope_check",
+            outcome: "not_found",
+            accountId,
+            method: request.method,
+            route,
+          },
+        },
+        "drive audit event",
+      );
+    }
+
+    const event = LIFECYCLE_AUDIT_EVENTS.get(`${request.method} ${route}`);
+
+    if (event) {
+      const outcome = reply.statusCode < 400
+        ? "succeeded"
+        : reply.statusCode < 500
+          ? "denied"
+          : "failed";
+      const details = { audit: { event, outcome, accountId } };
+      if (outcome === "succeeded") request.log.info(details, "drive audit event");
+      else request.log.warn(details, "drive audit event");
+    }
+  });
+
   app.post<{ Body: FolderBody }>(
     "/api/drive/folders",
     {

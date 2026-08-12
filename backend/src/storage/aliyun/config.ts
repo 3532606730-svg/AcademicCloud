@@ -13,6 +13,7 @@ export interface AliyunOssConfig {
   stsToken?: string;
   uploadAuthorizationSeconds: number;
   downloadAuthorizationSeconds: number;
+  requestTimeoutMilliseconds: number;
 }
 
 function readRequired(environment: NodeJS.ProcessEnv, name: string): string {
@@ -30,6 +31,17 @@ function readDuration(environment: NodeJS.ProcessEnv, name: string, fallback: nu
   const value = raw === undefined || raw === "" ? fallback : Number(raw);
 
   assertAuthorizationDuration(value);
+
+  return value;
+}
+
+function readRequestTimeout(environment: NodeJS.ProcessEnv): number {
+  const raw = environment.OSS_REQUEST_TIMEOUT_MILLISECONDS?.trim();
+  const value = raw === undefined || raw === "" ? 30_000 : Number(raw);
+
+  if (!Number.isSafeInteger(value) || value < 1_000 || value > 120_000) {
+    throw new Error("OSS_REQUEST_TIMEOUT_MILLISECONDS must be an integer from 1000 to 120000");
+  }
 
   return value;
 }
@@ -86,5 +98,6 @@ export function loadAliyunOssConfig(
     ...(stsToken ? { stsToken } : {}),
     uploadAuthorizationSeconds: readDuration(environment, "OSS_UPLOAD_AUTHORIZATION_SECONDS", 300),
     downloadAuthorizationSeconds: readDuration(environment, "OSS_DOWNLOAD_AUTHORIZATION_SECONDS", 300),
+    requestTimeoutMilliseconds: readRequestTimeout(environment),
   };
 }

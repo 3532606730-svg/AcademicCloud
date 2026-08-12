@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 
 import {
   assertAuthorizationDuration,
+  assertBase64Md5,
   assertContentLength,
   assertMediaType,
   createContentDisposition,
@@ -94,6 +95,7 @@ export class AliyunOssStorageAdapter implements StorageAdapter {
     assertValidObjectKey(input.objectKey);
     assertContentLength(input.contentLength);
     assertMediaType(input.mediaType);
+    assertBase64Md5(input.expectedChecksum.value);
     const expiresInSeconds = input.expiresInSeconds ?? this.config.uploadAuthorizationSeconds;
     assertAuthorizationDuration(expiresInSeconds);
     const expiresAt = new Date(this.now().getTime() + expiresInSeconds * 1_000);
@@ -103,6 +105,7 @@ export class AliyunOssStorageAdapter implements StorageAdapter {
         ["eq", "$key", input.objectKey],
         ["content-length-range", input.contentLength, input.contentLength],
         ["eq", "$Content-Type", input.mediaType],
+        ["eq", "$Content-MD5", input.expectedChecksum.value],
         ["eq", "$x-oss-forbid-overwrite", "true"],
         ["eq", "$success_action_status", "201"],
         { bucket: this.config.bucket },
@@ -124,6 +127,7 @@ export class AliyunOssStorageAdapter implements StorageAdapter {
         Signature: signature,
         success_action_status: "201",
         "Content-Type": input.mediaType,
+        "Content-MD5": input.expectedChecksum.value,
         "x-oss-forbid-overwrite": "true",
         ...(this.config.stsToken ? { "x-oss-security-token": this.config.stsToken } : {}),
       },

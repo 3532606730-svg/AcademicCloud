@@ -3,7 +3,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import type { OutgoingHttpHeaders } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Writable } from "node:stream";
 import { test, type TestContext } from "node:test";
+import type { FastifyServerOptions } from "fastify";
 
 import { AuthService, digestSessionSecret, SESSION_DURATION_MILLISECONDS } from "../../src/auth/auth-service.js";
 import { getSessionCookiePolicy } from "../../src/auth/http.js";
@@ -43,7 +45,12 @@ function cookieHeader(setCookie: string): string {
 
 async function createFixture(
   context: TestContext,
-  options: { disabled?: boolean; production?: boolean; rateLimitMax?: number } = {},
+  options: {
+    disabled?: boolean;
+    production?: boolean;
+    rateLimitMax?: number;
+    logger?: FastifyServerOptions["logger"];
+  } = {},
 ) {
   const { database, persistence } = createTestPersistence(context);
   const hasher = new TestPasswordHasher();
@@ -64,7 +71,7 @@ async function createFixture(
   });
   const production = options.production ?? false;
   const app = await createApp({
-    logger: false,
+    logger: options.logger ?? false,
     auth: {
       service: authService,
       appOrigin: production ? "https://cloud.example" : ORIGIN,
@@ -256,6 +263,110 @@ test("unsafe API requests require the exact configured origin", async (context) 
   assert.equal(allowed.statusCode, 401);
 });
 
+test("authentication and origin outcomes emit stable secret-free audit events", async (context) => {
+  let output = "";
+  const stream = new Writable({
+    write(chunk, _encoding, callback) {
+      output += chunk.toString();
+      callback();
+    },
+  });
+  const { app } = await createFixture(context, { logger: { level: "info", stream } });
+
+  const anonymous = await app.inject({ method: "GET", url: "/api/auth/session" });
+  assert.equal(anonymous.statusCode, 401);
+
+  const rejectedOrigin = await app.inject({
+    method: "POST",
+    url: "/api/auth/login?password=query-secret",
+    headers: { origin: "https://evil.example" },
+    payload: { loginName: "Scholar", password: "origin-password-secret" },
+  });
+  assert.equal(rejectedOrigin.statusCode, 403);
+
+  const invalid = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "MissingUser", password: "invalid-password-secret" },
+  });
+  assert.equal(invalid.statusCode, 401);
+
+  const login = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "Scholar", password: "valid-password" },
+  });
+  assert.equal(login.statusCode, 200);
+  const cookie = cookieHeader(getSetCookie(login));
+
+  const logout = await app.inject({
+    method: "POST",
+    url: "/api/auth/logout",
+    headers: { origin: ORIGIN, cookie },
+  });
+  assert.equal(logout.statusCode, 204);
+
+  for (const secret of [
+    "query-secret",
+    "origin-password-secret",
+    "invalid-password-secret",
+    "valid-password",
+    "MissingUser",
+    "https://evil.example",
+    cookie.slice("ac_session=".length),
+  ]) {
+    assert.equal(output.includes(secret), false, `audit log contained ${secret}`);
+  }
+
+  const audits = output
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line) as { audit?: Record<string, unknown> })
+    .flatMap((entry) => entry.audit ? [entry.audit] : []);
+  assert.deepEqual(
+    audits.map((audit) => ({
+      event: audit.event,
+      outcome: audit.outcome,
+      reason: audit.reason,
+      accountId: audit.accountId,
+    })),
+    [
+      {
+        event: "auth.session_check",
+        outcome: "denied",
+        reason: "authentication_required",
+        accountId: undefined,
+      },
+      {
+        event: "auth.origin_check",
+        outcome: "denied",
+        reason: "invalid_origin",
+        accountId: undefined,
+      },
+      {
+        event: "auth.login",
+        outcome: "denied",
+        reason: "invalid_credentials",
+        accountId: undefined,
+      },
+      {
+        event: "auth.login",
+        outcome: "succeeded",
+        reason: undefined,
+        accountId: "account-1",
+      },
+      {
+        event: "auth.logout",
+        outcome: "succeeded",
+        reason: undefined,
+        accountId: "account-1",
+      },
+    ],
+  );
+});
+
 test("login validates JSON and throttles repeated attempts", async (context) => {
   const validation = await createFixture(context);
   const throttled = await createFixture(context, { rateLimitMax: 1 });
@@ -298,6 +409,31 @@ test("login validates JSON and throttles repeated attempts", async (context) => 
   assert.equal(rejectedOrigin.statusCode, 403);
   assert.equal(first.statusCode, 401);
   assert.equal(limited.statusCode, 429);
+});
+
+test("login rate-limit denial emits a stable audit event", async (context) => {
+  let output = "";
+  const stream = new Writable({
+    write(chunk, _encoding, callback) {
+      output += chunk.toString();
+      callback();
+    },
+  });
+  const { app } = await createFixture(context, {
+    rateLimitMax: 1,
+    logger: { level: "info", stream },
+  });
+  const request = () => app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "Scholar", password: "wrong" },
+  });
+
+  assert.equal((await request()).statusCode, 401);
+  assert.equal((await request()).statusCode, 429);
+  assert.match(output, /rate_limit_exceeded/);
+  assert.doesNotMatch(output, /Scholar|wrong/);
 });
 
 test("production uses a host-prefixed secure cookie with root scope", async (context) => {

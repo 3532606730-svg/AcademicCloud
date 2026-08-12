@@ -46,6 +46,34 @@ interface SessionCookiePolicy {
   };
 }
 
+type AuthAuditEvent =
+  | "auth.origin_check"
+  | "auth.session_check"
+  | "auth.login"
+  | "auth.logout";
+
+type AuthAuditOutcome = "succeeded" | "denied" | "busy" | "noop";
+
+function writeAuthAudit(
+  request: FastifyRequest,
+  event: AuthAuditEvent,
+  outcome: AuthAuditOutcome,
+  details: { accountId?: string; reason?: string } = {},
+): void {
+  const audit = {
+    event,
+    outcome,
+    ...(details.accountId === undefined ? {} : { accountId: details.accountId }),
+    ...(details.reason === undefined ? {} : { reason: details.reason }),
+  };
+
+  if (outcome === "succeeded" || outcome === "noop") {
+    request.log.info({ audit }, "authentication audit event");
+  } else {
+    request.log.warn({ audit }, "authentication audit event");
+  }
+}
+
 export function getSessionCookiePolicy(environment: AppEnvironment): SessionCookiePolicy {
   const production = environment === "production";
 
@@ -76,6 +104,7 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
       request.headers.origin !== options.appOrigin ||
       request.headers["sec-fetch-site"] === "cross-site"
     ) {
+      writeAuthAudit(request, "auth.origin_check", "denied", { reason: "invalid_origin" });
       await reply.code(403).send({ error: "invalid_origin" });
     }
   });
@@ -92,6 +121,9 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
     const account = secret ? options.authService.resolveSession(secret) : null;
 
     if (!account) {
+      writeAuthAudit(request, "auth.session_check", "denied", {
+        reason: "authentication_required",
+      });
       await reply.code(401).send({ error: "authentication_required" });
       return;
     }
@@ -106,6 +138,9 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
         rateLimit: {
           max: options.loginRateLimitMax ?? 5,
           timeWindow: "1 minute",
+          onExceeded: (request: FastifyRequest) => {
+            writeAuthAudit(request, "auth.login", "denied", { reason: "rate_limit_exceeded" });
+          },
         },
       },
       schema: {
@@ -141,13 +176,16 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
           maxAge: SESSION_MAX_AGE_SECONDS,
           expires: result.expiresAt,
         });
+        writeAuthAudit(request, "auth.login", "succeeded", { accountId: result.account.id });
         return { account: result.account };
       } catch (error: unknown) {
         if (error instanceof InvalidCredentialsError) {
+          writeAuthAudit(request, "auth.login", "denied", { reason: "invalid_credentials" });
           return reply.code(401).send({ error: "invalid_credentials" });
         }
 
         if (error instanceof PasswordKdfOverloadedError) {
+          writeAuthAudit(request, "auth.login", "busy", { reason: "kdf_overloaded" });
           return reply.header("retry-after", "1").code(429).send({ error: "authentication_busy" });
         }
 
@@ -158,11 +196,18 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
 
   app.post("/api/auth/logout", async (request, reply) => {
     const secret = request.cookies[cookiePolicy.name];
+    const account = secret ? options.authService.resolveSession(secret) : null;
 
     if (secret) {
       options.authService.logout(secret);
     }
 
+    writeAuthAudit(
+      request,
+      "auth.logout",
+      account ? "succeeded" : "noop",
+      account ? { accountId: account.id } : {},
+    );
     reply.clearCookie(cookiePolicy.name, cookiePolicy.options);
     return reply.code(204).send();
   });

@@ -45,6 +45,7 @@ function storedFile(id: string, ownerId: string, folderId: string | null): NewSt
     checksumAlgorithm: "sha256",
     checksum: "a".repeat(64),
     state: "active",
+    revision: 0,
     createdAt: NOW,
     updatedAt: NOW,
     activatedAt: NOW,
@@ -141,4 +142,53 @@ test("failed multi-repository work rolls back through the transaction boundary",
     /stop transaction/,
   );
   assert.equal(persistence.repositories.folders.findById("owner-1", "rolled-back"), null);
+});
+
+test("stored-file writes use state and revision as a durable compare-and-swap token", (context) => {
+  const { persistence } = createTestPersistence(context);
+  persistence.repositories.accounts.create(account("owner-1"));
+  const original = persistence.repositories.files.create(storedFile("paper-1", "owner-1", null));
+  const updated = persistence.repositories.files.update(
+    { ...original, displayName: "renamed.pdf", updatedAt: new Date(NOW.getTime() + 1_000) },
+    "active",
+    original.revision,
+  );
+
+  assert.equal(updated?.revision, original.revision + 1);
+  assert.equal(
+    persistence.repositories.files.update(
+      { ...original, displayName: "stale.pdf" },
+      "active",
+      original.revision,
+    ),
+    null,
+  );
+  assert.equal(persistence.repositories.files.findById("owner-1", original.id)?.displayName, "renamed.pdf");
+});
+
+test("expired-session pruning is bounded, repeatable, and keeps future sessions", (context) => {
+  const { persistence } = createTestPersistence(context);
+  persistence.repositories.accounts.create(account("owner-1"));
+  const sessions = persistence.repositories.sessions;
+
+  for (const [digest, expiresAt] of [
+    ["a".repeat(64), new Date(NOW.getTime() - 1)],
+    ["b".repeat(64), NOW],
+    ["c".repeat(64), new Date(NOW.getTime() + 1)],
+  ] as const) {
+    sessions.create({
+      tokenDigest: digest,
+      accountId: "owner-1",
+      createdAt: new Date(NOW.getTime() - 10_000),
+      expiresAt,
+      revokedAt: null,
+    });
+  }
+
+  assert.equal(sessions.countExpired(NOW, 1), 1);
+  assert.equal(sessions.pruneExpired(NOW, 1), 1);
+  assert.equal(sessions.countExpired(NOW, 10), 1);
+  assert.equal(sessions.pruneExpired(NOW, 10), 1);
+  assert.equal(sessions.pruneExpired(NOW, 10), 0);
+  assert.ok(sessions.findByTokenDigest("c".repeat(64)));
 });

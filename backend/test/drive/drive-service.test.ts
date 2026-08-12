@@ -12,6 +12,7 @@ const MD5 = "1B2M2Y8AsgTpgAmY7PhCfg==";
 class ControlledStorage extends InMemoryStorageAdapter {
   failDelete = false;
   failAuthorization = false;
+  failStat = false;
   readonly deleteCalls: string[] = [];
 
   override async createUploadAuthorization(
@@ -25,6 +26,11 @@ class ControlledStorage extends InMemoryStorageAdapter {
     this.deleteCalls.push(objectKey);
     if (this.failDelete) throw new Error("provider unavailable");
     await super.deleteObject(objectKey);
+  }
+
+  override async statObject(objectKey: string) {
+    if (this.failStat) throw new Error("provider unavailable");
+    return super.statObject(objectKey);
   }
 }
 
@@ -105,6 +111,7 @@ test("upload reserves a name, binds checksum and no-overwrite fields, then verif
 
   assert.equal(pending.file.state, "pending_upload");
   assert.match(pending.upload.fields.key!, /^objects\//);
+  assert.equal(pending.upload.fields["Content-MD5"], MD5);
   assert.equal(pending.file.checksum, MD5);
   assert.throws(
     () => service.createFolder("owner-1", "bad/name", null),
@@ -139,7 +146,7 @@ test("upload reserves a name, binds checksum and no-overwrite fields, then verif
 });
 
 test("renew recovers pending uploads without exposing another owner", async (context) => {
-  const { service } = fixture(context);
+  const { persistence, service, storage } = fixture(context);
   const pending = await service.createUpload("owner-1", {
     folderId: null,
     displayName: "retry.pdf",
@@ -149,6 +156,17 @@ test("renew recovers pending uploads without exposing another owner", async (con
   });
 
   assert.equal((await service.renewUploadAuthorization("owner-1", pending.file.id)).fields.key, pending.upload.fields.key);
+  const renewed = persistence.repositories.files.findById("owner-1", pending.file.id)!;
+  assert.equal(renewed.revision, pending.file.revision + 1);
+  storage.failAuthorization = true;
+  await assert.rejects(
+    service.renewUploadAuthorization("owner-1", pending.file.id),
+    (error) => error instanceof DriveError && error.code === "storage_unavailable",
+  );
+  assert.equal(
+    persistence.repositories.files.findById("owner-1", pending.file.id)?.revision,
+    renewed.revision + 1,
+  );
   await assert.rejects(service.renewUploadAuthorization("owner-2", pending.file.id), (error) => error instanceof DriveError && error.code === "not_found");
 });
 
@@ -206,7 +224,11 @@ test("inline authorization is restricted to passive preview media types", async 
   const uploaded = await createAndUpload(service, storage);
   await service.completeUpload("owner-1", uploaded.file.id);
   const active = persistence.repositories.files.findById("owner-1", uploaded.file.id)!;
-  persistence.repositories.files.update({ ...active, mediaType: "image/svg+xml" }, "active");
+  persistence.repositories.files.update(
+    { ...active, mediaType: "image/svg+xml" },
+    "active",
+    active.revision,
+  );
 
   await assert.rejects(
     service.createDownload("owner-1", uploaded.file.id, "inline"),
@@ -223,7 +245,7 @@ test("permanent deletion persists purging intent and never purges on provider fa
   storage.failDelete = true;
 
   await assert.rejects(service.permanentlyDeleteFile("owner-1", uploaded.file.id), (error) => error instanceof DriveError && error.code === "storage_unavailable");
-  assert.equal(persistence.repositories.files.findById("owner-1", uploaded.file.id)?.state, "deleted");
+  assert.equal(persistence.repositories.files.findById("owner-1", uploaded.file.id)?.state, "purging");
 
   storage.failDelete = false;
   await service.permanentlyDeleteFile("owner-1", uploaded.file.id);
@@ -236,11 +258,37 @@ test("permanent deletion persists purging intent and never purges on provider fa
 test("provider mismatch never reads or deletes an object through the wrong adapter", async (context) => {
   const { persistence, service, storage } = fixture(context);
   const uploaded = await createAndUpload(service, storage);
+  await service.completeUpload("owner-1", uploaded.file.id);
+  service.deleteFile("owner-1", uploaded.file.id);
   Object.defineProperty(storage, "provider", { value: "other-provider" });
   const wrongProviderService = new DriveService(persistence, storage, () => NOW);
 
-  await assert.rejects(wrongProviderService.completeUpload("owner-1", uploaded.file.id), (error) => error instanceof DriveError && error.code === "storage_unavailable");
+  await assert.rejects(wrongProviderService.restoreFile("owner-1", uploaded.file.id), (error) => error instanceof DriveError && error.code === "storage_unavailable");
+  await assert.rejects(wrongProviderService.permanentlyDeleteFile("owner-1", uploaded.file.id), (error) => error instanceof DriveError && error.code === "storage_unavailable");
   assert.equal(storage.deleteCalls.length, 0);
+});
+
+test("permanent deletion verifies exact object metadata before delete", async (context) => {
+  const { persistence, service, storage } = fixture(context);
+  const uploaded = await createAndUpload(service, storage);
+  await service.completeUpload("owner-1", uploaded.file.id);
+  service.deleteFile("owner-1", uploaded.file.id);
+  storage.putObject({
+    objectKey: uploaded.objectKey,
+    sizeBytes: 1,
+    etag: null,
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+
+  await assert.rejects(
+    service.permanentlyDeleteFile("owner-1", uploaded.file.id),
+    (error) => error instanceof DriveError && error.code === "upload_metadata_mismatch",
+  );
+  assert.equal(storage.deleteCalls.length, 0);
+  assert.equal(persistence.repositories.files.findById("owner-1", uploaded.file.id)?.state, "purging");
 });
 
 test("concurrent permanent-delete requests share one provider operation", async (context) => {

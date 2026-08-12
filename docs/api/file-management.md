@@ -30,11 +30,11 @@ Folder and file IDs use 1-128 URL-safe characters. Names are NFC-normalized and 
 
 1. The browser computes the file MD5, then requests `POST /uploads`.
 2. The server validates the active target folder and atomically creates a `pending_upload` record. This reserves the case-insensitive display name and stores the expected byte length, MIME type, and MD5.
-3. The server returns a short-lived POST policy for one generated opaque key. The signed policy binds the key, exact byte length, MIME type, private bucket, and `x-oss-forbid-overwrite=true`.
+3. The server returns a short-lived POST policy for one generated opaque key. The signed policy binds the key, exact byte length, MIME type, expected `Content-MD5`, private bucket, and `x-oss-forbid-overwrite=true`.
 4. The browser submits all returned fields followed by the file field directly to OSS. The application server never buffers file bytes.
 5. The browser calls `/complete`. The server uses provider `HEAD` metadata and activates the file only when size, MIME type, checksum algorithm, and checksum exactly match the pending record.
 
-A missing object returns `upload_incomplete`; mismatched metadata returns `upload_metadata_mismatch`. Both leave the record pending. An expired authorization can be renewed for the same pending record and opaque key. Cleanup of expired pending records requires provider reconciliation and is deferred to the reliability task; deleting metadata while a browser authorization can still be used would create an untracked object. If initial signing fails before an authorization is returned, the just-created pending reservation is synchronously removed.
+A missing object returns `upload_incomplete`; mismatched metadata returns `upload_metadata_mismatch`. Both leave the record pending. An expired authorization can be renewed for the same pending record and opaque key. Renewal first advances the record's durable revision and `updated_at`, then signs the new authorization. This prevents stale maintenance from removing a record while a fresh authorization is valid. If initial signing fails before an authorization is returned, the just-created pending reservation is synchronously removed.
 
 The no-overwrite control assumes OSS bucket versioning is **not enabled or suspended**, because OSS documents that `x-oss-forbid-overwrite` is ignored when versioning is enabled or suspended. Production setup must verify this bucket property before accepting uploads.
 
@@ -45,10 +45,13 @@ Soft deletion changes only logical metadata and preserves the object. Rename and
 Permanent deletion uses the durable transition `deleted → purging → purged`:
 
 1. atomically record `purging` so restore can no longer race the provider request;
-2. idempotently delete the exact stored object key outside the SQLite transaction;
-3. mark `purged` only after provider success.
+2. read provider metadata outside the SQLite transaction;
+3. if the object exists, require its key, size, MIME type, checksum algorithm, and checksum to match before idempotently deleting the exact stored key;
+4. mark `purged` only after confirmed deletion, or after a provider `HEAD` confirms that the object is already absent.
 
-Ordinary provider failure moves the record back to `deleted` and returns `storage_unavailable`. A process crash can leave `purging`; retrying the same endpoint resumes the idempotent provider deletion. Active files cannot be permanently deleted.
+Provider failure or an unknown delete result leaves the record in `purging` and returns `storage_unavailable`; it never reopens restore after the remote result becomes uncertain. A process crash can also leave `purging`. Retrying the same endpoint or running the explicit reliability maintenance command resumes the state machine. Metadata mismatch preserves both object and record and returns `upload_metadata_mismatch`. Active files cannot be permanently deleted.
+
+Every file write uses the persisted `(state, revision)` pair as a compare-and-swap token. Storage calls never run inside a SQLite transaction.
 
 Folder deletion is deliberately non-recursive. Any active child folder or active/pending direct file causes `folder_not_empty`. Deleted descendants remain independently recoverable in the recycle bin, and restore requires the original parent to be active.
 
@@ -68,3 +71,5 @@ Errors use `{ "error": "stable_code" }`:
 - `500 internal_error`
 
 Provider and database error details are not returned to clients.
+
+All API responses include `Cache-Control: no-store`, a deny-by-default API CSP, anti-framing, MIME-sniffing, referrer, permissions, and cross-origin isolation headers. `GET /api/health` is process liveness; `GET /api/ready` checks SQLite only and deliberately does not call object storage.

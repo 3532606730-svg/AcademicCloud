@@ -93,8 +93,9 @@ function requireActiveFolder(
   return folder;
 }
 
-function metadataMatches(file: StoredFile, metadata: StorageObjectMetadata): boolean {
+export function storageMetadataMatches(file: StoredFile, metadata: StorageObjectMetadata): boolean {
   return (
+    metadata.objectKey === file.objectKey &&
     metadata.sizeBytes === file.sizeBytes &&
     metadata.mediaType?.toLowerCase() === file.mediaType?.toLowerCase() &&
     metadata.checksumAlgorithm === file.checksumAlgorithm &&
@@ -258,6 +259,7 @@ export class DriveService {
           checksumAlgorithm: "md5",
           checksum: input.checksum.value,
           state: "pending_upload",
+          revision: 0,
           createdAt: now,
           updatedAt: now,
           activatedAt: null,
@@ -273,7 +275,7 @@ export class DriveService {
       const upload = await this.authorizePendingFile(file);
       return { file, upload };
     } catch (error: unknown) {
-      this.persistence.repositories.files.deletePending(ownerId, file.id);
+      this.persistence.repositories.files.deletePending(ownerId, file.id, file.revision);
       throw new DriveError("storage_unavailable", { cause: error });
     }
   }
@@ -285,8 +287,18 @@ export class DriveService {
       throw new DriveError("not_found");
     }
 
+    const touched = this.persistence.repositories.files.update(
+      { ...file, updatedAt: this.now() },
+      "pending_upload",
+      file.revision,
+    );
+
+    if (!touched) {
+      throw new DriveError("invalid_state");
+    }
+
     try {
-      return await this.authorizePendingFile(file);
+      return await this.authorizePendingFile(touched);
     } catch (error: unknown) {
       throw new DriveError("storage_unavailable", { cause: error });
     }
@@ -326,13 +338,14 @@ export class DriveService {
       throw new DriveError("upload_incomplete");
     }
 
-    if (!metadataMatches(file, metadata)) {
+    if (!storageMetadataMatches(file, metadata)) {
       throw new DriveError("upload_metadata_mismatch");
     }
 
     const activated = this.persistence.repositories.files.update(
       { ...file, state: "active", activatedAt: this.now(), updatedAt: this.now() },
       "pending_upload",
+      file.revision,
     );
 
     if (!activated) {
@@ -392,6 +405,7 @@ export class DriveService {
             updatedAt: this.now(),
           },
           "active",
+          file.revision,
         );
 
         if (!updated) {
@@ -417,6 +431,7 @@ export class DriveService {
     const deleted = this.persistence.repositories.files.update(
       { ...file, state: "deleted", deletedAt: now, updatedAt: now },
       "active",
+      file.revision,
     );
 
     if (!deleted) {
@@ -441,7 +456,7 @@ export class DriveService {
       throw new DriveError("storage_unavailable", { cause: error });
     }
 
-    if (!metadata || !metadataMatches(file, metadata)) {
+    if (!metadata || !storageMetadataMatches(file, metadata)) {
       throw new DriveError("upload_metadata_mismatch");
     }
 
@@ -449,6 +464,7 @@ export class DriveService {
       const restored = this.persistence.repositories.files.update(
         { ...file, state: "active", deletedAt: null, updatedAt: this.now() },
         "deleted",
+        file.revision,
       );
 
       if (!restored) throw new DriveError("invalid_state");
@@ -498,29 +514,44 @@ export class DriveService {
       : this.persistence.repositories.files.update(
           { ...current, state: "purging", updatedAt: this.now() },
           "deleted",
+          current.revision,
         );
 
     if (!purging) {
       throw new DriveError("invalid_state");
     }
 
+    let metadata: StorageObjectMetadata | null;
+
     try {
-      await this.storage.deleteObject(purging.objectKey);
+      metadata = await this.storage.statObject(purging.objectKey);
     } catch (error: unknown) {
-      this.persistence.repositories.files.update(
-        { ...purging, state: "deleted", updatedAt: this.now() },
-        "purging",
-      );
       throw new DriveError("storage_unavailable", { cause: error });
+    }
+
+    if (metadata && !storageMetadataMatches(purging, metadata)) {
+      throw new DriveError("upload_metadata_mismatch");
+    }
+
+    if (metadata) {
+      try {
+        await this.storage.deleteObject(purging.objectKey);
+      } catch (error: unknown) {
+        throw new DriveError("storage_unavailable", { cause: error });
+      }
     }
 
     const now = this.now();
     const purged = this.persistence.repositories.files.update(
       { ...purging, state: "purged", purgedAt: now, updatedAt: now },
       "purging",
+      purging.revision,
     );
 
     if (!purged) {
+      if (this.persistence.repositories.files.findById(ownerId, fileId)?.state === "purged") {
+        return;
+      }
       throw new DriveError("invalid_state");
     }
   }
@@ -539,6 +570,7 @@ export class DriveService {
       objectKey: file.objectKey,
       contentLength: file.sizeBytes,
       mediaType: file.mediaType,
+      expectedChecksum: { algorithm: "md5", value: file.checksum },
     });
   }
 

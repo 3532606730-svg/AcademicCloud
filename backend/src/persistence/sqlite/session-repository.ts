@@ -33,6 +33,8 @@ export class SqliteSessionRepository implements SessionRepository {
   readonly #insert;
   readonly #findByTokenDigest;
   readonly #revokeByTokenDigest;
+  readonly #countExpired;
+  readonly #pruneExpired;
 
   constructor(database: SqliteDatabase) {
     this.#insert = database.prepare<SessionParameters>(`
@@ -48,6 +50,23 @@ export class SqliteSessionRepository implements SessionRepository {
       UPDATE sessions
       SET revoked_at = ?
       WHERE token_digest = ? AND revoked_at IS NULL
+    `);
+    this.#countExpired = database.prepare<[string, number], { count: number }>(`
+      SELECT count(*) AS count FROM (
+        SELECT token_digest FROM sessions
+        WHERE expires_at <= ?
+        ORDER BY expires_at, token_digest
+        LIMIT ?
+      )
+    `);
+    this.#pruneExpired = database.prepare<[string, number]>(`
+      DELETE FROM sessions
+      WHERE token_digest IN (
+        SELECT token_digest FROM sessions
+        WHERE expires_at <= ?
+        ORDER BY expires_at, token_digest
+        LIMIT ?
+      )
     `);
   }
 
@@ -71,5 +90,21 @@ export class SqliteSessionRepository implements SessionRepository {
   revokeByTokenDigest(tokenDigest: string, revokedAt: Date): boolean {
     const result = this.#revokeByTokenDigest.run(toDatabaseTimestamp(revokedAt)!, tokenDigest);
     return result.changes > 0;
+  }
+
+  countExpired(before: Date, limit: number): number {
+    assertMaintenanceLimit(limit);
+    return this.#countExpired.get(toDatabaseTimestamp(before)!, limit)!.count;
+  }
+
+  pruneExpired(before: Date, limit: number): number {
+    assertMaintenanceLimit(limit);
+    return this.#pruneExpired.run(toDatabaseTimestamp(before)!, limit).changes;
+  }
+}
+
+function assertMaintenanceLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+    throw new RangeError("session maintenance limit must be an integer from 1 to 1000");
   }
 }

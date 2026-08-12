@@ -1,5 +1,6 @@
 import {
   assertAuthorizationDuration,
+  assertBase64Md5,
   assertContentLength,
   assertMediaType,
   createContentDisposition,
@@ -26,6 +27,7 @@ export class InMemoryStorageAdapter implements StorageAdapter {
     assertValidObjectKey(input.objectKey);
     assertContentLength(input.contentLength);
     assertMediaType(input.mediaType);
+    assertBase64Md5(input.expectedChecksum.value);
     const expiresInSeconds = input.expiresInSeconds ?? 300;
     assertAuthorizationDuration(expiresInSeconds);
 
@@ -36,6 +38,7 @@ export class InMemoryStorageAdapter implements StorageAdapter {
         key: input.objectKey,
         "Content-Type": input.mediaType,
         "content-length": String(input.contentLength),
+        "Content-MD5": input.expectedChecksum.value,
         "x-oss-forbid-overwrite": "true",
       },
       expiresAt: new Date(this.now().getTime() + expiresInSeconds * 1_000),

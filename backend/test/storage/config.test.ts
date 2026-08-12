@@ -23,6 +23,7 @@ test("loads validated Alibaba OSS configuration with short-lived defaults", () =
     accessKeySecret: "test-access-key-secret",
     uploadAuthorizationSeconds: 300,
     downloadAuthorizationSeconds: 300,
+    requestTimeoutMilliseconds: 30_000,
   });
 });
 
@@ -50,6 +51,10 @@ test("requires credentials and valid endpoint, bucket, region, and durations", (
         "test",
       ),
     /authorization duration/,
+  );
+  assert.throws(
+    () => loadAliyunOssConfig({ ...validEnvironment, OSS_REQUEST_TIMEOUT_MILLISECONDS: "999" }, "test"),
+    /OSS_REQUEST_TIMEOUT_MILLISECONDS/,
   );
 });
 

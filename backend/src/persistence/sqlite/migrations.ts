@@ -74,15 +74,19 @@ function ensureMigrationTable(database: SqliteDatabase): void {
   `);
 }
 
-export function runMigrations(database: SqliteDatabase, directory: string): MigrationResult {
-  const migrations = readMigrations(directory);
-  ensureMigrationTable(database);
-
-  const applied = database
+function readAppliedMigrations(database: SqliteDatabase): AppliedMigration[] {
+  return database
     .prepare<[], AppliedMigration>(
       "SELECT version, name, checksum FROM schema_migrations ORDER BY version",
     )
     .all();
+}
+
+function validateAppliedMigrations(
+  migrations: Migration[],
+  applied: AppliedMigration[],
+  directory: string,
+): void {
   const migrationsByVersion = new Map(migrations.map((migration) => [migration.version, migration]));
 
   for (const record of applied) {
@@ -96,6 +100,13 @@ export function runMigrations(database: SqliteDatabase, directory: string): Migr
       throw new Error(`Applied migration ${record.version} does not match its recorded checksum`);
     }
   }
+}
+
+export function runMigrations(database: SqliteDatabase, directory: string): MigrationResult {
+  const migrations = readMigrations(directory);
+  ensureMigrationTable(database);
+  const applied = readAppliedMigrations(database);
+  validateAppliedMigrations(migrations, applied, directory);
 
   const latestAppliedVersion = applied.at(-1)?.version ?? 0;
   const pending = migrations.filter((migration) => !applied.some((record) => record.version === migration.version));
@@ -120,4 +131,29 @@ export function runMigrations(database: SqliteDatabase, directory: string): Migr
     appliedVersions: pending.map((migration) => migration.version),
     currentVersion: migrations.at(-1)?.version ?? 0,
   };
+}
+
+export function assertMigrationsCurrent(database: SqliteDatabase, directory: string): MigrationResult {
+  const migrations = readMigrations(directory);
+  const migrationTable = database
+    .prepare<[string], { name: string }>(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+    )
+    .get("schema_migrations");
+
+  if (!migrationTable) {
+    throw new Error("Database schema is not initialized; run db:migrate before dry-run maintenance");
+  }
+
+  const applied = readAppliedMigrations(database);
+  validateAppliedMigrations(migrations, applied, directory);
+  const pending = migrations.filter(
+    (migration) => !applied.some((record) => record.version === migration.version),
+  );
+
+  if (pending.length > 0) {
+    throw new Error("Database schema is not current; run db:migrate before dry-run maintenance");
+  }
+
+  return { appliedVersions: [], currentVersion: migrations.at(-1)?.version ?? 0 };
 }

@@ -11,6 +11,8 @@ import type { AliyunOssConfig } from "../../src/storage/aliyun/config.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createObjectKey } from "../../src/storage/object-key.js";
 
+const MD5 = "1B2M2Y8AsgTpgAmY7PhCfg==";
+
 const config: AliyunOssConfig = {
   endpoint: "https://oss-cn-hangzhou.aliyuncs.com",
   region: "oss-cn-hangzhou",
@@ -19,6 +21,7 @@ const config: AliyunOssConfig = {
   accessKeySecret: "test-access-key-secret",
   uploadAuthorizationSeconds: 300,
   downloadAuthorizationSeconds: 120,
+  requestTimeoutMilliseconds: 30_000,
 };
 
 class FakeAliyunClient implements AliyunOssClientPort {
@@ -82,6 +85,7 @@ test("POST authorization is exact-key, exact-size, media-type restricted, and si
     objectKey,
     contentLength: 12_345,
     mediaType: "application/pdf",
+    expectedChecksum: { algorithm: "md5", value: MD5 },
   });
   const policy = decodePolicy(authorization.fields.policy!);
 
@@ -92,12 +96,14 @@ test("POST authorization is exact-key, exact-size, media-type restricted, and si
     ["eq", "$key", objectKey],
     ["content-length-range", 12_345, 12_345],
     ["eq", "$Content-Type", "application/pdf"],
+    ["eq", "$Content-MD5", MD5],
     ["eq", "$x-oss-forbid-overwrite", "true"],
     ["eq", "$success_action_status", "201"],
     { bucket: "academiccloud-private" },
   ]);
   assert.equal(authorization.fields.key, objectKey);
   assert.equal(authorization.fields["Content-Type"], "application/pdf");
+  assert.equal(authorization.fields["Content-MD5"], MD5);
   assert.equal(authorization.fields["x-oss-forbid-overwrite"], "true");
   assert.equal(
     authorization.fields.Signature,
@@ -114,6 +120,7 @@ test("temporary credentials are bound into the POST policy and fields", async ()
     objectKey: createObjectKey(),
     contentLength: 1,
     mediaType: "text/plain",
+    expectedChecksum: { algorithm: "md5", value: MD5 },
   });
 
   assert.equal(authorization.fields["x-oss-security-token"], "temporary-token");

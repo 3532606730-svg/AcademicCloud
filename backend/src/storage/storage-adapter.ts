@@ -2,6 +2,7 @@ export interface CreateUploadAuthorizationInput {
   objectKey: string;
   contentLength: number;
   mediaType: string;
+  expectedChecksum: { algorithm: "md5"; value: string };
   expiresInSeconds?: number;
 }
 

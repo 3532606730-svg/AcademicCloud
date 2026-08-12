@@ -22,6 +22,7 @@ Browser uploads use an expiring POST policy. Its signed conditions require:
 - the one generated `key`;
 - a content-length range whose lower and upper values both equal the declared byte length;
 - the declared `Content-Type`;
+- the browser-computed expected `Content-MD5`, so OSS rejects different bytes before storage;
 - `x-oss-forbid-overwrite=true` so a still-valid authorization cannot replace the verified object;
 - `success_action_status=201`;
 - the configured private bucket;
@@ -32,7 +33,7 @@ The file-management service now stores the browser-computed expected MD5 before 
 
 Downloads use an SDK-generated V4 signed URL (`authorizationV4: true`). The signed response override supplies both a sanitized ASCII `filename` and an RFC 5987 UTF-8 `filename*`. The bucket remains private; no permanent public URL is returned.
 
-`HEAD` metadata treats a provider 404 as an absent object. `DELETE` treats a provider 404 as success, making retry behavior idempotent. Other provider failures propagate to the caller so the file service can preserve database state and report a retryable failure. ETag is exposed separately because multipart-object ETags are not universally MD5 checksums. `Content-MD5` is preferred as the checksum when present, with OSS CRC64 as a fallback.
+`HEAD` metadata treats a provider 404 as an absent object. `DELETE` treats a provider 404 as success, making retry behavior idempotent. Other provider failures propagate to the caller so the file service can preserve database state and report a retryable failure. ETag is exposed separately because multipart-object ETags are not universally MD5 checksums. `Content-MD5` is preferred as the checksum when present, with OSS CRC64 as a fallback. SDK requests have an explicit 30-second default timeout, configurable from 1 to 120 seconds.
 
 References:
 
@@ -55,5 +56,6 @@ The adapter requires these server-side variables:
 | `OSS_STS_TOKEN` | Optional temporary credential token |
 | `OSS_UPLOAD_AUTHORIZATION_SECONDS` | POST policy lifetime, 30-900 seconds; default 300 |
 | `OSS_DOWNLOAD_AUTHORIZATION_SECONDS` | signed GET lifetime, 30-900 seconds; default 300 |
+| `OSS_REQUEST_TIMEOUT_MILLISECONDS` | SDK request timeout, 1,000-120,000 ms; default 30,000 |
 
 Production deployment should use a narrowly scoped RAM identity limited to the configured bucket and application-generated object prefix. Credentials belong in the deployment secret store, not `.env.example`, logs, client bundles, database rows, or API responses. Bucket creation, CORS configuration, RAM policy changes, credential provisioning, and live network checks require a separately authorized deployment operation.

@@ -14,6 +14,7 @@ export interface StoredFile {
   checksumAlgorithm: string | null;
   checksum: string | null;
   state: StoredFileState;
+  revision: number;
   createdAt: Date;
   updatedAt: Date;
   activatedAt: Date | null;

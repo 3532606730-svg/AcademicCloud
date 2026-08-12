@@ -33,6 +33,7 @@ export async function createApplication(
         environment: config.environment,
       },
       drive: { service: driveService },
+      readinessCheck: () => persistence.isReady(),
     });
 
     app.addHook("onClose", () => {

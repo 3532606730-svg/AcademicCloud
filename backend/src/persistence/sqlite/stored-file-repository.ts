@@ -15,6 +15,7 @@ interface StoredFileRow {
   checksum_algorithm: string | null;
   checksum: string | null;
   state: StoredFileState;
+  revision: number;
   created_at: string;
   updated_at: string;
   activated_at: string | null;
@@ -34,12 +35,14 @@ interface StoredFileParameters {
   checksumAlgorithm: string | null;
   checksum: string | null;
   state: StoredFileState;
+  revision: number;
   createdAt: string;
   updatedAt: string;
   activatedAt: string | null;
   deletedAt: string | null;
   purgedAt: string | null;
   expectedState?: StoredFileState;
+  expectedRevision?: number;
 }
 
 function toStoredFile(row: StoredFileRow): StoredFile {
@@ -55,6 +58,7 @@ function toStoredFile(row: StoredFileRow): StoredFile {
     checksumAlgorithm: row.checksum_algorithm,
     checksum: row.checksum,
     state: row.state,
+    revision: row.revision,
     createdAt: fromDatabaseTimestamp(row.created_at)!,
     updatedAt: fromDatabaseTimestamp(row.updated_at)!,
     activatedAt: fromDatabaseTimestamp(row.activated_at),
@@ -71,30 +75,31 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
   readonly #listDeleted;
   readonly #update;
   readonly #deletePending;
+  readonly #listStale;
 
   constructor(database: SqliteDatabase) {
     this.#insert = database.prepare<StoredFileParameters>(`
       INSERT INTO files (
         id, owner_id, folder_id, display_name, storage_provider, object_key,
-        media_type, size_bytes, checksum_algorithm, checksum, state,
+        media_type, size_bytes, checksum_algorithm, checksum, state, revision,
         created_at, updated_at, activated_at, deleted_at, purged_at
       ) VALUES (
         @id, @ownerId, @folderId, @displayName, @storageProvider, @objectKey,
-        @mediaType, @sizeBytes, @checksumAlgorithm, @checksum, @state,
+        @mediaType, @sizeBytes, @checksumAlgorithm, @checksum, @state, @revision,
         @createdAt, @updatedAt, @activatedAt, @deletedAt, @purgedAt
       )
     `);
     this.#findById = database.prepare<[string, string], StoredFileRow>(`
       SELECT
         id, owner_id, folder_id, display_name, storage_provider, object_key,
-        media_type, size_bytes, checksum_algorithm, checksum, state,
+        media_type, size_bytes, checksum_algorithm, checksum, state, revision,
         created_at, updated_at, activated_at, deleted_at, purged_at
       FROM files
       WHERE owner_id = ? AND id = ?
     `);
     const columns = `
       id, owner_id, folder_id, display_name, storage_provider, object_key,
-      media_type, size_bytes, checksum_algorithm, checksum, state,
+      media_type, size_bytes, checksum_algorithm, checksum, state, revision,
       created_at, updated_at, activated_at, deleted_at, purged_at
     `;
     this.#listRootByState = database.prepare<[string, StoredFileState], StoredFileRow>(`
@@ -117,12 +122,21 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
         folder_id = @folderId, display_name = @displayName,
         media_type = @mediaType, size_bytes = @sizeBytes,
         checksum_algorithm = @checksumAlgorithm, checksum = @checksum,
-        state = @state, updated_at = @updatedAt, activated_at = @activatedAt,
+        state = @state, revision = revision + 1,
+        updated_at = @updatedAt, activated_at = @activatedAt,
         deleted_at = @deletedAt, purged_at = @purgedAt
-      WHERE owner_id = @ownerId AND id = @id AND state = @expectedState
+      WHERE owner_id = @ownerId AND id = @id
+        AND state = @expectedState AND revision = @expectedRevision
     `);
-    this.#deletePending = database.prepare<[string, string]>(`
-      DELETE FROM files WHERE owner_id = ? AND id = ? AND state = 'pending_upload'
+    this.#deletePending = database.prepare<[string, string, number]>(`
+      DELETE FROM files
+      WHERE owner_id = ? AND id = ? AND state = 'pending_upload' AND revision = ?
+    `);
+    this.#listStale = database.prepare<[StoredFileState, string, number], StoredFileRow>(`
+      SELECT ${columns} FROM files
+      WHERE state = ? AND updated_at <= ?
+      ORDER BY updated_at, owner_id, id
+      LIMIT ?
     `);
   }
 
@@ -139,6 +153,7 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
       checksumAlgorithm: file.checksumAlgorithm,
       checksum: file.checksum,
       state: file.state,
+      revision: file.revision,
       createdAt: toDatabaseTimestamp(file.createdAt)!,
       updatedAt: toDatabaseTimestamp(file.updatedAt)!,
       activatedAt: toDatabaseTimestamp(file.activatedAt),
@@ -165,7 +180,18 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
     return this.#listDeleted.all(ownerId).map(toStoredFile);
   }
 
-  update(file: StoredFile, expectedState: StoredFileState): StoredFile | null {
+  listStale(state: "pending_upload" | "purging", updatedBefore: Date, limit: number): StoredFile[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+      throw new RangeError("stale file scan limit must be an integer from 1 to 1000");
+    }
+    return this.#listStale.all(state, toDatabaseTimestamp(updatedBefore)!, limit).map(toStoredFile);
+  }
+
+  update(
+    file: StoredFile,
+    expectedState: StoredFileState,
+    expectedRevision: number,
+  ): StoredFile | null {
     const result = this.#update.run({
       id: file.id,
       ownerId: file.ownerId,
@@ -178,17 +204,19 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
       checksumAlgorithm: file.checksumAlgorithm,
       checksum: file.checksum,
       state: file.state,
+      revision: file.revision,
       createdAt: toDatabaseTimestamp(file.createdAt)!,
       updatedAt: toDatabaseTimestamp(file.updatedAt)!,
       activatedAt: toDatabaseTimestamp(file.activatedAt),
       deletedAt: toDatabaseTimestamp(file.deletedAt),
       purgedAt: toDatabaseTimestamp(file.purgedAt),
       expectedState,
+      expectedRevision,
     });
     return result.changes === 1 ? this.findById(file.ownerId, file.id) : null;
   }
 
-  deletePending(ownerId: string, id: string): boolean {
-    return this.#deletePending.run(ownerId, id).changes === 1;
+  deletePending(ownerId: string, id: string, expectedRevision: number): boolean {
+    return this.#deletePending.run(ownerId, id, expectedRevision).changes === 1;
   }
 }

@@ -14,6 +14,11 @@ export interface StoredFileRepository {
   findById(ownerId: string, id: string): StoredFile | null;
   listByFolder(ownerId: string, folderId: string | null, state: StoredFile["state"]): StoredFile[];
   listDeleted(ownerId: string): StoredFile[];
-  update(file: StoredFile, expectedState: StoredFile["state"]): StoredFile | null;
-  deletePending(ownerId: string, id: string): boolean;
+  listStale(state: "pending_upload" | "purging", updatedBefore: Date, limit: number): StoredFile[];
+  update(
+    file: StoredFile,
+    expectedState: StoredFile["state"],
+    expectedRevision: number,
+  ): StoredFile | null;
+  deletePending(ownerId: string, id: string, expectedRevision: number): boolean;
 }

@@ -184,7 +184,7 @@ Completion notes:
 - [x] added folder create/browse/rename/move/empty-delete/restore with owner scoping, active-parent checks, uniqueness, and cycle prevention
 - [x] added pending upload name reservation, renewal, no-overwrite authorization, expected MD5 storage, provider metadata verification, and activation
 - [x] added active file listing, signed downloads, metadata-only rename/move, soft deletion, recycle listing, and provider-verified restore
-- [x] added durable `deleted → purging → purged` permanent deletion with provider identity checks, idempotent retries, failure rollback, and concurrent-call coalescing
+- [x] added durable `deleted → purging → purged` permanent deletion with provider identity checks, idempotent retries, and concurrent-call coalescing; L1-E07 later hardened uncertain failures to remain `purging`
 - [x] added strict authenticated `/api/drive` routes with JSON/body validation, stable error codes, and DTOs that hide owner and storage internals
 - [x] composed explicit in-memory development/test storage and validated Alibaba OSS production storage
 - [x] passed 50 tests, repository type-checks, production builds, dependency audit, diff check, and fresh migration/integrity/foreign-key smoke verification
@@ -210,23 +210,40 @@ Completion notes:
 - [x] passed 51 backend tests, 22 frontend tests, repository type-check/build, dependency audit, diff check, and Playwright browser/visual QA
 - [x] used no real OSS credentials/resources, cloud operation, permanent URL persistence, or Layer 2/3 capability
 
+### L1-E07 — Security & Reliability
+
+**Status:** Done
+
+Goal: harden the completed Layer 1 application and add a conservative, explicit operating boundary for stale and interrupted lifecycle state.
+
+Completion notes:
+- [x] added no-store and secure API headers, stable parser/not-found responses, database-only readiness, and bounded control-plane requests
+- [x] disabled raw URL request logging, redacted credential/session/upload fields, and added stable authentication, owner-scope, and destructive-lifecycle audit events
+- [x] added file revisions and state-plus-revision CAS for every file mutation and pending cleanup
+- [x] bound browser MD5 into upload authorization, refreshed pending revision before renewal, and verified exact provider metadata before deletion
+- [x] preserved uncertain permanent deletion in `purging` and added deterministic missing/exact/mismatch/provider-failure recovery
+- [x] added bounded expired-session pruning and a serial one-shot maintenance CLI with dry-run default and explicit apply
+- [x] documented resource limits, restart/fault behavior, operator procedure, and the residual OSS `HEAD -> DELETE` TOCTOU risk
+- [x] passed 74 backend and 22 frontend tests, type-check, production build, both dependency audits, migration/integrity checks, maintenance read-only dry-run smoke, Argon2 benchmark, secret scan, and diff review
+- [x] performed no real cloud operation, credential/configuration change, server mutation, automatic scheduler, bucket scan, or ambiguous object deletion
+
 ## Ready
 
-### L1-E07 — Security & Reliability
+### L1-E08 — Testing & Deployment
 
 **Status:** Ready — authorized by the active continuous Layer 1 objective
 
-Goal: harden the completed Layer 1 application and its operating boundaries:
-- security headers, request/log redaction, and audit-safe operational logging
-- bounded cleanup/recovery for expired sessions, abandoned pending uploads, and interrupted permanent deletion
-- dependency/configuration/security verification appropriate to the 512 MB target
-- actionable health/readiness and recovery documentation without adding infrastructure services
+Goal: finish Layer 1 acceptance and prepare a reproducible, resource-conscious production deployment and recovery package:
+- critical-path and representative-file acceptance tests
+- Nginx, systemd, environment, migration, maintenance, and release procedures
+- HTTPS, private OSS/RAM/CORS/versioning, logging, and file-permission checklists
+- SQLite/configuration backup, restore, rollback, restart, and redeployment verification
 
-This task must preserve the existing module boundaries, avoid real credentials or cloud changes, and keep all cleanup rules conservative and data-safe.
+Real credentials, live OSS mutation, DNS/TLS issuance, package installation on the server, and production deployment remain approval-gated. Deterministic local validation and deployment artifact creation are authorized.
 
 ## Backlog — Layer 1
 
-- L1-E08 Testing & Deployment
+- None after the current ready task.
 
 ## Explicitly Deferred
 

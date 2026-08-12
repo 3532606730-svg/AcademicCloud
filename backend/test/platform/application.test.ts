@@ -26,6 +26,7 @@ test("application composition migrates and closes its SQLite database", async ()
   try {
     const response = await app.inject({ method: "GET", url: "/api/health" });
     assert.equal(response.statusCode, 200);
+    assert.equal((await app.inject({ method: "GET", url: "/api/ready" })).statusCode, 200);
     assert.equal(existsSync(databasePath), true);
   } finally {
     await app.close();

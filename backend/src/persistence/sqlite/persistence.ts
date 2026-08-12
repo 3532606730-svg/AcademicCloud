@@ -24,6 +24,10 @@ export class SqlitePersistence implements Persistence {
     return this.#database.transaction(() => work(this.repositories)).immediate();
   }
 
+  isReady(): boolean {
+    return this.#database.prepare<[], { ready: number }>("SELECT 1 AS ready").get()?.ready === 1;
+  }
+
   close(): void {
     this.#database.close();
   }
