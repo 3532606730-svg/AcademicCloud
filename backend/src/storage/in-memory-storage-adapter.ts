@@ -36,6 +36,7 @@ export class InMemoryStorageAdapter implements StorageAdapter {
         key: input.objectKey,
         "Content-Type": input.mediaType,
         "content-length": String(input.contentLength),
+        "x-oss-forbid-overwrite": "true",
       },
       expiresAt: new Date(this.now().getTime() + expiresInSeconds * 1_000),
     };

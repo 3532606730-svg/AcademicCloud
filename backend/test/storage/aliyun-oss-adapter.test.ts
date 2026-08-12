@@ -92,11 +92,13 @@ test("POST authorization is exact-key, exact-size, media-type restricted, and si
     ["eq", "$key", objectKey],
     ["content-length-range", 12_345, 12_345],
     ["eq", "$Content-Type", "application/pdf"],
+    ["eq", "$x-oss-forbid-overwrite", "true"],
     ["eq", "$success_action_status", "201"],
     { bucket: "academiccloud-private" },
   ]);
   assert.equal(authorization.fields.key, objectKey);
   assert.equal(authorization.fields["Content-Type"], "application/pdf");
+  assert.equal(authorization.fields["x-oss-forbid-overwrite"], "true");
   assert.equal(
     authorization.fields.Signature,
     createHmac("sha1", config.accessKeySecret).update(authorization.fields.policy!, "utf8").digest("base64"),

@@ -174,24 +174,39 @@ Completion notes:
 - [x] passed 40 tests, repository type-checks, production builds, dependency audit, diff check, and a no-network real-SDK V4 signing smoke test
 - [x] created no cloud resources, used no real credentials, and introduced no file-management API or frontend feature
 
+### L1-E05 — File Management
+
+**Status:** Done
+
+Goal: implement the authenticated, owner-scoped Layer 1 folder and file-management backend over the repository and storage boundaries.
+
+Completion notes:
+- [x] added folder create/browse/rename/move/empty-delete/restore with owner scoping, active-parent checks, uniqueness, and cycle prevention
+- [x] added pending upload name reservation, renewal, no-overwrite authorization, expected MD5 storage, provider metadata verification, and activation
+- [x] added active file listing, signed downloads, metadata-only rename/move, soft deletion, recycle listing, and provider-verified restore
+- [x] added durable `deleted → purging → purged` permanent deletion with provider identity checks, idempotent retries, failure rollback, and concurrent-call coalescing
+- [x] added strict authenticated `/api/drive` routes with JSON/body validation, stable error codes, and DTOs that hide owner and storage internals
+- [x] composed explicit in-memory development/test storage and validated Alibaba OSS production storage
+- [x] passed 50 tests, repository type-checks, production builds, dependency audit, diff check, and fresh migration/integrity/foreign-key smoke verification
+- [x] created no frontend feature, real cloud resource, credential, background worker, recursive delete, or Layer 2/3 capability
+
 ## Ready
 
-### L1-E05 — File Management
+### L1-E06 — Frontend Interface
 
 **Status:** Ready — authorized by the active continuous Layer 1 objective
 
-Goal: implement the owner-scoped Layer 1 folder and file-management backend over the repository and storage boundaries:
-- folder creation and owner-scoped hierarchy listing
-- pending upload creation and provider metadata verification before activation
-- file listing and short-lived download authorization
-- rename and move operations with conflict handling
-- recoverable soft deletion, recycle-bin listing, restore, and safe permanent deletion
+Goal: implement the usable Layer 1 browser interface over the authenticated file-management API:
+- login and current-session recovery
+- folder navigation and active entries
+- browser-direct upload with checksum, progress, completion, and renewal
+- file/folder rename, move, delete, restore, and recycle-bin actions
+- practical PDF, image, and text preview through short-lived authorized downloads
 
-This task must derive ownership from the authenticated server session, never from a client-provided owner ID, and use only mocked/in-memory storage during deterministic verification.
+This task must keep credentials and object-storage secrets out of the bundle, use the existing same-origin API/cookie model, and remain within the approved Layer 1 UI scope.
 
 ## Backlog — Layer 1
 
-- L1-E06 Frontend Interface
 - L1-E07 Security & Reliability
 - L1-E08 Testing & Deployment
 

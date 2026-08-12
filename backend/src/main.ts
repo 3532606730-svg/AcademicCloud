@@ -1,9 +1,10 @@
 import { loadSqliteConfig } from "./persistence/sqlite/config.js";
 import { createApplication } from "./platform/application.js";
 import { loadConfig } from "./platform/config.js";
+import { loadStorageAdapter } from "./storage/config.js";
 
 const config = loadConfig();
-const app = await createApplication(config, loadSqliteConfig());
+const app = await createApplication(config, loadSqliteConfig(), loadStorageAdapter(process.env, config.environment));
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   app.log.info({ signal }, "shutting down");

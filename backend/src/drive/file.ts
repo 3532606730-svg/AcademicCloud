@@ -1,4 +1,4 @@
-export const STORED_FILE_STATES = ["pending_upload", "active", "deleted", "purged"] as const;
+export const STORED_FILE_STATES = ["pending_upload", "active", "deleted", "purging", "purged"] as const;
 
 export type StoredFileState = (typeof STORED_FILE_STATES)[number];
 

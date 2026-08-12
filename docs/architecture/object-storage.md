@@ -22,11 +22,13 @@ Browser uploads use an expiring POST policy. Its signed conditions require:
 - the one generated `key`;
 - a content-length range whose lower and upper values both equal the declared byte length;
 - the declared `Content-Type`;
+- `x-oss-forbid-overwrite=true` so a still-valid authorization cannot replace the verified object;
 - `success_action_status=201`;
 - the configured private bucket;
 - the security token when temporary credentials are configured.
 
-The browser must submit every returned field unchanged. A later file-management task will create pending database metadata, return this authorization, and verify the provider metadata before activating the file.
+The browser must submit every returned field unchanged. The file-management service creates pending database metadata, returns this authorization, and verifies provider metadata before activating the file.
+The file-management service now stores the browser-computed expected MD5 before authorization and compares it with the provider-calculated `Content-MD5` returned by `HEAD`; the checksum is not treated as ETag. OSS ignores `x-oss-forbid-overwrite` for versioned buckets, so the Layer 1 bucket must have versioning neither enabled nor suspended.
 
 Downloads use an SDK-generated V4 signed URL (`authorizationV4: true`). The signed response override supplies both a sanitized ASCII `filename` and an RFC 5987 UTF-8 `filename*`. The bucket remains private; no permanent public URL is returned.
 

@@ -115,6 +115,8 @@ The authentication HTTP contract and cookie policy are documented in `docs/api/a
 
 Object storage is accessed only through `StorageAdapter`. Application-generated opaque keys keep display filenames out of physical storage paths; short-lived exact-object upload and download authorization is implemented by the isolated Alibaba Cloud OSS adapter. Configuration and security boundaries are documented in `docs/architecture/object-storage.md`. Tests use the in-memory adapter or an injected fake OSS client and do not contact cloud services.
 
+The authenticated file-management API now supports folders, direct browser uploads with pending-state verification, active listings, downloads, metadata-only rename/move, recycle-bin deletion and restore, and durable permanent deletion. Its routes, request limits, lifecycle ordering, and stable error codes are documented in `docs/api/file-management.md`.
+
 ## License
 
 No public licensing or distribution decision has been made.

@@ -6,11 +6,11 @@
 
 **Layer 1 — Basic Private Cloud Storage: In Progress**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E04 — Storage Abstraction` are complete. No file-management API has started.
+`L1-E01 — Core Architecture Scaffold` through `L1-E05 — File Management` are complete. The backend now exposes the authenticated drive lifecycle; the functional frontend has not started.
 
 ## Current Objective
 
-`L1-E04 — Storage Abstraction` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E05 — File Management` after the clean checkpoint.
+`L1-E05 — File Management` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E06 — Frontend Interface` after the clean checkpoint.
 
 ## Completed
 
@@ -76,10 +76,18 @@
 - [x] Verified OSS integration behavior with injected fakes and a no-network real-SDK signing smoke test
 - [x] Documented storage configuration, credential isolation, checksum semantics, and deferred live-cloud work
 - [x] Completed `L1-E04 — Storage Abstraction`
+- [x] Added owner-scoped folder and file repositories for listing, state transitions, conflicts, and pending compensation
+- [x] Added authenticated folder create/browse/rename/move/empty-delete/restore workflows
+- [x] Added browser-direct upload reservation, renewal, provider metadata verification, and activation
+- [x] Added file download, metadata-only rename/move, recycle bin, provider-verified restore, and permanent deletion
+- [x] Added durable `purging` state, expected-state transitions, provider identity checks, and concurrent deletion isolation
+- [x] Added strict `/api/drive` schemas, stable client errors, and storage-detail-safe DTOs
+- [x] Documented the file-management API and completed deterministic lifecycle and isolation coverage
+- [x] Completed `L1-E05 — File Management`
 
 ## Current Task
 
-`L1-E04 — Storage Abstraction` is **Done**.
+`L1-E05 — File Management` is **Done**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -111,7 +119,7 @@
 - [x] database foundation
 - [x] authentication and authorization foundation
 - [x] storage integration
-- [ ] file management
+- [x] file management
 - [ ] frontend functionality
 - [ ] deployment
 
@@ -125,4 +133,4 @@
 
 ## Next Milestone
 
-`L1-E05 — File Management` is **Ready**. It will implement owner-scoped folder and file workflows over the existing repository and storage boundaries: pending upload verification, listing, download authorization, rename, move, recycle bin, restore, and safe permanent deletion.
+`L1-E06 — Frontend Interface` is **Ready**. It will implement login, folder browsing, browser-direct uploads with progress and retry state, file/folder actions, recycle-bin workflows, and practical PDF/image/text previews over the completed API.

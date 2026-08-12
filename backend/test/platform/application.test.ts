@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { createApplication } from "../../src/platform/application.js";
+import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { INITIAL_MIGRATIONS_DIRECTORY } from "../persistence/helpers.js";
 
 test("application composition migrates and closes its SQLite database", async () => {
@@ -19,6 +20,7 @@ test("application composition migrates and closes its SQLite database", async ()
       appOrigin: "http://127.0.0.1:5173",
     },
     { databasePath, migrationsDirectory: INITIAL_MIGRATIONS_DIRECTORY },
+    new InMemoryStorageAdapter(),
   );
 
   try {

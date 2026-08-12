@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { loadAliyunOssConfig } from "../../src/storage/aliyun/config.js";
+import { loadStorageAdapter } from "../../src/storage/config.js";
 
 const validEnvironment = {
   OSS_ENDPOINT: "https://oss-cn-hangzhou.aliyuncs.com",
@@ -57,4 +58,17 @@ test("rejects insecure production endpoints but permits explicit HTTP in tests",
 
   assert.throws(() => loadAliyunOssConfig(insecure, "production"), /HTTPS in production/);
   assert.equal(loadAliyunOssConfig(insecure, "test").endpoint, "http://127.0.0.1:9000");
+});
+
+test("storage composition defaults to memory only outside production", () => {
+  assert.equal(loadStorageAdapter({}, "test").provider, "memory");
+  assert.throws(() => loadStorageAdapter({}, "production"), /aliyun-oss is required/);
+  assert.equal(
+    loadStorageAdapter({ ...validEnvironment, STORAGE_PROVIDER: "aliyun-oss" }, "production").provider,
+    "aliyun-oss",
+  );
+  assert.throws(
+    () => loadStorageAdapter({ STORAGE_PROVIDER: "unknown" }, "development"),
+    /must be memory or aliyun-oss/,
+  );
 });

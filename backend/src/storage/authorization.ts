@@ -25,6 +25,12 @@ export function assertMediaType(mediaType: string): void {
   }
 }
 
+export function assertBase64Md5(value: string): void {
+  if (!/^[A-Za-z0-9+/]{22}==$/.test(value) || Buffer.from(value, "base64").length !== 16) {
+    throw new Error("MD5 checksum must be the canonical base64 encoding of 16 bytes");
+  }
+}
+
 export function createContentDisposition(filename: string): string {
   const normalized = filename.normalize("NFC").trim();
 
