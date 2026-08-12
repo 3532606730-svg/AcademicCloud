@@ -1,8 +1,9 @@
-import { createApp } from "./platform/app.js";
+import { loadSqliteConfig } from "./persistence/sqlite/config.js";
+import { createApplication } from "./platform/application.js";
 import { loadConfig } from "./platform/config.js";
 
 const config = loadConfig();
-const app = createApp({ logger: { level: config.logLevel } });
+const app = await createApplication(config, loadSqliteConfig());
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   app.log.info({ signal }, "shutting down");
@@ -22,5 +23,6 @@ try {
   await app.listen({ host: config.host, port: config.port });
 } catch (error: unknown) {
   app.log.error(error, "failed to start API server");
+  await app.close();
   process.exitCode = 1;
 }

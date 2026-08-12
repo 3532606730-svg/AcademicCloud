@@ -9,6 +9,7 @@ test("loadConfig provides safe local defaults", () => {
     port: 3000,
     logLevel: "info",
     environment: "development",
+    appOrigin: "http://127.0.0.1:5173",
   });
 });
 
@@ -18,4 +19,20 @@ test("loadConfig rejects an invalid port", () => {
 
 test("loadConfig rejects an unsupported log level", () => {
   assert.throws(() => loadConfig({ LOG_LEVEL: "verbose" }), /LOG_LEVEL must be one of/);
+});
+
+test("loadConfig requires an exact HTTPS application origin in production", () => {
+  assert.throws(() => loadConfig({ NODE_ENV: "production" }), /APP_ORIGIN is required/);
+  assert.throws(
+    () => loadConfig({ NODE_ENV: "production", APP_ORIGIN: "http://cloud.example" }),
+    /must use HTTPS/,
+  );
+  assert.throws(
+    () => loadConfig({ APP_ORIGIN: "http://127.0.0.1:5173/" }),
+    /exact HTTP\(S\) origin/,
+  );
+  assert.equal(
+    loadConfig({ NODE_ENV: "production", APP_ORIGIN: "https://cloud.example" }).appOrigin,
+    "https://cloud.example",
+  );
 });

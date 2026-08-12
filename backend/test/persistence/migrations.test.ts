@@ -16,8 +16,8 @@ test("migrations apply once and retain their recorded version", (context) => {
     .all()
     .map((row) => row.version);
 
-  assert.deepEqual(secondRun, { appliedVersions: [], currentVersion: 1 });
-  assert.deepEqual(versions, [1]);
+  assert.deepEqual(secondRun, { appliedVersions: [], currentVersion: 2 });
+  assert.deepEqual(versions, [1, 2]);
 });
 
 test("migrations reject changes to an already applied file", (context) => {

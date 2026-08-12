@@ -12,7 +12,7 @@ Future layers may add structured academic knowledge management and RAG-based res
 
 **Layer 1 — Basic Private Cloud Storage (in progress)**
 
-The core TypeScript/Fastify/React scaffold and SQLite persistence foundation are complete. Authentication, storage, and file-management behavior remain task-scoped follow-up work.
+The core TypeScript/Fastify/React scaffold, SQLite persistence, and authentication foundation are complete. Storage and file-management behavior remain task-scoped follow-up work.
 
 Read:
 - `AGENTS.md` — mandatory rules
@@ -87,7 +87,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-The frontend runs at `http://127.0.0.1:5173` and proxies `/api` to the backend at `http://127.0.0.1:3000`. Runtime defaults are documented in `backend/.env.example`; copy it to `backend/.env` only when local overrides are needed.
+The frontend runs at `http://127.0.0.1:5173` and proxies `/api` to the backend at `http://127.0.0.1:3000`. Runtime defaults are documented in `backend/.env.example`; copy it to `backend/.env` only when local overrides are needed. `APP_ORIGIN` is the exact browser origin accepted on unsafe API requests and must be an HTTPS origin in production.
 
 Initialize or upgrade the local SQLite schema before database-backed features are used:
 
@@ -104,6 +104,14 @@ npm.cmd test
 npm.cmd run typecheck
 npm.cmd run build
 ```
+
+Authentication uses Argon2id with 64 MiB memory, three iterations, one lane, and a 32-byte hash. KDF work is serialized with at most four queued operations to preserve memory headroom on the 512 MB target. Run the local benchmark after dependency or runtime changes:
+
+```powershell
+npm.cmd run auth:benchmark
+```
+
+The authentication HTTP contract and cookie policy are documented in `docs/api/authentication.md`. Layer 1 intentionally has no public registration endpoint.
 
 ## License
 

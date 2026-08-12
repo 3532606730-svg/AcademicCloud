@@ -118,3 +118,13 @@ Node.js remains on the 24 LTS release line; the exact supported 24.x security pa
 AcademicCloud uses the repository-scoped `.agents/skills/academiccloud-workflow/SKILL.md` process for ordinary engineering tasks. The AI recovers state from code, Git, project records, and the current task card; executes ordinary technical work autonomously within approved scope; validates and records results; and creates task-level Git checkpoints.
 
 Users retain decisions about product direction, real cost, irreversible real-data risk, accounts and security policy, and severe anomalies. Task cards under `tasks/doing/` and `tasks/done/` are the only Epic-level working-memory system; no parallel handoff or context-document system is introduced.
+
+## ADR-009 — Layer 1 Authentication Security Baseline
+
+**Date:** 2026-08-12
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-009-authentication-security-baseline.md`
+
+Layer 1 uses bounded Argon2id password hashing and SQLite-backed opaque sessions. Password work uses 64 MiB, three iterations, one lane, one active operation, and at most four queued operations. Session secrets contain 256 random bits; only SHA-256 digests are stored. Sessions have a seven-day absolute lifetime and are checked for expiry, revocation, and active account state.
+
+The same-origin SPA uses exact `APP_ORIGIN` enforcement on unsafe API requests plus `SameSite=Strict` cookies. Production uses the `__Host-ac_session` cookie with `Secure`, `HttpOnly`, `Path=/`, and no `Domain`; local HTTP development uses a separate cookie name. Login is JSON-only and rate-limited without Redis.

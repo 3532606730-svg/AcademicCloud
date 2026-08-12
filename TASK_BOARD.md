@@ -139,24 +139,42 @@ Completion notes:
 - [x] passed 15 tests, repository type-checks, production builds, dependency audit, migration command smoke checks, and SQLite integrity/foreign-key checks
 - [x] introduced no authentication flow, OSS integration, file-management API, or frontend database behavior
 
-## Ready
-
 ### L1-E03 — Authentication & Authorization
 
-**Status:** Ready — starts on a user task-selection instruction such as `开始下一个任务`
+**Status:** Done
 
-Goal: establish the approved authentication and authorization foundation:
-- password hashing selected and measured for the 512 MB production constraint
-- SQLite-backed opaque sessions
-- login/logout and current-session API behavior
-- protected-route authentication guards
-- server-derived account identity and ownership context
+Goal: establish secure account authentication, persistent opaque sessions, reusable protected-route authorization, and server-derived account identity.
 
-This task has not started. It must not implement OSS integration, drive/file-management behavior, or frontend file-browser functionality without the relevant approved task scope.
+Completion notes:
+- [x] selected and measured the maintained `argon2` implementation with Argon2id at 64 MiB, three iterations, one lane, and a 32-byte hash
+- [x] bounded password work to one active and four queued operations, with fast 429 rejection beyond capacity
+- [x] added 256-bit opaque sessions with only SHA-256 digests stored in SQLite
+- [x] added seven-day expiry, revocation, reauthentication rotation, disabled-account checks, and restart persistence
+- [x] added strict production/development cookie policies and exact-origin protection for unsafe API requests
+- [x] added JSON-only rate-limited login, logout, current-session routes, and a reusable authenticated-account guard
+- [x] composed migrations, persistence, and authentication into the application lifecycle
+- [x] recorded the durable security parameters and deployment remeasurement gate in ADR-009
+- [x] passed 28 tests, type-checks, production builds, dependency audit, migration/integrity smoke checks, and the password benchmark
+- [x] introduced no registration, JWT, Redis, OSS, drive API, or frontend feature scope
+
+## Ready
+
+### L1-E04 — Storage Abstraction
+
+**Status:** Ready — authorized by the active continuous Layer 1 objective
+
+Goal: establish the approved provider-neutral object-storage foundation:
+- `StorageAdapter` contract owned by the storage module
+- Alibaba Cloud OSS adapter isolated behind that contract
+- opaque application-generated object keys
+- short-lived restricted browser-direct upload authorization
+- short-lived signed download authorization
+- provider metadata/integrity lookup needed for upload verification
+
+This task has not started. It must not create real cloud resources, use real credentials, or implement drive/file-management service/API behavior without the relevant approved task scope.
 
 ## Backlog — Layer 1
 
-- L1-E04 Storage Abstraction
 - L1-E05 File Management
 - L1-E06 Frontend Interface
 - L1-E07 Security & Reliability

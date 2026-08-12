@@ -14,6 +14,7 @@
     "dev:backend": "npm run dev --workspace @academiccloud/backend",
     "dev:frontend": "npm run dev --workspace @academiccloud/frontend",
     "db:migrate": "npm run db:migrate --workspace @academiccloud/backend",
+    "auth:benchmark": "npm run auth:benchmark --workspace @academiccloud/backend",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present"

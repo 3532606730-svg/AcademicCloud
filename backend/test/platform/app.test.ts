@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { createApp } from "../../src/platform/app.js";
 
 test("GET /api/health reports a healthy API", async (context) => {
-  const app = createApp({ logger: false });
+  const app = await createApp({ logger: false });
   context.after(() => app.close());
 
   const response = await app.inject({

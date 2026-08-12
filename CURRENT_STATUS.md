@@ -6,11 +6,11 @@
 
 **Layer 1 — Basic Private Cloud Storage: In Progress**
 
-`L1-E01 — Core Architecture Scaffold` and `L1-E02 — Database Foundation` are complete. No authentication flow, storage adapter, or file-management API has started.
+`L1-E01 — Core Architecture Scaffold`, `L1-E02 — Database Foundation`, and `L1-E03 — Authentication & Authorization` are complete. No storage adapter or file-management API has started.
 
 ## Current Objective
 
-`L1-E02 — Database Foundation` is complete. `L1-E03 — Authentication & Authorization` is Ready and awaits the next explicit task-selection instruction.
+`L1-E03 — Authentication & Authorization` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E04 — Storage Abstraction` after the clean checkpoint.
 
 ## Completed
 
@@ -62,10 +62,17 @@
 - [x] Added database constraints for account ownership, parent-folder isolation, lifecycle metadata, object references, and active-name uniqueness
 - [x] Verified owner-scoped repository reads, cross-owner rejection, lifecycle/name/object constraints, cycle prevention, transaction rollback, migration checksums, and failed-migration rollback
 - [x] Completed `L1-E02 — Database Foundation`
+- [x] Selected and measured Argon2id at 64 MiB, three iterations, one lane, and one active KDF operation with four queued operations
+- [x] Added digest-only SQLite-backed opaque sessions with seven-day expiry, revocation, and reauthentication rotation
+- [x] Added exact-origin CSRF enforcement, strict cookie policy, JSON-only login, and in-process login throttling
+- [x] Added login, logout, current-session routes and a reusable guard providing server-derived account identity
+- [x] Added application composition for migrations, SQLite, persistence, authentication, and graceful closure
+- [x] Recorded the security baseline in `docs/decisions/ADR-009-authentication-security-baseline.md`
+- [x] Completed `L1-E03 — Authentication & Authorization`
 
 ## Current Task
 
-`L1-E02 — Database Foundation` is **Done**.
+`L1-E03 — Authentication & Authorization` is **Done**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -95,7 +102,7 @@
 
 - [x] core application scaffold
 - [x] database foundation
-- [ ] authentication
+- [x] authentication and authorization foundation
 - [ ] storage integration
 - [ ] file management
 - [ ] frontend functionality
@@ -103,7 +110,7 @@
 
 ## Current Constraints
 
-- Do not start `L1-E03` without a user instruction selecting the Ready task.
+- Continue through the approved Layer 1 Epics under the active continuous objective; stop at the Layer 1 exit criteria or a mandatory escalation boundary.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - No OCR/RAG/connectors.
@@ -111,4 +118,4 @@
 
 ## Next Milestone
 
-`L1-E03 — Authentication & Authorization` is **Ready — starts on a user task-selection instruction such as `开始下一个任务`**. It will implement password hashing under the 512 MB constraint, SQLite-backed opaque sessions, authentication routes, protected-route guards, and server-derived ownership context. It has not started.
+`L1-E04 — Storage Abstraction` is **Ready**. It will define the provider-neutral storage contract, implement the Alibaba Cloud OSS adapter behind that boundary, generate opaque object keys, and provide short-lived restricted upload/download authorization without exposing permanent credentials.

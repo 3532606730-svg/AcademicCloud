@@ -3,6 +3,7 @@ import { SqliteAccountRepository } from "./account-repository.js";
 import type { SqliteDatabase } from "./database.js";
 import { openSqliteDatabase } from "./database.js";
 import { SqliteFolderRepository } from "./folder-repository.js";
+import { SqliteSessionRepository } from "./session-repository.js";
 import { SqliteStoredFileRepository } from "./stored-file-repository.js";
 
 export class SqlitePersistence implements Persistence {
@@ -13,6 +14,7 @@ export class SqlitePersistence implements Persistence {
     this.#database = database;
     this.repositories = {
       accounts: new SqliteAccountRepository(database),
+      sessions: new SqliteSessionRepository(database),
       folders: new SqliteFolderRepository(database),
       files: new SqliteStoredFileRepository(database),
     };
