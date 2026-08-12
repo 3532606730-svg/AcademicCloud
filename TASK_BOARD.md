@@ -57,11 +57,9 @@ Completion notes:
 - [x] assessed the 512 MB Ubuntu server constraint and recommended a lightweight Layer 1 architecture
 - [x] made no installations, configuration changes, or business-code changes
 
-## Ready
-
 ### SETUP-003 — Layer 1 Technical Architecture Decision
 
-**Status:** Ready — not started; requires explicit instruction
+**Status:** Done
 
 Goal: compare and determine the minimum technical stack for Layer 1, including:
 - backend runtime/framework
@@ -80,11 +78,34 @@ Decision priorities:
 - maintainability
 - avoidance of over-engineering
 
-This is an architecture-decision task. Do not install frameworks, create business code, or begin Layer 1 implementation without separate approval.
+Completion notes:
+- [x] compared Node.js and Python backend options against the confirmed environment
+- [x] compared SPA, integrated frontend, and SSR strategies
+- [x] compared SQLite and PostgreSQL deployment options
+- [x] selected SQLite-backed opaque sessions and deferred password-hashing implementation details
+- [x] selected npm workspaces and a lightweight Nginx/systemd production model
+- [x] defined the five minimum module boundaries: `platform`, `auth`, `drive`, `storage`, and `persistence`
+- [x] received approval for the final architecture with Node.js, SQLite, and password-hashing policy corrections
+- [x] recorded the accepted decision in `docs/decisions/ADR-007-layer-1-technical-architecture.md`
+- [x] made no dependency installations, runtime upgrades, framework initialization, or business-code changes
+
+## Ready
+
+### L1-E01 — Core Architecture Scaffold
+
+**Status:** Ready — requires explicit approval
+
+Goal: establish the approved minimum Layer 1 application foundation:
+- npm workspace structure for the existing `backend/` and `frontend/` directories
+- TypeScript and configuration foundations
+- Fastify application bootstrap and health check
+- React/Vite SPA bootstrap and basic API connectivity
+- local development workflow
+
+This task has not started. It must not implement database models, authentication, OSS integration, or file-management business functionality without the relevant approved task scope.
 
 ## Backlog — Layer 1
 
-- L1-E01 Core Architecture
 - L1-E02 Database Foundation
 - L1-E03 Authentication & Authorization
 - L1-E04 Storage Abstraction

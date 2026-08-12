@@ -8,7 +8,7 @@
 
 ## Current Objective
 
-`SETUP-002 — Environment Inspection` is complete. Await an explicit instruction before starting `SETUP-003 — Layer 1 Technical Architecture Decision`.
+`SETUP-003 — Layer 1 Technical Architecture Decision` is complete. Await an explicit instruction before starting `L1-E01 — Core Architecture Scaffold`.
 
 ## Completed
 
@@ -36,10 +36,27 @@
 - [x] Inspected the local development environment without installing or configuring software
 - [x] Received approval for `SETUP-002 — Environment Inspection`
 - [x] Completed `SETUP-002 — Environment Inspection`
+- [x] Compared the minimum Layer 1 backend, frontend, database, authentication, package-management, and deployment options
+- [x] Received approval for `SETUP-003 — Layer 1 Technical Architecture Decision`
+- [x] Recorded the approved Layer 1 technical baseline in `docs/decisions/ADR-007-layer-1-technical-architecture.md`
+- [x] Completed `SETUP-003 — Layer 1 Technical Architecture Decision`
 
 ## Current Task
 
-`SETUP-002 — Environment Inspection` is **Done**.
+`SETUP-003 — Layer 1 Technical Architecture Decision` is **Done**.
+
+## Approved Layer 1 Technical Baseline
+
+- Backend: Node.js 24 LTS, TypeScript, and Fastify 5.
+- Frontend: React, TypeScript, and Vite SPA.
+- Database: SQLite with `better-sqlite3` behind the persistence/repository boundary.
+- Authentication: SQLite-backed server-side opaque sessions.
+- Password hashing: a maintained memory-hard implementation, with Argon2id preferred; package and parameters are deferred to the Authentication task.
+- Package management: npm workspaces with one `package-lock.json`.
+- Production: Nginx, systemd, and one Node.js process; no Docker, Redis, queue, or permanent worker.
+- Storage: `StorageAdapter` with `AliyunOssStorageAdapter`; private OSS bucket; short-lived browser-direct upload authorization and signed downloads.
+- Module boundaries: `platform`, `auth`, `drive`, `storage`, and `persistence`.
+- Node version policy: use Node.js 24 LTS and select the latest supported 24.x security patch at dependency-installation or deployment time.
 
 ## Confirmed Environment Facts
 
@@ -54,7 +71,6 @@
 
 ## Not Started
 
-- [ ] Layer 1 technology-stack decision
 - [ ] business code
 - [ ] database implementation
 - [ ] authentication
@@ -73,4 +89,4 @@
 
 ## Next Milestone
 
-`SETUP-003 — Layer 1 Technical Architecture Decision` is ready but has not started and requires an explicit instruction. It will compare and decide the minimum Layer 1 technical stack without implementing it.
+`L1-E01 — Core Architecture Scaffold` is **Ready — requires explicit approval**. It will establish only the approved minimal frontend/backend structure, configuration strategy, local development workflow, and health-check/basic API connectivity. It has not started.

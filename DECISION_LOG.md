@@ -89,3 +89,23 @@ Preserve future directions without implementing them in Layer 1:
 - extensible interfaces
 - OCR
 - RAG
+
+## ADR-007 — Layer 1 Technical Architecture
+
+**Date:** 2026-08-12
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-007-layer-1-technical-architecture.md`
+
+Layer 1 uses:
+- Node.js 24 LTS, TypeScript, and Fastify 5 for the backend
+- React, TypeScript, and Vite for a client-side SPA
+- SQLite with `better-sqlite3` behind persistence/repository interfaces
+- SQLite-backed server-side opaque sessions
+- a mature memory-hard password-hashing implementation, with Argon2id preferred and implementation details deferred
+- npm workspaces with one `package-lock.json`
+- Nginx, systemd, and one Node.js process in production
+- no Docker, Redis, message queue, or permanent worker for the current deployment
+- a private Alibaba Cloud OSS bucket behind `StorageAdapter`, using short-lived restricted browser-direct uploads and signed downloads
+- the minimum module boundaries `platform`, `auth`, `drive`, `storage`, and `persistence`
+
+Node.js remains on the 24 LTS release line; the exact supported 24.x security patch is selected and recorded when dependencies are installed or production is deployed. `better-sqlite3` is isolated behind persistence so that a future stable and mature `node:sqlite` implementation can be evaluated without changing business modules. Nginx is deployment infrastructure and is not a business-code dependency.
