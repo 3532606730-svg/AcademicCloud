@@ -73,6 +73,10 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   const host = environment.HOST?.trim() || "127.0.0.1";
   const appEnvironment = readEnum("NODE_ENV", environment.NODE_ENV, APP_ENVIRONMENTS, "development");
 
+  if (appEnvironment === "production" && host !== "127.0.0.1") {
+    throw new Error("HOST must be 127.0.0.1 in production");
+  }
+
   return {
     host,
     port: readPort(environment.PORT),

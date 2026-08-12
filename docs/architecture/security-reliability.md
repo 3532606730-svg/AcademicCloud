@@ -70,7 +70,12 @@ npm.cmd run maintenance -- --apply
 
 Optional bounded arguments are `--limit=1..1000`, `--pending-age-hours=<integer>` (minimum 1), and `--purging-age-minutes=<integer>` (minimum 1). The command accepts no account ID or object key. Output contains mode, counts, database file IDs, prior state, and stable result codes; it omits owner IDs, object keys, URLs, credentials, and provider error details.
 
-The commands above use the development runner. A production installation that omits development dependencies must build first and use `npm run maintenance:prod -- <arguments>`, which executes `backend/dist/maintenance/main.js`.
+The commands above use the development runner. A production installation that
+omits development dependencies must build first and execute
+`backend/dist/maintenance/main.js` through the protected `academiccloud_op`
+transient-unit runner in the production deployment runbook. Do not use a bare
+`npm`, `node`, or `sudo -u` command: those do not load the root-only production
+environment and may target the wrong database or provider.
 
 An apply run also prunes expired sessions in the same bounded batch. Authentication correctness never depends on pruning: expiry and revocation are checked on every session resolution.
 

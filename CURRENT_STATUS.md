@@ -4,13 +4,13 @@
 
 ## Current Layer
 
-**Layer 1 — Basic Private Cloud Storage: In Progress**
+**Layer 1 — Basic Private Cloud Storage: Locally Complete; Live Deployment Approval-Gated**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E07 — Security & Reliability` are complete. The application now exposes the authenticated drive lifecycle through a tested responsive browser interface and a conservative operational recovery boundary.
+`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` are complete at the deterministic local boundary. The application, acceptance suite, compiled runtime exercise, and deployment/recovery package are ready for a separately approved live production window.
 
 ## Current Objective
 
-`L1-E07 — Security & Reliability` is complete. The active continuous Layer 1 objective authorizes proceeding to `L1-E08 — Testing & Deployment` after the clean checkpoint.
+The approved Layer 1 implementation objective has reached its local exit criteria. No Layer 2 work or live deployment is authorized automatically.
 
 ## Completed
 
@@ -97,10 +97,17 @@
 - [x] Added full protected/origin/owner isolation matrices plus restart, provider-fault, ambiguous-object, integrity, and redaction coverage
 - [x] Documented security/reliability operations, resource bounds, maintenance procedure, and residual OSS deletion risk
 - [x] Completed `L1-E07 — Security & Reliability`
+- [x] Added a local HTTP object-store acceptance path that verifies multipart upload, no-overwrite replay rejection, activation, download, and independent byte hashes
+- [x] Added deterministic Layer 1 critical-path, representative-file, deployment-artifact, backup/restore, and account-provisioning coverage
+- [x] Added consistent non-overwriting SQLite online backup and read-only verification with migration, integrity, foreign-key, hash, and isolated-restore checks
+- [x] Added compiled migration, account provisioning, maintenance, backup, restart/session-persistence, restore, and redeployment acceptance
+- [x] Added loopback-only Fastify proxy trust, Nginx HTTPS/static/API templates, a hardened single-process systemd unit, and a production environment template
+- [x] Documented release, migration, rollback, recovery, logging, resource, OSS, credential, CORS, versioning, and approval gates
+- [x] Completed `L1-E08 — Testing & Deployment` at the deterministic local boundary
 
 ## Current Task
 
-`L1-E07 — Security & Reliability` is **Done**.
+`L1-E08 — Testing & Deployment` is **Done** locally. Live deployment acceptance is **Not executed — approval required**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -126,7 +133,7 @@
 - GitHub HTTPS currently has a certificate-trust error. Record this as an environment risk for later handling; do not change VPN, certificates, or network configuration without approval.
 - The target Ubuntu server has 512 MB RAM, so Layer 1 architecture and deployment must remain lightweight.
 
-## Not Started
+## Layer 1 Coverage
 
 - [x] core application scaffold
 - [x] database foundation
@@ -135,11 +142,12 @@
 - [x] file management
 - [x] frontend functionality
 - [x] security and reliability hardening
-- [ ] deployment
+- [x] deterministic deployment package and local compiled-artifact acceptance
+- [ ] live production deployment and cloud/server acceptance — approval required
 
 ## Current Constraints
 
-- Continue through the approved Layer 1 Epics under the active continuous objective; stop at the Layer 1 exit criteria or a mandatory escalation boundary.
+- Layer 1 local exit criteria are complete; do not begin Layer 2 automatically.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - No OCR/RAG/connectors.
@@ -147,4 +155,4 @@
 
 ## Next Milestone
 
-`L1-E08 — Testing & Deployment` is **Ready**. It will execute final Layer 1 acceptance, add the production deployment and backup/recovery artifacts, and validate the documented deployment path without using real credentials or mutating the live server unless separately authorized.
+The next possible milestone is a separately approved production deployment window: Ubuntu/native-module preparation, real OSS/RAM/CORS/versioning verification, DNS/TLS/Nginx/systemd installation, encrypted off-host backup, restore rehearsal, live representative-byte acceptance, and 512 MB headroom measurement. Until approved, the repository remains at the Layer 1 checkpoint and Layer 2 stays deferred.

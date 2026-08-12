@@ -101,6 +101,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
     connectionTimeout: 10_000,
     logController: new LogController({ disableRequestLogging: true }),
     requestTimeout: 30_000,
+    trustProxy: "127.0.0.1",
   });
 
   app.addHook("onRequest", async (request, reply) => {

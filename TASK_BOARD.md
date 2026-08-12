@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Layer 1 — Basic Private Cloud Storage: In Progress**
+**Layer 1 — Basic Private Cloud Storage: Locally Complete; Live Deployment Approval-Gated**
 
 ## Completed
 
@@ -227,19 +227,25 @@ Completion notes:
 - [x] passed 74 backend and 22 frontend tests, type-check, production build, both dependency audits, migration/integrity checks, maintenance read-only dry-run smoke, Argon2 benchmark, secret scan, and diff review
 - [x] performed no real cloud operation, credential/configuration change, server mutation, automatic scheduler, bucket scan, or ambiguous object deletion
 
-## Ready
-
 ### L1-E08 — Testing & Deployment
 
-**Status:** Ready — authorized by the active continuous Layer 1 objective
+**Status:** Done locally — live production acceptance remains approval-gated
 
-Goal: finish Layer 1 acceptance and prepare a reproducible, resource-conscious production deployment and recovery package:
-- critical-path and representative-file acceptance tests
-- Nginx, systemd, environment, migration, maintenance, and release procedures
-- HTTPS, private OSS/RAM/CORS/versioning, logging, and file-permission checklists
-- SQLite/configuration backup, restore, rollback, restart, and redeployment verification
+Goal: finish Layer 1 acceptance and prepare a reproducible, resource-conscious production deployment and recovery package.
 
-Real credentials, live OSS mutation, DNS/TLS issuance, package installation on the server, and production deployment remain approval-gated. Deterministic local validation and deployment artifact creation are authorized.
+Completion notes:
+- [x] covered all ten Layer 1 success steps across SQLite persistence restart and owner isolation
+- [x] exercised actual local HTTP multipart bytes for PDF, PNG, UTF-8 text, and binary, including no-overwrite replay rejection and independent download hashes
+- [x] added non-overwriting online SQLite backup, integrity/FK/migration/hash verification, and isolated restore rehearsal
+- [x] added safe first-account provisioning plus compiled migration, maintenance, backup, process restart, session persistence, and redeployment acceptance
+- [x] added loopback-only proxy trust, Nginx HTTPS/static/API configuration, hardened systemd service, environment template, and explicit memory bounds
+- [x] documented deployment, migration, rollback, backup, recovery, incident, logging, readiness, OSS, RAM, CORS, versioning, and approval procedures
+- [x] passed 88 backend tests, 22 frontend tests, type-check, production build, compiled acceptance, both audits, database/native runtime checks, Argon2 benchmark, secret scan, and diff check
+- [x] executed no live credentials, OSS, DNS/TLS, Ubuntu service, firewall, off-host backup, production-data, or billable operation
+
+## Ready
+
+None. Do not begin Layer 2 or a live deployment without explicit approval.
 
 ## Backlog — Layer 1
 

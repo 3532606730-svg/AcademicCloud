@@ -32,6 +32,28 @@ test("GET /api/health reports a healthy API", async (context) => {
   assert.equal(response.headers["x-frame-options"], "DENY");
 });
 
+test("only the loopback reverse proxy may supply a client address", async (context) => {
+  const app = await createApp({ logger: false });
+  app.get("/api/client-address", async (request) => ({ ip: request.ip }));
+  context.after(() => app.close());
+
+  const trusted = await app.inject({
+    method: "GET",
+    url: "/api/client-address",
+    remoteAddress: "127.0.0.1",
+    headers: { "x-forwarded-for": "203.0.113.25" },
+  });
+  assert.deepEqual(trusted.json(), { ip: "203.0.113.25" });
+
+  const untrusted = await app.inject({
+    method: "GET",
+    url: "/api/client-address",
+    remoteAddress: "10.0.0.9",
+    headers: { "x-forwarded-for": "203.0.113.25" },
+  });
+  assert.deepEqual(untrusted.json(), { ip: "10.0.0.9" });
+});
+
 test("readiness is database-scoped and returns a stable unavailable response", async (context) => {
   let ready = true;
   const app = await createApp({ logger: false, readinessCheck: () => ready });

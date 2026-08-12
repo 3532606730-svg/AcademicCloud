@@ -10,9 +10,9 @@ Future layers may add structured academic knowledge management and RAG-based res
 
 ## Current Status
 
-**Layer 1 — Basic Private Cloud Storage (in progress)**
+**Layer 1 — Basic Private Cloud Storage (locally complete; live deployment approval-gated)**
 
-The TypeScript/Fastify/React application now includes SQLite persistence, authentication, the provider-neutral object-storage boundary, the authenticated file lifecycle, and a responsive browser interface. Security/reliability hardening and deployment acceptance remain in progress.
+The TypeScript/Fastify/React application now includes SQLite persistence, authentication, the provider-neutral object-storage boundary, the authenticated file lifecycle, a responsive browser interface, security/reliability controls, deterministic acceptance, and a deployment/recovery package. Real OSS, DNS/TLS, Ubuntu service changes, credentials, and production-data operations have not been executed and require explicit approval.
 
 Read:
 - `AGENTS.md` — mandatory rules
@@ -123,6 +123,18 @@ The API now has secure response headers, secret-safe structured/audit logs, boun
 npm.cmd run maintenance
 npm.cmd run maintenance -- --apply
 ```
+
+Layer 1 acceptance includes a local HTTP byte-path test, compiled-process restart,
+consistent SQLite backup/verification, production templates, and approval-gated
+deployment checklists. Run the compiled artifact exercise after a build:
+
+```powershell
+npm.cmd run build
+npm.cmd run acceptance:compiled
+```
+
+Deployment and recovery procedures are under `docs/deployment/`. They do not
+authorize real OSS, DNS/TLS, server, credential, or production-data changes.
 
 The React interface recovers sessions, browses folders, calculates MD5 incrementally, uploads directly with progress and retry state, exposes recoverable file actions, and previews a narrow safe media-type set through short-lived inline authorization. Its local limitations, browser data flow, and frontend checks are documented in `docs/architecture/frontend.md`.
 

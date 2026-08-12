@@ -36,3 +36,14 @@ test("loadConfig requires an exact HTTPS application origin in production", () =
     "https://cloud.example",
   );
 });
+
+test("loadConfig keeps the production API on the trusted IPv4 loopback", () => {
+  const production = {
+    NODE_ENV: "production",
+    APP_ORIGIN: "https://cloud.example.edu",
+  };
+
+  assert.equal(loadConfig(production).host, "127.0.0.1");
+  assert.throws(() => loadConfig({ ...production, HOST: "0.0.0.0" }), /HOST must be 127\.0\.0\.1/);
+  assert.throws(() => loadConfig({ ...production, HOST: "::1" }), /HOST must be 127\.0\.0\.1/);
+});
