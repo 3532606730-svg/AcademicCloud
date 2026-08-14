@@ -6,7 +6,11 @@
 
 ## In Progress
 
-None.
+### PROD-02H — Alibaba Runtime-Only Acceptance
+
+**Status:** In Progress
+
+Goal: prove or reject runtime suitability of the verified production artifact on the existing Alibaba host without npm/install/build, deployment, real OSS, DNS/TLS, production data, or Layer 2 work.
 
 ## Completed
 
@@ -277,11 +281,7 @@ Completion notes:
 
 ## Ready
 
-### PROD-02H — Alibaba Runtime-Only Acceptance
-
-**Status:** Ready — not started
-
-Goal: transfer the already verified Linux artifact to the Alibaba host and test runtime suitability without running `npm ci`, native compilation, frontend build, real OSS, DNS/TLS, or production cutover. This task requires a new execution request and must not be started automatically.
+None while `PROD-02H` is in progress. No future production or Layer 2 task becomes Ready automatically.
 
 ## Backlog — Layer 1
 

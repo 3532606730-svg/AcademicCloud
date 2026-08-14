@@ -51,7 +51,7 @@ test("systemd keeps one loopback API process inside a restrictive writable bound
     "ProtectSystem=strict",
     "ProtectHome=true",
     "CapabilityBoundingSet=",
-    "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6",
+    "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK",
     "ReadWritePaths=/var/lib/academiccloud",
     "MemoryHigh=320M",
     "MemoryMax=384M",

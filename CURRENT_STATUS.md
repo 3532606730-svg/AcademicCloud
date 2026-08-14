@@ -10,7 +10,7 @@
 
 ## Current Objective
 
-`PROD-02G — GitHub Actions Linux Production Build` is complete. Stop before executing the now-Ready `PROD-02H — Alibaba Runtime-Only Acceptance`; no Alibaba mutation or Layer 2 work is authorized by this checkpoint.
+Execute `PROD-02H — Alibaba Runtime-Only Acceptance`, then stop. This task may use only the verified artifact in isolated temporary acceptance; it may not install, build, deploy, contact live OSS, change DNS/TLS, or enter Layer 2.
 
 ## Completed
 
@@ -107,7 +107,7 @@
 
 ## Current Task
 
-`PROD-02G — GitHub Actions Linux Production Build` is **Complete**. GitHub Actions run `31812294336` built source commit `afd46c3db3e36e4d0dc53bc2c66b2cf6e17f89f4` on Ubuntu 24.04 x86_64 with Node.js `v24.19.0` and npm `11.17.0`; both the build job and independent fresh-runner download/verification job passed. Artifact `9223626582` contains the production release, manifest, archive SHA-256, and runtime evidence and expires after its seven-day verification retention on 2026-08-21. No Alibaba host, live OSS, or production cloud resource was accessed or changed.
+`PROD-02H — Alibaba Runtime-Only Acceptance` is **In Progress** on `codex/prod-02h`. It tests the verified final-main artifact in a temporary least-privilege/private-network boundary on the existing Alibaba host, measures the 128 MiB runtime-headroom gate, retrieves evidence, and removes all task-owned host state. It does not authorize installation, build, deployment, live OSS, DNS/TLS, credentials, production data, or Layer 2 work.
 
 ## Production Preparation Status
 
@@ -185,7 +185,7 @@ The approved sequence is:
 
 1. `PROD-02R — Repository Reconciliation + Windows Git SSH`: complete.
 2. `PROD-02G — GitHub Actions Linux Production Build`: complete.
-3. Next Ready task: `PROD-02H — Alibaba Runtime-Only Acceptance`; do not start it automatically.
+3. `PROD-02H — Alibaba Runtime-Only Acceptance`: in progress; stop when its runtime evidence and cleanup are complete.
 4. Only after runtime acceptance passes, proceed through separately approved real OSS, DNS/TLS, and production-cutover gates.
 
 Layer 2 remains deferred.
