@@ -6,7 +6,11 @@
 
 ## In Progress
 
-None. `PROD-02R` is complete; stop before starting the Ready task.
+### PROD-02G — GitHub Actions Linux Production Build
+
+**Status:** In Progress
+
+Goal: build and verify a Linux x86_64 / Node.js 24 production runtime artifact in real GitHub Actions, including native modules, compiled acceptance, manifest, SHA-256, and independent artifact verification, without deployment.
 
 ## Completed
 
@@ -263,11 +267,7 @@ Completion notes:
 
 ## Ready
 
-### PROD-02G — GitHub Actions Linux Production Build
-
-**Status:** Ready
-
-Goal: build and verify the Linux x86_64/Node 24 production artifact in GitHub Actions without deploying it. Begin only in a separate task. `PROD-02H — Alibaba Runtime-Only Acceptance` follows after it passes; real OSS, DNS/TLS, cutover, and Layer 2 remain deferred.
+None while `PROD-02G` is in progress. `PROD-02H — Alibaba Runtime-Only Acceptance` becomes Ready only after this task passes; real OSS, DNS/TLS, cutover, and Layer 2 remain deferred.
 
 ## Backlog — Layer 1
 

@@ -10,7 +10,7 @@
 
 ## Current Objective
 
-`PROD-02R — Repository Reconciliation + Windows Git SSH` is complete. Stop at this checkpoint before the separately approved `PROD-02G — GitHub Actions Linux Production Build` task. No Layer 2 work is authorized.
+Execute `PROD-02G — GitHub Actions Linux Production Build`, then stop before `PROD-02H — Alibaba Runtime-Only Acceptance`. No Layer 2 work is authorized.
 
 ## Completed
 
@@ -107,7 +107,7 @@
 
 ## Current Task
 
-`PROD-02R — Repository Reconciliation + Windows Git SSH` is **Done**. The durable production-preparation record is reconciled, the dedicated strict Windows SSH transport is operational, and the first direct SSH push plus independent GitHub connector verification passed. The task did not deploy the application or mutate Alibaba Cloud.
+`PROD-02G — GitHub Actions Linux Production Build` is **In Progress** on `codex/prod-02g`. It adds and executes a real zero-cost GitHub-hosted Linux x86_64 / Node.js 24 build, verifies native runtime dependencies and compiled acceptance, and produces a checksummed production artifact without touching Alibaba or live cloud resources.
 
 ## Production Preparation Status
 
