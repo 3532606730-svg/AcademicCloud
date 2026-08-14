@@ -10,9 +10,10 @@ Record the operator, maintenance window, domain, release commit, current release
 
 Verify on the target host:
 
-- Ubuntu 24.04 is patched; the latest supported Node.js 24 LTS security patch,
-  Python 3, `make`, and the C/C++ build toolchain required by npm native-module
-  installation are present.
+- Ubuntu 24.04 is patched and has the latest approved Node.js 24 LTS security
+  patch plus all runtime libraries required by the verified Linux artifact.
+  Build tools may be present from server preparation, but they are not used to
+  install or compile AcademicCloud on this host.
 - The host has at least 128 MiB measured headroom during the production Argon2 benchmark and representative control-plane operations. The local Windows result is not an Ubuntu capacity result.
 - Only ports 80/443 are public. Fastify binds `127.0.0.1:3000`; `ss -lntp` must show no public API listener.
 - A dedicated, non-login `academiccloud` user exists. Release files are root-owned and read-only to the service; `/var/lib/academiccloud` is `academiccloud:academiccloud` mode 0700.
@@ -24,7 +25,12 @@ Abort if any preflight fails. Do not weaken database durability, password hashin
 
 ## Build and release preparation
 
-Do not build on the 512 MB server and do not copy Windows `node_modules` to Ubuntu. Use an unprivileged staging/build account on a compatible Linux/Node 24 build environment; never run npm lifecycle or native build scripts as root:
+Do not build or install dependencies on the approximately 407 MiB production
+host, and do not copy Windows `node_modules` to Ubuntu. A real target-host
+`npm ci --omit=dev` was OOM-killed, so `npm ci`, `node-gyp`, native compilation,
+and frontend builds are prohibited there. Use a compatible GitHub Actions
+Linux/Node 24 build environment; never run npm lifecycle or native build scripts
+as root:
 
 ```bash
 npm ci
@@ -35,7 +41,14 @@ npm audit --audit-level=high
 npm audit --omit=dev --audit-level=high
 ```
 
-The release contains the tracked repository files, `backend/dist`, `frontend/dist`, `database/migrations`, `package.json`, and `package-lock.json`. On Ubuntu, the unprivileged staging account runs `npm ci --omit=dev` so native `better-sqlite3` and Argon2 modules match Linux. Root only installs the already validated artifact into its final root-owned, read-only release directory. Never ship local `.env`, SQLite files, logs, backups, test output, or development caches.
+The release artifact contains the tracked runtime files, `backend/dist`,
+`frontend/dist`, `database/migrations`, `package.json`, `package-lock.json`, and
+production dependencies built for the target Linux x86_64/Node 24 ABI,
+including verified `better-sqlite3` and Argon2 native modules. The Alibaba host
+only verifies and unpacks that already validated artifact; it does not run npm.
+Root only installs the verified artifact into its final root-owned, read-only
+release directory. Never ship local `.env`, SQLite files, logs, backups, test
+output, or development caches.
 
 Use immutable timestamped release directories such as `/opt/academiccloud/releases/<commit>` and a `/opt/academiccloud/current` symlink. Verify ownership and that the service cannot write the release tree.
 
@@ -158,12 +171,13 @@ Never downgrade a database with ad hoc SQL. Never switch releases while retainin
 - `journalctl -u academiccloud` is the primary application log stream. Nginx uses the query-free dedicated logs and checked-in 14-generation/10 MiB rotation rule. Configure journal size/retention for the 20 GB disk, dry-run logrotate after changes, and alert before disk exhaustion.
 - Run compiled maintenance through `academiccloud_op` during a maintenance window. Dry-run first. Apply only after inspection and with the web process stopped as documented in the security/reliability guide.
 - Rerun the Argon2 benchmark after Node/native dependency/host changes. The
-  template starts at `MemoryHigh=320M` and `MemoryMax=384M`, preserving at least
-  128 MiB on a 512 MiB host; keep or revise these only after measuring total
-  Ubuntu, Nginx, Node and native-module headroom.
+  checked-in memory limits are only starting hypotheses: the host reports about
+  407 MiB `MemTotal`, so keep or revise them only after measuring total Ubuntu,
+  Nginx, Node, and native-module runtime headroom. Build failure is established;
+  runtime suitability is not yet tested.
 - Certificate renewal must include automated `nginx -t` and reload verification.
 - Rotate long-lived RAM credentials through the approved secret procedure, restart, verify readiness and an authorized storage smoke, then revoke the prior credential. A static STS token is not a rotation solution.
 
 ## Deferred live acceptance
 
-The repository completes deterministic local acceptance only. Before exposing production, an approved operator must record evidence for real TLS/DNS, Nginx/systemd on Ubuntu, firewall/listener state, exact OSS CORS and metadata behavior, anonymous-access denial, representative byte upload/download/delete, off-host encrypted backup, isolated production restore, and 512 MB headroom. Any failure keeps production closed.
+The repository completes deterministic local acceptance only. Before exposing production, an approved operator must record evidence for real TLS/DNS, Nginx/systemd on Ubuntu, firewall/listener state, exact OSS CORS and metadata behavior, anonymous-access denial, representative byte upload/download/delete, off-host encrypted backup, isolated production restore, and runtime headroom on the approximately 407 MiB host. Any failure keeps production closed.

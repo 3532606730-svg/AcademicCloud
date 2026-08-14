@@ -37,19 +37,24 @@ On the recorded Windows workstation, ordinary `npm ci` reaches npm's implicit
 Studio C++ workload even though the pinned package contains a working Windows
 prebuild. The reproducible local gate therefore uses `npm ci --ignore-scripts`,
 then proves the packaged `better-sqlite3` and Argon2 native modules through the
-database suite and benchmark. This exception does not apply to production:
-Ubuntu preparation must supply the native build toolchain and pass ordinary
-`npm ci --omit=dev` on the target Node 24 platform.
+database suite and benchmark. This exception does not authorize a
+production-host install. A real `npm ci --omit=dev` on the approximately
+407 MiB Alibaba target was OOM-killed, and system evidence confirmed the
+native-install memory failure. Target-host `npm ci`, `node-gyp`, native
+compilation, and frontend builds are unsupported. Production dependencies
+must instead be built and verified on a compatible Linux/Node 24 GitHub
+Actions runner, packaged into a verified artifact, and exercised separately
+through Alibaba runtime-only acceptance.
 
 ## Production approval gate
 
 Local acceptance is not evidence of a real Alibaba Cloud deployment. Before production exposure, execute and record the approval-gated steps in the production runbook and OSS checklist:
 
-- Ubuntu 24.04/Node 24 native dependency installation and Nginx/systemd validation;
+- verified GitHub Actions Linux/Node 24 production artifact and separate Alibaba runtime-only acceptance, plus Nginx/systemd validation;
 - real DNS, certificate issuance/renewal, TLS, redirect, headers, firewall, and loopback listener;
 - private bucket/Block Public Access, exact CORS, Versioning Disabled, and least-privilege RAM;
 - representative byte-level direct upload/download/preview/delete with external checksum comparison;
-- actual 512 MB host headroom and systemd resource-limit measurement;
+- actual approximately 407 MiB host runtime headroom and systemd resource-limit measurement;
 - encrypted off-host backup plus isolated production-format restore rehearsal;
 - rollback pairing of application release and compatible database backup.
 

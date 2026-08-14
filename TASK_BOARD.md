@@ -2,7 +2,24 @@
 
 ## Current Phase
 
-**Layer 1 — Basic Private Cloud Storage: Locally Complete; Live Deployment Approval-Gated**
+**Layer 1 — Basic Private Cloud Storage: Locally Complete; Production Preparation In Progress**
+
+## In Progress
+
+### PROD-02R — Repository Reconciliation + Windows Git SSH
+
+**Status:** In Progress
+
+Goal: reconcile the repository-backed production-preparation record and establish a dedicated Windows-to-GitHub SSH Git path for `D:\Projects\AcademicCloud`, without using the broken Windows HTTPS credential path.
+
+Acceptance criteria:
+- [x] local `main` and private GitHub `main` start at bootstrap checkpoint `621b19a16e620f1a8a9ba6993bb927ae2d620748`
+- [x] actual Alibaba host, cleanup, package recovery, native-build OOM, runtime-unknown, relay, retained bootstrap credential, and 0 RMB cost facts are recorded without claiming deployment success
+- [x] dedicated Windows GitHub Ed25519 key exists outside the repository with restricted private-key ACLs; the Alibaba key was not reused
+- [x] the Owner has registered the public key in GitHub as an authentication key
+- [x] strict GitHub host verification and SSH authentication pass for `3532606730-svg`
+- [ ] repository `origin`, remote read, documentation-only checkpoint, first direct Windows SSH push, and post-push connector verification pass
+- [ ] Alibaba remains unchanged and no GitHub Actions workflow is created or triggered
 
 ## Completed
 
@@ -245,7 +262,7 @@ Completion notes:
 
 ## Ready
 
-None. Do not begin Layer 2 or a live deployment without explicit approval.
+`PROD-02G — GitHub Actions Linux Production Build` becomes the next task only after `PROD-02R` passes. Then `PROD-02H — Alibaba Runtime-Only Acceptance` follows. Real OSS, DNS/TLS, and cutover remain later approval gates; Layer 2 remains deferred.
 
 ## Backlog — Layer 1
 

@@ -1,16 +1,16 @@
 # AcademicCloud Current Status
 
-**Last updated:** 2026-08-13
+**Last updated:** 2026-08-14
 
 ## Current Layer
 
-**Layer 1 — Basic Private Cloud Storage: Locally Complete; Live Deployment Approval-Gated**
+**Layer 1 — Basic Private Cloud Storage: Locally Complete; Production Preparation In Progress**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` are complete at the deterministic local boundary. The application, acceptance suite, compiled runtime exercise, and deployment/recovery package are ready for a separately approved live production window.
+`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete at the deterministic local boundary. Owner-approved production preparation is now in progress, but the application has not been deployed and live OSS, DNS, TLS, cutover, and runtime acceptance have not been executed.
 
 ## Current Objective
 
-The approved Layer 1 implementation objective has reached its local exit criteria. No Layer 2 work or live deployment is authorized automatically.
+Complete `PROD-02R — Repository Reconciliation + Windows Git SSH`, then stop before the separately approved `PROD-02G` GitHub Actions build task. No Layer 2 work is authorized.
 
 ## Completed
 
@@ -107,7 +107,29 @@ The approved Layer 1 implementation objective has reached its local exit criteri
 
 ## Current Task
 
-`L1-E08 — Testing & Deployment` is **Done** locally. Live deployment acceptance is **Not executed — approval required**.
+`PROD-02R — Repository Reconciliation + Windows Git SSH` is **In Progress**. It reconciles the durable production-preparation record and replaces the broken Windows GitHub HTTPS dependency with a dedicated Windows-to-GitHub SSH transport. It does not deploy the application or mutate Alibaba Cloud.
+
+## Production Preparation Status
+
+### GitHub repository
+
+- Canonical repository: private `3532606730-svg/AcademicCloud`.
+- The complete original Git history was bootstrapped to GitHub; the bootstrap checkpoint on `main` is `621b19a16e620f1a8a9ba6993bb927ae2d620748` (`feat: complete Layer 1 deployment acceptance`).
+- The connected GitHub integration can read the private repository.
+- Windows GitHub HTTPS still fails certificate trust and is intentionally deferred. This repository now uses a repository-scoped SSH transport with a dedicated Windows GitHub key, strict host verification, and successful authentication as `3532606730-svg`.
+- The one-time local bundle → Alibaba host → private GitHub relay passed. The `AcademicCloud Alibaba Bootstrap` write deploy key is a **TEMPORARY WRITE CREDENTIAL — RETAINED BY OWNER DECISION**.
+
+### Alibaba production host
+
+- Target: `47.250.126.42`, an Alibaba Cloud Simple Application Server in Malaysia / Kuala Lumpur running Ubuntu 24.04.2 LTS on x86_64 with 2 vCPU.
+- Linux reports approximately 407 MiB `MemTotal`; the earlier “512 MB” label is not usable-memory evidence.
+- The 20 GB system disk has approximately 13–14 GB free after approved cleanup. A persistent 1 GiB swap file is active.
+- Verified runtimes/tools: Node.js `24.19.0`, npm `11.17.0`, Nginx `1.24.0`, Python `3.12.3`, `make`, and GCC/G++. Nginx is active and enabled; AcademicCloud is not deployed.
+- Owner-authorized cleanup removed `/opt/ajt-captcha`, `/opt/captcha_server`, and the related old reboot entry/log, releasing approximately 450 MiB.
+- A broken/half-installed Ubuntu `chromium-browser` transitional package was removed under the approved recovery. `dpkg --configure --pending`, `dpkg --audit`, and `apt-get check` then reported a healthy package state.
+- A real target-host `npm ci --omit=dev` attempt was OOM-killed; kernel/system logs corroborate the native-install memory failure. **ON-SERVER NATIVE BUILD: UNSUPPORTED.** Do not retry `npm ci`, `node-gyp`, native compilation, or frontend builds on this host.
+- Build suitability is **Failed / Unsupported**. AcademicCloud runtime suitability is **Not Yet Tested**. The next path is GitHub Actions Linux build → verified artifact → Alibaba runtime-only acceptance.
+- No server purchase or upgrade was added during this preparation. Actual incremental cost: **0 RMB**.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -131,7 +153,7 @@ The approved Layer 1 implementation objective has reached its local exit criteri
 - Docker, WSL, PostgreSQL, Redis, and similar infrastructure are not currently required dependencies.
 - The C: drive has approximately 9.6 GiB free; dependency and cache size should remain controlled.
 - GitHub HTTPS currently has a certificate-trust error. Record this as an environment risk for later handling; do not change VPN, certificates, or network configuration without approval.
-- The target Ubuntu server has 512 MB RAM, so Layer 1 architecture and deployment must remain lightweight.
+- The target Ubuntu host reports approximately 407 MiB `MemTotal`; its on-server native production install was OOM-killed, so builds must occur in a compatible Linux CI environment and runtime capacity remains unproven.
 
 ## Layer 1 Coverage
 
@@ -147,12 +169,21 @@ The approved Layer 1 implementation objective has reached its local exit criteri
 
 ## Current Constraints
 
-- Layer 1 local exit criteria are complete; do not begin Layer 2 automatically.
+- Layer 1 local exit criteria are complete; production preparation is active, but do not begin Layer 2 automatically.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
+- Never repeat npm/native/frontend builds on the Alibaba production host; it is a runtime-only acceptance target.
+- Do not treat GitHub repository/bootstrap readiness as live OSS, DNS/TLS, application deployment, or runtime acceptance.
 - No OCR/RAG/connectors.
 - No architecture expansion without approval.
 
 ## Next Milestone
 
-The next possible milestone is a separately approved production deployment window: Ubuntu/native-module preparation, real OSS/RAM/CORS/versioning verification, DNS/TLS/Nginx/systemd installation, encrypted off-host backup, restore rehearsal, live representative-byte acceptance, and 512 MB headroom measurement. Until approved, the repository remains at the Layer 1 checkpoint and Layer 2 stays deferred.
+The approved sequence is:
+
+1. Phase A: complete `PROD-02R — Repository Reconciliation + Windows Git SSH`.
+2. Execute `PROD-02G — GitHub Actions Linux Production Build` as a separate task.
+3. Execute `PROD-02H — Alibaba Runtime-Only Acceptance` as a separate task.
+4. Only after runtime acceptance passes, proceed through separately approved real OSS, DNS/TLS, and production-cutover gates.
+
+Layer 2 remains deferred.
