@@ -194,6 +194,14 @@ Never downgrade a database with ad hoc SQL. Never switch releases while retainin
 - Certificate renewal must include automated `nginx -t` and reload verification.
 - Rotate long-lived RAM credentials through the approved secret procedure, restart, verify readiness and an authorized storage smoke, then revoke the prior credential. A static STS token is not a rotation solution.
 
+## Installed production foundation checkpoint
+
+`PROD-03A` installed GitHub artifact `9225471228`, source `639baa9596a17f4160521f31440d9e3ac3b12eda`, as the root-owned immutable release selected by `/opt/academiccloud/current`. Its evidence bundle SHA-256 is `8d2752951784345259369d76e3a8775bb9fd21977195578024f7041184e9f2e5`. The exact production unit is installed disabled/inactive with no PID or port 3000 listener; Nginx still exposes only its prior default port-80 site. Prepared edge and bootstrap files are root-only and outside active configuration trees.
+
+Certbot 2.9.0 plus `python3-acme`, `python3-certbot`, `python3-configargparse`, `python3-josepy`, `python3-parsedatetime`, and `python3-rfc3339` were the only package additions; APT upgraded and removed zero packages. The Certbot timer is disabled/inactive and no ACME account, certificate, or renewal state exists. Two prior publication attempts correctly failed closed on non-traversable extracted directory modes, automatically rolled back, preserved evidence, and left no state before the corrected run. Existing host locale fallback warnings and unrelated `cloudmonitor.service` verification warnings did not change an AcademicCloud gate.
+
+This checkpoint contains no environment, AccessKey, database, account, active logrotate file, OSS mutation, certificate, public route, or production data. Do not describe it as a live deployment. Secret-safe activation is a separate checkpoint; certificate renewal must remain disabled until the final edge configuration demonstrably preserves the ACME challenge path and renewal/reload tests pass.
+
 ## Deferred live acceptance
 
-The repository completes deterministic acceptance and upgraded-host runtime-only acceptance; it is not deployed or live-accepted. Before exposing production, an approved operator must record evidence for real TLS/DNS, installed Nginx/systemd behavior on Ubuntu, firewall/listener state, exact OSS CORS and metadata behavior, anonymous-access denial, representative byte upload/download/delete, off-host encrypted backup, and isolated production restore. Any failure keeps production closed.
+The repository completes deterministic acceptance and upgraded-host runtime acceptance, and the verified inactive production foundation is installed. The application is not configured, started, publicly routed, or live-accepted. Before exposing production, the approved sequence must record evidence for secret-safe configuration, the first account, real TLS/DNS, installed Nginx/systemd behavior on Ubuntu, firewall/listener state, exact OSS CORS and metadata behavior, anonymous-access denial, representative byte upload/download/delete, off-host encrypted backup, and isolated production restore. Any failure keeps production closed.

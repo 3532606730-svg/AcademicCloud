@@ -4,13 +4,13 @@
 
 ## Current Layer
 
-**Layer 1 — Basic Private Cloud Storage: Locally Complete; 1 GiB Runtime Accepted; Production Still Closed**
+**Layer 1 — Basic Private Cloud Storage: First Usable Production In Progress**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete at the deterministic local boundary. After the Owner-reported Alibaba RAM upgrade, `PROD-02I` accepted the verified production artifact for runtime on the upgraded 1 GiB-class host without weakening any security or durability boundary. The application has not been deployed, and live OSS, DNS, TLS, and cutover have not been executed.
+`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete, and `PROD-02I` accepted the verified production artifact for runtime on the upgraded 1 GiB-class host. The Owner has now authorized the bounded Layer 1 First Usable Production sequence, and PROD-03A installed its inactive non-secret foundation. Production remains closed until secret-safe activation, exact OSS CORS, TLS, browser E2E, backup/restore, rollback, and independent review all pass.
 
 ## Current Objective
 
-`PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance` is complete and runtime suitability is accepted. Stop with no Ready task; this result does not authorize installation, deployment, OSS, DNS/TLS, cutover, another resource change, or Layer 2.
+`PROD-03A — Production Foundation and Immutable Release` is complete. Start `PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation` and stop only at its shortest mandatory Owner interaction for hidden credential/password/ACME-email entry and exact OSS CORS console configuration. Do not enable the public AcademicCloud Nginx route, enter PROD-03C, or weaken any accepted boundary during PROD-03B.
 
 ## Completed
 
@@ -107,7 +107,7 @@
 
 ## Current Task
 
-`PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance` is **Complete — Accepted for runtime on the upgraded host**. Exact artifact `9225471228` passed the full verifier and compiled acceptance under the unchanged private-network, non-privileged, 320/384 MiB cgroup and 128 MiB whole-host headroom gates. The run measured minimum whole-host `MemAvailable=393,396 KiB`, minimum `SwapFree=1,048,572 KiB`, and cgroup peak `241,455,104` bytes with zero cgroup or kernel OOM evidence. Evidence bundle SHA-256 is `ac1de4bf4881d84e869138f3c14ab4ef7ba943b80a7121c7891e7dec0dc7a518`; the exact task stage was removed and post-cleanup host health/state matched the upgraded baseline.
+`PROD-03A — Production Foundation and Immutable Release` is **Complete**. Exact artifact `9225471228` / source `639baa9596a17f4160521f31440d9e3ac3b12eda` is installed under a root-owned immutable release and selected by `/opt/academiccloud/current`. The exact hardened unit is installed disabled/inactive with no PID or port 3000 listener; prepared Nginx/CSP/logrotate/bootstrap files remain outside active trees. Certbot 2.9.0 and six required Python packages are installed with zero upgrades/removals, timer disabled/inactive, and no ACME account/certificate/renewal state. Formal evidence SHA-256 is `8d2752951784345259369d76e3a8775bb9fd21977195578024f7041184e9f2e5`; no environment, database, account, secret, OSS mutation, active route, or production data exists.
 
 ## Production Preparation Status
 
@@ -127,7 +127,7 @@
 - Target: `47.250.126.42`, an Alibaba Cloud Simple Application Server in Malaysia / Kuala Lumpur running Ubuntu 24.04.2 LTS on x86_64 with 2 vCPU.
 - After the Owner-authorized upgrade, Linux reports `916,044 KiB` `MemTotal` (approximately 894.6 MiB usable), consistent with the target 1 GiB cloud specification after platform/kernel reservation.
 - The post-upgrade host exposes a 30 GiB block device, while the existing root partition/filesystem remains approximately 20 GiB with about 13 GiB free. PROD-02I does not resize or otherwise change it. A persistent 1 GiB swap file is active.
-- Verified runtimes/tools: Node.js `24.19.0`, npm `11.17.0`, Nginx `1.24.0`, Python `3.12.3`, `make`, and GCC/G++. Nginx is active and enabled; AcademicCloud is not deployed.
+- Verified runtimes/tools: Node.js `24.19.0`, npm `11.17.0`, Nginx `1.24.0`, Python `3.12.3`, `make`, GCC/G++, and Certbot `2.9.0`. Nginx is active and enabled. The verified AcademicCloud release and disabled/inactive unit are installed, but the application is not configured, started, routed, or live.
 - Owner-authorized cleanup removed `/opt/ajt-captcha`, `/opt/captcha_server`, and the related old reboot entry/log, releasing approximately 450 MiB.
 - A broken/half-installed Ubuntu `chromium-browser` transitional package was removed under the approved recovery. `dpkg --configure --pending`, `dpkg --audit`, and `apt-get check` then reported a healthy package state.
 - A real target-host `npm ci --omit=dev` attempt was OOM-killed; kernel/system logs corroborate the native-install memory failure. **ON-SERVER NATIVE BUILD: UNSUPPORTED.** Do not retry `npm ci`, `node-gyp`, native compilation, or frontend builds on this host.
@@ -168,11 +168,11 @@
 - [x] frontend functionality
 - [x] security and reliability hardening
 - [x] deterministic deployment package and local compiled-artifact acceptance
-- [ ] live production deployment and cloud/server acceptance — approval required
+- [ ] live production deployment and cloud/server acceptance — foundation installed; activation, backup/restore, edge, and E2E remain
 
 ## Current Constraints
 
-- Layer 1 local exit criteria and the upgraded-host runtime suitability gate are complete; production remains closed because deployment, live OSS, DNS/TLS, backup, and cutover gates are not executed, and no next task or Layer 2 work starts automatically.
+- Layer 1 local exit criteria, upgraded-host runtime suitability, and the non-secret production foundation are complete. Production remains closed because secrets/account, exact OSS CORS, loopback service, certificate/renewal, encrypted off-host backup/restore, edge, and live E2E gates are not complete.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - Never repeat npm/native/frontend builds on the Alibaba production host; it is a runtime-only acceptance target.
@@ -189,6 +189,9 @@ The approved sequence is:
 2. `PROD-02G — GitHub Actions Linux Production Build`: complete.
 3. `PROD-02H — Alibaba Runtime-Only Acceptance`: complete with pre-upgrade host-state runtime suitability rejected and cleanup/recovery verified.
 4. `PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance`: complete with upgraded-host runtime suitability accepted, exact evidence retained, and cleanup/recovery verified.
-5. Real OSS, DNS/TLS, cutover, and Layer 2 remain closed regardless of this task's result.
+5. `PROD-03A — Production Foundation and Immutable Release`: complete; formal evidence SHA-256 `8d2752951784345259369d76e3a8775bb9fd21977195578024f7041184e9f2e5`, inactive release foundation healthy and clean.
+6. `PROD-03B — Secret-Safe Activation, OSS CORS, Account, Service, and TLS`: Ready. Owner interaction is limited to the hidden credential/password/ACME-email entry and exact CORS console boundary. It may validate the real unit on loopback and issue TLS, but it must not enable the public AcademicCloud Nginx route; certificate renewal activation remains closed until the final edge proves the ACME challenge path.
+7. `PROD-03C — First Usable Production E2E, Backup/Restore, and Cutover`: authorized after PROD-03B. It must complete an encrypted off-host backup and isolated restore before public cutover; any new-cost/key-custody boundary and the exact disposable-object permanent-delete confirmation remain Owner gates.
+8. Layer 2 remains closed.
 
 Layer 2 remains deferred.

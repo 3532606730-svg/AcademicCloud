@@ -2,13 +2,25 @@
 
 ## Current Phase
 
-**Layer 1 — Basic Private Cloud Storage: Locally Complete; 1 GiB Runtime Accepted; Production Still Closed**
+**Layer 1 — Basic Private Cloud Storage: First Usable Production In Progress**
 
 ## In Progress
 
-None. No future production or Layer 2 task becomes Ready automatically.
+None while the PROD-03A completion checkpoint is being synchronized.
 
 ## Completed
+
+### PROD-03A — Production Foundation and Immutable Release
+
+**Status:** Done — verified inactive foundation installed; production still closed
+
+Completion notes:
+- [x] installed exact artifact `9225471228` / source `639baa9596a17f4160521f31440d9e3ac3b12eda` as a root-owned immutable release with 4,605 regular files and 15 symlinks, exact manifest identity, and no service-user write access
+- [x] created the nologin service identity and restrictive config/state/log paths; installed exact hardened unit SHA-256 `fed6c26d80ad070decf4ddeabb7f4af6d23c38c24d2494666c7bfe981e39500b` disabled/inactive with `MainPID=0`
+- [x] prepared exact production hostnames outside active Nginx/logrotate trees and retained the unchanged Nginx SHA-256/default route/listeners
+- [x] installed Certbot 2.9.0 plus six required Python packages with zero package upgrades/removals; timer remains disabled/inactive and no ACME account, certificate, or renewal exists
+- [x] retained two clean fail-closed attempts and completed formal evidence SHA-256 `8d2752951784345259369d76e3a8775bb9fd21977195578024f7041184e9f2e5`; system running/zero failed, `MemAvailable=546,080 KiB`, `SwapFree=1,048,572 KiB`, and no OOM/stage/secret/application listener
+- [x] made no OSS, credential, database, account, active Nginx, certificate, public-route, production-data, disk-resize, or Layer 2 change
 
 ### PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance
 
@@ -301,11 +313,15 @@ Completion notes:
 
 ## Ready
 
-None. `PROD-02I` is complete, but live deployment, OSS, DNS/TLS, backup, and cutover remain outside the completed task and require explicit future authorization. No Layer 2 task becomes Ready automatically.
+### PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation
+
+**Status:** Ready — begins only after the PROD-03A checkpoint synchronizes
+
+Goal: use the reviewed hidden stdin path for the exact dedicated RAM credential, ACME email, login, and password; verify exact private-bucket/CORS gates; create the first database/account; run the real hardened unit loopback-only; and issue/verify TLS without enabling the public AcademicCloud Nginx route. Certificate-renewal enablement remains closed until the final edge configuration proves the ACME challenge path.
 
 ## Backlog — Layer 1
 
-- None after the current re-acceptance task.
+- `PROD-03C — Encrypted Off-host Backup/Restore, Public Edge, Live E2E, and Cutover` — backup/restore before exposure; Owner gates for new cost/key custody and exact disposable permanent deletion
 
 ## Explicitly Deferred
 
