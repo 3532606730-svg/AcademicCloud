@@ -50,6 +50,16 @@ Root only installs the verified artifact into its final root-owned, read-only
 release directory. Never ship local `.env`, SQLite files, logs, backups, test
 output, or development caches.
 
+Before any approved transfer, obtain the four-file bundle from the successful
+GitHub Actions run: `<name>.tar.gz`, `<name>.tar.gz.sha256`,
+`<name>.manifest.json`, and `<name>.runtime-verification.json`. Independently
+verify the GitHub artifact digest, require the runtime evidence status to be
+`ok` for the intended source commit and Linux x86-64/Node 24, and verify the
+release archive against its SHA-256 file before extraction. A mismatch,
+expired artifact, different source commit, unexpected native-module path, or
+missing evidence aborts the deployment window; never rebuild on Alibaba as a
+fallback.
+
 Use immutable timestamped release directories such as `/opt/academiccloud/releases/<commit>` and a `/opt/academiccloud/current` symlink. Verify ownership and that the service cannot write the release tree.
 
 ## Configuration and protected one-shot operations

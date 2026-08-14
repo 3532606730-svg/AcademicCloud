@@ -6,13 +6,23 @@
 
 ## In Progress
 
-### PROD-02G — GitHub Actions Linux Production Build
-
-**Status:** In Progress
-
-Goal: build and verify a Linux x86_64 / Node.js 24 production runtime artifact in real GitHub Actions, including native modules, compiled acceptance, manifest, SHA-256, and independent artifact verification, without deployment.
+None.
 
 ## Completed
+
+### PROD-02G — GitHub Actions Linux Production Build
+
+**Status:** Done
+
+Completion notes:
+- [x] ran the real zero-cost GitHub-hosted Ubuntu 24.04 x86_64 build on Node.js `v24.19.0` and npm `11.17.0`
+- [x] passed clean install, 88 backend tests, 22 frontend tests, type-check, production build, compiled acceptance, both zero-vulnerability audits, and the Argon2id benchmark
+- [x] built a production-only release and retained only the verified Linux glibc x86-64 Argon2 and better-sqlite3 native modules
+- [x] generated and verified the per-file manifest, deterministic release archive, SHA-256, and runtime evidence
+- [x] loaded and executed better-sqlite3/SQLite and Argon2id and reran compiled acceptance from the extracted production artifact
+- [x] uploaded immutable artifact `9223626582`, downloaded it on a fresh runner, reran the complete verification, and independently downloaded and checked the bundle locally
+- [x] used SHA-pinned official Actions with least-privilege `contents: read` and short seven-day retention
+- [x] passed local checks and independent read-only review; changed no Alibaba, OSS, DNS, TLS, production data, Layer 2, or paid resource
 
 ### PROD-02R — Repository Reconciliation + Windows Git SSH
 
@@ -267,7 +277,11 @@ Completion notes:
 
 ## Ready
 
-None while `PROD-02G` is in progress. `PROD-02H — Alibaba Runtime-Only Acceptance` becomes Ready only after this task passes; real OSS, DNS/TLS, cutover, and Layer 2 remain deferred.
+### PROD-02H — Alibaba Runtime-Only Acceptance
+
+**Status:** Ready — not started
+
+Goal: transfer the already verified Linux artifact to the Alibaba host and test runtime suitability without running `npm ci`, native compilation, frontend build, real OSS, DNS/TLS, or production cutover. This task requires a new execution request and must not be started automatically.
 
 ## Backlog — Layer 1
 

@@ -46,6 +46,35 @@ must instead be built and verified on a compatible Linux/Node 24 GitHub
 Actions runner, packaged into a verified artifact, and exercised separately
 through Alibaba runtime-only acceptance.
 
+## Recorded Linux production artifact acceptance
+
+`PROD-02G` completed the required non-deploying Linux acceptance in GitHub
+Actions run `31812294336` for source commit
+`afd46c3db3e36e4d0dc53bc2c66b2cf6e17f89f4`. The GitHub-hosted environment
+was Ubuntu 24.04 x86_64, Node.js `v24.19.0`, and npm `11.17.0`.
+
+The build job passed clean `npm ci`, 88 backend tests, 22 frontend tests,
+type-check, the production build, compiled acceptance, both dependency audits
+with zero vulnerabilities, the Argon2id benchmark, a production-only install,
+manifest/archive generation, and extracted-artifact runtime verification. A
+second fresh Ubuntu runner downloaded the immutable artifact and repeated the
+archive SHA-256, manifest, native-module, SQLite, Argon2id, and compiled
+acceptance checks without reinstalling dependencies.
+
+The retained GitHub artifact ID is `9223626582` (seven-day retention, expiring
+2026-08-21). Its downloaded ZIP SHA-256 is
+`405a2cd2330f1a9294fe277a01d0bee7048b4b5829764af3e27d3aa174c2cf7d`.
+The contained release archive SHA-256 is
+`fe28ea66b8e4c88888572932c8195ec4bb23c5345f10a7aa9658c3f6ebe9d630`;
+the manifest covers 4,619 files and 32,741,380 bytes. Runtime evidence records
+SQLite `3.53.4`, successful Argon2id hash/verify, exactly the approved Argon2
+and better-sqlite3 ELF64 x86-64 modules, and successful compiled migration,
+restart/session, maintenance dry-run, backup/restore, and redeploy acceptance.
+
+This evidence proves the build artifact, not Alibaba runtime capacity or live
+deployment. Alibaba remained unchanged and must consume the verified archive
+only through the separate `PROD-02H` runtime-only acceptance task.
+
 ## Production approval gate
 
 Local acceptance is not evidence of a real Alibaba Cloud deployment. Before production exposure, execute and record the approval-gated steps in the production runbook and OSS checklist:

@@ -25,14 +25,14 @@ Build, verify, package, and retain a reproducible Linux x86_64 / Node.js 24 prod
 
 ## Acceptance Criteria
 
-- [ ] a real GitHub Actions run passes on Ubuntu Linux x86_64 with an exact recorded Node.js 24.x and npm version
-- [ ] clean `npm ci`, backend/frontend tests, type-check, production build, both audits, compiled acceptance, and Argon2 benchmark pass
-- [ ] better-sqlite3 and Argon2 native modules load and execute from the extracted production-only artifact
-- [ ] the extracted artifact reruns compiled acceptance with random local-only credentials and no live cloud calls
-- [ ] the artifact contains the required runtime/deployment files and excludes development dependencies, secrets, databases, logs, caches, and Windows native binaries
-- [ ] a deterministic per-file manifest, archive SHA-256 file, runtime-verification evidence, and immutable GitHub artifact are generated and independently verified after download
-- [ ] applicable local checks, targeted secret scan, diff review, and an independent read-only review pass
-- [ ] final `main` and private GitHub `main` match, the worktree is clean, cost remains 0 RMB, Alibaba is unchanged, and PROD-02H has not started
+- [x] a real GitHub Actions run passes on Ubuntu Linux x86_64 with an exact recorded Node.js 24.x and npm version
+- [x] clean `npm ci`, backend/frontend tests, type-check, production build, both audits, compiled acceptance, and Argon2 benchmark pass
+- [x] better-sqlite3 and Argon2 native modules load and execute from the extracted production-only artifact
+- [x] the extracted artifact reruns compiled acceptance with random local-only credentials and no live cloud calls
+- [x] the artifact contains the required runtime/deployment files and excludes development dependencies, secrets, databases, logs, caches, and Windows native binaries
+- [x] a deterministic per-file manifest, archive SHA-256 file, runtime-verification evidence, and immutable GitHub artifact are generated and independently verified after download
+- [x] applicable local checks, targeted secret scan, diff review, and an independent read-only review pass
+- [x] final `main` and private GitHub `main` match, the worktree is clean, cost remains 0 RMB, Alibaba is unchanged, and PROD-02H has not started
 
 ## Relevant ADRs
 
@@ -50,11 +50,11 @@ Build, verify, package, and retain a reproducible Linux x86_64 / Node.js 24 prod
 - `docs/deployment/production-runbook.md`
 - `CURRENT_STATUS.md`
 - `TASK_BOARD.md`
-- `tasks/doing/PROD-02G.md`
+- `tasks/done/PROD-02G.md`
 
 ## Current State
 
-Started from clean local and private GitHub `main` at `704ed3ae4762e1e6b3c73e5d27f7c858fb3b0d84` on branch `codex/prod-02g`. No Actions workflow existed at task start. The local `gh` CLI is absent, so local Git/SSH will publish changes while the connected GitHub integration handles the draft PR, Actions inspection, logs, and artifact download.
+Completed on branch `codex/prod-02g`. GitHub Actions run `31812294336` passed both the Linux production build and independent fresh-runner download/verification jobs for source commit `afd46c3db3e36e4d0dc53bc2c66b2cf6e17f89f4`. Artifact `9223626582` is retained for seven days. No Alibaba host, live OSS, or production cloud resource was accessed or changed.
 
 ## Completed
 
@@ -67,12 +67,12 @@ Started from clean local and private GitHub `main` at `704ed3ae4762e1e6b3c73e5d2
 - Passed JavaScript syntax, YAML lint, whitespace, and targeted secret checks; independent read-only Reviewer approved the first push with no blockers.
 - Pushed checkpoint `f36f8dee21a3b30771a4ee6db0142605a82cdc87`, opened draft PR #1, and inspected real Actions run `31812031469`; the Linux gate passed through production-only install before the artifact policy correctly rejected a locked dependency's Visual Studio `.vs/slnx.sqlite` cache.
 - Added targeted pruning of `.vs` development-tool directories inside production `node_modules` while retaining hard rejection of `.vs` directories and SQLite files in the final artifact.
+- Passed replacement run `31812294336` end to end, including production artifact extraction, exact native ELF64 x86-64 validation, SQLite execution, Argon2id hash/verify, compiled acceptance, upload, fresh-runner download, and identical full re-verification.
+- Downloaded artifact `9223626582` independently through the GitHub connector and verified its ZIP digest, release SHA-256, safe archive paths, internal/external manifest equality, source/platform identity, exact native-module evidence, SQLite/Argon2 execution evidence, and compiled acceptance evidence.
 
 ## Remaining
 
-- Push the branch, create the draft PR, execute the real Linux workflow, and repair ordinary failures.
-- Download and independently verify the successful artifact bundle.
-- Complete review, durable records, main fast-forward, and final verification.
+None.
 
 ## Blockers
 
@@ -80,8 +80,8 @@ None.
 
 ## Last Verification
 
-2026-08-14: GitHub Actions run `31812031469` on Ubuntu 24.04.4 x86_64, Node.js `v24.19.0`, and npm `11.17.0` passed clean install, backend 88/88, frontend 22/22, type-check, production build, compiled acceptance, both audits at zero vulnerabilities, Argon2id benchmark (hash 165 ms, verify 116 ms, peak RSS 150.3 MiB), and production-only install. Finalize then correctly failed on `node_modules/dateformat/.vs/slnx.sqlite`; the targeted cache-pruning fix is pending its rerun. Alibaba was not accessed.
+2026-08-14: GitHub Actions run `31812294336` passed both jobs on Ubuntu 24.04 x86_64, Node.js `v24.19.0`, and npm `11.17.0`. Artifact `9223626582` ZIP SHA-256 `405a2cd2330f1a9294fe277a01d0bee7048b4b5829764af3e27d3aa174c2cf7d`; release SHA-256 `fe28ea66b8e4c88888572932c8195ec4bb23c5345f10a7aa9658c3f6ebe9d630`; 4,619 manifest files / 32,741,380 bytes; SQLite `3.53.4`; exact Argon2 and better-sqlite3 ELF64 x86-64 binaries; Argon2id and compiled acceptance status `ok`. Connector download and local metadata/integrity verification passed. Alibaba remained unchanged and incremental cost remained 0 RMB.
 
 ## Next Action
 
-Review and commit the targeted `.vs` cache-pruning fix, push it through the dedicated SSH transport, and inspect the replacement Linux run.
+Stop. `PROD-02H` is Ready but was not started; it requires a new execution request.

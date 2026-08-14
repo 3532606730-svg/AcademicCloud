@@ -10,7 +10,7 @@
 
 ## Current Objective
 
-Execute `PROD-02G — GitHub Actions Linux Production Build`, then stop before `PROD-02H — Alibaba Runtime-Only Acceptance`. No Layer 2 work is authorized.
+`PROD-02G — GitHub Actions Linux Production Build` is complete. Stop before executing the now-Ready `PROD-02H — Alibaba Runtime-Only Acceptance`; no Alibaba mutation or Layer 2 work is authorized by this checkpoint.
 
 ## Completed
 
@@ -107,7 +107,7 @@ Execute `PROD-02G — GitHub Actions Linux Production Build`, then stop before `
 
 ## Current Task
 
-`PROD-02G — GitHub Actions Linux Production Build` is **In Progress** on `codex/prod-02g`. It adds and executes a real zero-cost GitHub-hosted Linux x86_64 / Node.js 24 build, verifies native runtime dependencies and compiled acceptance, and produces a checksummed production artifact without touching Alibaba or live cloud resources.
+`PROD-02G — GitHub Actions Linux Production Build` is **Complete**. GitHub Actions run `31812294336` built source commit `afd46c3db3e36e4d0dc53bc2c66b2cf6e17f89f4` on Ubuntu 24.04 x86_64 with Node.js `v24.19.0` and npm `11.17.0`; both the build job and independent fresh-runner download/verification job passed. Artifact `9223626582` contains the production release, manifest, archive SHA-256, and runtime evidence and expires after its seven-day verification retention on 2026-08-21. No Alibaba host, live OSS, or production cloud resource was accessed or changed.
 
 ## Production Preparation Status
 
@@ -118,6 +118,7 @@ Execute `PROD-02G — GitHub Actions Linux Production Build`, then stop before `
 - The connected GitHub integration can read the private repository.
 - Windows GitHub HTTPS still fails certificate trust and is intentionally deferred. This repository now uses a repository-scoped SSH transport with a dedicated Windows GitHub key, strict host verification, and successful authentication as `3532606730-svg`.
 - The first direct Windows SSH push and post-push connector read both verified the reconciliation checkpoint on private `main`.
+- GitHub Actions run `31812294336` passed the full Linux production build and fresh-runner artifact download/verification chain. The immutable GitHub artifact ZIP digest is `405a2cd2330f1a9294fe277a01d0bee7048b4b5829764af3e27d3aa174c2cf7d`; its release archive digest is `fe28ea66b8e4c88888572932c8195ec4bb23c5345f10a7aa9658c3f6ebe9d630`.
 - The one-time local bundle → Alibaba host → private GitHub relay passed. The `AcademicCloud Alibaba Bootstrap` write deploy key is a **TEMPORARY WRITE CREDENTIAL — RETAINED BY OWNER DECISION**.
 
 ### Alibaba production host
@@ -183,8 +184,8 @@ Execute `PROD-02G — GitHub Actions Linux Production Build`, then stop before `
 The approved sequence is:
 
 1. `PROD-02R — Repository Reconciliation + Windows Git SSH`: complete.
-2. Next Ready task: `PROD-02G — GitHub Actions Linux Production Build`.
-3. Then execute `PROD-02H — Alibaba Runtime-Only Acceptance` as a separate task.
+2. `PROD-02G — GitHub Actions Linux Production Build`: complete.
+3. Next Ready task: `PROD-02H — Alibaba Runtime-Only Acceptance`; do not start it automatically.
 4. Only after runtime acceptance passes, proceed through separately approved real OSS, DNS/TLS, and production-cutover gates.
 
 Layer 2 remains deferred.
