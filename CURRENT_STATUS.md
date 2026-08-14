@@ -4,13 +4,13 @@
 
 ## Current Layer
 
-**Layer 1 — Basic Private Cloud Storage: Locally Complete; Production Closed After Runtime Rejection**
+**Layer 1 — Basic Private Cloud Storage: Locally Complete; 1 GiB Runtime Accepted; Production Still Closed**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete at the deterministic local boundary. Owner-approved artifact and runtime-only preparation has been executed, but the current Alibaba host failed the runtime capacity gate. The application has not been deployed, and live OSS, DNS, TLS, and cutover have not been executed.
+`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete at the deterministic local boundary. After the Owner-reported Alibaba RAM upgrade, `PROD-02I` accepted the verified production artifact for runtime on the upgraded 1 GiB-class host without weakening any security or durability boundary. The application has not been deployed, and live OSS, DNS, TLS, and cutover have not been executed.
 
 ## Current Objective
 
-`PROD-02H — Alibaba Runtime-Only Acceptance` is complete with a **Rejected** current-host result. Stop with no task Ready while the Owner decides whether to authorize a paid RAM/server change; do not weaken Argon2id, durability, or systemd boundaries, and do not proceed to OSS, DNS/TLS, cutover, or Layer 2.
+`PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance` is complete and runtime suitability is accepted. Stop with no Ready task; this result does not authorize installation, deployment, OSS, DNS/TLS, cutover, another resource change, or Layer 2.
 
 ## Completed
 
@@ -107,7 +107,7 @@
 
 ## Current Task
 
-`PROD-02H — Alibaba Runtime-Only Acceptance` is **Complete — Current Host Rejected**. GitHub Actions run `31817102343` built and independently reverified source `639baa9596a17f4160521f31440d9e3ac3b12eda` as artifact `9225471228` (ZIP SHA-256 `6472f6cd5cd33f4a6af7a836b6617cfd47dd9a3115e8d342ba75f28becaf98fe`). The formal Alibaba run reached only 38,992 KiB minimum whole-host `MemAvailable`, recorded a 151,027,712-byte cgroup peak and one OOM kill, and triggered a global OOM that killed a root user-manager process and the acceptance Node process. The full verifier and compiled acceptance therefore did not complete on Alibaba. All task-owned state was removed and the host recovered with no failed units or changed listeners/configuration. This is a capacity rejection, not evidence of an artifact/native incompatibility or a deployment.
+`PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance` is **Complete — Accepted for runtime on the upgraded host**. Exact artifact `9225471228` passed the full verifier and compiled acceptance under the unchanged private-network, non-privileged, 320/384 MiB cgroup and 128 MiB whole-host headroom gates. The run measured minimum whole-host `MemAvailable=393,396 KiB`, minimum `SwapFree=1,048,572 KiB`, and cgroup peak `241,455,104` bytes with zero cgroup or kernel OOM evidence. Evidence bundle SHA-256 is `ac1de4bf4881d84e869138f3c14ab4ef7ba943b80a7121c7891e7dec0dc7a518`; the exact task stage was removed and post-cleanup host health/state matched the upgraded baseline.
 
 ## Production Preparation Status
 
@@ -125,14 +125,14 @@
 ### Alibaba production host
 
 - Target: `47.250.126.42`, an Alibaba Cloud Simple Application Server in Malaysia / Kuala Lumpur running Ubuntu 24.04.2 LTS on x86_64 with 2 vCPU.
-- Linux reports approximately 407 MiB `MemTotal`; the earlier “512 MB” label is not usable-memory evidence.
-- The 20 GB system disk has approximately 13–14 GB free after approved cleanup. A persistent 1 GiB swap file is active.
+- After the Owner-authorized upgrade, Linux reports `916,044 KiB` `MemTotal` (approximately 894.6 MiB usable), consistent with the target 1 GiB cloud specification after platform/kernel reservation.
+- The post-upgrade host exposes a 30 GiB block device, while the existing root partition/filesystem remains approximately 20 GiB with about 13 GiB free. PROD-02I does not resize or otherwise change it. A persistent 1 GiB swap file is active.
 - Verified runtimes/tools: Node.js `24.19.0`, npm `11.17.0`, Nginx `1.24.0`, Python `3.12.3`, `make`, and GCC/G++. Nginx is active and enabled; AcademicCloud is not deployed.
 - Owner-authorized cleanup removed `/opt/ajt-captcha`, `/opt/captcha_server`, and the related old reboot entry/log, releasing approximately 450 MiB.
 - A broken/half-installed Ubuntu `chromium-browser` transitional package was removed under the approved recovery. `dpkg --configure --pending`, `dpkg --audit`, and `apt-get check` then reported a healthy package state.
 - A real target-host `npm ci --omit=dev` attempt was OOM-killed; kernel/system logs corroborate the native-install memory failure. **ON-SERVER NATIVE BUILD: UNSUPPORTED.** Do not retry `npm ci`, `node-gyp`, native compilation, or frontend builds on this host.
-- Build suitability is **Failed / Unsupported** and current-host runtime suitability is **Failed / Rejected**. The formal runtime-only run fell to 38,992 KiB `MemAvailable`, below the 131,072 KiB gate, and caused global OOM despite approximately 1 GiB swap remaining free. Do not repeat production acceptance on this host size.
-- No server purchase or upgrade was added during this preparation. Actual incremental cost: **0 RMB**.
+- On-server build suitability remains **Failed / Unsupported**. The approximately 407 MiB pre-upgrade runtime result remains historically **Rejected**. On the upgraded host, exact artifact `9225471228` completed SQLite `3.53.4`, Argon2id `m=65536,t=3,p=1`, both ELF64 x86-64 native-module checks, and the full compiled migration/session/maintenance/backup/restore/redeploy acceptance, so runtime suitability is now **Accepted** without changing the accepted security or durability boundaries.
+- The Owner reports the RAM upgrade complete; Linux reports `916,044 KiB` `MemTotal`, consistent with a 1 GiB-class cloud specification after platform/kernel reservation. The billing amount and console transaction are not recorded in the repository. PROD-02I performed no additional paid-resource action.
 
 ## Approved Layer 1 Technical Baseline
 
@@ -156,7 +156,7 @@
 - Docker, WSL, PostgreSQL, Redis, and similar infrastructure are not currently required dependencies.
 - The C: drive has approximately 9.6 GiB free; dependency and cache size should remain controlled.
 - GitHub HTTPS currently has a certificate-trust error. Record this as an environment risk for later handling; do not change VPN, certificates, or network configuration without approval.
-- The target Ubuntu host reports approximately 407 MiB `MemTotal`; its on-server native production install and isolated production-artifact runtime acceptance both caused OOM. Builds must remain in compatible Linux CI, and this host size is not accepted for production runtime.
+- The target Ubuntu host reports `916,044 KiB` `MemTotal` after the Owner-reported 1 GiB upgrade. Builds remain in compatible Linux CI; `PROD-02I` accepted runtime suitability under the unchanged 320/384 MiB cgroup and 128 MiB whole-host headroom gates.
 
 ## Layer 1 Coverage
 
@@ -172,11 +172,11 @@
 
 ## Current Constraints
 
-- Layer 1 local exit criteria are complete; production remains closed after the runtime capacity rejection, and no next task or Layer 2 work starts automatically.
+- Layer 1 local exit criteria and the upgraded-host runtime suitability gate are complete; production remains closed because deployment, live OSS, DNS/TLS, backup, and cutover gates are not executed, and no next task or Layer 2 work starts automatically.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - Never repeat npm/native/frontend builds on the Alibaba production host; it is a runtime-only acceptance target.
-- Do not repeat runtime pressure acceptance on the current approximately 407 MiB host. A RAM/server change has real-cost implications and requires an explicit Owner decision.
+- The completed Owner-authorized 1 GiB upgrade and bounded PROD-02I re-acceptance do not authorize another resource change or any weakening of the accepted gates.
 - Do not treat GitHub repository/bootstrap readiness as live OSS, DNS/TLS, application deployment, or runtime acceptance.
 - No OCR/RAG/connectors.
 - No architecture expansion without approval.
@@ -187,7 +187,8 @@ The approved sequence is:
 
 1. `PROD-02R — Repository Reconciliation + Windows Git SSH`: complete.
 2. `PROD-02G — GitHub Actions Linux Production Build`: complete.
-3. `PROD-02H — Alibaba Runtime-Only Acceptance`: complete with current-host runtime suitability rejected and cleanup/recovery verified.
-4. No task is Ready. An Owner decision on paid capacity is required before any new production task; real OSS, DNS/TLS, cutover, and Layer 2 remain closed.
+3. `PROD-02H — Alibaba Runtime-Only Acceptance`: complete with pre-upgrade host-state runtime suitability rejected and cleanup/recovery verified.
+4. `PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance`: complete with upgraded-host runtime suitability accepted, exact evidence retained, and cleanup/recovery verified.
+5. Real OSS, DNS/TLS, cutover, and Layer 2 remain closed regardless of this task's result.
 
 Layer 2 remains deferred.

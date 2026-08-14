@@ -2,23 +2,35 @@
 
 ## Current Phase
 
-**Layer 1 — Basic Private Cloud Storage: Locally Complete; Production Closed After Runtime Rejection**
+**Layer 1 — Basic Private Cloud Storage: Locally Complete; 1 GiB Runtime Accepted; Production Still Closed**
 
 ## In Progress
 
-None.
+None. No future production or Layer 2 task becomes Ready automatically.
 
 ## Completed
 
+### PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance
+
+**Status:** Done — upgraded Alibaba host accepted for runtime; production still closed
+
+Completion notes:
+- [x] confirmed Linux `MemTotal=916,044 KiB`, healthy systemd/SSH/Nginx/networking services, unchanged Nginx/listeners, no current-boot OOM, and no PROD-02H or AcademicCloud deployment residue before the run
+- [x] revalidated GitHub artifact `9225471228`, source `639baa9596a17f4160521f31440d9e3ac3b12eda`, and ZIP SHA-256 `6472f6cd5cd33f4a6af7a836b6617cfd47dd9a3115e8d342ba75f28becaf98fe`
+- [x] passed the unchanged private-network, `nobody:nogroup`, 320/384 MiB cgroup acceptance with minimum `MemAvailable=393,396 KiB`, minimum `SwapFree=1,048,572 KiB`, cgroup peak `241,455,104` bytes, and zero cgroup/kernel OOM evidence
+- [x] passed SQLite `3.53.4`, Argon2id `m=65536,t=3,p=1`, both exact ELF64 x86-64 native modules, and compiled migration, login, health/readiness, restart/session, maintenance, backup/restore, and redeploy acceptance
+- [x] retained evidence bundle SHA-256 `ac1de4bf4881d84e869138f3c14ab4ef7ba943b80a7121c7891e7dec0dc7a518`, precisely removed the task stage, and confirmed zero failed units, unchanged services/Nginx/listeners, absent deployment paths, and no current-boot OOM after cleanup
+- [x] ran no npm/install/build/native compilation or deployment on Alibaba; changed no live OSS, DNS/TLS, credentials, production data, cutover, system configuration, mounted root filesystem, or additional paid resource
+
 ### PROD-02H — Alibaba Runtime-Only Acceptance
 
-**Status:** Done — current Alibaba host rejected
+**Status:** Done — pre-upgrade Alibaba host state rejected
 
 Completion notes:
 - [x] rebuilt source `639baa9596a17f4160521f31440d9e3ac3b12eda` after correcting the production systemd `AF_NETLINK` allowlist; GitHub Actions run `31817102343` and its fresh-runner verification both passed
 - [x] revalidated artifact `9225471228`, ZIP SHA-256 `6472f6cd5cd33f4a6af7a836b6617cfd47dd9a3115e8d342ba75f28becaf98fe`, the manifest, the corrected unit, Linux native modules, SQLite, Argon2id, and compiled acceptance before transfer
 - [x] ran the exact artifact on Alibaba under a non-privileged, private-network transient unit with no npm/install/build, deployment, real credential, or live OSS access
-- [x] rejected current-host suitability after 38,992 KiB minimum `MemAvailable`, a 151,027,712-byte cgroup peak, one OOM kill, and a kernel-confirmed global OOM prevented full runtime verification
+- [x] rejected pre-upgrade host-state suitability after 38,992 KiB minimum `MemAvailable`, a 151,027,712-byte cgroup peak, one OOM kill, and a kernel-confirmed global OOM prevented full runtime verification
 - [x] retained non-secret evidence, removed every task-owned stage/unit/process/temp file, and confirmed system recovery, unchanged Nginx hash/listeners, absent deployment paths, and zero failed units
 - [x] added 0 RMB cost and performed no OSS, DNS/TLS, production-data, credential, live-host system-configuration, cutover, or Layer 2 change
 
@@ -289,11 +301,11 @@ Completion notes:
 
 ## Ready
 
-None. The current host failed the mandatory runtime capacity gate. A paid RAM/server decision belongs to the Owner and does not become Ready automatically; OSS, DNS/TLS, cutover, and Layer 2 remain closed.
+None. `PROD-02I` is complete, but live deployment, OSS, DNS/TLS, backup, and cutover remain outside the completed task and require explicit future authorization. No Layer 2 task becomes Ready automatically.
 
 ## Backlog — Layer 1
 
-- None. Do not create a capacity-change task without explicit Owner authorization.
+- None after the current re-acceptance task.
 
 ## Explicitly Deferred
 
