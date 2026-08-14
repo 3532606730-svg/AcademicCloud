@@ -65,6 +65,8 @@ Started from clean local and private GitHub `main` at `704ed3ae4762e1e6b3c73e5d2
 - Added repository-owned production artifact preparation, native-prebuild pruning, deterministic manifest/archive generation, SHA-256 verification, archive traversal defense, policy checks, ELF64 x86-64 validation, SQLite/Argon2 runtime probes, and compiled acceptance rerun.
 - Passed the complete applicable local gate: 88 backend tests, 22 frontend tests, type-check, production build, compiled acceptance, full/production audits with zero vulnerabilities, and the Argon2 benchmark.
 - Passed JavaScript syntax, YAML lint, whitespace, and targeted secret checks; independent read-only Reviewer approved the first push with no blockers.
+- Pushed checkpoint `f36f8dee21a3b30771a4ee6db0142605a82cdc87`, opened draft PR #1, and inspected real Actions run `31812031469`; the Linux gate passed through production-only install before the artifact policy correctly rejected a locked dependency's Visual Studio `.vs/slnx.sqlite` cache.
+- Added targeted pruning of `.vs` development-tool directories inside production `node_modules` while retaining hard rejection of `.vs` directories and SQLite files in the final artifact.
 
 ## Remaining
 
@@ -78,8 +80,8 @@ None.
 
 ## Last Verification
 
-2026-08-14: local implementation gate passed (backend 88/88; frontend 22/22; type-check; production build; compiled acceptance; both npm audits at zero vulnerabilities; Argon2id hash 80 ms, verify 77 ms, peak RSS 117.2 MiB on local Node.js `v24.16.0`); `node --check`, YAML lint, `git diff --check`, targeted secret scan, and independent read-only review passed. Local HEAD and SSH remote `main` remain `704ed3ae4762e1e6b3c73e5d27f7c858fb3b0d84`; Alibaba was not accessed.
+2026-08-14: GitHub Actions run `31812031469` on Ubuntu 24.04.4 x86_64, Node.js `v24.19.0`, and npm `11.17.0` passed clean install, backend 88/88, frontend 22/22, type-check, production build, compiled acceptance, both audits at zero vulnerabilities, Argon2id benchmark (hash 165 ms, verify 116 ms, peak RSS 150.3 MiB), and production-only install. Finalize then correctly failed on `node_modules/dateformat/.vs/slnx.sqlite`; the targeted cache-pruning fix is pending its rerun. Alibaba was not accessed.
 
 ## Next Action
 
-Create the first clean Git checkpoint, push `codex/prod-02g` over the dedicated SSH transport, open the draft PR, and observe the real Linux production build.
+Review and commit the targeted `.vs` cache-pruning fix, push it through the dedicated SSH transport, and inspect the replacement Linux run.

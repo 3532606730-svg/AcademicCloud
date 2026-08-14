@@ -131,6 +131,7 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     copyRequired(source, releaseDirectory);
   }
 
+  pruneNonRuntimePackageFiles(releaseDirectory);
   pruneNonTargetNativeModules(releaseDirectory);
   validateReleasePolicy(releaseDirectory);
   const files = collectManifestEntries(releaseDirectory);
@@ -320,7 +321,27 @@ function validateReleasePolicy(releaseDirectory) {
     const lowerPath = entry.path.toLowerCase();
     assert.ok(!/(^|\/)\.env($|\.)/u.test(lowerPath), `environment file included: ${entry.path}`);
     assert.ok(!/\.(sqlite(?:-(?:wal|shm))?|log|exe|dll|cmd|ps1)$/u.test(lowerPath), `forbidden artifact file: ${entry.path}`);
-    assert.ok(!/(^|\/)(coverage|\.git|\.vite)(\/|$)/u.test(lowerPath), `cache or repository metadata included: ${entry.path}`);
+    assert.ok(!/(^|\/)(coverage|\.git|\.vite|\.vs)(\/|$)/u.test(lowerPath), `cache or repository metadata included: ${entry.path}`);
+  }
+}
+
+function pruneNonRuntimePackageFiles(releaseDirectory) {
+  const nodeModulesDirectory = join(releaseDirectory, "node_modules");
+  const removableDirectories = [];
+  visit(nodeModulesDirectory);
+  for (const directory of removableDirectories) rmSync(directory, { recursive: true, force: true });
+
+  function visit(directory) {
+    for (const name of readdirSync(directory)) {
+      const candidate = join(directory, name);
+      const stats = lstatSync(candidate);
+      if (!stats.isDirectory()) continue;
+      if (name === ".vs") {
+        removableDirectories.push(candidate);
+      } else {
+        visit(candidate);
+      }
+    }
   }
 }
 
