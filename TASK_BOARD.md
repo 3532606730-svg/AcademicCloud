@@ -6,22 +6,23 @@
 
 ## In Progress
 
-### PROD-02R — Repository Reconciliation + Windows Git SSH
-
-**Status:** In Progress
-
-Goal: reconcile the repository-backed production-preparation record and establish a dedicated Windows-to-GitHub SSH Git path for `D:\Projects\AcademicCloud`, without using the broken Windows HTTPS credential path.
-
-Acceptance criteria:
-- [x] local `main` and private GitHub `main` start at bootstrap checkpoint `621b19a16e620f1a8a9ba6993bb927ae2d620748`
-- [x] actual Alibaba host, cleanup, package recovery, native-build OOM, runtime-unknown, relay, retained bootstrap credential, and 0 RMB cost facts are recorded without claiming deployment success
-- [x] dedicated Windows GitHub Ed25519 key exists outside the repository with restricted private-key ACLs; the Alibaba key was not reused
-- [x] the Owner has registered the public key in GitHub as an authentication key
-- [x] strict GitHub host verification and SSH authentication pass for `3532606730-svg`
-- [ ] repository `origin`, remote read, documentation-only checkpoint, first direct Windows SSH push, and post-push connector verification pass
-- [ ] Alibaba remains unchanged and no GitHub Actions workflow is created or triggered
+None. `PROD-02R` is complete; stop before starting the Ready task.
 
 ## Completed
+
+### PROD-02R — Repository Reconciliation + Windows Git SSH
+
+**Status:** Done
+
+Completion notes:
+- [x] reconciled GitHub bootstrap and Alibaba preparation facts without claiming deployment or runtime acceptance
+- [x] recorded target-host native-build OOM as unsupported while keeping runtime suitability not yet tested
+- [x] removed target-host native install/build instructions and fixed the CI artifact → runtime-only sequence
+- [x] created a dedicated ACL-restricted Windows GitHub Ed25519 key without reusing the Alibaba key
+- [x] verified GitHub's official Ed25519 host fingerprint, strict SSH authentication as `3532606730-svg`, and repository-scoped SSH configuration
+- [x] switched `origin`, read private `main`, committed, pushed directly from Windows, and verified the pushed commit through both SSH and the connected GitHub integration
+- [x] passed documentation review, `git diff --check`, targeted secret scan, and independent read-only review
+- [x] changed no Alibaba host state, created no Actions workflow, disabled no TLS/SSH verification, and added no cost
 
 ### SETUP-001 — Project Knowledge Setup
 
@@ -262,7 +263,11 @@ Completion notes:
 
 ## Ready
 
-`PROD-02G — GitHub Actions Linux Production Build` becomes the next task only after `PROD-02R` passes. Then `PROD-02H — Alibaba Runtime-Only Acceptance` follows. Real OSS, DNS/TLS, and cutover remain later approval gates; Layer 2 remains deferred.
+### PROD-02G — GitHub Actions Linux Production Build
+
+**Status:** Ready
+
+Goal: build and verify the Linux x86_64/Node 24 production artifact in GitHub Actions without deploying it. Begin only in a separate task. `PROD-02H — Alibaba Runtime-Only Acceptance` follows after it passes; real OSS, DNS/TLS, cutover, and Layer 2 remain deferred.
 
 ## Backlog — Layer 1
 

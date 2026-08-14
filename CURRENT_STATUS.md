@@ -10,7 +10,7 @@
 
 ## Current Objective
 
-Complete `PROD-02R — Repository Reconciliation + Windows Git SSH`, then stop before the separately approved `PROD-02G` GitHub Actions build task. No Layer 2 work is authorized.
+`PROD-02R — Repository Reconciliation + Windows Git SSH` is complete. Stop at this checkpoint before the separately approved `PROD-02G — GitHub Actions Linux Production Build` task. No Layer 2 work is authorized.
 
 ## Completed
 
@@ -107,7 +107,7 @@ Complete `PROD-02R — Repository Reconciliation + Windows Git SSH`, then stop b
 
 ## Current Task
 
-`PROD-02R — Repository Reconciliation + Windows Git SSH` is **In Progress**. It reconciles the durable production-preparation record and replaces the broken Windows GitHub HTTPS dependency with a dedicated Windows-to-GitHub SSH transport. It does not deploy the application or mutate Alibaba Cloud.
+`PROD-02R — Repository Reconciliation + Windows Git SSH` is **Done**. The durable production-preparation record is reconciled, the dedicated strict Windows SSH transport is operational, and the first direct SSH push plus independent GitHub connector verification passed. The task did not deploy the application or mutate Alibaba Cloud.
 
 ## Production Preparation Status
 
@@ -117,6 +117,7 @@ Complete `PROD-02R — Repository Reconciliation + Windows Git SSH`, then stop b
 - The complete original Git history was bootstrapped to GitHub; the bootstrap checkpoint on `main` is `621b19a16e620f1a8a9ba6993bb927ae2d620748` (`feat: complete Layer 1 deployment acceptance`).
 - The connected GitHub integration can read the private repository.
 - Windows GitHub HTTPS still fails certificate trust and is intentionally deferred. This repository now uses a repository-scoped SSH transport with a dedicated Windows GitHub key, strict host verification, and successful authentication as `3532606730-svg`.
+- The first direct Windows SSH push and post-push connector read both verified the reconciliation checkpoint on private `main`.
 - The one-time local bundle → Alibaba host → private GitHub relay passed. The `AcademicCloud Alibaba Bootstrap` write deploy key is a **TEMPORARY WRITE CREDENTIAL — RETAINED BY OWNER DECISION**.
 
 ### Alibaba production host
@@ -181,9 +182,9 @@ Complete `PROD-02R — Repository Reconciliation + Windows Git SSH`, then stop b
 
 The approved sequence is:
 
-1. Phase A: complete `PROD-02R — Repository Reconciliation + Windows Git SSH`.
-2. Execute `PROD-02G — GitHub Actions Linux Production Build` as a separate task.
-3. Execute `PROD-02H — Alibaba Runtime-Only Acceptance` as a separate task.
+1. `PROD-02R — Repository Reconciliation + Windows Git SSH`: complete.
+2. Next Ready task: `PROD-02G — GitHub Actions Linux Production Build`.
+3. Then execute `PROD-02H — Alibaba Runtime-Only Acceptance` as a separate task.
 4. Only after runtime acceptance passes, proceed through separately approved real OSS, DNS/TLS, and production-cutover gates.
 
 Layer 2 remains deferred.
