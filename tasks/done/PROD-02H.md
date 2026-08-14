@@ -26,15 +26,15 @@ Prove or reject runtime suitability of the verified Linux x86_64 / Node.js 24 pr
 
 ## Acceptance Criteria
 
-- [ ] the exact final-main artifact is revalidated locally and on Alibaba before extraction
-- [ ] Alibaba remains Ubuntu 24.04 x86_64 with Node.js 24.x and no on-server npm/build/install is run
-- [ ] the artifact verifier passes on Alibaba from a private-network, least-privilege transient execution boundary
-- [ ] better-sqlite3 executes SQLite operations, Argon2id hashes/verifies, both approved native modules are ELF64 x86-64, and compiled acceptance passes from the extracted artifact
-- [ ] representative acceptance records total-system `MemAvailable`, swap, cgroup, timing, and OOM evidence; runtime suitability is accepted only if at least 128 MiB remains with no OOM kill or swap exhaustion
-- [ ] all temporary credentials, databases, processes, listeners, transient units, and task-owned host files are removed after evidence retrieval
-- [ ] AcademicCloud remains undeployed; Nginx, systemd configuration, firewall, OSS, DNS/TLS, production data, and existing credentials remain unchanged
-- [ ] applicable local checks, targeted secret scan, diff review, and independent read-only review pass
-- [ ] final local/private GitHub `main` match, worktree is clean, added cost is 0 RMB, and no future task or Layer 2 work starts
+- [x] the exact corrected GitHub artifact is revalidated locally and on Alibaba before extraction
+- [x] Alibaba remains Ubuntu 24.04 x86_64 with Node.js 24.x and no on-server npm/build/install is run
+- [x] the artifact verifier is executed from a private-network, least-privilege transient boundary and its exact failed outcome is captured; runtime suitability is accepted only if the verifier passes
+- [x] GitHub build and fresh-runner evidence validates better-sqlite3, Argon2id, both ELF64 x86-64 native modules, and compiled acceptance; the Alibaba full verifier/compiled acceptance non-completion is explicitly recorded as a host rejection
+- [x] representative acceptance records total-system `MemAvailable`, swap, cgroup, timing, and OOM evidence; runtime suitability is rejected because only 38,992 KiB remained and OOM occurred
+- [x] all temporary credentials, databases, processes, listeners, transient units, and task-owned host files are removed after evidence retrieval
+- [x] AcademicCloud remains undeployed; live-host Nginx/systemd configuration, firewall, OSS, DNS/TLS, production data, and existing credentials remain unchanged
+- [x] applicable local checks, targeted secret scan, diff review, and independent read-only review pass
+- [x] final local/private GitHub `main` match, worktree is clean, added cost is 0 RMB, and no future task or Layer 2 work starts
 
 ## Relevant ADRs
 
@@ -54,11 +54,11 @@ Prove or reject runtime suitability of the verified Linux x86_64 / Node.js 24 pr
 - `docs/deployment/production-runbook.md`
 - `CURRENT_STATUS.md`
 - `TASK_BOARD.md`
-- `tasks/doing/PROD-02H.md`
+- `tasks/done/PROD-02H.md`
 
 ## Current State
 
-Started from clean local and private GitHub `main` at `82b088c0e0e9ed4a6eceb4401679aa43ec6b4c9a` on branch `codex/prod-02h`. Final-main Actions run `31813055501` and artifact `9223908043` passed build and fresh-runner verification. Alibaba attempt 1 verified the exact artifact identity but rejected runtime suitability: compiled acceptance could not start the API and minimum whole-host `MemAvailable` fell to 45,324 KiB, below the 128 MiB gate. A diagnostic-only repeat traced the API failure to the production systemd address-family allowlist omitting `AF_NETLINK`; the repository unit, exact test, and runtime harness are now corrected, but a new artifact must be built and verified before the final host repeat. AcademicCloud remains undeployed.
+Complete with an executed-and-rejected result. The corrected GitHub artifact is valid, but the current approximately 407 MiB Alibaba host cannot sustain the production security/durability workload while retaining the mandatory 128 MiB whole-host headroom. Production remains closed and AcademicCloud remains undeployed.
 
 ## Completed
 
@@ -69,21 +69,24 @@ Started from clean local and private GitHub `main` at `82b088c0e0e9ed4a6eceb4401
 - Ran one diagnostic-only repeat under the same isolation and limits. It showed `ali-oss` module initialization calling `os.networkInterfaces()` and failing with `EAFNOSUPPORT` because `AF_NETLINK` was absent; no live OSS request was possible or made.
 - Corrected the production unit, exact deployment test, and acceptance harness to allow `AF_NETLINK` while retaining `PrivateNetwork=yes`; the targeted deployment test passes 3/3.
 - Retrieved non-secret attempt evidence locally and removed every task-owned staging directory; the transient unit is absent, deployment paths remain absent, Nginx remains active/enabled, and listeners remain unchanged.
+- Committed and pushed the production unit correction, then ran the real GitHub Actions Linux build `31817102343`; both jobs passed for source `639baa9596a17f4160521f31440d9e3ac3b12eda` and artifact `9225471228`.
+- Revalidated ZIP SHA-256 `6472f6cd5cd33f4a6af7a836b6617cfd47dd9a3115e8d342ba75f28becaf98fe`, archive SHA-256 `0985f32c9ed063d3d9e37a97f3f7c80fab4235dbf13e59fe2b67dafb318254f9`, the 4,619-file manifest, corrected unit, runtime evidence, and fresh-runner result before transfer.
+- Ran the corrected exact artifact through the original non-diagnostic Alibaba harness. It recorded 367 samples, 38,992 KiB minimum `MemAvailable`, 1,048,572 KiB minimum `SwapFree`, a 151,027,712-byte cgroup peak, one cgroup OOM kill, and kernel-confirmed global OOM; full verifier evidence was not produced.
+- Preserved the final evidence bundle locally with SHA-256 `01e10bfe7d84f883e1e0b67bbcdfd57e6b4bb7d768de7551731551ec161fa5d5`, then removed the exact remote stage.
+- Verified recovery: systemd overall `running`, zero failed units, all critical services active, no later OOM, unchanged Nginx aggregate/listeners, no acceptance unit/stage/deployment paths, and no application deployment.
 
 ## Remaining
 
-- Commit and push the deployment fix, run a new GitHub Linux production build, and independently verify/download its immutable artifact.
-- Repeat the original (non-diagnostic) Alibaba acceptance with the new exact artifact, retrieve evidence, and clean the task-owned stage.
-- Complete independent review, durable records, Git checkpoint, SSH push, and final equality checks.
+None.
 
 ## Blockers
 
-No execution blocker. Production runtime suitability remains unaccepted unless the rebuilt artifact completes runtime verification and retains at least 128 MiB whole-host `MemAvailable`.
+None for task completion. Production progression is blocked by the rejected host capacity; any paid RAM/server change requires an explicit Owner decision.
 
 ## Last Verification
 
-2026-08-14: targeted deployment artifact tests pass 3/3 and remote `bash -n` passes for the harness. Attempt 1 and diagnostic reports are retained under ignored local `output/prod-02h-evidence/`; all Alibaba staging paths are absent, the transient unit is `not-found`, `/opt/academiccloud`, `/etc/academiccloud`, and `/var/lib/academiccloud` remain absent, Nginx is active/enabled, and existing listeners remain unchanged.
+2026-08-15: run `31817102343` and both jobs passed; artifact `9225471228` identity and contents passed local/Reviewer checks. The exact Alibaba run failed the 128 MiB gate with global OOM. Final evidence and cleanup/recovery passed independent read-only review: system state `running`, zero failed units, critical services active, Nginx hash `cb5d4fbec0712ab7911dbd4973ca42b3305852d91da33d739e530099dd13670c`, listeners unchanged, no later OOM, no acceptance unit/stage/deployment path, and 0 RMB added cost.
 
 ## Next Action
 
-Create and push the focused deployment-fix checkpoint, dispatch the Linux production build on its exact commit, and use only the resulting verified artifact for the final Alibaba repeat.
+Stop. Do not create a capacity-change task, retry pressure acceptance, or enter OSS/DNS/TLS/cutover/Layer 2 unless the Owner explicitly authorizes the mandatory real-cost boundary.

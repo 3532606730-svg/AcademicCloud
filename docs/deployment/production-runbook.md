@@ -23,6 +23,8 @@ Verify on the target host:
 
 Abort if any preflight fails. Do not weaken database durability, password hashing, authorization, or hardening to fit the host; increase memory instead.
 
+`PROD-02H` measured the current approximately 407 MiB Alibaba host and failed this gate: minimum whole-host `MemAvailable` was 38,992 KiB and a global OOM occurred. The current host size is not eligible for another deployment window. Any RAM/server change has real-cost implications and requires explicit Owner approval before this preflight may be repeated.
+
 ## Build and release preparation
 
 Do not build or install dependencies on the approximately 407 MiB production
@@ -182,12 +184,14 @@ Never downgrade a database with ad hoc SQL. Never switch releases while retainin
 - Run compiled maintenance through `academiccloud_op` during a maintenance window. Dry-run first. Apply only after inspection and with the web process stopped as documented in the security/reliability guide.
 - Rerun the Argon2 benchmark after Node/native dependency/host changes. The
   checked-in memory limits are only starting hypotheses: the host reports about
-  407 MiB `MemTotal`, so keep or revise them only after measuring total Ubuntu,
-  Nginx, Node, and native-module runtime headroom. Build failure is established;
-  runtime suitability is not yet tested.
+  407 MiB `MemTotal`. `PROD-02H` measured the corrected production artifact under
+  the 320/384 MiB service bounds: cgroup peak was 151,027,712 bytes, minimum
+  whole-host `MemAvailable` was 38,992 KiB, and global OOM killed the acceptance
+  process. Runtime suitability for this host size is rejected. Do not weaken
+  hashing, durability, or service hardening to make it fit.
 - Certificate renewal must include automated `nginx -t` and reload verification.
 - Rotate long-lived RAM credentials through the approved secret procedure, restart, verify readiness and an authorized storage smoke, then revoke the prior credential. A static STS token is not a rotation solution.
 
 ## Deferred live acceptance
 
-The repository completes deterministic local acceptance only. Before exposing production, an approved operator must record evidence for real TLS/DNS, Nginx/systemd on Ubuntu, firewall/listener state, exact OSS CORS and metadata behavior, anonymous-access denial, representative byte upload/download/delete, off-host encrypted backup, isolated production restore, and runtime headroom on the approximately 407 MiB host. Any failure keeps production closed.
+The repository completes deterministic acceptance and a rejected runtime-only host trial; it is not live-accepted. Before exposing production, an approved operator must record evidence for runtime headroom on an Owner-approved host, real TLS/DNS, Nginx/systemd on Ubuntu, firewall/listener state, exact OSS CORS and metadata behavior, anonymous-access denial, representative byte upload/download/delete, off-host encrypted backup, and isolated production restore. Any failure keeps production closed.

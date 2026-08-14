@@ -1,16 +1,16 @@
 # AcademicCloud Current Status
 
-**Last updated:** 2026-08-14
+**Last updated:** 2026-08-15
 
 ## Current Layer
 
-**Layer 1 — Basic Private Cloud Storage: Locally Complete; Production Preparation In Progress**
+**Layer 1 — Basic Private Cloud Storage: Locally Complete; Production Closed After Runtime Rejection**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete at the deterministic local boundary. Owner-approved production preparation is now in progress, but the application has not been deployed and live OSS, DNS, TLS, cutover, and runtime acceptance have not been executed.
+`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete at the deterministic local boundary. Owner-approved artifact and runtime-only preparation has been executed, but the current Alibaba host failed the runtime capacity gate. The application has not been deployed, and live OSS, DNS, TLS, and cutover have not been executed.
 
 ## Current Objective
 
-Execute `PROD-02H — Alibaba Runtime-Only Acceptance`, then stop. This task may use only the verified artifact in isolated temporary acceptance; it may not install, build, deploy, contact live OSS, change DNS/TLS, or enter Layer 2.
+`PROD-02H — Alibaba Runtime-Only Acceptance` is complete with a **Rejected** current-host result. Stop with no task Ready while the Owner decides whether to authorize a paid RAM/server change; do not weaken Argon2id, durability, or systemd boundaries, and do not proceed to OSS, DNS/TLS, cutover, or Layer 2.
 
 ## Completed
 
@@ -107,7 +107,7 @@ Execute `PROD-02H — Alibaba Runtime-Only Acceptance`, then stop. This task may
 
 ## Current Task
 
-`PROD-02H — Alibaba Runtime-Only Acceptance` is **In Progress** on `codex/prod-02h`. It tests the verified final-main artifact in a temporary least-privilege/private-network boundary on the existing Alibaba host, measures the 128 MiB runtime-headroom gate, retrieves evidence, and removes all task-owned host state. It does not authorize installation, build, deployment, live OSS, DNS/TLS, credentials, production data, or Layer 2 work.
+`PROD-02H — Alibaba Runtime-Only Acceptance` is **Complete — Current Host Rejected**. GitHub Actions run `31817102343` built and independently reverified source `639baa9596a17f4160521f31440d9e3ac3b12eda` as artifact `9225471228` (ZIP SHA-256 `6472f6cd5cd33f4a6af7a836b6617cfd47dd9a3115e8d342ba75f28becaf98fe`). The formal Alibaba run reached only 38,992 KiB minimum whole-host `MemAvailable`, recorded a 151,027,712-byte cgroup peak and one OOM kill, and triggered a global OOM that killed a root user-manager process and the acceptance Node process. The full verifier and compiled acceptance therefore did not complete on Alibaba. All task-owned state was removed and the host recovered with no failed units or changed listeners/configuration. This is a capacity rejection, not evidence of an artifact/native incompatibility or a deployment.
 
 ## Production Preparation Status
 
@@ -119,6 +119,7 @@ Execute `PROD-02H — Alibaba Runtime-Only Acceptance`, then stop. This task may
 - Windows GitHub HTTPS still fails certificate trust and is intentionally deferred. This repository now uses a repository-scoped SSH transport with a dedicated Windows GitHub key, strict host verification, and successful authentication as `3532606730-svg`.
 - The first direct Windows SSH push and post-push connector read both verified the reconciliation checkpoint on private `main`.
 - GitHub Actions run `31812294336` passed the full Linux production build and fresh-runner artifact download/verification chain. The immutable GitHub artifact ZIP digest is `405a2cd2330f1a9294fe277a01d0bee7048b4b5829764af3e27d3aa174c2cf7d`; its release archive digest is `fe28ea66b8e4c88888572932c8195ec4bb23c5345f10a7aa9658c3f6ebe9d630`.
+- After target diagnostics exposed a missing `AF_NETLINK` systemd allowlist entry, run `31817102343` passed the corrected Linux build and fresh-runner verification for source `639baa9596a17f4160521f31440d9e3ac3b12eda`. Artifact `9225471228` contains the corrected unit and independently passed SQLite, Argon2id, native ELF64 x86-64, and compiled acceptance before the separate Alibaba capacity rejection.
 - The one-time local bundle → Alibaba host → private GitHub relay passed. The `AcademicCloud Alibaba Bootstrap` write deploy key is a **TEMPORARY WRITE CREDENTIAL — RETAINED BY OWNER DECISION**.
 
 ### Alibaba production host
@@ -130,7 +131,7 @@ Execute `PROD-02H — Alibaba Runtime-Only Acceptance`, then stop. This task may
 - Owner-authorized cleanup removed `/opt/ajt-captcha`, `/opt/captcha_server`, and the related old reboot entry/log, releasing approximately 450 MiB.
 - A broken/half-installed Ubuntu `chromium-browser` transitional package was removed under the approved recovery. `dpkg --configure --pending`, `dpkg --audit`, and `apt-get check` then reported a healthy package state.
 - A real target-host `npm ci --omit=dev` attempt was OOM-killed; kernel/system logs corroborate the native-install memory failure. **ON-SERVER NATIVE BUILD: UNSUPPORTED.** Do not retry `npm ci`, `node-gyp`, native compilation, or frontend builds on this host.
-- Build suitability is **Failed / Unsupported**. AcademicCloud runtime suitability is **Not Yet Tested**. The next path is GitHub Actions Linux build → verified artifact → Alibaba runtime-only acceptance.
+- Build suitability is **Failed / Unsupported** and current-host runtime suitability is **Failed / Rejected**. The formal runtime-only run fell to 38,992 KiB `MemAvailable`, below the 131,072 KiB gate, and caused global OOM despite approximately 1 GiB swap remaining free. Do not repeat production acceptance on this host size.
 - No server purchase or upgrade was added during this preparation. Actual incremental cost: **0 RMB**.
 
 ## Approved Layer 1 Technical Baseline
@@ -155,7 +156,7 @@ Execute `PROD-02H — Alibaba Runtime-Only Acceptance`, then stop. This task may
 - Docker, WSL, PostgreSQL, Redis, and similar infrastructure are not currently required dependencies.
 - The C: drive has approximately 9.6 GiB free; dependency and cache size should remain controlled.
 - GitHub HTTPS currently has a certificate-trust error. Record this as an environment risk for later handling; do not change VPN, certificates, or network configuration without approval.
-- The target Ubuntu host reports approximately 407 MiB `MemTotal`; its on-server native production install was OOM-killed, so builds must occur in a compatible Linux CI environment and runtime capacity remains unproven.
+- The target Ubuntu host reports approximately 407 MiB `MemTotal`; its on-server native production install and isolated production-artifact runtime acceptance both caused OOM. Builds must remain in compatible Linux CI, and this host size is not accepted for production runtime.
 
 ## Layer 1 Coverage
 
@@ -171,10 +172,11 @@ Execute `PROD-02H — Alibaba Runtime-Only Acceptance`, then stop. This task may
 
 ## Current Constraints
 
-- Layer 1 local exit criteria are complete; production preparation is active, but do not begin Layer 2 automatically.
+- Layer 1 local exit criteria are complete; production remains closed after the runtime capacity rejection, and no next task or Layer 2 work starts automatically.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - Never repeat npm/native/frontend builds on the Alibaba production host; it is a runtime-only acceptance target.
+- Do not repeat runtime pressure acceptance on the current approximately 407 MiB host. A RAM/server change has real-cost implications and requires an explicit Owner decision.
 - Do not treat GitHub repository/bootstrap readiness as live OSS, DNS/TLS, application deployment, or runtime acceptance.
 - No OCR/RAG/connectors.
 - No architecture expansion without approval.
@@ -185,7 +187,7 @@ The approved sequence is:
 
 1. `PROD-02R — Repository Reconciliation + Windows Git SSH`: complete.
 2. `PROD-02G — GitHub Actions Linux Production Build`: complete.
-3. `PROD-02H — Alibaba Runtime-Only Acceptance`: in progress; stop when its runtime evidence and cleanup are complete.
-4. Only after runtime acceptance passes, proceed through separately approved real OSS, DNS/TLS, and production-cutover gates.
+3. `PROD-02H — Alibaba Runtime-Only Acceptance`: complete with current-host runtime suitability rejected and cleanup/recovery verified.
+4. No task is Ready. An Owner decision on paid capacity is required before any new production task; real OSS, DNS/TLS, cutover, and Layer 2 remain closed.
 
 Layer 2 remains deferred.

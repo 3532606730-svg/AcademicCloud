@@ -71,9 +71,41 @@ SQLite `3.53.4`, successful Argon2id hash/verify, exactly the approved Argon2
 and better-sqlite3 ELF64 x86-64 modules, and successful compiled migration,
 restart/session, maintenance dry-run, backup/restore, and redeploy acceptance.
 
-This evidence proves the build artifact, not Alibaba runtime capacity or live
-deployment. Alibaba remained unchanged and must consume the verified archive
-only through the separate `PROD-02H` runtime-only acceptance task.
+This evidence proves that build artifact, not Alibaba runtime capacity or live
+deployment. The later `PROD-02H` runtime-only task rebuilt the artifact after a
+deployment-unit correction and measured the target separately.
+
+## Recorded Alibaba runtime-only acceptance
+
+`PROD-02H` corrected the production systemd address-family allowlist to include
+`AF_NETLINK`, which `ali-oss` needs to enumerate network interfaces during module
+initialization. `PrivateNetwork=yes` remained on the transient acceptance unit,
+so this correction did not permit a live OSS request. GitHub Actions run
+`31817102343` then built source commit
+`639baa9596a17f4160521f31440d9e3ac3b12eda`; both the Linux build/runtime job and
+fresh-runner artifact download/verification job passed. Artifact `9225471228`
+has ZIP SHA-256
+`6472f6cd5cd33f4a6af7a836b6617cfd47dd9a3115e8d342ba75f28becaf98fe`;
+its release archive SHA-256 is
+`0985f32c9ed063d3d9e37a97f3f7c80fab4235dbf13e59fe2b67dafb318254f9`.
+
+The exact artifact was then exercised on the Alibaba Ubuntu 24.04 x86-64 host
+under a non-privileged, private-network transient unit with `MemoryHigh=320M`
+and `MemoryMax=384M`. The formal run recorded 367 resource samples, a
+151,027,712-byte cgroup peak, 38,992 KiB minimum whole-host `MemAvailable`, and
+1,048,572 KiB minimum `SwapFree`. The kernel recorded a global OOM and killed a
+root user-manager process and the acceptance Node process; the cgroup recorded
+one OOM kill. The full verifier and compiled acceptance did not complete on the
+host. Current-host runtime suitability is therefore **Rejected**, not passed;
+this is capacity evidence, not an artifact/native incompatibility finding.
+
+All task-owned staging, transient units, processes, and temporary data were
+removed. The host returned to `running` with zero failed units; Nginx, SSH,
+networking, resolver, D-Bus, login, time service, listeners, and the Nginx
+configuration aggregate remained unchanged. AcademicCloud was not installed or
+deployed, no live OSS/DNS/TLS/production data or credential was touched, and
+added cost remained 0 RMB. Do not repeat this pressure test at the current host
+size. A paid capacity change requires an explicit Owner decision.
 
 ## Production approval gate
 
@@ -83,11 +115,11 @@ Local acceptance is not evidence of a real Alibaba Cloud deployment. Before prod
 - real DNS, certificate issuance/renewal, TLS, redirect, headers, firewall, and loopback listener;
 - private bucket/Block Public Access, exact CORS, Versioning Disabled, and least-privilege RAM;
 - representative byte-level direct upload/download/preview/delete with external checksum comparison;
-- actual approximately 407 MiB host runtime headroom and systemd resource-limit measurement;
+- accepted runtime headroom and systemd resource-limit measurement on an Owner-approved host; the current approximately 407 MiB host failed this gate;
 - encrypted off-host backup plus isolated production-format restore rehearsal;
 - rollback pairing of application release and compatible database backup.
 
-Any failed item means Layer 1 is code-complete and deployment-ready, but not live-accepted. Do not silently waive, simulate, or mark these operations executed.
+Any failed item means Layer 1 is code-complete but production remains closed and ineligible for cutover. Do not silently waive, simulate, or mark these operations executed.
 
 Live permanent-delete evidence may use only a pre-registered, newly created,
 disposable acceptance object containing no academic or production data, with a

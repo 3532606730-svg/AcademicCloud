@@ -2,17 +2,25 @@
 
 ## Current Phase
 
-**Layer 1 — Basic Private Cloud Storage: Locally Complete; Production Preparation In Progress**
+**Layer 1 — Basic Private Cloud Storage: Locally Complete; Production Closed After Runtime Rejection**
 
 ## In Progress
 
-### PROD-02H — Alibaba Runtime-Only Acceptance
-
-**Status:** In Progress
-
-Goal: prove or reject runtime suitability of the verified production artifact on the existing Alibaba host without npm/install/build, deployment, real OSS, DNS/TLS, production data, or Layer 2 work.
+None.
 
 ## Completed
+
+### PROD-02H — Alibaba Runtime-Only Acceptance
+
+**Status:** Done — current Alibaba host rejected
+
+Completion notes:
+- [x] rebuilt source `639baa9596a17f4160521f31440d9e3ac3b12eda` after correcting the production systemd `AF_NETLINK` allowlist; GitHub Actions run `31817102343` and its fresh-runner verification both passed
+- [x] revalidated artifact `9225471228`, ZIP SHA-256 `6472f6cd5cd33f4a6af7a836b6617cfd47dd9a3115e8d342ba75f28becaf98fe`, the manifest, the corrected unit, Linux native modules, SQLite, Argon2id, and compiled acceptance before transfer
+- [x] ran the exact artifact on Alibaba under a non-privileged, private-network transient unit with no npm/install/build, deployment, real credential, or live OSS access
+- [x] rejected current-host suitability after 38,992 KiB minimum `MemAvailable`, a 151,027,712-byte cgroup peak, one OOM kill, and a kernel-confirmed global OOM prevented full runtime verification
+- [x] retained non-secret evidence, removed every task-owned stage/unit/process/temp file, and confirmed system recovery, unchanged Nginx hash/listeners, absent deployment paths, and zero failed units
+- [x] added 0 RMB cost and performed no OSS, DNS/TLS, production-data, credential, live-host system-configuration, cutover, or Layer 2 change
 
 ### PROD-02G — GitHub Actions Linux Production Build
 
@@ -281,11 +289,11 @@ Completion notes:
 
 ## Ready
 
-None while `PROD-02H` is in progress. No future production or Layer 2 task becomes Ready automatically.
+None. The current host failed the mandatory runtime capacity gate. A paid RAM/server decision belongs to the Owner and does not become Ready automatically; OSS, DNS/TLS, cutover, and Layer 2 remain closed.
 
 ## Backlog — Layer 1
 
-- None after the current ready task.
+- None. Do not create a capacity-change task without explicit Owner authorization.
 
 ## Explicitly Deferred
 
