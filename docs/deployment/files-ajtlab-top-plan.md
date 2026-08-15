@@ -7,6 +7,15 @@ no OSS custom-domain binding, no certificate upload, no Nginx reload, no
 production mutation of any kind. Every step requires a separate Owner-approved
 production window after the independent implementation review passes.
 
+> **TEMPLATE WARNING — never copy it to production literally.**
+> `deployment/nginx/academiccloud-security-headers.conf` is a GENERIC checked-in
+> template whose OSS hostname is a placeholder
+> (`academiccloud-private.oss-ap-southeast-3.aliyuncs.com`). The real production
+> site file under `/etc/nginx/snippets/` contains deployment-specific hostnames
+> (the actual private bucket origin) that must NEVER be replaced by copying the
+> generic template. The only production change this plan authorizes is adding
+> `https://files.ajtlab.top` to `img-src` and `frame-src` in the LIVE file.
+
 ## Why this exists
 
 Alibaba Cloud OSS native bucket domains force a browser download for objects
@@ -61,13 +70,27 @@ Browser  ── multipart POST▶ https://<bucket>.oss-ap-southeast-3.aliyuncs.c
    URLs have host `files.ajtlab.top` and path `/<objectKey>` — no bucket
    prefix. Backend HEAD/Delete/stat continue on the native client; upload
    authorization stays on the native bucket endpoint.
-8. **CSP**: the checked-in Nginx template
-   (`deployment/nginx/academiccloud-security-headers.conf`) already lists
-   `https://files.ajtlab.top` in `img-src` and `frame-src` only. The
-   production site file must be updated from this template and Nginx
-   validated (`nginx -t`) and reloaded in the same window. `connect-src`,
-   `form-action`, and every other directive stay unchanged; no `https:`/`*`
-   broadening.
+8. **CSP — live-file capture, add-only diff, exact restore**:
+   1. Before any mutation, read and SAVE the live production CSP: capture the
+      exact `Content-Security-Policy` value currently emitted by the running
+      production site (from the live site file
+      `/etc/nginx/snippets/academiccloud-security-headers.conf` AND from the
+      served response header, cross-checked) plus a copy of the full file.
+   2. Confirm from production configuration the current actual OSS
+      bucket/browser upload origins and preserve EVERY currently active
+      production origin and directive verbatim — including the
+      deployment-specific bucket hostname. Do NOT replace working
+      deployment-specific OSS hostnames with generic template placeholders.
+   3. Modify ONLY these two directives in the LIVE file:
+      - `img-src`: append ` https://files.ajtlab.top`
+      - `frame-src`: append ` https://files.ajtlab.top`
+   4. Diff the captured previous CSP against the candidate CSP and verify the
+      ONLY semantic additions are `https://files.ajtlab.top` in `img-src` and
+      `frame-src`; no other token may change. No `https:`/`*` broadening.
+   5. Run `nginx -t` BEFORE any reload; reload only after it passes.
+   6. Rollback must restore the EXACT captured previous CSP (file + verified
+      response header), never a reconstruction from memory or the generic
+      checked-in template.
 9. **No public bucket permission**: nothing in this plan makes the bucket or
    any object public. Preview/download remain authorization-controlled.
 10. **No permanent object exposure**: authorization duration stays short-lived
@@ -78,10 +101,11 @@ Browser  ── multipart POST▶ https://<bucket>.oss-ap-southeast-3.aliyuncs.c
     restart (application-only rollback; schema unchanged). The application
     then automatically fails inline Preview with `preview_unavailable`
     ("Online preview is currently unavailable…" / "在线预览暂不可用，可下载后查看。")
-    and keeps attachment downloads working on the native domain. Revert the
-    Nginx CSP line to the previous template value and `nginx -t` + reload.
-    Optionally unbind the custom domain in the OSS console; keep the CNAME
-    removal last (or leave it inert) at the Owner's discretion.
+    and keeps attachment downloads working on the native domain. Restore the
+    EXACT captured previous CSP file/header (never a generic-template
+    reconstruction), run `nginx -t`, and reload. Optionally unbind the custom
+    domain in the OSS console; keep the CNAME removal last (or leave it inert)
+    at the Owner's discretion.
 
 ## Current production state (unchanged by this task)
 
