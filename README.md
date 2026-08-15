@@ -10,9 +10,20 @@ Future layers may add structured academic knowledge management and RAG-based res
 
 ## Current Status
 
-**Layer 1 — Basic Private Cloud Storage (locally complete; live deployment approval-gated)**
+**Layer 1 — Basic Private Cloud Storage: First Usable Production (live at `cloud.ajtlab.top`)**
 
-The TypeScript/Fastify/React application now includes SQLite persistence, authentication, the provider-neutral object-storage boundary, the authenticated file lifecycle, a responsive browser interface, security/reliability controls, deterministic acceptance, and a deployment/recovery package. Real OSS, DNS/TLS, Ubuntu service changes, credentials, and production-data operations have not been executed and require explicit approval.
+AcademicCloud is running in production: the reviewed release (`e5217e8…`) is
+deployed on the Alibaba host behind the public HTTPS edge, the fresh
+disposable-object live E2E passed (`VERDICT=true`), and the L1-UX01
+implementation (bilingual UI, upload UX, browser-correct Preview) has passed
+independent review but is NOT yet deployed — its production gate
+(`files.ajtlab.top` infrastructure, artifact build, deployment, Owner browser
+Product Verification) is prepared in `docs/deployment/l1-ux01-production-gate.md`
+and remains Owner-gated. The read-only production readiness auditor
+(`scripts/production-readiness-audit.mjs`) is parallel isolated work awaiting
+review and has never run in live mode. Remaining gates: the UX01 production
+window, the exact disposable-object permanent-delete confirmation, the
+autostart decision, and the PROD-03C3 operational hardening cluster.
 
 Read:
 - `AGENTS.md` — mandatory rules

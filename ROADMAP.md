@@ -86,6 +86,14 @@ Planned epics:
 
 Layer 1 ends when acceptance criteria are satisfied. Do not automatically begin Layer 2.
 
+**Current phase note (2026-08-16):** Layer 1 core storage is in First Usable
+Production (live `cloud.ajtlab.top`; fresh live E2E PASS). The open Layer 1
+remainder is: the L1-UX01 production window (UX polish: bilingual UI, upload
+UX, browser-correct Preview — implementation PASS, deployment Owner-gated),
+the permanent-delete and autostart Owner decisions, and the PROD-03C3
+operational hardening cluster. Shared Library (research library) remains NOT
+started; Knowledge/RAG layers remain future-only.
+
 ## Layer 2 — Academic Knowledge Layer
 
 Future only:
