@@ -76,11 +76,28 @@ Unique prefix `prod03c2-e2e-<runId>-`; every object is newly created by this run
 - `sample.txt` — `text/plain`, 512 bytes, md5Base64 `bm0r4c+F742ow8KJleaJdw==`, sha256 `61bcc644615d8948dbe6af96314a2096481426d528e31d340d8e1b5c7f4c263a`
 - `sample.bin` — `application/octet-stream`, 8,192 bytes, md5Base64 `alb7C4fKRWh9VXAPF48fmA==`, sha256 `3a06cffa607bd3ecfcb3361b62171ed268224840304cca4e29ef63aeae2199cb`
 
+## Deployment plan (PROD-03C2D, plan + read-only preflight only)
+
+Approved release identity: source `e5217e8c73bab4941a56599b8be97a34ebf1e06b`; GitHub Actions run `31889548297`; artifact `9248184597` named `academiccloud-linux-x64-node24-e5217e8c73bab4941a56599b8be97a34ebf1e06b`; GitHub artifact digest `sha256:1f560c8764ed42dcb95f81e5aaa300edde832cb97943719a2a712000cb856f82`; release archive SHA-256 `9f9fdc9ca1387397cec03e33c114a4bccf41d6abcfe67862f2a4ee54a52af0b8`; manifest SHA-256 `18983a2494891f2d79ef3307ab8b83376628d5fee56564a993f2c53b8bf8f9a6`; runtime verification status=ok (linux/x64/node v24.19.0, better-sqlite3/argon2id ok, ELF64 native, compiled acceptance ok); both CI jobs passed.
+
+Preflight (2026-08-15, read-only): current target `/opt/academiccloud/releases/639baa9596a17f4160521f31440d9e3ac3b12eda` (the only release present; root:root, service cannot write it; backend dist/frontend dist/4 migrations/native modules all readable); service disabled-but-active pid `34558`, single listener `127.0.0.1:3000`, loopback health/ready `200`; public HTTPS `200` + HTTP→`301`; **current served frontend JS = `index-KoSWW-jk.js`** (old release asset — the deployment must replace this reference); CSS `index-BKjdxwzJ.css`; 13 GiB disk free; env root:root 600; DB path `/var/lib/academiccloud/academiccloud.sqlite`, migrations resolve through `current`; backup tool present with 2 encrypted `.age` files; preserved failed evidence still `pending_upload` with checksum `GvL9/U7aoQyRRZXavZXUiw==`.
+
+**No migration is pending**: `database/migrations` is byte-identical between `639baa95…` and `e5217e8…` (the release change is frontend `api.ts` + tests + acceptance scripts only), so the compiled migration step is a no-op assertion and runbook Case B (application-only rollback) is pre-authorized.
+
+Artifact acquisition + identity chain (fail closed; no rebuilds anywhere): download artifact `9248184597` → ZIP SHA-256 must equal the GitHub artifact digest → unzip must yield exactly the four files → `.tar.gz.sha256` must equal `9f9fdc9c…` → `node scripts/production-artifact.mjs verify` (repo verifier, Node 24, local) must pass with status ok → manifest `sourceCommit`/platform/architecture/nodeVersion must equal the approved identity → runtime-verification fields must match the recorded status=ok. Staging destination `/opt/academiccloud/releases/e5217e8c73bab4941a56599b8be97a34ebf1e06b` (must not pre-exist with unrelated files): extract, verify manifest vs tree, backend/dist + frontend/dist (expected new asset `index-wvVJNBv8.js`, authority = staged `frontend/dist/index.html` + manifest), 4 migrations, production node_modules with ELF64 native modules, no `.env`/SQLite/backups/caches, root-owned immutable, service account cannot write. `current` is NOT switched during staging.
+
+Pre-deploy backup gate (before any switch): `academiccloud_op` (current release env) runs the CURRENT compiled `backup-main.js create --output=/var/lib/academiccloud/backups/pre-e5217e8.sqlite` then `verify`; then encrypt with the committed age recipient as `database-pre-e5217e8.age` and push it plus an updated manifest to `AcademicCloud-Backups`; backup PASS only after local verify AND off-host confirmation.
+
+Deployment transaction (in order; stop on any gate failure): PRECHECK → `systemctl stop academiccloud.service` (success: inactive, MainPID 0, no :3000 listener) → `ln -sfn` the new release to `/opt/academiccloud/current` (old release dir untouched) → redefine `academiccloud_op` against the new `current` → compiled `migrate.js` (no-op, currentVersion 4) → `systemctl start academiccloud.service` → loopback health/ready `200` retry, single `127.0.0.1:3000` listener, zero new journal errors/OOM → public HTTPS `200`, HTTP→`301`, security headers, `/api/health` `200`, auth-negative probes (`401 invalid_credentials` login, `401` cookie-less session) → frontend proof: public `index.html` must reference `index-wvVJNBv8.js` (NOT `index-KoSWW-jk.js`), fetch that JS over HTTPS `200`, byte-hash vs the staged file → confirm Nginx tree unchanged (no reload), systemd still disabled, HSTS/renewal unchanged, failed E2E evidence unchanged. Expected downtime ≈ 5–15 s. Rollback (Case B, schema unchanged): stop → `ln -sfn` back to `639baa95…` → start → verify health/ready; never ad-hoc SQL, never delete the new release directory, never restore DB unless compatibility is proven absent.
+
+Mutation classification: artifact download/staging = reversible mutation; SQLite backup = stateful but protective; service stop/start = reversible production mutation; `current` symlink switch = reversible production mutation; migration = stateful production mutation (here a no-op); permanent deletion = NOT AUTHORIZED; systemd enable = NOT AUTHORIZED; credential/Nginx/TLS/CORS changes = NOT AUTHORIZED.
+
 ## Remaining
 
-- Independent read-only review of the E2E tooling before the live run.
-- Owner runs `node scripts/production-e2e-acceptance.mjs` once (hidden credential entry) and pastes the non-secret output.
-- After the run: host-side memory/swap/cgroup/OOM check, backend loopback-only confirmation, and OSS CORS boundary confirmation.
+- ChatGPT independent artifact/deployment review of the plan above (PROD-03C2D is plan + read-only preflight only; no deployment performed).
+- Owner download of artifact `9248184597` into a known local staging path for identity verification.
+- Execute the deployment transaction only after the review PASS and Owner authorization.
+- After deployment smoke passes: fresh `runId` live E2E via `node scripts/production-e2e-acceptance.mjs` (Owner hidden input once).
 - Stop at the mandatory Owner gates: the exact disposable-object permanent-delete confirmation and the autostart/enable decision.
 
 ## Blockers
