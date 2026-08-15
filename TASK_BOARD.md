@@ -6,7 +6,9 @@
 
 ## In Progress
 
-None while the PROD-03R reconciliation checkpoint synchronizes.
+### PROD-03C2 — Live Disposable-Object E2E and First-Usable Production Gates
+
+**Status:** In Progress — Gate 1 (authenticated HTTPS session acceptance) PASS with the repository-owned tool; preflight clean; E2E tooling committed with the deterministic pre-registration table; awaiting tooling review, then the Owner one-time E2E run, then the permanent-delete and autostart Owner gates
 
 ## Completed
 
@@ -345,11 +347,7 @@ Completion notes:
 
 ## Ready
 
-### PROD-03C2 — Live Disposable-Object E2E and First-Usable Production Gates
-
-**Status:** Ready — begins only after the PROD-03R reconciliation checkpoint synchronizes
-
-Goal: complete the remaining Class-A live gates — one real authenticated HTTPS login/session/logout/revocation run with the corrected repository-owned acceptance tool (`scripts/production-https-acceptance.mjs`, Owner hidden input once), the live browser/API E2E over pre-registered disposable objects (upload/activation/listing/signed download with independent byte verification/rename/move/recycle/restore), the exact disposable-object permanent-delete Owner confirmation, and the reboot/autostart decision — without touching existing production material.
+None while PROD-03C2 is in progress.
 
 ## Backlog — Layer 1
 

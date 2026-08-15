@@ -27,8 +27,8 @@ Complete the remaining Class-A live gates to reliable First Usable Production: o
 
 ## Acceptance Criteria
 
-- [ ] repository/Git/GitHub and the production baseline pass a read-only preflight before the first live action
-- [ ] the corrected acceptance tool run records `VERDICT=true` with login/session/logout/revocation statuses and no secret output
+- [x] repository/Git/GitHub and the production baseline pass a read-only preflight before the first live action
+- [x] the corrected acceptance tool run records `VERDICT=true` with login/session/logout/revocation statuses and no secret output
 - [ ] every live object is pre-registered, newly created, disposable, and verified against the pre-registered checksum/type/size; no existing object is touched
 - [ ] upload/activation/listing/signed-download/rename/move/recycle/restore pass through the public HTTPS edge with independent byte/hash verification
 - [ ] the exact disposable-object permanent-delete Owner confirmation is obtained before that deletion, and only that exact object is deleted
@@ -45,6 +45,7 @@ Complete the remaining Class-A live gates to reliable First Usable Production: o
 ## Relevant Modules / Files
 
 - `scripts/production-https-acceptance.mjs`
+- `scripts/production-e2e-acceptance.mjs`
 - `frontend/src/api.ts`, `frontend/src/direct-upload.ts`
 - `backend/src/auth/`, `backend/src/drive/`, `backend/src/storage/aliyun/aliyun-oss-adapter.ts`
 - `docs/deployment/oss-deployment-checklist.md`
@@ -55,24 +56,38 @@ Complete the remaining Class-A live gates to reliable First Usable Production: o
 
 ## Current State
 
-Ready — not started. Created by the PROD-03R gap analysis as the single next bounded production task. No live OSS operation has ever been performed; the bucket is empty, private, versioning-disabled, with the exact reviewed CORS rule live.
+In progress on `codex/prod-03c2` from the synchronized PROD-03R checkpoint `fd0cd13f4c4c492ba27193b3e3d571e4a4a8138d`. Gate 1 PASS: the Owner ran the repository-owned `scripts/production-https-acceptance.mjs` with the real production account and obtained `VERDICT=true` (login `200` match, session `200` match, logout `204` with `Max-Age=0`, revoked session `401`, cookie name/secure/httpOnly/sameSite/path/domain checks all true). Read-only preflight passed: phase `loopback-ready`, service disabled-but-active `MainPID=34558` on exactly `127.0.0.1:3000` (health/ready `200`), Nginx `academiccloud` only, public HTTPS `200`, environment/database identities unchanged, both encrypted backup artifacts present, certificate valid beyond 30 days, `MemAvailable=517,220 KiB`, swap intact, kernel OOM `0`, zero failed units, exactly one account. The E2E tooling is committed; the Owner run is the next mandatory step.
 
 ## Completed
 
-None yet.
+- Recorded Gate 1 (authenticated HTTPS session acceptance) as PASS with the Owner's non-secret output.
+- Completed the read-only preflight above.
+- Added `scripts/production-e2e-acceptance.mjs` (deterministic disposable payloads, exact `api.ts`/`direct-upload.ts` request semantics, hidden credential entry, non-secret status/hash output only, never permanently deletes) with `--plan` pre-registration mode.
+
+## Pre-registration record (disposable acceptance objects, operator = Owner, window = single 2026-08-15 run)
+
+Unique prefix `prod03c2-e2e-<runId>-`; every object is newly created by this run and contains no academic or production material. Deterministic payload identities:
+
+- `sample.pdf` — `application/pdf`, 4,096 bytes, md5 `1af2fdfd4edaa10c914595dabd95d48b`, sha256 `72bf1f6f5873dad6afb9cdc121d831d3f23be71e7836e72d4553ff825c830d49`
+- `sample.png` — `image/png`, 2,048 bytes, md5 `75c30bbdb48c32ab0360f97b1b7e7896`, sha256 `8ac1a17273ea8a556144a9fcfe4bd642437888ab082884a7f91798cc8efd0309`
+- `sample.txt` — `text/plain`, 512 bytes, md5 `6e6d2be1cf85ef8da8c3c28995e68977`, sha256 `61bcc644615d8948dbe6af96314a2096481426d528e31d340d8e1b5c7f4c263a`
+- `sample.bin` — `application/octet-stream`, 8,192 bytes, md5 `6a56fb0b87ca45687d55700f178f1f98`, sha256 `3a06cffa607bd3ecfcb3361b62171ed268224840304cca4e29ef63aeae2199cb`
 
 ## Remaining
 
-- Execute the full bounded scope above.
+- Independent read-only review of the E2E tooling before the live run.
+- Owner runs `node scripts/production-e2e-acceptance.mjs` once (hidden credential entry) and pastes the non-secret output.
+- After the run: host-side memory/swap/cgroup/OOM check, backend loopback-only confirmation, and OSS CORS boundary confirmation.
+- Stop at the mandatory Owner gates: the exact disposable-object permanent-delete confirmation and the autostart/enable decision.
 
 ## Blockers
 
-None for planning. The exact disposable-object permanent-delete confirmation is a mandatory Owner gate reached only after all other E2E checks pass.
+None for planning. The Owner's one-time E2E tool run (hidden input), the permanent-delete confirmation, and the autostart decision are mandatory Owner steps reached only at their defined points.
 
 ## Last Verification
 
-Not started. Created from the PROD-03R gate analysis with classes: A-items 1–4 of that analysis (session acceptance, live disposable-object E2E, permanent-delete Owner gate, reboot/autostart decision).
+2026-08-15 (Gate 1 + preflight): session acceptance `VERDICT=true`; preflight facts above; `node --check` passes on both acceptance tools; `--plan` pre-registration table reproduced above.
 
 ## Next Action
 
-Wait for the PROD-03R reconciliation checkpoint to be merged and synchronized before selecting this task.
+Wait for the independent read-only review of the E2E tooling, then have the Owner run the tool once and paste the non-secret output; afterwards complete the host-side resource/CORS checks and stop at the permanent-delete and autostart Owner gates.
