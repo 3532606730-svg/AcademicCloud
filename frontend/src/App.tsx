@@ -373,9 +373,13 @@ function DriveView({
   async function runRetryWorkflow(job: UploadJob, controller: AbortController) {
     const fileId = job.fileId!;
     try {
+      // Scheduler invariant: a selected job claims an ACTIVE phase BEFORE any
+      // async workflow I/O can remain pending. Without this, an uploaded=true
+      // retry would still read as "queued" while completeUpload is in flight
+      // and the pump could select the same job again.
+      patchJob(job.id, { phase: "verifying", progress: Math.max(job.progress, 0.92) });
       if (!job.uploaded) {
         // Verify-first: the stored copy may already be complete.
-        patchJob(job.id, { phase: "verifying", progress: Math.max(job.progress, 0.92) });
         try {
           await api.completeUpload(fileId);
           patchJob(job.id, { phase: "complete", uploaded: true, progress: 1 });

@@ -590,4 +590,63 @@ describe("App", () => {
     resolveRetryUpload!();
     await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(2));
   });
+
+  it("claims an active scheduler slot for uploaded=true retries before completeUpload is pending", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
+    let settleRetryComplete: (() => void) | undefined;
+    let completeCalls = 0;
+    const completeUpload = vi.fn(() => {
+      completeCalls += 1;
+      if (completeCalls === 1) {
+        // The fresh upload's final verification fails AFTER the byte transfer:
+        // the job becomes error with uploaded=true.
+        return Promise.reject(new ApiError(409, "invalid_state"));
+      }
+      // The retry's completeUpload stays PENDING so the scheduler invariant
+      // can be asserted while async I/O is in flight.
+      return new Promise<FileEntry>((resolve) => {
+        settleRetryComplete = () => resolve(FILE);
+      });
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({
+        file: { ...FILE, id: "file-a", state: "pending_upload" as const, activatedAt: null },
+        upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
+      }),
+      completeUpload,
+    });
+    render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockResolvedValue(undefined)} />);
+
+    const file = new File(["source"], "a.pdf", { type: "application/pdf" });
+    await user.upload(await screen.findByLabelText("Upload files"), file);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(1));
+    checksumResolvers[0]!(FILE.checksum);
+    await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
+    expect(completeUpload).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Verify stored copy or retry a.pdf" }));
+    await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(2));
+
+    // While the retry completeUpload promise is still unresolved, the job
+    // MUST NOT read as queued: it claims the verifying active phase before
+    // any I/O, occupies one concurrency slot, and cannot be re-selected.
+    expect(screen.queryByText("Queued")).not.toBeInTheDocument();
+    expect(screen.getByText("Verifying stored file")).toBeInTheDocument();
+    expect(screen.getByText("1 in progress or needing attention")).toBeInTheDocument();
+
+    // Force additional renders (view navigation) while I/O is pending: the
+    // scheduler must not launch the same retry again.
+    await user.click(screen.getByRole("button", { name: "Pending uploads" }));
+    await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "Library" }));
+    expect(completeUpload).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Verifying stored file")).toBeInTheDocument();
+
+    settleRetryComplete!();
+    await waitFor(() => expect(screen.queryByText("Verifying stored file")).not.toBeInTheDocument());
+    expect(completeUpload).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole("status")).toHaveTextContent("Uploaded");
+  });
 });

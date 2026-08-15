@@ -45,10 +45,11 @@ export function uploadDirectly(
     const xhr = (options.xhrFactory ?? (() => new XMLHttpRequest()))();
     let stallTimer: ReturnType<typeof setTimeout> | undefined;
     let settled = false;
-    // Liveness is BYTE progress: only a strictly increasing loaded count
-    // resets the inactivity window. Repeated events with the same loaded
-    // value (or regressive values) are not proof of a live transfer.
-    let lastLoaded = -1;
+    // Liveness is BYTE progress: only a strictly increasing, POSITIVE loaded
+    // count resets the inactivity window. The baseline is zero, so a
+    // loaded=0 event (no bytes advanced), repeated identical values, and
+    // regressive values are never treated as proof of a live transfer.
+    let lastLoaded = 0;
 
     const clearStallTimer = () => {
       if (stallTimer !== undefined) {

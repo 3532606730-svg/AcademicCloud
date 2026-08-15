@@ -171,6 +171,26 @@ describe("createUploadForm", () => {
     await vi.advanceTimersByTimeAsync(600_000);
   });
 
+  it("does not treat a zero-byte progress event as liveness", async () => {
+    vi.useFakeTimers();
+    const xhr = new FakeXhr();
+    const promise = uploadDirectly(AUTHORIZATION, new File(["source"], "paper.pdf"), {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+      inactivityTimeoutMs: 120_000,
+    });
+    const expectation = expect(promise).rejects.toThrow("stalled");
+
+    // Advance close to the deadline, then emit a loaded=0 progress event:
+    // zero bytes advanced, so the ORIGINAL deadline must still apply.
+    await vi.advanceTimersByTimeAsync(119_000);
+    xhr.upload.dispatchEvent(progress(0, 10));
+    await vi.advanceTimersByTimeAsync(1_001);
+
+    await expectation;
+    expect(xhr.abort).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(600_000);
+  });
+
   it("clears stall timers exactly once on load, abort, and network error", async () => {
     vi.useFakeTimers();
 
