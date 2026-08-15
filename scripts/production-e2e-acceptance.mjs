@@ -2,14 +2,18 @@
 // production-e2e-acceptance.mjs
 //
 // Live disposable-object E2E through the public HTTPS edge, mirroring
-// frontend/src/api.ts and frontend/src/direct-upload.ts semantics exactly.
+// frontend/src/api.ts, frontend/src/md5.ts, and frontend/src/direct-upload.ts
+// semantics exactly, against the backend drive contract in
+// backend/src/drive/http.ts.
 //
 //   --plan   print the deterministic pre-registration table (no network, no credentials)
 //   (none)   full run: hidden credential entry, then for each of the four
 //            deterministic disposable payloads:
-//              create folder -> reserve upload -> direct multipart POST to OSS
-//              -> complete/activate -> list -> signed download + independent
-//              byte/hash verification -> rename -> move -> recycle -> restore
+//              create folder (201) -> reserve upload (201, Base64 MD5)
+//              -> pending listing -> direct multipart POST to OSS (201)
+//              -> complete/activate -> active listing
+//              -> signed download + independent byte/hash verification
+//              -> rename -> move -> recycle -> restore -> logout (204)
 //
 // Prints ONLY non-secret statuses, checksums, and opaque identifiers.
 // Never touches existing production material and NEVER permanently deletes:
@@ -19,18 +23,40 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import readline from "node:readline";
+import { pathToFileURL } from "node:url";
 
 const BASE_URL = process.env.ACCEPTANCE_BASE_URL ?? "https://cloud.ajtlab.top";
 const PLAN_ONLY = process.argv.includes("--plan");
 
-const PAYLOAD_SPECS = [
+// Backend drive contract (backend/src/drive/http.ts) and auth contract
+// (backend/src/auth/http.ts). Pinned by scripts/production-e2e-acceptance.test.mjs.
+export const CONTRACT = Object.freeze({
+  login: 200,
+  session: 200,
+  logout: 204,
+  folderCreate: 201,
+  uploadReserve: 201,
+  uploadComplete: 200,
+  fileRename: 200,
+  fileMove: 200,
+  fileDelete: 204,
+  fileRestore: 200,
+  recycleList: 200,
+  entriesList: 200,
+  pendingList: 200,
+  downloadAuthorization: 200,
+  directUpload: 201,
+  checksumPattern: /^[A-Za-z0-9+/]{22}==$/,
+});
+
+export const PAYLOAD_SPECS = [
   { tag: "pdf", display: "sample.pdf", mediaType: "application/pdf", bytes: 4096, magic: Buffer.from("%PDF-1.4\n", "latin1") },
   { tag: "png", display: "sample.png", mediaType: "image/png", bytes: 2048, magic: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) },
   { tag: "txt", display: "sample.txt", mediaType: "text/plain", bytes: 512, magic: Buffer.from("prod03c2-e2e deterministic text payload\n", "latin1") },
   { tag: "bin", display: "sample.bin", mediaType: "application/octet-stream", bytes: 8192, magic: Buffer.from("prod03c2-e2e binary", "latin1") },
 ];
 
-function deterministicPayload(spec) {
+export function deterministicPayload(spec) {
   const buffer = Buffer.alloc(spec.bytes);
   spec.magic.copy(buffer, 0);
   let state = 0x9e3779b9;
@@ -43,18 +69,22 @@ function deterministicPayload(spec) {
   return buffer;
 }
 
-function md5(buffer) {
-  return createHash("md5").update(buffer).digest("hex");
+// The production checksum contract is Base64 MD5 (backend schema
+// ^[A-Za-z0-9+/]{22}==$); frontend/src/md5.ts converts the 16-byte hex
+// digest to Base64 before submission. Node's digest("base64") is the same
+// conversion over the same 16 bytes.
+export function md5Base64(buffer) {
+  return createHash("md5").update(buffer).digest("base64");
 }
 
-function sha256(buffer) {
+export function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
 function plan() {
   for (const spec of PAYLOAD_SPECS) {
     const payload = deterministicPayload(spec);
-    console.log(`${spec.tag}: display=${spec.display} mediaType=${spec.mediaType} bytes=${payload.length} md5=${md5(payload)} sha256=${sha256(payload)}`);
+    console.log(`${spec.tag}: display=${spec.display} mediaType=${spec.mediaType} bytes=${payload.length} md5Base64=${md5Base64(payload)} sha256=${sha256(payload)}`);
   }
 }
 
@@ -147,24 +177,24 @@ async function run() {
     const folderBody = await folderResponse.json().catch(() => ({}));
     const folderId = folderBody.folder?.id;
     results.folder = { status: folderResponse.status, id: folderId };
-    if (folderResponse.status !== 200 || !folderId) throw new Error("folder creation failed");
+    if (folderResponse.status !== 201 || !folderId) throw new Error("folder creation failed");
 
     const subfolderResponse = await request("POST", "/api/drive/folders", { cookie, json: { name: `${folderName}-sub`, parentId: null } });
     const subfolderBody = await subfolderResponse.json().catch(() => ({}));
     const subfolderId = subfolderBody.folder?.id;
     results.subfolder = { status: subfolderResponse.status, id: subfolderId };
-    if (subfolderResponse.status !== 200 || !subfolderId) throw new Error("subfolder creation failed");
+    if (subfolderResponse.status !== 201 || !subfolderId) throw new Error("subfolder creation failed");
 
     for (const spec of PAYLOAD_SPECS) {
       const payload = deterministicPayload(spec);
       const displayName = `${folderName}-${spec.display}`;
       const fileResult = {
         tag: spec.tag,
-        expectedMd5: md5(payload),
+        expectedMd5: md5Base64(payload),
         expectedSha256: sha256(payload),
-        reserve: null, upload: null, complete: null, listed: null,
+        reserve: null, pendingListed: null, upload: null, complete: null, listed: null,
         download: null, downloadSha256: null, renamed: null, moved: null,
-        recycled: null, restored: null,
+        recycled: null, recycledListed: null, restored: null,
       };
 
       const reserveResponse = await request("POST", "/api/drive/uploads", {
@@ -177,10 +207,14 @@ async function run() {
       const reserveBody = await reserveResponse.json().catch(() => ({}));
       const fileId = reserveBody.file?.id;
       const upload = reserveBody.upload;
-      fileResult.reserve = { status: reserveResponse.status, fileId };
-      if (reserveResponse.status !== 200 || !fileId || !upload || upload.method !== "POST") {
+      fileResult.reserve = { status: reserveResponse.status, fileId, state: reserveBody.file?.state };
+      if (reserveResponse.status !== 201 || !fileId || !upload || upload.method !== "POST") {
         throw new Error(`upload reservation failed for ${spec.tag}`);
       }
+
+      const pendingResponse = await request("GET", `/api/drive/uploads?folderId=${encodeURIComponent(folderId)}`, { cookie });
+      const pendingBody = await pendingResponse.json().catch(() => ({}));
+      fileResult.pendingListed = (pendingBody.files ?? []).some((entry) => entry.id === fileId && entry.state === "pending_upload");
 
       const form = new FormData();
       for (const [name, value] of Object.entries(upload.fields)) form.append(name, value);
@@ -254,6 +288,7 @@ async function run() {
         `file_${fileResult.tag}:`,
         `reserve=${fileResult.reserve?.status ?? "n/a"}`,
         `fileId=${fileResult.reserve?.fileId ?? "n/a"}`,
+        `pendingListed=${fileResult.pendingListed ?? false}`,
         `directUpload=${fileResult.upload ?? "n/a"}`,
         `complete=${fileResult.complete?.status ?? "n/a"}`,
         `sizeOk=${fileResult.complete?.sizeOk ?? false}`,
@@ -271,22 +306,27 @@ async function run() {
     }
     console.log(`logout_status=${results.logout ?? "n/a"}`);
     const allPassed = results.login?.status === 200 && results.login?.matches === true &&
-      results.session === 200 && results.files.length === PAYLOAD_SPECS.length &&
+      results.session === 200 && results.folder?.status === 201 && results.subfolder?.status === 201 &&
+      results.files.length === PAYLOAD_SPECS.length &&
       results.files.every((fileResult) =>
-        fileResult.reserve?.status === 200 && fileResult.upload === 201 &&
+        fileResult.reserve?.status === 201 && fileResult.pendingListed === true &&
+        fileResult.upload === 201 &&
         fileResult.complete?.status === 200 && fileResult.complete?.sizeOk === true &&
         fileResult.complete?.checksumOk === true && fileResult.listed === true &&
         fileResult.download === 200 && fileResult.downloadSha256 === fileResult.expectedSha256 &&
         fileResult.downloadBytesOk === true && fileResult.renamed?.name === true &&
         fileResult.moved?.inSubfolder === true && fileResult.recycled === 204 &&
-        fileResult.recycledListed === true && fileResult.restored?.active === true);
+        fileResult.recycledListed === true && fileResult.restored?.active === true) &&
+      results.logout === 204;
     console.log(`VERDICT=${allPassed}`);
   }
 }
 
-if (PLAN_ONLY) {
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMain && PLAN_ONLY) {
   plan();
-} else {
+} else if (isMain) {
   run().catch((error) => {
     console.error(`e2e_error=${error.message}`);
     process.exitCode = 1;

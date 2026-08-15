@@ -23,6 +23,7 @@
     "account:provision": "npm run account:provision --workspace @academiccloud/backend --",
     "account:provision:prod": "npm run account:provision:prod --workspace @academiccloud/backend --",
     "acceptance:compiled": "npm run acceptance:compiled --workspace @academiccloud/backend",
+    "test:acceptance-tools": "node --test scripts/production-e2e-acceptance.test.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present"

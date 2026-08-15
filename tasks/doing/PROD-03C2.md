@@ -63,15 +63,16 @@ In progress on `codex/prod-03c2` from the synchronized PROD-03R checkpoint `fd0c
 - Recorded Gate 1 (authenticated HTTPS session acceptance) as PASS with the Owner's non-secret output.
 - Completed the read-only preflight above.
 - Added `scripts/production-e2e-acceptance.mjs` (deterministic disposable payloads, exact `api.ts`/`direct-upload.ts` request semantics, hidden credential entry, non-secret status/hash output only, never permanently deletes) with `--plan` pre-registration mode.
+- Corrected the E2E tool after an independent repository audit found contract defects against `backend/src/drive/http.ts` and `frontend/src/md5.ts`: folder creation and upload reservation now require `201` (not `200`); the checksum is Base64 MD5 (`^[A-Za-z0-9+/]{22}==$`, mirroring `md5.ts` hex→Base64) instead of hex; the pending-upload listing (`GET /api/drive/uploads`) is now exercised; `logout_status=204`, folder/subfolder `201` statuses, and the pending-listing boolean are now gated into `VERDICT`. Added deterministic contract tests (`scripts/production-e2e-acceptance.test.mjs`, `npm run test:acceptance-tools`) pinning the payload identities, the status-code contract, the `--plan` output, and the absence of any permanent-delete reference; backend suite 88/88 passes.
 
 ## Pre-registration record (disposable acceptance objects, operator = Owner, window = single 2026-08-15 run)
 
 Unique prefix `prod03c2-e2e-<runId>-`; every object is newly created by this run and contains no academic or production material. Deterministic payload identities:
 
-- `sample.pdf` — `application/pdf`, 4,096 bytes, md5 `1af2fdfd4edaa10c914595dabd95d48b`, sha256 `72bf1f6f5873dad6afb9cdc121d831d3f23be71e7836e72d4553ff825c830d49`
-- `sample.png` — `image/png`, 2,048 bytes, md5 `75c30bbdb48c32ab0360f97b1b7e7896`, sha256 `8ac1a17273ea8a556144a9fcfe4bd642437888ab082884a7f91798cc8efd0309`
-- `sample.txt` — `text/plain`, 512 bytes, md5 `6e6d2be1cf85ef8da8c3c28995e68977`, sha256 `61bcc644615d8948dbe6af96314a2096481426d528e31d340d8e1b5c7f4c263a`
-- `sample.bin` — `application/octet-stream`, 8,192 bytes, md5 `6a56fb0b87ca45687d55700f178f1f98`, sha256 `3a06cffa607bd3ecfcb3361b62171ed268224840304cca4e29ef63aeae2199cb`
+- `sample.pdf` — `application/pdf`, 4,096 bytes, md5Base64 `GvL9/U7aoQyRRZXavZXUiw==`, sha256 `72bf1f6f5873dad6afb9cdc121d831d3f23be71e7836e72d4553ff825c830d49`
+- `sample.png` — `image/png`, 2,048 bytes, md5Base64 `dcMLvbSMMqsDYPl7G354lg==`, sha256 `8ac1a17273ea8a556144a9fcfe4bd642437888ab082884a7f91798cc8efd0309`
+- `sample.txt` — `text/plain`, 512 bytes, md5Base64 `bm0r4c+F742ow8KJleaJdw==`, sha256 `61bcc644615d8948dbe6af96314a2096481426d528e31d340d8e1b5c7f4c263a`
+- `sample.bin` — `application/octet-stream`, 8,192 bytes, md5Base64 `alb7C4fKRWh9VXAPF48fmA==`, sha256 `3a06cffa607bd3ecfcb3361b62171ed268224840304cca4e29ef63aeae2199cb`
 
 ## Remaining
 
