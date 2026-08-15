@@ -34,6 +34,8 @@ Enable the reviewed public HTTPS/Nginx edge for `cloud.ajtlab.top` (the exact pr
 - [x] applicable syntax/diff/secret checks and independent read-only review pass
 - [x] durable state is updated, the task card moves to `tasks/done/`, a clean task-level commit is pushed through strict SSH, and local/private GitHub refs plus the connected default branch match
 
+Evidence reconciliation (recorded by PROD-03R, 2026-08-15): at PROD-03C1 completion the "real login/session round trip" criterion was evidenced by (a) the Owner's real run against the external harness (login `200` with login-name match and session `200` with login-name match) and (b) wire-level production probes plus the PROD-03B embedded acceptance for logout/revocation (browser-shape logout `204`, revocation `401`). The external harness's logout `415` was proven by PROD-03R to be a PowerShell 5.1 `Invoke-WebRequest` defect (it injects `Content-Type: application/x-www-form-urlencoded` on body-less POSTs, which Fastify rejects with 415), not a production defect; production logout is NOT defective. A single full authenticated run with the corrected repository-owned tool `scripts/production-https-acceptance.mjs` remains a Class-A gate recorded in `PROD-03C2`.
+
 ## Relevant ADRs
 
 - `docs/decisions/ADR-007-layer-1-technical-architecture.md`

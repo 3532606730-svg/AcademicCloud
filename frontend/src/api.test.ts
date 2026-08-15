@@ -67,4 +67,20 @@ describe("ApiClient", () => {
     await api.createDownload("file one", "inline");
     expect(fetcher.mock.calls[0]?.[0]).toBe("/api/drive/files/file%20one/download?disposition=inline");
   });
+
+  it("issues logout as a body-less POST without a Content-Type header", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+    const api = new ApiClient({ fetcher });
+
+    await api.logout();
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    const [path, init] = fetcher.mock.calls[0]!;
+    expect(path).toBe("/api/auth/logout");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBeUndefined();
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Content-Type")).toBeNull();
+    expect(headers.get("Accept")).toBe("application/json");
+  });
 });

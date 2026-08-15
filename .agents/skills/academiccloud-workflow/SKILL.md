@@ -151,7 +151,7 @@ Within the current approved Layer, active task, and accepted architecture, decid
 For a significant but reversible technical decision within scope, perform an internal review before proceeding:
 
 1. Confirm compliance with `AGENTS.md` and accepted ADRs.
-2. Confirm compatibility with the 512 MB server constraint.
+2. Confirm compatibility with the accepted 1 GiB-class production host (Linux `916,044 KiB` `MemTotal`) and the unchanged 320/384 MiB service cgroup plus 128 MiB whole-host headroom gates.
 3. Reject unnecessary resident services and dependencies.
 4. Preserve modularity, fault isolation, and data safety.
 5. Define verification and rollback.

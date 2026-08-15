@@ -6,7 +6,9 @@
 
 ## In Progress
 
-None while the PROD-03C1 completion checkpoint synchronizes.
+### PROD-03R — Production Acceptance and Repository-State Reconciliation
+
+**Status:** In Progress — reconciliation/diagnosis only; no production mutation; root cause of the 415 harness defect established with production wire evidence; repository-owned acceptance tooling and durable-state corrections prepared for review
 
 ## Completed
 
@@ -335,11 +337,15 @@ Completion notes:
 
 ## Ready
 
-None while PROD-03C1 is in progress.
+### PROD-03C2 — Live Disposable-Object E2E and First-Usable Production Gates
+
+**Status:** Ready — begins only after the PROD-03R reconciliation checkpoint synchronizes
+
+Goal: complete the remaining Class-A live gates — one real authenticated HTTPS login/session/logout/revocation run with the corrected repository-owned acceptance tool (`scripts/production-https-acceptance.mjs`, Owner hidden input once), the live browser/API E2E over pre-registered disposable objects (upload/activation/listing/signed download with independent byte verification/rename/move/recycle/restore), the exact disposable-object permanent-delete Owner confirmation, and the reboot/autostart decision — without touching existing production material.
 
 ## Backlog — Layer 1
 
-- `PROD-03C — Encrypted Off-host Backup/Restore, Live E2E, and Cutover Remainder` — the durable pre-cutover gate: encrypted off-host backup and isolated restore must pass before the PROD-03C1 public route is enabled (destination/key-custody/new-cost remain Owner gates); live browser E2E with disposable objects and the exact disposable-object permanent-delete confirmation follow after the edge is verified
+- `PROD-03C3 — Operational Hardening` — Class-B cluster: backup cadence/retention, certificate renewal/reload automation (hard deadline before 2026-11-13), HSTS enablement after renewal and rollback are proven, production-format destructive restore drill, second disposable account and live cross-account isolation check, journal size/retention tuning.
 
 ## Explicitly Deferred
 

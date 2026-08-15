@@ -63,7 +63,7 @@ Some directories remain intentionally empty until their approved Layer 1 task be
 
 Alibaba Cloud Simple Application Server:
 - 2 vCPU
-- 512 MB RAM
+- 1 GiB-class RAM (Linux `916,044 KiB` `MemTotal` after the Owner-authorized PROD-02I upgrade; service cgroup 320/384 MiB, 128 MiB whole-host headroom gate)
 - 20 GB disk
 - Ubuntu 24.04
 - Malaysia region
@@ -105,7 +105,7 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-Authentication uses Argon2id with 64 MiB memory, three iterations, one lane, and a 32-byte hash. KDF work is serialized with at most four queued operations to preserve memory headroom on the 512 MB target. Run the local benchmark after dependency or runtime changes:
+Authentication uses Argon2id with 64 MiB memory, three iterations, one lane, and a 32-byte hash. KDF work is serialized with at most four queued operations to preserve memory headroom on the accepted 1 GiB-class production target (320/384 MiB service cgroup, 128 MiB whole-host headroom). Run the local benchmark after dependency or runtime changes:
 
 ```powershell
 npm.cmd run auth:benchmark

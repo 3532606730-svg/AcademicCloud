@@ -6,7 +6,7 @@
 
 AcademicCloud is a long-term personal academic digital infrastructure project.
 
-**Current execution phase:** Layer 0 — Project Setup is complete; Layer 1 implementation is next
+**Current execution phase:** Layer 1 — Basic Private Cloud Storage is implemented and in First Usable Production (live at `cloud.ajtlab.top`); the remaining gates are the live disposable-object E2E, the permanent-delete Owner confirmation, autostart/reboot, backup cadence, and renewal hardening
 
 **Approved product implementation target:** Layer 1 — Basic Private Cloud Storage
 
