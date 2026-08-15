@@ -6,13 +6,21 @@
 
 ## In Progress
 
-### PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation
-
-**Status:** In Progress — first activation reached phase `account-provisioned` and failed closed twice, at a stale Argon2 encoded-prefix gate (fixed+installed `944c1ee5…`) and then at an unsatisfiable read-only `synchronous===2` predicate (external review PASS, verifier-only fix installed `93ee91d5…`, evidence `31ccced9…`); account verified intact, stopped at the mandatory Owner wrapper rerun
-
-Goal: use the reviewed mandatory repository-external CSV path for the Owner-supplied dedicated RAM AccessKey while refusing reuse of either RAM secret, collect ACME email/login through visible Owner-private local prompts and the independent application password through hidden local input, send all five activation fields only over SSH stdin, verify exact private-bucket/CORS gates, create the first database/account, run and measure the real hardened unit loopback-only, and issue/verify TLS without enabling the public AcademicCloud Nginx route. Certificate-renewal enablement remains closed until the final edge configuration proves the ACME challenge path.
+None while the PROD-03B completion checkpoint synchronizes.
 
 ## Completed
+
+### PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation
+
+**Status:** Done — phase `loopback-ready`; service active loopback-only; production still not publicly routed
+
+Completion notes:
+- [x] issued and verified the exact `cloud.ajtlab.top` certificate through the reviewed webroot path with no public route enabled
+- [x] installed the root-owned mode-0600 environment and migrated the database to version 4 with exactly one account whose Argon2id hash verifies the Owner input (unchanged `m=65536,t=3,p=1`)
+- [x] reconciled the live OSS CORS platform behavior: exact origin/POST-only/empty headers/Max-Age 300 plus platform-emitted `Access-Control-Allow-Credentials: true`; all five negative OPTIONS probes and anonymous HEAD/listing remain `403` with no allow-origin
+- [x] recovered two fail-closed activation stops with independently reviewed verifier-only fixes (Argon2 0.45.x `m,p,t` encoded-parameter order gate; unsatisfiable read-only `synchronous===2` predicate) without recreating the account or weakening any application durability/hardening boundary
+- [x] final installed activation `93ee91d5…` reached `loopback-ready`: unit disabled-but-active, listener exactly `127.0.0.1:3000`, health/readiness `200`, login/session/restart/logout acceptance passed, minimum `MemAvailable=429,512 KiB`, `SwapFree=1,048,572 KiB`, cgroup peak `112,390,144` bytes, all OOM deltas zero, kernel OOM absent
+- [x] canonical Owner wrapper `3e4ec975…`; fix runner `8dade640…`; no secret in chat/Git/logs/evidence; zero live OSS writes; Nginx default-only throughout
 
 ### PROD-03A — Production Foundation and Immutable Release
 
@@ -317,11 +325,15 @@ Completion notes:
 
 ## Ready
 
-None while PROD-03B is in progress.
+### PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification
+
+**Status:** Ready — begins only after the PROD-03B completion checkpoint synchronizes
+
+Goal: enable the reviewed public HTTPS/Nginx edge for `cloud.ajtlab.top` (the exact prepared AcademicCloud site on the existing certificate) and complete its minimum machine verification over the public HTTPS path, only after the durable encrypted off-host backup/restore gate and this task's independent review pass, with immediate rollback to the current loopback-only state. Certificate renewal, live OSS E2E, and permanent deletion remain closed.
 
 ## Backlog — Layer 1
 
-- `PROD-03C — Encrypted Off-host Backup/Restore, Public Edge, Live E2E, and Cutover` — backup/restore before exposure; Owner gates for new cost/key custody and exact disposable permanent deletion
+- `PROD-03C — Encrypted Off-host Backup/Restore, Live E2E, and Cutover Remainder` — the durable pre-cutover gate: encrypted off-host backup and isolated restore must pass before the PROD-03C1 public route is enabled (destination/key-custody/new-cost remain Owner gates); live browser E2E with disposable objects and the exact disposable-object permanent-delete confirmation follow after the edge is verified
 
 ## Explicitly Deferred
 
