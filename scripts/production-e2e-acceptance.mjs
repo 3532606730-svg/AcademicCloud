@@ -10,10 +10,9 @@
 //   (none)   full run (see PROD-03C2 task card for the exact flow)
 //
 // Prints ONLY non-secret statuses, checksums, and opaque identifiers.
-// Never touches existing production material and NEVER permanently deletes:
-// every object uses the unique prefix prod03c2-e2e-<runId>- and stays ACTIVE
-// (restored) at the end. The password never enters argv, history, files,
-// logs, or chat. Every external request has an explicit bounded timeout.
+// Never touches existing production material and NEVER permanently deletes.
+// Every external operation — including response-body consumption — is bounded
+// by an explicit timeout owned until the body has been fully read.
 
 import { createHash, randomBytes } from "node:crypto";
 import readline from "node:readline";
@@ -24,8 +23,6 @@ const PLAN_ONLY = process.argv.includes("--plan");
 
 // Backend drive contract (backend/src/drive/http.ts) and auth contract
 // (backend/src/auth/http.ts). Pinned by scripts/production-e2e-acceptance.test.mjs.
-// downloadAuthorization is the AcademicCloud API endpoint; signedDownload is the
-// separate signed OSS object GET — two distinct network steps.
 export const CONTRACT = Object.freeze({
   login: 200,
   session: 200,
@@ -49,8 +46,7 @@ export const CONTRACT = Object.freeze({
   checksumPattern: /^[A-Za-z0-9+/]{22}==$/,
 });
 
-// Explicit bounded network timeouts. Payloads are tiny, so these are generous;
-// any timeout fails closed and identifies only the logical step.
+// Explicit bounded network timeouts (whole operation incl. body reads).
 export const TIMEOUTS = Object.freeze({
   api: 30_000,
   signedDownload: 30_000,
@@ -77,10 +73,6 @@ export function deterministicPayload(spec) {
   return buffer;
 }
 
-// The production checksum contract is Base64 MD5 (backend schema
-// ^[A-Za-z0-9+/]{22}==$); frontend/src/md5.ts converts the 16-byte hex
-// digest to Base64 before submission. Node's digest("base64") is the same
-// conversion over the same 16 bytes.
 export function md5Base64(buffer) {
   return createHash("md5").update(buffer).digest("base64");
 }
@@ -163,22 +155,58 @@ export function requestInit(method, { cookie, json } = {}) {
   return { method, headers };
 }
 
-// Bounded fetch: an AbortController timer aborts the request at timeoutMs and
-// is always cleared afterwards, so no fetch or timer can leak. The fetch
-// implementation is injectable for deterministic timeout tests.
-export function fetchWithTimeout(url, init, timeoutMs, fetchImpl = fetch) {
+// Whole-operation timeout: the AbortController is owned until the ENTIRE
+// operation (fetch + response-body consumption) finishes or the timeout fires.
+// No timer or fetch can leak; the abort reason is a bare timeout marker.
+export async function withTimeout(operation, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new Error("timeout")), timeoutMs);
-  return fetchImpl(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  try {
+    return await operation(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-// Logical-step guard: wraps a network promise so any rejection fails closed
-// with only the step name in the message (no URLs, cookies, or credentials).
+// API dependency factory: fetch + full JSON body read inside one timeout.
+export function createApiDep(baseUrl, fetchImpl = fetch, timeoutMs = TIMEOUTS.api) {
+  return async (method, path, options) => withTimeout(async (signal) => {
+    const init = requestInit(method, options);
+    const response = await fetchImpl(`${baseUrl}${path}`, { ...init, signal });
+    let body = {};
+    try {
+      body = await response.json();
+    } catch {}
+    return { status: response.status, body };
+  }, timeoutMs);
+}
+
+// Direct OSS multipart POST: fetch + body drain inside one timeout.
+export function createDirectPostDep(fetchImpl = fetch, timeoutMs = TIMEOUTS.directUpload) {
+  return async (url, form) => withTimeout(async (signal) => {
+    const response = await fetchImpl(url, { method: "POST", body: form, signal });
+    await response.arrayBuffer().catch(() => {});
+    return { status: response.status };
+  }, timeoutMs);
+}
+
+// Signed OSS GET: fetch + FULL arrayBuffer body read inside one timeout.
+export function createSignedGetDep(fetchImpl = fetch, timeoutMs = TIMEOUTS.signedDownload) {
+  return async (url) => withTimeout(async (signal) => {
+    const response = await fetchImpl(url, { signal });
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return { status: response.status, bytes };
+  }, timeoutMs);
+}
+
+// Logical-step guard: fails closed with ONLY the logical step name in the
+// user-visible message. The original error is attached as `cause` for
+// programmatic debugging and is never concatenated into the message.
 async function guard(step, promise) {
   try {
     return await promise;
   } catch (cause) {
-    throw new Error(`${step} failed: ${cause?.message ?? "unknown"}`);
+    throw new Error(`${step} failed`, { cause });
   }
 }
 
@@ -213,8 +241,10 @@ export function computeVerdict(results, specCount) {
     results.nestedFolder?.status === CONTRACT.folderCreate && Boolean(results.nestedFolder?.id) &&
     results.nestedFolder?.parentRelation === true &&
     filesOk &&
+    results.folderLifecycle?.childEntriesList?.status === CONTRACT.entriesList &&
     results.folderLifecycle?.childEmpty === true &&
     results.folderLifecycle?.folderDelete === CONTRACT.folderDelete &&
+    results.folderLifecycle?.folderRecycleList?.status === CONTRACT.recycleList &&
     results.folderLifecycle?.folderRecycledListed === true &&
     results.folderLifecycle?.folderRestore?.status === CONTRACT.folderRestore &&
     results.folderLifecycle?.folderRestore?.active === true &&
@@ -222,14 +252,16 @@ export function computeVerdict(results, specCount) {
     results.logout === CONTRACT.logout;
 }
 
-// One-file workflow. Fail-fast: every gate is validated immediately; any
-// failure throws with a logical step name before any later mutation runs.
-// The RENEWED upload authorization is the ONLY authorization passed to the
-// direct OSS POST (deps.directPost receives the renewed upload object).
-export async function runOneFile(spec, ctx, deps) {
+// The runtime's nested-folder creation body: a REAL child of the root folder.
+export function nestedFolderCreateBody(folderName, rootFolderId) {
+  return { name: `${folderName}-sub`, parentId: rootFolderId };
+}
+
+// File-result shell, registered BEFORE any production mutation so a partial
+// failure still leaves identifiable non-secret evidence in the results.
+export function createFileResult(spec) {
   const payload = deterministicPayload(spec);
-  const displayName = `${ctx.folderName}-${spec.display}`;
-  const fileResult = {
+  return {
     tag: spec.tag,
     expectedMd5: md5Base64(payload),
     expectedSha256: sha256(payload),
@@ -240,6 +272,13 @@ export async function runOneFile(spec, ctx, deps) {
     downloadSha256: null, downloadBytesOk: null, renamed: null, moved: null,
     recycled: null, recycleList: null, recycledListed: null, restored: null, moveOut: null,
   };
+}
+
+// One-file workflow. Fail-fast: every gate is validated immediately. Mutates
+// the pre-registered fileResult in place so partial evidence survives failures.
+export async function executeFileWorkflow(spec, ctx, deps, fileResult) {
+  const payload = deterministicPayload(spec);
+  const displayName = `${ctx.folderName}-${spec.display}`;
 
   const reserveResponse = await guard(`reserve ${spec.tag}`, deps.api("POST", "/api/drive/uploads", {
     cookie: ctx.cookie,
@@ -248,7 +287,7 @@ export async function runOneFile(spec, ctx, deps) {
       checksum: { algorithm: "md5", value: fileResult.expectedMd5 },
     },
   }));
-  const reserveBody = await reserveResponse.json().catch(() => ({}));
+  const reserveBody = reserveResponse.body ?? {};
   const fileId = reserveBody.file?.id;
   fileResult.reserve = { status: reserveResponse.status, fileId, state: reserveBody.file?.state };
   if (reserveResponse.status !== CONTRACT.uploadReserve || !fileId || reserveBody.file?.state !== "pending_upload" || reserveBody.upload?.method !== "POST") {
@@ -256,7 +295,7 @@ export async function runOneFile(spec, ctx, deps) {
   }
 
   const pendingResponse = await guard(`pending list ${spec.tag}`, deps.api("GET", `/api/drive/uploads?folderId=${encodeURIComponent(ctx.rootFolderId)}`, { cookie: ctx.cookie }));
-  const pendingBody = await pendingResponse.json().catch(() => ({}));
+  const pendingBody = pendingResponse.body ?? {};
   fileResult.pendingList = { status: pendingResponse.status };
   fileResult.pendingListed = (pendingBody.files ?? []).some((entry) => entry.id === fileId && entry.state === "pending_upload");
   if (pendingResponse.status !== CONTRACT.pendingList || fileResult.pendingListed !== true) {
@@ -265,7 +304,7 @@ export async function runOneFile(spec, ctx, deps) {
 
   // Bodyless renewal: POST, NO Content-Type, NO body.
   const renewResponse = await guard(`renew ${spec.tag}`, deps.api("POST", `/api/drive/uploads/${encodeURIComponent(fileId)}/authorization`, { cookie: ctx.cookie }));
-  const renewBody = await renewResponse.json().catch(() => ({}));
+  const renewBody = renewResponse.body ?? {};
   const renewedUpload = renewBody.upload;
   fileResult.renew = {
     status: renewResponse.status,
@@ -294,10 +333,7 @@ export async function runOneFile(spec, ctx, deps) {
   }
 
   const completeResponse = await guard(`complete ${spec.tag}`, deps.api("POST", `/api/drive/uploads/${encodeURIComponent(fileId)}/complete`, { cookie: ctx.cookie }));
-  let completeBody = {};
-  try {
-    completeBody = await completeResponse.json();
-  } catch {}
+  const completeBody = completeResponse.body ?? {};
   fileResult.complete = {
     status: completeResponse.status,
     sizeOk: completeBody.file?.sizeBytes === payload.length,
@@ -311,7 +347,7 @@ export async function runOneFile(spec, ctx, deps) {
   }
 
   const entriesResponse = await guard(`entries ${spec.tag}`, deps.api("GET", `/api/drive/entries?folderId=${encodeURIComponent(ctx.rootFolderId)}`, { cookie: ctx.cookie }));
-  const entriesBody = await entriesResponse.json().catch(() => ({}));
+  const entriesBody = entriesResponse.body ?? {};
   fileResult.entriesList = { status: entriesResponse.status };
   fileResult.listed = (entriesBody.files ?? []).some((entry) => entry.id === fileId && entry.state === "active");
   if (entriesResponse.status !== CONTRACT.entriesList || fileResult.listed !== true) {
@@ -319,17 +355,16 @@ export async function runOneFile(spec, ctx, deps) {
   }
 
   const downloadResponse = await guard(`download authorization ${spec.tag}`, deps.api("GET", `/api/drive/files/${encodeURIComponent(fileId)}/download?disposition=attachment`, { cookie: ctx.cookie }));
-  const downloadBody = await downloadResponse.json().catch(() => ({}));
+  const downloadBody = downloadResponse.body ?? {};
   fileResult.downloadAuthorization = { status: downloadResponse.status };
   if (downloadResponse.status !== CONTRACT.downloadAuthorization || typeof downloadBody.download?.url !== "string") {
     throw new Error(`download authorization failed for ${spec.tag}`);
   }
 
   const signedResponse = await guard(`signed download ${spec.tag}`, deps.signedGet(downloadBody.download.url));
-  const downloadedBytes = Buffer.from(await signedResponse.arrayBuffer());
   fileResult.signedDownload = { status: signedResponse.status };
-  fileResult.downloadSha256 = sha256(downloadedBytes);
-  fileResult.downloadBytesOk = downloadedBytes.length === payload.length;
+  fileResult.downloadSha256 = sha256(signedResponse.bytes);
+  fileResult.downloadBytesOk = signedResponse.bytes.length === payload.length;
   if (signedResponse.status !== CONTRACT.signedDownload || fileResult.downloadSha256 !== fileResult.expectedSha256 || fileResult.downloadBytesOk !== true) {
     throw new Error(`signed download verification failed for ${spec.tag}`);
   }
@@ -337,7 +372,7 @@ export async function runOneFile(spec, ctx, deps) {
   const renameResponse = await guard(`rename ${spec.tag}`, deps.api("PATCH", `/api/drive/files/${encodeURIComponent(fileId)}`, {
     cookie: ctx.cookie, json: { displayName: `${displayName}-renamed` },
   }));
-  const renameBody = await renameResponse.json().catch(() => ({}));
+  const renameBody = renameResponse.body ?? {};
   fileResult.renamed = { status: renameResponse.status, name: renameBody.file?.displayName === `${displayName}-renamed` };
   if (renameResponse.status !== CONTRACT.fileRename || fileResult.renamed.name !== true) {
     throw new Error(`rename failed for ${spec.tag}`);
@@ -346,7 +381,7 @@ export async function runOneFile(spec, ctx, deps) {
   const moveResponse = await guard(`move ${spec.tag}`, deps.api("PATCH", `/api/drive/files/${encodeURIComponent(fileId)}`, {
     cookie: ctx.cookie, json: { folderId: ctx.nestedFolderId },
   }));
-  const moveBody = await moveResponse.json().catch(() => ({}));
+  const moveBody = moveResponse.body ?? {};
   fileResult.moved = { status: moveResponse.status, inSubfolder: moveBody.file?.folderId === ctx.nestedFolderId };
   if (moveResponse.status !== CONTRACT.fileMove || fileResult.moved.inSubfolder !== true) {
     throw new Error(`move into nested folder failed for ${spec.tag}`);
@@ -359,7 +394,7 @@ export async function runOneFile(spec, ctx, deps) {
   }
 
   const recycleResponse = await guard(`recycle list ${spec.tag}`, deps.api("GET", "/api/drive/recycle", { cookie: ctx.cookie }));
-  const recycleBody = await recycleResponse.json().catch(() => ({}));
+  const recycleBody = recycleResponse.body ?? {};
   fileResult.recycleList = { status: recycleResponse.status };
   fileResult.recycledListed = (recycleBody.files ?? []).some((entry) => entry.id === fileId && entry.state === "deleted");
   if (recycleResponse.status !== CONTRACT.recycleList || fileResult.recycledListed !== true) {
@@ -367,18 +402,16 @@ export async function runOneFile(spec, ctx, deps) {
   }
 
   const restoreResponse = await guard(`restore ${spec.tag}`, deps.api("POST", `/api/drive/files/${encodeURIComponent(fileId)}/restore`, { cookie: ctx.cookie }));
-  const restoreBody = await restoreResponse.json().catch(() => ({}));
+  const restoreBody = restoreResponse.body ?? {};
   fileResult.restored = { status: restoreResponse.status, active: restoreBody.file?.state === "active" };
   if (restoreResponse.status !== CONTRACT.fileRestore || fileResult.restored.active !== true) {
     throw new Error(`restore failed for ${spec.tag}`);
   }
 
-  // Move the restored file back to the root so the nested folder is empty
-  // before the folder lifecycle below deletes it.
   const moveOutResponse = await guard(`move out ${spec.tag}`, deps.api("PATCH", `/api/drive/files/${encodeURIComponent(fileId)}`, {
     cookie: ctx.cookie, json: { folderId: ctx.rootFolderId },
   }));
-  const moveOutBody = await moveOutResponse.json().catch(() => ({}));
+  const moveOutBody = moveOutResponse.body ?? {};
   fileResult.moveOut = { status: moveOutResponse.status, backInRoot: moveOutBody.file?.folderId === ctx.rootFolderId };
   if (moveOutResponse.status !== CONTRACT.fileMove || fileResult.moveOut.backInRoot !== true) {
     throw new Error(`move-out failed for ${spec.tag}`);
@@ -387,17 +420,25 @@ export async function runOneFile(spec, ctx, deps) {
   return fileResult;
 }
 
+// Convenience wrapper used by tests: creates and executes a full file workflow.
+export async function runOneFile(spec, ctx, deps) {
+  const fileResult = createFileResult(spec);
+  return executeFileWorkflow(spec, ctx, deps, fileResult);
+}
+
 // Folder lifecycle: the real nested child folder must be empty, then soft-
 // deleted, verified in the recycle list, and restored (bodyless POST) with
 // its parent relationship intact. Never permanently deleted.
 export async function runFolderLifecycle(ctx, deps) {
   const result = {
-    childEmpty: null, folderDelete: null, folderRecycledListed: null,
+    childEntriesList: { status: null }, childEmpty: null,
+    folderDelete: null, folderRecycleList: { status: null }, folderRecycledListed: null,
     folderRestore: { status: null, active: null, parentRelation: null },
   };
 
   const entriesResponse = await guard("child-empty check", deps.api("GET", `/api/drive/entries?folderId=${encodeURIComponent(ctx.nestedFolderId)}`, { cookie: ctx.cookie }));
-  const entriesBody = await entriesResponse.json().catch(() => ({}));
+  const entriesBody = entriesResponse.body ?? {};
+  result.childEntriesList = { status: entriesResponse.status };
   result.childEmpty = Array.isArray(entriesBody.files) && entriesBody.files.length === 0;
   if (entriesResponse.status !== CONTRACT.entriesList || result.childEmpty !== true) {
     throw new Error("nested folder is not empty before folder deletion");
@@ -410,14 +451,15 @@ export async function runFolderLifecycle(ctx, deps) {
   }
 
   const recycleResponse = await guard("folder recycle check", deps.api("GET", "/api/drive/recycle", { cookie: ctx.cookie }));
-  const recycleBody = await recycleResponse.json().catch(() => ({}));
+  const recycleBody = recycleResponse.body ?? {};
+  result.folderRecycleList = { status: recycleResponse.status };
   result.folderRecycledListed = (recycleBody.folders ?? []).some((entry) => entry.id === ctx.nestedFolderId && entry.state === "deleted");
   if (recycleResponse.status !== CONTRACT.recycleList || result.folderRecycledListed !== true) {
     throw new Error("deleted folder missing from recycle");
   }
 
   const restoreResponse = await guard("folder restore", deps.api("POST", `/api/drive/folders/${encodeURIComponent(ctx.nestedFolderId)}/restore`, { cookie: ctx.cookie }));
-  const restoreBody = await restoreResponse.json().catch(() => ({}));
+  const restoreBody = restoreResponse.body ?? {};
   result.folderRestore = {
     status: restoreResponse.status,
     active: restoreBody.folder?.state === "active",
@@ -442,31 +484,38 @@ async function run() {
   let cookie = "";
 
   const deps = {
-    api: (method, path, options) => fetchWithTimeout(`${BASE_URL}${path}`, requestInit(method, options), TIMEOUTS.api),
-    directPost: (url, form) => fetchWithTimeout(url, { method: "POST", body: form }, TIMEOUTS.directUpload),
-    signedGet: (url) => fetchWithTimeout(url, {}, TIMEOUTS.signedDownload),
+    api: createApiDep(BASE_URL),
+    directPost: createDirectPostDep(),
+    signedGet: createSignedGetDep(),
   };
 
   try {
-    const loginResponse = await guard("login", deps.api("POST", "/api/auth/login", { json: { loginName, password } }));
-    const loginBody = await loginResponse.json().catch(() => ({}));
-    cookie = cookieValue(loginResponse.headers.get("set-cookie"));
-    results.login = { status: loginResponse.status, matches: loginBody.account?.loginName === loginName };
-    if (results.login.status !== CONTRACT.login || results.login.matches !== true) throw new Error("login failed");
+    // Header-aware login: the session cookie comes from the raw login response.
+    const loginRaw = await withTimeout(async (signal) => {
+      const init = requestInit("POST", { json: { loginName, password } });
+      const response = await fetch(`${BASE_URL}/api/auth/login`, { ...init, signal });
+      const body = await response.json().catch(() => ({}));
+      return { status: response.status, setCookie: response.headers.get("set-cookie"), body };
+    }, TIMEOUTS.api).catch((cause) => {
+      throw new Error("login failed", { cause });
+    });
+    cookie = cookieValue(loginRaw.setCookie);
+    results.login = { status: loginRaw.status, matches: loginRaw.body?.account?.loginName === loginName };
+    if (results.login.status !== CONTRACT.login || results.login.matches !== true || !cookie) throw new Error("login failed");
 
     const sessionResponse = await guard("session", deps.api("GET", "/api/auth/session", { cookie }));
     results.session = sessionResponse.status;
     if (results.session !== CONTRACT.session) throw new Error("session check failed");
 
     const rootResponse = await guard("root folder", deps.api("POST", "/api/drive/folders", { cookie, json: { name: folderName, parentId: null } }));
-    const rootBody = await rootResponse.json().catch(() => ({}));
+    const rootBody = rootResponse.body ?? {};
     const rootFolderId = rootBody.folder?.id;
     results.rootFolder = { status: rootResponse.status, id: rootFolderId };
     if (rootResponse.status !== CONTRACT.folderCreate || !rootFolderId) throw new Error("root folder creation failed");
 
     // REAL nested child: parentId is the root folder ID, never null.
-    const nestedResponse = await guard("nested folder", deps.api("POST", "/api/drive/folders", { cookie, json: { name: `${folderName}-sub`, parentId: rootFolderId } }));
-    const nestedBody = await nestedResponse.json().catch(() => ({}));
+    const nestedResponse = await guard("nested folder", deps.api("POST", "/api/drive/folders", { cookie, json: nestedFolderCreateBody(folderName, rootFolderId) }));
+    const nestedBody = nestedResponse.body ?? {};
     const nestedFolderId = nestedBody.folder?.id;
     results.nestedFolder = {
       status: nestedResponse.status,
@@ -479,7 +528,11 @@ async function run() {
 
     const ctx = { cookie, rootFolderId, nestedFolderId, folderName };
     for (const spec of PAYLOAD_SPECS) {
-      results.files.push(await runOneFile(spec, ctx, deps));
+      // Register the file result BEFORE any production mutation so a partial
+      // failure still leaves identifiable evidence.
+      const fileResult = createFileResult(spec);
+      results.files.push(fileResult);
+      await executeFileWorkflow(spec, ctx, deps, fileResult);
     }
 
     results.folderLifecycle = await runFolderLifecycle(ctx, deps);
@@ -529,7 +582,7 @@ async function run() {
         `backInRoot=${fileResult.moveOut?.backInRoot ?? false}`,
       ].join(" "));
     }
-    console.log(`folderLifecycle: childEmpty=${results.folderLifecycle?.childEmpty ?? false} folderDelete=${results.folderLifecycle?.folderDelete ?? "n/a"} folderRecycledListed=${results.folderLifecycle?.folderRecycledListed ?? false} folderRestore=${results.folderLifecycle?.folderRestore?.status ?? "n/a"} restoredActive=${results.folderLifecycle?.folderRestore?.active ?? false} restoredParent=${results.folderLifecycle?.folderRestore?.parentRelation ?? false}`);
+    console.log(`folderLifecycle: childEntriesList=${results.folderLifecycle?.childEntriesList?.status ?? "n/a"} childEmpty=${results.folderLifecycle?.childEmpty ?? false} folderDelete=${results.folderLifecycle?.folderDelete ?? "n/a"} folderRecycleList=${results.folderLifecycle?.folderRecycleList?.status ?? "n/a"} folderRecycledListed=${results.folderLifecycle?.folderRecycledListed ?? false} folderRestore=${results.folderLifecycle?.folderRestore?.status ?? "n/a"} restoredActive=${results.folderLifecycle?.folderRestore?.active ?? false} restoredParent=${results.folderLifecycle?.folderRestore?.parentRelation ?? false}`);
     console.log(`logout_status=${results.logout ?? "n/a"}`);
     console.log(`VERDICT=${computeVerdict(results, PAYLOAD_SPECS.length)}`);
   }

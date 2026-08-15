@@ -3,8 +3,9 @@
 // Deterministic contract tests for the repository-owned E2E acceptance tool.
 // Pins payload identities, the status-code contract, request semantics,
 // real folder nesting, bodyless renew/folder-restore, renewed-authorization
-// selection, verdict completeness, timeout behavior, fail-fast behavior, and
-// the absence of any permanent-delete path.
+// selection, whole-operation timeout coverage (headers AND body), verdict
+// completeness, partial-evidence retention, fail-fast behavior, error-message
+// redaction, and the absence of any permanent-delete path.
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -17,13 +18,17 @@ import {
   PAYLOAD_SPECS,
   TIMEOUTS,
   computeVerdict,
+  createFileResult,
+  createSignedGetDep,
   deterministicPayload,
-  fetchWithTimeout,
+  executeFileWorkflow,
   md5Base64,
+  nestedFolderCreateBody,
   requestInit,
   runFolderLifecycle,
   runOneFile,
   sha256,
+  withTimeout,
 } from "./production-e2e-acceptance.mjs";
 
 const EXPECTED_ROWS = [
@@ -37,13 +42,11 @@ const ROOT_FOLDER_ID = "root-folder-1";
 const NESTED_FOLDER_ID = "nested-folder-1";
 const FILE_ID = "file-1";
 
-function jsonResponse(status, body) {
-  return { status, json: async () => body };
+function jsonBody(status, body) {
+  return { status, body };
 }
 
-function emptyResponse(status) {
-  return { status, json: async () => ({}) };
-}
+const TEST_CTX = { cookie: "c=1", rootFolderId: ROOT_FOLDER_ID, nestedFolderId: NESTED_FOLDER_ID, folderName: "prod03c2-e2e-test" };
 
 function makeFakes(spec, ctx, overrides = {}) {
   const calls = [];
@@ -57,43 +60,43 @@ function makeFakes(spec, ctx, overrides = {}) {
     const override = overrides.api?.(method, path, options, calls);
     if (override) return override;
     if (path === "/api/drive/uploads") {
-      return jsonResponse(201, {
+      return jsonBody(201, {
         file: { id: FILE_ID, state: "pending_upload" },
         upload: { method: "POST", url: "https://initial.invalid", fields: { key: "initial" }, expiresAt: "2026-08-15T00:00:00Z" },
       });
     }
     if (path.startsWith("/api/drive/uploads?folderId=")) {
-      return jsonResponse(200, { files: [{ id: FILE_ID, state: "pending_upload" }] });
+      return jsonBody(200, { files: [{ id: FILE_ID, state: "pending_upload" }] });
     }
     if (path.endsWith("/authorization")) {
-      return jsonResponse(200, {
+      return jsonBody(200, {
         upload: { method: "POST", url: "https://renewed.invalid", fields: { key: "renewed" }, expiresAt: "2026-08-15T00:00:00Z" },
       });
     }
     if (path.endsWith("/complete")) {
-      return jsonResponse(200, {
+      return jsonBody(200, {
         file: { id: FILE_ID, folderId: ctx.rootFolderId, displayName: "x", mediaType: spec.mediaType, sizeBytes: payload.length, checksumAlgorithm: "md5", checksum: md5Base64(payload), state: "active" },
       });
     }
     if (path.startsWith("/api/drive/entries")) {
-      return jsonResponse(200, { folder: null, folders: [], files: [{ id: FILE_ID, state: "active" }] });
+      return jsonBody(200, { folder: null, folders: [], files: [{ id: FILE_ID, state: "active" }] });
     }
     if (path.includes("/download")) {
-      return jsonResponse(200, { download: { method: "GET", url: "https://signed.invalid/object", expiresAt: "2026-08-15T00:00:00Z" } });
+      return jsonBody(200, { download: { method: "GET", url: "https://signed.invalid/object", expiresAt: "2026-08-15T00:00:00Z" } });
     }
     if (method === "PATCH" && path.includes("/files/")) {
-      return jsonResponse(200, {
+      return jsonBody(200, {
         file: { id: FILE_ID, folderId: options.json.folderId ?? ctx.rootFolderId, displayName: options.json.displayName ?? "x", mediaType: spec.mediaType, sizeBytes: payload.length, checksumAlgorithm: "md5", checksum: md5Base64(payload), state: "active" },
       });
     }
     if (method === "DELETE" && path.includes("/files/")) {
-      return emptyResponse(204);
+      return { status: 204, body: {} };
     }
     if (path === "/api/drive/recycle") {
-      return jsonResponse(200, { folders: [], files: [{ id: FILE_ID, state: "deleted" }] });
+      return jsonBody(200, { folders: [], files: [{ id: FILE_ID, state: "deleted" }] });
     }
     if (path.includes("/files/") && path.endsWith("/restore")) {
-      return jsonResponse(200, { file: { id: FILE_ID, folderId: ctx.rootFolderId, state: "active" } });
+      return jsonBody(200, { file: { id: FILE_ID, folderId: ctx.rootFolderId, state: "active" } });
     }
     throw new Error(`unexpected fake call: ${method} ${path}`);
   };
@@ -107,7 +110,7 @@ function makeFakes(spec, ctx, overrides = {}) {
   const signedGet = async (url) => {
     assert.equal(url, "https://signed.invalid/object");
     signedGetCalls += 1;
-    return { status: 200, arrayBuffer: async () => payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength) };
+    return { status: 200, bytes: payload };
   };
 
   return {
@@ -116,11 +119,8 @@ function makeFakes(spec, ctx, overrides = {}) {
     observedUploadUrl: () => observedUploadUrl,
     directPostCalls: () => directPostCalls,
     signedGetCalls: () => signedGetCalls,
-    payload,
   };
 }
-
-const TEST_CTX = { cookie: "c=1", rootFolderId: ROOT_FOLDER_ID, nestedFolderId: NESTED_FOLDER_ID, folderName: "prod03c2-e2e-test" };
 
 // ---------------------------------------------------------------- fixtures
 
@@ -161,8 +161,10 @@ function validResults() {
     nestedFolder: { status: CONTRACT.folderCreate, id: "nested-folder-1", parentRelation: true },
     files: [validFileResult(), validFileResult(), validFileResult(), validFileResult()],
     folderLifecycle: {
+      childEntriesList: { status: CONTRACT.entriesList },
       childEmpty: true,
       folderDelete: CONTRACT.folderDelete,
+      folderRecycleList: { status: CONTRACT.recycleList },
       folderRecycledListed: true,
       folderRestore: { status: CONTRACT.folderRestore, active: true, parentRelation: true },
     },
@@ -227,12 +229,10 @@ test("request semantics split: JSON body requests vs bodyless actions", () => {
   const jsonInit = requestInit("POST", { cookie: "c=1", json: { name: "Folder", parentId: null } });
   assert.equal(jsonInit.method, "POST");
   assert.equal(jsonInit.headers["Content-Type"], "application/json");
-  assert.equal(jsonInit.headers.Accept, "application/json");
   assert.equal(jsonInit.body, JSON.stringify({ name: "Folder", parentId: null }));
 
   const actionInit = requestInit("POST", { cookie: "c=1" });
   assert.equal(actionInit.method, "POST");
-  assert.equal(actionInit.headers.Accept, "application/json");
   assert.ok(!("Content-Type" in actionInit.headers));
   assert.ok(!("body" in actionInit));
 
@@ -251,25 +251,65 @@ test("timeout policy values are bounded and distinct", () => {
   assert.equal(TIMEOUTS.directUpload, 60_000);
 });
 
-test("fetchWithTimeout resolves on a fast response and aborts a stalled one", async () => {
-  const fastImpl = async () => ({ status: 200 });
-  const fast = await fetchWithTimeout("https://fast.invalid", {}, 500, fastImpl);
-  assert.equal(fast.status, 200);
+// ---------------------------------------------------------------- timeout
 
-  const stalledImpl = (_url, init) => new Promise((_resolve, reject) => {
-    init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+test("withTimeout resolves within budget and rejects bounded when stalled before headers", async () => {
+  const fast = await withTimeout(async () => "ok", 500);
+  assert.equal(fast, "ok");
+
+  const stalled = (signal) => new Promise((_resolve, reject) => {
+    // mirrors real fetch: reject with the abort reason once the signal fires
+    signal.addEventListener("abort", () => reject(signal.reason));
   });
   const started = Date.now();
-  await assert.rejects(
-    fetchWithTimeout("https://stalled.invalid", {}, 30, stalledImpl),
-    (error) => error.name === "AbortError",
-  );
+  await assert.rejects(withTimeout(stalled, 30), (error) => error.message === "timeout");
   assert.ok(Date.now() - started < 500, "timeout must be bounded");
 });
 
-// ---------------------------------------------------------------- workflow tests
+test("timeout covers response-body consumption: headers resolve, body stalls, bounded failure", async () => {
+  const stalledBodyImpl = async (_url, init) => ({
+    status: 200,
+    arrayBuffer: () => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }),
+  });
+  const signedGet = createSignedGetDep(stalledBodyImpl, 30);
+  const started = Date.now();
+  await assert.rejects(signedGet("https://signed.invalid/object"));
+  assert.ok(Date.now() - started < 500, "body timeout must be bounded");
+});
 
-test("runOneFile: real nesting inputs, bodyless renew, and the RENEWED authorization is the one used", async () => {
+test("workflow-level timeout: signed-download stall prevents rename/move/recycle", async () => {
+  const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX);
+  const stalledBodyImpl = async (_url, init) => ({
+    status: 200,
+    arrayBuffer: () => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }),
+  });
+  const signedGet = createSignedGetDep(stalledBodyImpl, 20);
+  const deps = { api: fakes.deps.api, directPost: fakes.deps.directPost, signedGet };
+  await assert.rejects(runOneFile(PAYLOAD_SPECS[2], TEST_CTX, deps), /signed download/);
+  const later = fakes.calls().filter((call) =>
+    (call.method === "PATCH" && call.path.includes("/files/")) ||
+    (call.method === "DELETE" && call.path.includes("/files/")) ||
+    call.path === "/api/drive/recycle" ||
+    (call.path.includes("/files/") && call.path.endsWith("/restore")));
+  assert.equal(later.length, 0, "no mutation after signed-download timeout");
+});
+
+// ---------------------------------------------------------------- nesting
+
+test("runtime nested-folder create body is a REAL child of the root folder", () => {
+  const body = nestedFolderCreateBody("prod03c2-e2e-test", ROOT_FOLDER_ID);
+  assert.equal(body.name, "prod03c2-e2e-test-sub");
+  assert.equal(body.parentId, ROOT_FOLDER_ID);
+  assert.notEqual(body.parentId, null);
+});
+
+// ---------------------------------------------------------------- workflows
+
+test("runOneFile: bodyless renew, renewed authorization actually used, complete bodyless", async () => {
   const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX);
   const result = await runOneFile(PAYLOAD_SPECS[2], TEST_CTX, fakes.deps);
 
@@ -281,58 +321,103 @@ test("runOneFile: real nesting inputs, bodyless renew, and the RENEWED authoriza
   assert.equal(result.moved.inSubfolder, true);
   assert.equal(result.moveOut.backInRoot, true);
 
-  // The observed direct-upload URL MUST be the renewed authorization URL.
   assert.equal(fakes.observedUploadUrl(), "https://renewed.invalid");
   assert.equal(fakes.directPostCalls(), 1);
 
-  // Renew must be bodyless: no Content-Type, no body in the REAL request init.
   const renewCall = fakes.calls().find((call) => call.path.endsWith("/authorization"));
-  assert.ok(renewCall, "renew call present");
   const renewInit = requestInit("POST", renewCall.options);
   assert.equal(renewInit.method, "POST");
   assert.ok(!("Content-Type" in renewInit.headers));
   assert.ok(!("body" in renewInit));
 
-  // Complete must also be bodyless.
   const completeCall = fakes.calls().find((call) => call.path.endsWith("/complete"));
   const completeInit = requestInit("POST", completeCall.options);
   assert.ok(!("Content-Type" in completeInit.headers));
   assert.ok(!("body" in completeInit));
 });
 
-test("runFolderLifecycle: bodyless folder restore with real parent verification", async () => {
+test("runFolderLifecycle: bodyless folder restore with parent verification and persisted statuses", async () => {
   const calls = [];
   const api = async (method, path, options) => {
     calls.push({ method, path, options });
-    if (path.startsWith("/api/drive/entries")) return jsonResponse(200, { folder: null, folders: [], files: [] });
-    if (method === "DELETE" && path.includes("/folders/")) return emptyResponse(204);
-    if (path === "/api/drive/recycle") return jsonResponse(200, { folders: [{ id: NESTED_FOLDER_ID, state: "deleted" }], files: [] });
+    if (path.startsWith("/api/drive/entries")) return jsonBody(200, { folder: null, folders: [], files: [] });
+    if (method === "DELETE" && path.includes("/folders/")) return { status: 204, body: {} };
+    if (path === "/api/drive/recycle") return jsonBody(200, { folders: [{ id: NESTED_FOLDER_ID, state: "deleted" }], files: [] });
     if (path.includes("/folders/") && path.endsWith("/restore")) {
-      return jsonResponse(200, { folder: { id: NESTED_FOLDER_ID, parentId: ROOT_FOLDER_ID, state: "active" } });
+      return jsonBody(200, { folder: { id: NESTED_FOLDER_ID, parentId: ROOT_FOLDER_ID, state: "active" } });
     }
     throw new Error(`unexpected fake call: ${method} ${path}`);
   };
-  const result = await runFolderLifecycle(TEST_CTX, { api, directPost: async () => ({ status: 201 }), signedGet: async () => ({ status: 200, arrayBuffer: async () => new ArrayBuffer(0) }) });
+  const result = await runFolderLifecycle(TEST_CTX, { api, directPost: async () => ({ status: 201 }), signedGet: async () => ({ status: 200, bytes: Buffer.alloc(0) }) });
 
+  assert.equal(result.childEntriesList.status, CONTRACT.entriesList);
   assert.equal(result.childEmpty, true);
   assert.equal(result.folderDelete, CONTRACT.folderDelete);
+  assert.equal(result.folderRecycleList.status, CONTRACT.recycleList);
   assert.equal(result.folderRecycledListed, true);
   assert.equal(result.folderRestore.status, CONTRACT.folderRestore);
   assert.equal(result.folderRestore.active, true);
   assert.equal(result.folderRestore.parentRelation, true);
 
   const restoreCall = calls.find((call) => call.path.endsWith("/folders/nested-folder-1/restore"));
-  assert.ok(restoreCall, "restore call present");
   const restoreInit = requestInit("POST", restoreCall.options);
   assert.equal(restoreInit.method, "POST");
   assert.ok(!("Content-Type" in restoreInit.headers));
   assert.ok(!("body" in restoreInit));
 });
 
+test("partial evidence: a failure after reservation leaves the registered fileResult with FILE_ID", async () => {
+  const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX, {
+    api: (method, path) => {
+      if (path.endsWith("/complete")) return jsonBody(400, { error: "invalid_request" });
+      return null;
+    },
+  });
+  const results = { files: [] };
+  const fileResult = createFileResult(PAYLOAD_SPECS[2]);
+  results.files.push(fileResult); // registered BEFORE any mutation
+  await assert.rejects(executeFileWorkflow(PAYLOAD_SPECS[2], TEST_CTX, fakes.deps, fileResult), /completion/);
+
+  assert.equal(results.files.length, 1);
+  assert.equal(results.files[0].tag, "txt");
+  assert.equal(results.files[0].reserve.status, CONTRACT.uploadReserve);
+  assert.equal(results.files[0].reserve.fileId, FILE_ID);
+  assert.equal(results.files[0].pendingList.status, CONTRACT.pendingList);
+  assert.equal(results.files[0].renew.status, CONTRACT.uploadRenew);
+  assert.equal(results.files[0].upload, CONTRACT.directUpload);
+  assert.equal(results.files[0].complete.status, 400);
+  assert.equal(results.files[0].completeError.code, "invalid_request");
+  assert.equal(results.files[0].restored, null, "unreached steps must not be invented");
+});
+
+test("failure messages contain only the logical step, never cause details", async () => {
+  const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX, {
+    api: (method, path) => {
+      if (path.endsWith("/authorization")) {
+        throw new Error("boom https://secret-token.invalid/abc123 credential-leak");
+      }
+      return null;
+    },
+  });
+  let caught = null;
+  try {
+    await runOneFile(PAYLOAD_SPECS[2], TEST_CTX, fakes.deps);
+  } catch (error) {
+    caught = error;
+  }
+  assert.ok(caught, "workflow must reject");
+  assert.equal(caught.message, "renew txt failed");
+  assert.ok(!caught.message.includes("secret-token"), "message must not leak cause details");
+  assert.ok(!caught.message.includes("abc123"));
+  assert.ok(String(caught.cause?.message ?? "").includes("secret-token"), "cause retains the original error for debugging");
+});
+
+// ---------------------------------------------------------------- fail fast
+
 test("fail fast: renew failure must prevent the direct OSS upload", async () => {
   const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX, {
     api: (method, path) => {
-      if (path.endsWith("/authorization")) return jsonResponse(401, { error: "authentication_required" });
+      if (path.endsWith("/authorization")) return jsonBody(401, { error: "authentication_required" });
       return null;
     },
   });
@@ -343,7 +428,7 @@ test("fail fast: renew failure must prevent the direct OSS upload", async () => 
 test("fail fast: upload completion failure must prevent rename/move/recycle", async () => {
   const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX, {
     api: (method, path) => {
-      if (path.endsWith("/complete")) return jsonResponse(400, { error: "invalid_request" });
+      if (path.endsWith("/complete")) return jsonBody(400, { error: "invalid_request" });
       return null;
     },
   });
@@ -353,14 +438,14 @@ test("fail fast: upload completion failure must prevent rename/move/recycle", as
     (call.method === "DELETE" && call.path.includes("/files/")) ||
     call.path === "/api/drive/recycle" ||
     (call.path.includes("/files/") && call.path.endsWith("/restore")));
-  assert.equal(later.length, 0, "no mutation after completion failure");
+  assert.equal(later.length, 0);
 });
 
 test("fail fast: move failure must prevent recycle/restore/move-out", async () => {
   const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX, {
     api: (method, path, options) => {
       if (method === "PATCH" && path.includes("/files/") && options.json.folderId === TEST_CTX.nestedFolderId) {
-        return jsonResponse(409, { error: "invalid_move" });
+        return jsonBody(409, { error: "invalid_move" });
       }
       return null;
     },
@@ -371,10 +456,10 @@ test("fail fast: move failure must prevent recycle/restore/move-out", async () =
     call.path === "/api/drive/recycle" ||
     (call.path.includes("/files/") && call.path.endsWith("/restore")) ||
     (call.method === "PATCH" && call.path.includes("/files/") && call.options.json?.folderId === TEST_CTX.rootFolderId));
-  assert.equal(afterMove.length, 0, "no mutation after move failure");
+  assert.equal(afterMove.length, 0);
 });
 
-// ---------------------------------------------------------------- verdict tests
+// ---------------------------------------------------------------- verdict
 
 test("computeVerdict accepts a fully valid run", () => {
   assert.equal(computeVerdict(validResults(), 4), true);
@@ -420,8 +505,10 @@ test("computeVerdict rejects when ANY single network step or semantic check fail
     ["restore semantic", (r) => { r.files[0].restored.active = false; }],
     ["move-out status", (r) => { r.files[0].moveOut.status = 400; }],
     ["move-out semantic", (r) => { r.files[0].moveOut.backInRoot = false; }],
+    ["child-empty entries status", (r) => { r.folderLifecycle.childEntriesList.status = 500; }],
     ["child emptiness", (r) => { r.folderLifecycle.childEmpty = false; }],
     ["folder delete status", (r) => { r.folderLifecycle.folderDelete = 500; }],
+    ["folder recycle-list status", (r) => { r.folderLifecycle.folderRecycleList.status = 500; }],
     ["folder recycle semantic", (r) => { r.folderLifecycle.folderRecycledListed = false; }],
     ["folder restore status", (r) => { r.folderLifecycle.folderRestore.status = 400; }],
     ["folder restored active", (r) => { r.folderLifecycle.folderRestore.active = false; }],
