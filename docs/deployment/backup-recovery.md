@@ -61,4 +61,4 @@ Do not restore an environment file or credential from an untrusted database arch
 
 The database backup recovers metadata, not object bytes. With OSS versioning disabled to preserve no-overwrite upload semantics, a permanently deleted provider object is not recovered by SQLite restore. A separate object-level encrypted backup/replication design is a future cost/security decision requiring approval; until then permanent deletion is intentionally irreversible after the recycle-bin confirmation.
 
-Server-local backups do not survive server loss. Off-host encrypted copies and tested access to their decryption keys are mandatory for production acceptance.
+Server-local backups do not survive server loss. Off-host encrypted copies and tested access to their decryption keys are mandatory for production acceptance. The production off-host path is the Owner-approved `age`-encrypted design in [Encrypted Off-host Backup](encrypted-backup.md): the host encrypts with a committed public recipient, the private identity lives only in the Owner's online password vault, and only encrypted artifacts plus a non-secret manifest enter the private `AcademicCloud-Backups` repository.

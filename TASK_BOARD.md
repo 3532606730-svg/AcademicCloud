@@ -6,7 +6,9 @@
 
 ## In Progress
 
-None while the PROD-03B completion checkpoint synchronizes.
+### PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification
+
+**Status:** In Progress — encrypted off-host backup gate built and rehearsed (production backup `a457628a…` encrypted to committed recipient `age1s4aqa7…`, local decryption verified, isolated restore rehearsal passed, production untouched); stopped at the Owner boundary for private `AcademicCloud-Backups` repo creation and Bitwarden vaulting; public route still closed
 
 ## Completed
 
@@ -325,11 +327,7 @@ Completion notes:
 
 ## Ready
 
-### PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification
-
-**Status:** Ready — begins only after the PROD-03B completion checkpoint synchronizes
-
-Goal: enable the reviewed public HTTPS/Nginx edge for `cloud.ajtlab.top` (the exact prepared AcademicCloud site on the existing certificate) and complete its minimum machine verification over the public HTTPS path, only after the durable encrypted off-host backup/restore gate and this task's independent review pass, with immediate rollback to the current loopback-only state. Certificate renewal, live OSS E2E, and permanent deletion remain closed.
+None while PROD-03C1 is in progress.
 
 ## Backlog — Layer 1
 
