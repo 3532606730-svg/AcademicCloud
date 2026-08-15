@@ -30,6 +30,8 @@ const PLAN_ONLY = process.argv.includes("--plan");
 
 // Backend drive contract (backend/src/drive/http.ts) and auth contract
 // (backend/src/auth/http.ts). Pinned by scripts/production-e2e-acceptance.test.mjs.
+// downloadAuthorization is the AcademicCloud API endpoint; signedDownload is the
+// separate signed OSS object GET — two distinct network steps.
 export const CONTRACT = Object.freeze({
   login: 200,
   session: 200,
@@ -45,6 +47,7 @@ export const CONTRACT = Object.freeze({
   entriesList: 200,
   pendingList: 200,
   downloadAuthorization: 200,
+  signedDownload: 200,
   directUpload: 201,
   checksumPattern: /^[A-Za-z0-9+/]{22}==$/,
 });
@@ -159,6 +162,33 @@ async function request(method, path, options) {
   return fetch(`${BASE_URL}${path}`, requestInit(method, options));
 }
 
+// Pure verdict over the 17 network steps: every step's HTTP status is stored
+// and asserted against its own CONTRACT member, with the semantic body checks
+// as additional requirements.
+export function computeVerdict(results, specCount) {
+  return results.login?.status === CONTRACT.login && results.login?.matches === true &&
+    results.session === CONTRACT.session &&
+    results.folder?.status === CONTRACT.folderCreate &&
+    results.subfolder?.status === CONTRACT.folderCreate &&
+    results.files.length === specCount &&
+    results.files.every((fileResult) =>
+      fileResult.reserve?.status === CONTRACT.uploadReserve &&
+      fileResult.pendingList?.status === CONTRACT.pendingList && fileResult.pendingListed === true &&
+      fileResult.upload === CONTRACT.directUpload &&
+      fileResult.complete?.status === CONTRACT.uploadComplete && fileResult.complete?.sizeOk === true &&
+      fileResult.complete?.checksumOk === true &&
+      fileResult.entriesList?.status === CONTRACT.entriesList && fileResult.listed === true &&
+      fileResult.downloadAuthorization?.status === CONTRACT.downloadAuthorization &&
+      fileResult.signedDownload?.status === CONTRACT.signedDownload &&
+      fileResult.downloadSha256 === fileResult.expectedSha256 && fileResult.downloadBytesOk === true &&
+      fileResult.renamed?.status === CONTRACT.fileRename && fileResult.renamed?.name === true &&
+      fileResult.moved?.status === CONTRACT.fileMove && fileResult.moved?.inSubfolder === true &&
+      fileResult.recycled === CONTRACT.fileDelete &&
+      fileResult.recycleList?.status === CONTRACT.recycleList && fileResult.recycledListed === true &&
+      fileResult.restored?.status === CONTRACT.fileRestore && fileResult.restored?.active === true) &&
+    results.logout === CONTRACT.logout;
+}
+
 async function run() {
   const loginName = await promptVisible("AcademicCloud login name: ");
   const password = await promptSecret("AcademicCloud password (hidden): ");
@@ -196,9 +226,10 @@ async function run() {
         tag: spec.tag,
         expectedMd5: md5Base64(payload),
         expectedSha256: sha256(payload),
-        reserve: null, pendingListed: null, upload: null, complete: null, completeError: null,
-        listed: null, download: null, downloadSha256: null, renamed: null, moved: null,
-        recycled: null, recycledListed: null, restored: null,
+        reserve: null, pendingList: null, pendingListed: null, upload: null, complete: null, completeError: null,
+        entriesList: null, listed: null, downloadAuthorization: null, signedDownload: null,
+        downloadSha256: null, downloadBytesOk: null, renamed: null, moved: null,
+        recycled: null, recycleList: null, recycledListed: null, restored: null,
       };
       results.files.push(fileResult);
 
@@ -219,6 +250,7 @@ async function run() {
 
       const pendingResponse = await request("GET", `/api/drive/uploads?folderId=${encodeURIComponent(folderId)}`, { cookie });
       const pendingBody = await pendingResponse.json().catch(() => ({}));
+      fileResult.pendingList = { status: pendingResponse.status };
       fileResult.pendingListed = (pendingBody.files ?? []).some((entry) => entry.id === fileId && entry.state === "pending_upload");
 
       const form = new FormData();
@@ -247,14 +279,16 @@ async function run() {
 
       const entriesResponse = await request("GET", `/api/drive/entries?folderId=${encodeURIComponent(folderId)}`, { cookie });
       const entriesBody = await entriesResponse.json().catch(() => ({}));
+      fileResult.entriesList = { status: entriesResponse.status };
       fileResult.listed = (entriesBody.files ?? []).some((entry) => entry.id === fileId && entry.state === "active");
 
       const downloadResponse = await request("GET", `/api/drive/files/${encodeURIComponent(fileId)}/download?disposition=attachment`, { cookie });
       const downloadBody = await downloadResponse.json().catch(() => ({}));
+      fileResult.downloadAuthorization = { status: downloadResponse.status };
       const signedUrl = downloadBody.download?.url;
       const downloadFetch = signedUrl ? await fetch(signedUrl) : null;
       const downloadedBytes = downloadFetch ? Buffer.from(await downloadFetch.arrayBuffer()) : Buffer.alloc(0);
-      fileResult.download = downloadFetch?.status ?? 0;
+      fileResult.signedDownload = { status: downloadFetch?.status ?? 0 };
       fileResult.downloadSha256 = sha256(downloadedBytes);
       fileResult.downloadBytesOk = downloadedBytes.length === payload.length;
 
@@ -276,6 +310,7 @@ async function run() {
 
       const recycleResponse = await request("GET", "/api/drive/recycle", { cookie });
       const recycleBody = await recycleResponse.json().catch(() => ({}));
+      fileResult.recycleList = { status: recycleResponse.status };
       fileResult.recycledListed = (recycleBody.files ?? []).some((entry) => entry.id === fileId && entry.state === "deleted");
 
       const restoreResponse = await request("POST", `/api/drive/files/${encodeURIComponent(fileId)}/restore`, { cookie });
@@ -300,38 +335,31 @@ async function run() {
         `file_${fileResult.tag}:`,
         `reserve=${fileResult.reserve?.status ?? "n/a"}`,
         `fileId=${fileResult.reserve?.fileId ?? "n/a"}`,
+        `pendingList=${fileResult.pendingList?.status ?? "n/a"}`,
         `pendingListed=${fileResult.pendingListed ?? false}`,
         `directUpload=${fileResult.upload ?? "n/a"}`,
         `complete=${fileResult.complete?.status ?? "n/a"}`,
         `sizeOk=${fileResult.complete?.sizeOk ?? false}`,
         `checksumOk=${fileResult.complete?.checksumOk ?? false}`,
+        `entriesList=${fileResult.entriesList?.status ?? "n/a"}`,
         `listed=${fileResult.listed ?? false}`,
-        `download=${fileResult.download ?? "n/a"}`,
+        `downloadAuthorization=${fileResult.downloadAuthorization?.status ?? "n/a"}`,
+        `signedDownload=${fileResult.signedDownload?.status ?? "n/a"}`,
         `downloadSha256Match=${fileResult.downloadSha256 === fileResult.expectedSha256}`,
         `downloadBytesOk=${fileResult.downloadBytesOk ?? false}`,
+        `rename=${fileResult.renamed?.status ?? "n/a"}`,
         `renamed=${fileResult.renamed?.name ?? false}`,
+        `move=${fileResult.moved?.status ?? "n/a"}`,
         `moved=${fileResult.moved?.inSubfolder ?? false}`,
         `recycled=${fileResult.recycled ?? "n/a"}`,
+        `recycleList=${fileResult.recycleList?.status ?? "n/a"}`,
         `recycledListed=${fileResult.recycledListed ?? false}`,
+        `restore=${fileResult.restored?.status ?? "n/a"}`,
         `restored=${fileResult.restored?.active ?? false}`,
       ].join(" "));
     }
     console.log(`logout_status=${results.logout ?? "n/a"}`);
-    const allPassed = results.login?.status === CONTRACT.login && results.login?.matches === true &&
-      results.session === CONTRACT.session && results.folder?.status === CONTRACT.folderCreate &&
-      results.subfolder?.status === CONTRACT.folderCreate &&
-      results.files.length === PAYLOAD_SPECS.length &&
-      results.files.every((fileResult) =>
-        fileResult.reserve?.status === CONTRACT.uploadReserve && fileResult.pendingListed === true &&
-        fileResult.upload === CONTRACT.directUpload &&
-        fileResult.complete?.status === CONTRACT.uploadComplete && fileResult.complete?.sizeOk === true &&
-        fileResult.complete?.checksumOk === true && fileResult.listed === true &&
-        fileResult.download === CONTRACT.downloadAuthorization && fileResult.downloadSha256 === fileResult.expectedSha256 &&
-        fileResult.downloadBytesOk === true && fileResult.renamed?.name === true &&
-        fileResult.moved?.inSubfolder === true && fileResult.recycled === CONTRACT.fileDelete &&
-        fileResult.recycledListed === true && fileResult.restored?.active === true) &&
-      results.logout === CONTRACT.logout;
-    console.log(`VERDICT=${allPassed}`);
+    console.log(`VERDICT=${computeVerdict(results, PAYLOAD_SPECS.length)}`);
   }
 }
 
