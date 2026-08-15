@@ -16,7 +16,7 @@ $evidenceDirectory = Join-Path $repositoryRoot 'output/prod-03b-prepare-evidence
 $evidencePath = Join-Path $evidenceDirectory 'activation-update-evidence.txt'
 $expectedOldSha256 = 'b4e36d8070ff99a45393e251d94f2248b7803c74417175853fdae260909be01f'
 $expectedNewSha256 = '98dbc9cfd676a3e784cb802a1a52e1b0058a249ce36ebe4969278f8bff31a660'
-$expectedOwnerWrapperSha256 = '3e7b66b6026b794d7ad339d9f2e90f7edc79c13df1ef1f40445274590b8780e6'
+$expectedOwnerWrapperSha256 = 'b1bd2a0676366216ac01038e10c7e20e80618185a6d8f12a1206ad8182650c0b'
 
 foreach ($path in @($activationPath, $ownerWrapperPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {

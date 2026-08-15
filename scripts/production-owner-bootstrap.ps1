@@ -65,10 +65,12 @@ if (
     $positiveCors.Status -ne 200 -or
     $allowedOrigin.Count -ne 1 -or $allowedOrigin[0] -cne $applicationOrigin -or
     $allowedMethods.Count -ne 1 -or $allowedMethods[0] -cne 'POST' -or
-    $allowedHeaders.Count -ne 0 -or $exposedHeaders.Count -ne 0 -or $allowedCredentials.Count -ne 0 -or
+    $allowedHeaders.Count -ne 0 -or $exposedHeaders.Count -ne 0 -or
+    $allowedCredentials.Count -gt 1 -or
+    ($allowedCredentials.Count -eq 1 -and $allowedCredentials[0] -ne 'true') -or
     $maxAge.Count -ne 1 -or $maxAge[0] -cne '300'
 ) {
-    throw 'The exact production OSS CORS rule is absent or broader than approved.'
+    throw 'The exact production OSS CORS rule is absent or broader than approved: Access-Control-Allow-Credentials must be absent or exactly one case-insensitive true.'
 }
 
 foreach ($deniedOrigin in @('https://evil.invalid', 'http://cloud.ajtlab.top', 'http://localhost:5173')) {
