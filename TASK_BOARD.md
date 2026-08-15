@@ -8,7 +8,7 @@
 
 ### PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification
 
-**Status:** In Progress — encrypted off-host backup gate built and rehearsed (production backup `a457628a…` encrypted to committed recipient `age1s4aqa7…`, local decryption verified, isolated restore rehearsal passed, production untouched); stopped at the Owner boundary for private `AcademicCloud-Backups` repo creation and Bitwarden vaulting; public route still closed
+**Status:** In Progress — encrypted off-host backup gate fully PASS (production backup `a457628a…` encrypted to committed recipient `age1s4aqa7…`, decryption/rehearsal verified, published to private `AcademicCloud-Backups` at `d248336` and byte-verified, independent backup-repo review PASS, Owner vault confirmation done); pre-cutover independent review running; public route still closed
 
 ## Completed
 

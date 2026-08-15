@@ -71,19 +71,29 @@ In progress on `codex/prod-03c1` from the synchronized PROD-03B completion check
 
 ## Remaining
 
-- Owner boundary: create the private `AcademicCloud-Backups` GitHub repository and vault the `age` private identity in Bitwarden; verify the vaulted key fingerprint equals the committed recipient.
-- Push only the encrypted artifacts plus the non-secret manifest to `AcademicCloud-Backups`.
-- Independent read-only review of the whole backup/restore gate.
-- After the gate passes: review, atomically enable, and verify the public HTTPS/Nginx edge with exact rollback retained.
+- Owner boundary: create the private `AcademicCloud-Backups` GitHub repository and vault the `age` private identity in Bitwarden; verify the vaulted key fingerprint equals the committed recipient. — **DONE: repo exists (private, was empty); vaulted identity derives `age1s4aqa7…` matching the committed recipient; local key file deleted.**
+- Push only the encrypted artifacts plus the non-secret manifest to `AcademicCloud-Backups`. — **DONE: commit `d2483369ab01c1484d9b0dbf1d2a1e89ca8de227` on `main`; fresh-clone blob comparison confirmed byte-for-byte identity for all four files; independent backup-repo review PASS (only encrypted artifacts plus non-secret metadata).**
+- Independent read-only review of the whole backup/restore gate. — **DONE: PASS.**
+- After the gate passes: review, atomically enable, and verify the public HTTPS/Nginx edge with exact rollback retained. — **In progress (next).**
+
+## Cutover procedure (for review)
+
+1. Pre-state record: `sites-enabled` = `default` only; backend `127.0.0.1:3000`; unit disabled-but-active; `nginx -t` clean; existing listeners/hashes recorded.
+2. Install the three prepared rendered files (each byte-identical to the committed template rendering: site `0686a461…`, headers `d9a1125b…`, logrotate `1a04b8ef…`): site → `/etc/nginx/sites-available/academiccloud`, headers → `/etc/nginx/snippets/academiccloud-security-headers.conf`, logrotate → `/etc/logrotate.d/academiccloud-nginx` (root:root 0644); create `/var/log/academiccloud` root:adm 0750.
+3. Atomic switch: move the `default` site symlink aside to an exact `/var/tmp` rollback path, add `sites-enabled/academiccloud` → `../sites-available/academiccloud`.
+4. `nginx -t`; on any failure restore the `default` symlink and remove the academiccloud symlink without reloading (no service disruption).
+5. `logrotate --debug /etc/logrotate.d/academiccloud-nginx`; `systemctl reload nginx`.
+6. Public verification battery (host-local and public path): HTTPS 200 static frontend; HTTP→HTTPS 301; exact certificate hostname/SAN; security headers (`nosniff`, `no-referrer`, `DENY`, CSP exact-origin/OSS hosts, COOP/CORP same-origin); `/api/health` and `/api/ready` 200 through the edge; one real HTTPS login round trip with an intentionally invalid probe login (stable 401, no credential/cookie leak) plus session-without-cookie 401; backend remains exactly `127.0.0.1:3000`; unknown-host 80→444 and unknown-SNI 443 handshake rejection; OSS CORS preflight probes unchanged (positive 200 exact rule; all five negatives 403); memory/swap/cgroup/kernel OOM checks zero.
+7. Rollback retained: restore the `default` symlink, remove the academiccloud symlink, `nginx -t` + reload, verify default-only tree and loopback backend; the aside copy of the original symlink is kept until the task completes.
 
 ## Blockers
 
-The mandatory Owner boundary is now reached: (1) create the private `AcademicCloud-Backups` GitHub repository, and (2) vault the `age` private identity into Bitwarden. The public route stays closed until both actions are confirmed, the encrypted artifacts are pushed, and the independent review passes.
+None. The Owner boundary is satisfied (private backup repository created; `age` identity vaulted and fingerprint-verified; local key file deleted). The remaining gates are the edge pre-cutover independent review and the bounded cutover itself.
 
 ## Last Verification
 
-2026-08-15 (backup gate): production backup created and verified (SHA-256 `a457628a…`, schema 4, counts 1/0/0/2); encrypted artifacts `database.age` `753897f0…` and `configuration.age` `40150e21…` decrypt locally with the production identity and match every recorded hash; official `age` interop verified both directions; isolated restore rehearsal passed with the compiled app (health/ready `200`, memory storage, maintenance dry-run clean) and left production untouched; host staging contains only encrypted artifacts and summaries.
+2026-08-15 (backup gate): production backup created and verified (SHA-256 `a457628a…`, schema 4, counts 1/0/0/2); encrypted artifacts `database.age` `753897f0…` and `configuration.age` `40150e21…` decrypt locally with the production identity and match every recorded hash; official `age` interop verified both directions; isolated restore rehearsal passed with the compiled app (health/ready `200`, memory storage, maintenance dry-run clean) and left production untouched; artifacts published to `AcademicCloud-Backups` at commit `d2483369ab01c1484d9b0dbf1d2a1e89ca8de227` and verified byte-for-byte from a fresh clone; independent backup-repo review PASS (only encrypted artifacts plus non-secret metadata, no identity/plaintext material); all three prepared edge files are byte-identical renderings of the committed templates (`0686a461…`/`d9a1125b…`/`1a04b8ef…`).
 
 ## Next Action
 
-Stop at the shortest mandatory Owner boundary: the Owner creates the private `AcademicCloud-Backups` repository and vaults `D:\academiccloud-tools\agekey\academiccloud-age-key.txt` into Bitwarden, then confirms (optionally pasting the vaulted key's derived public key from `age-keygen -y` for fingerprint comparison). After that, push the encrypted artifacts and manifest, complete the independent review, and only then proceed to the edge cutover.
+Complete the independent pre-cutover review of the exact site file, headers file, cutover procedure, rollback procedure, and public verification plan; then execute the bounded cutover with the verification battery above, retain exact rollback, and close the task.
