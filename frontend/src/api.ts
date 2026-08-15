@@ -158,12 +158,21 @@ export class ApiClient implements AcademicCloudApi {
     return (await response.json()) as T;
   }
 
-  #json<T>(path: string, method: "POST" | "PATCH", body?: unknown): Promise<T> {
+  // JSON body request: the body is REQUIRED by the type signature, so an
+  // accidental "Content-Type: application/json with an empty body" request
+  // (rejected by the Fastify JSON parser with 400) cannot be constructed.
+  #jsonBody<T>(path: string, method: "POST" | "PATCH", body: unknown): Promise<T> {
     return this.#request<T>(path, {
       method,
       headers: { "Content-Type": "application/json" },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      body: JSON.stringify(body),
     });
+  }
+
+  // Bodyless action: sends NO Content-Type and NO body. Fastify routes for
+  // these actions are bodyless by contract.
+  #action<T>(path: string, method: "POST"): Promise<T> {
+    return this.#request<T>(path, { method });
   }
 
   async getSession(signal?: AbortSignal): Promise<Account> {
@@ -175,12 +184,12 @@ export class ApiClient implements AcademicCloudApi {
   }
 
   async login(loginName: string, password: string): Promise<Account> {
-    const response = await this.#json<{ account: Account }>("/api/auth/login", "POST", { loginName, password });
+    const response = await this.#jsonBody<{ account: Account }>("/api/auth/login", "POST", { loginName, password });
     return response.account;
   }
 
   logout(): Promise<void> {
-    return this.#request<void>("/api/auth/logout", { method: "POST" });
+    return this.#action<void>("/api/auth/logout", "POST");
   }
 
   async listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse> {
@@ -200,12 +209,12 @@ export class ApiClient implements AcademicCloudApi {
   }
 
   async createFolder(name: string, parentId: string | null): Promise<FolderEntry> {
-    const response = await this.#json<{ folder: FolderEntry }>("/api/drive/folders", "POST", { name, parentId });
+    const response = await this.#jsonBody<{ folder: FolderEntry }>("/api/drive/folders", "POST", { name, parentId });
     return response.folder;
   }
 
   async updateFolder(folderId: string, update: { name?: string; parentId?: string | null }): Promise<FolderEntry> {
-    const response = await this.#json<{ folder: FolderEntry }>(
+    const response = await this.#jsonBody<{ folder: FolderEntry }>(
       `/api/drive/folders/${encodeURIComponent(folderId)}`,
       "PATCH",
       update,
@@ -217,12 +226,11 @@ export class ApiClient implements AcademicCloudApi {
     return this.#request<void>(`/api/drive/folders/${encodeURIComponent(folderId)}`, { method: "DELETE" });
   }
 
-  async restoreFolder(folderId: string): Promise<FolderEntry> {
-    const response = await this.#json<{ folder: FolderEntry }>(
+  restoreFolder(folderId: string): Promise<FolderEntry> {
+    return this.#action<{ folder: FolderEntry }>(
       `/api/drive/folders/${encodeURIComponent(folderId)}/restore`,
       "POST",
-    );
-    return response.folder;
+    ).then((response) => response.folder);
   }
 
   async createUpload(input: {
@@ -232,23 +240,21 @@ export class ApiClient implements AcademicCloudApi {
     sizeBytes: number;
     checksum: { algorithm: "md5"; value: string };
   }): Promise<{ file: FileEntry; upload: UploadAuthorization }> {
-    return this.#json("/api/drive/uploads", "POST", input);
+    return this.#jsonBody("/api/drive/uploads", "POST", input);
   }
 
-  async renewUpload(fileId: string): Promise<UploadAuthorization> {
-    const response = await this.#json<{ upload: UploadAuthorization }>(
+  renewUpload(fileId: string): Promise<UploadAuthorization> {
+    return this.#action<{ upload: UploadAuthorization }>(
       `/api/drive/uploads/${encodeURIComponent(fileId)}/authorization`,
       "POST",
-    );
-    return response.upload;
+    ).then((response) => response.upload);
   }
 
-  async completeUpload(fileId: string): Promise<FileEntry> {
-    const response = await this.#json<{ file: FileEntry }>(
+  completeUpload(fileId: string): Promise<FileEntry> {
+    return this.#action<{ file: FileEntry }>(
       `/api/drive/uploads/${encodeURIComponent(fileId)}/complete`,
       "POST",
-    );
-    return response.file;
+    ).then((response) => response.file);
   }
 
   async createDownload(fileId: string, disposition: "attachment" | "inline" = "attachment"): Promise<DownloadAuthorization> {
@@ -259,7 +265,7 @@ export class ApiClient implements AcademicCloudApi {
   }
 
   async updateFile(fileId: string, update: { displayName?: string; folderId?: string | null }): Promise<FileEntry> {
-    const response = await this.#json<{ file: FileEntry }>(
+    const response = await this.#jsonBody<{ file: FileEntry }>(
       `/api/drive/files/${encodeURIComponent(fileId)}`,
       "PATCH",
       update,
@@ -271,12 +277,11 @@ export class ApiClient implements AcademicCloudApi {
     return this.#request<void>(`/api/drive/files/${encodeURIComponent(fileId)}`, { method: "DELETE" });
   }
 
-  async restoreFile(fileId: string): Promise<FileEntry> {
-    const response = await this.#json<{ file: FileEntry }>(
+  restoreFile(fileId: string): Promise<FileEntry> {
+    return this.#action<{ file: FileEntry }>(
       `/api/drive/files/${encodeURIComponent(fileId)}/restore`,
       "POST",
-    );
-    return response.file;
+    ).then((response) => response.file);
   }
 
   permanentlyDeleteFile(fileId: string): Promise<void> {

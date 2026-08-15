@@ -141,19 +141,22 @@ function cookieValue(setCookie) {
   return setCookie?.split(";")[0]?.trim() ?? "";
 }
 
-async function request(method, path, { cookie, json, jsonTypeOnly = false } = {}) {
+// Request semantics split (mirrors frontend/src/api.ts):
+//   json present  -> Content-Type: application/json + serialized body
+//   json absent   -> bodyless action: NO Content-Type, NO body
+export function requestInit(method, { cookie, json } = {}) {
   const headers = { Accept: "application/json" };
   if (method !== "GET") headers.Origin = BASE_URL;
   if (cookie) headers.Cookie = cookie;
-  if (jsonTypeOnly) {
-    headers["Content-Type"] = "application/json";
-    return fetch(`${BASE_URL}${path}`, { method, headers });
-  }
   if (json !== undefined) {
     headers["Content-Type"] = "application/json";
-    return fetch(`${BASE_URL}${path}`, { method, headers, body: JSON.stringify(json) });
+    return { method, headers, body: JSON.stringify(json) };
   }
-  return fetch(`${BASE_URL}${path}`, { method, headers });
+  return { method, headers };
+}
+
+async function request(method, path, options) {
+  return fetch(`${BASE_URL}${path}`, requestInit(method, options));
 }
 
 async function run() {
@@ -162,13 +165,14 @@ async function run() {
   const runId = randomBytes(6).toString("hex");
   const folderName = `prod03c2-e2e-${runId}`;
   const results = { login: null, session: null, folder: null, subfolder: null, files: [], logout: null };
+  let cookie = "";
 
   try {
     const loginResponse = await request("POST", "/api/auth/login", { json: { loginName, password } });
     const loginBody = await loginResponse.json().catch(() => ({}));
-    const cookie = cookieValue(loginResponse.headers.get("set-cookie"));
+    cookie = cookieValue(loginResponse.headers.get("set-cookie"));
     results.login = { status: loginResponse.status, matches: loginBody.account?.loginName === loginName };
-    if (results.login.status !== 200 || !results.login.matches) throw new Error("login failed");
+    if (results.login.status !== CONTRACT.login || !results.login.matches) throw new Error("login failed");
 
     const sessionResponse = await request("GET", "/api/auth/session", { cookie });
     results.session = sessionResponse.status;
@@ -177,13 +181,13 @@ async function run() {
     const folderBody = await folderResponse.json().catch(() => ({}));
     const folderId = folderBody.folder?.id;
     results.folder = { status: folderResponse.status, id: folderId };
-    if (folderResponse.status !== 201 || !folderId) throw new Error("folder creation failed");
+    if (folderResponse.status !== CONTRACT.folderCreate || !folderId) throw new Error("folder creation failed");
 
     const subfolderResponse = await request("POST", "/api/drive/folders", { cookie, json: { name: `${folderName}-sub`, parentId: null } });
     const subfolderBody = await subfolderResponse.json().catch(() => ({}));
     const subfolderId = subfolderBody.folder?.id;
     results.subfolder = { status: subfolderResponse.status, id: subfolderId };
-    if (subfolderResponse.status !== 201 || !subfolderId) throw new Error("subfolder creation failed");
+    if (subfolderResponse.status !== CONTRACT.folderCreate || !subfolderId) throw new Error("subfolder creation failed");
 
     for (const spec of PAYLOAD_SPECS) {
       const payload = deterministicPayload(spec);
@@ -192,10 +196,11 @@ async function run() {
         tag: spec.tag,
         expectedMd5: md5Base64(payload),
         expectedSha256: sha256(payload),
-        reserve: null, pendingListed: null, upload: null, complete: null, listed: null,
-        download: null, downloadSha256: null, renamed: null, moved: null,
+        reserve: null, pendingListed: null, upload: null, complete: null, completeError: null,
+        listed: null, download: null, downloadSha256: null, renamed: null, moved: null,
         recycled: null, recycledListed: null, restored: null,
       };
+      results.files.push(fileResult);
 
       const reserveResponse = await request("POST", "/api/drive/uploads", {
         cookie,
@@ -208,7 +213,7 @@ async function run() {
       const fileId = reserveBody.file?.id;
       const upload = reserveBody.upload;
       fileResult.reserve = { status: reserveResponse.status, fileId, state: reserveBody.file?.state };
-      if (reserveResponse.status !== 201 || !fileId || !upload || upload.method !== "POST") {
+      if (reserveResponse.status !== CONTRACT.uploadReserve || !fileId || !upload || upload.method !== "POST") {
         throw new Error(`upload reservation failed for ${spec.tag}`);
       }
 
@@ -221,17 +226,22 @@ async function run() {
       form.append("file", new Blob([payload], { type: spec.mediaType }), spec.display);
       const uploadResponse = await fetch(upload.url, { method: "POST", body: form });
       fileResult.upload = uploadResponse.status;
-      if (uploadResponse.status !== 201) throw new Error(`direct upload failed for ${spec.tag}`);
+      if (uploadResponse.status !== CONTRACT.directUpload) throw new Error(`direct upload failed for ${spec.tag}`);
 
-      const completeResponse = await request("POST", `/api/drive/uploads/${encodeURIComponent(fileId)}/complete`, { cookie, jsonTypeOnly: true });
-      const completeBody = await completeResponse.json().catch(() => ({}));
+      const completeResponse = await request("POST", `/api/drive/uploads/${encodeURIComponent(fileId)}/complete`, { cookie });
+      let completeBody = {};
+      try {
+        completeBody = await completeResponse.json();
+      } catch {}
       fileResult.complete = {
         status: completeResponse.status,
         sizeOk: completeBody.file?.sizeBytes === payload.length,
         checksumOk: completeBody.file?.checksum === fileResult.expectedMd5,
         state: completeBody.file?.state,
       };
-      if (completeResponse.status !== 200 || completeBody.file?.state !== "active") {
+      if (completeResponse.status !== CONTRACT.uploadComplete || completeBody.file?.state !== "active") {
+        fileResult.completeError = { status: completeResponse.status, code: completeBody.error ?? null };
+        console.log(`complete_failed fileId=${fileId} status=${completeResponse.status} error=${completeBody.error ?? "none"}`);
         throw new Error(`upload completion failed for ${spec.tag}`);
       }
 
@@ -262,22 +272,24 @@ async function run() {
 
       const deleteResponse = await request("DELETE", `/api/drive/files/${encodeURIComponent(fileId)}`, { cookie });
       fileResult.recycled = deleteResponse.status;
-      if (deleteResponse.status !== 204) throw new Error(`recycle failed for ${spec.tag}`);
+      if (deleteResponse.status !== CONTRACT.fileDelete) throw new Error(`recycle failed for ${spec.tag}`);
 
       const recycleResponse = await request("GET", "/api/drive/recycle", { cookie });
       const recycleBody = await recycleResponse.json().catch(() => ({}));
       fileResult.recycledListed = (recycleBody.files ?? []).some((entry) => entry.id === fileId && entry.state === "deleted");
 
-      const restoreResponse = await request("POST", `/api/drive/files/${encodeURIComponent(fileId)}/restore`, { cookie, jsonTypeOnly: true });
+      const restoreResponse = await request("POST", `/api/drive/files/${encodeURIComponent(fileId)}/restore`, { cookie });
       const restoreBody = await restoreResponse.json().catch(() => ({}));
       fileResult.restored = { status: restoreResponse.status, active: restoreBody.file?.state === "active" };
-
-      results.files.push(fileResult);
     }
-
-    const logoutResponse = await request("POST", "/api/auth/logout", { cookie });
-    results.logout = logoutResponse.status;
   } finally {
+    if (cookie) {
+      try {
+        results.logout = (await request("POST", "/api/auth/logout", { cookie })).status;
+      } catch {
+        results.logout = "logout_error";
+      }
+    }
     console.log(`runId=${runId}`);
     console.log(`login_status=${results.login?.status ?? "n/a"} login_loginName_matches=${results.login?.matches ?? false}`);
     console.log(`session_status=${results.session ?? "n/a"}`);
@@ -305,19 +317,20 @@ async function run() {
       ].join(" "));
     }
     console.log(`logout_status=${results.logout ?? "n/a"}`);
-    const allPassed = results.login?.status === 200 && results.login?.matches === true &&
-      results.session === 200 && results.folder?.status === 201 && results.subfolder?.status === 201 &&
+    const allPassed = results.login?.status === CONTRACT.login && results.login?.matches === true &&
+      results.session === CONTRACT.session && results.folder?.status === CONTRACT.folderCreate &&
+      results.subfolder?.status === CONTRACT.folderCreate &&
       results.files.length === PAYLOAD_SPECS.length &&
       results.files.every((fileResult) =>
-        fileResult.reserve?.status === 201 && fileResult.pendingListed === true &&
-        fileResult.upload === 201 &&
-        fileResult.complete?.status === 200 && fileResult.complete?.sizeOk === true &&
+        fileResult.reserve?.status === CONTRACT.uploadReserve && fileResult.pendingListed === true &&
+        fileResult.upload === CONTRACT.directUpload &&
+        fileResult.complete?.status === CONTRACT.uploadComplete && fileResult.complete?.sizeOk === true &&
         fileResult.complete?.checksumOk === true && fileResult.listed === true &&
-        fileResult.download === 200 && fileResult.downloadSha256 === fileResult.expectedSha256 &&
+        fileResult.download === CONTRACT.downloadAuthorization && fileResult.downloadSha256 === fileResult.expectedSha256 &&
         fileResult.downloadBytesOk === true && fileResult.renamed?.name === true &&
-        fileResult.moved?.inSubfolder === true && fileResult.recycled === 204 &&
+        fileResult.moved?.inSubfolder === true && fileResult.recycled === CONTRACT.fileDelete &&
         fileResult.recycledListed === true && fileResult.restored?.active === true) &&
-      results.logout === 204;
+      results.logout === CONTRACT.logout;
     console.log(`VERDICT=${allPassed}`);
   }
 }

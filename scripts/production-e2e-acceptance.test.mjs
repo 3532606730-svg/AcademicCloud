@@ -16,6 +16,7 @@ import {
   PAYLOAD_SPECS,
   deterministicPayload,
   md5Base64,
+  requestInit,
   sha256,
 } from "./production-e2e-acceptance.mjs";
 
@@ -77,4 +78,29 @@ test("the tool never references the permanent-delete endpoint", () => {
   const scriptPath = fileURLToPath(import.meta.url).replace(/\.test\.mjs$/, ".mjs");
   const source = readFileSync(scriptPath, "utf8");
   assert.ok(!source.includes("/permanent"));
+});
+
+test("request semantics split: JSON body requests vs bodyless actions", () => {
+  // JSON body request: Content-Type application/json + serialized body.
+  const jsonInit = requestInit("POST", { cookie: "c=1", json: { name: "Folder", parentId: null } });
+  assert.equal(jsonInit.method, "POST");
+  assert.equal(jsonInit.headers["Content-Type"], "application/json");
+  assert.equal(jsonInit.headers.Accept, "application/json");
+  assert.equal(jsonInit.headers.Origin, "https://cloud.ajtlab.top");
+  assert.equal(jsonInit.headers.Cookie, "c=1");
+  assert.equal(jsonInit.body, JSON.stringify({ name: "Folder", parentId: null }));
+
+  // Bodyless action: NO Content-Type, NO body.
+  const actionInit = requestInit("POST", { cookie: "c=1" });
+  assert.equal(actionInit.method, "POST");
+  assert.equal(actionInit.headers.Accept, "application/json");
+  assert.equal(actionInit.headers.Origin, "https://cloud.ajtlab.top");
+  assert.equal(actionInit.headers.Cookie, "c=1");
+  assert.ok(!("Content-Type" in actionInit.headers));
+  assert.ok(!("body" in actionInit));
+
+  // The old jsonTypeOnly concept must be gone from the tool source.
+  const scriptPath = fileURLToPath(import.meta.url).replace(/\.test\.mjs$/, ".mjs");
+  const source = readFileSync(scriptPath, "utf8");
+  assert.ok(!source.includes("jsonTypeOnly"));
 });
