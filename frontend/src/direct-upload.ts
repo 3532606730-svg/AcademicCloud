@@ -2,14 +2,24 @@ import type { UploadAuthorization } from "./api.ts";
 
 export type XhrFactory = () => XMLHttpRequest;
 
+export interface UploadProgressMetrics {
+  loaded: number;
+  total: number;
+}
+
 export interface DirectUploadOptions {
   signal?: AbortSignal;
   onProgress?: (fraction: number) => void;
+  onMetrics?: (metrics: UploadProgressMetrics) => void;
   xhrFactory?: XhrFactory;
+  /** Legacy fixed total timeout; defaults to disabled (0). Prefer the
+   *  inactivity timeout, which tolerates long-running uploads that keep
+   *  making real progress. */
   timeoutMs?: number;
+  inactivityTimeoutMs?: number;
 }
 
-const DEFAULT_UPLOAD_TIMEOUT_MS = 15 * 60 * 1_000;
+export const DEFAULT_INACTIVITY_TIMEOUT_MS = 120_000;
 
 export function createUploadForm(authorization: UploadAuthorization, file: File): FormData {
   const form = new FormData();
@@ -29,19 +39,55 @@ export function uploadDirectly(
     return Promise.reject(new TypeError("Unsupported direct upload method"));
   }
 
+  const inactivityTimeoutMs = options.inactivityTimeoutMs ?? DEFAULT_INACTIVITY_TIMEOUT_MS;
+
   return new Promise((resolve, reject) => {
     const xhr = (options.xhrFactory ?? (() => new XMLHttpRequest()))();
+    let stallTimer: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
+
+    const clearStallTimer = () => {
+      if (stallTimer !== undefined) {
+        clearTimeout(stallTimer);
+        stallTimer = undefined;
+      }
+    };
+
     const abort = () => xhr.abort();
 
+    // Exactly-once settlement: every path (load, error, abort, timeout, stall,
+    // signal) goes through finish, which also performs single cleanup.
     const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearStallTimer();
       options.signal?.removeEventListener("abort", abort);
       callback();
     };
 
-    xhr.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable && event.total > 0) {
-        options.onProgress?.(Math.min(1, event.loaded / event.total));
+    // Any real progress event proves liveness and resets the inactivity
+    // window; a stalled transfer fires the timer and fails cleanly.
+    const scheduleStallTimeout = () => {
+      clearStallTimer();
+      if (inactivityTimeoutMs > 0) {
+        stallTimer = setTimeout(() => {
+          finish(() => {
+            try {
+              xhr.abort();
+            } catch {
+              // The connection may already be gone; the rejection is what matters.
+            }
+            reject(new Error("The upload stalled because no progress was received. Check your connection and try again."));
+          });
+        }, inactivityTimeoutMs);
       }
+    };
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable || event.total <= 0) return;
+      scheduleStallTimeout();
+      options.onMetrics?.({ loaded: event.loaded, total: event.total });
+      options.onProgress?.(Math.min(1, event.loaded / event.total));
     });
     xhr.addEventListener("load", () => {
       finish(() => {
@@ -63,7 +109,8 @@ export function uploadDirectly(
     }
     options.signal?.addEventListener("abort", abort, { once: true });
     xhr.open("POST", authorization.url, true);
-    xhr.timeout = options.timeoutMs ?? DEFAULT_UPLOAD_TIMEOUT_MS;
+    xhr.timeout = options.timeoutMs ?? 0;
+    scheduleStallTimeout();
     xhr.send(createUploadForm(authorization, file));
   });
 }

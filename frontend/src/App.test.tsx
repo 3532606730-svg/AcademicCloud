@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App.tsx";
 import {
@@ -10,6 +10,11 @@ import {
   type FileEntry,
   type FolderEntry,
 } from "./api.ts";
+
+afterEach(() => {
+  window.localStorage.removeItem("academiccloud.language");
+  document.documentElement.lang = "";
+});
 
 const EMPTY_ENTRIES: EntriesResponse = { folder: null, folders: [], files: [] };
 const ACCOUNT = { id: "account-1", loginName: "Scholar" };
@@ -291,5 +296,127 @@ describe("App", () => {
     await user.click(await screen.findByRole("button", { name: "Sign out" }));
     expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
     expect(logout).toHaveBeenCalledOnce();
+  });
+
+  it("switches language immediately, persists the choice, and updates document.lang", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} />);
+
+    expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "中文" }));
+    expect(await screen.findByRole("heading", { name: "资料库" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "退出登录" })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("zh-CN");
+    expect(window.localStorage.getItem("academiccloud.language")).toBe("zh-CN");
+
+    await user.click(screen.getByRole("button", { name: "EN" }));
+    expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("en");
+  });
+
+  it("re-localizes rendered API errors when the language changes", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({ login: vi.fn().mockRejectedValue(new ApiError(401, "invalid_credentials")) });
+    render(<App api={api} />);
+
+    await user.type(await screen.findByLabelText("Login name"), "Scholar");
+    await user.type(screen.getByLabelText("Password"), "wrong");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("incorrect"));
+
+    await user.click(screen.getByRole("button", { name: "中文" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("登录名或密码不正确"));
+  });
+
+  it("shows the localized fail-safe message when inline preview is unavailable", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+      createDownload: vi.fn().mockRejectedValue(new ApiError(503, "preview_unavailable")),
+    });
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole("button", { name: "Preview paper.pdf" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Online preview is currently unavailable"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "中文" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("在线预览暂不可用"));
+  });
+
+  it("limits concurrent upload workflows to two and starts queued work as slots free", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
+    const completeUpload = vi.fn().mockResolvedValue(FILE);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({
+        file: { ...FILE, state: "pending_upload" as const, activatedAt: null },
+        upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
+      }),
+      completeUpload,
+    });
+    render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockResolvedValue(undefined)} />);
+
+    const files = ["a", "b", "c", "d"].map((name) => new File([name], `${name}.pdf`, { type: "application/pdf" }));
+    await user.upload(await screen.findByLabelText("Upload files"), files);
+
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
+    // Exactly two workflows run: two checksum phases, two queued rows. The
+    // remaining files must not start checksum work until a slot opens.
+    expect(screen.getAllByText("Calculating checksum")).toHaveLength(2);
+    expect(screen.getAllByText("Queued")).toHaveLength(2);
+
+    checksumResolvers[0]!(FILE.checksum);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
+    checksumResolvers[1]!(FILE.checksum);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(4));
+    checksumResolvers[2]!(FILE.checksum);
+    checksumResolvers[3]!(FILE.checksum);
+    await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(4));
+  });
+
+  it("releases a slot when a workflow fails", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockRejectedValue(new ApiError(409, "name_conflict")),
+    });
+    render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockResolvedValue(undefined)} />);
+
+    const files = ["a", "b", "c"].map((name) => new File([name], `${name}.pdf`, { type: "application/pdf" }));
+    await user.upload(await screen.findByLabelText("Upload files"), files);
+
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
+    checksumResolvers[0]!(FILE.checksum); // first workflow fails at reservation
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
+  });
+
+  it("cancelling a running upload releases its slot for the next queued file", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn((_file: Blob, options?: { signal?: AbortSignal }) =>
+      new Promise<string>((resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        checksumResolvers.push(resolve);
+      }),
+    );
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockResolvedValue(undefined)} />);
+
+    const files = ["a", "b", "c"].map((name) => new File([name], `${name}.pdf`, { type: "application/pdf" }));
+    await user.upload(await screen.findByLabelText("Upload files"), files);
+
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
+    // Jobs are queued newest-first: c and b are the two running workflows.
+    await user.click(screen.getByRole("button", { name: "Cancel c.pdf upload" }));
+
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
+    expect(screen.getByRole("button", { name: "Dismiss c.pdf upload status" })).toBeInTheDocument();
   });
 });

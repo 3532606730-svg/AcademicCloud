@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { UploadAuthorization } from "./api.ts";
 import { createUploadForm, uploadDirectly } from "./direct-upload.ts";
@@ -21,6 +21,14 @@ class FakeXhr extends EventTarget {
   readonly open = vi.fn();
   readonly send = vi.fn();
   readonly abort = vi.fn(() => this.dispatchEvent(new Event("abort")));
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+function progress(loaded: number, total: number): ProgressEvent {
+  return new ProgressEvent("progress", { lengthComputable: true, loaded, total });
 }
 
 describe("createUploadForm", () => {
@@ -82,5 +90,95 @@ describe("createUploadForm", () => {
     controller.abort();
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
     expect(xhr.abort).toHaveBeenCalledOnce();
+  });
+
+  it("emits real upload metrics alongside fraction progress", async () => {
+    const xhr = new FakeXhr();
+    const onMetrics = vi.fn();
+    const promise = uploadDirectly(AUTHORIZATION, new File(["source"], "paper.pdf"), {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+      onMetrics,
+    });
+
+    xhr.upload.dispatchEvent(progress(5, 10));
+    expect(onMetrics).toHaveBeenCalledWith({ loaded: 5, total: 10 });
+
+    xhr.status = 201;
+    xhr.dispatchEvent(new Event("load"));
+    await expect(promise).resolves.toBeUndefined();
+  });
+
+  it("keeps a progressing upload alive well beyond the old fixed total timeout", async () => {
+    vi.useFakeTimers();
+    const xhr = new FakeXhr();
+    const onMetrics = vi.fn();
+    const promise = uploadDirectly(AUTHORIZATION, new File(["source"], "paper.pdf"), {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+      inactivityTimeoutMs: 120_000,
+      onMetrics,
+    });
+
+    // 20 simulated minutes of steady progress: every progress event resets
+    // the inactivity window, so the upload must stay pending.
+    for (let index = 0; index < 10; index += 1) {
+      xhr.upload.dispatchEvent(progress(index + 1, 10));
+      await vi.advanceTimersByTimeAsync(119_000);
+    }
+    expect(onMetrics).toHaveBeenCalledTimes(10);
+
+    xhr.status = 201;
+    xhr.dispatchEvent(new Event("load"));
+    await expect(promise).resolves.toBeUndefined();
+    expect(xhr.timeout).toBe(0);
+  });
+
+  it("fails bounded when no progress arrives within the inactivity window", async () => {
+    vi.useFakeTimers();
+    const xhr = new FakeXhr();
+    const promise = uploadDirectly(AUTHORIZATION, new File(["source"], "paper.pdf"), {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+      inactivityTimeoutMs: 120_000,
+    });
+
+    // Attach the rejection expectation BEFORE the stall timer fires so the
+    // rejection is always handled.
+    const expectation = expect(promise).rejects.toThrow("stalled");
+    await vi.advanceTimersByTimeAsync(120_001);
+    await expectation;
+    expect(xhr.abort).toHaveBeenCalledOnce();
+  });
+
+  it("clears stall timers exactly once on load, abort, and network error", async () => {
+    vi.useFakeTimers();
+
+    const loaded = new FakeXhr();
+    const loadPromise = uploadDirectly(AUTHORIZATION, new File(["source"], "paper.pdf"), {
+      xhrFactory: () => loaded as unknown as XMLHttpRequest,
+      inactivityTimeoutMs: 120_000,
+    });
+    loaded.status = 201;
+    loaded.dispatchEvent(new Event("load"));
+    await expect(loadPromise).resolves.toBeUndefined();
+    await vi.advanceTimersByTimeAsync(600_000); // nothing may settle twice or throw
+
+    const aborted = new FakeXhr();
+    const abortController = new AbortController();
+    const abortPromise = uploadDirectly(AUTHORIZATION, new File(["source"], "paper.pdf"), {
+      xhrFactory: () => aborted as unknown as XMLHttpRequest,
+      inactivityTimeoutMs: 120_000,
+      signal: abortController.signal,
+    });
+    abortController.abort();
+    await expect(abortPromise).rejects.toMatchObject({ name: "AbortError" });
+    await vi.advanceTimersByTimeAsync(600_000);
+
+    const errored = new FakeXhr();
+    const errorPromise = uploadDirectly(AUTHORIZATION, new File(["source"], "paper.pdf"), {
+      xhrFactory: () => errored as unknown as XMLHttpRequest,
+      inactivityTimeoutMs: 120_000,
+    });
+    errored.dispatchEvent(new Event("error"));
+    await expect(errorPromise).rejects.toThrow("reach object storage");
+    await vi.advanceTimersByTimeAsync(600_000);
   });
 });

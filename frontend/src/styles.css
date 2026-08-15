@@ -286,3 +286,10 @@ input:hover { border-color: #a7b6aa; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+.language-switch { display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.6rem; font-size: 0.78rem; }
+.language-switch button { padding: 0.1rem 0.3rem; border: 0; background: transparent; color: inherit; cursor: pointer; opacity: 0.72; }
+.language-switch button:hover { opacity: 1; text-decoration: underline; }
+.language-switch button.is-active { opacity: 1; font-weight: 700; }
+.login-language { margin-top: 1rem; display: flex; justify-content: flex-end; }
+.upload-metrics { color: var(--muted, #6b7280); font-size: 0.78rem; }

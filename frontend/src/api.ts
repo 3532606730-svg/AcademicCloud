@@ -1,3 +1,5 @@
+import { ERROR_MESSAGES } from "./i18n.ts";
+
 export interface Account {
   id: string;
   loginName: string;
@@ -56,32 +58,14 @@ export interface RecycleResponse {
   files: FileEntry[];
 }
 
-const ERROR_MESSAGES: Readonly<Record<string, string>> = {
-  authentication_required: "Your session has expired. Please sign in again.",
-  invalid_credentials: "The login name or password is incorrect.",
-  authentication_busy: "Sign-in is temporarily busy. Please wait a moment and try again.",
-  invalid_origin: "This request did not come from the configured AcademicCloud site.",
-  invalid_request: "Some information was invalid. Check the form and try again.",
-  unsupported_media_type: "The server could not accept this request format.",
-  payload_too_large: "This file is larger than the server allows.",
-  rate_limit_exceeded: "Too many attempts. Please wait before trying again.",
-  name_conflict: "An item with that name already exists here.",
-  folder_not_empty: "This folder must be empty before it can be moved to the recycle bin.",
-  invalid_move: "That destination would create an invalid folder structure.",
-  invalid_state: "This item changed state. Refresh the view and try again.",
-  upload_incomplete: "The upload has not reached storage yet. Retry verification shortly.",
-  upload_metadata_mismatch: "Storage received a file that does not match the reserved upload.",
-  storage_unavailable: "Object storage is temporarily unavailable. Your metadata is still safe.",
-  not_found: "The item no longer exists or is not available to this account.",
-  internal_error: "AcademicCloud encountered an unexpected error.",
-};
-
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
 
   constructor(status: number, code: string) {
-    super(ERROR_MESSAGES[code] ?? `Request failed (${status}).`);
+    // English fallback message; the UI renders localized text by code via
+    // describeError in i18n.ts. Backend error codes remain stable.
+    super(ERROR_MESSAGES.en[code] ?? `Request failed (${status}).`);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
@@ -293,17 +277,4 @@ function drivePath(resource: "entries" | "uploads", folderId: string | null): st
   return folderId === null
     ? `/api/drive/${resource}`
     : `/api/drive/${resource}?folderId=${encodeURIComponent(folderId)}`;
-}
-
-export function describeError(error: unknown): string {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-  if (error instanceof DOMException && error.name === "AbortError") {
-    return "The operation was cancelled.";
-  }
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return "The operation could not be completed.";
 }
