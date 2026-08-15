@@ -18,6 +18,10 @@
 
 **Status:** In Progress — documentation/readiness only; the deployment package (two-transaction checklist, corrected DNS/TLS/CSP plan, rollback matrix, PV matrix, FMEA, readiness gate matrix, hardening priorities, OSS body DR options) is prepared and awaiting the ChatGPT production-plan review. Zero production mutation.
 
+### L1-OPS01 — Read-Only Production Readiness Auditor (parallel / isolated / NON_BLOCKING_FOR_UX01)
+
+**Status:** In Progress on isolated branch `codex/l1-ops01-readiness-auditor` (created from exactly `cd8ff25…`; `codex/prod-03c2` untouched) — dependency-free, read-only, secret-safe auditor implemented with repo/public/plan/live modes, baseline + ux01-ready profiles, fixed remote-check allowlist + mutation denylist, deterministic READY/NOT_READY/INDETERMINATE model, and 24/24 synthetic-fixture tests. Awaiting ChatGPT review; live mode must NOT run until `FIRST_LIVE_AUDITOR_RUN=true` is authorized. It does not block the UX01 production gate (PROD04B stays independently executable).
+
 ## Completed
 
 ### PROD-03R — Production Acceptance and Repository-State Reconciliation
