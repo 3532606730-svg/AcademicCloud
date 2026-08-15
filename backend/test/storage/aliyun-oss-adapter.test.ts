@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { AliyunOssStorageAdapter } from "../../src/storage/aliyun/aliyun-oss-adapter.js";
 import {
+  createAliyunBrowserClient,
   createAliyunOssClient,
   type AliyunOssClientPort,
 } from "../../src/storage/aliyun/client.js";
@@ -37,6 +38,7 @@ class FakeAliyunClient implements AliyunOssClientPort {
     request: { queries: Record<string, string> };
     objectKey: string;
   }> = [];
+  readonly headCalls: string[] = [];
   readonly deleteCalls: string[] = [];
 
   async signatureUrlV4(
@@ -49,7 +51,8 @@ class FakeAliyunClient implements AliyunOssClientPort {
     return `https://signed.invalid/${objectKey}`;
   }
 
-  async head(): Promise<Awaited<ReturnType<AliyunOssClientPort["head"]>>> {
+  async head(objectKey: string): Promise<Awaited<ReturnType<AliyunOssClientPort["head"]>>> {
+    this.headCalls.push(objectKey);
     if (this.headError) {
       throw this.headError;
     }
@@ -79,7 +82,7 @@ function decodePolicy(policy: string): {
 test("POST authorization is exact-key, exact-size, media-type restricted, and signed", async () => {
   const client = new FakeAliyunClient();
   const now = new Date("2026-08-12T08:00:00.000Z");
-  const adapter = new AliyunOssStorageAdapter(config, client, () => now);
+  const adapter = new AliyunOssStorageAdapter(config, client, null, () => now);
   const objectKey = createObjectKey();
   const authorization = await adapter.createUploadAuthorization({
     objectKey,
@@ -133,7 +136,7 @@ test("temporary credentials are bound into the POST policy and fields", async ()
 
 test("download authorization delegates only the exact key and a safe filename", async () => {
   const client = new FakeAliyunClient();
-  const adapter = new AliyunOssStorageAdapter(config, client, () => new Date("2026-08-12T08:00:00Z"));
+  const adapter = new AliyunOssStorageAdapter(config, client, null, () => new Date("2026-08-12T08:00:00Z"));
   const objectKey = createObjectKey();
   const authorization = await adapter.createDownloadAuthorization({
     objectKey,
@@ -154,6 +157,109 @@ test("download authorization delegates only the exact key and a safe filename", 
       },
     },
   ]);
+});
+
+test("browser GET signing uses the custom-domain client and leaves the native service client untouched", async () => {
+  const serviceClient = new FakeAliyunClient();
+  const browserClient = new FakeAliyunClient();
+  const adapter = new AliyunOssStorageAdapter(
+    { ...config, browserEndpoint: "https://files.ajtlab.top" },
+    serviceClient,
+    browserClient,
+    () => new Date("2026-08-12T08:00:00Z"),
+  );
+  const objectKey = createObjectKey();
+
+  assert.equal(adapter.browserPreviewAvailable, true);
+  const authorization = await adapter.createDownloadAuthorization({
+    objectKey,
+    downloadFilename: "研究资料.pdf",
+  });
+
+  assert.equal(authorization.url, `https://signed.invalid/${objectKey}`);
+  assert.equal(browserClient.signatureCalls.length, 1);
+  assert.equal(serviceClient.signatureCalls.length, 0);
+  assert.match(
+    browserClient.signatureCalls[0]!.request.queries["response-content-disposition"]!,
+    /^attachment; filename="____\.pdf"; filename\*=UTF-8''%E7%A0%94%E7%A9%B6%E8%B5%84%E6%96%99\.pdf$/,
+  );
+});
+
+test("inline authorization carries no filename parameters", async () => {
+  const serviceClient = new FakeAliyunClient();
+  const browserClient = new FakeAliyunClient();
+  const adapter = new AliyunOssStorageAdapter(
+    { ...config, browserEndpoint: "https://files.ajtlab.top" },
+    serviceClient,
+    browserClient,
+    () => new Date("2026-08-12T08:00:00Z"),
+  );
+
+  await adapter.createDownloadAuthorization({
+    objectKey: createObjectKey(),
+    downloadFilename: "paper.pdf",
+    disposition: "inline",
+  });
+
+  assert.equal(
+    browserClient.signatureCalls[0]!.request.queries["response-content-disposition"],
+    "inline",
+  );
+});
+
+test("without a browser endpoint inline capability is false and attachment stays on the native client", async () => {
+  const client = new FakeAliyunClient();
+  const adapter = new AliyunOssStorageAdapter(config, client, null, () => new Date("2026-08-12T08:00:00Z"));
+
+  assert.equal(adapter.browserPreviewAvailable, false);
+  await adapter.createDownloadAuthorization({
+    objectKey: createObjectKey(),
+    downloadFilename: "paper.pdf",
+  });
+  assert.equal(client.signatureCalls.length, 1);
+});
+
+test("HEAD/stat and delete always use the native service client, never the browser client", async () => {
+  const serviceClient = new FakeAliyunClient();
+  const browserClient = new FakeAliyunClient();
+  const adapter = new AliyunOssStorageAdapter(
+    { ...config, browserEndpoint: "https://files.ajtlab.top" },
+    serviceClient,
+    browserClient,
+  );
+  const objectKey = createObjectKey();
+  serviceClient.headResult = {
+    status: 200,
+    res: { headers: { "Content-Length": "5" } },
+  };
+
+  await adapter.statObject(objectKey);
+  await adapter.deleteObject(objectKey);
+
+  assert.deepEqual(browserClient.signatureCalls, []);
+  assert.deepEqual(browserClient.headCalls, []);
+  assert.deepEqual(browserClient.deleteCalls, []);
+  assert.deepEqual(serviceClient.headCalls, [objectKey]);
+  assert.deepEqual(serviceClient.deleteCalls, [objectKey]);
+});
+
+test("real SDK browser client produces a custom-domain cname URL without network I/O", async () => {
+  const objectKey = createObjectKey();
+  const browserClient = createAliyunBrowserClient(config, "https://files.ajtlab.top");
+  const signedUrl = new URL(
+    await browserClient.signatureUrlV4(
+      "GET",
+      120,
+      { queries: { "response-content-disposition": "inline" } },
+      objectKey,
+    ),
+  );
+
+  assert.equal(signedUrl.protocol, "https:");
+  assert.equal(signedUrl.hostname, "files.ajtlab.top");
+  assert.equal(signedUrl.pathname, `/${objectKey}`);
+  assert.equal(signedUrl.searchParams.get("x-oss-signature-version"), "OSS4-HMAC-SHA256");
+  assert.equal(signedUrl.searchParams.get("response-content-disposition"), "inline");
 });
 
 test("real SDK client produces a V4 signed URL without performing network I/O", async () => {

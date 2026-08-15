@@ -20,6 +20,7 @@ export type DriveErrorCode =
   | "invalid_state"
   | "upload_incomplete"
   | "upload_metadata_mismatch"
+  | "preview_unavailable"
   | "storage_unavailable";
 
 export class DriveError extends Error {
@@ -364,6 +365,12 @@ export class DriveService {
 
     if (!file || file.state !== "active" || file.storageProvider !== this.storage.provider) {
       throw new DriveError("not_found");
+    }
+
+    // Inline Preview requires a dedicated browser GET domain; the native
+    // bucket domain forces downloads, so failing safely here is the contract.
+    if (disposition === "inline" && !this.storage.browserPreviewAvailable) {
+      throw new DriveError("preview_unavailable");
     }
 
     if (disposition === "inline" && !isSafeInlineMediaType(file.mediaType)) {

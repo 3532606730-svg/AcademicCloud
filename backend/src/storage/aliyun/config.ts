@@ -11,6 +11,8 @@ export interface AliyunOssConfig {
   accessKeyId: string;
   accessKeySecret: string;
   stsToken?: string;
+  /** Dedicated browser GET domain (OSS custom domain, cname semantics). */
+  browserEndpoint?: string;
   uploadAuthorizationSeconds: number;
   downloadAuthorizationSeconds: number;
   requestTimeoutMilliseconds: number;
@@ -71,6 +73,40 @@ function readEndpoint(value: string, appEnvironment: AppEnvironment): string {
   return endpoint.origin;
 }
 
+// The browser preview/download domain is OPTIONAL: when absent, downloads
+// keep working on the native bucket domain but inline Preview is reported as
+// unavailable instead of silently producing a forced download.
+function readBrowserEndpoint(value: string | undefined, appEnvironment: AppEnvironment): string | undefined {
+  const candidate = value?.trim();
+
+  if (!candidate) {
+    return undefined;
+  }
+
+  let endpoint: URL;
+
+  try {
+    endpoint = new URL(candidate);
+  } catch {
+    throw new Error("OSS_BROWSER_ENDPOINT must be an exact HTTP(S) origin");
+  }
+
+  if (
+    (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") ||
+    endpoint.origin !== candidate ||
+    endpoint.username ||
+    endpoint.password
+  ) {
+    throw new Error("OSS_BROWSER_ENDPOINT must be an exact HTTP(S) origin without credentials, path, query, or fragment");
+  }
+
+  if (appEnvironment === "production" && endpoint.protocol !== "https:") {
+    throw new Error("OSS_BROWSER_ENDPOINT must use HTTPS in production");
+  }
+
+  return endpoint.origin;
+}
+
 export function loadAliyunOssConfig(
   environment: NodeJS.ProcessEnv,
   appEnvironment: AppEnvironment,
@@ -88,6 +124,7 @@ export function loadAliyunOssConfig(
   }
 
   const stsToken = environment.OSS_STS_TOKEN?.trim();
+  const browserEndpoint = readBrowserEndpoint(environment.OSS_BROWSER_ENDPOINT, appEnvironment);
 
   return {
     endpoint,
@@ -96,6 +133,7 @@ export function loadAliyunOssConfig(
     accessKeyId: readRequired(environment, "OSS_ACCESS_KEY_ID"),
     accessKeySecret: readRequired(environment, "OSS_ACCESS_KEY_SECRET"),
     ...(stsToken ? { stsToken } : {}),
+    ...(browserEndpoint ? { browserEndpoint } : {}),
     uploadAuthorizationSeconds: readDuration(environment, "OSS_UPLOAD_AUTHORIZATION_SECONDS", 300),
     downloadAuthorizationSeconds: readDuration(environment, "OSS_DOWNLOAD_AUTHORIZATION_SECONDS", 300),
     requestTimeoutMilliseconds: readRequestTimeout(environment),

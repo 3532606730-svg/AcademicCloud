@@ -39,6 +39,10 @@ export interface StorageObjectMetadata {
 export interface StorageAdapter {
   readonly provider: string;
 
+  /** True when inline browser Preview can be safely authorized (a dedicated
+   *  custom browser GET domain is configured). */
+  readonly browserPreviewAvailable: boolean;
+
   createUploadAuthorization(
     input: CreateUploadAuthorizationInput,
   ): Promise<BrowserUploadAuthorization>;

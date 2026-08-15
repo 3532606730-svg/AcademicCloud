@@ -208,7 +208,7 @@ test("active files list, download, rename, move, soft-delete, and restore withou
   assert.match((await service.createDownload("owner-1", moved.id)).url, /^memory:\/\/download/);
   assert.match(
     decodeURIComponent((await service.createDownload("owner-1", moved.id, "inline")).url),
-    /response-content-disposition=inline;/,
+    /response-content-disposition=inline/,
   );
   await assert.rejects(service.createDownload("owner-2", moved.id), (error) => error instanceof DriveError && error.code === "not_found");
 
@@ -234,6 +234,21 @@ test("inline authorization is restricted to passive preview media types", async 
     service.createDownload("owner-1", uploaded.file.id, "inline"),
     (error) => error instanceof DriveError && error.code === "invalid_state",
   );
+  assert.match((await service.createDownload("owner-1", uploaded.file.id)).url, /^memory:\/\/download/);
+});
+
+test("inline download fails with preview_unavailable when no browser preview endpoint exists", async (context) => {
+  const { service, storage } = fixture(context);
+  const uploaded = await createAndUpload(service, storage);
+  await service.completeUpload("owner-1", uploaded.file.id);
+
+  Object.defineProperty(storage, "browserPreviewAvailable", { value: false });
+
+  await assert.rejects(
+    service.createDownload("owner-1", uploaded.file.id, "inline"),
+    (error) => error instanceof DriveError && error.code === "preview_unavailable",
+  );
+  // Attachment downloads keep working without the custom domain.
   assert.match((await service.createDownload("owner-1", uploaded.file.id)).url, /^memory:\/\/download/);
 });
 

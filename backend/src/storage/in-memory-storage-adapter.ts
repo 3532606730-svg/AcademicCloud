@@ -17,6 +17,7 @@ import type {
 
 export class InMemoryStorageAdapter implements StorageAdapter {
   readonly provider = "memory";
+  readonly browserPreviewAvailable = true;
   private readonly objects = new Map<string, StorageObjectMetadata>();
 
   constructor(private readonly now: () => Date = () => new Date()) {}

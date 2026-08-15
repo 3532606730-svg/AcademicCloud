@@ -161,7 +161,7 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
     headers: { cookie: ownerCookie },
   });
   assert.equal(inlinePreview.statusCode, 200);
-  assert.match(decodeURIComponent(inlinePreview.json<{ download: { url: string } }>().download.url), /disposition=inline;/);
+  assert.match(decodeURIComponent(inlinePreview.json<{ download: { url: string } }>().download.url), /disposition=inline/);
 
   const invalidDisposition = await app.inject({
     method: "GET",
@@ -372,4 +372,44 @@ test("drive authorization and destructive outcomes emit stable account-scoped au
   assert.match(logs, /owner-1/);
   assert.match(logs, /owner-2/);
   assert.doesNotMatch(logs, new RegExp(folder.id));
+});
+
+test("inline preview without a browser endpoint returns 503 preview_unavailable", async (context) => {
+  const { app, driveService, storage, login } = await fixture(context);
+  const ownerCookie = await login("owner-1");
+  const upload = await driveService.createUpload("owner-1", {
+    folderId: null,
+    displayName: "paper.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 7,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  storage.putObject({
+    objectKey: upload.upload.fields.key!,
+    sizeBytes: 7,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+  await driveService.completeUpload("owner-1", upload.file.id);
+  Object.defineProperty(storage, "browserPreviewAvailable", { value: false });
+
+  const inline = await app.inject({
+    method: "GET",
+    url: `/api/drive/files/${upload.file.id}/download?disposition=inline`,
+    headers: { cookie: ownerCookie },
+  });
+  assert.equal(inline.statusCode, 503);
+  assert.deepEqual(inline.json(), { error: "preview_unavailable" });
+
+  // Attachment download remains available without the custom domain.
+  const attachment = await app.inject({
+    method: "GET",
+    url: `/api/drive/files/${upload.file.id}/download`,
+    headers: { cookie: ownerCookie },
+  });
+  assert.equal(attachment.statusCode, 200);
+  assert.match(attachment.json<{ download: { url: string } }>().download.url, /^memory:\/\/download/);
 });

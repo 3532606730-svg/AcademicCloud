@@ -114,7 +114,7 @@ function sendDriveError(reply: FastifyReply, error: unknown) {
 
   const status = error.code === "not_found"
     ? 404
-    : error.code === "storage_unavailable"
+    : error.code === "storage_unavailable" || error.code === "preview_unavailable"
       ? 503
       : 409;
 

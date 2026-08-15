@@ -17,7 +17,7 @@ import type {
   StorageObjectMetadata,
 } from "../storage-adapter.js";
 import type { AliyunOssClientPort } from "./client.js";
-import { createAliyunOssClient } from "./client.js";
+import { createAliyunBrowserClient, createAliyunOssClient } from "./client.js";
 import type { AliyunOssConfig } from "./config.js";
 
 type HeaderMap = Record<string, string | number | string[] | undefined>;
@@ -83,11 +83,21 @@ function isNotFound(error: unknown): boolean {
 export class AliyunOssStorageAdapter implements StorageAdapter {
   readonly provider = "aliyun-oss";
 
+  // Inline Preview is only available when a dedicated browser GET domain
+  // (OSS custom domain) is configured. Without it the native bucket domain
+  // would force a download, so inline authorization must fail safely.
+  readonly browserPreviewAvailable: boolean;
+
   constructor(
     private readonly config: AliyunOssConfig,
     private readonly client: AliyunOssClientPort = createAliyunOssClient(config),
+    private readonly browserClient: AliyunOssClientPort | null = config.browserEndpoint
+      ? createAliyunBrowserClient(config, config.browserEndpoint)
+      : null,
     private readonly now: () => Date = () => new Date(),
-  ) {}
+  ) {
+    this.browserPreviewAvailable = this.browserClient !== null;
+  }
 
   async createUploadAuthorization(
     input: CreateUploadAuthorizationInput,
@@ -141,7 +151,13 @@ export class AliyunOssStorageAdapter implements StorageAdapter {
     assertValidObjectKey(input.objectKey);
     const expiresInSeconds = input.expiresInSeconds ?? this.config.downloadAuthorizationSeconds;
     assertAuthorizationDuration(expiresInSeconds);
-    const url = await this.client.signatureUrlV4(
+    // Browser GET URLs are signed by the dedicated custom-domain client when
+    // configured (cname semantics, no forced-download behavior). The native
+    // service client remains the fallback for attachment downloads only; the
+    // caller refuses inline authorization when browserPreviewAvailable is
+    // false, so this fallback never serves Preview.
+    const signingClient = this.browserClient ?? this.client;
+    const url = await signingClient.signatureUrlV4(
       "GET",
       expiresInSeconds,
       {

@@ -35,6 +35,13 @@ export function createContentDisposition(
   filename: string,
   disposition: "attachment" | "inline" = "attachment",
 ): string {
+  // Inline rendering (Preview) carries NO filename parameters: filename
+  // semantics on the response header would push some engines back toward
+  // download behavior, and the rendered name belongs to the application UI.
+  if (disposition === "inline") {
+    return "inline";
+  }
+
   const normalized = filename.normalize("NFC").trim();
 
   if (!normalized || normalized.length > 255 || /[\x00-\x1f\x7f]/.test(normalized)) {
@@ -50,5 +57,9 @@ export function createContentDisposition(
     `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
   );
 
-  return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+  // RFC 6266: an ASCII fallback for legacy agents plus the RFC 5987
+  // filename* form as the Unicode-correct primary. The SDK URL-encodes this
+  // value once more for the response-content-disposition query parameter and
+  // OSS decodes it once, so the browser receives exactly this header.
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
 }

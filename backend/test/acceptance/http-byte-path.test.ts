@@ -28,6 +28,7 @@ interface StoredBytes {
 
 class LocalHttpObjectStorage implements StorageAdapter {
   readonly provider = "local-http-test";
+  readonly browserPreviewAvailable = true;
   readonly objects = new Map<string, StoredBytes>();
   readonly authorizations = new Map<string, CreateUploadAuthorizationInput>();
   readonly server = createServer((request, response) => {
