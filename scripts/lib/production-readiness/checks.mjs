@@ -138,6 +138,14 @@ export function parseCspHeader(header) {
   return { directives, hostnames: [...hostnames].sort(), present: true };
 }
 
+// UX01 contract: the files domain must appear in BOTH img-src and frame-src.
+// Presence in connect-src/default-src/script-src is NOT sufficient.
+export function cspAllowsFiles(directives, filesDomainOrigin) {
+  const imgSrcAllows = (directives["img-src"] ?? []).includes(filesDomainOrigin);
+  const frameSrcAllows = (directives["frame-src"] ?? []).includes(filesDomainOrigin);
+  return { imgSrcAllows, frameSrcAllows, satisfied: imgSrcAllows && frameSrcAllows };
+}
+
 export function parseJournalLines(text) {
   return String(text).split("\n").filter((line) => line.trim().length > 0).length;
 }
@@ -240,10 +248,13 @@ db.close();
   certbotTimerEnabled: [["systemctl", "is-enabled", "certbot.timer"]],
   certbotTimerActive: [["systemctl", "is-active", "certbot.timer"]],
   renewalConfig: [["test", "-f", "/etc/letsencrypt/renewal/cloud.ajtlab.top.conf"]],
-  timers: [["systemctl", "list-timers", "--all", "--no-legend", "--no-pager"]],
-  cronAcademiccloud: [["grep", "-ri", "academiccloud", "/etc/cron.d", "/etc/cron.daily", "/etc/cron.weekly", "/etc/crontab"]],
-  journalErrors: [["journalctl", "-u", "academiccloud", "--since", "24 hours ago", "-p", "err", "--no-pager"]],
-  journalKernelOom: [["journalctl", "-k", "-b", "--no-pager", "-g", "out of memory|oom-kill"]],
+  // Aggregation happens REMOTELY (fixed static pipelines, no user input, no
+  // mutation): only numeric/small structural results cross SSH — raw
+  // journal/cron/timer lines never enter the Node process.
+  timers: [["sh", "-c", "systemctl list-timers --all --no-legend --no-pager | grep -ci academiccloud"]],
+  cronAcademiccloud: [["sh", "-c", "grep -riE academiccloud /etc/cron.d /etc/cron.daily /etc/cron.weekly /etc/crontab 2>/dev/null | wc -l"]],
+  journalErrors: [["sh", "-c", "journalctl -u academiccloud --since=-24h -p err --no-pager | wc -l"]],
+  journalKernelOom: [["sh", "-c", "journalctl -k -b --no-pager | grep -ciE 'out of memory|oom-kill'"]],
   cgroupMemoryEvents: [["cat", "/sys/fs/cgroup/system.slice/academiccloud.service/memory.events"]],
   nginx5xx: [["grep", "-cE", "status=5[0-9][0-9]", "/var/log/academiccloud/nginx-access.log"]],
 };

@@ -26,7 +26,7 @@ export const PROFILE_RULES = {
     SERVICE_AUTOSTART_DISABLED: { requirement: "advisory" },
     CERTBOT_TIMER: { requirement: "advisory" },
     BACKUP_CADENCE: { requirement: "advisory" },
-    FILES_DNS_TARGET: { requirement: "required", expect: ["PASS"] },
+    FILES_DNS_TARGET: { requirement: "required", expect: ["PASS", "UNKNOWN"] },
     FILES_TLS_AVAILABLE: { requirement: "required", expect: ["PASS"] },
     FILES_CSP_ALLOWED: { requirement: "required", expect: ["PASS"] },
     FILES_BROWSER_ENDPOINT_CONFIGURED: { requirement: "required", expect: ["PASS"] },

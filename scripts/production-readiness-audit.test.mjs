@@ -17,6 +17,7 @@ import {
   SECRET_ENV_KEYS,
   certificateStatus,
   classifyDrift,
+  cspAllowsFiles,
   parseCspHeader,
   parseDfPk,
   parseEnvSafe,
@@ -31,9 +32,15 @@ import {
   TARGET,
 } from "./lib/production-readiness/checks.mjs";
 import { buildSshArgs, validateSshAlias, runLocalCommand } from "./lib/production-readiness/executors.mjs";
-import { runLiveRemoteChecks } from "./lib/production-readiness/live-checks.mjs";
+import { mapLimit, runLiveRemoteChecks, HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB } from "./lib/production-readiness/live-checks.mjs";
 import { computeOverall, createCheck, exitCodeFor, EXIT_CODES } from "./lib/production-readiness/model.mjs";
 import { applyProfile, PROFILES } from "./lib/production-readiness/profiles.mjs";
+import {
+  evaluateCnameTargets,
+  evaluateTlsEvidence,
+  normalizeEndpoint,
+  redirectsToOrigin,
+} from "./lib/production-readiness/public-checks.mjs";
 import { buildReport, renderReport } from "./lib/production-readiness/report.mjs";
 import { assertSafeReport, findUnsafeValue, MUTATION_TOKENS, sanitizeRemoteUrl } from "./lib/production-readiness/safety.mjs";
 
@@ -70,7 +77,7 @@ test("invalid ssh aliases are rejected", () => {
   }
 });
 
-test("ssh invocation never disables host checking or prompts", () => {
+test("ssh invocation never disables host checking or prompts, and the executable exists exactly once", () => {
   const args = buildSshArgs("academiccloud-prod", ["hostname"]);
   const joined = args.join(" ");
   assert.match(joined, /BatchMode=yes/);
@@ -78,8 +85,13 @@ test("ssh invocation never disables host checking or prompts", () => {
   assert.match(joined, /ConnectTimeout=10/);
   assert.doesNotMatch(joined, /StrictHostKeyChecking=no/);
   assert.doesNotMatch(joined, /UserKnownHostsFile=\/dev\/null/);
+  // buildSshArgs returns ONLY options + remote args: the executable "ssh"
+  // is supplied exactly once by runRemoteCheck — no "ssh ssh" double invocation.
+  assert.equal(args.includes("ssh"), false);
   // Fixed remote arguments are POSIX-quoted for the remote login shell.
   assert.equal(args[args.length - 1], "'hostname'");
+  const executorSource = readFileSync(new URL("./lib/production-readiness/executors.mjs", import.meta.url), "utf8");
+  assert.equal((executorSource.match(/runExecFile\("ssh"/g) ?? []).length, 1, "ssh executable must appear exactly once");
 });
 
 // ---------------------------------------------------------------- mutation denylist
@@ -127,6 +139,14 @@ test("READY / NOT_READY / INDETERMINATE are deterministic and separate from WARN
   assert.equal(exitCodeFor("READY"), 0);
   assert.equal(exitCodeFor("NOT_READY"), EXIT_CODES.NOT_READY);
   assert.equal(exitCodeFor("INDETERMINATE"), EXIT_CODES.INDETERMINATE);
+});
+
+test("a required WARN/INFO never yields READY (READY means every required gate PASS)", () => {
+  const pass = createCheck({ id: "A", category: "x", requirement: "required", status: "PASS", summary: "s" });
+  for (const status of ["WARN", "INFO", "NOT_APPLICABLE"]) {
+    const notPass = createCheck({ id: "B", category: "x", requirement: "required", status, summary: "s" });
+    assert.equal(computeOverall([pass, notPass]).overall, "INDETERMINATE", `required ${status} must not be READY`);
+  }
 });
 
 // ---------------------------------------------------------------- profiles
@@ -260,6 +280,10 @@ test("legitimate operational values are never redacted", () => {
     "a".repeat(40),
     "0.0.0.0:80",
     "releases",
+    "EnvironmentFiles=/etc/academiccloud/academiccloud.env",
+    "ExecStart={ path=/usr/bin/node ; argv[]=/usr/bin/node /opt/academiccloud/current/backend/dist/main.js }",
+    "/opt/academiccloud/releases/e5217e8c73bab4941a56599b8be97a34ebf1e06b",
+    "DNS:cloud.ajtlab.top",
   ];
   for (const value of safe) {
     assert.equal(findUnsafeValue(value), null, `must keep: ${value}`);
@@ -325,9 +349,10 @@ const FIXTURE_OUTPUTS = {
   "certbot --version": "certbot 2.9.0",
   "systemctl is-enabled certbot.timer": "disabled",
   "systemctl is-active certbot.timer": "inactive",
-  "systemctl list-timers --all --no-legend --no-pager": "NEXT LEFT LAST PASSED UNIT ACTIVATES",
-  "journalctl -u academiccloud --since 24 hours ago -p err --no-pager": "",
-  "journalctl -k -b --no-pager -g out of memory|oom-kill": "",
+  "sh -c systemctl list-timers --all --no-legend --no-pager | grep -ci academiccloud": "0",
+  "sh -c grep -riE academiccloud /etc/cron.d /etc/cron.daily /etc/cron.weekly /etc/crontab 2>/dev/null | wc -l": "0",
+  "sh -c journalctl -u academiccloud --since=-24h -p err --no-pager | wc -l": "0",
+  "sh -c journalctl -k -b --no-pager | grep -ciE 'out of memory|oom-kill'": "0",
   "cat /sys/fs/cgroup/system.slice/academiccloud.service/memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
   "grep -cE status=5[0-9][0-9] /var/log/academiccloud/nginx-access.log": "0",
 };
@@ -365,9 +390,6 @@ function fakeExecutorFor(outputs) {
     if (key.includes("test -f /etc/letsencrypt")) {
       return { ok: true, kind: "OK", stdout: "", stderr: "", exitCode: 0, durationMs: 1, limited: false };
     }
-    if (key.includes("grep -ri academiccloud")) {
-      return { ok: false, kind: "COMMAND_FAILED", stdout: "", stderr: "", exitCode: 1, durationMs: 1, limited: false };
-    }
     if (key === "true") {
       return { ok: true, kind: "OK", stdout: "", stderr: "", exitCode: 0, durationMs: 1, limited: false };
     }
@@ -376,7 +398,10 @@ function fakeExecutorFor(outputs) {
 }
 
 test("live checks evaluate a healthy synthetic baseline fixture deterministically", async () => {
-  const checks = await runLiveRemoteChecks({ runRemoteCheck: fakeExecutorFor(FIXTURE_OUTPUTS), sshAlias: "academiccloud-prod" });
+  const repoChecks = [
+    { id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } },
+  ];
+  const checks = await runLiveRemoteChecks({ runRemoteCheck: fakeExecutorFor(FIXTURE_OUTPUTS), sshAlias: "academiccloud-prod", repoChecks });
   const byId = new Map(checks.map((check) => [check.id, check]));
 
   assert.equal(byId.get("SSH_CONNECTION").status, "PASS");
@@ -384,9 +409,12 @@ test("live checks evaluate a healthy synthetic baseline fixture deterministicall
   assert.equal(byId.get("SERVICE_AUTOSTART_DISABLED").status, "WARN");
   assert.equal(byId.get("LISTENER_LOOPBACK_ONLY").status, "PASS");
   assert.equal(byId.get("RESOURCE_MEMORY_HEADROOM").status, "PASS");
+  assert.equal(byId.get("RESOURCE_GUARD").status, "PASS");
   assert.equal(byId.get("HEALTH_LOOPBACK").status, "PASS");
   assert.equal(byId.get("DB_INTEGRITY").status, "PASS");
+  assert.equal(byId.get("DB_FOREIGN_KEYS").status, "PASS");
   assert.equal(byId.get("DB_SCHEMA").status, "PASS");
+  assert.equal(byId.get("RELEASE_SERVICE_WRITE_DENIED").status, "PASS");
   assert.equal(byId.get("BACKUP_PRESENT").status, "PASS");
   assert.equal(byId.get("CERTBOT_TIMER").status, "WARN");
   assert.equal(byId.get("FILES_BROWSER_ENDPOINT_CONFIGURED").status, "INFO");
@@ -452,13 +480,178 @@ test("reports render deterministically in all formats", () => {
   assert.match(both, /```json/);
 });
 
+// ---------------------------------------------------------------- L1-OPS01R1 regressions
+
+test("TLS is split: required validity gate + advisory expiry headroom", () => {
+  const okEvidence = {
+    ok: true, authorized: true, authorizationError: null, protocol: "TLSv1.3",
+    subjectCn: "cloud.ajtlab.top", issuerCn: "YE1", altNames: "DNS:cloud.ajtlab.top",
+    validFrom: "Aug 15 08:12:21 2026 GMT", validTo: new Date(Date.now() + 89 * 86_400_000).toISOString(),
+  };
+  const checks = evaluateTlsEvidence(okEvidence, "cloud.ajtlab.top");
+  assert.equal(checks.find((check) => check.id === "TLS_CLOUD_VALID").status, "PASS");
+  assert.equal(checks.find((check) => check.id === "TLS_CLOUD_EXPIRY_HEADROOM").status, "PASS");
+  assert.equal(checks.find((check) => check.id === "TLS_CLOUD_VALID").requirement, "required");
+
+  const expiring = evaluateTlsEvidence({
+    ...okEvidence, validTo: new Date(Date.now() + 20 * 86_400_000).toISOString(),
+  }, "cloud.ajtlab.top");
+  assert.equal(expiring.find((check) => check.id === "TLS_CLOUD_VALID").status, "PASS");
+  assert.equal(expiring.find((check) => check.id === "TLS_CLOUD_EXPIRY_HEADROOM").status, "WARN");
+
+  const unauthorized = evaluateTlsEvidence({ ...okEvidence, authorized: false, authorizationError: "bad name" }, "cloud.ajtlab.top");
+  assert.equal(unauthorized.find((check) => check.id === "TLS_CLOUD_VALID").status, "FAIL");
+});
+
+test("expected CNAME semantics: match, mismatch, and missing expectation", () => {
+  const targets = ["pixie.porkbun.com."];
+  assert.equal(evaluateCnameTargets(targets, "pixie.porkbun.com", "ux01-ready").status, "PASS");
+  assert.equal(evaluateCnameTargets(targets, "OSS-TARGET.example", "ux01-ready").status, "FAIL");
+  assert.equal(evaluateCnameTargets(targets, null, "ux01-ready").status, "UNKNOWN");
+  assert.equal(evaluateCnameTargets(targets, null, "baseline").status, "INFO");
+});
+
+test("endpoint normalization: exact files-domain match only", () => {
+  assert.equal(normalizeEndpoint("https://files.ajtlab.top/"), "https://files.ajtlab.top");
+  assert.equal(normalizeEndpoint("https://files.ajtlab.top"), "https://files.ajtlab.top");
+  assert.notEqual(normalizeEndpoint("https://evil.example"), "https://files.ajtlab.top");
+});
+
+test("CSP files-domain contract requires img-src AND frame-src", () => {
+  const origin = "https://files.ajtlab.top";
+  assert.equal(cspAllowsFiles({}, origin).satisfied, false, "none");
+  assert.equal(cspAllowsFiles({ "connect-src": [origin] }, origin).satisfied, false, "connect-only");
+  assert.equal(cspAllowsFiles({ "img-src": [origin] }, origin).satisfied, false, "img-only");
+  assert.equal(cspAllowsFiles({ "frame-src": [origin] }, origin).satisfied, false, "frame-only");
+  assert.equal(cspAllowsFiles({ "img-src": [origin], "frame-src": [origin] }, origin).satisfied, true, "both");
+  assert.equal(cspAllowsFiles({ "default-src": [origin] }, origin).satisfied, false, "default-src does not count");
+});
+
+test("redirect origin uses exact URL origins, never prefixes", () => {
+  assert.equal(redirectsToOrigin("https://cloud.ajtlab.top/", "https://cloud.ajtlab.top"), true);
+  assert.equal(redirectsToOrigin("https://cloud.ajtlab.top.evil.example/", "https://cloud.ajtlab.top"), false);
+  assert.equal(redirectsToOrigin("http://cloud.ajtlab.top/", "https://cloud.ajtlab.top"), false);
+  assert.equal(redirectsToOrigin("not-a-url", "https://cloud.ajtlab.top"), false);
+  assert.equal(redirectsToOrigin(null, "https://cloud.ajtlab.top"), false);
+});
+
+test("foreign-key violations flip DB_FOREIGN_KEYS to FAIL and NOT_READY", async () => {
+  const outputs = { ...FIXTURE_OUTPUTS };
+  const executor = fakeExecutorFor(outputs);
+  const dbExecutor = async (alias, args) => {
+    const key = args.join(" ").replace(/\s+/g, " ").trim();
+    if (key.includes("sudo -n node -e") && !key.includes("ARTIFACT-MANIFEST")) {
+      return { ok: true, kind: "OK", stdout: JSON.stringify({ integrity: "ok", fkRows: 3, schemaVersion: 4, counts: {}, states: {} }), stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    }
+    return executor(alias, args);
+  };
+  const checks = await runLiveRemoteChecks({ runRemoteCheck: dbExecutor, sshAlias: "academiccloud-prod", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }] });
+  const byId = new Map(checks.map((check) => [check.id, check]));
+  assert.equal(byId.get("DB_INTEGRITY").status, "PASS");
+  assert.equal(byId.get("DB_FOREIGN_KEYS").status, "FAIL");
+  const { report } = buildReport({ mode: "live", profile: "baseline", checks, target: TARGET });
+  assert.equal(report.summary.overall, "NOT_READY");
+});
+
+test("schema expectation derives from repository migrations, not a constant", async () => {
+  const base = { ...FIXTURE_OUTPUTS };
+  const executor = fakeExecutorFor(base);
+  const dbExecutor = async (alias, args) => {
+    const key = args.join(" ").replace(/\s+/g, " ").trim();
+    if (key.includes("sudo -n node -e") && !key.includes("ARTIFACT-MANIFEST")) {
+      return { ok: true, kind: "OK", stdout: JSON.stringify({ integrity: "ok", fkRows: 0, schemaVersion: 4, counts: {}, states: {} }), stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    }
+    return executor(alias, args);
+  };
+  const repoExpects4 = [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }];
+  const repoExpects5 = [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 5 } }];
+
+  const matchChecks = await runLiveRemoteChecks({ runRemoteCheck: dbExecutor, sshAlias: "x", repoChecks: repoExpects4 });
+  assert.equal(matchChecks.find((check) => check.id === "DB_SCHEMA").status, "PASS");
+
+  const driftChecks = await runLiveRemoteChecks({ runRemoteCheck: dbExecutor, sshAlias: "x", repoChecks: repoExpects5 });
+  assert.equal(driftChecks.find((check) => check.id === "DB_SCHEMA").status, "FAIL");
+});
+
+test("release service-write denied is a separate required gate", async () => {
+  const writableExecutor = async (alias, args) => {
+    const key = args.join(" ");
+    if (key.includes("sudo -n -u academiccloud test -w")) {
+      return { ok: true, kind: "OK", stdout: "", stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    }
+    return fakeExecutorFor(FIXTURE_OUTPUTS)(alias, args);
+  };
+  const checks = await runLiveRemoteChecks({ runRemoteCheck: writableExecutor, sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }] });
+  assert.equal(checks.find((check) => check.id === "RELEASE_SERVICE_WRITE_DENIED").status, "FAIL");
+});
+
+test("raw journal/cron output never crosses SSH (remote aggregation only)", () => {
+  const commands = remoteCommandStrings();
+  const journalErrors = commands.find((command) => command.includes("journalctl -u academiccloud"));
+  assert.match(journalErrors, /\| wc -l$/, "journal errors must be aggregated remotely");
+  const kernelOom = commands.find((command) => command.includes("journalctl -k"));
+  assert.match(kernelOom, /grep -ciE/, "kernel OOM must be aggregated remotely");
+  const cron = commands.find((command) => command.includes("cron.d"));
+  assert.match(cron, /\| wc -l$/, "cron occurrences must be aggregated remotely");
+  const timers = commands.find((command) => command.includes("list-timers"));
+  assert.match(timers, /grep -ci academiccloud$/, "timer occurrences must be aggregated remotely");
+});
+
+test("resource guard skips heavy audits below the threshold and reports UNKNOWN", async () => {
+  const lowMemory = {
+    ...FIXTURE_OUTPUTS,
+    "cat /proc/meminfo": `MemTotal:       916044 kB\nMemAvailable:   ${HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB - 1} kB\nSwapTotal:     1048572 kB\nSwapFree:     1048572 kB\n`,
+  };
+  const checks = await runLiveRemoteChecks({ runRemoteCheck: fakeExecutorFor(lowMemory), sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }] });
+  const byId = new Map(checks.map((check) => [check.id, check]));
+  assert.equal(byId.get("RESOURCE_GUARD").status, "WARN");
+  assert.equal(byId.get("DB_INTEGRITY").status, "UNKNOWN");
+  assert.equal(byId.get("DB_INTEGRITY").detail, "skipped by resource guard");
+  assert.equal(byId.get("NO_ERROR_OOM_ACTIVITY").status, "UNKNOWN");
+  const { report } = buildReport({ mode: "live", profile: "baseline", checks, target: TARGET });
+  assert.equal(report.summary.overall, "INDETERMINATE");
+});
+
+test("SSH concurrency never exceeds 2", async () => {
+  let concurrent = 0;
+  let peak = 0;
+  const slowFake = async (_alias, args) => {
+    concurrent += 1;
+    peak = Math.max(peak, concurrent);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    concurrent -= 1;
+    return { ok: true, kind: "OK", stdout: args.join(" "), stderr: "", exitCode: 0, durationMs: 5, limited: false };
+  };
+  await runLiveRemoteChecks({ runRemoteCheck: slowFake, sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }] });
+  assert.ok(peak <= 2, `peak SSH concurrency ${peak} exceeded 2`);
+
+  const items = Array.from({ length: 8 }, (_, index) => index);
+  let localPeak = 0;
+  let localConcurrent = 0;
+  await mapLimit(items, 2, async (item) => {
+    localConcurrent += 1;
+    localPeak = Math.max(localPeak, localConcurrent);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    localConcurrent -= 1;
+    return item;
+  });
+  assert.equal(localPeak, 2);
+});
+
 // ---------------------------------------------------------------- executor bounds
 
-test("executor enforces timeouts and output caps", async () => {
+test("executor enforces timeouts, output caps, and real durations", async () => {
   const slow = await runLocalCommand(process.execPath, ["-e", "setTimeout(() => {}, 4000)"], { timeoutMs: 300 });
   assert.equal(slow.kind, "TIMEOUT");
+  assert.ok(slow.durationMs >= 0, "duration must be a real measurement");
 
   const chatty = await runLocalCommand(process.execPath, ["-e", "process.stdout.write('x'.repeat(2000))"], { timeoutMs: 5000, maxStdoutBytes: 200 });
-  assert.equal(chatty.limited, true);
+  assert.equal(chatty.kind, "OUTPUT_LIMIT_EXCEEDED");
+  assert.equal(chatty.ok, false, "capped output must never look like success");
   assert.equal(chatty.stdout.length, 200);
+  assert.ok(chatty.durationMs < 5000, "fast success duration must be far below the timeout");
+
+  const quick = await runLocalCommand(process.execPath, ["-e", "process.stdout.write('ok')"], { timeoutMs: 5000 });
+  assert.equal(quick.kind, "OK");
+  assert.equal(quick.durationMs >= 0, true);
 });

@@ -1,6 +1,7 @@
 // LIVE-mode remote checks: fixed allowlisted commands, bounded execution,
 // aggregate-only parsing, dependency propagation (SSH failure ⇒ dependent
-// checks UNKNOWN, never FAIL).
+// checks UNKNOWN, never FAIL), a resource guard for heavy checks, and at most
+// 2 concurrent SSH sessions.
 
 import {
   classifyDrift,
@@ -8,7 +9,6 @@ import {
   LIMITS,
   parseDfPk,
   parseEnvSafe,
-  parseJournalLines,
   parseListeners,
   parseMemoryEvents,
   parseMeminfo,
@@ -17,21 +17,33 @@ import {
   TARGET,
 } from "./checks.mjs";
 import { createCheck } from "./model.mjs";
+import { normalizeEndpoint } from "./public-checks.mjs";
 
-function remoteResultToEvidence(result) {
-  if (result.kind === "TIMEOUT") return { ok: false, kind: "TIMEOUT" };
-  if (result.kind === "SAFETY_VIOLATION") return { ok: false, kind: "SAFETY_VIOLATION" };
-  if (result.kind === "COMMAND_FAILED") return { ok: false, kind: "COMMAND_FAILED", exitCode: result.exitCode, stdout: result.stdout };
-  if (result.limited) return { ok: false, kind: "OUTPUT_LIMIT_EXCEEDED" };
-  return { ok: true, kind: "OK", stdout: result.stdout, exitCode: result.exitCode };
+export const HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB = 256 * 1024;
+export const MAX_SSH_CONCURRENCY = 2;
+
+// Bounded concurrency: at most `limit` in-flight promises.
+export async function mapLimit(items, limit, worker) {
+  const results = new Array(items.length);
+  let index = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const current = index;
+      index += 1;
+      results[current] = await worker(items[current], current);
+    }
+  });
+  await Promise.all(runners);
+  return results;
 }
 
 function stdoutOf(result) {
   return result?.stdout?.trim() || null;
 }
 
-// grep -c prints 0 and exits 1 when nothing matches: both are valid answers.
-function grepCount(result) {
+// Numeric output helpers: a 0/1 exit from grep -c or wc-style pipelines is a
+// valid answer, never a failure.
+function numericOf(result) {
   if (!result) return null;
   if (result.ok || result.exitCode === 1) {
     const value = Number(result.stdout?.trim());
@@ -40,18 +52,25 @@ function grepCount(result) {
   return null;
 }
 
+function lineCountOf(result) {
+  if (!result?.ok) return null;
+  return result.stdout.split("\n").filter((line) => line.trim().length > 0).length;
+}
+
 export async function runLiveRemoteChecks({
   runRemoteCheck,
   sshAlias,
   repoChecks = [],
+  profile = "baseline",
   now = () => new Date(),
 } = {}) {
   const checks = [];
   const at = now().toISOString();
+  const filesDomainOrigin = `https://${TARGET.filesDomain}`;
 
   // Connectivity gate: a single fixed harmless command.
   const probe = await runRemoteCheck(sshAlias, ["true"]);
-  const sshUp = probe.ok && probe.kind !== "COMMAND_FAILED" && !probe.limited;
+  const sshUp = probe.ok && !probe.limited;
 
   checks.push(createCheck({
     id: "SSH_CONNECTION", category: "transport", requirement: "required",
@@ -60,18 +79,11 @@ export async function runLiveRemoteChecks({
     evidence: { alias: sshAlias, kind: probe.kind }, provenance: "REMOTE_SSH", observedAt: at,
   }));
 
-  const run = async (name, args) => {
-    if (!sshUp) {
-      return { ok: false, kind: "UPSTREAM_UNAVAILABLE" };
-    }
-    const result = await runRemoteCheck(sshAlias, args);
-    return remoteResultToEvidence(result);
-  };
-
-  const dependent = (id, category, requirement, summary) =>
+  const dependent = (id, category, requirement, summary, detail = null) =>
     createCheck({
       id, category, requirement, status: "UNKNOWN", summary,
       evidence: {}, provenance: "REMOTE_SSH", dependency: "SSH_CONNECTION", observedAt: at,
+      ...(detail ? { detail } : {}),
     });
 
   // ---- host identity + resources (sequential fixed reads)
@@ -98,7 +110,7 @@ export async function runLiveRemoteChecks({
       })
     : dependent("HOST_IDENTITY", "host", "advisory", "host identity unavailable (SSH down)"));
 
-  const meminfoResult = await run("meminfo", remote.meminfo[0]);
+  const meminfoResult = sshUp ? await runRemoteCheck(sshAlias, remote.meminfo[0]) : { ok: false };
   const meminfo = meminfoResult.ok ? parseMeminfo(meminfoResult.stdout) : {};
   const memoryHeadroomKiB = meminfo.MemAvailable ?? null;
   checks.push(createCheck({
@@ -113,7 +125,22 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
-  const diskResult = await run("disk", remote.disk[0]);
+  // Resource guard: below the heavy-check threshold, skip the expensive
+  // read-only audits (SQLite integrity, journal aggregations) and mark them
+  // UNKNOWN — a skipped check is never PASS.
+  const heavyChecksAllowed = memoryHeadroomKiB === null || memoryHeadroomKiB >= HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB;
+  checks.push(createCheck({
+    id: "RESOURCE_GUARD", category: "resources", requirement: "advisory",
+    status: heavyChecksAllowed ? "PASS" : "WARN",
+    summary: heavyChecksAllowed
+      ? "resource guard clear (heavy read-only audits allowed)"
+      : `MemAvailable below ${HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB} KiB — heavy read-only audits skipped (UNKNOWN)`,
+    evidence: { heavyChecksAllowed, thresholdKiB: HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB },
+    provenance: "REMOTE_SSH", observedAt: at,
+    ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
+  }));
+
+  const diskResult = sshUp ? await runRemoteCheck(sshAlias, remote.disk[0]) : { ok: false };
   const disk = diskResult.ok ? parseDfPk(diskResult.stdout) : null;
   checks.push(createCheck({
     id: "RESOURCE_DISK_HEADROOM", category: "resources", requirement: "required",
@@ -125,7 +152,7 @@ export async function runLiveRemoteChecks({
   }));
 
   // ---- systemd
-  const serviceResult = await run("serviceShow", remote.serviceShow[0]);
+  const serviceResult = sshUp ? await runRemoteCheck(sshAlias, remote.serviceShow[0]) : { ok: false };
   const service = serviceResult.ok ? parseSystemctlShow(serviceResult.stdout) : {};
   const activeState = service.ActiveState ?? null;
   checks.push(createCheck({
@@ -155,8 +182,8 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
-  const failedResult = await run("failedUnits", remote.failedUnits[0]);
-  const failedCount = failedResult.ok ? parseJournalLines(failedResult.stdout) : null;
+  const failedResult = sshUp ? await runRemoteCheck(sshAlias, remote.failedUnits[0]) : { ok: false };
+  const failedCount = failedResult.ok ? failedResult.stdout.split("\n").filter((line) => line.trim()).length : null;
   checks.push(createCheck({
     id: "NO_FAILED_UNITS", category: "systemd", requirement: "required",
     status: failedCount === null ? "UNKNOWN" : failedCount === 0 ? "PASS" : "FAIL",
@@ -166,7 +193,7 @@ export async function runLiveRemoteChecks({
   }));
 
   // ---- network boundary
-  const listenersResult = await run("listeners", remote.listeners[0]);
+  const listenersResult = sshUp ? await runRemoteCheck(sshAlias, remote.listeners[0]) : { ok: false };
   const listeners = listenersResult.ok ? parseListeners(listenersResult.stdout) : [];
   const loopback3000 = listeners.some((entry) => entry.address === "127.0.0.1" && entry.port === 3000);
   const public3000 = listeners.some((entry) => (entry.address === "0.0.0.0" || entry.address.startsWith("[")) && entry.port === 3000);
@@ -185,7 +212,7 @@ export async function runLiveRemoteChecks({
 
   // ---- application health (loopback, no auth)
   const [healthResult, readyResult] = sshUp
-    ? await Promise.all([runRemoteCheck(sshAlias, remote.health[0]), runRemoteCheck(sshAlias, remote.ready[0])])
+    ? await mapLimit([remote.health[0], remote.ready[0]], MAX_SSH_CONCURRENCY, (args) => runRemoteCheck(sshAlias, args))
     : [{ ok: false }, { ok: false }];
   for (const [id, result] of [["HEALTH_LOOPBACK", healthResult], ["READY_LOOPBACK", readyResult]]) {
     const status = result.ok ? Number(result.stdout.trim()) : null;
@@ -199,26 +226,33 @@ export async function runLiveRemoteChecks({
   }
 
   // ---- release identity
-  const targetResult = await run("releaseTarget", remote.releaseTarget[0]);
-  const listResult = await run("releaseList", remote.releaseList[0]);
-  const writableResult = await run("releaseWritable", remote.releaseWritable[0]);
-  const manifestResult = await run("releaseManifest", remote.releaseManifest[0]);
+  const targetResult = sshUp ? await runRemoteCheck(sshAlias, remote.releaseTarget[0]) : { ok: false };
+  const listResult = sshUp ? await runRemoteCheck(sshAlias, remote.releaseList[0]) : { ok: false };
+  const writableResult = sshUp ? await runRemoteCheck(sshAlias, remote.releaseWritable[0]) : { ok: false };
+  const manifestResult = sshUp ? await runRemoteCheck(sshAlias, remote.releaseManifest[0]) : { ok: false };
   const currentTarget = targetResult.ok ? targetResult.stdout.trim() : null;
   const releases = listResult.ok ? listResult.stdout.trim().split("\n").filter(Boolean) : [];
   const manifest = manifestResult.ok ? parseReleaseManifest(manifestResult.stdout) : null;
-  const serviceWritable = writableResult.ok ? writableResult.exitCode === 0 : null;
   checks.push(createCheck({
     id: "RELEASE_CURRENT", category: "release", requirement: "required",
     status: currentTarget && manifest?.sourceCommit ? "PASS" : "UNKNOWN",
     summary: currentTarget ? `current -> ${currentTarget}` : "current release unknown",
-    evidence: {
-      currentTarget,
-      releaseCount: releases.length,
-      releaseBasenames: releases,
-      serviceAccountWritable: serviceWritable,
-      manifest: manifest ?? { sourceCommit: null },
-    },
+    evidence: { currentTarget, releaseCount: releases.length, releaseBasenames: releases, manifest: manifest ?? { sourceCommit: null } },
     provenance: "REMOTE_SSH", observedAt: at,
+    ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
+  }));
+
+  // Immutability is its own required gate (non-mutating `test -w` probe).
+  const serviceWritable = writableResult.ok || writableResult.exitCode === 1 ? writableResult.exitCode === 0 : null;
+  checks.push(createCheck({
+    id: "RELEASE_SERVICE_WRITE_DENIED", category: "release", requirement: "required",
+    status: serviceWritable === null ? "UNKNOWN" : serviceWritable ? "FAIL" : "PASS",
+    summary: serviceWritable === null
+      ? "release writability check unavailable"
+      : serviceWritable
+        ? "service account CAN write the release tree"
+        : "service account write to release tree denied",
+    evidence: { serviceAccountWritable: serviceWritable }, provenance: "REMOTE_SSH", observedAt: at,
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
@@ -233,13 +267,13 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
-  // ---- nginx
-  const siteLinkResult = await run("nginxSiteExists", remote.nginxSiteExists[0]);
-  const siteHashResult = await run("nginxSiteHash", remote.nginxSiteHash[0]);
-  const snippetHashResult = await run("nginxSnippetHash", remote.nginxSnippetHash[0]);
-  const summaryResult = await run("nginxSummary", remote.nginxSummary[0]);
-  const cspLiveResult = await run("cspLive", remote.cspLive[0]);
-  const hstsLiveResult = await run("hstsLive", remote.hstsLive[0]);
+  // ---- nginx (sequential fixed reads)
+  const siteLinkResult = sshUp ? await runRemoteCheck(sshAlias, remote.nginxSiteExists[0]) : { ok: false };
+  const siteHashResult = sshUp ? await runRemoteCheck(sshAlias, remote.nginxSiteHash[0]) : { ok: false };
+  const snippetHashResult = sshUp ? await runRemoteCheck(sshAlias, remote.nginxSnippetHash[0]) : { ok: false };
+  const summaryResult = sshUp ? await runRemoteCheck(sshAlias, remote.nginxSummary[0]) : { ok: false };
+  const cspLiveResult = sshUp ? await runRemoteCheck(sshAlias, remote.cspLive[0]) : { ok: false };
+  const hstsLiveResult = sshUp ? await runRemoteCheck(sshAlias, remote.hstsLive[0]) : { ok: false };
   const siteLink = siteLinkResult.ok ? siteLinkResult.stdout.trim() : null;
   const siteHash = siteHashResult.ok ? siteHashResult.stdout.split(/\s+/)[0] : null;
   const snippetHash = snippetHashResult.ok ? snippetHashResult.stdout.split(/\s+/)[0] : null;
@@ -255,38 +289,44 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
-  const liveCspHosts = new Set();
+  // Live-snippet CSP must contain the files domain in img-src AND frame-src.
+  const liveDirectives = {};
   for (const line of cspLiveLines) {
-    const match = /https?:\/\/([^/\s"'*;]+)/g;
-    let found;
-    while ((found = match.exec(line)) !== null) liveCspHosts.add(found[1]);
+    const header = /Content-Security-Policy\s*"(.*)"/.exec(line)?.[1] ?? line;
+    for (const part of header.split(";")) {
+      const index = part.indexOf(" ");
+      if (index < 0) continue;
+      const name = part.slice(0, index).trim().toLowerCase();
+      liveDirectives[name] = part.slice(index).trim().split(/\s+/).filter(Boolean);
+    }
   }
+  const liveImgAllows = (liveDirectives["img-src"] ?? []).includes(filesDomainOrigin);
+  const liveFrameAllows = (liveDirectives["frame-src"] ?? []).includes(filesDomainOrigin);
   checks.push(createCheck({
     id: "FILES_CSP_ALLOWED_LIVE", category: "nginx", requirement: "informational",
-    status: liveCspHosts.has(TARGET.filesDomain) ? "PASS" : "INFO",
-    summary: liveCspHosts.has(TARGET.filesDomain)
-      ? "live snippet CSP includes files domain"
-      : "live snippet CSP does not include files domain (expected before Transaction B)",
-    evidence: { cspHostnames: [...liveCspHosts].sort() },
+    status: liveImgAllows && liveFrameAllows ? "PASS" : "INFO",
+    summary: liveImgAllows && liveFrameAllows
+      ? "live snippet CSP includes files domain in img-src AND frame-src"
+      : "live snippet CSP does not include files domain in BOTH img-src and frame-src (expected before Transaction B)",
+    evidence: { imgSrcAllows: liveImgAllows, frameSrcAllows: liveFrameAllows },
     provenance: "REMOTE_SSH", observedAt: at,
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
   // ---- environment (safe extraction)
-  const envAllowedResult = await run("envAllowed", remote.envAllowed[0]);
-  const envSecretId = await run("envSecretKeyId", remote.envSecretKeyId[0]);
-  const envSecretSecret = await run("envSecretKeySecret", remote.envSecretKeySecret[0]);
-  const envSecretSts = await run("envSecretSts", remote.envSecretSts[0]);
+  const envAllowedResult = sshUp ? await runRemoteCheck(sshAlias, remote.envAllowed[0]) : { ok: false };
+  const [envSecretId, envSecretSecret, envSecretSts] = sshUp
+    ? await mapLimit([remote.envSecretKeyId[0], remote.envSecretKeySecret[0], remote.envSecretSts[0]], MAX_SSH_CONCURRENCY, (args) => runRemoteCheck(sshAlias, args))
+    : [{ ok: false }, { ok: false }, { ok: false }];
   let envSafe = null;
   const secretPresence = {};
   if (envAllowedResult.ok) {
-    const parsed = parseEnvSafe(envAllowedResult.stdout);
-    envSafe = parsed.values;
+    envSafe = parseEnvSafe(envAllowedResult.stdout).values;
   }
   if (sshUp) {
-    secretPresence.OSS_ACCESS_KEY_ID = grepCount(envSecretId) !== null ? (grepCount(envSecretId) > 0 ? "PRESENT" : "ABSENT") : "UNKNOWN";
-    secretPresence.OSS_ACCESS_KEY_SECRET = grepCount(envSecretSecret) !== null ? (grepCount(envSecretSecret) > 0 ? "PRESENT" : "ABSENT") : "UNKNOWN";
-    secretPresence.OSS_STS_TOKEN = grepCount(envSecretSts) !== null ? (grepCount(envSecretSts) > 0 ? "PRESENT" : "ABSENT") : "UNKNOWN";
+    secretPresence.OSS_ACCESS_KEY_ID = numericOf(envSecretId) !== null ? (numericOf(envSecretId) > 0 ? "PRESENT" : "ABSENT") : "UNKNOWN";
+    secretPresence.OSS_ACCESS_KEY_SECRET = numericOf(envSecretSecret) !== null ? (numericOf(envSecretSecret) > 0 ? "PRESENT" : "ABSENT") : "UNKNOWN";
+    secretPresence.OSS_STS_TOKEN = numericOf(envSecretSts) !== null ? (numericOf(envSecretSts) > 0 ? "PRESENT" : "ABSENT") : "UNKNOWN";
   }
   checks.push(createCheck({
     id: "ENV_SAFE_STATE", category: "env", requirement: "required",
@@ -298,62 +338,88 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
+  // Exact endpoint semantics: PASS only for https://files.ajtlab.top (same
+  // trailing-slash-insensitive normalization as production config).
   const browserEndpoint = envSafe?.OSS_BROWSER_ENDPOINT ?? null;
+  const endpointMatches = browserEndpoint !== null && normalizeEndpoint(browserEndpoint) === normalizeEndpoint(filesDomainOrigin);
   checks.push(createCheck({
     id: "FILES_BROWSER_ENDPOINT_CONFIGURED", category: "env", requirement: "informational",
-    status: browserEndpoint && browserEndpoint.startsWith("https://") ? "PASS" : browserEndpoint === "" || browserEndpoint === null ? "INFO" : "FAIL",
-    summary: browserEndpoint && browserEndpoint.startsWith("https://")
-      ? `OSS_BROWSER_ENDPOINT configured`
-      : "OSS_BROWSER_ENDPOINT not configured (expected before Transaction B)",
-    evidence: { configured: Boolean(browserEndpoint && browserEndpoint.startsWith("https://")) },
+    status: browserEndpoint === null || browserEndpoint === "" ? "INFO"
+      : endpointMatches ? "PASS" : "FAIL",
+    summary: browserEndpoint === null || browserEndpoint === ""
+      ? "OSS_BROWSER_ENDPOINT not configured (expected before Transaction B)"
+      : endpointMatches
+        ? "OSS_BROWSER_ENDPOINT exactly matches the files domain"
+        : "OSS_BROWSER_ENDPOINT does not match the expected files domain",
+    evidence: { configured: browserEndpoint !== null && browserEndpoint !== "", matchesExpected: endpointMatches },
     provenance: "REMOTE_SSH", observedAt: at,
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
-  // ---- database (read-only aggregates)
-  const dbResult = await run("dbAudit", remote.dbAudit[0]);
+  // ---- database (read-only aggregates; skipped by the resource guard)
   let db = null;
-  if (dbResult.ok) {
-    try {
-      db = JSON.parse(dbResult.stdout.trim());
-    } catch {
-      db = null;
+  if (sshUp && heavyChecksAllowed) {
+    const dbResult = await runRemoteCheck(sshAlias, remote.dbAudit[0]);
+    if (dbResult.ok) {
+      try {
+        db = JSON.parse(dbResult.stdout.trim());
+      } catch {
+        db = null;
+      }
     }
   }
   checks.push(createCheck({
     id: "DB_INTEGRITY", category: "database", requirement: "required",
     status: db?.integrity === "ok" ? "PASS" : db === null ? "UNKNOWN" : "FAIL",
-    summary: db?.integrity === "ok" ? "SQLite integrity ok" : db === null ? "database audit unavailable" : `integrity result: ${db.integrity}`,
-    evidence: { integrity: db?.integrity ?? null, foreignKeyViolations: db?.fkRows ?? null, schemaVersion: db?.schemaVersion ?? null, counts: db?.counts ?? null, fileStates: db?.states ?? null },
+    summary: db?.integrity === "ok" ? "SQLite integrity ok"
+      : db === null ? "database integrity audit unavailable" : `integrity result: ${db.integrity}`,
+    evidence: { integrity: db?.integrity ?? null },
     provenance: "REMOTE_SQLITE_READONLY", observedAt: at,
+    detail: !heavyChecksAllowed ? "skipped by resource guard" : null,
+    ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
+  }));
+  checks.push(createCheck({
+    id: "DB_FOREIGN_KEYS", category: "database", requirement: "required",
+    status: db === null ? "UNKNOWN" : db.fkRows === 0 ? "PASS" : "FAIL",
+    summary: db === null ? "foreign-key audit unavailable" : db.fkRows === 0 ? "foreign-key check clean" : `${db.fkRows} foreign-key violation(s)`,
+    evidence: { foreignKeyViolations: db?.fkRows ?? null },
+    provenance: "REMOTE_SQLITE_READONLY", observedAt: at,
+    detail: !heavyChecksAllowed ? "skipped by resource guard" : null,
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
+  // Expected schema derives from the REPOSITORY migration set, never a
+  // hard-coded constant.
+  const migrationCheck = repoChecks.find((check) => check.id === "GIT_MIGRATION_FILES");
+  const expectedVersion = typeof migrationCheck?.evidence?.count === "number" ? migrationCheck.evidence.count : null;
+  const liveVersion = db?.schemaVersion ?? null;
   checks.push(createCheck({
     id: "DB_SCHEMA", category: "database", requirement: "required",
-    status: db?.schemaVersion === 4 ? "PASS" : db === null ? "UNKNOWN" : "FAIL",
-    summary: db?.schemaVersion === 4 ? "schema version 4" : `schema version ${db?.schemaVersion ?? "unknown"}`,
-    evidence: { schemaVersion: db?.schemaVersion ?? null }, provenance: "REMOTE_SQLITE_READONLY", observedAt: at,
+    status: liveVersion === null || expectedVersion === null ? "UNKNOWN"
+      : liveVersion === expectedVersion ? "PASS" : "FAIL",
+    summary: liveVersion === null || expectedVersion === null
+      ? `schema comparison unavailable (live ${liveVersion ?? "?"} vs repository ${expectedVersion ?? "?"})`
+      : liveVersion === expectedVersion
+        ? `schema version ${liveVersion} matches repository expectation`
+        : `schema version ${liveVersion} does NOT match repository expectation ${expectedVersion}`,
+    evidence: { liveSchemaVersion: liveVersion, expectedMigrationVersion: expectedVersion },
+    provenance: "REMOTE_SQLITE_READONLY", observedAt: at,
+    detail: !heavyChecksAllowed ? "skipped by resource guard" : null,
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
   // ---- backups
   const [backupFiles, backupAge, backupManifests, ageKey] = sshUp
-    ? await Promise.all([
-        runRemoteCheck(sshAlias, remote.backupFileCount[0]),
-        runRemoteCheck(sshAlias, remote.backupAgeCount[0]),
-        runRemoteCheck(sshAlias, remote.backupManifestCount[0]),
-        runRemoteCheck(sshAlias, remote.ageKeyStat[0]),
-      ])
-    : [];
+    ? await mapLimit([remote.backupFileCount[0], remote.backupAgeCount[0], remote.backupManifestCount[0], remote.ageKeyStat[0]], MAX_SSH_CONCURRENCY, (args) => runRemoteCheck(sshAlias, args))
+    : [{ ok: false }, { ok: false }, { ok: false }, { ok: false }];
   const newestTimestamp = (result) => {
     if (!result?.ok) return null;
     const stamps = result.stdout.trim().split("\n").map(Number).filter(Number.isFinite);
     return stamps.length ? new Date(Math.max(...stamps) * 1000).toISOString() : null;
   };
-  const backupCount = backupFiles?.ok ? parseJournalLines(backupFiles.stdout) : null;
-  const ageCount = backupAge?.ok ? parseJournalLines(backupAge.stdout) : null;
-  const manifestCount = backupManifests?.ok ? parseJournalLines(backupManifests.stdout) : null;
+  const backupCount = lineCountOf(backupFiles);
+  const ageCount = lineCountOf(backupAge);
+  const manifestCount = lineCountOf(backupManifests);
   checks.push(createCheck({
     id: "BACKUP_PRESENT", category: "backup", requirement: "required",
     status: backupCount === null ? "UNKNOWN" : backupCount > 0 && ageCount > 0 ? "PASS" : "FAIL",
@@ -365,20 +431,12 @@ export async function runLiveRemoteChecks({
 
   // ---- TLS automation
   const [certbotVersion, timerEnabled, timerActive, renewalConfig, timers, cronResult] = sshUp
-    ? await Promise.all([
-        runRemoteCheck(sshAlias, remote.certbotVersion[0]),
-        runRemoteCheck(sshAlias, remote.certbotTimerEnabled[0]),
-        runRemoteCheck(sshAlias, remote.certbotTimerActive[0]),
-        runRemoteCheck(sshAlias, remote.renewalConfig[0]),
-        runRemoteCheck(sshAlias, remote.timers[0]),
-        runRemoteCheck(sshAlias, remote.cronAcademiccloud[0]),
-      ])
-    : [];
+    ? await mapLimit([remote.certbotVersion[0], remote.certbotTimerEnabled[0], remote.certbotTimerActive[0], remote.renewalConfig[0], remote.timers[0], remote.cronAcademiccloud[0]], MAX_SSH_CONCURRENCY, (args) => runRemoteCheck(sshAlias, args))
+    : [{ ok: false }, { ok: false }, { ok: false }, { ok: false }, { ok: false }, { ok: false }];
   const timerEnabledState = stdoutOf(timerEnabled);
   const renewalPresent = renewalConfig?.ok && renewalConfig.exitCode === 0;
-  const academiccloudTimerLines = timers?.ok ? timers.stdout.split("\n").filter((line) => line.toLowerCase().includes("academiccloud")).length : null;
-  const cronMatches = cronResult?.ok || cronResult?.exitCode === 1 ? 0 : null; // exit 1 = grep no matches
-  const cronAcademiccloudEntries = cronResult?.ok ? parseJournalLines(cronResult.stdout) : cronMatches;
+  const academiccloudTimerLines = numericOf(timers);
+  const cronAcademiccloudEntries = numericOf(cronResult);
   checks.push(createCheck({
     id: "CERTBOT_TIMER", category: "automation", requirement: "advisory",
     status: timerEnabledState === "disabled" ? "WARN" : timerEnabledState === "enabled" ? "PASS" : "UNKNOWN",
@@ -398,26 +456,31 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
-  // ---- OOM / error aggregation
-  const [journalErrors, kernelOom, cgroupEvents, nginx5xx] = sshUp
-    ? await Promise.all([
-        runRemoteCheck(sshAlias, remote.journalErrors[0]),
-        runRemoteCheck(sshAlias, remote.journalKernelOom[0]),
-        runRemoteCheck(sshAlias, remote.cgroupMemoryEvents[0]),
-        runRemoteCheck(sshAlias, remote.nginx5xx[0]),
-      ])
-    : [];
-  const errorCount = journalErrors?.ok ? parseJournalLines(journalErrors.stdout) : journalErrors?.limited ? null : null;
-  const kernelOomCount = kernelOom?.ok ? parseJournalLines(kernelOom.stdout) : null;
-  const cgroupEventsData = cgroupEvents?.ok ? parseMemoryEvents(cgroupEvents.stdout) : null;
-  const nginx5xxCount = grepCount(nginx5xx);
+  // ---- OOM / error aggregation (remote pipelines return counts only)
+  let errorCount = null;
+  let kernelOomCount = null;
+  let nginx5xxCount = null;
+  let cgroupEventsData = null;
+  if (sshUp && heavyChecksAllowed) {
+    const [journalErrors, kernelOom, cgroupEvents, nginx5xx] = await mapLimit(
+      [remote.journalErrors[0], remote.journalKernelOom[0], remote.cgroupMemoryEvents[0], remote.nginx5xx[0]],
+      MAX_SSH_CONCURRENCY,
+      (args) => runRemoteCheck(sshAlias, args),
+    );
+    errorCount = numericOf(journalErrors);
+    kernelOomCount = numericOf(kernelOom);
+    cgroupEventsData = cgroupEvents?.ok ? parseMemoryEvents(cgroupEvents.stdout) : null;
+    nginx5xxCount = numericOf(nginx5xx);
+  }
   checks.push(createCheck({
     id: "NO_ERROR_OOM_ACTIVITY", category: "resources", requirement: "required",
-    status: errorCount === null && kernelOomCount === null ? "UNKNOWN"
-      : errorCount === 0 && kernelOomCount === 0 && (cgroupEventsData?.oom_kill ?? 0) === 0 ? "PASS" : "FAIL",
+    status: !heavyChecksAllowed ? "UNKNOWN"
+      : errorCount === null && kernelOomCount === null ? "UNKNOWN"
+        : errorCount === 0 && kernelOomCount === 0 && (cgroupEventsData?.oom_kill ?? 0) === 0 ? "PASS" : "FAIL",
     summary: `recent errors ${errorCount ?? "unknown"}, kernel OOM ${kernelOomCount ?? "unknown"}, cgroup oom_kill ${cgroupEventsData?.oom_kill ?? "unknown"}, nginx 5xx ${nginx5xxCount ?? "unknown"}`,
     evidence: { academiccloudErrorCountRecent: errorCount, kernelOomCountCurrentBoot: kernelOomCount, cgroupOomKill: cgroupEventsData?.oom_kill ?? null, cgroupOom: cgroupEventsData?.oom ?? null, nginx5xxCountRecent: nginx5xxCount },
     provenance: "REMOTE_SSH", observedAt: at,
+    detail: !heavyChecksAllowed ? "skipped by resource guard" : null,
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 

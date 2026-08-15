@@ -19,7 +19,7 @@ import { runLocalCommand, runRemoteCheck, validateSshAlias } from "./lib/product
 import { runLiveRemoteChecks } from "./lib/production-readiness/live-checks.mjs";
 import { EXIT_CODES } from "./lib/production-readiness/model.mjs";
 import { PROFILES } from "./lib/production-readiness/profiles.mjs";
-import { runPublicChecks } from "./lib/production-readiness/public-checks.mjs";
+import { normalizeHostname, runPublicChecks } from "./lib/production-readiness/public-checks.mjs";
 import { buildReport, renderReport } from "./lib/production-readiness/report.mjs";
 import { runRepoChecks } from "./lib/production-readiness/checks.mjs";
 
@@ -33,6 +33,7 @@ Options:
   --profile <baseline|ux01-ready>  default: baseline
   --format <markdown|json|both>    default: markdown
   --ssh-alias <alias>              live mode only; conservative grammar
+  --expected-files-cname <host>    ux01-ready DNS expectation (safe hostname)
   --output <path>                  write report to file (optional)
   --verbose                        show timings and check counts
   --help                           this help
@@ -61,6 +62,7 @@ function parseArgs(argv) {
     profile: "baseline",
     format: "markdown",
     sshAlias: null,
+    expectedFilesCname: null,
     output: null,
     verbose: false,
   };
@@ -114,6 +116,14 @@ function parseArgs(argv) {
         const alias = takeValue();
         if (alias === null || !validateSshAlias(alias)) return fail("invalid --ssh-alias (allowed: [A-Za-z0-9][A-Za-z0-9._-]*)");
         options.sshAlias = alias;
+        break;
+      }
+      case "--expected-files-cname": {
+        const hostname = takeValue();
+        if (hostname === null || !/^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$/.test(hostname)) {
+          return fail("invalid --expected-files-cname (must be a plain hostname)");
+        }
+        options.expectedFilesCname = normalizeHostname(hostname);
         break;
       }
       case "--output": {
@@ -178,11 +188,11 @@ async function main() {
   checks.push(...await runRepoChecks({ runLocalCommand }));
 
   if (options.mode === "public" || options.mode === "live") {
-    checks.push(...await runPublicChecks());
+    checks.push(...await runPublicChecks({ expectedFilesCname: options.expectedFilesCname, profile: options.profile }));
   }
 
   if (options.mode === "live") {
-    checks.push(...await runLiveRemoteChecks({ runRemoteCheck, sshAlias: options.sshAlias, repoChecks: checks }));
+    checks.push(...await runLiveRemoteChecks({ runRemoteCheck, sshAlias: options.sshAlias, repoChecks: checks, profile: options.profile }));
   }
 
   let outcome;

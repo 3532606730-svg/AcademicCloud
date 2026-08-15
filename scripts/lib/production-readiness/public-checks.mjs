@@ -8,7 +8,7 @@ import { get as httpsGet } from "node:https";
 import { connect as tlsConnect } from "node:tls";
 
 import { createCheck } from "./model.mjs";
-import { certificateStatus, parseCspHeader, TARGET } from "./checks.mjs";
+import { certificateStatus, cspAllowsFiles, parseCspHeader, TARGET } from "./checks.mjs";
 
 export const PUBLIC_TIMEOUT_MS = 15_000;
 export const DNS_TIMEOUT_MS = 15_000;
@@ -150,41 +150,121 @@ export function tlsProbe(hostname, port = 443) {
   });
 }
 
+export function normalizeHostname(hostname) {
+  return String(hostname).trim().toLowerCase().replace(/\.$/, "");
+}
+
+export function normalizeEndpoint(value) {
+  const trimmed = String(value ?? "").trim();
+  return trimmed.replace(/\/+$/, "");
+}
+
+// Pure CNAME-target evaluation (case + trailing-dot normalized).
+export function evaluateCnameTargets(targets, expectedFilesCname, profile) {
+  const normalizedTargets = targets.map(normalizeHostname);
+  if (expectedFilesCname) {
+    const expected = normalizeHostname(expectedFilesCname);
+    const matched = normalizedTargets.includes(expected);
+    return {
+      status: matched ? "PASS" : "FAIL",
+      summary: matched
+        ? `CNAME matches expected ${expected}`
+        : `CNAME does not match expected ${expected} (observed: ${normalizedTargets.join(", ") || "none"})`,
+      matched,
+    };
+  }
+  if (profile === "ux01-ready") {
+    return { status: "UNKNOWN", summary: "CNAME expectation not supplied (--expected-files-cname required for ux01-ready)", matched: false };
+  }
+  return { status: "INFO", summary: `CNAME observed: ${normalizedTargets.join(", ") || "(none)"}`, matched: false };
+}
+
+// Exact ORIGIN comparison (URL parsing), never prefix matching.
+export function redirectsToOrigin(location, appOrigin) {
+  if (!location) return false;
+  try {
+    return new URL(location).origin === appOrigin;
+  } catch {
+    return false;
+  }
+}
+
 export function evaluateTlsEvidence(result, hostname) {
+  const checks = [];
   if (!result.ok) {
-    return createCheck({
-      id: "TLS_CLOUD", category: "tls", requirement: "required", status: "UNKNOWN",
+    checks.push(createCheck({
+      id: "TLS_CLOUD_VALID", category: "tls", requirement: "required", status: "UNKNOWN",
       summary: `TLS probe for ${hostname} failed: ${result.error ?? "unknown error"}`,
       evidence: { hostname }, provenance: "PUBLIC_TLS",
-    });
+    }));
+    checks.push(createCheck({
+      id: "TLS_CLOUD_EXPIRY_HEADROOM", category: "tls", requirement: "advisory", status: "UNKNOWN",
+      summary: "certificate expiry headroom unavailable",
+      evidence: {}, provenance: "PUBLIC_TLS",
+    }));
+    return checks;
   }
   const validTo = result.validTo ? new Date(result.validTo) : null;
   const daysRemaining = validTo ? Math.floor((validTo.getTime() - Date.now()) / 86_400_000) : null;
-  return createCheck({
-    id: "TLS_CLOUD", category: "tls", requirement: "required",
-    status: result.authorized ? certificateStatus(daysRemaining ?? 0) : "FAIL",
-    summary: `TLS ${result.protocol ?? "unknown"} for ${hostname}${result.authorized ? "" : ` (authorization failed: ${result.authorizationError ?? "unknown"})`}`,
-    evidence: {
-      hostname,
-      subjectCn: result.subjectCn,
-      issuerCn: result.issuerCn,
-      altNames: result.altNames,
-      validFrom: result.validFrom,
-      validTo: result.validTo,
-      daysRemaining,
-      protocol: result.protocol,
-      authorized: result.authorized,
-    },
-    provenance: "PUBLIC_TLS",
-  });
+  const validEvidence = {
+    hostname,
+    subjectCn: result.subjectCn,
+    issuerCn: result.issuerCn,
+    altNames: result.altNames,
+    validFrom: result.validFrom,
+    validTo: result.validTo,
+    daysRemaining,
+    protocol: result.protocol,
+    authorized: result.authorized,
+  };
+  checks.push(createCheck({
+    id: "TLS_CLOUD_VALID", category: "tls", requirement: "required",
+    status: result.authorized ? "PASS" : "FAIL",
+    summary: result.authorized
+      ? `TLS ${result.protocol ?? "unknown"} for ${hostname} verified`
+      : `TLS verification failed for ${hostname} (${result.authorizationError ?? "unknown error"})`,
+    evidence: validEvidence, provenance: "PUBLIC_TLS",
+  }));
+  checks.push(createCheck({
+    id: "TLS_CLOUD_EXPIRY_HEADROOM", category: "tls", requirement: "advisory",
+    status: daysRemaining === null ? "UNKNOWN" : certificateStatus(daysRemaining),
+    summary: daysRemaining === null
+      ? "certificate expiry headroom unavailable"
+      : `certificate expires in ${daysRemaining} days`,
+    evidence: { daysRemaining }, provenance: "PUBLIC_TLS",
+  }));
+  return checks;
 }
 
-export async function runPublicChecks({ now = () => new Date() } = {}) {
+export async function runPublicChecks({ now = () => new Date(), expectedFilesCname = null, profile = "baseline" } = {}) {
   const checks = [];
   const at = now().toISOString();
+  const filesDomainOrigin = `https://${TARGET.filesDomain}`;
 
   checks.push(await lookupCheck(TARGET.appHostname, 4, "DNS_CLOUD_A", `${TARGET.appHostname} A`));
-  checks.push(await dnsCheck(() => resolveCname(TARGET.filesDomain), "FILES_DNS_TARGET", `${TARGET.filesDomain} CNAME`, "files CNAME"));
+
+  // FILES_DNS_TARGET: without an expected target the parking/current CNAME is
+  // reported as informational under baseline, but under ux01-ready a missing
+  // expectation is UNKNOWN (never READY). With an expected target the resolved
+  // CNAME must match exactly (case + trailing-dot normalized).
+  let cnameCheck = null;
+  try {
+    const records = await withTimeout(resolveCname(TARGET.filesDomain), DNS_TIMEOUT_MS, "files CNAME");
+    const targets = records.map((record) => normalizeHostname(record));
+    const evaluation = evaluateCnameTargets(targets, expectedFilesCname, profile);
+    cnameCheck = createCheck({
+      id: "FILES_DNS_TARGET", category: "dns", requirement: "advisory", status: evaluation.status,
+      summary: `${TARGET.filesDomain} ${evaluation.summary}`,
+      evidence: { records: targets }, provenance: "PUBLIC_DNS", observedAt: at,
+    });
+  } catch (error) {
+    cnameCheck = createCheck({
+      id: "FILES_DNS_TARGET", category: "dns", requirement: "advisory", status: "UNKNOWN",
+      summary: `${TARGET.filesDomain} CNAME resolution failed (${error?.code ?? "error"})`,
+      evidence: {}, provenance: "PUBLIC_DNS", detail: error?.code ?? "resolution_error", observedAt: at,
+    });
+  }
+  checks.push(cnameCheck);
   checks.push(await lookupCheck(TARGET.filesDomain, 4, "DNS_FILES_A", `${TARGET.filesDomain} A`));
   checks.push(await lookupCheck(TARGET.filesDomain, 6, "DNS_FILES_AAAA", `${TARGET.filesDomain} AAAA`));
   checks.push(await dnsCheck(() => resolveNs(TARGET.apexDomain), "DNS_NS", `${TARGET.apexDomain} NS`, "apex NS"));
@@ -207,7 +287,7 @@ export async function runPublicChecks({ now = () => new Date() } = {}) {
   }));
 
   const tlsResult = await tlsProbe(TARGET.appHostname);
-  checks.push(evaluateTlsEvidence(tlsResult, TARGET.appHostname));
+  checks.push(...evaluateTlsEvidence(tlsResult, TARGET.appHostname));
 
   const filesTls = await tlsProbe(TARGET.filesDomain);
   checks.push(createCheck({
@@ -235,18 +315,22 @@ export async function runPublicChecks({ now = () => new Date() } = {}) {
   }));
 
   let redirectResponse = null;
+  let redirectError = null;
   try {
     redirectResponse = await withTimeout(httpRedirectProbe(`http://${TARGET.appHostname}/`), PUBLIC_TIMEOUT_MS, "http redirect");
-  } catch {
-    redirectResponse = null;
+  } catch (error) {
+    redirectError = error?.code ?? error?.message ?? "request failed";
   }
+  // Exact ORIGIN comparison (URL parsing), never prefix matching: a redirect
+  // to https://cloud.ajtlab.top.evil.example must NOT count as the app origin.
+  const redirectsToAppOrigin = redirectsToOrigin(redirectResponse?.location ?? null, TARGET.appOrigin);
   checks.push(createCheck({
     id: "PUBLIC_HTTP_REDIRECT", category: "edge", requirement: "required",
-    status: redirectResponse?.status === 301 && redirectResponse.location?.startsWith(TARGET.appOrigin) ? "PASS" : "FAIL",
+    status: redirectResponse?.status === 301 && redirectsToAppOrigin ? "PASS" : "FAIL",
     summary: redirectResponse
-      ? `HTTP ${redirectResponse.status} -> ${redirectResponse.location?.startsWith(TARGET.appOrigin) ? TARGET.appOrigin : "(unexpected target)"}`
-      : "HTTP redirect probe failed",
-    evidence: { status: redirectResponse?.status ?? null, redirectsToAppOrigin: Boolean(redirectResponse?.location?.startsWith(TARGET.appOrigin)) },
+      ? `HTTP ${redirectResponse.status} -> ${redirectsToAppOrigin ? TARGET.appOrigin : "(unexpected target)"}`
+      : `HTTP redirect probe failed (${redirectError})`,
+    evidence: { status: redirectResponse?.status ?? null, redirectsToAppOrigin },
     provenance: "PUBLIC_HTTPS", observedAt: at,
   }));
 
@@ -276,13 +360,16 @@ export async function runPublicChecks({ now = () => new Date() } = {}) {
     provenance: "PUBLIC_HTTPS", observedAt: at,
   }));
 
+  // UX01 contract: the files domain must appear in img-src AND frame-src.
+  // Presence in connect-src/default-src/script-src is NOT sufficient.
+  const filesCsp = cspAllowsFiles(csp.directives, filesDomainOrigin);
   checks.push(createCheck({
     id: "FILES_CSP_ALLOWED", category: "edge", requirement: "informational",
-    status: csp.present && csp.hostnames.includes(TARGET.filesDomain) ? "PASS" : "INFO",
-    summary: csp.present && csp.hostnames.includes(TARGET.filesDomain)
-      ? "files domain present in served CSP"
-      : "files domain absent from served CSP (expected until Transaction B)",
-    evidence: { filesDomainInCsp: csp.hostnames.includes(TARGET.filesDomain) },
+    status: filesCsp.satisfied ? "PASS" : "INFO",
+    summary: filesCsp.satisfied
+      ? "files domain present in served img-src AND frame-src"
+      : "files domain not present in BOTH served img-src and frame-src (expected before Transaction B)",
+    evidence: { imgSrcAllows: filesCsp.imgSrcAllows, frameSrcAllows: filesCsp.frameSrcAllows },
     provenance: "PUBLIC_HTTPS", observedAt: at,
   }));
 

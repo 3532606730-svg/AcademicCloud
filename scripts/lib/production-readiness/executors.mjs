@@ -17,14 +17,19 @@ export function validateSshAlias(alias) {
   if (typeof alias !== "string" || alias.length === 0 || alias.length > 253) {
     return false;
   }
-  if (!SSH_ALIAS_PATTERN.test(alias)) {
-    return false;
-  }
-  return true;
+  return !SSH_ALIAS_PATTERN.test(alias) ? false : true;
 }
 
 function runExecFile(executable, args, { timeoutMs, maxStdoutBytes = MAX_STDOUT_BYTES, maxStderrBytes = MAX_STDERR_BYTES }) {
   return new Promise((resolve) => {
+    const started = Date.now();
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve({ ...result, durationMs: Date.now() - started });
+    };
+
     const child = execFile(
       executable,
       args,
@@ -36,28 +41,28 @@ function runExecFile(executable, args, { timeoutMs, maxStdoutBytes = MAX_STDOUT_
       },
       (error, stdout, stderr) => {
         if (error && (error.killed || error.code === "ETIMEDOUT" || String(error.signal) === "SIGTERM")) {
-          resolve({ ok: false, kind: "TIMEOUT", stdout: "", stderr: "", exitCode: null, durationMs: timeoutMs });
+          finish({ ok: false, kind: "TIMEOUT", stdout: "", stderr: "", exitCode: null, limited: false });
           return;
         }
         const exitCode = error && typeof error.code === "number" ? error.code : error ? 1 : 0;
-        const stdoutCapped = stdout.length > maxStdoutBytes ? stdout.slice(0, maxStdoutBytes) : stdout;
-        const stderrCapped = stderr.length > maxStderrBytes ? stderr.slice(0, maxStderrBytes) : stderr;
-        const limited = stdout.length > maxStdoutBytes || stderr.length > maxStderrBytes;
-        resolve({
-          ok: !error || exitCode === 0,
-          kind: error ? "COMMAND_FAILED" : limited ? "OUTPUT_LIMIT_EXCEEDED" : "OK",
-          stdout: stdoutCapped,
-          stderr: stderrCapped,
+        const stdoutExceeded = stdout.length > maxStdoutBytes;
+        const stderrExceeded = stderr.length > maxStderrBytes;
+        const limited = stdoutExceeded || stderrExceeded;
+        finish({
+          // Never pass truncated evidence as success: capped output is an
+          // explicit OUTPUT_LIMIT_EXCEEDED result, not OK.
+          ok: !error && !limited,
+          kind: limited ? "OUTPUT_LIMIT_EXCEEDED" : error ? "COMMAND_FAILED" : "OK",
+          stdout: stdout.slice(0, maxStdoutBytes),
+          stderr: stderr.slice(0, maxStderrBytes),
           exitCode,
-          durationMs: timeoutMs,
           limited,
         });
       },
     );
-    const started = Date.now();
-    child.on("exit", () => {
-      // duration is not observable through the callback; record nothing.
-      void started;
+    child.on("error", (error) => {
+      finish({ ok: false, kind: "COMMAND_FAILED", stdout: "", stderr: "", exitCode: null, limited: false });
+      void error;
     });
   });
 }
@@ -74,24 +79,22 @@ export function shQuote(argument) {
   return `'${String(argument).replace(/'/g, `'\\''`)}'`;
 }
 
-// Build the strict non-interactive OpenSSH invocation. The remote command is a
-// FIXED argument array (reviewed check definition); the alias is the only
-// external input and is grammar-validated before use.
+// Returns ONLY the ssh option + remote-command arguments (NO executable).
+// The executable "ssh" is supplied exactly once by runRemoteCheck.
 export function buildSshArgs(alias, remoteArgs) {
   return [
-    "ssh",
     "-o", "BatchMode=yes",
     "-o", "StrictHostKeyChecking=yes",
     "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT_SECONDS}`,
-    alias,
     "--",
+    alias,
     ...remoteArgs.map(shQuote),
   ];
 }
 
 export function runRemoteCheck(alias, remoteArgs, options = {}) {
   if (!validateSshAlias(alias)) {
-    return Promise.resolve({ ok: false, kind: "SAFETY_VIOLATION", stdout: "", stderr: "", exitCode: null, durationMs: 0 });
+    return Promise.resolve({ ok: false, kind: "SAFETY_VIOLATION", stdout: "", stderr: "", exitCode: null, durationMs: 0, limited: false });
   }
   return runExecFile("ssh", buildSshArgs(alias, remoteArgs), {
     ...options,

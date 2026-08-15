@@ -61,7 +61,7 @@ export function createCheck({
 export function computeOverall(checks) {
   const counts = { pass: 0, fail: 0, warn: 0, unknown: 0, info: 0, notApplicable: 0 };
   let requiredFail = false;
-  let requiredUnknown = false;
+  let requiredNotPass = false;
 
   for (const check of checks) {
     if (check.status === "PASS") counts.pass += 1;
@@ -73,11 +73,17 @@ export function computeOverall(checks) {
 
     if (check.requirement !== "required") continue;
     if (check.status === "FAIL") requiredFail = true;
-    if (check.status === "UNKNOWN") requiredUnknown = true;
+    // READY requires EVERY required gate to be PASS: a required WARN, INFO,
+    // UNKNOWN, or NOT_APPLICABLE means PASS cannot be established.
+    if (check.status !== "PASS") requiredNotPass = true;
   }
 
   // Deterministic gates — no invented probability.
-  const overall = requiredFail ? "NOT_READY" : requiredUnknown ? "INDETERMINATE" : "READY";
+  const overall = requiredFail
+    ? "NOT_READY"
+    : requiredNotPass
+      ? "INDETERMINATE"
+      : "READY";
 
   return { overall, counts };
 }
