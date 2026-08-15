@@ -12,7 +12,7 @@
 
 ### L1-UX01 — Bilingual UI + Upload UX + Correct Browser Preview
 
-**Status:** In Progress — implementation + deterministic tests complete (backend 104/104, frontend 58/58, builds green). `L1-UX01R1` repaired the ChatGPT review's bounded set: pinned upload destinations at enqueue, retries inside the concurrency-2 scheduler with shared re-upload metrics, byte-progress-based 120 s stall liveness, XHR-vs-file metric semantics, and the live-CSP capture/add-only-diff/exact-rollback plan wording; the preview-URL expiry limitation is recorded as a known Product Verification item. Awaiting the ChatGPT independent RE-review; the `files.ajtlab.top` infrastructure gate, artifact rebuild, and deployment are NOT authorized yet.
+**Status:** In Progress — implementation + deterministic tests complete (backend 104/104, frontend 60/60, builds green). `L1-UX01R1` repaired the review's bounded set (pinned destinations, retries inside the concurrency-2 scheduler with shared re-upload metrics, byte-progress stall liveness, XHR-vs-file metric semantics, live-CSP capture/add-only/exact-rollback plan wording) and `L1-UX01R2` fixed the final two edges (retry active-slot claim before pending `completeUpload`; zero-byte progress no longer refreshes the stall window), each with deterministic regressions; the preview-URL expiry limitation is recorded as a known Product Verification item. Awaiting the ChatGPT FINAL re-review; the `files.ajtlab.top` infrastructure gate, artifact rebuild, and deployment are NOT authorized yet.
 
 ## Completed
 
