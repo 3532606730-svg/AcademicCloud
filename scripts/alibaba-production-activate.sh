@@ -349,10 +349,11 @@ try {
   }
   database.pragma("foreign_keys = ON");
   const journalMode = database.pragma("journal_mode", { simple: true });
-  // The verifier connection is read-only: SQLite normalizes a WAL reader's
-  // effective synchronous level to NORMAL (1), so this connection can never
-  // report 2. The production application's writable connections always set
-  // synchronous = FULL through the immutable release's openSqliteDatabase.
+  // The verifier connection is read-only and does not run the application
+  // writable opener: better-sqlite3 is built with SQLITE_DEFAULT_WAL_SYNCHRONOUS=1,
+  // so this raw connection reports NORMAL (1), which is not a valid proxy for
+  // the application runtime setting. The application writable connections
+  // always set synchronous = FULL through the immutable release opener.
   const foreignKeys = database.pragma("foreign_keys", { simple: true });
   const integrity = database.pragma("integrity_check", { simple: true });
   const foreignKeyViolations = database.pragma("foreign_key_check");

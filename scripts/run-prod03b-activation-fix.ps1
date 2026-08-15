@@ -15,8 +15,8 @@ $ownerWrapperPath = Join-Path $PSScriptRoot 'production-owner-bootstrap.ps1'
 $evidenceDirectory = Join-Path $repositoryRoot 'output/prod-03b-activation-fix'
 $evidencePath = Join-Path $evidenceDirectory 'activation-fix-evidence.txt'
 $expectedCurrentSha256 = '944c1ee5c856ee101569f041187e57fbe9d8e9da63191af7aa37063caa3ba62b'
-$expectedNewSha256 = '1bd9512e3e14a8ce9d610660eaf6651ba2d0672d20a7bf3b6cd93baa31209ce7'
-$expectedOwnerWrapperSha256 = 'a445e36a18192e2a409d435ed770b80b3d1bd71779f888817bde58432b99e061'
+$expectedNewSha256 = '93ee91d5cca92957beea817c1beb278a357ce6f6cba87967192d96c7a32d5be6'
+$expectedOwnerWrapperSha256 = '3e4ec97509e866a307d5049dc4ff0863b612b6ddb6a9af1354e8e28f234c3742'
 
 foreach ($path in @($activationPath, $ownerWrapperPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
