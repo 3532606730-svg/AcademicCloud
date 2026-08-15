@@ -6,11 +6,11 @@
 
 **Layer 1 — Basic Private Cloud Storage: First Usable Production In Progress**
 
-`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete, and `PROD-02I` accepted the verified production artifact for runtime on the upgraded 1 GiB-class host. `PROD-03A` installed the inactive non-secret foundation, and `PROD-03B` completed secret-safe activation at phase `loopback-ready`: the certificate is issued, the first account works, and the hardened service runs loopback-only. Production is still not publicly routed; the next bounded step is the reviewed `PROD-03C1` public HTTPS/Nginx edge cutover, which remains gated by the durable encrypted off-host backup/restore requirement, browser E2E, backup/restore, rollback, and independent review.
+`L1-E01 — Core Architecture Scaffold` through `L1-E08 — Testing & Deployment` remain complete, and `PROD-02I` accepted the verified production artifact for runtime on the upgraded 1 GiB-class host. `PROD-03A` installed the inactive non-secret foundation, `PROD-03B` completed secret-safe activation at phase `loopback-ready`, and `PROD-03C1` enabled and verified the public HTTPS/Nginx edge with the encrypted off-host backup gate passed: AcademicCloud is now publicly reachable over HTTPS at `cloud.ajtlab.top` with the backend still loopback-only. The remaining PROD-03C remainder is live browser E2E with pre-registered disposable objects, then the exact disposable-object permanent-delete confirmation; HSTS and certificate renewal remain closed per the runbook.
 
 ## Current Objective
 
-`PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification` is **in progress** from the synchronized PROD-03B completion checkpoint `f1d2a6aff3cea1c2af24114329d13a737d58bb1c`. The Owner-approved pure-online zero-new-cost backup gate is now fully PASS: production backup `a457628a…` encrypted to the committed recipient `age1s4aqa7…` as `database.age`/`configuration.age`, decryption and isolated restore rehearsal verified, artifacts published to the private `AcademicCloud-Backups` repository at commit `d2483369ab01c1484d9b0dbf1d2a1e89ca8de227` (byte-for-byte verified from a fresh clone; independent backup-repo review PASS), and the vaulted `age` identity fingerprint confirmed by the Owner. The remaining steps are the independent pre-cutover review of the exact edge files/procedure and the bounded cutover itself with exact rollback retained; no DNS/firewall/security-group change, certificate-renewal activation, live OSS operation, or permanent deletion is performed. Do not weaken any accepted boundary.
+`PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification` is **complete**: the encrypted off-host backup gate passed (private `AcademicCloud-Backups` repository at `d248336`, Owner vault confirmation, independent backup-repo review PASS), the independent pre-cutover review passed, and the reviewed public HTTPS/Nginx edge is live for `cloud.ajtlab.top` (public HTTPS `200` with verified certificate chain, HTTP→HTTPS `301`, exact security headers, API health/ready `200` through the edge, backend still loopback-only on `127.0.0.1:3000`, CORS boundary unchanged, zero OOM evidence, exact rollback retained). HSTS remains disabled and certificate renewal remains closed per the runbook until renewal/rollback are proven. The next bounded backlog task is the PROD-03C remainder (live browser E2E with pre-registered disposable objects, then the exact disposable-object permanent-delete confirmation). Do not weaken any accepted boundary.
 
 ## Completed
 
@@ -107,7 +107,7 @@
 
 ## Current Task
 
-`PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification` is **In Progress** from synchronized checkpoint `f1d2a6aff3cea1c2af24114329d13a737d58bb1c`; its first phase is the Owner-approved pure-online encrypted off-host backup gate (dedicated private `AcademicCloud-Backups` repository, `age` public-key encryption, Bitwarden custody, database plus required configuration/recovery material only). The public route is enabled only after the backup/restore gate, Owner vault/repository confirmations, and independent review pass.
+`PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification` is **Complete** on 2026-08-15 from synchronized checkpoint `f1d2a6aff3cea1c2af24114329d13a737d58bb1c`: the encrypted off-host backup gate passed first (production backup `a457628a…` encrypted to the committed `age1s4aqa7…` recipient, published to the private `AcademicCloud-Backups` repository at `d248336`, Owner vault confirmed, isolated restore rehearsal and independent backup-repo review PASS), the independent pre-cutover review passed, and the reviewed public edge is live — public HTTPS `200` with verified certificate chain, HTTP→HTTPS `301`, exact security headers, `/api/health` and `/api/ready` `200` through the edge, invalid-probe login `401` and cookie-less session `401`, backend exactly `127.0.0.1:3000`, OSS CORS boundary unchanged, zero OOM evidence, and the exact rollback state retained under `/var/lib/nginx-cutover-rollback`.
 
 ## Production Preparation Status
 
@@ -168,11 +168,11 @@
 - [x] frontend functionality
 - [x] security and reliability hardening
 - [x] deterministic deployment package and local compiled-artifact acceptance
-- [ ] live production deployment and cloud/server acceptance — secret-safe activation and loopback runtime complete (`loopback-ready`); public edge cutover, backup/restore gate, and live E2E remain
+- [ ] live production deployment and cloud/server acceptance — secret-safe activation, loopback runtime, encrypted off-host backup/restore gate, and the public HTTPS edge are complete and verified; live browser E2E with disposable objects, the exact permanent-delete confirmation, and certificate renewal remain
 
 ## Current Constraints
 
-- Layer 1 local exit criteria, upgraded-host runtime suitability, and the non-secret production foundation are complete, and PROD-03B finished at phase `loopback-ready` (certificate, environment, database, account, loopback service, authentication, and resource acceptance all verified). Production remains not publicly routed because the encrypted off-host backup/restore gate, public edge cutover, certificate renewal, and live E2E gates are not complete.
+- Layer 1 local exit criteria, upgraded-host runtime suitability, and the non-secret production foundation are complete; PROD-03B finished at phase `loopback-ready` and PROD-03C1 enabled and verified the public HTTPS edge with the encrypted off-host backup gate passed. AcademicCloud is publicly reachable over HTTPS with the backend loopback-only; certificate renewal, live browser E2E with disposable objects, and the exact disposable-object permanent-delete confirmation remain.
 - Keep work within the approved task, Layer 1 scope, and accepted architecture.
 - Escalate only the mandatory boundaries defined by `.agents/skills/academiccloud-workflow/SKILL.md`.
 - Never repeat npm/native/frontend builds on the Alibaba production host; it is a runtime-only acceptance target.
@@ -191,7 +191,7 @@ The approved sequence is:
 4. `PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance`: complete with upgraded-host runtime suitability accepted, exact evidence retained, and cleanup/recovery verified.
 5. `PROD-03A — Production Foundation and Immutable Release`: complete; formal evidence SHA-256 `8d2752951784345259369d76e3a8775bb9fd21977195578024f7041184e9f2e5`, inactive release foundation healthy and clean.
 6. `PROD-03B — Secret-Safe Activation, OSS CORS, Account, Service, and TLS`: complete. The exact certificate is issued and verified, the root-owned mode-0600 environment and migrated database with exactly one verified account exist, the exact hardened unit is disabled-but-active loopback-only on `127.0.0.1:3000`, authentication/session/resource/OOM acceptance passed, and no public AcademicCloud Nginx route was enabled; certificate renewal activation remains closed.
-7. `PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification`: In progress. The durable plan still requires an encrypted off-host backup and isolated restore before public cutover; any new-cost/key-custody boundary and the exact disposable-object permanent-delete confirmation remain Owner gates. Live browser E2E with disposable objects follows after the edge is verified.
+7. `PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification`: complete — encrypted off-host backup/restore gate passed before cutover, public HTTPS edge live and fully verified, exact rollback retained. The PROD-03C remainder (live browser E2E with pre-registered disposable objects, then the exact disposable-object permanent-delete confirmation) is the next bounded backlog task with its own review/cutover boundary.
 8. Layer 2 remains closed.
 
 Layer 2 remains deferred.

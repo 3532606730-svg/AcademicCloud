@@ -6,11 +6,19 @@
 
 ## In Progress
 
-### PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification
-
-**Status:** In Progress — encrypted off-host backup gate fully PASS (production backup `a457628a…` encrypted to committed recipient `age1s4aqa7…`, decryption/rehearsal verified, published to private `AcademicCloud-Backups` at `d248336` and byte-verified, independent backup-repo review PASS, Owner vault confirmation done); pre-cutover independent review running; public route still closed
+None while the PROD-03C1 completion checkpoint synchronizes.
 
 ## Completed
+
+### PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification
+
+**Status:** Done — public HTTPS edge live and verified; backup gate passed; rollback retained
+
+Completion notes:
+- [x] encrypted off-host backup gate: production backup `a457628a…` encrypted to committed recipient `age1s4aqa7…` (`database.age` `753897f0…`, `configuration.age` `40150e21…`), local decryption verified, isolated restore rehearsal passed (compiled app health/ready `200`, memory storage, maintenance dry-run clean, production untouched)
+- [x] published only encrypted artifacts plus non-secret manifest to private `AcademicCloud-Backups` (`d248336`), byte-verified from a fresh clone; independent backup-repo review PASS; Owner vault confirmation done
+- [x] independent pre-cutover review PASS; exact rendered edge files installed; `nginx -t` + reload atomic; public HTTPS `200` with verified chain, HTTP→HTTPS `301`, exact security headers, API health/ready `200`, invalid-probe login `401` and cookie-less session `401`, backend loopback-only, unknown-host/SNI rejected, CORS boundary unchanged
+- [x] `MemAvailable=503,040 KiB`, swap intact, cgroup OOM events `0/0/0/0`, kernel OOM `0`; rollback state retained under `/var/lib/nginx-cutover-rollback`; HSTS/renewal remain closed per runbook
 
 ### PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation
 
