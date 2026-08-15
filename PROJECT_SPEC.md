@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Status:** Approved project baseline  
-**Current execution phase:** Layer 1 — Basic Private Cloud Storage is implemented and in First Usable Production (live at `cloud.ajtlab.top`); the remaining gates are the live disposable-object E2E, the permanent-delete Owner confirmation, autostart/reboot, backup cadence, and renewal hardening  
+**Current execution phase:** Layer 1 — Basic Private Cloud Storage is implemented and in First Usable Production (live at `cloud.ajtlab.top`); the remaining gates are the live disposable-object E2E, the permanent-delete Owner confirmation, autostart/reboot, backup cadence, and renewal hardening
 **Approved product implementation target:** Layer 1 — Basic Private Cloud Storage
 
 ## 1. Purpose
