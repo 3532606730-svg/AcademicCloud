@@ -45,6 +45,10 @@ export function uploadDirectly(
     const xhr = (options.xhrFactory ?? (() => new XMLHttpRequest()))();
     let stallTimer: ReturnType<typeof setTimeout> | undefined;
     let settled = false;
+    // Liveness is BYTE progress: only a strictly increasing loaded count
+    // resets the inactivity window. Repeated events with the same loaded
+    // value (or regressive values) are not proof of a live transfer.
+    let lastLoaded = -1;
 
     const clearStallTimer = () => {
       if (stallTimer !== undefined) {
@@ -65,8 +69,8 @@ export function uploadDirectly(
       callback();
     };
 
-    // Any real progress event proves liveness and resets the inactivity
-    // window; a stalled transfer fires the timer and fails cleanly.
+    // A stalled transfer (or one whose progress events never advance the
+    // loaded byte count) fires the timer and fails cleanly.
     const scheduleStallTimeout = () => {
       clearStallTimer();
       if (inactivityTimeoutMs > 0) {
@@ -85,7 +89,10 @@ export function uploadDirectly(
 
     xhr.upload.addEventListener("progress", (event) => {
       if (!event.lengthComputable || event.total <= 0) return;
-      scheduleStallTimeout();
+      if (event.loaded > lastLoaded) {
+        lastLoaded = event.loaded;
+        scheduleStallTimeout();
+      }
       options.onMetrics?.({ loaded: event.loaded, total: event.total });
       options.onProgress?.(Math.min(1, event.loaded / event.total));
     });

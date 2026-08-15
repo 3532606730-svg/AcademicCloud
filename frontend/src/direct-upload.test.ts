@@ -148,6 +148,29 @@ describe("createUploadForm", () => {
     expect(xhr.abort).toHaveBeenCalledOnce();
   });
 
+  it("stalls bounded when progress events repeat the same loaded byte count", async () => {
+    vi.useFakeTimers();
+    const xhr = new FakeXhr();
+    const promise = uploadDirectly(AUTHORIZATION, new File(["source"], "paper.pdf"), {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+      inactivityTimeoutMs: 120_000,
+    });
+    const expectation = expect(promise).rejects.toThrow("stalled");
+
+    // Duplicate progress events with an identical (non-advancing) loaded
+    // value for longer than the inactivity window must NOT keep the
+    // transfer alive: liveness requires strictly increasing bytes.
+    for (let index = 0; index < 5; index += 1) {
+      xhr.upload.dispatchEvent(progress(3, 10));
+      await vi.advanceTimersByTimeAsync(30_000);
+    }
+
+    await expectation;
+    expect(xhr.abort).toHaveBeenCalledOnce();
+    // Exactly-once settlement: nothing else may fire afterwards.
+    await vi.advanceTimersByTimeAsync(600_000);
+  });
+
   it("clears stall timers exactly once on load, abort, and network error", async () => {
     vi.useFakeTimers();
 

@@ -10,6 +10,7 @@ import {
   type FileEntry,
   type FolderEntry,
 } from "./api.ts";
+import type { UploadProgressMetrics } from "./direct-upload.ts";
 
 afterEach(() => {
   window.localStorage.removeItem("academiccloud.language");
@@ -351,12 +352,13 @@ describe("App", () => {
     const checksumResolvers: Array<(value: string) => void> = [];
     const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
     const completeUpload = vi.fn().mockResolvedValue(FILE);
+    const createUpload = vi.fn().mockResolvedValue({
+      file: { ...FILE, state: "pending_upload" as const, activatedAt: null },
+      upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
+    });
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
-      createUpload: vi.fn().mockResolvedValue({
-        file: { ...FILE, state: "pending_upload" as const, activatedAt: null },
-        upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
-      }),
+      createUpload,
       completeUpload,
     });
     render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockResolvedValue(undefined)} />);
@@ -377,6 +379,62 @@ describe("App", () => {
     checksumResolvers[2]!(FILE.checksum);
     checksumResolvers[3]!(FILE.checksum);
     await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(4));
+
+    // Root (null) is a valid pinned destination: every reservation made from
+    // the root view must carry folderId null even after queuing.
+    expect(createUpload).toHaveBeenCalledTimes(4);
+    for (const [input] of createUpload.mock.calls) {
+      expect((input as { folderId: string | null }).folderId).toBeNull();
+    }
+  });
+
+  it("pins the upload destination at enqueue time even after navigation", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
+    const folderA = { ...FOLDER, id: "folder-a", name: "A" };
+    const folderB = { ...FOLDER, id: "folder-b", name: "B" };
+    const listEntries = vi.fn((folderId: string | null) => Promise.resolve(
+      folderId === "folder-a"
+        ? { folder: folderA, folders: [], files: [] }
+        : folderId === "folder-b"
+          ? { folder: folderB, folders: [], files: [] }
+          : { folder: null, folders: [folderA, folderB], files: [] },
+    ));
+    const createUpload = vi.fn().mockResolvedValue({
+      file: { ...FILE, state: "pending_upload" as const, activatedAt: null },
+      upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries,
+      createUpload,
+      completeUpload: vi.fn().mockResolvedValue(FILE),
+    });
+    render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockResolvedValue(undefined)} />);
+
+    // Queue three files while viewing folder A.
+    await user.click(await screen.findByRole("button", { name: "A" }));
+    await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-a", expect.anything()));
+    const files = ["x", "y", "z"].map((name) => new File([name], `${name}.pdf`, { type: "application/pdf" }));
+    await user.upload(await screen.findByLabelText("Upload files"), files);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
+
+    // Navigate away to folder B before the third workflow starts.
+    await user.click(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("button", { name: "Library" }));
+    await user.click(await screen.findByRole("button", { name: "B" }));
+    await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-b", expect.anything()));
+
+    // Release slots: every reservation must still carry folder A.
+    checksumResolvers[0]!(FILE.checksum);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
+    checksumResolvers[1]!(FILE.checksum);
+    checksumResolvers[2]!(FILE.checksum);
+    await waitFor(() => expect(createUpload).toHaveBeenCalledTimes(3));
+
+    const destinations = createUpload.mock.calls.map(([input]) => (input as { folderId: string | null }).folderId);
+    expect(destinations).toEqual(["folder-a", "folder-a", "folder-a"]);
+    expect(destinations).not.toContain("folder-b");
   });
 
   it("releases a slot when a workflow fails", async () => {
@@ -418,5 +476,118 @@ describe("App", () => {
 
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
     expect(screen.getByRole("button", { name: "Dismiss c.pdf upload status" })).toBeInTheDocument();
+  });
+
+  it("queues retries behind the concurrency bound and starts them when a slot frees", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
+    const createUpload = vi.fn((input: { displayName: string }) => Promise.resolve({
+      file: { ...FILE, id: `file-${input.displayName}`, state: "pending_upload" as const, activatedAt: null },
+      upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
+    }));
+    // c.pdf's direct upload fails; every other transfer succeeds.
+    const directUpload = vi.fn((_authorization: unknown, file: File) =>
+      file.name === "c.pdf" ? Promise.reject(new Error("Could not reach object storage.")) : Promise.resolve(undefined),
+    );
+    const completeUpload = vi.fn((fileId: string) =>
+      fileId === "file-c.pdf"
+        ? Promise.reject(new ApiError(409, "upload_incomplete"))
+        : Promise.resolve(FILE),
+    );
+    const renewUpload = vi.fn().mockResolvedValue({
+      method: "POST" as const,
+      url: "https://storage.invalid",
+      fields: {},
+      expiresAt: "2026-08-13T00:05:00.000Z",
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload,
+      completeUpload,
+      renewUpload,
+    });
+    render(<App api={api} checksumFile={checksumFile} directUpload={directUpload} />);
+
+    const files = ["a", "b", "c"].map((name) => new File([name], `${name}.pdf`, { type: "application/pdf" }));
+    await user.upload(await screen.findByLabelText("Upload files"), files);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
+
+    // Newest-first queue: c and b run. c's transfer fails → error → slot freed
+    // → a starts, leaving b and a active.
+    checksumResolvers[0]!(FILE.checksum);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
+
+    // Request a retry for c while BOTH slots are occupied (b and a are stuck
+    // in checksum): the retry must queue, not run.
+    await user.click(screen.getByRole("button", { name: "Verify stored copy or retry c.pdf" }));
+    expect(screen.getAllByText("Queued")).toHaveLength(1);
+    expect(completeUpload).not.toHaveBeenCalled();
+    expect(renewUpload).not.toHaveBeenCalled();
+    expect(checksumFile).toHaveBeenCalledTimes(3);
+
+    // Release one slot: the queued retry then starts with its verify-first flow.
+    checksumResolvers[1]!(FILE.checksum);
+    await waitFor(() => expect(completeUpload).toHaveBeenCalledWith("file-c.pdf"));
+    await waitFor(() => expect(renewUpload).toHaveBeenCalledWith("file-c.pdf"));
+  });
+
+  it("renders the same transfer metrics when a retry re-uploads bytes", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
+    let directUploadCalls = 0;
+    let resolveRetryUpload: (() => void) | undefined;
+    const directUpload = vi.fn((_authorization: unknown, _file: File, options?: { onMetrics?: (metrics: UploadProgressMetrics) => void }) => {
+      directUploadCalls += 1;
+      if (directUploadCalls === 1) {
+        return Promise.reject(new Error("Could not reach object storage."));
+      }
+      options?.onMetrics?.({ loaded: 500, total: 1_000 });
+      return new Promise<void>((resolve) => {
+        resolveRetryUpload = resolve;
+      });
+    });
+    let completeCalls = 0;
+    const completeUpload = vi.fn(() => {
+      completeCalls += 1;
+      return completeCalls === 1
+        ? Promise.reject(new ApiError(409, "upload_incomplete"))
+        : Promise.resolve(FILE);
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({
+        file: { ...FILE, id: "file-a", state: "pending_upload" as const, activatedAt: null },
+        upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
+      }),
+      renewUpload: vi.fn().mockResolvedValue({
+        method: "POST" as const,
+        url: "https://storage.invalid",
+        fields: {},
+        expiresAt: "2026-08-13T00:05:00.000Z",
+      }),
+      completeUpload,
+    });
+    render(<App api={api} checksumFile={checksumFile} directUpload={directUpload} />);
+
+    const file = new File(["source"], "a.pdf", { type: "application/pdf" });
+    await user.upload(await screen.findByLabelText("Upload files"), file);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(1));
+    checksumResolvers[0]!(FILE.checksum);
+    await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Verify stored copy or retry a.pdf" }));
+    await waitFor(() => expect(directUpload).toHaveBeenCalledTimes(2));
+
+    // The re-upload path renders the same file-byte metrics as a fresh
+    // upload: fraction 500/1000 mapped onto the 6-byte file → 3 B / 6 B,
+    // progress 0.15 + 0.5 × 0.75 = 0.525.
+    expect(await screen.findByText(/3 B \/ 6 B/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("value", "0.525");
+
+    resolveRetryUpload!();
+    await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(2));
   });
 });

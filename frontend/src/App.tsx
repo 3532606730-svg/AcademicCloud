@@ -10,11 +10,11 @@ import {
   type FolderEntry,
   type RecycleResponse,
 } from "./api.ts";
-import { uploadDirectly } from "./direct-upload.ts";
+import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
 import { describeError, formatCount, formatDate } from "./i18n.ts";
 import { LanguageProvider, LanguageSwitch, useLanguage } from "./i18n-react.tsx";
 import { calculateFileMd5 } from "./md5.ts";
-import { formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
+import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
 
 type AuthState =
   | { phase: "checking" }
@@ -196,6 +196,12 @@ interface UploadJob {
   file: File;
   existing: FileEntry | null;
   fileId: string | null;
+  /** Immutable destination folder pinned at enqueue time. Later navigation
+   *  must never move a queued upload; renewal jobs keep the folder identity
+   *  already reserved server-side. */
+  targetFolderId: string | null;
+  /** "upload" = fresh upload; "retry" = recovery workflow for a reserved id. */
+  mode: "upload" | "retry";
   phase: UploadPhase;
   progress: number;
   uploaded: boolean;
@@ -280,18 +286,47 @@ function DriveView({
     setJobs((current) => current.map((job) => job.id === jobId ? { ...job, ...patch } : job));
   }
 
-  async function runUploadWorkflow(jobId: string, file: File, existing: FileEntry | null) {
-    const controller = new AbortController();
-    patchJob(jobId, { controller });
-
-    const tracker = new UploadProgressTracker(file.size);
+  // Shared XHR-metrics wiring for both fresh uploads and retry re-uploads:
+  // raw fraction/speed/ETA come from the actual multipart XHR transfer, and
+  // the displayed file bytes map the network fraction onto file.size (capped
+  // so the UI never exceeds 100% of the selected file).
+  function attachUploadMetrics(jobId: string, fileSize: number) {
+    const tracker = new UploadProgressTracker();
     const lastMetricUpdate = { at: 0 };
+    return {
+      onProgress: (fraction: number) => patchJob(jobId, { progress: 0.15 + fraction * 0.75 }),
+      onMetrics: (metrics: UploadProgressMetrics) => {
+        const now = Date.now();
+        const snapshot = tracker.record(metrics.loaded, metrics.total, now);
+        if (now - lastMetricUpdate.at >= UPLOAD_METRICS_UPDATE_INTERVAL_MS || snapshot.fraction >= 1) {
+          lastMetricUpdate.at = now;
+          patchJob(jobId, {
+            progress: 0.15 + snapshot.fraction * 0.75,
+            bytesUploaded: displayFileBytes(fileSize, snapshot.fraction),
+            speedBytesPerSecond: snapshot.speedBytesPerSecond,
+            etaSeconds: snapshot.etaSeconds,
+          });
+        }
+      },
+    };
+  }
+
+  async function runUploadWorkflow(job: UploadJob) {
+    const controller = new AbortController();
+    patchJob(job.id, { controller });
 
     try {
-      patchJob(jobId, { phase: "checksum", progress: 0, speedBytesPerSecond: null, etaSeconds: null });
+      if (job.mode === "retry" && job.fileId) {
+        await runRetryWorkflow(job, controller);
+        return;
+      }
+
+      const file = job.file;
+      const existing = job.existing;
+      patchJob(job.id, { phase: "checksum", progress: 0, speedBytesPerSecond: null, etaSeconds: null });
       const checksum = await checksumFile(file, {
         signal: controller.signal,
-        onProgress: (fraction) => patchJob(jobId, { progress: fraction * 0.15 }),
+        onProgress: (fraction) => patchJob(job.id, { progress: fraction * 0.15 }),
       });
       const mediaType = file.type || "application/octet-stream";
 
@@ -304,46 +339,69 @@ function DriveView({
         throw new Error(t("upload.sameFileMismatch"));
       }
 
-      patchJob(jobId, { phase: "reserving", progress: 0.15 });
+      patchJob(job.id, { phase: "reserving", progress: 0.15 });
       const reserved = existing
         ? { file: existing, upload: await api.renewUpload(existing.id) }
         : await api.createUpload({
-            folderId: currentFolderId,
+            // The destination is the folder pinned at enqueue time: later
+            // navigation must never move queued uploads.
+            folderId: job.targetFolderId,
             displayName: file.name,
             mediaType,
             sizeBytes: file.size,
             checksum: { algorithm: "md5", value: checksum },
           });
-      patchJob(jobId, { fileId: reserved.file.id, phase: "uploading", totalBytes: file.size });
+      patchJob(job.id, { fileId: reserved.file.id, phase: "uploading", totalBytes: file.size });
       await directUpload(reserved.upload, file, {
         signal: controller.signal,
-        onProgress: (fraction) => patchJob(jobId, { progress: 0.15 + fraction * 0.75 }),
-        onMetrics: (metrics) => {
-          const now = Date.now();
-          const snapshot = tracker.record(metrics.loaded, now);
-          // Throttle state updates so the progress bar and speed/ETA do not
-          // re-render the whole queue on every XHR progress tick.
-          if (now - lastMetricUpdate.at >= UPLOAD_METRICS_UPDATE_INTERVAL_MS || snapshot.fraction >= 1) {
-            lastMetricUpdate.at = now;
-            patchJob(jobId, {
-              progress: 0.15 + snapshot.fraction * 0.75,
-              bytesUploaded: metrics.loaded,
-              speedBytesPerSecond: snapshot.speedBytesPerSecond,
-              etaSeconds: snapshot.etaSeconds,
-            });
-          }
-        },
+        ...attachUploadMetrics(job.id, file.size),
       });
-      patchJob(jobId, { phase: "verifying", uploaded: true, progress: 0.92, speedBytesPerSecond: null, etaSeconds: null });
+      patchJob(job.id, { phase: "verifying", uploaded: true, progress: 0.92, speedBytesPerSecond: null, etaSeconds: null });
       await api.completeUpload(reserved.file.id);
-      patchJob(jobId, { phase: "complete", progress: 1 });
+      patchJob(job.id, { phase: "complete", progress: 1 });
       setNotice(t("upload.uploaded", { name: file.name }));
       refresh();
     } catch (caught: unknown) {
       if (caught instanceof DOMException && caught.name === "AbortError") {
-        patchJob(jobId, { phase: "cancelled" });
+        patchJob(job.id, { phase: "cancelled" });
       } else {
-        patchJob(jobId, { phase: "error", error: describeError(caught, language) });
+        patchJob(job.id, { phase: "error", error: describeError(caught, language) });
+      }
+    }
+  }
+
+  async function runRetryWorkflow(job: UploadJob, controller: AbortController) {
+    const fileId = job.fileId!;
+    try {
+      if (!job.uploaded) {
+        // Verify-first: the stored copy may already be complete.
+        patchJob(job.id, { phase: "verifying", progress: Math.max(job.progress, 0.92) });
+        try {
+          await api.completeUpload(fileId);
+          patchJob(job.id, { phase: "complete", uploaded: true, progress: 1 });
+          setNotice(t("upload.uploaded", { name: job.file.name }));
+          refresh();
+          return;
+        } catch (caught: unknown) {
+          if (!(caught instanceof ApiError && caught.code === "upload_incomplete")) throw caught;
+        }
+        const authorization = await api.renewUpload(fileId);
+        patchJob(job.id, { phase: "uploading", progress: 0.15, totalBytes: job.file.size });
+        await directUpload(authorization, job.file, {
+          signal: controller.signal,
+          ...attachUploadMetrics(job.id, job.file.size),
+        });
+        patchJob(job.id, { uploaded: true, phase: "verifying", progress: 0.92, speedBytesPerSecond: null, etaSeconds: null });
+      }
+      await api.completeUpload(fileId);
+      patchJob(job.id, { phase: "complete", progress: 1 });
+      setNotice(t("upload.uploaded", { name: job.file.name }));
+      refresh();
+    } catch (caught: unknown) {
+      if (caught instanceof DOMException && caught.name === "AbortError") {
+        patchJob(job.id, { phase: "cancelled" });
+      } else {
+        patchJob(job.id, { phase: "error", error: describeError(caught, language) });
       }
     }
   }
@@ -351,14 +409,15 @@ function DriveView({
   const startJob = useCallback(
     (job: UploadJob) => {
       if (job.phase !== "queued") return;
-      void runUploadWorkflow(job.id, job.file, job.existing);
+      void runUploadWorkflow(job);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [api, checksumFile, directUpload, currentFolderId, language, refresh, t],
+    [api, checksumFile, directUpload, language, refresh, t],
   );
 
   // Bounded concurrency pump: at most MAX_CONCURRENT_UPLOADS workflows run at
-  // once; queued items wait (checksum computation included) until a slot opens.
+  // once — fresh uploads AND retries alike; queued items wait (checksum
+  // computation included) until a slot opens.
   useEffect(() => {
     const active = jobs.filter((job) => ACTIVE_UPLOAD_PHASES.has(job.phase)).length;
     if (active >= MAX_CONCURRENT_UPLOADS) return;
@@ -366,7 +425,7 @@ function DriveView({
     if (next) startJob(next);
   }, [jobs, startJob]);
 
-  function enqueueFile(file: File, existing?: FileEntry) {
+  function enqueueFile(file: File, existing?: FileEntry, pinnedTargetFolderId?: string | null) {
     if (file.size < 1) {
       setError(new Error(t("upload.emptyFile")));
       return;
@@ -376,6 +435,13 @@ function DriveView({
       file,
       existing: existing ?? null,
       fileId: existing?.id ?? null,
+      // Pin the destination NOW. New uploads capture the folder visible at
+      // selection time; pending-upload renewals keep the folder identity
+      // already reserved server-side; retries re-queue with the original pin.
+      targetFolderId: pinnedTargetFolderId !== undefined
+        ? pinnedTargetFolderId
+        : existing?.folderId ?? currentFolderId,
+      mode: "upload",
       phase: "queued",
       progress: 0,
       uploaded: false,
@@ -400,46 +466,19 @@ function DriveView({
     }
   }
 
-  async function retryJob(job: UploadJob) {
-    if (!job.fileId) {
-      setJobs((current) => current.filter((item) => item.id !== job.id));
-      enqueueFile(job.file);
-      return;
-    }
-
-    const controller = new AbortController();
-    patchJob(job.id, { controller, phase: job.uploaded ? "verifying" : "reserving", error: null });
-    try {
-      if (!job.uploaded) {
-        patchJob(job.id, { phase: "verifying", progress: Math.max(job.progress, 0.92) });
-        try {
-          await api.completeUpload(job.fileId);
-          patchJob(job.id, { phase: "complete", uploaded: true, progress: 1 });
-          setNotice(t("upload.uploaded", { name: job.file.name }));
-          refresh();
-          return;
-        } catch (caught: unknown) {
-          if (!(caught instanceof ApiError && caught.code === "upload_incomplete")) throw caught;
-        }
-        const authorization = await api.renewUpload(job.fileId);
-        patchJob(job.id, { phase: "uploading", progress: 0.15, totalBytes: job.file.size });
-        await directUpload(authorization, job.file, {
-          signal: controller.signal,
-          onProgress: (fraction) => patchJob(job.id, { progress: 0.15 + fraction * 0.75 }),
-        });
-        patchJob(job.id, { uploaded: true, phase: "verifying", progress: 0.92 });
-      }
-      await api.completeUpload(job.fileId);
-      patchJob(job.id, { phase: "complete", progress: 1 });
-      setNotice(t("upload.uploaded", { name: job.file.name }));
-      refresh();
-    } catch (caught: unknown) {
-      if (caught instanceof DOMException && caught.name === "AbortError") {
-        patchJob(job.id, { phase: "cancelled" });
-      } else {
-        patchJob(job.id, { phase: "error", error: describeError(caught, language) });
-      }
-    }
+  function retryJob(job: UploadJob) {
+    // A retry enters the SAME bounded scheduler as fresh uploads: it waits
+    // for a free slot instead of bypassing MAX_CONCURRENT_UPLOADS. The job's
+    // pinned target folder and reserved file identity are preserved.
+    patchJob(job.id, {
+      phase: "queued",
+      mode: job.fileId ? "retry" : "upload",
+      error: null,
+      progress: 0,
+      speedBytesPerSecond: null,
+      etaSeconds: null,
+      controller: new AbortController(),
+    });
   }
 
   async function signOut() {
