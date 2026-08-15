@@ -6,7 +6,11 @@
 
 ## In Progress
 
-None while the PROD-03A completion checkpoint is being synchronized.
+### PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation
+
+**Status:** In Progress — non-secret preparation passed; stopped at the mandatory Owner console/hidden-input boundary
+
+Goal: use the reviewed mandatory repository-external CSV path for the Owner-supplied dedicated RAM AccessKey while refusing reuse of either RAM secret, collect ACME email/login through visible Owner-private local prompts and the independent application password through hidden local input, send all five activation fields only over SSH stdin, verify exact private-bucket/CORS gates, create the first database/account, run and measure the real hardened unit loopback-only, and issue/verify TLS without enabling the public AcademicCloud Nginx route. Certificate-renewal enablement remains closed until the final edge configuration proves the ACME challenge path.
 
 ## Completed
 
@@ -313,11 +317,7 @@ Completion notes:
 
 ## Ready
 
-### PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation
-
-**Status:** Ready — begins only after the PROD-03A checkpoint synchronizes
-
-Goal: use the reviewed hidden stdin path for the exact dedicated RAM credential, ACME email, login, and password; verify exact private-bucket/CORS gates; create the first database/account; run the real hardened unit loopback-only; and issue/verify TLS without enabling the public AcademicCloud Nginx route. Certificate-renewal enablement remains closed until the final edge configuration proves the ACME challenge path.
+None while PROD-03B is in progress.
 
 ## Backlog — Layer 1
 

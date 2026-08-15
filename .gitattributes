@@ -1,0 +1,5 @@
+# Hash-verified production scripts must stay byte-stable in the working tree:
+# force LF on checkout regardless of core.autocrlf so the independently pinned
+# SHA-256 identities remain reproducible on this Windows repository host.
+*.ps1 text eol=lf
+*.sh  text eol=lf

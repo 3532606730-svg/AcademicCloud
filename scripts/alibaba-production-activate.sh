@@ -14,13 +14,49 @@ readonly ENV_PATH="/etc/academiccloud/academiccloud.env"
 readonly DATABASE_PATH="/var/lib/academiccloud/academiccloud.sqlite"
 readonly RELEASE_PATH="/opt/academiccloud/current"
 readonly EXACT_RELEASE="/opt/academiccloud/releases/639baa9596a17f4160521f31440d9e3ac3b12eda"
+readonly EXACT_UNIT_SHA256="fed6c26d80ad070decf4ddeabb7f4af6d23c38c24d2494666c7bfe981e39500b"
 readonly ACME_WEBROOT="/var/www/html"
 readonly PHASE_PATH="/etc/academiccloud/prepared/prod03b-activation-phase"
 readonly EVIDENCE_PATH="/etc/academiccloud/prepared/prod03b-activation-evidence.txt"
+readonly RESOURCE_EVIDENCE_PATH="/etc/academiccloud/prepared/prod03b-resource-evidence.txt"
+readonly RESOURCE_SAMPLES_PATH="/etc/academiccloud/prepared/prod03b-resource-samples.tsv"
+readonly RESOURCE_SAMPLE_TEMP="/run/academiccloud-prod03b-resource-samples.tsv"
+readonly RESOURCE_STOP_TEMP="/run/academiccloud-prod03b-resource-stop"
 
 fail() {
   printf 'activation error: %s\n' "$*" >&2
   exit 1
+}
+
+read_memory_event() {
+  local event_name="$1"
+  local event_path="$2"
+  local event_value
+  event_value="$(awk -v expected="$event_name" '$1 == expected { print $2 }' "$event_path")"
+  [[ "$event_value" =~ ^[0-9]+$ ]] || fail "memory event is unavailable: ${event_name}"
+  printf '%s\n' "$event_value"
+}
+
+assert_value_absent_from_service_journal() {
+  local value_label="$1"
+  local forbidden_value="$2"
+  local journal_line
+  while IFS= read -r journal_line; do
+    [[ "$journal_line" != *"$forbidden_value"* ]] || fail "private input appeared in the AcademicCloud service journal: ${value_label}"
+  done <<<"$service_journal"
+  journal_line=''
+}
+
+assert_login_absent_from_service_journal() {
+  local journal_line
+  local compact_login_field="\"loginName\":\"${login_name}\""
+  local spaced_login_field="\"loginName\": \"${login_name}\""
+  while IFS= read -r journal_line; do
+    [[ "$journal_line" != *"$compact_login_field"* && "$journal_line" != *"$spaced_login_field"* ]] || fail "account login appeared in the AcademicCloud service journal"
+  done <<<"$service_journal"
+  compact_login_field=''
+  spaced_login_field=''
+  journal_line=''
 }
 
 record_phase() {
@@ -29,7 +65,6 @@ record_phase() {
   printf '%s\n' "$new_phase" >"$temporary"
   chown root:root "$temporary"
   chmod 0600 "$temporary"
-  mv -T -- "$temporary" "$PHASE_PATH"
   phase="$new_phase"
   {
     printf 'capturedAt=%s\n' "$(date --iso-8601=seconds)"
@@ -46,6 +81,9 @@ record_phase() {
   chown root:root "${EVIDENCE_PATH}.new"
   chmod 0600 "${EVIDENCE_PATH}.new"
   mv -T -- "${EVIDENCE_PATH}.new" "$EVIDENCE_PATH"
+  # The phase file is the commit marker. Publish it only after the matching
+  # evidence is complete so an interruption always resumes from a safe phase.
+  mv -T -- "$temporary" "$PHASE_PATH"
 }
 
 if [[ "$#" -ne 0 || "$(id -u)" -ne 0 ]]; then
@@ -61,7 +99,14 @@ if IFS= read -r unexpected_line; then
   fail "unexpected extra input"
 fi
 
+sampler_pid=''
 cleanup_memory() {
+  if [[ -n "$sampler_pid" ]]; then
+    : >"$RESOURCE_STOP_TEMP"
+    wait "$sampler_pid" 2>/dev/null || true
+    sampler_pid=''
+  fi
+  rm -f -- "$RESOURCE_SAMPLE_TEMP" "$RESOURCE_STOP_TEMP"
   if [[ -f "${ENV_PATH}.prod03b-new" && ! -L "${ENV_PATH}.prod03b-new" && ! -e "$ENV_PATH" && "$(stat -c '%u:%g:%a' -- "${ENV_PATH}.prod03b-new")" == "0:0:600" ]]; then
     rm -f -- "${ENV_PATH}.prod03b-new"
   fi
@@ -74,11 +119,13 @@ trap cleanup_memory EXIT
 [[ "$access_key_id" =~ ^[A-Za-z0-9_-]{12,64}$ ]] || fail "invalid AccessKey ID format"
 [[ "$access_key_secret" =~ ^[A-Za-z0-9_+/=-]{20,128}$ ]] || fail "invalid AccessKey secret format"
 [[ "$acme_email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || fail "invalid ACME email format"
-[[ ${#login_name} -ge 1 && ${#login_name} -le 254 && ! "$login_name" =~ [[:space:]] ]] || fail "invalid login name format"
+[[ "$login_name" =~ ^[A-Za-z0-9._@+-]{3,64}$ ]] || fail "login name must be 3-64 characters from the reviewed safe identifier set"
 [[ ${#initial_password} -ge 12 && ${#initial_password} -le 1024 ]] || fail "password must contain 12-1024 characters"
 
 [[ "$(readlink -f -- "$RELEASE_PATH")" == "$EXACT_RELEASE" ]] || fail "unexpected current release"
 [[ -f /etc/systemd/system/academiccloud.service && ! -L /etc/systemd/system/academiccloud.service ]] || fail "production unit is absent"
+[[ "$(sha256sum /etc/systemd/system/academiccloud.service | awk '{print $1}')" == "$EXACT_UNIT_SHA256" ]] || fail "production unit identity changed"
+cmp --silent -- /etc/systemd/system/academiccloud.service "${EXACT_RELEASE}/deployment/systemd/academiccloud.service" || fail "installed and artifact systemd units differ"
 [[ "$(systemctl is-enabled academiccloud.service 2>/dev/null || true)" == "disabled" ]] || fail "production unit must remain disabled"
 [[ -x /usr/bin/certbot ]] || fail "Certbot tooling is not installed"
 [[ -d "$ACME_WEBROOT" && ! -L "$ACME_WEBROOT" ]] || fail "reviewed ACME webroot is absent"
@@ -127,9 +174,27 @@ if [[ "$phase" == "initial" ]]; then
   fi
 fi
 [[ -f "/etc/letsencrypt/live/${APP_HOST}/fullchain.pem" ]] || fail "certificate chain is absent"
+[[ -f "/etc/letsencrypt/live/${APP_HOST}/cert.pem" ]] || fail "certificate leaf is absent"
+[[ -f "/etc/letsencrypt/live/${APP_HOST}/chain.pem" ]] || fail "certificate issuer chain is absent"
 [[ -f "/etc/letsencrypt/live/${APP_HOST}/privkey.pem" ]] || fail "certificate key is absent"
-openssl x509 -in "/etc/letsencrypt/live/${APP_HOST}/fullchain.pem" -noout -checkend 86400 >/dev/null
-openssl x509 -in "/etc/letsencrypt/live/${APP_HOST}/fullchain.pem" -noout -ext subjectAltName | grep -Fq "DNS:${APP_HOST}"
+openssl x509 -in "/etc/letsencrypt/live/${APP_HOST}/fullchain.pem" -noout -checkend 2592000 >/dev/null
+openssl x509 -in "/etc/letsencrypt/live/${APP_HOST}/cert.pem" -noout -checkhost "$APP_HOST" >/dev/null
+cmp --silent -- <(cat "/etc/letsencrypt/live/${APP_HOST}/cert.pem" "/etc/letsencrypt/live/${APP_HOST}/chain.pem") "/etc/letsencrypt/live/${APP_HOST}/fullchain.pem" || fail "full certificate chain does not exactly contain the reviewed leaf and issuer chain"
+openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt \
+  -untrusted "/etc/letsencrypt/live/${APP_HOST}/chain.pem" \
+  "/etc/letsencrypt/live/${APP_HOST}/cert.pem" >/dev/null
+mapfile -t certificate_dns_names < <(
+  openssl x509 -in "/etc/letsencrypt/live/${APP_HOST}/cert.pem" -noout -ext subjectAltName |
+    tr ',' '\n' |
+    sed -n 's/^[[:space:]]*DNS://p'
+)
+[[ "${#certificate_dns_names[@]}" -eq 1 && "${certificate_dns_names[0]}" == "$APP_HOST" ]] || fail "certificate SAN set is not the exact production hostname"
+certificate_dns_names=()
+certificate_public_key_sha256="$(openssl x509 -in "/etc/letsencrypt/live/${APP_HOST}/fullchain.pem" -noout -pubkey | sha256sum | awk '{print $1}')"
+private_public_key_sha256="$(openssl pkey -in "/etc/letsencrypt/live/${APP_HOST}/privkey.pem" -pubout | sha256sum | awk '{print $1}')"
+[[ "$certificate_public_key_sha256" == "$private_public_key_sha256" ]] || fail "certificate and private key do not match"
+certificate_public_key_sha256=''
+private_public_key_sha256=''
 if [[ "$phase" == "initial" ]]; then
   record_phase certificate-ready
 fi
@@ -214,7 +279,9 @@ run_production_operation() {
     --property=ProtectSystem=strict \
     --property=ProtectHome=true \
     --property="ReadWritePaths=/var/lib/academiccloud" \
-    --property="EnvironmentFile=${ENV_PATH}" \
+    --setenv=NODE_ENV=production \
+    --setenv="DATABASE_PATH=${DATABASE_PATH}" \
+    --setenv="MIGRATIONS_DIRECTORY=${RELEASE_PATH}/database/migrations" \
     --working-directory="${RELEASE_PATH}/backend" \
     "$@"
 }
@@ -247,17 +314,18 @@ if [[ "$phase" == "database-migrated" ]]; then
   if [[ "$account_rows" == "[]" ]]; then
     printf '%s\n' "$initial_password" | run_production_operation academiccloud-prod03b-account \
       /usr/bin/node "${RELEASE_PATH}/backend/dist/operations/account-main.js" \
-      "--login=${login_name}" --password-stdin
+      "--login=${login_name}" --password-stdin >/dev/null
     account_rows="$(account_probe)"
   fi
-  export ACCOUNT_ROWS="$account_rows" LOGIN_NAME="$login_name"
-  /usr/bin/node --input-type=module - <<'NODE'
-const rows = JSON.parse(process.env.ACCOUNT_ROWS);
-if (rows.length !== 1 || rows[0].loginName !== process.env.LOGIN_NAME) {
+  printf '%s' "$account_rows" | /usr/bin/node --input-type=module -e '
+let input = "";
+process.stdin.setEncoding("utf8");
+for await (const chunk of process.stdin) input += chunk;
+const rows = JSON.parse(input);
+if (rows.length !== 1 || rows[0].loginName !== process.argv[1]) {
   throw new Error("production account state differs from the exact initial account");
 }
-NODE
-  unset ACCOUNT_ROWS LOGIN_NAME
+' "$login_name"
   record_phase account-provisioned
 fi
 
@@ -273,15 +341,23 @@ const argon2 = require("argon2");
 const database = new Database(databasePath, { readonly: true, fileMustExist: true });
 try {
   const row = database.prepare("select password_hash as passwordHash from accounts where login_name = ?").get(loginName);
-  if (!row || !(await argon2.verify(row.passwordHash, password))) {
+  if (!row || !row.passwordHash.startsWith("$argon2id$v=19$m=65536,t=3,p=1$") || !(await argon2.verify(row.passwordHash, password))) {
     throw new Error("Owner input does not authenticate the exact initial account");
+  }
+  database.pragma("foreign_keys = ON");
+  const journalMode = database.pragma("journal_mode", { simple: true });
+  const synchronous = database.pragma("synchronous", { simple: true });
+  const foreignKeys = database.pragma("foreign_keys", { simple: true });
+  const integrity = database.pragma("integrity_check", { simple: true });
+  const foreignKeyViolations = database.pragma("foreign_key_check");
+  const migrationState = database.prepare("select count(*) as count, max(version) as version from schema_migrations").get();
+  if (journalMode !== "wal" || synchronous !== 2 || foreignKeys !== 1 || integrity !== "ok" || foreignKeyViolations.length !== 0 || migrationState.count !== 4 || migrationState.version !== 4) {
+    throw new Error("production SQLite durability, integrity, or migration state is invalid");
   }
 } finally {
   database.close();
 }
 ' "$DATABASE_PATH" "$RELEASE_PATH" "$login_name"
-initial_password=''
-
 if [[ "$phase" == "account-provisioned" ]]; then
   systemctl start academiccloud.service
   for attempt in $(seq 1 30); do
@@ -294,16 +370,286 @@ if [[ "$phase" == "account-provisioned" ]]; then
     sleep 1
   done
   curl --fail --silent --show-error --max-time 2 http://127.0.0.1:3000/api/ready >/dev/null
-  if ss -lntH 'sport = :3000' | awk '{print $4}' | grep -Evq '^(127\.0\.0\.1|\[::1\]):3000$'; then
-    fail "application listener is not loopback-only"
-  fi
-  record_phase loopback-ready
+  [[ "$(ss -lntH 'sport = :3000' | awk '{print $4}' | sort -u)" == "127.0.0.1:3000" ]] || fail "application listener is not exact loopback-only"
 fi
 
-[[ "$phase" == "loopback-ready" ]] || fail "activation did not reach loopback-ready"
 [[ "$(systemctl is-active academiccloud.service)" == "active" ]] || fail "application service is not active"
 curl --fail --silent --show-error --max-time 2 http://127.0.0.1:3000/api/health >/dev/null
 curl --fail --silent --show-error --max-time 2 http://127.0.0.1:3000/api/ready >/dev/null
 [[ "$(find /etc/nginx/sites-enabled -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)" == "default" ]] || fail "public route changed during loopback activation"
 
-printf 'activation-status=ok\nphase=loopback-ready\naccountLogin=%s\ncertificateDomain=%s\nservice=active-loopback-only\npublicRoute=unchanged\n' "$login_name" "$APP_HOST"
+if [[ "$phase" == "account-provisioned" ]]; then
+  session_acceptance_exit=0
+  printf '%s' "$initial_password" | /usr/bin/node --input-type=module -e '
+import { spawnSync } from "node:child_process";
+const [loginName, origin] = process.argv.slice(1);
+let password = "";
+process.stdin.setEncoding("utf8");
+for await (const chunk of process.stdin) password += chunk;
+const baseUrl = "http://127.0.0.1:3000";
+const waitForEndpoint = async (path) => {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      const response = await fetch(`${baseUrl}${path}`);
+      if (response.status === 200) return;
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`production endpoint did not recover: ${path}`);
+};
+const checkedCookie = (response) => {
+  const setCookie = response.headers.get("set-cookie") ?? "";
+  const parts = setCookie.split(";").map((part) => part.trim());
+  const lower = parts.map((part) => part.toLowerCase());
+  if (!parts[0]?.startsWith("__Host-ac_session=") || !lower.includes("secure") || !lower.includes("httponly") || !lower.includes("samesite=strict") || !lower.includes("path=/") || lower.some((part) => part.startsWith("domain="))) {
+    throw new Error("production session cookie policy mismatch");
+  }
+  return parts[0];
+};
+const login = await fetch(`${baseUrl}/api/auth/login`, {
+  method: "POST",
+  headers: { "content-type": "application/json", origin },
+  body: JSON.stringify({ loginName, password }),
+});
+password = "";
+if (login.status !== 200) throw new Error(`loopback login failed with status ${login.status}`);
+const loginBody = await login.json();
+if (loginBody?.account?.loginName !== loginName) throw new Error("loopback login account mismatch");
+const cookie = checkedCookie(login);
+const beforeRestart = await fetch(`${baseUrl}/api/auth/session`, { headers: { cookie } });
+if (beforeRestart.status !== 200 || (await beforeRestart.json())?.account?.loginName !== loginName) throw new Error("pre-restart session check failed");
+const restart = spawnSync("/usr/bin/systemctl", ["restart", "academiccloud.service"], {
+  encoding: "utf8",
+  stdio: ["ignore", "pipe", "pipe"],
+  timeout: 45_000,
+});
+if (restart.status !== 0) throw new Error("production service restart failed");
+await waitForEndpoint("/api/health");
+await waitForEndpoint("/api/ready");
+const afterRestart = await fetch(`${baseUrl}/api/auth/session`, { headers: { cookie } });
+if (afterRestart.status !== 200 || (await afterRestart.json())?.account?.loginName !== loginName) throw new Error("persisted session check failed");
+const logout = await fetch(`${baseUrl}/api/auth/logout`, { method: "POST", headers: { cookie, origin } });
+if (logout.status !== 204) throw new Error(`loopback logout failed with status ${logout.status}`);
+const clearCookie = logout.headers.get("set-cookie") ?? "";
+if (!clearCookie.startsWith("__Host-ac_session=") || !/Max-Age=0/i.test(clearCookie)) throw new Error("logout cookie clearing policy mismatch");
+const revoked = await fetch(`${baseUrl}/api/auth/session`, { headers: { cookie } });
+if (revoked.status !== 401) throw new Error("logged-out session remains valid");
+process.stdout.write(`${JSON.stringify({ status: "ok", login: true, preRestartSession: true, sessionSurvivedRestart: true, readinessAfterRestart: true, logoutRevoked: true })}\n`);
+' "$login_name" "https://${APP_HOST}" || session_acceptance_exit=$?
+  [[ "$session_acceptance_exit" -eq 0 ]] || fail "real loopback restart/session acceptance failed"
+
+  [[ ! -e "$RESOURCE_SAMPLE_TEMP" && ! -L "$RESOURCE_SAMPLE_TEMP" ]] || fail "resource sample staging path already exists"
+  [[ ! -e "$RESOURCE_STOP_TEMP" && ! -L "$RESOURCE_STOP_TEMP" ]] || fail "resource sampler stop path already exists"
+  control_group="$(systemctl show -p ControlGroup --value academiccloud.service)"
+  [[ "$control_group" == "/system.slice/academiccloud.service" ]] || fail "unexpected production service cgroup"
+  cgroup_path="/sys/fs/cgroup${control_group}"
+  [[ -r "${cgroup_path}/memory.current" && -r "${cgroup_path}/memory.events" ]] || fail "production memory cgroup is unavailable"
+  cgroup_inode_before="$(stat -c '%i' -- "$cgroup_path")"
+  cgroup_high_before="$(read_memory_event high "${cgroup_path}/memory.events")"
+  cgroup_max_before="$(read_memory_event max "${cgroup_path}/memory.events")"
+  cgroup_oom_before="$(read_memory_event oom "${cgroup_path}/memory.events")"
+  cgroup_oom_kill_before="$(read_memory_event oom_kill "${cgroup_path}/memory.events")"
+  cgroup_oom_group_kill_before="$(read_memory_event oom_group_kill "${cgroup_path}/memory.events")"
+  [[ "$cgroup_high_before" -eq 0 && "$cgroup_max_before" -eq 0 && "$cgroup_oom_before" -eq 0 && "$cgroup_oom_kill_before" -eq 0 && "$cgroup_oom_group_kill_before" -eq 0 ]] || fail "production cgroup already contains memory-pressure or OOM evidence"
+  if ! current_boot_kernel_log="$(journalctl -k -b --no-pager 2>/dev/null)"; then
+    fail "current-boot kernel journal could not be read before measured authentication"
+  fi
+  current_boot_oom_before="$(printf '%s\n' "$current_boot_kernel_log" | grep -Ei 'out of memory|killed process|oom-kill' || true)"
+  current_boot_kernel_log=''
+  [[ -z "$current_boot_oom_before" ]] || fail "current boot already contains kernel OOM evidence"
+  resource_started_at="$(date --iso-8601=seconds)"
+  : >"$RESOURCE_SAMPLE_TEMP"
+  chown root:root "$RESOURCE_SAMPLE_TEMP"
+  chmod 0600 "$RESOURCE_SAMPLE_TEMP"
+  (
+    while [[ ! -e "$RESOURCE_STOP_TEMP" ]]; do
+      sample_mem_available="$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)"
+      sample_swap_free="$(awk '$1 == "SwapFree:" { print $2 }' /proc/meminfo)"
+      sample_cgroup_current=0
+      if [[ -r "${cgroup_path}/memory.current" ]]; then
+        sample_cgroup_current="$(<"${cgroup_path}/memory.current")"
+      fi
+      printf '%s\t%s\t%s\t%s\n' "$(date +%s%N)" "$sample_mem_available" "$sample_swap_free" "$sample_cgroup_current" >>"$RESOURCE_SAMPLE_TEMP"
+      sleep 0.025
+    done
+  ) &
+  sampler_pid=$!
+
+  authentication_exit=0
+  printf '%s' "$initial_password" | /usr/bin/node --input-type=module -e '
+const [loginName, origin] = process.argv.slice(1);
+let password = "";
+process.stdin.setEncoding("utf8");
+for await (const chunk of process.stdin) password += chunk;
+const baseUrl = "http://127.0.0.1:3000";
+const checkedCookie = (response) => {
+  const setCookie = response.headers.get("set-cookie") ?? "";
+  const parts = setCookie.split(";").map((part) => part.trim());
+  const lower = parts.map((part) => part.toLowerCase());
+  if (!parts[0]?.startsWith("__Host-ac_session=") || !lower.includes("secure") || !lower.includes("httponly") || !lower.includes("samesite=strict") || !lower.includes("path=/") || lower.some((part) => part.startsWith("domain="))) {
+    throw new Error("production session cookie policy mismatch");
+  }
+  return parts[0];
+};
+const login = await fetch(`${baseUrl}/api/auth/login`, {
+  method: "POST",
+  headers: { "content-type": "application/json", origin },
+  body: JSON.stringify({ loginName, password }),
+});
+password = "";
+if (login.status !== 200) throw new Error(`loopback login failed with status ${login.status}`);
+const loginBody = await login.json();
+if (loginBody?.account?.loginName !== loginName) throw new Error("loopback login account mismatch");
+const cookie = checkedCookie(login);
+const session = await fetch(`${baseUrl}/api/auth/session`, { headers: { cookie } });
+if (session.status !== 200) throw new Error(`measured session failed with status ${session.status}`);
+const sessionBody = await session.json();
+if (sessionBody?.account?.loginName !== loginName) throw new Error("measured session account mismatch");
+const logout = await fetch(`${baseUrl}/api/auth/logout`, {
+  method: "POST",
+  headers: { cookie, origin },
+});
+if (logout.status !== 204) throw new Error(`loopback logout failed with status ${logout.status}`);
+const clearCookie = logout.headers.get("set-cookie") ?? "";
+if (!clearCookie.startsWith("__Host-ac_session=") || !/Max-Age=0/i.test(clearCookie)) throw new Error("logout cookie clearing policy mismatch");
+const revoked = await fetch(`${baseUrl}/api/auth/session`, { headers: { cookie } });
+if (revoked.status !== 401) throw new Error("logged-out session remains valid");
+process.stdout.write(`${JSON.stringify({ status: "ok", measuredLogin: true, currentSession: true, logoutRevoked: true })}\n`);
+' "$login_name" "https://${APP_HOST}" || authentication_exit=$?
+  : >"$RESOURCE_STOP_TEMP"
+  sampler_exit=0
+  wait "$sampler_pid" || sampler_exit=$?
+  sampler_pid=''
+  rm -f -- "$RESOURCE_STOP_TEMP"
+
+  read -r sample_count cgroup_observed minimum_mem_available minimum_swap_free maximum_cgroup_current < <(
+    awk -F '\t' '
+      NR == 1 { minMem = $2; minSwap = $3 }
+      { count += 1; if ($4 > 0) observed += 1; if ($2 < minMem) minMem = $2; if ($3 < minSwap) minSwap = $3; if ($4 > maxCurrent) maxCurrent = $4 }
+      END { printf "%d %d %d %d %d\n", count, observed, minMem, minSwap, maxCurrent }
+    ' "$RESOURCE_SAMPLE_TEMP"
+  )
+  cgroup_high_after="$(read_memory_event high "${cgroup_path}/memory.events")"
+  cgroup_max_after="$(read_memory_event max "${cgroup_path}/memory.events")"
+  cgroup_oom_after="$(read_memory_event oom "${cgroup_path}/memory.events")"
+  cgroup_oom_kill_after="$(read_memory_event oom_kill "${cgroup_path}/memory.events")"
+  cgroup_oom_group_kill_after="$(read_memory_event oom_group_kill "${cgroup_path}/memory.events")"
+  [[ "$(systemctl show -p ControlGroup --value academiccloud.service)" == "$control_group" ]] || fail "production service cgroup changed during measured authentication"
+  cgroup_inode_after="$(stat -c '%i' -- "$cgroup_path")"
+  [[ "$cgroup_inode_after" == "$cgroup_inode_before" ]] || fail "production cgroup was recreated during measured authentication"
+  cgroup_high_delta=$((cgroup_high_after - cgroup_high_before))
+  cgroup_max_delta=$((cgroup_max_after - cgroup_max_before))
+  cgroup_oom_delta=$((cgroup_oom_after - cgroup_oom_before))
+  cgroup_oom_kill_delta=$((cgroup_oom_kill_after - cgroup_oom_kill_before))
+  cgroup_oom_group_kill_delta=$((cgroup_oom_group_kill_after - cgroup_oom_group_kill_before))
+  cgroup_memory_peak="$(<"${cgroup_path}/memory.peak")"
+  systemd_memory_peak="$(systemctl show -p MemoryPeak --value academiccloud.service)"
+  if ! measured_kernel_log="$(journalctl -k -b --since "$resource_started_at" --no-pager 2>/dev/null)"; then
+    fail "bounded kernel journal could not be read after measured authentication"
+  fi
+  kernel_oom_evidence="$(printf '%s\n' "$measured_kernel_log" | grep -Ei 'out of memory|killed process|oom-kill' || true)"
+  measured_kernel_log=''
+  resource_finished_at="$(date --iso-8601=seconds)"
+  sample_sha256="$(sha256sum "$RESOURCE_SAMPLE_TEMP" | awk '{print $1}')"
+  resource_status=failed
+  if [[ "$authentication_exit" -eq 0 && "$sampler_exit" -eq 0 &&
+        "$sample_count" =~ ^[0-9]+$ && "$sample_count" -ge 3 &&
+        "$cgroup_observed" =~ ^[0-9]+$ && "$cgroup_observed" -ge 1 &&
+        "$minimum_mem_available" =~ ^[0-9]+$ && "$minimum_mem_available" -ge 131072 &&
+        "$minimum_swap_free" =~ ^[0-9]+$ && "$minimum_swap_free" -gt 0 &&
+        "$maximum_cgroup_current" =~ ^[0-9]+$ && "$maximum_cgroup_current" -gt 0 &&
+        "$cgroup_memory_peak" =~ ^[0-9]+$ && "$cgroup_memory_peak" -gt 0 &&
+        "$systemd_memory_peak" =~ ^[0-9]+$ && "$systemd_memory_peak" -gt 0 &&
+        "$cgroup_high_delta" -eq 0 && "$cgroup_max_delta" -eq 0 &&
+        "$cgroup_oom_delta" -eq 0 && "$cgroup_oom_kill_delta" -eq 0 && "$cgroup_oom_group_kill_delta" -eq 0 &&
+        -z "$kernel_oom_evidence" ]]; then
+    resource_status=ok
+  fi
+  install -o root -g root -m 0600 "$RESOURCE_SAMPLE_TEMP" "${RESOURCE_SAMPLES_PATH}.new"
+  mv -T -- "${RESOURCE_SAMPLES_PATH}.new" "$RESOURCE_SAMPLES_PATH"
+  {
+    printf 'status=%s\n' "$resource_status"
+    printf 'startedAt=%s\n' "$resource_started_at"
+    printf 'finishedAt=%s\n' "$resource_finished_at"
+    printf 'authenticationExit=%s\n' "$authentication_exit"
+    printf 'samplerExit=%s\n' "$sampler_exit"
+    printf 'sampleCount=%s\n' "$sample_count"
+    printf 'cgroupObservedSamples=%s\n' "$cgroup_observed"
+    printf 'minimumMemAvailableKiB=%s\n' "$minimum_mem_available"
+    printf 'minimumSwapFreeKiB=%s\n' "$minimum_swap_free"
+    printf 'maximumCgroupCurrentBytes=%s\n' "$maximum_cgroup_current"
+    printf 'cgroupMemoryPeakBytes=%s\n' "$cgroup_memory_peak"
+    printf 'systemdMemoryPeakBytes=%s\n' "$systemd_memory_peak"
+    printf 'cgroupHighBefore=%s\n' "$cgroup_high_before"
+    printf 'cgroupHighAfter=%s\n' "$cgroup_high_after"
+    printf 'cgroupHighDelta=%s\n' "$cgroup_high_delta"
+    printf 'cgroupMaxBefore=%s\n' "$cgroup_max_before"
+    printf 'cgroupMaxAfter=%s\n' "$cgroup_max_after"
+    printf 'cgroupMaxDelta=%s\n' "$cgroup_max_delta"
+    printf 'cgroupOomBefore=%s\n' "$cgroup_oom_before"
+    printf 'cgroupOomAfter=%s\n' "$cgroup_oom_after"
+    printf 'cgroupOomDelta=%s\n' "$cgroup_oom_delta"
+    printf 'cgroupOomKillBefore=%s\n' "$cgroup_oom_kill_before"
+    printf 'cgroupOomKillAfter=%s\n' "$cgroup_oom_kill_after"
+    printf 'cgroupOomKillDelta=%s\n' "$cgroup_oom_kill_delta"
+    printf 'cgroupOomGroupKillBefore=%s\n' "$cgroup_oom_group_kill_before"
+    printf 'cgroupOomGroupKillAfter=%s\n' "$cgroup_oom_group_kill_after"
+    printf 'cgroupOomGroupKillDelta=%s\n' "$cgroup_oom_group_kill_delta"
+    printf 'cgroupInode=%s\n' "$cgroup_inode_before"
+    printf 'kernelOomEvidence=%s\n' "$([[ -z "$kernel_oom_evidence" ]] && printf absent || printf present)"
+    printf 'sampleSha256=%s\n' "$sample_sha256"
+  } >"${RESOURCE_EVIDENCE_PATH}.new"
+  chown root:root "${RESOURCE_EVIDENCE_PATH}.new"
+  chmod 0600 "${RESOURCE_EVIDENCE_PATH}.new"
+  mv -T -- "${RESOURCE_EVIDENCE_PATH}.new" "$RESOURCE_EVIDENCE_PATH"
+  rm -f -- "$RESOURCE_SAMPLE_TEMP"
+
+  [[ "$resource_status" == "ok" ]] || fail "real authentication resource acceptance did not satisfy every gate"
+  [[ "$authentication_exit" -eq 0 ]] || fail "real loopback authentication acceptance failed"
+  [[ "$sampler_exit" -eq 0 && "$sample_count" -ge 3 && "$cgroup_observed" -ge 1 ]] || fail "resource sampling was incomplete"
+  [[ "$minimum_mem_available" -ge 131072 ]] || fail "whole-host memory headroom fell below 128 MiB"
+  [[ "$minimum_swap_free" -gt 0 ]] || fail "swap was exhausted during authentication acceptance"
+  [[ "$maximum_cgroup_current" -gt 0 && "$cgroup_memory_peak" -gt 0 && "$systemd_memory_peak" -gt 0 ]] || fail "production cgroup memory evidence is incomplete"
+  [[ "$cgroup_high_delta" -eq 0 && "$cgroup_max_delta" -eq 0 && "$cgroup_oom_delta" -eq 0 && "$cgroup_oom_kill_delta" -eq 0 && "$cgroup_oom_group_kill_delta" -eq 0 ]] || fail "production cgroup recorded memory-pressure or OOM evidence"
+  [[ -z "$kernel_oom_evidence" ]] || fail "kernel OOM evidence appeared during authentication acceptance"
+else
+  [[ -f "$RESOURCE_EVIDENCE_PATH" && ! -L "$RESOURCE_EVIDENCE_PATH" && "$(stat -c '%u:%g:%a' -- "$RESOURCE_EVIDENCE_PATH")" == "0:0:600" ]] || fail "loopback-ready phase lacks protected resource evidence"
+  grep -Fqx 'status=ok' "$RESOURCE_EVIDENCE_PATH" || fail "loopback-ready resource evidence is not successful"
+fi
+
+[[ "$phase" == "account-provisioned" || "$phase" == "loopback-ready" ]] || fail "activation did not reach the final loopback gate"
+[[ "$(systemctl is-enabled academiccloud.service 2>/dev/null || true)" == "disabled" ]] || fail "production service was enabled unexpectedly"
+[[ "$(systemctl show -p User --value academiccloud.service)" == "academiccloud" ]] || fail "production service user changed"
+[[ "$(systemctl show -p Group --value academiccloud.service)" == "academiccloud" ]] || fail "production service group changed"
+[[ "$(systemctl show -p MemoryHigh --value academiccloud.service)" == "335544320" ]] || fail "production MemoryHigh changed"
+[[ "$(systemctl show -p MemoryMax --value academiccloud.service)" == "402653184" ]] || fail "production MemoryMax changed"
+[[ "$(systemctl show -p NoNewPrivileges --value academiccloud.service)" == "yes" ]] || fail "production NoNewPrivileges changed"
+[[ "$(systemctl show -p PrivateTmp --value academiccloud.service)" == "yes" ]] || fail "production PrivateTmp changed"
+[[ "$(systemctl show -p ProtectProc --value academiccloud.service)" == "invisible" ]] || fail "production ProtectProc changed"
+[[ "$(systemctl show -p StateDirectory --value academiccloud.service)" == "academiccloud" ]] || fail "production StateDirectory changed"
+[[ "$(systemctl is-enabled certbot.timer 2>/dev/null || true)" == "disabled" ]] || fail "certificate renewal timer was enabled prematurely"
+[[ "$(systemctl is-active certbot.timer 2>/dev/null || true)" == "inactive" ]] || fail "certificate renewal timer became active prematurely"
+[[ "$(ss -lntH 'sport = :3000' | awk '{print $4}' | sort -u)" == "127.0.0.1:3000" ]] || fail "final application listener is not exact loopback-only"
+
+if ! service_journal="$(journalctl -u academiccloud.service -b --output=cat --no-pager 2>/dev/null)"; then
+  fail "AcademicCloud current-boot service journal could not be read for private-input scanning"
+fi
+assert_value_absent_from_service_journal 'AccessKey secret' "$access_key_secret"
+assert_value_absent_from_service_journal 'AccessKey ID' "$access_key_id"
+assert_value_absent_from_service_journal 'ACME email' "$acme_email"
+assert_login_absent_from_service_journal
+assert_value_absent_from_service_journal 'plaintext password' "$initial_password"
+service_journal=''
+access_key_secret=''
+access_key_id=''
+acme_email=''
+login_name=''
+initial_password=''
+if [[ "$phase" == "account-provisioned" ]]; then
+  record_phase loopback-ready
+fi
+[[ "$phase" == "loopback-ready" ]] || fail "activation did not reach loopback-ready"
+[[ -f "$EVIDENCE_PATH" && ! -L "$EVIDENCE_PATH" && "$(stat -c '%u:%g:%a' -- "$EVIDENCE_PATH")" == "0:0:600" ]] || fail "loopback-ready activation evidence is absent or unsafe"
+grep -Fqx 'phase=loopback-ready' "$EVIDENCE_PATH" || fail "loopback-ready activation evidence does not match the committed phase"
+
+printf 'activation-status=ok\nphase=loopback-ready\naccountVerified=true\ncertificateVerified=true\nservice=active-loopback-only\npublicRoute=unchanged\n'

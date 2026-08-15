@@ -10,7 +10,7 @@
 
 ## Current Objective
 
-`PROD-03A — Production Foundation and Immutable Release` is complete. Start `PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation` and stop only at its shortest mandatory Owner interaction for hidden credential/password/ACME-email entry and exact OSS CORS console configuration. Do not enable the public AcademicCloud Nginx route, enter PROD-03C, or weaken any accepted boundary during PROD-03B.
+`PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation` is in progress from synchronized PROD-03A checkpoint `478a2a39d16e984e484c4ec6ff0339ee6c8f189e`. Read-only preflight, independent pre-write review, and the non-secret atomic activation update are complete. The Owner has supplied a one-row Alibaba RAM export outside the repository; its exact row may be parsed only by the reviewed mandatory repository-external CSV path, with full-row references cleared before SSH and both RAM secrets excluded from reuse. Work remains stopped at the shortest mandatory Owner interaction for authenticated bucket/RAM/CORS confirmation, visible local Owner-private ACME-email/login entry, and hidden independent-application-password entry. Do not enable the public AcademicCloud Nginx route, enter PROD-03C, or weaken any accepted boundary during PROD-03B.
 
 ## Completed
 
@@ -107,7 +107,7 @@
 
 ## Current Task
 
-`PROD-03A — Production Foundation and Immutable Release` is **Complete**. Exact artifact `9225471228` / source `639baa9596a17f4160521f31440d9e3ac3b12eda` is installed under a root-owned immutable release and selected by `/opt/academiccloud/current`. The exact hardened unit is installed disabled/inactive with no PID or port 3000 listener; prepared Nginx/CSP/logrotate/bootstrap files remain outside active trees. Certbot 2.9.0 and six required Python packages are installed with zero upgrades/removals, timer disabled/inactive, and no ACME account/certificate/renewal state. Formal evidence SHA-256 is `8d2752951784345259369d76e3a8775bb9fd21977195578024f7041184e9f2e5`; no environment, database, account, secret, OSS mutation, active route, or production data exists.
+`PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation` is **In Progress at the mandatory Owner boundary**. PROD-03A's exact artifact `9225471228` / source `639baa9596a17f4160521f31440d9e3ac3b12eda` remains installed under the root-owned immutable release and selected by `/opt/academiccloud/current`; its exact hardened unit is still disabled/inactive with no PID or port 3000 listener. The independently reviewed activation is installed root-owned mode 0600 at SHA-256 `98dbc9cfd676a3e784cb802a1a52e1b0058a249ce36ebe4969278f8bff31a660`; update evidence SHA-256 is `01d39a3020bb122d995cde5a6b064d90e4472f6ba257604deb5077f991e1f995`. The canonical independently reviewed Owner wrapper SHA-256 is `3e7b66b6026b794d7ad339d9f2e90f7edc79c13df1ef1f40445274590b8780e6` (the earlier `1ec8a632…` pin is superseded; `.gitattributes` now keeps the pinned scripts byte-stable). No environment, database, account, AccessKey secret, certificate, OSS mutation, active AcademicCloud route, or production data exists. Owner console confirmation and the reviewed hidden local wrapper are now required before activation.
 
 ## Production Preparation Status
 
@@ -190,7 +190,7 @@ The approved sequence is:
 3. `PROD-02H — Alibaba Runtime-Only Acceptance`: complete with pre-upgrade host-state runtime suitability rejected and cleanup/recovery verified.
 4. `PROD-02I — Alibaba 1 GiB Runtime Re-Acceptance`: complete with upgraded-host runtime suitability accepted, exact evidence retained, and cleanup/recovery verified.
 5. `PROD-03A — Production Foundation and Immutable Release`: complete; formal evidence SHA-256 `8d2752951784345259369d76e3a8775bb9fd21977195578024f7041184e9f2e5`, inactive release foundation healthy and clean.
-6. `PROD-03B — Secret-Safe Activation, OSS CORS, Account, Service, and TLS`: Ready. Owner interaction is limited to the hidden credential/password/ACME-email entry and exact CORS console boundary. It may validate the real unit on loopback and issue TLS, but it must not enable the public AcademicCloud Nginx route; certificate renewal activation remains closed until the final edge proves the ACME challenge path.
+6. `PROD-03B — Secret-Safe Activation, OSS CORS, Account, Service, and TLS`: In progress. Owner interaction is limited to the mandatory repository-external RAM CSV, visible local Owner-private ACME-email/login prompts, the hidden independent application-password prompt, and the exact CORS console boundary. It may validate the real unit on loopback and issue TLS, but it must not enable the public AcademicCloud Nginx route; certificate renewal activation remains closed until the final edge proves the ACME challenge path.
 7. `PROD-03C — First Usable Production E2E, Backup/Restore, and Cutover`: authorized after PROD-03B. It must complete an encrypted off-host backup and isolated restore before public cutover; any new-cost/key-custody boundary and the exact disposable-object permanent-delete confirmation remain Owner gates.
 8. Layer 2 remains closed.
 

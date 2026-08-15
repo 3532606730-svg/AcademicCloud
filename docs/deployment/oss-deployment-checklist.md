@@ -5,6 +5,7 @@ Every item is an approval-gated cloud/account change or verification. Record the
 ## Bucket gate
 
 - [ ] Bucket is in the approved region and its endpoint exactly matches server configuration, Nginx static CSP, and browser CORS expectations.
+- [ ] Bucket is dedicated to AcademicCloud, contains zero objects before acceptance, has no unknown historical data, and uses SSE-OSS/AES-256 rather than KMS; this keeps encryption at rest within the zero-additional-cost and three-action RAM boundary.
 - [ ] Bucket ACL is private, Block Public Access is enabled, public website hosting is off, and no anonymous bucket/object policy or public object ACL exists.
 - [ ] Versioning status is exactly `Disabled`. `Enabled` and `Suspended` are both incompatible with the upload no-overwrite guarantee. A bucket that was ever enabled cannot return to Disabled; use a newly approved bucket instead.
 - [ ] No lifecycle rule can expire active `objects/*` unexpectedly.
@@ -13,17 +14,18 @@ Every item is an approval-gated cloud/account change or verification. Record the
 ## RAM gate
 
 - [ ] Dedicated service identity is limited to the exact bucket and application `objects/*` prefix.
-- [ ] It has only required PutObject, GetObject/HeadObject, and DeleteObject actions; no bucket listing, ACL, public-access, CORS, versioning, website, policy, or PutObjectAcl administration.
+- [ ] Its action list is exactly `oss:PutObject`, `oss:GetObject` (which authorizes the HeadObject API), and `oss:DeleteObject`, and its resource is exactly `acs:oss:*:*:ajt-academiccloud-kl-8f3c/objects/*`; it has no bucket listing, ACL, public-access, CORS, versioning, website, policy, PutObjectAcl, KMS, or administrative permission.
 - [ ] AccessKey ID/secret are installed only in root-owned mode-0600 server environment configuration. They are absent from frontend bundles, Git, shell history, logs, database rows, and backups.
-- [ ] Rotation is rehearsed: install new credential, restart, verify, then revoke old. Static STS tokens are not used as permanent credentials.
+- [ ] Static STS tokens are not used as permanent credentials. Credential rotation (install new credential, restart and verify, then revoke old) remains a separate production operation and must not be marked complete merely because initial activation passed.
 
 ## CORS gate
 
 - [ ] Allowed origin is the one exact production HTTPS `APP_ORIGIN`; no `*`, alternate scheme, wildcard subdomain, or development origin.
-- [ ] Allowed methods are only `POST`, `GET`, and `HEAD`; browser access does not receive `DELETE`.
-- [ ] Allowed headers cover only the exact returned upload-policy fields and required browser request headers, including `Content-Type`, `Content-MD5`, and `x-oss-forbid-overwrite`. Avoid wildcard headers if OSS configuration permits an explicit list.
-- [ ] Exposed headers are limited to preview/download needs such as Content-Length, Content-Type, Content-MD5, ETag, and Accept-Ranges.
-- [ ] Preflight from the exact app origin succeeds; an evil origin and development origin fail.
+- [ ] Allowed methods contain only `POST`. Downloads and previews use signed navigation/subresource URLs rather than cross-origin JavaScript reads; browser access does not receive `GET`, `HEAD`, or `DELETE` through CORS.
+- [ ] Allowed headers are empty unless an actual production browser preflight identifies a required HTTP request header. The signed-policy values `Content-Type`, `Content-MD5`, and `x-oss-forbid-overwrite` are multipart form fields, not HTTP request headers, and must not be copied into this setting. Wildcard headers are forbidden.
+- [ ] Exposed headers are empty because the upload client reads only the HTTP `201` status, not OSS response headers. Add an exposed header only after a reviewed application change proves it is read by browser JavaScript.
+- [ ] CORS credential support is disabled/unset, and the preflight cache maximum age is exactly 300 seconds.
+- [ ] Preflight from the exact app origin succeeds without `Access-Control-Request-Headers`; evil, HTTP-scheme, development, unapproved-header, and non-POST method probes fail without an allow-origin response.
 
 ## Representative live acceptance
 
