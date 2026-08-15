@@ -8,7 +8,11 @@
 
 ### PROD-03C2 — Live Disposable-Object E2E and First-Usable Production Gates
 
-**Status:** In Progress — Gate 1 (authenticated HTTPS session acceptance) PASS with the repository-owned tool; preflight clean; E2E tooling committed with the deterministic pre-registration table; awaiting tooling review, then the Owner one-time E2E run, then the permanent-delete and autostart Owner gates
+**Status:** In Progress — deployment PASS (`e5217e8`, reviewed, smoke + frontend proof + boundary/resource checks green) and the fresh live E2E PASS (`runId=e01a604d6a90`, `VERDICT=true`, CORS boundary PASS). Remaining: ChatGPT independent E2E review, Owner browser Product Verification, the exact disposable-object permanent-delete confirmation, and the autostart decision.
+
+### L1-UX01 — Bilingual UI + Upload UX + Correct Browser Preview
+
+**Status:** In Progress — implementation + deterministic tests complete (backend 104/104, frontend 51/51, builds green); the three Owner browser findings (English-only UI, unclear upload speed/phases, Preview-triggers-download + garbled Unicode filenames) are fixed with the reviewed architecture (dedicated OSS custom browser domain, `OSS_BROWSER_ENDPOINT`, `preview_unavailable` fail-safe). Awaiting the ChatGPT independent implementation review; the `files.ajtlab.top` infrastructure gate, artifact rebuild, and deployment are NOT authorized yet.
 
 ## Completed
 
@@ -347,11 +351,12 @@ Completion notes:
 
 ## Ready
 
-None while PROD-03C2 is in progress.
+None while PROD-03C2 and L1-UX01 are in progress.
 
 ## Backlog — Layer 1
 
 - `PROD-03C3 — Operational Hardening` — Class-B cluster: backup cadence/retention, certificate renewal/reload automation (hard deadline before 2026-11-13), HSTS enablement after renewal and rollback are proven, production-format destructive restore drill, second disposable account and live cross-account isolation check, journal size/retention tuning.
+- `files.ajtlab.top` infrastructure gate (follows L1-UX01 review): DNS CNAME, OSS custom-domain binding, certificate issue/bind, `OSS_BROWSER_ENDPOINT` install, CSP site update, private-access verification, rollback — per `docs/deployment/files-ajtlab-top-plan.md`.
 
 ## Explicitly Deferred
 

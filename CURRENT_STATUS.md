@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last updated:** 2026-08-15
+**Last updated:** 2026-08-16
 
 ## Current Layer
 
@@ -107,7 +107,7 @@
 
 ## Current Task
 
-`PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification` is **Complete** on 2026-08-15 from synchronized checkpoint `f1d2a6aff3cea1c2af24114329d13a737d58bb1c`: the encrypted off-host backup gate passed first (production backup `a457628a…` encrypted to the committed `age1s4aqa7…` recipient, published to the private `AcademicCloud-Backups` repository at `d248336`, Owner vault confirmed, isolated restore rehearsal and independent backup-repo review PASS), the independent pre-cutover review passed, and the reviewed public edge is live — public HTTPS `200` with verified certificate chain, HTTP→HTTPS `301`, exact security headers, `/api/health` and `/api/ready` `200` through the edge, invalid-probe login `401` and cookie-less session `401`, backend exactly `127.0.0.1:3000`, OSS CORS boundary unchanged, zero OOM evidence, and the exact rollback state retained under `/var/lib/nginx-cutover-rollback`.
+`L1-UX01 — Bilingual UI + Upload UX + Correct Browser Preview` is **In Progress** (implementation + tests only, no production mutation): the three Owner browser Product Verification findings are fixed and tested — complete zh-CN/en UI switching (typed i18n layer, localStorage + navigator detection, live switching, `document.documentElement.lang`, localized errors/dates), clearer upload phases with real XHR-progress speed/ETA (throttled) plus a 120 s inactivity stall timeout replacing the fixed 15-minute cap and a concurrency-2 upload queue, and the correct browser-native preview architecture (dedicated OSS custom browser domain via optional `OSS_BROWSER_ENDPOINT` with `cname: true` signing; inline fails safely with `preview_unavailable` and a localized message when unconfigured; RFC 5987 Unicode `filename*` + ASCII fallback for attachments). Backend 104/104 and frontend 51/51 tests, typechecks, and builds are green; the CSP template and the non-mutating `files.ajtlab.top` plan (`docs/deployment/files-ajtlab-top-plan.md`) are prepared. The ChatGPT independent implementation review is the next gate; the `files.ajtlab.top` infrastructure step, artifact rebuild, and deployment are NOT authorized. `PROD-03C2` remains in progress: deployment PASS and fresh live E2E PASS (`e01a604d6a90`, `VERDICT=true`) await the independent E2E review, then the Owner browser re-verification and the permanent-delete/autostart gates.
 
 ## Production Preparation Status
 
@@ -193,8 +193,9 @@ The approved sequence is:
 6. `PROD-03B — Secret-Safe Activation, OSS CORS, Account, Service, and TLS`: complete. The exact certificate is issued and verified, the root-owned mode-0600 environment and migrated database with exactly one verified account exist, the exact hardened unit is disabled-but-active loopback-only on `127.0.0.1:3000`, authentication/session/resource/OOM acceptance passed, and no public AcademicCloud Nginx route was enabled; certificate renewal activation remains closed.
 7. `PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification`: complete — encrypted off-host backup/restore gate passed before cutover, public HTTPS edge live and fully verified, exact rollback retained.
 8. `PROD-03R — Production Acceptance and Repository-State Reconciliation`: complete — 415 root cause proven (harness defect, not production), repository-owned acceptance tooling in place, durable state reconciled, independent review PASS. No production mutation occurred.
-9. `PROD-03C2 — Live Disposable-Object E2E and First-Usable Production Gates`: Ready after PROD-03R. Class-A live gates: corrected authenticated session acceptance (Owner hidden-input run once), pre-registered disposable-object E2E, the exact permanent-delete Owner confirmation, and the reboot/autostart decision.
-10. `PROD-03C3 — Operational Hardening`: backlog. Backup cadence, renewal automation (hard deadline before 2026-11-13), HSTS after renewal/rollback proven, destructive restore drill, second account/isolation check, journal retention.
-11. Layer 2 remains closed.
+9. `PROD-03C2 — Live Disposable-Object E2E and First-Usable Production Gates`: in progress — deployment PASS and fresh live E2E PASS recorded; independent E2E review, Owner browser re-verification, permanent-delete confirmation, and autostart decision remain.
+10. `L1-UX01 — Bilingual UI + Upload UX + Correct Browser Preview`: in progress — implementation + tests complete; ChatGPT implementation review next; the `files.ajtlab.top` infrastructure gate, artifact rebuild, and deployment are separate Owner-authorized steps.
+11. `PROD-03C3 — Operational Hardening`: backlog. Backup cadence, renewal automation (hard deadline before 2026-11-13), HSTS after renewal/rollback proven, destructive restore drill, second account/isolation check, journal retention.
+12. Layer 2 remains closed.
 
 Layer 2 remains deferred.
