@@ -34,7 +34,7 @@ Reconcile the actual application contracts, production acceptance tooling, compl
 - [x] durable-state contradictions reconciled (living docs only; historical facts preserved)
 - [x] complete remaining First Usable Production gate list with A/B/C classification recorded
 - [x] the next bounded task card created from the gap analysis
-- [x] applicable tests/checks pass (`node --check`, frontend tests 23/23, `git diff --check`, secret scan) and the independent read-only review passes
+- [x] applicable tests/checks pass (`node --check`, frontend tests 23/23, `git diff --check`, secret scan) and the independent read-only review passes (initial review FAIL → fixed `PROJECT_SPEC.md` stale current-state claims, hardened the acceptance tool null path, corrected the 415-source wording → follow-up review PASS)
 - [x] a clean task-level commit is pushed through strict SSH
 
 ## Relevant ADRs
@@ -56,7 +56,7 @@ Reconcile the actual application contracts, production acceptance tooling, compl
 
 ## Current State
 
-In progress on `codex/prod-03r` from `e16682876c6d25261bdce0342784d9fe84959f2d`. Production is frozen: no host mutation was performed; the only network probes were read-only (no-cookie requests and the Owner's own harness run).
+Complete. All acceptance criteria pass; the reconciliation checkpoint is pushed on `codex/prod-03r` and ready to merge. Production remained frozen throughout: no host mutation, application change, or production-data change occurred.
 
 ## Completed
 
@@ -69,8 +69,7 @@ In progress on `codex/prod-03r` from `e16682876c6d25261bdce0342784d9fe84959f2d`.
 
 ## Remaining
 
-- Complete the independent read-only review of the reconciliation diff.
-- Commit and push the reconciliation checkpoint; stop before any live production action.
+None for PROD-03R. Merge the checkpoint to `main`, then start `PROD-03C2` (Ready) with the Owner's one-time acceptance-tool run and the live disposable-object E2E boundary.
 
 ## Blockers
 
@@ -78,7 +77,7 @@ None.
 
 ## Last Verification
 
-2026-08-15 (Phase B wire evidence): production `POST /api/auth/logout` with `Origin` and no Content-Type returns `204`; with `Origin` plus `application/x-www-form-urlencoded` and `Content-Length: 0` returns `415`; with `Origin` plus `text/plain` returns `204`. Frontend tests 23/23 pass including the new logout contract pin; `node --check` passes on the acceptance tool; `git diff --check` and the secret scan are clean.
+2026-08-15 (Phase B wire evidence): production `POST /api/auth/logout` with `Origin` and no Content-Type returns `204`; with `Origin` plus `application/x-www-form-urlencoded` and `Content-Length: 0` returns `415`; with `Origin` plus `text/plain` returns `204`. Frontend tests 23/23 pass including the new logout contract pin; `node --check` passes on the acceptance tool; `git diff --check` and the secret scan are clean. Independent read-only review: initial FAIL (incomplete `PROJECT_SPEC.md` correction and two minor tooling notes) → all three fixed → follow-up review PASS on the delta.
 
 ## First Usable Production gate list (Phase E)
 
@@ -102,4 +101,4 @@ Class C — deliberately deferred/non-goal:
 
 ## Next Action
 
-Finish the independent review and push the reconciliation checkpoint; then start `PROD-03C2` (Ready) with the Owner's one-time acceptance-tool run and the live disposable-object E2E boundary.
+Stop PROD-03R. Merge the checkpoint to `main`, then start `PROD-03C2` (Ready) with the Owner's one-time acceptance-tool run and the live disposable-object E2E boundary.

@@ -6,11 +6,19 @@
 
 ## In Progress
 
-### PROD-03R — Production Acceptance and Repository-State Reconciliation
-
-**Status:** In Progress — reconciliation/diagnosis only; no production mutation; root cause of the 415 harness defect established with production wire evidence; repository-owned acceptance tooling and durable-state corrections prepared for review
+None while the PROD-03R reconciliation checkpoint synchronizes.
 
 ## Completed
+
+### PROD-03R — Production Acceptance and Repository-State Reconciliation
+
+**Status:** Done — reconciliation/diagnosis only; production never mutated; independent review PASS after one follow-up fix
+
+Completion notes:
+- [x] proven the observed logout `415` root cause: PowerShell 5.1 `Invoke-WebRequest` injects `Content-Type: application/x-www-form-urlencoded` on body-less POSTs; Fastify's content-type-parser layer rejects it with 415; production logout is NOT defective (browser-shape request returns `204`; backend tests pin the contract)
+- [x] old external harness defective: YES; removed; replaced by repository-owned `scripts/production-https-acceptance.mjs` (Node fetch semantics mirroring `frontend/src/api.ts`, muted secret input, status/boolean output only) plus a frontend contract test pinning the body-less no-Content-Type logout shape
+- [x] reconciled living durable state (AGENTS.md, workflow SKILL.md, CURRENT_STATUS.md, TASK_BOARD.md, PROJECT_SPEC.md, README.md, production-runbook.md, PROD-03C1 evidence note); historical checkpoint facts preserved as history
+- [x] recorded the complete First Usable Production gate list with A/B/C classification and created the next bounded task `PROD-03C2`
 
 ### PROD-03C1 — Public HTTPS/Nginx Edge Cutover and Minimum Machine Verification
 
