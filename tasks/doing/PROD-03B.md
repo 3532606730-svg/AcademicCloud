@@ -88,12 +88,11 @@ In progress at the mandatory Owner boundary on `codex/prod-03b` from synchronize
 - Received the Owner's one-row Alibaba RAM credential export outside the repository. Only its schema was inspected without emitting values. The wrapper now requires that repository-external exact six-column local CSV, parses its one row transiently, clears the RAM console password and full-row references before SSH, rejects application-password reuse of either RAM secret, and preserves visible local Owner-private ACME-email/login prompts plus hidden independent application-password input.
 - Received independent Reviewer PASS for the exact mandatory-CSV wrapper SHA-256 `3e7b66b6026b794d7ad339d9f2e90f7edc79c13df1ef1f40445274590b8780e6`, now the single canonical Owner-facing pin; the Reviewer did not read, locate, hash, or output any source CSV value. CORS and remote-script identity gates remain before CSV access, so the current `403` stops safely before secrets are read.
 - Reconciled the Owner-facing hash-pin mismatch on 2026-08-15: the stale `1ec8a632…` value quoted to the Owner was the superseded pre-CSV wrapper revision (unreachable blob `6bef7a705c42caf49ee4b56f468b8598a8bf66b9`, 9,429 bytes). The local file `3e7b66b6…` is the final reviewed mandatory-CSV revision (13,169 bytes), and the `1ec8a632… → 3e7b66b6…` delta is exactly the mandatory repository-external CSV change. Updated the prepare-runner pin to the canonical hash (new runner identity `62421fadd1129d85c878e4f343820bd069b94b72636f0bd2cf8d497a4ce3fe1b`) and added `.gitattributes` (`*.ps1`/`*.sh` `text eol=lf`) so `core.autocrlf` can never rewrite the pinned scripts on checkout.
+- Created the reconciled checkpoint commit `5e93e06` on `codex/prod-03b` (pinned scripts, `.gitattributes`, OSS checklist, status docs, and this task card; committed blobs byte-identical to `3e7b66b6…`/`98dbc9cf…`/`62421fad…`) and pushed the branch through strict SSH; `origin/codex/prod-03b` matches the local checkpoint. The independent read-only Reviewer re-verified the final scripts and canonical hashes with verdict PASS.
 
 ## Remaining
 
-- Present the shortest Owner-only hidden-input and exact CORS console actions after independent review.
-- Execute and verify resumable activation, TLS, empty database/account creation, real loopback service, authentication/resource/OOM evidence, and final host state.
-- Complete independent review, durable state, clean commit, strict SSH push, and GitHub/default-main equality.
+- Execute and verify resumable activation, TLS, empty database/account creation, real loopback service, authentication/resource/OOM evidence, and final host state; after it passes, merge `codex/prod-03b` to `main` and confirm GitHub/default-main equality.
 
 ## Blockers
 
