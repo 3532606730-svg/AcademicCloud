@@ -341,7 +341,10 @@ const argon2 = require("argon2");
 const database = new Database(databasePath, { readonly: true, fileMustExist: true });
 try {
   const row = database.prepare("select password_hash as passwordHash from accounts where login_name = ?").get(loginName);
-  if (!row || !row.passwordHash.startsWith("$argon2id$v=19$m=65536,t=3,p=1$") || !(await argon2.verify(row.passwordHash, password))) {
+  const hashParts = String(row ? row.passwordHash : "").split("$");
+  const parametersMatch = hashParts.length >= 5 && hashParts[1] === "argon2id" && hashParts[2] === "v=19" &&
+    hashParts[3].split(",").sort().join(",") === "m=65536,p=1,t=3";
+  if (!row || !parametersMatch || !(await argon2.verify(row.passwordHash, password))) {
     throw new Error("Owner input does not authenticate the exact initial account");
   }
   database.pragma("foreign_keys = ON");
