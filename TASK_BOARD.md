@@ -8,7 +8,7 @@
 
 ### PROD-03B — Secret-Safe Activation, OSS CORS, Account, Loopback Service, and TLS Preparation
 
-**Status:** In Progress — first activation reached phase `account-provisioned` (certificate, environment, migrated database, one account) and failed closed at a stale Argon2 encoded-prefix gate; root cause proven, order-agnostic fix prepared and locally verified, pending independent review and remote install before the Owner wrapper rerun
+**Status:** In Progress — first activation reached phase `account-provisioned` (certificate, environment, migrated database, one account) and failed closed at a stale Argon2 encoded-prefix gate; root cause proven, order-agnostic fix reviewed (PASS) and installed (`944c1ee5…`, evidence `fdf0895c…`), account resumable, stopped again at the mandatory Owner wrapper rerun
 
 Goal: use the reviewed mandatory repository-external CSV path for the Owner-supplied dedicated RAM AccessKey while refusing reuse of either RAM secret, collect ACME email/login through visible Owner-private local prompts and the independent application password through hidden local input, send all five activation fields only over SSH stdin, verify exact private-bucket/CORS gates, create the first database/account, run and measure the real hardened unit loopback-only, and issue/verify TLS without enabling the public AcademicCloud Nginx route. Certificate-renewal enablement remains closed until the final edge configuration proves the ACME challenge path.
 
