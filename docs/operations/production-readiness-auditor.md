@@ -15,13 +15,20 @@ work, DNS/custom-domain changes, backup verification, incident triage, release
 drift detection, and future Layer 2 preparation. Layer 1 operational scope
 only; the tool knows nothing about future Layer 2 business concepts.
 
+## Status
+
+`FIRST_LIVE_AUDITOR_RUN=false` — the tool has never been run in live mode
+against production, and must not be until ChatGPT reviews L1-OPS01R1 and a
+later task authorizes the first live run.
+
 ## Read-only guarantee / threat model
 
 - Local commands run through `execFile` with **argument arrays** — no local
   shell, no shell-concatenation of user input.
 - The only user-controlled value that reaches SSH is the alias, validated
   against `^[A-Za-z0-9][A-Za-z0-9._-]*$`; it can never become an SSH option or
-  command fragment.
+  command fragment. `buildSshArgs` returns ONLY options + quoted remote args;
+  the executable `ssh` is supplied exactly once by the executor.
 - Remote checks are a **fixed, reviewed allowlist** (`checks.mjs`
   `FIXED_REMOTE`) of static argument arrays, POSIX-quoted for the remote login
   shell. There is deliberately no `--remote-command`, `--exec`, `--query`, or
@@ -32,11 +39,17 @@ only; the tool knows nothing about future Layer 2 business concepts.
   `ConnectTimeout`; host verification is never disabled and passwords are
   never prompted. Privileged reads use `sudo -n` only; if unavailable the
   dependent checks become `UNKNOWN`.
+- Remote SSH concurrency is capped at **2** (`MAX_SSH_CONCURRENCY`); no
+  unbounded `Promise.all` groups.
 - HTTP is **GET only** (no auth, no cookies stored, no redirects followed);
   the SQLite audit is a fixed script opened with
   `readonly: true, fileMustExist: true` returning aggregates only; the
   environment file is read through fixed `grep` patterns for the approved
   non-secret keys with secret keys reported `PRESENT`/`ABSENT` only.
+- Raw application logs NEVER enter the Node process: journal error counts,
+  kernel-OOM counts, cron/timer occurrences, and Nginx 5xx counts are
+  aggregated remotely through fixed static `sh -c` pipelines (`| wc -l` /
+  `grep -c`), which the mutation-denylist test still covers.
 - A final **report safety assertion** recursively rejects any serialized
   string matching private-key PEMs, bearer tokens, session cookies, AccessKey
   values, signed-URL parameters, object-key paths, Argon2 hashes, or policy
@@ -59,14 +72,46 @@ tool and a later task authorizes `FIRST_LIVE_AUDITOR_RUN=true`.
 
 `baseline` (default): production healthy even though the files custom domain
 is intentionally undeployed (`FILES_*` checks are informational/INFO).
-`ux01-ready`: the files domain, TLS, `OSS_BROWSER_ENDPOINT`, and CSP inclusion
-are **required PASS** — the profile for pre/post Transaction-B gates.
+`ux01-ready`: `FILES_DNS_TARGET` (against `--expected-files-cname`; missing
+expectation ⇒ UNKNOWN ⇒ INDETERMINATE, never READY), `FILES_TLS_AVAILABLE`,
+`FILES_CSP_ALLOWED` (files domain in img-src AND frame-src), and
+`FILES_BROWSER_ENDPOINT_CONFIGURED` (exact `https://files.ajtlab.top`) become
+required gates. No Alibaba/Porkbun target is ever hard-coded as truth.
+
+## Resource safety (1 GiB host)
+
+The auditor adds **no material pressure** to the production host: no builds,
+no npm, no archive creation, no recursive tree scans, no load testing, no DB
+export, no raw-log transfer, ≤2 concurrent SSH sessions, bounded command
+timeouts and output caps, read-only SQLite aggregates only, and a resource
+guard (`HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB = 256 MiB`): below that threshold
+the heavy read-only audits (SQLite integrity, journal aggregations) are
+skipped and reported UNKNOWN (which can make the overall result
+INDETERMINATE — the correct behavior), with `RESOURCE_GUARD_TRIGGERED` WARN.
 
 ## Exit codes
 
 `0` READY · `1` tool/usage error · `2` NOT_READY (required FAIL) ·
-`3` INDETERMINATE (no FAIL, but required UNKNOWN). WARN never changes the
-overall result. No probability or score is ever computed.
+`3` INDETERMINATE (no definite FAIL, but at least one required gate is not
+PASS). **READY requires every required gate to be PASS** — a required WARN,
+INFO, UNKNOWN, or NOT_APPLICABLE yields INDETERMINATE. WARN/advisory alone
+never changes the overall result. No probability or score is ever computed.
+
+## Gate semantics and profiles
+
+`baseline` (default): production healthy even though the files custom domain
+is intentionally undeployed (`FILES_*` checks are informational/INFO).
+`ux01-ready`: `FILES_DNS_TARGET` (against `--expected-files-cname`, case +
+trailing-dot normalized; a missing expectation is UNKNOWN), `FILES_TLS_AVAILABLE`,
+`FILES_CSP_ALLOWED` (img-src AND frame-src — other directives do not count),
+and `FILES_BROWSER_ENDPOINT_CONFIGURED` (exact `https://files.ajtlab.top`)
+are required PASS.
+
+Key required gates include `TLS_CLOUD_VALID` (authorization only; expiry is
+the separate advisory `TLS_CLOUD_EXPIRY_HEADROOM`), `DB_INTEGRITY`,
+`DB_FOREIGN_KEYS`, `DB_SCHEMA` (live vs the repository migration count — no
+hard-coded version), and `RELEASE_SERVICE_WRITE_DENIED` (non-mutating
+`test -w` under the service account).
 
 ## Status and evidence semantics
 
