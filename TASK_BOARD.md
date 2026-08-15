@@ -12,7 +12,11 @@
 
 ### L1-UX01 — Bilingual UI + Upload UX + Correct Browser Preview
 
-**Status:** In Progress — implementation + deterministic tests complete (backend 104/104, frontend 60/60, builds green). `L1-UX01R1` repaired the review's bounded set (pinned destinations, retries inside the concurrency-2 scheduler with shared re-upload metrics, byte-progress stall liveness, XHR-vs-file metric semantics, live-CSP capture/add-only/exact-rollback plan wording) and `L1-UX01R2` fixed the final two edges (retry active-slot claim before pending `completeUpload`; zero-byte progress no longer refreshes the stall window), each with deterministic regressions; the preview-URL expiry limitation is recorded as a known Product Verification item. Awaiting the ChatGPT FINAL re-review; the `files.ajtlab.top` infrastructure gate, artifact rebuild, and deployment are NOT authorized yet.
+**Status:** Implementation PASS recorded (`INDEPENDENT_L1_UX01_IMPLEMENTATION_PASS=true`) — implementation + deterministic tests complete (backend 104/104, frontend 60/60, builds green) through `L1-UX01R1`/`L1-UX01R2`; the preview-URL expiry limitation is recorded as a known Product Verification item. The production gate is documented (`docs/deployment/l1-ux01-production-gate.md`, `files-ajtlab-top-plan.md`); the `files.ajtlab.top` infrastructure step, CI artifact build, deployment, and Owner browser PV await the ChatGPT production-plan review and the Owner-authorized window.
+
+### L1-PROD04A — First Usable Production Readiness Reconciliation and Deployment Package
+
+**Status:** In Progress — documentation/readiness only; the deployment package (two-transaction checklist, corrected DNS/TLS/CSP plan, rollback matrix, PV matrix, FMEA, readiness gate matrix, hardening priorities, OSS body DR options) is prepared and awaiting the ChatGPT production-plan review. Zero production mutation.
 
 ## Completed
 
