@@ -160,6 +160,13 @@ database and migrations paths against the approved change record.
 
 ## Routine release and rollback
 
+> The reviewed L1-UX01 production window has a dedicated operator checklist
+> with capture/verify/rollback matrices: see
+> `docs/deployment/l1-ux01-production-gate.md` (two transactions: files-domain
+> infrastructure, then application deployment) and
+> `docs/deployment/files-ajtlab-top-plan.md`. Use those for the UX01 window;
+> the generic routine below remains the baseline procedure.
+
 1. Stage and validate the new immutable release without switching `current`. Open the approved operations shell and define `academiccloud_op` as above.
 2. Create and verify a consistent backup:
 
