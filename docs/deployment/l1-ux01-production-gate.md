@@ -35,6 +35,8 @@ Current identities (verified read-only 2026-08-15):
 
 - [ ] DNS: exact current `files.ajtlab.top` record set (parking CNAME target,
       TTL 600) + `cloud.ajtlab.top` reference record
+- [ ] CAA: query BOTH `files.ajtlab.top` AND `ajtlab.top` (parent policy can
+      apply); record results; no CAA mutation
 - [ ] OSS: current custom-domain binding state (expected: none)
 - [ ] TLS: current certificate state for both hostnames
 - [ ] env: safe-field snapshot of `/etc/academiccloud/academiccloud.env`
@@ -45,6 +47,19 @@ Current identities (verified read-only 2026-08-15):
 - [ ] release: `readlink -f /opt/academiccloud/current`
 - [ ] backup: current `/var/lib/academiccloud/backups/` inventory
 
+## PRE-MUTATION ARTIFACT GATE (before ANY cloud/DNS/TLS mutation)
+
+The exact reviewed source artifact must exist and be cryptographically proven
+BEFORE any OSS/Porkbun/TLS mutation (builds happen in CI, never on the host):
+
+- [ ] `B0` GitHub Actions `production-build.yml` builds the EXACT reviewed
+      source commit (record run id + commit)
+- [ ] `B1` artifact identity chain: ZIP SHA-256 → four-file bundle → archive
+      SHA-256 → manifest (sourceCommit/platform/arch/node) →
+      `scripts/production-artifact.mjs verify` on Linux x64 Node 24 → status ok
+
+Failure of the artifact gate: **no cloud mutation**.
+
 ---
 
 ## TRANSACTION A — files.ajtlab.top INFRASTRUCTURE
@@ -52,27 +67,30 @@ Current identities (verified read-only 2026-08-15):
 | # | Step | Type |
 |---|------|------|
 | A1 | OSS console: bind custom domain `files.ajtlab.top` to bucket `ajt-academiccloud-kl-8f3c`; no ACL/public/versioning/policy change; Block Public Access stays enabled | `OWNER-GATED MUTATION` |
+| A1a | **Conditional domain-ownership verification.** If Alibaba requests ownership proof (NeedVerifyDomainOwnership): capture the EXACT OSS-provided `_dnsauth` TXT hostname/value, add the exact TXT record via Porkbun (Owner-gated), wait for propagation, verify ownership in the console, complete the mapping, and remove the TXT only after Alibaba confirms it is no longer required (verify removal). NEVER touch the main `files` CNAME during ownership verification; never invent the token/hostname | `OWNER-GATED MUTATION` (conditional) |
 | A2 | Record the ACTUAL CNAME target the OSS console assigns/requires for this bucket/region (do NOT reuse the old hard-coded endpoint assumption) | read-only |
-| A3 | Issue/import + bind a certificate for exactly `files.ajtlab.top` per the TLS lifecycle decision in `files-ajtlab-top-plan.md` | `OWNER-GATED MUTATION` |
-| A4 | Verify OSS custom-domain TLS BEFORE any application change: `https://files.ajtlab.top/<known-test-key>` serves TLS with the right certificate | read-only |
+| A3 | Issue/import + bind a certificate for exactly `files.ajtlab.top` per the TLS lifecycle decision in `files-ajtlab-top-plan.md` (record: certificate type, hosting/renewal status, validation method, deployment association, expiry monitoring/notification, cost Owner confirmation; else `CERTIFICATE_LIFECYCLE_CLOSED=false`) | `OWNER-GATED MUTATION` |
+| A4 | **Pre-cutover validation before DNS moves** (where technically possible): resolve the actual OSS target, then operator-side probe with `curl --resolve files.ajtlab.top:443:<target-IP> https://files.ajtlab.top/<known-test-key>` — verify certificate SAN, TLS, custom-domain routing, unsigned access denied. Never permanently edit hosts; never treat the target IP as configuration. If the OSS edge cannot be reliably prevalidated: mark A4 = `NOT-PROVABLE-PRE-DNS`, then replace DNS, verify immediately, and on failure restore the exact parking record | read-only probe |
 | A5 | Porkbun: REPLACE the captured parking CNAME with `files.ajtlab.top CNAME <actual-OSS-target>` (record new TTL; never add a second record) | `OWNER-GATED MUTATION` |
 | A6 | DNS convergence: confirm resolution to the OSS target (TTL wait + recheck) | read-only |
-| A7 | Anonymous unsigned request to a known key must stay 403; bucket listing 403 | read-only |
-| A8 | A fresh signed GET (via the CURRENT backend signing path or a recorded safe probe) must succeed with 200 | read-only |
-| A9 | Record exact rollback info: parking record + TTL, certificate id, OSS binding state | record |
+| A7 | Anonymous unsigned request to a known key must stay 403; bucket listing 403; TLS serves with the correct certificate | read-only |
+| A8 | Record exact rollback info: parking record + TTL, certificate id, OSS binding state, TXT record state | record |
 
-Gate A PASS criteria: A4+A6+A7+A8 all green; A9 recorded; no public access
-introduced; `cloud.ajtlab.top` completely untouched.
+Gate A PASS criteria: pre-mutation artifact gate green; A4/A6/A7 green (or
+A4 explicitly NOT-PROVABLE-PRE-DNS with immediate post-DNS verification);
+A8 recorded; no public access introduced; `cloud.ajtlab.top` untouched.
+**Transaction A proves only domain mapping, CNAME, TLS, and the private
+unsigned boundary — NOT application signed-GET behavior.**
 
 ## TRANSACTION B — UX01 APPLICATION DEPLOYMENT
 
 | # | Step | Type |
 |---|------|------|
-| B0 | GitHub Actions `production-build.yml` builds the EXACT reviewed source commit (record run id + commit) | CI (Owner-triggered) |
-| B1 | Verify artifact chain: ZIP SHA-256 → four-file bundle → archive SHA-256 → manifest (sourceCommit/platform/arch/node) → `scripts/production-artifact.mjs verify` on Linux (status ok) | read-only verify |
+| B0 | (already performed in the PRE-MUTATION ARTIFACT GATE — do not rebuild) | — |
+| B1 | (already performed — artifact identity chain recorded) | — |
 | B2 | Pre-deploy DB backup via `academiccloud_op` `backup-main.js create` + `verify` (record sha256/bytes/schemaVersion/counts) | `OWNER-GATED MUTATION` (protective) |
 | B3 | Age-encrypt the verified backup (public recipient only) + non-secret manifest; push to private `AcademicCloud-Backups`; verify remote | `OWNER-GATED MUTATION` (off-host, protective) |
-| B4 | Transfer verified bundle; stage the new immutable release at `/opt/academiccloud/releases/<new-commit>` (root-owned, service-write denied); Linux verifier PASS; migrations byte-identical to v4 set | `OWNER-GATED MUTATION` (staging only) |
+| B4 | Transfer the verified bundle; stage the new immutable release at `/opt/academiccloud/releases/<new-commit>` (root-owned, service-write denied); Linux verifier PASS; migrations byte-identical to the v4 set | `OWNER-GATED MUTATION` (staging only) |
 | B5 | Install `OSS_BROWSER_ENDPOINT=https://files.ajtlab.top` in the root-only env file via the approved secret-safe procedure (record exact previous line state) | `OWNER-GATED MUTATION` |
 | B6 | Capture live CSP (file + served header) again immediately before editing | read-only |
 | B7 | Construct candidate CSP: ADD ONLY `https://files.ajtlab.top` to `img-src` and `frame-src` | file edit (staged, not yet active) |
@@ -84,13 +102,16 @@ introduced; `cloud.ajtlab.top` completely untouched.
 | B13 | `systemctl start academiccloud` (do NOT enable); bounded wait for active | `OWNER-GATED MUTATION` |
 | B14 | Loopback health/ready 200; single `127.0.0.1:3000`; journal clean; NRestarts 0 | read-only verify |
 | B15 | Public smoke: HTTPS 200, HTTP→301, `/api/health` 200, anonymous session 401 | read-only verify |
+| B15a | **Application signed-GET proof (NEW release only)**: with the UX01 release active and `OSS_BROWSER_ENDPOINT` loaded — authenticated inline authorization returns a URL whose host is EXACTLY `files.ajtlab.top`; a safe GET returns 200/206 with correct Content-Type/bytes; the unsigned equivalent stays denied. Do NOT print the signed URL; do NOT log the query or object key. Failure: **STOP before CSP activation** | Owner-assisted read-only (authenticated) |
 | B16 | `nginx -s reload` ONLY after `nginx -t` passed (CSP change) | `OWNER-GATED MUTATION` |
 | B17 | Final smoke: served CSP header contains `files.ajtlab.top` ONLY in img-src/frame-src; frontend index references the NEW asset; public JS hash == staged file | read-only verify |
 | B18 | Owner browser Product Verification (PV matrix below) | Owner-driven |
 
-Gate B PASS criteria: B0–B17 all green; B18 PV matrix completed with PASS on
-every row (or documented known-limitation outcomes for the preview-expiry
-item); frozen evidence untouched; no permanent deletion during PV.
+Gate B PASS criteria: pre-mutation artifact gate green; B2–B17 all green
+(including B15a application signed-GET proof on the NEW release BEFORE CSP
+activation); B18 PV matrix completed with PASS on every row (or documented
+known-limitation outcomes for the preview-expiry item); frozen evidence
+untouched; no permanent deletion during PV.
 
 ## ROLLBACK MATRIX (exact, in preferred order)
 

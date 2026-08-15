@@ -53,12 +53,23 @@ rollback state.
 
 ## Production steps (future gate — DO NOT execute now)
 
+**Ordering rule:** the exact reviewed source artifact is built and
+cryptographically verified (CI + `production-artifact.mjs verify`) BEFORE any
+OSS/Porkbun/TLS mutation; see the PRE-MUTATION ARTIFACT GATE in
+`l1-ux01-production-gate.md`.
+
 1. **OSS custom-domain binding**: in the Alibaba Cloud OSS console, bind the
    custom domain `files.ajtlab.top` to the existing private bucket
    `ajt-academiccloud-kl-8f3c` (region `oss-ap-southeast-3`). No bucket ACL,
    policy, versioning, or public-access change; Block Public Access remains
    enabled. Record the exact console feedback and any prerequisites
    (e.g. ICP/region or certificate requirements) verbatim.
+1a. **Conditional domain-ownership verification**: if Alibaba requires it,
+    capture the EXACT OSS-provided `_dnsauth` TXT hostname/value, add that
+    exact TXT (Owner-gated), wait for propagation, verify ownership, complete
+    the mapping, then remove the TXT only after Alibaba confirms it is no
+    longer required (and verify the removal). The main `files` CNAME is never
+    touched during this step; the token/hostname is never invented.
 2. **Determine the ACTUAL CNAME target — do not guess.** After the binding
    step, read the target the OSS console/API assigns or requires for THIS
    bucket/region (a dedicated OSS custom-domain CNAME target if the
@@ -67,45 +78,60 @@ rollback state.
    `ajt-academiccloud-kl-8f3c.oss-ap-southeast-3.aliyuncs.com.` string is
    recorded only as a candidate, NOT an assumption. Only after the exact
    target is recorded may DNS be edited.
-3. **DNS — replace the parking record, not create**: in the Owner's Porkbun
-   control panel, capture the existing record (CNAME `pixie.porkbun.com`,
-   TTL 600), then REPLACE it with `files.ajtlab.top CNAME <actual-OSS-target>`
-   keeping a sensible TTL (the captured TTL is the rollback value). Do not add
-   a second conflicting record; do not touch `cloud.ajtlab.top`.
-4. **HTTPS certificate**: issue/import a valid certificate for exactly
+3. **HTTPS certificate**: issue/import a valid certificate for exactly
    `files.ajtlab.top` (see the TLS lifecycle decision below), then bind it to
    the OSS custom domain so `https://files.ajtlab.top` terminates TLS at OSS.
    A wildcard is acceptable only if the Owner prefers `*.ajtlab.top` and
    reviews the sibling-host implication.
-5. **Private-access verification**: prove that anonymous, unsigned requests
-   to `https://files.ajtlab.top/<known-test-key>` are denied (`403`), that a
-   fresh signed GET succeeds, and that bucket listing remains impossible —
-   the custom domain must grant no public read permission.
-6. **Application environment value**: install
+4. **Pre-cutover validation (where technically possible)**: while DNS still
+   points at the parking record, resolve the actual OSS target and probe with
+   an operator-side `curl --resolve files.ajtlab.top:443:<target-IP>
+   https://files.ajtlab.top/<known-test-key>` — verify certificate SAN, TLS,
+   custom-domain routing, and unsigned-access denial. Never permanently edit
+   hosts files; never treat the target IP as configuration. If this cannot be
+   prevalidated reliably: mark it `NOT-PROVABLE-PRE-DNS`, then replace DNS,
+   verify immediately, and on failure restore the exact parking record.
+5. **DNS — replace the parking record, not create**: in the Owner's Porkbun
+   control panel, capture the existing record (CNAME `pixie.porkbun.com`,
+   TTL 600), then REPLACE it with `files.ajtlab.top CNAME <actual-OSS-target>`
+   keeping a sensible TTL (the captured TTL is the rollback value). Do not add
+   a second conflicting record; do not touch `cloud.ajtlab.top`.
+6. **DNS convergence validation**: wait past the TTL and confirm resolution
+   to the OSS target.
+7. **Private-access verification**: prove that anonymous, unsigned requests
+   to `https://files.ajtlab.top/<known-test-key>` are denied (`403`), that
+   bucket listing remains impossible, and that TLS serves the correct
+   certificate — the custom domain must grant no public read permission.
+   (Application signed-GET proof is NOT part of this transaction: it happens
+   in Transaction B after the UX01 release is active — see
+   `l1-ux01-production-gate.md` B15a.)
+8. **Application environment value**: install
    `OSS_BROWSER_ENDPOINT=https://files.ajtlab.top` into
    `/etc/academiccloud/academiccloud.env` (root:root 0600) through the
    approved secret-safe procedure (part of Transaction B, after the
    infrastructure steps pass). The config loader rejects any non-exact HTTPS
    origin and requires HTTPS in production.
-7. **ali-oss `cname=true` behavior**: `createAliyunBrowserClient` builds the
+9. **ali-oss `cname=true` behavior**: `createAliyunBrowserClient` builds the
    signing client with `endpoint: files.ajtlab.top, cname: true`, so signed
    URLs have host `files.ajtlab.top` and path `/<objectKey>` — no bucket
    prefix. Backend HEAD/Delete/stat continue on the native client; upload
    authorization stays on the native bucket endpoint.
-8. **CSP — live-file capture, add-only diff, exact restore** (Transaction B):
-   1. Capture the live `Content-Security-Policy` (snippet file AND served
-      response header, cross-checked) plus a full copy of the file.
-   2. Confirm the current deployment-specific OSS origins and preserve every
-      active production origin/directive verbatim.
-   3. Modify ONLY `img-src` and `frame-src`: append ` https://files.ajtlab.top`.
-   4. Diff old vs candidate CSP; the ONLY semantic additions must be
-      `https://files.ajtlab.top` in those two directives. No `https:`/`*`.
-   5. `nginx -t` BEFORE reload; reload only after it passes.
-   6. Rollback restores the EXACT captured previous CSP (file + header),
-      never a reconstruction from the generic template.
-9. **No public bucket permission**: nothing makes the bucket or any object
-   public; Preview/download remain authorization-controlled.
-10. **No permanent object exposure**: authorization duration stays short-lived
+10. **CSP — live-file capture, add-only diff, exact restore** (Transaction B):
+    CAA for BOTH `files.ajtlab.top` AND `ajtlab.top` is queried before any
+    TLS work (parent policy can apply); no CAA mutation.
+    1. Capture the live `Content-Security-Policy` (snippet file AND served
+       response header, cross-checked) plus a full copy of the file.
+    2. Confirm the current deployment-specific OSS origins and preserve every
+       active production origin/directive verbatim.
+    3. Modify ONLY `img-src` and `frame-src`: append ` https://files.ajtlab.top`.
+    4. Diff old vs candidate CSP; the ONLY semantic additions must be
+       `https://files.ajtlab.top` in those two directives. No `https:`/`*`.
+    5. `nginx -t` BEFORE reload; reload only after it passes.
+    6. Rollback restores the EXACT captured previous CSP (file + header),
+       never a reconstruction from the generic template.
+11. **No public bucket permission**: nothing makes the bucket or any object
+    public; Preview/download remain authorization-controlled.
+12. **No permanent object exposure**: authorization duration stays short-lived
     (`OSS_DOWNLOAD_AUTHORIZATION_SECONDS`, bounded 30–900 s). Closing and
     reopening Preview requests a fresh authorization. The large-PDF
     signed-URL-lifetime behavior is a recorded Product Verification item
@@ -117,27 +143,30 @@ rollback state.
 infrastructure, UNLIKE `cloud.ajtlab.top` (TLS at Nginx + Certbot on the
 host). Renewal must therefore be decided explicitly:
 
-- **Option A — Alibaba Cloud managed certificate (certificate-deployment
-  workflow).** Renewal/rotation handled by the platform; no host involvement.
-  PREFERRED if the current account/console provides managed certificates for
-  OSS custom domains: lowest manual burden, no host secret expansion, but
-  availability/cost must be confirmed in the current console.
+- **Option A — Alibaba Certificate Management Service + hosted certificate
+  deployment.** Only counts as the preferred option when the console PROVES
+  a managed certificate can be hosted, auto-managed, and associated with the
+  `files.ajtlab.top` OSS custom domain — with recorded evidence for:
+  certificate type, hosting/renewal status, validation method, deployment
+  association, expiry monitoring/notification, and cost/paid-feature Owner
+  confirmation. Without that evidence, `CERTIFICATE_LIFECYCLE_CLOSED=false`.
 - **Option B — external ACME / Let's Encrypt + redeploy into OSS.** Reuses the
   proven issuance path, but every renewal requires the Owner to obtain the
   renewed certificate and bind it in the OSS console; automating it would need
   OSS console API credentials and (for DNS-01) DNS API credentials — a NEW
-  credential boundary that is NOT introduced in this task. ACCEPTABLE with an
-  explicit renewal cadence and calendar; NOT RECOMMENDED as unmonitored manual
-  work.
+  credential boundary that is NOT introduced. ACCEPTABLE only with an explicit
+  renewal owner + deadline + deployment procedure.
 - **Option C — Porkbun-provided certificate.** Possible since the zone is at
   Porkbun, but binds certificate lifecycle to a second vendor workflow and
-  still requires manual OSS binding. ACCEPTABLE if the Owner prefers one
+  still requires manual OSS binding. ACCEPTABLE only if the Owner prefers one
   vendor; otherwise NOT RECOMMENDED.
 
-**Recommendation:** confirm in the Alibaba console whether a managed
-certificate can be bound to the OSS custom domain (Option A); if unavailable,
-use Option B with a recorded renewal calendar and the existing
-pre-2026-11-13 deadline discipline. Pricing/feature availability is
+**Recommendation:** verify in the Alibaba console whether Option A's hosted
+auto-managed deployment is actually available for OSS custom domains; if not
+proven, select Option B with a named renewal owner, a hard deadline before
+expiry, and the manual redeploy procedure recorded — and set
+`CERTIFICATE_LIFECYCLE_CLOSED=false` until one of these is fully closed.
+Pricing/feature availability is
 `REQUIRES_OWNER_CONSOLE_OR_CURRENT_OFFICIAL_DOC_CHECK` — no prices are assumed.
 Any automation path that needs DNS API credentials is flagged as a NEW
 credential boundary requiring separate Owner approval.
