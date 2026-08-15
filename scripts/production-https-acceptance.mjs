@@ -110,8 +110,8 @@ async function main() {
   } catch {}
 
   const loginSetCookie = loginResponse.headers.get("set-cookie");
-  const sessionCookie = cookieValue(loginSetCookie);
-  const loginPolicy = parseSetCookie(loginSetCookie);
+  const sessionCookie = loginSetCookie ? cookieValue(loginSetCookie) : "";
+  const loginPolicy = loginSetCookie ? parseSetCookie(loginSetCookie) : null;
   const loginMatches = loginResponse.status === 200 && loginBody.account?.loginName === loginName;
 
   const sessionResponse = await request("GET", "/api/auth/session", { cookie: sessionCookie });

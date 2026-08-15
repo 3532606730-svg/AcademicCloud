@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Status:** Approved project baseline  
-**Current execution phase:** Layer 0 — Project Setup  
+**Current execution phase:** Layer 1 — Basic Private Cloud Storage is implemented and in First Usable Production (live at `cloud.ajtlab.top`); the remaining gates are the live disposable-object E2E, the permanent-delete Owner confirmation, autostart/reboot, backup cadence, and renewal hardening  
 **Approved product implementation target:** Layer 1 — Basic Private Cloud Storage
 
 ## 1. Purpose
@@ -84,7 +84,7 @@ Layer 3 must never control or endanger original files.
 Current server:
 - Alibaba Cloud Simple Application Server
 - 2 vCPU
-- 512 MB RAM
+- 1 GiB-class RAM (Linux `916,044 KiB` `MemTotal` after the Owner-authorized PROD-02I upgrade; service cgroup 320/384 MiB, 128 MiB whole-host headroom gate)
 - 20 GB system disk
 - up to 200 Mbps indicated bandwidth
 - Ubuntu 24.04
