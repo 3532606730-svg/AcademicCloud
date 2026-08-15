@@ -3,9 +3,11 @@
 // Deterministic contract tests for the repository-owned E2E acceptance tool.
 // Pins payload identities, the status-code contract, request semantics,
 // real folder nesting, bodyless renew/folder-restore, renewed-authorization
-// selection, whole-operation timeout coverage (headers AND body), verdict
-// completeness, partial-evidence retention, fail-fast behavior, error-message
-// redaction, and the absence of any permanent-delete path.
+// selection, whole-operation timeout coverage (headers AND body) for all
+// three dependency factories (body timeouts fail closed — never an apparent
+// 200/201 success), empty-204 handling, verdict completeness,
+// partial-evidence retention, fail-fast behavior, error-message redaction,
+// and the absence of any permanent-delete path.
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -18,6 +20,8 @@ import {
   PAYLOAD_SPECS,
   TIMEOUTS,
   computeVerdict,
+  createApiDep,
+  createDirectPostDep,
   createFileResult,
   createSignedGetDep,
   deterministicPayload,
@@ -296,6 +300,73 @@ test("workflow-level timeout: signed-download stall prevents rename/move/recycle
     call.path === "/api/drive/recycle" ||
     (call.path.includes("/files/") && call.path.endsWith("/restore")));
   assert.equal(later.length, 0, "no mutation after signed-download timeout");
+});
+
+// ---------------------------------------------------------------- factories
+
+test("createApiDep: stalled JSON body aborts bounded and MUST NOT resolve as 200", async () => {
+  const stalledTextImpl = async (_url, init) => ({
+    status: 200,
+    text: () => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }),
+  });
+  const api = createApiDep("https://api.invalid", stalledTextImpl, 30);
+  const started = Date.now();
+  await assert.rejects(api("GET", "/api/auth/session", {}));
+  assert.ok(Date.now() - started < 500, "body timeout must be bounded");
+});
+
+test("createDirectPostDep: stalled OSS response body aborts bounded and MUST NOT resolve as 201", async () => {
+  const stalledArrayBufferImpl = async (_url, init) => ({
+    status: 201,
+    arrayBuffer: () => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }),
+  });
+  const directPost = createDirectPostDep(stalledArrayBufferImpl, 30);
+  const started = Date.now();
+  await assert.rejects(directPost("https://oss.invalid/upload", new FormData()));
+  assert.ok(Date.now() - started < 500, "body timeout must be bounded");
+});
+
+test("createApiDep: empty response body (204) yields status 204 and body {}", async () => {
+  const emptyBodyImpl = async () => ({ status: 204, text: async () => "" });
+  const api = createApiDep("https://api.invalid", emptyBodyImpl, 1_000);
+  assert.deepEqual(await api("DELETE", "/api/drive/files/file-1", {}), { status: 204, body: {} });
+});
+
+test("createApiDep: non-empty JSON body parses into the returned body", async () => {
+  const jsonImpl = async () => ({ status: 200, text: async () => JSON.stringify({ ok: true, account: { loginName: "u" } }) });
+  const api = createApiDep("https://api.invalid", jsonImpl, 1_000);
+  assert.deepEqual(await api("GET", "/api/auth/session", {}), { status: 200, body: { ok: true, account: { loginName: "u" } } });
+});
+
+test("createApiDep: malformed non-empty body fails closed instead of resolving", async () => {
+  const htmlImpl = async () => ({ status: 200, text: async () => "<html>not json</html>" });
+  const api = createApiDep("https://api.invalid", htmlImpl, 1_000);
+  await assert.rejects(api("GET", "/api/drive/entries?folderId=x", {}));
+});
+
+test("workflow fail-fast: direct-upload body timeout prevents complete/rename/move/recycle/restore", async () => {
+  const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX);
+  const stalledArrayBufferImpl = async (_url, init) => ({
+    status: 201,
+    arrayBuffer: () => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }),
+  });
+  const directPost = createDirectPostDep(stalledArrayBufferImpl, 20);
+  const deps = { api: fakes.deps.api, directPost, signedGet: fakes.deps.signedGet };
+  const started = Date.now();
+  await assert.rejects(runOneFile(PAYLOAD_SPECS[2], TEST_CTX, deps), /direct upload/);
+  assert.ok(Date.now() - started < 1_000, "upload body timeout must be bounded");
+
+  const calls = fakes.calls();
+  assert.ok(calls.length >= 3, "reserve/pending/renew must have been reached");
+  const lastCall = calls[calls.length - 1];
+  assert.ok(lastCall.path.endsWith("/authorization"), "no API call after the renewed authorization");
+  assert.equal(calls.filter((call) => call.path.endsWith("/complete")).length, 0, "completeUpload must not be called");
 });
 
 // ---------------------------------------------------------------- nesting

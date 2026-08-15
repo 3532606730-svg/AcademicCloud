@@ -168,24 +168,28 @@ export async function withTimeout(operation, timeoutMs) {
   }
 }
 
-// API dependency factory: fetch + full JSON body read inside one timeout.
+// API dependency factory: fetch + full body read + parse inside one timeout.
+// Network, abort, and body-read failures PROPAGATE (fail closed) — a timeout
+// can never be converted into an apparent HTTP success. An empty body (204)
+// is a valid empty JSON object; a non-empty body must be valid JSON.
 export function createApiDep(baseUrl, fetchImpl = fetch, timeoutMs = TIMEOUTS.api) {
   return async (method, path, options) => withTimeout(async (signal) => {
     const init = requestInit(method, options);
     const response = await fetchImpl(`${baseUrl}${path}`, { ...init, signal });
+    const text = await response.text();
     let body = {};
-    try {
-      body = await response.json();
-    } catch {}
+    if (text !== "") body = JSON.parse(text);
     return { status: response.status, body };
   }, timeoutMs);
 }
 
-// Direct OSS multipart POST: fetch + body drain inside one timeout.
+// Direct OSS multipart POST: fetch + body drain inside one timeout. A drain
+// failure — including a timeout abort — PROPAGATES and is never converted
+// into an apparent 201 success.
 export function createDirectPostDep(fetchImpl = fetch, timeoutMs = TIMEOUTS.directUpload) {
   return async (url, form) => withTimeout(async (signal) => {
     const response = await fetchImpl(url, { method: "POST", body: form, signal });
-    await response.arrayBuffer().catch(() => {});
+    await response.arrayBuffer();
     return { status: response.status };
   }, timeoutMs);
 }
@@ -491,10 +495,13 @@ async function run() {
 
   try {
     // Header-aware login: the session cookie comes from the raw login response.
+    // Strict body read inside the timeout: abort/body-read failures propagate
+    // (fail closed) instead of being converted into an empty success body.
     const loginRaw = await withTimeout(async (signal) => {
       const init = requestInit("POST", { json: { loginName, password } });
       const response = await fetch(`${BASE_URL}/api/auth/login`, { ...init, signal });
-      const body = await response.json().catch(() => ({}));
+      const text = await response.text();
+      const body = text === "" ? {} : JSON.parse(text);
       return { status: response.status, setCookie: response.headers.get("set-cookie"), body };
     }, TIMEOUTS.api).catch((cause) => {
       throw new Error("login failed", { cause });
