@@ -14,9 +14,9 @@ $activationPath = Join-Path $PSScriptRoot 'alibaba-production-activate.sh'
 $ownerWrapperPath = Join-Path $PSScriptRoot 'production-owner-bootstrap.ps1'
 $evidenceDirectory = Join-Path $repositoryRoot 'output/prod-03b-activation-fix'
 $evidencePath = Join-Path $evidenceDirectory 'activation-fix-evidence.txt'
-$expectedCurrentSha256 = '98dbc9cfd676a3e784cb802a1a52e1b0058a249ce36ebe4969278f8bff31a660'
-$expectedNewSha256 = '944c1ee5c856ee101569f041187e57fbe9d8e9da63191af7aa37063caa3ba62b'
-$expectedOwnerWrapperSha256 = 'c27cdc19eabc70b4284e44ab78936bd722f61aefe8e68f21dc50d2bcb6228654'
+$expectedCurrentSha256 = '944c1ee5c856ee101569f041187e57fbe9d8e9da63191af7aa37063caa3ba62b'
+$expectedNewSha256 = '1bd9512e3e14a8ce9d610660eaf6651ba2d0672d20a7bf3b6cd93baa31209ce7'
+$expectedOwnerWrapperSha256 = 'a445e36a18192e2a409d435ed770b80b3d1bd71779f888817bde58432b99e061'
 
 foreach ($path in @($activationPath, $ownerWrapperPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {

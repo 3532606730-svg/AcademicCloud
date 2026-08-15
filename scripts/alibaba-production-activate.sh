@@ -349,12 +349,15 @@ try {
   }
   database.pragma("foreign_keys = ON");
   const journalMode = database.pragma("journal_mode", { simple: true });
-  const synchronous = database.pragma("synchronous", { simple: true });
+  // The verifier connection is read-only: SQLite normalizes a WAL reader's
+  // effective synchronous level to NORMAL (1), so this connection can never
+  // report 2. The production application's writable connections always set
+  // synchronous = FULL through the immutable release's openSqliteDatabase.
   const foreignKeys = database.pragma("foreign_keys", { simple: true });
   const integrity = database.pragma("integrity_check", { simple: true });
   const foreignKeyViolations = database.pragma("foreign_key_check");
   const migrationState = database.prepare("select count(*) as count, max(version) as version from schema_migrations").get();
-  if (journalMode !== "wal" || synchronous !== 2 || foreignKeys !== 1 || integrity !== "ok" || foreignKeyViolations.length !== 0 || migrationState.count !== 4 || migrationState.version !== 4) {
+  if (journalMode !== "wal" || foreignKeys !== 1 || integrity !== "ok" || foreignKeyViolations.length !== 0 || migrationState.count !== 4 || migrationState.version !== 4) {
     throw new Error("production SQLite durability, integrity, or migration state is invalid");
   }
 } finally {

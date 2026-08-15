@@ -14,7 +14,7 @@ if ($SshAlias -notmatch '^[A-Za-z0-9._-]+$') {
 
 $bucketOrigin = 'https://ajt-academiccloud-kl-8f3c.oss-ap-southeast-3.aliyuncs.com'
 $applicationOrigin = 'https://cloud.ajtlab.top'
-$expectedActivationSha256 = '944c1ee5c856ee101569f041187e57fbe9d8e9da63191af7aa37063caa3ba62b'
+$expectedActivationSha256 = '1bd9512e3e14a8ce9d610660eaf6651ba2d0672d20a7bf3b6cd93baa31209ce7'
 
 function Invoke-HeaderProbe {
     param(
