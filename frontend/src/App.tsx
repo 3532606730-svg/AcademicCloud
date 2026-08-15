@@ -667,8 +667,8 @@ function DriveView({
                     {formatBytes(job.bytesUploaded)} / {formatBytes(job.totalBytes)}
                     {job.speedBytesPerSecond !== null && (
                       <>
-                        {" 路 "}{formatSpeed(job.speedBytesPerSecond)}
-                        {job.etaSeconds !== null && job.etaSeconds > 0 && <>{" 路 "}{t("upload.etaSeconds", { seconds: job.etaSeconds })}</>}
+                        {" · "}{formatSpeed(job.speedBytesPerSecond)}
+                        {job.etaSeconds !== null && job.etaSeconds > 0 && <>{" · "}{t("upload.etaSeconds", { seconds: job.etaSeconds })}</>}
                       </>
                     )}
                   </span>
@@ -739,7 +739,7 @@ function DriveView({
                 {pending.map((file) => (
                   <article className="pending-card" key={file.id}>
                     <FileBadge file={file} />
-                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} 路 {t("pending.reservedAt", { date: formatDate(file.createdAt, language) })}</span></div>
+                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t("pending.reservedAt", { date: formatDate(file.createdAt, language) })}</span></div>
                     <label className="button button--small" aria-label={t("pending.chooseSameAria", { name: file.displayName })}>
                       {t("pending.chooseSame")}
                       <input className="visually-hidden" type="file" onChange={(event) => {
@@ -776,7 +776,7 @@ function DriveView({
                 {recycle.files.map((file) => (
                   <article className="recycle-card" key={file.id}>
                     <FileBadge file={file} />
-                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} 路 {t("recycle.fileDeleted", { date: formatDate(file.deletedAt, language) })}</span></div>
+                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t("recycle.fileDeleted", { date: formatDate(file.deletedAt, language) })}</span></div>
                     <button className="button button--small" type="button" aria-label={t("recycle.restoreFileAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => void runAction(file.id, t("file.restored"), () => api.restoreFile(file.id))}>{t("recycle.restore")}</button>
                     <button className="button button--small button--danger" type="button" aria-label={t("recycle.deleteForeverAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => {
                       if (window.confirm(t("file.permanentConfirm", { name: file.displayName }))) {
