@@ -15,8 +15,9 @@ Current identities (verified read-only 2026-08-15):
 - releases present: `639baa95…` (rollback), `e5217e8…` (active)
 - service: active + disabled, MainPID 44122, NRestarts 0, `127.0.0.1:3000` only
 - DB: schema v4, integrity ok; frozen failed-E2E record present (pending_upload)
-- `files.ajtlab.top`: Porkbun parking CNAME `pixie.porkbun.com` TTL 600; OSS
-  custom domain unbound; TLS absent; `OSS_BROWSER_ENDPOINT` absent; live CSP
+- `files.ajtlab.top`: NO explicit DNS record pre-cutover — parking behavior
+  was inherited from wildcard `*.ajtlab.top CNAME pixie.porkbun.com` TTL 600;
+  OSS custom domain unbound; TLS absent; `OSS_BROWSER_ENDPOINT` absent; live CSP
   without the files domain
 - `cloud.ajtlab.top` certificate expires 2026-11-13; Certbot timer disabled
 
@@ -33,8 +34,10 @@ Current identities (verified read-only 2026-08-15):
 
 ## PHASE 1 — CAPTURE (A0; save before any mutation)
 
-- [ ] DNS: exact current `files.ajtlab.top` record set (parking CNAME target,
-      TTL 600) + `cloud.ajtlab.top` reference record
+- [ ] DNS: exact current `files.ajtlab.top` record set — pre-cutover there
+      was NO explicit record; parking was inherited from wildcard
+      `*.ajtlab.top CNAME pixie.porkbun.com` TTL 600 — plus the
+      `cloud.ajtlab.top` reference record
 - [ ] CAA: query BOTH `files.ajtlab.top` AND `ajtlab.top` (parent policy can
       apply); record results; no CAA mutation
 - [ ] OSS: current custom-domain binding state (expected: none)
@@ -56,7 +59,7 @@ BEFORE any OSS/Porkbun/TLS mutation (builds happen in CI, never on the host):
       source commit (record run id + commit) — executed 2026-08-16 by the
       Owner for `codex/prod-03c2` @ `15181f90d6eecbb0ddb977a0168536a445802ec7`;
       both jobs PASS (`linux-production-artifact` + independent
-      `verify-downloaded-artifact`). GitHub run id: Owner to record.
+      `verify-downloaded-artifact`). GitHub Actions run id: 31927613398 (Run #7).
 - [x] `B1` artifact identity chain: ZIP SHA-256 → four-file bundle → archive
       SHA-256 → manifest (sourceCommit/platform/arch/node) →
       `scripts/production-artifact.mjs verify` on Linux x64 Node 24 → status ok
@@ -76,11 +79,11 @@ Failure of the artifact gate: **no cloud mutation**.
 | A1a | **Conditional domain-ownership verification.** If Alibaba requests ownership proof (NeedVerifyDomainOwnership): capture the EXACT OSS-provided `_dnsauth` TXT hostname/value, add the exact TXT record via Porkbun (Owner-gated), wait for propagation, verify ownership in the console, complete the mapping, and remove the TXT only after Alibaba confirms it is no longer required (verify removal). NEVER touch the main `files` CNAME during ownership verification; never invent the token/hostname | `OWNER-GATED MUTATION` (conditional) |
 | A2 | Record the ACTUAL CNAME target the OSS console assigns/requires for this bucket/region (do NOT reuse the old hard-coded endpoint assumption) | read-only |
 | A3 | Issue/import + bind a certificate for exactly `files.ajtlab.top` per the TLS lifecycle decision in `files-ajtlab-top-plan.md` (record: certificate type, hosting/renewal status, validation method, deployment association, expiry monitoring/notification, cost Owner confirmation; else `CERTIFICATE_LIFECYCLE_CLOSED=false`) | `OWNER-GATED MUTATION` |
-| A4 | **Pre-cutover validation before DNS moves** (where technically possible): resolve the actual OSS target, then operator-side probe with `curl --resolve files.ajtlab.top:443:<target-IP> https://files.ajtlab.top/<known-test-key>` — verify certificate SAN, TLS, custom-domain routing, unsigned access denied. Never permanently edit hosts; never treat the target IP as configuration. If the OSS edge cannot be reliably prevalidated: mark A4 = `NOT-PROVABLE-PRE-DNS`, then replace DNS, verify immediately, and on failure restore the exact parking record | read-only probe |
-| A5 | Porkbun: REPLACE the captured parking CNAME with `files.ajtlab.top CNAME <actual-OSS-target>` (record new TTL; never add a second record) | `OWNER-GATED MUTATION` |
+| A4 | **Pre-cutover validation before DNS moves** (where technically possible): resolve the actual OSS target, then operator-side probe with `curl --resolve files.ajtlab.top:443:<target-IP> https://files.ajtlab.top/<known-test-key>` — verify certificate SAN, TLS, custom-domain routing, unsigned access denied. Never permanently edit hosts; never treat the target IP as configuration. If the OSS edge cannot be reliably prevalidated: mark A4 = `NOT-PROVABLE-PRE-DNS`, then add the explicit DNS record, verify immediately, and on failure DELETE ONLY the added explicit record (the untouched wildcard resumes parking) | read-only probe |
+| A5 | Porkbun: ADD the explicit `files.ajtlab.top CNAME <actual-OSS-target>` (record new TTL; never add a conflicting second record). Pre-cutover `files.ajtlab.top` had NO explicit record — parking was inherited from wildcard `*.ajtlab.top CNAME pixie.porkbun.com`, which remains untouched | `OWNER-GATED MUTATION` |
 | A6 | DNS convergence: confirm resolution to the OSS target (TTL wait + recheck) | read-only |
 | A7 | Anonymous unsigned request to a known key must stay 403; bucket listing 403; TLS serves with the correct certificate | read-only |
-| A8 | Record exact rollback info: parking record + TTL, certificate id, OSS binding state, TXT record state | record |
+| A8 | Record exact rollback info: explicit `files.ajtlab.top` CNAME to delete on rollback, untouched wildcard `*.ajtlab.top → pixie.porkbun.com` TTL 600, certificate id, OSS binding state, TXT record state | record |
 
 Gate A PASS criteria: pre-mutation artifact gate green; A4/A6/A7 green (or
 A4 explicitly NOT-PROVABLE-PRE-DNS with immediate post-DNS verification);
@@ -95,7 +98,7 @@ unsigned boundary — NOT application signed-GET behavior.**
 **A. Authorization & scope.** Transaction A only (OSS custom-domain binding,
 conditional ownership TXT, TLS certificate, DNS cutover, private-boundary
 verification). No UX01 app deployment, no env edit, no Nginx/systemd/DB
-mutation. `TRANSACTION_B_AUTHORIZED=false`.
+mutation. `TRANSACTION_A_PASS=true`; `TRANSACTION_B_AUTHORIZED=false`.
 
 **B. Read-only live production audit (baseline profile).** Auditor origin
 `5a1b008` (`codex/l1-ops01-readiness-auditor`), run against
@@ -195,8 +198,8 @@ no console access from the harness).
 `output/prod05a-post-cutover-verification.json` (and earlier baseline captures
 `output/prod05a-live-audit-baseline.json` / `-v2.json`).
 
-**R. STOP — Transaction B NOT authorized.** Next gates remain: Owner records
-the GitHub Actions run id for B0; UX01 app deployment, `OSS_BROWSER_ENDPOINT`
+**R. STOP — Transaction B NOT authorized.** B0 GitHub Actions run id
+`31927613398` (Run #7) recorded; UX01 app deployment, `OSS_BROWSER_ENDPOINT`
 install, CSP activation, and Owner browser PV are all Transaction B steps and
 were NOT started. `TRANSACTION_B_AUTHORIZED=false`.
 
@@ -240,7 +243,7 @@ untouched; no permanent deletion during PV.
 | Env | Remove `OSS_BROWSER_ENDPOINT` (restore captured previous line state) + restart via reviewed transaction | any Preview/env regression |
 | CSP | Restore the EXACT captured snippet file + served header; `nginx -t`; reload | CSP blocks Preview or loses native upload host |
 | Application | Stop → temp-symlink + `mv -Tf` back to the exact previous release → start → verify health/ready | startup/smoke/frontend-proof failure (migration was no-op) |
-| DNS | Restore the captured Porkbun parking CNAME + original TTL 600 | custom domain must stop serving |
+| DNS | DELETE ONLY the explicit `files.ajtlab.top` CNAME; the untouched wildcard `*.ajtlab.top → pixie.porkbun.com` then resumes control | custom domain must stop serving |
 | TLS | Optionally unbind certificate; keep or unbind custom domain AFTER DNS restore | certificate/domain regression |
 | DB | Do NOT restore unless a real DB mutation occurred (expected: none) | unexpected migration |
 
@@ -324,7 +327,7 @@ HIGH for server memory/bandwidth; MEDIUM for browser-side throughput perception
 | DB integrity | GO (integrity ok, FK 0, schema v4, frozen record intact) |
 | Backup state | GO (verified backups + off-host repo present; B2/B3 re-verify at window) |
 | OSS private boundary | GO (live CORS positive 200, anon listing 403, private bucket records) |
-| files DNS capture | GO (parking CNAME + TTL 600 recorded) |
+| files DNS capture | GO (no explicit files record pre-cutover; wildcard `*.ajtlab.top → pixie.porkbun.com` TTL 600 recorded) |
 | OSS custom-domain target | NOT-YET-VERIFIED (obtained at A2 from the console) |
 | TLS issuance route | OWNER-DECISION (A/B/C lifecycle decision; console availability unverified) |
 | Certificate renewal route | OWNER-DECISION (see above; calendar required for manual paths) |
