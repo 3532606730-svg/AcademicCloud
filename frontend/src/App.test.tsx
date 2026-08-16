@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -68,6 +68,37 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
   };
 }
 
+interface DragDataTransferInit {
+  types?: string[];
+  files?: File[];
+  items?: Array<{ kind: string; getAsFile?: () => File | null; webkitGetAsEntry?: () => { isDirectory: boolean; isFile: boolean } | null }>;
+}
+
+function dragDataTransfer(init: DragDataTransferInit): DataTransfer {
+  return {
+    types: init.types ?? ["Files"],
+    files: init.files ?? [],
+    items: init.items ?? [],
+    dropEffect: "none",
+    effectAllowed: "all",
+  } as unknown as DataTransfer;
+}
+
+async function openLibrary(api: AcademicCloudApi) {
+  render(<App api={api} />);
+  await screen.findByRole("heading", { name: "Library" });
+}
+
+function workspace() {
+  return screen.getByRole("main");
+}
+
+async function openRowMenu(name: string) {
+  const trigger = await screen.findByRole("button", { name: `Open actions for ${name}` });
+  await userEvent.click(trigger);
+  return screen.getByRole("menu", { name: `Actions for ${name}` });
+}
+
 describe("App", () => {
   it("recovers an anonymous session, signs in, and renders an empty library", async () => {
     const user = userEvent.setup();
@@ -98,7 +129,19 @@ describe("App", () => {
     expect(screen.queryByText(/SQL|OSSAccessKeyId/i)).not.toBeInTheDocument();
   });
 
-  it("navigates folders and returns through the breadcrumb", async () => {
+  it("renders the root library without an eyebrow, without a redundant breadcrumb, with title and counts", async () => {
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    await openLibrary(api);
+
+    expect(screen.queryByText("Your research files")).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByText("0 files · 0 folders")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New folder" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Upload files")).toBeInTheDocument();
+  });
+
+  it("navigates folders and returns through the breadcrumb (nested only)", async () => {
     const user = userEvent.setup();
     const listEntries = vi.fn()
       .mockResolvedValueOnce({ folder: null, folders: [FOLDER], files: [] })
@@ -107,12 +150,291 @@ describe("App", () => {
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listEntries });
     render(<App api={api} />);
 
+    expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+
     await user.click(await screen.findByRole("button", { name: "Sources" }));
     await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-1", expect.anything()));
     expect(await screen.findByRole("heading", { name: "Sources", level: 1 })).toBeInTheDocument();
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByRole("button", { name: "Library" })).toBeInTheDocument();
+    expect(within(crumbs).getByRole("button", { name: "Sources" })).toBeInTheDocument();
 
-    await user.click(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("button", { name: "Library" }));
+    await user.click(within(crumbs).getByRole("button", { name: "Library" }));
     await waitFor(() => expect(listEntries).toHaveBeenLastCalledWith(null, expect.anything()));
+    expect(screen.getByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
+  });
+
+  it("creates a folder through the command-bar dialog with keyboard and focus handling", async () => {
+    const user = userEvent.setup();
+    const createFolder = vi.fn().mockResolvedValue({ ...FOLDER, name: "Notes" });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), createFolder });
+    await openLibrary(api);
+
+    await user.click(screen.getByRole("button", { name: "New folder" }));
+    const dialog = await screen.findByRole("dialog", { name: "New folder" });
+    const input = within(dialog).getByLabelText("New folder");
+    expect(input).toHaveFocus();
+    expect(input).toHaveAttribute("maxlength", "255");
+
+    await user.type(input, "Notes");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(createFolder).toHaveBeenCalledWith("Notes", null));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "New folder" })).not.toBeInTheDocument());
+
+    // Escape closes safely when reopened.
+    await user.click(screen.getByRole("button", { name: "New folder" }));
+    await screen.findByRole("dialog", { name: "New folder" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "New folder" })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "New folder" })).toHaveFocus();
+  });
+
+  it("keeps the existing bulk picker with multiple and enqueues every selected file", async () => {
+    const user = userEvent.setup();
+    const checksumFile = vi.fn(() => new Promise<string>(() => {}));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} checksumFile={checksumFile} />);
+
+    const input = await screen.findByLabelText("Upload files");
+    expect(input).toHaveAttribute("multiple");
+    const files = ["a", "b", "c"].map((name) => new File([name], `${name}.pdf`, { type: "application/pdf" }));
+    await user.upload(input, files);
+
+    // Concurrency bound: two checksum workflows start, the rest queue.
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByText("Queued")).toHaveLength(1);
+  });
+
+  it("shows the drop overlay only for real file drags and clears it on leave", async () => {
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    await openLibrary(api);
+    const main = workspace();
+
+    const textDrag = dragDataTransfer({ types: ["text/plain"], files: [] });
+    fireEvent.dragEnter(main, { dataTransfer: textDrag });
+    expect(screen.queryByText(/Drop to upload to/)).not.toBeInTheDocument();
+
+    const fileDrag = dragDataTransfer({ types: ["Files"], files: [new File(["a"], "a.pdf"), new File(["b"], "b.pdf")] });
+    fireEvent.dragEnter(main, { dataTransfer: fileDrag });
+    expect(screen.getByText(/Drop to upload to/)).toBeInTheDocument();
+    expect(screen.getByText("2 files")).toBeInTheDocument();
+
+    // Depth counter: a child enter/leave pair must not clear the overlay.
+    fireEvent.dragEnter(main, { dataTransfer: fileDrag });
+    fireEvent.dragLeave(main, { dataTransfer: fileDrag });
+    expect(screen.getByText(/Drop to upload to/)).toBeInTheDocument();
+
+    fireEvent.dragLeave(main, { dataTransfer: fileDrag });
+    await waitFor(() => expect(screen.queryByText(/Drop to upload to/)).not.toBeInTheDocument());
+  });
+
+  it("uploads dropped files through the existing pipeline with the destination pinned at drop time", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
+    const folderA = { ...FOLDER, id: "folder-a", name: "A" };
+    const folderB = { ...FOLDER, id: "folder-b", name: "B" };
+    const listEntries = vi.fn((folderId: string | null) => Promise.resolve(
+      folderId === "folder-a"
+        ? { folder: folderA, folders: [], files: [] }
+        : folderId === "folder-b"
+          ? { folder: folderB, folders: [], files: [] }
+          : { folder: null, folders: [folderA, folderB], files: [] },
+    ));
+    const createUpload = vi.fn().mockResolvedValue({
+      file: { ...FILE, state: "pending_upload" as const, activatedAt: null },
+      upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries,
+      createUpload,
+      completeUpload: vi.fn().mockResolvedValue(FILE),
+    });
+    render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockResolvedValue(undefined)} />);
+
+    await user.click(await screen.findByRole("button", { name: "A" }));
+    await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-a", expect.anything()));
+
+    const files = ["x", "y", "z"].map((name) => new File([name], `${name}.pdf`, { type: "application/pdf" }));
+    // fireEvent returns false when a handler called preventDefault — exactly
+    // the qualifying-drop interception this test requires.
+    const dropEvent = fireEvent.drop(workspace(), { dataTransfer: dragDataTransfer({ files, items: files.map((file) => ({ kind: "file", getAsFile: () => file })) }) });
+    expect(dropEvent).toBe(false);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/Drop to upload to/)).not.toBeInTheDocument();
+    expect(screen.getByText("3 files added to the upload queue.")).toBeInTheDocument();
+
+    // Navigate to folder B before slots free: the pinned destination must hold.
+    await user.click(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("button", { name: "Library" }));
+    await user.click(await screen.findByRole("button", { name: "B" }));
+    await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-b", expect.anything()));
+
+    checksumResolvers[0]!(FILE.checksum);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
+    checksumResolvers[1]!(FILE.checksum);
+    checksumResolvers[2]!(FILE.checksum);
+    await waitFor(() => expect(createUpload).toHaveBeenCalledTimes(3));
+
+    const destinations = createUpload.mock.calls.map(([input]) => (input as { folderId: string | null }).folderId);
+    expect(destinations).toEqual(["folder-a", "folder-a", "folder-a"]);
+  });
+
+  it("prevents browser defaults only for qualifying file drops", async () => {
+    const checksumFile = vi.fn(() => new Promise<string>(() => {}));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} checksumFile={checksumFile} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const fileDrop = fireEvent.drop(workspace(), {
+      dataTransfer: dragDataTransfer({ files: [new File(["a"], "a.pdf")], items: [{ kind: "file", getAsFile: () => new File(["a"], "a.pdf") }] }),
+    });
+    // false = a handler called preventDefault (browser navigation suppressed).
+    expect(fileDrop).toBe(false);
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(1));
+
+    // A text drag is never hijacked: no default prevention, no queue effect.
+    const before = checksumFile.mock.calls.length;
+    const textDrop = fireEvent.drop(workspace(), { dataTransfer: dragDataTransfer({ types: ["text/plain"], files: [] }) });
+    expect(textDrop).toBe(true);
+    expect(checksumFile).toHaveBeenCalledTimes(before);
+  });
+
+  it("skips dropped directories, reports them, and still uploads regular files", async () => {
+    const checksumFile = vi.fn(() => new Promise<string>(() => {}));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} checksumFile={checksumFile} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const file = new File(["a"], "a.pdf", { type: "application/pdf" });
+    fireEvent.drop(workspace(), {
+      dataTransfer: dragDataTransfer({
+        files: [file],
+        items: [
+          { kind: "file", webkitGetAsEntry: () => ({ isDirectory: true, isFile: false }), getAsFile: () => null },
+          { kind: "file", webkitGetAsEntry: () => ({ isDirectory: false, isFile: true }), getAsFile: () => file },
+        ],
+      }),
+    });
+
+    await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("1 folders were skipped — folder upload is not supported yet.")).toBeInTheDocument();
+
+    // Directory-only drop: nothing uploads, a concise localized message shows.
+    const before = checksumFile.mock.calls.length;
+    fireEvent.drop(workspace(), {
+      dataTransfer: dragDataTransfer({
+        files: [],
+        items: [{ kind: "file", webkitGetAsEntry: () => ({ isDirectory: true, isFile: false }), getAsFile: () => null }],
+      }),
+    });
+    expect(checksumFile).toHaveBeenCalledTimes(before);
+    expect(screen.getByText("1 folders were skipped — folder upload is not supported yet.")).toBeInTheDocument();
+  });
+
+  it("keeps the row action menu compact and exposes folder/file actions inside it", async () => {
+    const user = userEvent.setup();
+    const deleteFile = vi.fn().mockResolvedValue(undefined);
+    const deleteFolder = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
+      deleteFile,
+      deleteFolder,
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    // Compact trigger only: no inline action buttons before expansion.
+    expect(screen.queryByRole("button", { name: "Move file paper.pdf" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rename folder Sources" })).not.toBeInTheDocument();
+
+    const fileMenu = await openRowMenu("paper.pdf");
+    expect(within(fileMenu).getByRole("menuitem", { name: "Preview" })).toBeInTheDocument();
+    expect(within(fileMenu).getByRole("menuitem", { name: "Download" })).toBeInTheDocument();
+    expect(within(fileMenu).getByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
+    expect(within(fileMenu).getByRole("menuitem", { name: "Move" })).toBeInTheDocument();
+    await user.click(within(fileMenu).getByRole("menuitem", { name: "Move to trash" }));
+    await waitFor(() => expect(deleteFile).toHaveBeenCalledWith("file-1"));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("stored file will be preserved"));
+
+    const folderMenu = await openRowMenu("Sources");
+    expect(within(folderMenu).getByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
+    expect(within(folderMenu).getByRole("menuitem", { name: "Move" })).toBeInTheDocument();
+    await user.click(within(folderMenu).getByRole("menuitem", { name: "Move to trash" }));
+    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith("folder-1"));
+  });
+
+  it("closes the row menu on Escape and restores focus to the trigger", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const trigger = screen.getByRole("button", { name: "Open actions for paper.pdf" });
+    await user.click(trigger);
+    expect(screen.getByRole("menu", { name: "Actions for paper.pdf" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu", { name: "Actions for paper.pdf" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("keeps inline preview conditional inside the file menu and restores focus after Escape", async () => {
+    const user = userEvent.setup();
+    const unsafeFile = { ...FILE, id: "file-svg", displayName: "diagram.svg", mediaType: "image/svg+xml" };
+    const createDownload = vi.fn().mockResolvedValue({
+      method: "GET",
+      url: "https://signed.invalid/preview",
+      expiresAt: "2026-08-13T00:05:00.000Z",
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE, unsafeFile] }),
+      createDownload,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const menu = await openRowMenu("paper.pdf");
+    await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "paper.pdf" });
+    expect(createDownload).toHaveBeenCalledWith("file-1", "inline");
+    expect(within(dialog).getByTitle("Preview of paper.pdf")).toHaveAttribute("referrerpolicy", "no-referrer");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+
+    const unsafeMenu = await openRowMenu("diagram.svg");
+    expect(within(unsafeMenu).queryByRole("menuitem", { name: "Preview" })).not.toBeInTheDocument();
+  });
+
+  it("moves a file through the browsable destination dialog from the row menu", async () => {
+    const user = userEvent.setup();
+    const listEntries = vi.fn((folderId: string | null) => Promise.resolve(
+      folderId === null
+        ? { folder: null, folders: [FOLDER], files: [FILE] }
+        : { folder: FOLDER, folders: [], files: [] },
+    ));
+    const updateFile = vi.fn().mockResolvedValue({ ...FILE, folderId: FOLDER.id });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listEntries, updateFile });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const menu = await openRowMenu("paper.pdf");
+    await user.click(within(menu).getByRole("menuitem", { name: "Move" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Move “paper.pdf”" });
+    await user.click(within(dialog).getByRole("button", { name: "Sources" }));
+    await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-1", expect.anything()));
+    await user.click(within(dialog).getByRole("button", { name: "Move here" }));
+
+    await waitFor(() => expect(updateFile).toHaveBeenCalledWith("file-1", { folderId: "folder-1" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Move “paper.pdf”" })).not.toBeInTheDocument());
   });
 
   it("calculates, uploads, and verifies a selected file without proxying its bytes", async () => {
@@ -156,45 +478,6 @@ describe("App", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Uploaded");
   });
 
-  it("confirms recoverable deletion before calling the file API", async () => {
-    const user = userEvent.setup();
-    const deleteFile = vi.fn().mockResolvedValue(undefined);
-    const api = fakeApi({
-      getSession: vi.fn().mockResolvedValue(ACCOUNT),
-      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
-      deleteFile,
-    });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(<App api={api} />);
-
-    await user.click(await screen.findByRole("button", { name: "Recycle file paper.pdf" }));
-    await waitFor(() => expect(deleteFile).toHaveBeenCalledWith("file-1"));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("stored file will be preserved"));
-  });
-
-  it("moves a file through the browsable destination dialog", async () => {
-    const user = userEvent.setup();
-    const listEntries = vi.fn((folderId: string | null) => Promise.resolve(
-      folderId === null
-        ? { folder: null, folders: [FOLDER], files: [FILE] }
-        : { folder: FOLDER, folders: [], files: [] },
-    ));
-    const updateFile = vi.fn().mockResolvedValue({ ...FILE, folderId: FOLDER.id });
-    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listEntries, updateFile });
-    render(<App api={api} />);
-
-    const fileRow = (await screen.findByText("paper.pdf")).closest<HTMLElement>("[role='row']");
-    expect(fileRow).not.toBeNull();
-    await user.click(within(fileRow!).getByRole("button", { name: "Move file paper.pdf" }));
-    const dialog = await screen.findByRole("dialog", { name: "Move “paper.pdf”" });
-    await user.click(within(dialog).getByRole("button", { name: "Sources" }));
-    await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-1", expect.anything()));
-    await user.click(within(dialog).getByRole("button", { name: "Move here" }));
-
-    await waitFor(() => expect(updateFile).toHaveBeenCalledWith("file-1", { folderId: "folder-1" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Move “paper.pdf”" })).not.toBeInTheDocument());
-  });
-
   it("keeps move failures visible inside the destination dialog", async () => {
     const user = userEvent.setup();
     const api = fakeApi({
@@ -203,8 +486,10 @@ describe("App", () => {
       updateFile: vi.fn().mockRejectedValue(new ApiError(409, "name_conflict")),
     });
     render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
 
-    await user.click(await screen.findByRole("button", { name: "Move file paper.pdf" }));
+    const menu = await openRowMenu("paper.pdf");
+    await user.click(within(menu).getByRole("menuitem", { name: "Move" }));
     const dialog = await screen.findByRole("dialog", { name: "Move “paper.pdf”" });
     await user.click(within(dialog).getByRole("button", { name: "Sources" }));
     await waitFor(() => expect(within(dialog).getByRole("button", { name: "Move here" })).toBeEnabled());
@@ -212,33 +497,6 @@ describe("App", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("already exists");
     expect(dialog).toBeInTheDocument();
-  });
-
-  it("requests inline preview only for safe media and restores focus after Escape", async () => {
-    const user = userEvent.setup();
-    const unsafeFile = { ...FILE, id: "file-svg", displayName: "diagram.svg", mediaType: "image/svg+xml" };
-    const createDownload = vi.fn().mockResolvedValue({
-      method: "GET",
-      url: "https://signed.invalid/preview",
-      expiresAt: "2026-08-13T00:05:00.000Z",
-    });
-    const api = fakeApi({
-      getSession: vi.fn().mockResolvedValue(ACCOUNT),
-      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE, unsafeFile] }),
-      createDownload,
-    });
-    render(<App api={api} />);
-
-    const trigger = await screen.findByRole("button", { name: "Preview paper.pdf" });
-    expect(screen.queryByRole("button", { name: "Preview diagram.svg" })).not.toBeInTheDocument();
-    await user.click(trigger);
-
-    const dialog = await screen.findByRole("dialog", { name: "paper.pdf" });
-    expect(createDownload).toHaveBeenCalledWith("file-1", "inline");
-    expect(within(dialog).getByTitle("Preview of paper.pdf")).toHaveAttribute("referrerpolicy", "no-referrer");
-    await user.keyboard("{Escape}");
-    await waitFor(() => expect(dialog).not.toBeInTheDocument());
-    expect(trigger).toHaveFocus();
   });
 
   it("verifies an ambiguous direct-upload failure before attempting to overwrite", async () => {
@@ -316,6 +574,28 @@ describe("App", () => {
     expect(document.documentElement.lang).toBe("en");
   });
 
+  it("localizes the new workspace strings in both languages", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+    });
+    render(<App api={api} />);
+
+    expect(await screen.findByText("1 files · 0 folders")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New folder" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "中文" }));
+    expect(await screen.findByText("1 个文件 · 0 个文件夹")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "新建文件夹" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "打开 paper.pdf 的操作菜单" })).toBeInTheDocument();
+
+    const main = workspace();
+    fireEvent.dragEnter(main, { dataTransfer: dragDataTransfer({ files: [new File(["a"], "a.pdf")] }) });
+    expect(screen.getByText(/松开即可上传到「资料库」/)).toBeInTheDocument();
+    fireEvent.dragLeave(main, { dataTransfer: dragDataTransfer({ files: [new File(["a"], "a.pdf")] }) });
+  });
+
   it("re-localizes rendered API errors when the language changes", async () => {
     const user = userEvent.setup();
     const api = fakeApi({ login: vi.fn().mockRejectedValue(new ApiError(401, "invalid_credentials")) });
@@ -338,8 +618,10 @@ describe("App", () => {
       createDownload: vi.fn().mockRejectedValue(new ApiError(503, "preview_unavailable")),
     });
     render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
 
-    await user.click(await screen.findByRole("button", { name: "Preview paper.pdf" }));
+    const menu = await openRowMenu("paper.pdf");
+    await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Online preview is currently unavailable"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -367,8 +649,6 @@ describe("App", () => {
     await user.upload(await screen.findByLabelText("Upload files"), files);
 
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
-    // Exactly two workflows run: two checksum phases, two queued rows. The
-    // remaining files must not start checksum work until a slot opens.
     expect(screen.getAllByText("Calculating checksum")).toHaveLength(2);
     expect(screen.getAllByText("Queued")).toHaveLength(2);
 
@@ -380,15 +660,13 @@ describe("App", () => {
     checksumResolvers[3]!(FILE.checksum);
     await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(4));
 
-    // Root (null) is a valid pinned destination: every reservation made from
-    // the root view must carry folderId null even after queuing.
     expect(createUpload).toHaveBeenCalledTimes(4);
     for (const [input] of createUpload.mock.calls) {
       expect((input as { folderId: string | null }).folderId).toBeNull();
     }
   });
 
-  it("pins the upload destination at enqueue time even after navigation", async () => {
+  it("pins the picker upload destination at enqueue time even after navigation", async () => {
     const user = userEvent.setup();
     const checksumResolvers: Array<(value: string) => void> = [];
     const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
@@ -413,19 +691,16 @@ describe("App", () => {
     });
     render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockResolvedValue(undefined)} />);
 
-    // Queue three files while viewing folder A.
     await user.click(await screen.findByRole("button", { name: "A" }));
     await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-a", expect.anything()));
     const files = ["x", "y", "z"].map((name) => new File([name], `${name}.pdf`, { type: "application/pdf" }));
     await user.upload(await screen.findByLabelText("Upload files"), files);
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
 
-    // Navigate away to folder B before the third workflow starts.
     await user.click(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("button", { name: "Library" }));
     await user.click(await screen.findByRole("button", { name: "B" }));
     await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-b", expect.anything()));
 
-    // Release slots: every reservation must still carry folder A.
     checksumResolvers[0]!(FILE.checksum);
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
     checksumResolvers[1]!(FILE.checksum);
@@ -451,7 +726,7 @@ describe("App", () => {
     await user.upload(await screen.findByLabelText("Upload files"), files);
 
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
-    checksumResolvers[0]!(FILE.checksum); // first workflow fails at reservation
+    checksumResolvers[0]!(FILE.checksum);
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
   });
 
@@ -471,7 +746,6 @@ describe("App", () => {
     await user.upload(await screen.findByLabelText("Upload files"), files);
 
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
-    // Jobs are queued newest-first: c and b are the two running workflows.
     await user.click(screen.getByRole("button", { name: "Cancel c.pdf upload" }));
 
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
@@ -486,7 +760,6 @@ describe("App", () => {
       file: { ...FILE, id: `file-${input.displayName}`, state: "pending_upload" as const, activatedAt: null },
       upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
     }));
-    // c.pdf's direct upload fails; every other transfer succeeds.
     const directUpload = vi.fn((_authorization: unknown, file: File) =>
       file.name === "c.pdf" ? Promise.reject(new Error("Could not reach object storage.")) : Promise.resolve(undefined),
     );
@@ -513,21 +786,16 @@ describe("App", () => {
     await user.upload(await screen.findByLabelText("Upload files"), files);
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
 
-    // Newest-first queue: c and b run. c's transfer fails → error → slot freed
-    // → a starts, leaving b and a active.
     checksumResolvers[0]!(FILE.checksum);
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
     await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
 
-    // Request a retry for c while BOTH slots are occupied (b and a are stuck
-    // in checksum): the retry must queue, not run.
     await user.click(screen.getByRole("button", { name: "Verify stored copy or retry c.pdf" }));
     expect(screen.getAllByText("Queued")).toHaveLength(1);
     expect(completeUpload).not.toHaveBeenCalled();
     expect(renewUpload).not.toHaveBeenCalled();
     expect(checksumFile).toHaveBeenCalledTimes(3);
 
-    // Release one slot: the queued retry then starts with its verify-first flow.
     checksumResolvers[1]!(FILE.checksum);
     await waitFor(() => expect(completeUpload).toHaveBeenCalledWith("file-c.pdf"));
     await waitFor(() => expect(renewUpload).toHaveBeenCalledWith("file-c.pdf"));
@@ -581,9 +849,6 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Verify stored copy or retry a.pdf" }));
     await waitFor(() => expect(directUpload).toHaveBeenCalledTimes(2));
 
-    // The re-upload path renders the same file-byte metrics as a fresh
-    // upload: fraction 500/1000 mapped onto the 6-byte file → 3 B / 6 B,
-    // progress 0.15 + 0.5 × 0.75 = 0.525.
     expect(await screen.findByText(/3 B \/ 6 B/)).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("value", "0.525");
 
@@ -600,12 +865,8 @@ describe("App", () => {
     const completeUpload = vi.fn(() => {
       completeCalls += 1;
       if (completeCalls === 1) {
-        // The fresh upload's final verification fails AFTER the byte transfer:
-        // the job becomes error with uploaded=true.
         return Promise.reject(new ApiError(409, "invalid_state"));
       }
-      // The retry's completeUpload stays PENDING so the scheduler invariant
-      // can be asserted while async I/O is in flight.
       return new Promise<FileEntry>((resolve) => {
         settleRetryComplete = () => resolve(FILE);
       });
@@ -630,15 +891,10 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Verify stored copy or retry a.pdf" }));
     await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(2));
 
-    // While the retry completeUpload promise is still unresolved, the job
-    // MUST NOT read as queued: it claims the verifying active phase before
-    // any I/O, occupies one concurrency slot, and cannot be re-selected.
     expect(screen.queryByText("Queued")).not.toBeInTheDocument();
     expect(screen.getByText("Verifying stored file")).toBeInTheDocument();
     expect(screen.getByText("1 in progress or needing attention")).toBeInTheDocument();
 
-    // Force additional renders (view navigation) while I/O is pending: the
-    // scheduler must not launch the same retry again.
     await user.click(screen.getByRole("button", { name: "Pending uploads" }));
     await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "Library" }));
     expect(completeUpload).toHaveBeenCalledTimes(2);

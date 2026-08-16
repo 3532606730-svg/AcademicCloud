@@ -18,6 +18,10 @@
 
 **Status:** Complete — documentation/readiness package prepared (two-transaction checklist, corrected DNS/TLS/CSP plan, rollback matrix, PV matrix, FMEA, readiness gate matrix, hardening priorities, OSS body DR options); the ChatGPT production-plan review PASSED; executed as Transaction A + Transaction B (see the L1-UX01 status and `docs/deployment/l1-ux01-production-gate.md`). Zero production mutation occurred at the PROD04A documentation step itself.
 
+### L1-UX02 — Academic Workspace Visual Refresh & Drag-and-Drop Upload
+
+**Status:** In Progress (local/repository only, 2026-08-16) — frontend-only implementation complete on `codex/l1-ux02-academic-workspace` (visual token/typography system, workspace header + command bar + New Folder dialog, deep-forest sidebar with inline SVG icons, archive-catalogue list, row action menus, drag-and-drop multi-file upload with destination pinning and directory-skip safety, queue refresh, zh/en i18n, accessibility); automated gates PASS (backend 104/104 + frontend 69/69, typecheck, build, acceptance-tools 25/25, diff-check clean, zero new dependencies, production untouched). STOPPED at the Owner local visual-review gate — NOT deployed.
+
 ## Completed
 
 ### PROD-03R — Production Acceptance and Repository-State Reconciliation

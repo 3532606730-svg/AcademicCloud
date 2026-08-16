@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import {
   ApiClient,
@@ -13,6 +13,18 @@ import {
 import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
 import { describeError, formatCount, formatDate } from "./i18n.ts";
 import { LanguageProvider, LanguageSwitch, useLanguage } from "./i18n-react.tsx";
+import {
+  FileIcon,
+  FolderIcon,
+  ImageIcon,
+  LibraryIcon,
+  MoreIcon,
+  PdfIcon,
+  PendingIcon,
+  RecycleIcon,
+  TextIcon,
+  UploadIcon,
+} from "./icons.tsx";
 import { calculateFileMd5 } from "./md5.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
 
@@ -223,8 +235,46 @@ type MoveRequest =
   | { kind: "folder"; item: FolderEntry; returnFocus: HTMLElement | null }
   | { kind: "file"; item: FileEntry; returnFocus: HTMLElement | null };
 
+interface DropOverlayState {
+  count: number;
+}
+
 const EMPTY_ENTRIES: EntriesResponse = { folder: null, folders: [], files: [] };
 const EMPTY_RECYCLE: RecycleResponse = { folders: [], files: [] };
+
+// Only genuine external FILE drags participate in the drop workflow. Text,
+// link, and internal selection drags must pass through untouched.
+function hasFileDrag(dataTransfer: DataTransfer | null): boolean {
+  return dataTransfer !== null && Array.from(dataTransfer.types).includes("Files");
+}
+
+function countDirectoryItems(dataTransfer: DataTransfer): number {
+  let directories = 0;
+  for (const item of Array.from(dataTransfer.items ?? [])) {
+    const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
+    if (entry?.isDirectory) directories += 1;
+  }
+  return directories;
+}
+
+// Directory entries are NEVER traversed: directory items are skipped and
+// reported; only regular files flow into the existing upload queue.
+function regularFilesFrom(dataTransfer: DataTransfer): File[] {
+  const files: File[] = [];
+  const items = dataTransfer.items;
+  if (items && items.length > 0) {
+    for (const item of Array.from(items)) {
+      if (item.kind !== "file") continue;
+      const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
+      if (entry && !entry.isFile) continue;
+      const file = item.getAsFile?.();
+      if (file) files.push(file);
+    }
+  } else {
+    files.push(...Array.from(dataTransfer.files ?? []));
+  }
+  return files;
+}
 
 function DriveView({
   account,
@@ -250,10 +300,13 @@ function DriveView({
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
+  const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
+  const dragDepthRef = useRef(0);
+  const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
@@ -530,13 +583,18 @@ function DriveView({
     setPath(index < 0 ? [] : path.slice(0, index + 1));
   }
 
-  async function createFolder(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const name = newFolderName.trim();
-    if (!name) return;
-    await runAction("new-folder", t("folder.created", { name }), async () => {
-      await api.createFolder(name, currentFolderId);
-      setNewFolderName("");
+  function openNewFolderDialog() {
+    newFolderTriggerRef.current = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+    setError(null);
+    setNewFolderOpen(true);
+  }
+
+  async function createFolder(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    await runAction("new-folder", t("folder.created", { name: trimmed }), async () => {
+      await api.createFolder(trimmed, currentFolderId);
+      setNewFolderOpen(false);
     });
   }
 
@@ -613,8 +671,64 @@ function DriveView({
     }
   }
 
+  // Drag-and-drop (library view only). A depth counter prevents child-element
+  // dragenter/dragleave pairs from flashing the overlay. Non-file drags are
+  // never intercepted.
+  function onWorkspaceDragEnter(event: React.DragEvent<HTMLElement>) {
+    if (!hasFileDrag(event.dataTransfer)) return;
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    if (dragDepthRef.current === 1) {
+      setDropOverlay({ count: event.dataTransfer.files?.length ?? 0 });
+    }
+  }
+
+  function onWorkspaceDragOver(event: React.DragEvent<HTMLElement>) {
+    if (!hasFileDrag(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }
+
+  function onWorkspaceDragLeave(event: React.DragEvent<HTMLElement>) {
+    if (!hasFileDrag(event.dataTransfer)) return;
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setDropOverlay(null);
+  }
+
+  function onWorkspaceDrop(event: React.DragEvent<HTMLElement>) {
+    if (!hasFileDrag(event.dataTransfer)) return;
+    event.preventDefault();
+    dragDepthRef.current = 0;
+    setDropOverlay(null);
+    const dataTransfer = event.dataTransfer;
+    // Snapshot the destination EXACTLY once: later navigation must never
+    // redirect these uploads.
+    const pinnedFolderId = currentFolderId;
+    const files = regularFilesFrom(dataTransfer);
+    const directoryCount = countDirectoryItems(dataTransfer);
+    const validFiles = files.filter((file) => file.size >= 1);
+    if (validFiles.length > 0) {
+      for (const file of validFiles) enqueueFile(file, undefined, pinnedFolderId);
+      if (validFiles.length > 1) {
+        setNotice(t("upload.enqueuedCount", { count: validFiles.length }));
+      }
+    } else if (files.length > 0) {
+      setError(new Error(t("upload.emptyFile")));
+    }
+    if (directoryCount > 0) {
+      setNotice(t("drop.directorySkipped", { count: directoryCount }));
+    } else if (validFiles.length === 0 && files.length === 0) {
+      setNotice(t("drop.onlyDirectories"));
+    }
+  }
+
   const activeJobs = jobs.filter((job) => job.phase !== "complete");
   const isLibraryEmpty = entries.folders.length === 0 && entries.files.length === 0;
+  const workspaceTitle = view === "library"
+    ? path.at(-1)?.name ?? t("nav.library")
+    : view === "pending"
+      ? t("nav.pending")
+      : t("nav.recycle");
 
   return (
     <>
@@ -635,58 +749,73 @@ function DriveView({
       <aside className="sidebar" aria-label={t("nav.primaryAria")}>
         <nav>
           <button className={view === "library" ? "nav-item is-active" : "nav-item"} aria-current={view === "library" ? "page" : undefined} onClick={() => goToView("library")}>
-            <span aria-hidden="true">▦</span> {t("nav.library")}
+            <LibraryIcon size={18} /> {t("nav.library")}
           </button>
           <button className={view === "pending" ? "nav-item is-active" : "nav-item"} aria-current={view === "pending" ? "page" : undefined} onClick={() => goToView("pending")}>
-            <span aria-hidden="true">↑</span> {t("nav.pending")}
+            <PendingIcon size={18} /> {t("nav.pending")}
           </button>
           <button className={view === "recycle" ? "nav-item is-active" : "nav-item"} aria-current={view === "recycle" ? "page" : undefined} onClick={() => goToView("recycle")}>
-            <span aria-hidden="true">↺</span> {t("nav.recycle")}
+            <RecycleIcon size={18} /> {t("nav.recycle")}
           </button>
         </nav>
-        <div className="sidebar-note">
-          <strong>{t("sidebar.privateTitle")}</strong>
-          <span>{t("sidebar.privateText")}</span>
-        </div>
       </aside>
 
-      <main id="main-content" className="workspace" tabIndex={-1}>
-        <div className="workspace-head">
-          <div>
-            <p className="eyebrow">{view === "recycle" ? t("workspace.recoverableEyebrow") : t("workspace.filesEyebrow")}</p>
-            <h1>{view === "library" ? path.at(-1)?.name ?? t("nav.library") : view === "pending" ? t("nav.pending") : t("nav.recycle")}</h1>
+      <main
+        id="main-content"
+        className="workspace"
+        tabIndex={-1}
+        onDragEnter={view === "library" ? onWorkspaceDragEnter : undefined}
+        onDragOver={view === "library" ? onWorkspaceDragOver : undefined}
+        onDragLeave={view === "library" ? onWorkspaceDragLeave : undefined}
+        onDrop={view === "library" ? onWorkspaceDrop : undefined}
+      >
+        <header className="workspace-head">
+          <div className="workspace-title">
+            {view === "library" && path.length > 0 && (
+              <nav className="breadcrumbs" aria-label={t("breadcrumb.aria")}>
+                <ol>
+                  <li><button type="button" onClick={() => goToCrumb(-1)}>{t("nav.library")}</button></li>
+                  {path.map((folder, index) => (
+                    <li key={folder.id}>
+                      <span aria-hidden="true">/</span>
+                      <button type="button" onClick={() => goToCrumb(index)} aria-current={index === path.length - 1 ? "page" : undefined}>
+                        {folder.name}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            )}
+            <h1>{workspaceTitle}</h1>
+            {view === "library" && !loading && (
+              <p className="workspace-summary">
+                {t("workspace.itemSummary", {
+                  files: formatCount(language, entries.files.length),
+                  folders: formatCount(language, entries.folders.length),
+                })}
+              </p>
+            )}
           </div>
           {view === "library" && (
-            <label className="button button--primary upload-button">
-              {t("workspace.uploadFiles")}
-              <input
-                className="visually-hidden"
-                type="file"
-                multiple
-                onChange={(event) => {
-                  for (const file of Array.from(event.target.files ?? [])) enqueueFile(file);
-                  event.target.value = "";
-                }}
-              />
-            </label>
+            <div className="command-bar">
+              <button className="button button--secondary" type="button" onClick={openNewFolderDialog}>
+                {t("workspace.newFolder")}
+              </button>
+              <label className="button button--primary upload-button">
+                {t("workspace.uploadFiles")}
+                <input
+                  className="visually-hidden"
+                  type="file"
+                  multiple
+                  onChange={(event) => {
+                    for (const file of Array.from(event.target.files ?? [])) enqueueFile(file);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
           )}
-        </div>
-
-        {view !== "recycle" && (
-          <nav className="breadcrumbs" aria-label={t("breadcrumb.aria")}>
-            <ol>
-              <li><button type="button" onClick={() => goToCrumb(-1)} aria-current={path.length === 0 ? "page" : undefined}>{t("nav.library")}</button></li>
-              {path.map((folder, index) => (
-                <li key={folder.id}>
-                  <span aria-hidden="true">/</span>
-                  <button type="button" onClick={() => goToCrumb(index)} aria-current={index === path.length - 1 ? "page" : undefined}>
-                    {folder.name}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </nav>
-        )}
+        </header>
 
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
         {notice && <div className="alert alert--success" role="status">{notice}</div>}
@@ -704,7 +833,7 @@ function DriveView({
                   <span>{t(uploadPhaseKey(job.phase))}</span>
                 </div>
                 <progress value={job.progress} max={1} aria-label={t("upload.progressAria", { name: job.file.name })} />
-                <span>{Math.round(job.progress * 100)}%</span>
+                <span className="upload-percent">{Math.round(job.progress * 100)}%</span>
                 {job.phase === "uploading" && (
                   <span className="upload-metrics">
                     {formatBytes(job.bytesUploaded)} / {formatBytes(job.totalBytes)}
@@ -733,39 +862,29 @@ function DriveView({
         )}
 
         {view === "library" && (
-          <>
-            <form className="new-folder" onSubmit={(event) => void createFolder(event)}>
-              <label htmlFor="folder-name">{t("folder.newLabel")}</label>
-              <div>
-                <input id="folder-name" value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} placeholder={t("folder.newPlaceholder")} maxLength={255} />
-                <button className="button" type="submit" disabled={!newFolderName.trim() || busyId === "new-folder"}>{t("folder.create")}</button>
-              </div>
-            </form>
-            <section aria-labelledby="contents-title">
-              <div className="section-heading">
-                <h2 id="contents-title">{t("folder.contentsTitle")}</h2>
-                {!loading && <span>{t("folder.items", { count: formatCount(language, entries.folders.length + entries.files.length) })}</span>}
-              </div>
-              {loading ? <LoadingRows /> : isLibraryEmpty ? (
-                <EmptyState title={t("folder.emptyTitle")} text={t("folder.emptyText")} />
-              ) : (
-                <EntryTable
-                  folders={entries.folders}
-                  files={entries.files}
-                  busyId={busyId}
-                  onEnterFolder={enterFolder}
-                  onRenameFolder={renameFolder}
-                  onMoveFolder={moveFolder}
-                  onDeleteFolder={deleteFolder}
-                  onPreview={(file) => void openPreview(file)}
-                  onDownload={(file) => void downloadFile(file)}
-                  onRenameFile={renameFile}
-                  onMoveFile={moveFile}
-                  onDeleteFile={deleteFile}
-                />
-              )}
-            </section>
-          </>
+          <section aria-labelledby="contents-title">
+            <div className="section-heading">
+              <h2 id="contents-title">{t("folder.contentsTitle")}</h2>
+            </div>
+            {loading ? <LoadingRows /> : isLibraryEmpty ? (
+              <EmptyState title={t("folder.emptyTitle")} text={t("folder.emptyText")} />
+            ) : (
+              <EntryTable
+                folders={entries.folders}
+                files={entries.files}
+                busyId={busyId}
+                onEnterFolder={enterFolder}
+                onRenameFolder={renameFolder}
+                onMoveFolder={moveFolder}
+                onDeleteFolder={deleteFolder}
+                onPreview={(file) => void openPreview(file)}
+                onDownload={(file) => void downloadFile(file)}
+                onRenameFile={renameFile}
+                onMoveFile={moveFile}
+                onDeleteFile={deleteFile}
+              />
+            )}
+          </section>
         )}
 
         {view === "pending" && (
@@ -811,7 +930,7 @@ function DriveView({
               <div className="card-list">
                 {recycle.folders.map((folder) => (
                   <article className="recycle-card" key={folder.id}>
-                    <span className="file-badge file-badge--folder" aria-hidden="true">DIR</span>
+                    <FolderBadge />
                     <div className="entry-primary"><strong>{folder.name}</strong><span>{t("recycle.folderDeleted", { date: formatDate(folder.deletedAt, language) })}</span></div>
                     <button className="button button--small" type="button" aria-label={t("recycle.restoreFolderAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => void runAction(folder.id, t("recycle.folderRestored"), () => api.restoreFolder(folder.id))}>{t("recycle.restore")}</button>
                   </article>
@@ -832,10 +951,28 @@ function DriveView({
             )}
           </section>
         )}
+
+        {dropOverlay !== null && view === "library" && (
+          <div className="drop-overlay" role="status" aria-label={t("drop.aria")}>
+            <div className="drop-panel">
+              <UploadIcon size={30} className="drop-icon" />
+              <strong>{t("drop.title", { folder: path.at(-1)?.name ?? t("nav.library") })}</strong>
+              <span>{t("drop.count", { count: dropOverlay.count })}</span>
+            </div>
+          </div>
+        )}
       </main>
 
     </div>
 
+      {newFolderOpen && (
+        <NewFolderDialog
+          onClose={() => setNewFolderOpen(false)}
+          onCreate={(name) => void createFolder(name)}
+          busy={busyId === "new-folder"}
+          returnFocus={newFolderTriggerRef.current}
+        />
+      )}
       {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} />}
       {moveRequest && (
         <MoveDialog
@@ -871,6 +1008,167 @@ function uploadPhaseKey(phase: UploadPhase) {
   }
 }
 
+function NewFolderDialog({
+  onClose,
+  onCreate,
+  busy,
+  returnFocus,
+}: {
+  onClose: () => void;
+  onCreate: (name: string) => void;
+  busy: boolean;
+  returnFocus?: HTMLElement | null;
+}) {
+  const { t } = useLanguage();
+  const [name, setName] = useState("");
+  const dialogRef = useModalDialog(onClose, busy, returnFocus);
+
+  return (
+    <dialog ref={dialogRef} className="new-folder-modal" aria-labelledby="new-folder-title">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          const trimmed = name.trim();
+          if (!trimmed || busy) return;
+          onCreate(trimmed);
+        }}
+      >
+        <header>
+          <h2 id="new-folder-title">{t("folder.dialogTitle")}</h2>
+          <button className="button button--quiet" type="button" onClick={onClose} disabled={busy} aria-label={t("preview.closeAria")}>{t("preview.close")}</button>
+        </header>
+        <div className="new-folder-body">
+          <label htmlFor="new-folder-name">{t("folder.newLabel")}</label>
+          <input
+            id="new-folder-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t("folder.newPlaceholder")}
+            maxLength={255}
+            autoFocus
+          />
+        </div>
+        <footer>
+          <button className="button button--quiet" type="button" onClick={onClose} disabled={busy}>{t("folder.cancel")}</button>
+          <button className="button button--primary" type="submit" disabled={busy || !name.trim()}>{t("folder.create")}</button>
+        </footer>
+      </form>
+    </dialog>
+  );
+}
+
+interface RowMenuItem {
+  key: string;
+  label?: string;
+  separator?: boolean;
+  danger?: boolean;
+  disabled?: boolean;
+  onSelect?: () => void;
+}
+
+function RowMenu({
+  triggerLabel,
+  menuLabel,
+  items,
+}: {
+  triggerLabel: string;
+  menuLabel: string;
+  items: RowMenuItem[];
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      menuRef.current?.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus();
+    }
+  }, [open]);
+
+  function close(restoreFocus: boolean) {
+    setOpen(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  }
+
+  function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close(true);
+      return;
+    }
+    if (event.key === "Tab") {
+      close(false);
+      return;
+    }
+    const buttons = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>("button:not([disabled])") ?? []);
+    if (buttons.length === 0) return;
+    const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      buttons[(index + 1) % buttons.length]?.focus();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      buttons[(index - 1 + buttons.length) % buttons.length]?.focus();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      buttons[0]?.focus();
+    } else if (event.key === "End") {
+      event.preventDefault();
+      buttons[buttons.length - 1]?.focus();
+    }
+  }
+
+  return (
+    <div className="row-menu-root" ref={rootRef}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="row-menu-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={triggerLabel}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <MoreIcon size={16} />
+      </button>
+      {open && (
+        <div ref={menuRef} className="row-menu" role="menu" aria-label={menuLabel} onKeyDown={onKeyDown}>
+          {items.map((item) => item.separator ? (
+            <div key={item.key} className="row-menu-separator" role="separator" />
+          ) : (
+            <button
+              key={item.key}
+              type="button"
+              role="menuitem"
+              className={item.danger ? "row-menu-item row-menu-item--danger" : "row-menu-item"}
+              disabled={item.disabled}
+              onClick={() => {
+                item.onSelect?.();
+                close(true);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EntryTable({
   folders,
   files,
@@ -902,20 +1200,30 @@ function EntryTable({
   return (
     <div className="entry-table" role="table" aria-label={t("table.aria")}>
       <div className="entry-row entry-row--head" role="row">
-        <span role="columnheader">{t("table.name")}</span><span role="columnheader">{t("table.size")}</span><span role="columnheader">{t("table.updated")}</span><span role="columnheader">{t("table.actions")}</span>
+        <span role="columnheader">{t("table.name")}</span>
+        <span role="columnheader">{t("table.size")}</span>
+        <span role="columnheader">{t("table.updated")}</span>
+        <span role="columnheader" className="entry-actions-head"><span className="visually-hidden">{t("table.actions")}</span></span>
       </div>
       {folders.map((folder) => (
         <div className="entry-row" role="row" key={folder.id}>
           <div className="entry-name" role="cell">
-            <span className="file-badge file-badge--folder" aria-hidden="true">DIR</span>
+            <FolderIcon size={20} className="file-badge file-badge--folder" />
             <button className="entry-link" type="button" onClick={() => onEnterFolder(folder)}>{folder.name}</button>
           </div>
-          <span role="cell">—</span>
-          <span role="cell">{formatDate(folder.updatedAt, language)}</span>
+          <span role="cell" className="entry-meta">—</span>
+          <span role="cell" className="entry-meta">{formatDate(folder.updatedAt, language)}</span>
           <div className="entry-actions" role="cell">
-            <button type="button" aria-label={t("table.renameFolderAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => onRenameFolder(folder)}>{t("table.rename")}</button>
-            <button type="button" aria-label={t("table.moveFolderAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => onMoveFolder(folder)}>{t("table.move")}</button>
-            <button className="danger-link" type="button" aria-label={t("table.recycleFolderAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => onDeleteFolder(folder)}>{t("table.recycle")}</button>
+            <RowMenu
+              triggerLabel={t("menu.openAria", { name: folder.name })}
+              menuLabel={t("menu.aria", { name: folder.name })}
+              items={[
+                { key: "rename", label: t("menu.rename"), disabled: busyId === folder.id, onSelect: () => onRenameFolder(folder) },
+                { key: "move", label: t("menu.move"), disabled: busyId === folder.id, onSelect: () => onMoveFolder(folder) },
+                { key: "separator", separator: true },
+                { key: "trash", label: t("menu.trash"), danger: true, disabled: busyId === folder.id, onSelect: () => onDeleteFolder(folder) },
+              ]}
+            />
           </div>
         </div>
       ))}
@@ -923,16 +1231,24 @@ function EntryTable({
         <div className="entry-row" role="row" key={file.id}>
           <div className="entry-name" role="cell">
             <FileBadge file={file} />
-            <div className="entry-primary"><strong>{file.displayName}</strong><span>{file.mediaType}</span></div>
+            <strong className="entry-filename" title={file.displayName}>{file.displayName}</strong>
           </div>
-          <span role="cell">{formatBytes(file.sizeBytes)}</span>
-          <span role="cell">{formatDate(file.updatedAt, language)}</span>
+          <span role="cell" className="entry-meta">{formatBytes(file.sizeBytes)}</span>
+          <span role="cell" className="entry-meta">{formatDate(file.updatedAt, language)}</span>
           <div className="entry-actions" role="cell">
-            {isPreviewable(file) && <button type="button" aria-label={t("table.previewAria", { name: file.displayName })} disabled={busyId === `preview-${file.id}`} onClick={() => onPreview(file)}>{t("table.preview")}</button>}
-            <button type="button" aria-label={t("table.downloadAria", { name: file.displayName })} disabled={busyId === `download-${file.id}`} onClick={() => onDownload(file)}>{t("table.download")}</button>
-            <button type="button" aria-label={t("table.renameFileAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => onRenameFile(file)}>{t("table.rename")}</button>
-            <button type="button" aria-label={t("table.moveFileAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => onMoveFile(file)}>{t("table.move")}</button>
-            <button className="danger-link" type="button" aria-label={t("table.recycleFileAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => onDeleteFile(file)}>{t("table.recycle")}</button>
+            <RowMenu
+              triggerLabel={t("menu.openAria", { name: file.displayName })}
+              menuLabel={t("menu.aria", { name: file.displayName })}
+              items={[
+                ...(isPreviewable(file) ? [{ key: "preview", label: t("menu.preview"), disabled: busyId === `preview-${file.id}`, onSelect: () => onPreview(file) }] : []),
+                { key: "download", label: t("menu.download"), disabled: busyId === `download-${file.id}`, onSelect: () => onDownload(file) },
+                { key: "separator-1", separator: true },
+                { key: "rename", label: t("menu.rename"), disabled: busyId === file.id, onSelect: () => onRenameFile(file) },
+                { key: "move", label: t("menu.move"), disabled: busyId === file.id, onSelect: () => onMoveFile(file) },
+                { key: "separator-2", separator: true },
+                { key: "trash", label: t("menu.trash"), danger: true, disabled: busyId === file.id, onSelect: () => onDeleteFile(file) },
+              ]}
+            />
           </div>
         </div>
       ))}
@@ -941,8 +1257,14 @@ function EntryTable({
 }
 
 function FileBadge({ file }: { file: FileEntry }) {
-  const label = file.mediaType === "application/pdf" ? "PDF" : file.mediaType.startsWith("image/") ? "IMG" : file.mediaType.startsWith("text/") ? "TXT" : "FILE";
-  return <span className={`file-badge file-badge--${label.toLowerCase()}`} aria-hidden="true">{label}</span>;
+  if (file.mediaType === "application/pdf") return <PdfIcon size={19} className="file-badge file-badge--pdf" />;
+  if (file.mediaType.startsWith("image/")) return <ImageIcon size={19} className="file-badge file-badge--img" />;
+  if (file.mediaType.startsWith("text/")) return <TextIcon size={19} className="file-badge file-badge--txt" />;
+  return <FileIcon size={19} className="file-badge file-badge--file" />;
+}
+
+function FolderBadge() {
+  return <FolderIcon size={19} className="file-badge file-badge--folder" />;
 }
 
 function PreviewDialog({ preview, onClose }: { preview: PreviewState; onClose: () => void }) {
@@ -1031,7 +1353,7 @@ function MoveDialog({
             <p className="muted">{t("move.noSubfolders")}</p>
           ) : folders.map((folder) => (
             <button className="destination-folder" type="button" key={folder.id} onClick={() => setPath((current) => [...current, folder])}>
-              <span className="file-badge file-badge--folder" aria-hidden="true">DIR</span>
+              <FolderIcon size={18} className="file-badge file-badge--folder" />
               <span>{folder.name}</span>
               <span aria-hidden="true">›</span>
             </button>
@@ -1101,7 +1423,8 @@ function useModalDialog(onClose: () => void, closeDisabled = false, returnFocus?
     } else {
       dialog.setAttribute("open", "");
       document.addEventListener("keydown", fallbackKeys);
-      dialog.querySelector<HTMLElement>("button:not([disabled]), a[href]")?.focus();
+      (dialog.querySelector<HTMLElement>("input:not([disabled]), [autofocus]") ??
+        dialog.querySelector<HTMLElement>("button:not([disabled]), a[href]"))?.focus();
     }
 
     return () => {
