@@ -257,8 +257,24 @@ input:hover { border-color: #a7b2a8; }
 .entry-link { overflow: hidden; padding: 0; color: var(--ink); border: 0; background: transparent; cursor: pointer; font-size: 0.9375rem; font-weight: 620; letter-spacing: -0.004em; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .entry-link:hover { color: var(--forest); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .entry-meta { color: #98a099; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
-.entry-actions { display: flex; justify-content: flex-end; }
+.entry-actions { display: flex; justify-content: flex-end; gap: 0.25rem; }
 .entry-actions-head { display: flex; justify-content: flex-end; }
+
+/* Server-backed star toggle: quiet outline, restrained brass when active. */
+.star-button {
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  padding: 0;
+  color: #9aa29b;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  cursor: pointer;
+}
+.star-button:hover { color: var(--brass); background: #f1efe6; }
+.star-button.is-active { color: var(--brass); }
 
 /* Row action menu: one compact trigger per row. */
 .row-menu-root { position: relative; }

@@ -58,6 +58,16 @@ export interface RecycleResponse {
   files: FileEntry[];
 }
 
+export interface FavoriteFolderEntry extends FolderEntry {
+  /** Root-first ancestor chain used to open the real folder in the Library. */
+  ancestors: FolderEntry[];
+}
+
+export interface FavoritesResponse {
+  files: FileEntry[];
+  folders: FavoriteFolderEntry[];
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -81,6 +91,9 @@ export interface AcademicCloudApi {
   listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse>;
   listPending(folderId: string | null, signal?: AbortSignal): Promise<FileEntry[]>;
   listRecycle(signal?: AbortSignal): Promise<RecycleResponse>;
+  listFavorites(signal?: AbortSignal): Promise<FavoritesResponse>;
+  setFileFavorite(fileId: string, favorite: boolean): Promise<void>;
+  setFolderFavorite(folderId: string, favorite: boolean): Promise<void>;
   createFolder(name: string, parentId: string | null): Promise<FolderEntry>;
   updateFolder(folderId: string, update: { name?: string; parentId?: string | null }): Promise<FolderEntry>;
   deleteFolder(folderId: string): Promise<void>;
@@ -154,8 +167,8 @@ export class ApiClient implements AcademicCloudApi {
   }
 
   // Bodyless action: sends NO Content-Type and NO body. Fastify routes for
-  // these actions are bodyless by contract.
-  #action<T>(path: string, method: "POST"): Promise<T> {
+  // these actions are bodyless by contract (POST/PUT/DELETE alike).
+  #action<T>(path: string, method: "POST" | "PUT" | "DELETE"): Promise<T> {
     return this.#request<T>(path, { method });
   }
 
@@ -190,6 +203,24 @@ export class ApiClient implements AcademicCloudApi {
 
   listRecycle(signal?: AbortSignal): Promise<RecycleResponse> {
     return this.#request<RecycleResponse>("/api/drive/recycle", signal ? { signal } : {});
+  }
+
+  listFavorites(signal?: AbortSignal): Promise<FavoritesResponse> {
+    return this.#request<FavoritesResponse>("/api/favorites", signal ? { signal } : {});
+  }
+
+  setFileFavorite(fileId: string, favorite: boolean): Promise<void> {
+    return this.#action<void>(
+      `/api/favorites/files/${encodeURIComponent(fileId)}`,
+      favorite ? "PUT" : "DELETE",
+    );
+  }
+
+  setFolderFavorite(folderId: string, favorite: boolean): Promise<void> {
+    return this.#action<void>(
+      `/api/favorites/folders/${encodeURIComponent(folderId)}`,
+      favorite ? "PUT" : "DELETE",
+    );
   }
 
   async createFolder(name: string, parentId: string | null): Promise<FolderEntry> {

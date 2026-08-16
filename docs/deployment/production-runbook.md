@@ -181,6 +181,11 @@ database and migrations paths against the approved change record.
 
 3. Copy the verified backup to the approved encrypted off-host destination before migration.
 4. Stop the API, switch `current`, redefine `academiccloud_op` so its working directory resolves through the new `current`, run the new compiled migration entry through it, start, and verify health/readiness plus the critical path. File uploads/downloads remain approval-gated live OSS tests.
+   The production application itself NEVER applies migrations at startup: it
+   opens the database, asserts the schema is initialized and current, and
+   fails closed (startup refuses) when any pending/missing migration exists.
+   Only the explicit compiled migration runner may change the production
+   schema. Development/test startups keep the automatic migration path.
 5. If startup, migration, readiness, or smoke checks fail, stop. An application-only rollback is allowed only when the old release supports the current schema. Otherwise restore the matching pre-migration database backup and old release as an inseparable pair using [Backup and Recovery](backup-recovery.md).
 
 Never downgrade a database with ad hoc SQL. Never switch releases while retaining an incompatible migrated database merely because the process starts.

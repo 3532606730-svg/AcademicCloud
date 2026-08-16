@@ -35,7 +35,6 @@ function assertBodylessRequestInit(init: RequestInit | undefined, method: string
   expect(headers.get("Content-Type")).toBeNull();
   expect(headers.get("Accept")).toBe("application/json");
 }
-
 describe("ApiClient", () => {
   it("binds the browser fetch receiver for the default client", async () => {
     const original = globalThis.fetch;
@@ -153,5 +152,33 @@ describe("ApiClient", () => {
     assertBodylessRequestInit(calls[3]?.init, "POST");
     expect(calls[4]?.path).toBe("/api/drive/files/file-1/restore");
     assertBodylessRequestInit(calls[4]?.init, "POST");
+  });
+
+  it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {
+    const responses = [
+      new Response(null, { status: 204 }), // setFileFavorite(true)
+      new Response(null, { status: 204 }), // setFileFavorite(false)
+      new Response(null, { status: 204 }), // setFolderFavorite(true)
+      new Response(null, { status: 204 }), // setFolderFavorite(false)
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+
+    await api.setFileFavorite("file-1", true);
+    await api.setFileFavorite("file-1", false);
+    await api.setFolderFavorite("folder-1", true);
+    await api.setFolderFavorite("folder-1", false);
+
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    const calls = fetcher.mock.calls.map(([path, init]) => ({ path, init }));
+
+    expect(calls[0]?.path).toBe("/api/favorites/files/file-1");
+    assertBodylessRequestInit(calls[0]?.init, "PUT");
+    expect(calls[1]?.path).toBe("/api/favorites/files/file-1");
+    assertBodylessRequestInit(calls[1]?.init, "DELETE");
+    expect(calls[2]?.path).toBe("/api/favorites/folders/folder-1");
+    assertBodylessRequestInit(calls[2]?.init, "PUT");
+    expect(calls[3]?.path).toBe("/api/favorites/folders/folder-1");
+    assertBodylessRequestInit(calls[3]?.init, "DELETE");
   });
 });

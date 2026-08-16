@@ -10,6 +10,8 @@ import type { AuthService } from "../auth/auth-service.js";
 import { registerAuthHttp } from "../auth/http.js";
 import type { DriveService } from "../drive/drive-service.js";
 import { registerDriveHttp } from "../drive/http.js";
+import { registerFavoritesHttp } from "../favorites/http.js";
+import type { FavoriteService } from "../favorites/favorite-service.js";
 import type { AppConfig } from "./config.js";
 
 const SECURITY_HEADERS = {
@@ -90,6 +92,7 @@ export interface CreateAppOptions {
     loginRateLimitMax?: number;
   };
   drive?: { service: DriveService };
+  favorites?: { service: FavoriteService };
   readinessCheck?: () => boolean;
 }
 
@@ -192,6 +195,14 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
     }
 
     await registerDriveHttp(app, options.drive.service);
+  }
+
+  if (options.favorites) {
+    if (!options.auth) {
+      throw new Error("favorites routes require authentication composition");
+    }
+
+    await registerFavoritesHttp(app, options.favorites.service);
   }
 
   return app;

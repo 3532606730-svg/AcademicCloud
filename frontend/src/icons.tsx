@@ -130,3 +130,14 @@ export function PlusIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function StarIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path
+        d="m12 3.8 2.47 5.01 5.53.8-4 3.9.94 5.5L12 16.5l-4.94 2.6.94-5.51-4-3.9 5.53-.8z"
+        fill={props.className?.includes("is-active") ? "currentColor" : "none"}
+      />
+    </Icon>
+  );
+}

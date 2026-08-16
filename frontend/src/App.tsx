@@ -8,6 +8,7 @@ import {
   type EntriesResponse,
   type FileEntry,
   type FolderEntry,
+  type FavoritesResponse,
   type RecycleResponse,
 } from "./api.ts";
 import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
@@ -22,6 +23,7 @@ import {
   PdfIcon,
   PendingIcon,
   RecycleIcon,
+  StarIcon,
   TextIcon,
   UploadIcon,
 } from "./icons.tsx";
@@ -197,7 +199,7 @@ function LoginView({
   );
 }
 
-type DriveViewName = "library" | "pending" | "recycle";
+type DriveViewName = "library" | "pending" | "recycle" | "favorites";
 type UploadPhase = "queued" | "checksum" | "reserving" | "uploading" | "verifying" | "complete" | "error" | "cancelled";
 
 const ACTIVE_UPLOAD_PHASES: ReadonlySet<UploadPhase> = new Set(["checksum", "reserving", "uploading", "verifying"]);
@@ -324,12 +326,34 @@ function DriveView({
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
   const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
+  const [favorites, setFavorites] = useState<FavoritesResponse | null>(null);
+  const [favoriteFileIds, setFavoriteFileIds] = useState<ReadonlySet<string>>(new Set());
+  const [favoriteFolderIds, setFavoriteFolderIds] = useState<ReadonlySet<string>>(new Set());
   const dragDepthRef = useRef(0);
   const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
+
+  // Server-backed favorites: the API response is the single source of truth
+  // (never localStorage); a refetch on every revision reconciles the UI.
+  useEffect(() => {
+    const controller = new AbortController();
+    api.listFavorites(controller.signal).then(
+      (response) => {
+        setFavorites(response);
+        setFavoriteFileIds(new Set(response.files.map((file) => file.id)));
+        setFavoriteFolderIds(new Set(response.folders.map((folder) => folder.id)));
+      },
+      (caught: unknown) => {
+        if (!(caught instanceof DOMException && caught.name === "AbortError")) {
+          setError(caught);
+        }
+      },
+    );
+    return () => controller.abort();
+  }, [api, revision]);
 
   // Global external-file-drop protection: the Library workspace handles file
   // drops itself (overlay + pinned upload); anywhere else in the app a real
@@ -617,6 +641,45 @@ function DriveView({
     setError(null);
   }
 
+  // A favorite folder opens the REAL folder in the Library — never a virtual
+  // copy — using the server-provided ancestor chain.
+  function enterFavoriteFolder(folder: FolderEntry) {
+    const entry = favorites?.folders.find((candidate) => candidate.id === folder.id);
+    setPath(entry ? [...entry.ancestors, folder] : [folder]);
+    setView("library");
+    setError(null);
+  }
+
+  async function toggleFileFavorite(file: FileEntry) {
+    const active = favoriteFileIds.has(file.id);
+    const next = new Set(favoriteFileIds);
+    if (active) next.delete(file.id);
+    else next.add(file.id);
+    setFavoriteFileIds(next);
+    try {
+      await api.setFileFavorite(file.id, !active);
+    } catch (caught: unknown) {
+      setError(caught);
+    }
+    // Refetch reconciles server truth (also covers failures that flipped
+    // back optimistically).
+    refresh();
+  }
+
+  async function toggleFolderFavorite(folder: FolderEntry) {
+    const active = favoriteFolderIds.has(folder.id);
+    const next = new Set(favoriteFolderIds);
+    if (active) next.delete(folder.id);
+    else next.add(folder.id);
+    setFavoriteFolderIds(next);
+    try {
+      await api.setFolderFavorite(folder.id, !active);
+    } catch (caught: unknown) {
+      setError(caught);
+    }
+    refresh();
+  }
+
   function goToCrumb(index: number) {
     setPath(index < 0 ? [] : path.slice(0, index + 1));
   }
@@ -768,7 +831,9 @@ function DriveView({
     ? path.at(-1)?.name ?? t("nav.library")
     : view === "pending"
       ? t("nav.pending")
-      : t("nav.recycle");
+      : view === "recycle"
+        ? t("nav.recycle")
+        : t("nav.favorites");
 
   return (
     <>
@@ -796,6 +861,9 @@ function DriveView({
           </button>
           <button className={view === "recycle" ? "nav-item is-active" : "nav-item"} aria-current={view === "recycle" ? "page" : undefined} onClick={() => goToView("recycle")}>
             <RecycleIcon size={18} /> {t("nav.recycle")}
+          </button>
+          <button className={view === "favorites" ? "nav-item is-active" : "nav-item"} aria-current={view === "favorites" ? "page" : undefined} onClick={() => goToView("favorites")}>
+            <StarIcon size={18} /> {t("nav.favorites")}
           </button>
         </nav>
       </aside>
@@ -833,6 +901,14 @@ function DriveView({
                 {t("workspace.itemSummary", {
                   files: formatCount(language, entries.files.length),
                   folders: formatCount(language, entries.folders.length),
+                })}
+              </p>
+            )}
+            {view === "favorites" && favorites !== null && (
+              <p className="workspace-summary">
+                {t("workspace.itemSummary", {
+                  files: formatCount(language, favorites.files.length),
+                  folders: formatCount(language, favorites.folders.length),
                 })}
               </p>
             )}
@@ -921,6 +997,10 @@ function DriveView({
                 onRenameFile={renameFile}
                 onMoveFile={moveFile}
                 onDeleteFile={deleteFile}
+                starFileIds={favoriteFileIds}
+                starFolderIds={favoriteFolderIds}
+                onToggleFileFavorite={(file) => void toggleFileFavorite(file)}
+                onToggleFolderFavorite={(folder) => void toggleFolderFavorite(folder)}
               />
             )}
           </section>
@@ -959,9 +1039,36 @@ function DriveView({
           </section>
         )}
 
+        {view === "favorites" && (
+          <section aria-labelledby="favorites-title">
+            <h2 id="favorites-title" className="visually-hidden">{t("nav.favorites")}</h2>
+            {favorites === null ? <LoadingRows /> : favorites.files.length + favorites.folders.length === 0 ? (
+              <EmptyState title={t("favorites.emptyTitle")} text={t("favorites.emptyText")} />
+            ) : (
+              <EntryTable
+                folders={favorites.folders}
+                files={favorites.files}
+                busyId={busyId}
+                onEnterFolder={enterFavoriteFolder}
+                onRenameFolder={renameFolder}
+                onMoveFolder={moveFolder}
+                onDeleteFolder={deleteFolder}
+                onPreview={(file, trigger) => void openPreview(file, trigger)}
+                onDownload={(file) => void downloadFile(file)}
+                onRenameFile={renameFile}
+                onMoveFile={moveFile}
+                onDeleteFile={deleteFile}
+                starFileIds={favoriteFileIds}
+                starFolderIds={favoriteFolderIds}
+                onToggleFileFavorite={(file) => void toggleFileFavorite(file)}
+                onToggleFolderFavorite={(folder) => void toggleFolderFavorite(folder)}
+              />
+            )}
+          </section>
+        )}
+
         {view === "recycle" && (
-          <section aria-labelledby="recycle-title">
-            <div className="section-heading"><h2 id="recycle-title">{t("recycle.title")}</h2>{!loading && <span>{t("folder.items", { count: formatCount(language, recycle.folders.length + recycle.files.length) })}</span>}</div>
+          <section aria-labelledby="recycle-title">            <div className="section-heading"><h2 id="recycle-title">{t("recycle.title")}</h2>{!loading && <span>{t("folder.items", { count: formatCount(language, recycle.folders.length + recycle.files.length) })}</span>}</div>
             <p className="section-copy">{t("recycle.copy")}</p>
             {loading ? <LoadingRows /> : recycle.folders.length + recycle.files.length === 0 ? (
               <EmptyState title={t("recycle.emptyTitle")} text={t("recycle.emptyText")} />
@@ -1253,6 +1360,10 @@ function EntryTable({
   onRenameFile,
   onMoveFile,
   onDeleteFile,
+  starFileIds,
+  starFolderIds,
+  onToggleFileFavorite,
+  onToggleFolderFavorite,
 }: {
   folders: FolderEntry[];
   files: FileEntry[];
@@ -1266,6 +1377,10 @@ function EntryTable({
   onRenameFile: (file: FileEntry) => void;
   onMoveFile: (file: FileEntry, trigger?: HTMLElement) => void;
   onDeleteFile: (file: FileEntry) => void;
+  starFileIds?: ReadonlySet<string>;
+  starFolderIds?: ReadonlySet<string>;
+  onToggleFileFavorite?: (file: FileEntry) => void;
+  onToggleFolderFavorite?: (folder: FolderEntry) => void;
 }) {
   const { language, t } = useLanguage();
   return (
@@ -1285,6 +1400,13 @@ function EntryTable({
           <span role="cell" className="entry-meta">—</span>
           <span role="cell" className="entry-meta">{formatDate(folder.updatedAt, language)}</span>
           <div className="entry-actions" role="cell">
+            {onToggleFolderFavorite && (
+              <StarButton
+                active={starFolderIds?.has(folder.id) ?? false}
+                name={folder.name}
+                onToggle={() => onToggleFolderFavorite(folder)}
+              />
+            )}
             <RowMenu
               triggerLabel={t("menu.openAria", { name: folder.name })}
               menuLabel={t("menu.aria", { name: folder.name })}
@@ -1307,6 +1429,13 @@ function EntryTable({
           <span role="cell" className="entry-meta">{formatBytes(file.sizeBytes)}</span>
           <span role="cell" className="entry-meta">{formatDate(file.updatedAt, language)}</span>
           <div className="entry-actions" role="cell">
+            {onToggleFileFavorite && (
+              <StarButton
+                active={starFileIds?.has(file.id) ?? false}
+                name={file.displayName}
+                onToggle={() => onToggleFileFavorite(file)}
+              />
+            )}
             <RowMenu
               triggerLabel={t("menu.openAria", { name: file.displayName })}
               menuLabel={t("menu.aria", { name: file.displayName })}
@@ -1324,6 +1453,21 @@ function EntryTable({
         </div>
       ))}
     </div>
+  );
+}
+
+function StarButton({ active, name, onToggle }: { active: boolean; name: string; onToggle: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <button
+      type="button"
+      className={active ? "star-button is-active" : "star-button"}
+      aria-pressed={active}
+      aria-label={active ? t("fav.removeAria", { name }) : t("fav.addAria", { name })}
+      onClick={onToggle}
+    >
+      <StarIcon size={16} />
+    </button>
   );
 }
 

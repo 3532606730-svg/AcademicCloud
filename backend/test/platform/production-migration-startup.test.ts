@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, type TestContext } from "node:test";
@@ -10,23 +10,20 @@ import { runMigrations } from "../../src/persistence/sqlite/migrations.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { INITIAL_MIGRATIONS_DIRECTORY } from "../persistence/helpers.js";
 
-// Pinned v4-only directory + a v5 directory carrying one future migration, so
-// this test stays deterministic even as later migrations land in the repo.
+// A pinned v4-only directory plus the REAL repository migrations directory
+// (which includes migration 005): deterministic pending-migration scenarios
+// that stay valid as later migrations land in the repo.
 function migrationFixtures(context: TestContext) {
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-migstart-"));
   const v4 = join(directory, "v4");
-  const v5 = join(directory, "v5");
   mkdirSync(v4);
-  mkdirSync(v5);
   const pinned = readdirSync(INITIAL_MIGRATIONS_DIRECTORY).filter((name) => /^00[1-4]_/.test(name));
   for (const name of pinned) {
     copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, name), join(v4, name));
-    copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, name), join(v5, name));
   }
-  writeFileSync(join(v5, "005_future_feature.sql"), "CREATE TABLE future_probe (id INTEGER PRIMARY KEY) STRICT;\n");
 
   context.after(() => rmSync(directory, { recursive: true, force: true }));
-  return { v4, v5 };
+  return { v4, v5: INITIAL_MIGRATIONS_DIRECTORY };
 }
 
 function productionConfig() {
@@ -51,12 +48,12 @@ function readSchemaVersion(databasePath: string): number {
   }
 }
 
-function hasFutureProbe(databasePath: string): boolean {
+function hasFavoritesTable(databasePath: string): boolean {
   const database = openSqliteDatabase(databasePath);
   try {
     return database
       .prepare<[string], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
-      .get("future_probe") !== undefined;
+      .get("favorite_files") !== undefined;
   } finally {
     database.close();
   }
@@ -112,7 +109,7 @@ test("production startup with a pending migration fails closed", async (context)
 
   // The failed startup must NOT have applied the pending migration.
   assert.equal(readSchemaVersion(databasePath), 4);
-  assert.equal(hasFutureProbe(databasePath), false);
+  assert.equal(hasFavoritesTable(databasePath), false);
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -129,7 +126,7 @@ test("the explicit migration runner still applies pending migrations normally", 
   upgraded.close();
   assert.deepEqual(result.appliedVersions, [5]);
   assert.equal(result.currentVersion, 5);
-  assert.equal(hasFutureProbe(databasePath), true);
+  assert.equal(hasFavoritesTable(databasePath), true);
   rmSync(directory, { recursive: true, force: true });
 });
 

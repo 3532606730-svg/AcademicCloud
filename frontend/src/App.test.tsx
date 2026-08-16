@@ -53,6 +53,9 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     listEntries: vi.fn().mockResolvedValue(EMPTY_ENTRIES),
     listPending: vi.fn().mockResolvedValue([]),
     listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [] }),
+    listFavorites: vi.fn().mockResolvedValue({ files: [], folders: [] }),
+    setFileFavorite: vi.fn().mockResolvedValue(undefined),
+    setFolderFavorite: vi.fn().mockResolvedValue(undefined),
     createFolder: vi.fn(),
     updateFolder: vi.fn(),
     deleteFolder: vi.fn(),
@@ -794,6 +797,126 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getByText("无法连接到对象存储，请检查网络后重试。")).toBeInTheDocument());
     expect(screen.queryByText(/Could not reach object storage/)).not.toBeInTheDocument();
+  });
+
+  it("renders the favorites nav bilingually and shows the empty favorites state", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(await screen.findByRole("heading", { name: "Favorites", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByText("No favorites yet")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "中文" }));
+    expect(await screen.findByRole("heading", { name: "收藏", level: 1 })).toBeInTheDocument();
+    expect(screen.getByText("还没有收藏")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "收藏" })).toBeInTheDocument();
+  });
+
+  it("star toggles favorite and unfavorite a file through the API and reconciles", async () => {
+    const user = userEvent.setup();
+    const listFavorites = vi.fn()
+      .mockResolvedValueOnce({ files: [], folders: [] })
+      .mockResolvedValueOnce({ files: [FILE], folders: [] })
+      .mockResolvedValueOnce({ files: [], folders: [] });
+    const setFileFavorite = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+      listFavorites,
+      setFileFavorite,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const star = await screen.findByRole("button", { name: "Add paper.pdf to favorites" });
+    expect(star).toHaveAttribute("aria-pressed", "false");
+    await user.click(star);
+    await waitFor(() => expect(setFileFavorite).toHaveBeenCalledWith("file-1", true));
+    // Reconciliation: the next server truth says favorited.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remove paper.pdf from favorites" })).toHaveAttribute("aria-pressed", "true"));
+
+    await user.click(screen.getByRole("button", { name: "Remove paper.pdf from favorites" }));
+    await waitFor(() => expect(setFileFavorite).toHaveBeenCalledWith("file-1", false));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add paper.pdf to favorites" })).toBeInTheDocument());
+    expect(listFavorites).toHaveBeenCalledTimes(3);
+  });
+
+  it("star toggles folder favorites through the API", async () => {
+    const user = userEvent.setup();
+    const setFolderFavorite = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [] }),
+      listFavorites: vi.fn().mockResolvedValue({ files: [], folders: [] }),
+      setFolderFavorite,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const star = await screen.findByRole("button", { name: "Add Sources to favorites" });
+    await user.click(star);
+    await waitFor(() => expect(setFolderFavorite).toHaveBeenCalledWith("folder-1", true));
+  });
+
+  it("favorites catalogue lists entries and opens the real folder with its ancestors", async () => {
+    const user = userEvent.setup();
+    const parent = { ...FOLDER, id: "folder-parent", name: "Parent" };
+    const child = { ...FOLDER, id: "folder-child", name: "Child", parentId: "folder-parent" };
+    const favoriteFolder = { ...child, ancestors: [parent] };
+    const listEntries = vi.fn((folderId: string | null) => Promise.resolve(
+      folderId === "folder-child"
+        ? { folder: child, folders: [], files: [] }
+        : { folder: null, folders: [parent], files: [] },
+    ));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries,
+      listFavorites: vi.fn().mockResolvedValue({ files: [FILE], folders: [favoriteFolder] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(await screen.findByText("paper.pdf")).toBeInTheDocument();
+    expect(screen.getByText("1 files · 1 folders")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Child" }));
+    await waitFor(() => expect(listEntries).toHaveBeenCalledWith("folder-child", expect.anything()));
+    expect(screen.getByRole("heading", { name: "Child", level: 1 })).toBeInTheDocument();
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByRole("button", { name: "Library" })).toBeInTheDocument();
+    expect(within(crumbs).getByRole("button", { name: "Parent" })).toBeInTheDocument();
+    expect(within(crumbs).getByRole("button", { name: "Child" })).toBeInTheDocument();
+  });
+
+  it("favorites view shows a loading state and never renders fake items before server data", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listFavorites: vi.fn(() => new Promise<never>(() => {})),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(await screen.findByRole("status")).toBeInTheDocument();
+    expect(screen.queryByText(/files ·/)).not.toBeInTheDocument();
+  });
+
+  it("keeps favorite state server-backed with no localStorage persistence", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(await screen.findByRole("button", { name: "Add paper.pdf to favorites" }));
+    expect(window.localStorage.getItem("academiccloud.favorites")).toBeNull();
   });
 
   it("limits concurrent upload workflows to two and starts queued work as slots free", async () => {

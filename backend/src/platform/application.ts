@@ -1,6 +1,7 @@
 import { AuthService } from "../auth/auth-service.js";
 import { Argon2idPasswordHasher } from "../auth/password-hasher.js";
 import { DriveService } from "../drive/drive-service.js";
+import { FavoriteService } from "../favorites/favorite-service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
 import { openSqliteDatabase } from "../persistence/sqlite/database.js";
 import { assertMigrationsCurrent, runMigrations } from "../persistence/sqlite/migrations.js";
@@ -33,6 +34,7 @@ export async function createApplication(
       passwordHasher: new Argon2idPasswordHasher(),
     });
     const driveService = new DriveService(persistence, storage);
+    const favoriteService = new FavoriteService(persistence);
     const app = await createApp({
       logger: { level: config.logLevel },
       auth: {
@@ -41,6 +43,7 @@ export async function createApplication(
         environment: config.environment,
       },
       drive: { service: driveService },
+      favorites: { service: favoriteService },
       readinessCheck: () => persistence.isReady(),
     });
 
