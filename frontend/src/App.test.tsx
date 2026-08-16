@@ -457,7 +457,7 @@ describe("App", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
-    const trigger = screen.getByRole("button", { name: "Open actions for paper.pdf" });
+    const trigger = await screen.findByRole("button", { name: "Open actions for paper.pdf" });
     await user.click(trigger);
     expect(screen.getByRole("menu", { name: "Actions for paper.pdf" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
@@ -1380,8 +1380,13 @@ describe("zero-descriptive-copy", () => {
 
     expect(within(dialog).queryByText(/short-lived|expires automatically/i)).not.toBeInTheDocument();
     expect(within(dialog).queryByRole("link", { name: /new tab/i })).not.toBeInTheDocument();
-    // Open remains accessible with the terse label and the signed URL.
+    // Open remains accessible with the terse label and the signed inline URL.
     expect(within(dialog).getByRole("link", { name: "Open" })).toHaveAttribute("href", "https://signed.invalid/preview");
+
+    // Download is a separate, normal authoritative path (attachment) that must
+    // not reuse the inline preview URL.
+    await user.click(within(dialog).getByRole("button", { name: "Download" }));
+    await waitFor(() => expect(createDownload).toHaveBeenLastCalledWith("file-1"));
   });
 
   it("renders no runtime inline styles anywhere in the drive UI (production CSP)", async () => {
@@ -1421,10 +1426,9 @@ describe("mobile presentation structure", () => {
     expect(document.querySelector(".sidebar")).not.toBeNull();
     const buttons = within(nav).getAllByRole("button");
     expect(buttons).toHaveLength(4);
+    // Exact DOM/semantic/visual order — not just membership.
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Library", "Favorites", "Pending", "Recycle"]);
     expect(within(nav).getByRole("button", { name: "Library" })).toHaveAttribute("aria-current", "page");
-    for (const label of ["Favorites", "Pending", "Recycle"]) {
-      expect(within(nav).getByRole("button", { name: label })).toBeInTheDocument();
-    }
 
     await user.click(within(nav).getByRole("button", { name: "Favorites" }));
     expect(within(nav).getByRole("button", { name: "Favorites" })).toHaveAttribute("aria-current", "page");

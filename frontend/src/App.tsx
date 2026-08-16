@@ -867,14 +867,14 @@ function DriveView({
           <button className={view === "library" ? "nav-item is-active" : "nav-item"} aria-current={view === "library" ? "page" : undefined} onClick={() => goToView("library")}>
             <LibraryIcon size={18} /> {t("nav.library")}
           </button>
+          <button className={view === "favorites" ? "nav-item is-active" : "nav-item"} aria-current={view === "favorites" ? "page" : undefined} onClick={() => goToView("favorites")}>
+            <StarIcon size={18} /> {t("nav.favorites")}
+          </button>
           <button className={view === "pending" ? "nav-item is-active" : "nav-item"} aria-current={view === "pending" ? "page" : undefined} onClick={() => goToView("pending")}>
             <PendingIcon size={18} /> {t("nav.pending")}
           </button>
           <button className={view === "recycle" ? "nav-item is-active" : "nav-item"} aria-current={view === "recycle" ? "page" : undefined} onClick={() => goToView("recycle")}>
             <RecycleIcon size={18} /> {t("nav.recycle")}
-          </button>
-          <button className={view === "favorites" ? "nav-item is-active" : "nav-item"} aria-current={view === "favorites" ? "page" : undefined} onClick={() => goToView("favorites")}>
-            <StarIcon size={18} /> {t("nav.favorites")}
           </button>
         </nav>
       </aside>
@@ -1143,7 +1143,7 @@ function DriveView({
           returnFocus={newFolderTriggerRef.current}
         />
       )}
-      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} />}
+      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void downloadFile(preview.file)} />}
       {moveRequest && (
         <MoveDialog
           api={api}
@@ -1651,7 +1651,7 @@ function FolderBadge() {
   return <FolderIcon size={19} className="file-badge file-badge--folder" />;
 }
 
-function PreviewDialog({ preview, onClose }: { preview: PreviewState; onClose: () => void }) {
+function PreviewDialog({ preview, onClose, onDownload }: { preview: PreviewState; onClose: () => void; onDownload: () => void }) {
   const { t } = useLanguage();
   const dialogRef = useModalDialog(onClose, false, preview.returnFocus);
 
@@ -1670,6 +1670,7 @@ function PreviewDialog({ preview, onClose }: { preview: PreviewState; onClose: (
         </div>
         <footer>
           <a className="button preview-open-button" href={preview.url} target="_blank" rel="noreferrer">{t("preview.open")}</a>
+          <button className="button preview-download-button" type="button" onClick={onDownload}>{t("menu.download")}</button>
         </footer>
       </dialog>
   );

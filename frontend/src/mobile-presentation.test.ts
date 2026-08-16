@@ -89,4 +89,16 @@ describe("mobile presentation stylesheet", () => {
     const block = mobileBlock();
     expect(block).toContain("env(safe-area-inset-bottom)");
   });
+
+  it("sizes the remaining compact controls (login submit, sign out, language switch) at the 44px floor", () => {
+    const block = mobileBlock();
+    expect(ruleHas(block, ".login-card form .button {", /min-height:\s*2\.75rem/)).toBe(true);
+    expect(ruleHas(block, ".account-popover-signout {", /min-height:\s*2\.75rem/)).toBe(true);
+    expect(ruleHas(block, ".language-switch button {", /min-height:\s*2\.75rem/)).toBe(true);
+  });
+
+  it("lays the preview Open/Download actions out side by side at the 44px floor", () => {
+    const block = mobileBlock();
+    expect(ruleHas(block, ".preview-open-button, .preview-download-button {", /flex:\s*1;\s*min-height:\s*2\.75rem/)).toBe(true);
+  });
 });

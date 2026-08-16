@@ -91,14 +91,13 @@ A separate Owner visual/product gate remains pending before any future deploymen
 
 ### L1-UX03
 
-Implementation exists at `dd42cab…`; zero-descriptive-copy and the dedicated responsive mobile architecture were verified in the independent GitHub review, but **final independent UX03 review is not yet passing**.
+Implementation exists at `dd42cab…`; zero-descriptive-copy and the dedicated responsive mobile architecture were verified in the independent GitHub review. The three required repair findings are now repaired and independently re-reviewed **PASS** (APPROVE-WITH-NITS, non-blocking NITs only):
 
-Independent review findings that must be repaired before UX03 closure:
-1. mobile bottom-nav DOM/semantic order is currently `Library / Pending / Recycle / Favorites`; required exact order is `Library / Favorites / Pending / Recycle`;
-2. Preview exposes Close/Open but is missing the required normal Download action;
-3. remaining mobile touch-target hardening is needed for Sign In, AccountMenu Sign Out, 中文, and EN.
+1. mobile bottom-nav DOM/semantic order now exactly `Library / Favorites / Pending / Recycle` (exact-sequence test added);
+2. Preview now exposes Close / Open / Download, with Download reusing the authoritative `createDownload(file.id)` attachment path while Open keeps the inline signed URL;
+3. mobile 44px touch floor added for Sign In, AccountMenu Sign Out, 中文, and EN (selector-scoped to the mobile media block).
 
-Verified non-regressions in that independent review:
+Verified non-regressions (both reviews):
 - FAV01 behavior preserved
 - global drop guard preserved
 - RowMenu scroll/resize focus repair is real
@@ -110,11 +109,12 @@ Verified non-regressions in that independent review:
 Formal state:
 
 ```text
-INDEPENDENT_L1_UX03_REVIEW_PASS=false
-UX03_REQUIRED_REPAIRS=2
-UX03_HARDENING_FINDINGS=1
+INDEPENDENT_L1_UX03_REVIEW_PASS=true
+UX03_REQUIRED_REPAIRS=0
 OWNER_VISUAL_GATE=PENDING
 ```
+
+A separate Owner visual/product gate remains pending before any future deployment of this generation.
 
 ## Approved Continuous Objective
 

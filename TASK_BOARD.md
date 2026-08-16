@@ -26,22 +26,7 @@ This objective is repository/local only. It does not authorize production contac
 
 ### L1-UX03 — Dedicated Mobile Experience & Zero-Descriptive-Copy UI
 
-**Status:** implementation complete at `dd42cab…`; independent ChatGPT review requires bounded repair before PASS.
-
-Required closure findings:
-- fix exact mobile nav DOM/semantic order to `Library / Favorites / Pending / Recycle`;
-- add normal Download action to Preview while preserving inline Preview/Open semantics;
-- harden mobile Sign In, AccountMenu Sign Out, 中文, and EN touch targets to approximately 44px.
-
-Verified preserved behavior:
-- zero-descriptive-copy cleanup
-- FAV01 state machine
-- global external-file drop guard
-- RowMenu focus repair
-- fullscreen mobile Preview structure
-- CSP boundary
-
-After repair: targeted tests → full gates → adversarial re-review → checkpoint. Do not redesign UX03.
+**Status:** repo-development closure complete — implementation `dd42cab…` + the three independent-review repairs are done and the adversarial re-review is **APPROVE-WITH-NITS**. Repairs: exact nav order `Library / Favorites / Pending / Recycle` (+exact-sequence test); Preview Download reusing the authoritative `createDownload(file.id)` attachment path while Open keeps the inline URL; 44px mobile floor for Sign In / AccountMenu Sign Out / 中文 / EN. Gates PASS (backend 127/127, frontend 121/121, typecheck/build, acceptance-tools 25/25, acceptance:compiled, diff-check clean, dependency delta 0). `OWNER_VISUAL_GATE=PENDING` (separate product/deployment gate).
 
 ### L1-FAV01 — Per-User Favorites
 
@@ -145,7 +130,7 @@ Heavy compute must remain isolated from the core drive service.
 - L1-UX02 implementation foundation
 - L1-BUGAUDIT01 implementation + independent review PASS
 - L1-FAV01 implementation + independent review PASS
-- L1-UX03 implementation at `dd42cab…` (final independent review still pending repair)
+- L1-UX03 implementation at `dd42cab…` + review repairs — independent re-review APPROVE-WITH-NITS; `OWNER_VISUAL_GATE=PENDING`
 
 Historical detail remains in Git, completed task cards, production runbooks, and existing task records rather than being duplicated here.
 

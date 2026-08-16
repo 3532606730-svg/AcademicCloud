@@ -640,8 +640,8 @@ input:hover { border-color: #a7b2a8; }
   .preview-modal > header { gap: 0.6rem; padding: calc(0.7rem + env(safe-area-inset-top)) 0.9rem 0.7rem; }
   .preview-modal > header h2 { max-width: none; flex: 1; min-width: 0; }
   .preview-close-button { min-width: 2.75rem; min-height: 2.75rem; flex: 0 0 auto; }
-  .preview-modal > footer { padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom)); }
-  .preview-open-button { width: 100%; min-height: 2.75rem; }
+  .preview-modal > footer { padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom)); gap: 0.6rem; }
+  .preview-open-button, .preview-download-button { flex: 1; min-height: 2.75rem; }
   .preview-content img { max-height: 100%; }
   .preview-content iframe { height: 100%; }
 
@@ -682,6 +682,12 @@ input:hover { border-color: #a7b2a8; }
   .new-folder-modal footer { padding: 0.9rem 1rem calc(0.9rem + env(safe-area-inset-bottom)); }
   .new-folder-modal .button { min-height: 2.75rem; }
   .new-folder-modal footer .button { min-width: 5.5rem; }
+
+  /* Approximately 44px touch floor for the remaining compact controls:
+     login submit, the account-menu sign out, and the bilingual switch. */
+  .login-card form .button { min-height: 2.75rem; }
+  .account-popover-signout { min-height: 2.75rem; }
+  .language-switch button { min-width: 2.75rem; min-height: 2.75rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
