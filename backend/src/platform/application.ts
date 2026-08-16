@@ -3,7 +3,7 @@ import { Argon2idPasswordHasher } from "../auth/password-hasher.js";
 import { DriveService } from "../drive/drive-service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
 import { openSqliteDatabase } from "../persistence/sqlite/database.js";
-import { runMigrations } from "../persistence/sqlite/migrations.js";
+import { assertMigrationsCurrent, runMigrations } from "../persistence/sqlite/migrations.js";
 import { SqlitePersistence } from "../persistence/sqlite/persistence.js";
 import type { StorageAdapter } from "../storage/storage-adapter.js";
 import { createApp } from "./app.js";
@@ -17,7 +17,15 @@ export async function createApplication(
   const database = openSqliteDatabase(sqliteConfig.databasePath);
 
   try {
-    runMigrations(database, sqliteConfig.migrationsDirectory);
+    // Reviewed production model: backup -> stop -> release switch -> explicit
+    // db:migrate:prod -> start. Production startup therefore NEVER applies
+    // migrations — it fails closed when the schema is missing or not current.
+    // Development/test keep the convenient automatic migration path.
+    if (config.environment === "production") {
+      assertMigrationsCurrent(database, sqliteConfig.migrationsDirectory);
+    } else {
+      runMigrations(database, sqliteConfig.migrationsDirectory);
+    }
     const persistence = new SqlitePersistence(database);
     const authService = new AuthService({
       accounts: persistence.repositories.accounts,

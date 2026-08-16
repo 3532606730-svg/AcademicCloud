@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import {
   ApiClient,
@@ -27,6 +26,7 @@ import {
   UploadIcon,
 } from "./icons.tsx";
 import { calculateFileMd5 } from "./md5.ts";
+import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
 
 type AuthState =
@@ -326,9 +326,33 @@ function DriveView({
   const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
   const dragDepthRef = useRef(0);
   const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
+  const workspaceRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
+
+  // Global external-file-drop protection: the Library workspace handles file
+  // drops itself (overlay + pinned upload); anywhere else in the app a real
+  // external file drop must NOT trigger browser file navigation. Text/link/
+  // internal-selection drags are never intercepted.
+  useEffect(() => {
+    const onDragOver = (event: DragEvent) => {
+      if (!hasFileDrag(event.dataTransfer)) return;
+      event.preventDefault();
+    };
+    const onDrop = (event: DragEvent) => {
+      if (!hasFileDrag(event.dataTransfer)) return;
+      if (workspaceRef.current?.contains(event.target as Node)) return; // workspace handles it
+      event.preventDefault();
+      setNotice(t("drop.outsideWorkspace"));
+    };
+    document.addEventListener("dragover", onDragOver);
+    document.addEventListener("drop", onDrop);
+    return () => {
+      document.removeEventListener("dragover", onDragOver);
+      document.removeEventListener("drop", onDrop);
+    };
+  }, [t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -402,12 +426,7 @@ function DriveView({
       });
       const mediaType = file.type || "application/octet-stream";
 
-      if (existing && (
-        existing.displayName !== file.name ||
-        existing.sizeBytes !== file.size ||
-        existing.mediaType !== mediaType ||
-        existing.checksum !== checksum
-      )) {
+      if (existing && !isSameRecoveredFile(existing, file.name, file.size, checksum)) {
         throw new Error(t("upload.sameFileMismatch"));
       }
 
@@ -624,11 +643,11 @@ function DriveView({
     }
   }
 
-  function moveFolder(folder: FolderEntry) {
+  function moveFolder(folder: FolderEntry, returnFocus?: HTMLElement | null) {
     setMoveRequest({
       kind: "folder",
       item: folder,
-      returnFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null,
+      returnFocus: returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null),
     });
   }
 
@@ -645,11 +664,11 @@ function DriveView({
     }
   }
 
-  function moveFile(file: FileEntry) {
+  function moveFile(file: FileEntry, returnFocus?: HTMLElement | null) {
     setMoveRequest({
       kind: "file",
       item: file,
-      returnFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null,
+      returnFocus: returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null),
     });
   }
 
@@ -670,8 +689,10 @@ function DriveView({
     });
   }
 
-  async function openPreview(file: FileEntry) {
-    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  async function openPreview(file: FileEntry, returnFocus?: HTMLElement | null) {
+    // The originating row-action trigger is passed explicitly: the removed
+    // portal menuitem must never be captured as the restore target.
+    const fallbackFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setBusyId(`preview-${file.id}`);
     setError(null);
     try {
@@ -679,7 +700,7 @@ function DriveView({
       setPreview({
         file,
         url: authorization.url,
-        returnFocus,
+        returnFocus: returnFocus ?? fallbackFocus,
       });
     } catch (caught: unknown) {
       // preview_unavailable renders the localized fail-safe message; the
@@ -783,6 +804,7 @@ function DriveView({
         id="main-content"
         className="workspace"
         tabIndex={-1}
+        ref={workspaceRef}
         onDragEnter={view === "library" ? onWorkspaceDragEnter : undefined}
         onDragOver={view === "library" ? onWorkspaceDragOver : undefined}
         onDragLeave={view === "library" ? onWorkspaceDragLeave : undefined}
@@ -894,7 +916,7 @@ function DriveView({
                 onRenameFolder={renameFolder}
                 onMoveFolder={moveFolder}
                 onDeleteFolder={deleteFolder}
-                onPreview={(file) => void openPreview(file)}
+                onPreview={(file, trigger) => void openPreview(file, trigger)}
                 onDownload={(file) => void downloadFile(file)}
                 onRenameFile={renameFile}
                 onMoveFile={moveFile}
@@ -1080,7 +1102,7 @@ interface RowMenuItem {
   separator?: boolean;
   danger?: boolean;
   disabled?: boolean;
-  onSelect?: () => void;
+  onSelect?: (trigger: HTMLElement) => void;
 }
 
 function RowMenu({
@@ -1093,30 +1115,21 @@ function RowMenu({
   items: RowMenuItem[];
 }) {
   const [open, setOpen] = useState(false);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+  // Production CSP is style-src 'self' (no unsafe-inline): the menu must
+  // NEVER be positioned through runtime inline `style` attributes. Positioning
+  // is pure CSS relative to the trigger; a flip CLASS handles viewport-bottom
+  // menus instead of computed pixel coordinates.
+  const [opensUp, setOpensUp] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // The menu renders through a portal onto document.body with fixed
-  // coordinates, so no ancestor overflow/rounding can clip it. When the
-  // trigger sits too close to the viewport bottom the menu flips upward.
   function openMenu() {
     const trigger = triggerRef.current;
-    if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
+    const rect = trigger?.getBoundingClientRect();
     const regularItems = items.filter((item) => !item.separator);
     const estimatedHeight = regularItems.length * 36 + (items.length - regularItems.length) * 9 + 12;
-    const style: CSSProperties = {
-      position: "fixed",
-      right: Math.max(8, window.innerWidth - rect.right),
-    };
-    if (rect.bottom + estimatedHeight > window.innerHeight && rect.top > estimatedHeight) {
-      style.bottom = window.innerHeight - rect.top + 4;
-    } else {
-      style.top = rect.bottom + 4;
-    }
-    setMenuStyle(style);
+    setOpensUp(rect !== undefined && rect.bottom + estimatedHeight > window.innerHeight && rect.top > estimatedHeight);
     setOpen(true);
   }
 
@@ -1128,8 +1141,8 @@ function RowMenu({
         setOpen(false);
       }
     };
-    // Viewport/layout movement invalidates the fixed snapshot coordinates:
-    // the simplest robust behavior is to close the menu.
+    // Viewport/layout movement invalidates the CSS-relative snapshot: the
+    // simplest robust behavior is to close the menu.
     const closeOnMove = () => setOpen(false);
     document.addEventListener("mousedown", onPointerDown);
     window.addEventListener("resize", closeOnMove);
@@ -1196,8 +1209,14 @@ function RowMenu({
       >
         <MoreIcon size={16} />
       </button>
-      {open && createPortal(
-        <div ref={menuRef} className="row-menu row-menu--portal" style={menuStyle} role="menu" aria-label={menuLabel} onKeyDown={onKeyDown}>
+      {open && (
+        <div
+          ref={menuRef}
+          className={opensUp ? "row-menu row-menu--up" : "row-menu"}
+          role="menu"
+          aria-label={menuLabel}
+          onKeyDown={onKeyDown}
+        >
           {items.map((item) => item.separator ? (
             <div key={item.key} className="row-menu-separator" role="separator" />
           ) : (
@@ -1208,15 +1227,14 @@ function RowMenu({
               className={item.danger ? "row-menu-item row-menu-item--danger" : "row-menu-item"}
               disabled={item.disabled}
               onClick={() => {
-                item.onSelect?.();
+                item.onSelect?.(triggerRef.current ?? document.body);
                 close(true);
               }}
             >
               {item.label}
             </button>
           ))}
-        </div>,
-        document.body,
+        </div>
       )}
     </div>
   );
@@ -1241,12 +1259,12 @@ function EntryTable({
   busyId: string | null;
   onEnterFolder: (folder: FolderEntry) => void;
   onRenameFolder: (folder: FolderEntry) => void;
-  onMoveFolder: (folder: FolderEntry) => void;
+  onMoveFolder: (folder: FolderEntry, trigger?: HTMLElement) => void;
   onDeleteFolder: (folder: FolderEntry) => void;
-  onPreview: (file: FileEntry) => void;
+  onPreview: (file: FileEntry, trigger?: HTMLElement) => void;
   onDownload: (file: FileEntry) => void;
   onRenameFile: (file: FileEntry) => void;
-  onMoveFile: (file: FileEntry) => void;
+  onMoveFile: (file: FileEntry, trigger?: HTMLElement) => void;
   onDeleteFile: (file: FileEntry) => void;
 }) {
   const { language, t } = useLanguage();
@@ -1272,7 +1290,7 @@ function EntryTable({
               menuLabel={t("menu.aria", { name: folder.name })}
               items={[
                 { key: "rename", label: t("menu.rename"), disabled: busyId === folder.id, onSelect: () => onRenameFolder(folder) },
-                { key: "move", label: t("menu.move"), disabled: busyId === folder.id, onSelect: () => onMoveFolder(folder) },
+                { key: "move", label: t("menu.move"), disabled: busyId === folder.id, onSelect: (trigger) => onMoveFolder(folder, trigger) },
                 { key: "separator", separator: true },
                 { key: "trash", label: t("menu.trash"), danger: true, disabled: busyId === folder.id, onSelect: () => onDeleteFolder(folder) },
               ]}
@@ -1293,11 +1311,11 @@ function EntryTable({
               triggerLabel={t("menu.openAria", { name: file.displayName })}
               menuLabel={t("menu.aria", { name: file.displayName })}
               items={[
-                ...(isPreviewable(file) ? [{ key: "preview", label: t("menu.preview"), disabled: busyId === `preview-${file.id}`, onSelect: () => onPreview(file) }] : []),
+                ...(isPreviewable(file) ? [{ key: "preview", label: t("menu.preview"), disabled: busyId === `preview-${file.id}`, onSelect: (trigger: HTMLElement) => onPreview(file, trigger) }] : []),
                 { key: "download", label: t("menu.download"), disabled: busyId === `download-${file.id}`, onSelect: () => onDownload(file) },
                 { key: "separator-1", separator: true },
                 { key: "rename", label: t("menu.rename"), disabled: busyId === file.id, onSelect: () => onRenameFile(file) },
-                { key: "move", label: t("menu.move"), disabled: busyId === file.id, onSelect: () => onMoveFile(file) },
+                { key: "move", label: t("menu.move"), disabled: busyId === file.id, onSelect: (trigger) => onMoveFile(file, trigger) },
                 { key: "separator-2", separator: true },
                 { key: "trash", label: t("menu.trash"), danger: true, disabled: busyId === file.id, onSelect: () => onDeleteFile(file) },
               ]}

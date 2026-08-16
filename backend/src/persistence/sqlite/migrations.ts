@@ -142,7 +142,7 @@ export function assertMigrationsCurrent(database: SqliteDatabase, directory: str
     .get("schema_migrations");
 
   if (!migrationTable) {
-    throw new Error("Database schema is not initialized; run db:migrate before dry-run maintenance");
+    throw new Error("Database schema is not initialized; run the explicit migration command before starting the application");
   }
 
   const applied = readAppliedMigrations(database);
@@ -152,7 +152,7 @@ export function assertMigrationsCurrent(database: SqliteDatabase, directory: str
   );
 
   if (pending.length > 0) {
-    throw new Error("Database schema is not current; run db:migrate before dry-run maintenance");
+    throw new Error("Database schema is not current; run the explicit migration command before starting the application");
   }
 
   return { appliedVersions: [], currentVersion: migrations.at(-1)?.version ?? 0 };

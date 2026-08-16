@@ -325,6 +325,58 @@ describe("App", () => {
     expect(checksumFile).toHaveBeenCalledTimes(before);
   });
 
+  it("protects the whole app from external file navigation without hijacking other drags", async () => {
+    const checksumFile = vi.fn(() => new Promise<string>(() => {}));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} checksumFile={checksumFile} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    // External file drop on the topbar (outside the workspace): navigation
+    // suppressed, nothing enqueued, a concise localized notice appears.
+    const topbar = document.querySelector(".topbar")!;
+    const topbarDrop = fireEvent.drop(topbar, {
+      dataTransfer: dragDataTransfer({ files: [new File(["a"], "a.pdf")], items: [{ kind: "file", getAsFile: () => new File(["a"], "a.pdf") }] }),
+    });
+    expect(topbarDrop).toBe(false);
+    expect(checksumFile).not.toHaveBeenCalled();
+    expect(screen.getByText("Drop files into the Library workspace to upload them.")).toBeInTheDocument();
+
+    // Text/link drags outside the workspace are never intercepted.
+    const textDrop = fireEvent.drop(topbar, { dataTransfer: dragDataTransfer({ types: ["text/plain"], files: [] }) });
+    expect(textDrop).toBe(true);
+  });
+
+  it("recovers a pending upload when only the browser MIME differs", async () => {
+    const user = userEvent.setup();
+    const pendingFile = { ...FILE, state: "pending_upload" as const, activatedAt: null, mediaType: "application/octet-stream" };
+    const completeUpload = vi.fn().mockResolvedValue(FILE);
+    const renewUpload = vi.fn().mockResolvedValue({
+      method: "POST" as const,
+      url: "https://storage.invalid",
+      fields: {},
+      expiresAt: "2026-08-13T00:05:00.000Z",
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listPending: vi.fn().mockResolvedValue([pendingFile]),
+      completeUpload,
+      renewUpload,
+    });
+    const directUpload = vi.fn().mockResolvedValue(undefined);
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directUpload={directUpload} />);
+
+    await user.click(await screen.findByRole("button", { name: "Pending uploads" }));
+    // The reserved upload reports a different MIME than the browser now
+    // infers: the same name/size/checksum must still renew successfully.
+    const chooseInput = await screen.findByLabelText("Choose same file for paper.pdf");
+    await user.upload(chooseInput, new File(["source"], "paper.pdf", { type: "application/x-pdf" }));
+
+    await waitFor(() => expect(renewUpload).toHaveBeenCalledWith("file-1"));
+    await waitFor(() => expect(completeUpload).toHaveBeenCalledWith("file-1"));
+    expect(directUpload).toHaveBeenCalledOnce();
+    expect(api.createUpload).not.toHaveBeenCalled();
+  });
+
   it("skips dropped directories, reports them, and still uploads regular files", async () => {
     const checksumFile = vi.fn(() => new Promise<string>(() => {}));
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
@@ -405,6 +457,54 @@ describe("App", () => {
     expect(screen.getByRole("menu", { name: "Actions for paper.pdf" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menu", { name: "Actions for paper.pdf" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("renders the row menu without runtime inline positioning styles (production CSP)", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await openRowMenu("paper.pdf");
+    const menu = screen.getByRole("menu", { name: "Actions for paper.pdf" });
+    // Production CSP is style-src 'self' (no unsafe-inline): the menu must
+    // never carry runtime inline style coordinates.
+    expect(menu.getAttribute("style")).toBeNull();
+  });
+
+  it("restores focus to the original row trigger after Preview and Move modals close", async () => {
+    const user = userEvent.setup();
+    const createDownload = vi.fn().mockResolvedValue({
+      method: "GET",
+      url: "https://signed.invalid/preview",
+      expiresAt: "2026-08-13T00:05:00.000Z",
+    });
+    const listEntries = vi.fn((folderId: string | null) => Promise.resolve(
+      folderId === null
+        ? { folder: null, folders: [FOLDER], files: [FILE] }
+        : { folder: FOLDER, folders: [], files: [] },
+    ));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), createDownload, listEntries });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const trigger = await screen.findByRole("button", { name: "Open actions for paper.pdf" });
+    const menu = await openRowMenu("paper.pdf");
+    await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
+    const preview = await screen.findByRole("dialog", { name: "paper.pdf" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(preview).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+
+    const moveMenu = await openRowMenu("paper.pdf");
+    await user.click(within(moveMenu).getByRole("menuitem", { name: "Move" }));
+    const moveDialog = await screen.findByRole("dialog", { name: "Move “paper.pdf”" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(moveDialog).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
   });
 

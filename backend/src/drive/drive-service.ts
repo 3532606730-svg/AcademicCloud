@@ -21,7 +21,19 @@ export type DriveErrorCode =
   | "upload_incomplete"
   | "upload_metadata_mismatch"
   | "preview_unavailable"
+  | "preview_too_large"
   | "storage_unavailable";
+
+// Product/browser safety limits for INLINE PREVIEW only. These are NOT
+// storage limits: uploads and downloads keep their existing 5 GiB contract.
+const INLINE_PREVIEW_SIZE_LIMITS: Readonly<Record<string, number>> = {
+  "application/pdf": 512 * 1024 * 1024,
+  "image/png": 128 * 1024 * 1024,
+  "image/jpeg": 128 * 1024 * 1024,
+  "image/gif": 128 * 1024 * 1024,
+  "image/webp": 128 * 1024 * 1024,
+  "text/plain": 16 * 1024 * 1024,
+};
 
 export class DriveError extends Error {
   constructor(readonly code: DriveErrorCode, options?: ErrorOptions) {
@@ -375,6 +387,16 @@ export class DriveService {
 
     if (disposition === "inline" && !isSafeInlineMediaType(file.mediaType)) {
       throw new DriveError("invalid_state");
+    }
+
+    // Backend-authoritative inline-preview size policy: pathological
+    // multi-gigabyte documents must not reach the browser preview surface.
+    // Download remains available at any size under the upload contract.
+    if (disposition === "inline") {
+      const limit = file.mediaType ? INLINE_PREVIEW_SIZE_LIMITS[file.mediaType] : undefined;
+      if (limit !== undefined && (file.sizeBytes ?? 0) > limit) {
+        throw new DriveError("preview_too_large");
+      }
     }
 
     try {

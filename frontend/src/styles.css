@@ -232,8 +232,12 @@ input:hover { border-color: #a7b2a8; }
 .section-heading span { color: var(--muted); font-size: 0.8125rem; }
 .section-copy { max-width: 48rem; margin: 0 0 1.1rem; font-size: 0.88rem; line-height: 1.6; }
 
-/* Archive-catalogue list: quiet, dense, durable. */
-.entry-table { overflow: hidden; border: 1px solid var(--line); border-radius: 0.7rem; background: var(--paper); }
+/* Archive-catalogue list: quiet, dense, durable. No overflow clipping here —
+   row menus must be able to escape the catalogue bounds vertically. Rounded
+   corners live on the first/last rows instead. */
+.entry-table { border: 1px solid var(--line); border-radius: 0.7rem; background: var(--paper); }
+.entry-row:first-child { border-top-left-radius: 0.7rem; border-top-right-radius: 0.7rem; }
+.entry-row:last-child { border-bottom-left-radius: 0.7rem; border-bottom-right-radius: 0.7rem; }
 .entry-row {
   display: grid;
   min-height: 4rem;
@@ -274,7 +278,7 @@ input:hover { border-color: #a7b2a8; }
 .row-menu {
   position: absolute;
   z-index: 60;
-  top: calc(100% + 0.25rem);
+  top: calc(100% + 0.3rem);
   right: 0;
   display: grid;
   min-width: 10.5rem;
@@ -284,9 +288,9 @@ input:hover { border-color: #a7b2a8; }
   background: var(--paper);
   box-shadow: 0 10px 30px rgba(22, 40, 30, 0.14);
 }
-/* Portal mode: fixed to the viewport so ancestor overflow can never clip the
-   menu; coordinates come from inline styles. */
-.row-menu--portal { position: fixed; top: auto; right: auto; }
+/* Upward flip class: CSS-only positioning (production CSP forbids runtime
+   inline styles), applied when the trigger sits near the viewport bottom. */
+.row-menu--up { top: auto; bottom: calc(100% + 0.3rem); }
 .row-menu-item {
   display: flex;
   min-height: 2.2rem;

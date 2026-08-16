@@ -413,3 +413,50 @@ test("inline preview without a browser endpoint returns 503 preview_unavailable"
   assert.equal(attachment.statusCode, 200);
   assert.match(attachment.json<{ download: { url: string } }>().download.url, /^memory:\/\/download/);
 });
+
+test("oversized inline preview returns 503 preview_too_large while download stays available", async (context) => {
+  const { app, storage, driveService, login } = await fixture(context);
+  const ownerCookie = await login("owner-1");
+  const oversized = 512 * 1024 * 1024 + 1;
+
+  const uploadResponse = await app.inject({
+    method: "POST",
+    url: "/api/drive/uploads",
+    headers: { cookie: ownerCookie, origin: ORIGIN },
+    payload: {
+      folderId: null,
+      displayName: "huge.pdf",
+      mediaType: "application/pdf",
+      sizeBytes: oversized,
+      checksum: { algorithm: "md5", value: MD5 },
+    },
+  });
+  assert.equal(uploadResponse.statusCode, 201);
+  const upload = uploadResponse.json<{ file: { id: string }; upload: { fields: Record<string, string> } }>();
+  storage.putObject({
+    objectKey: upload.upload.fields.key!,
+    sizeBytes: oversized,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+  await driveService.completeUpload("owner-1", upload.file.id);
+
+  const inline = await app.inject({
+    method: "GET",
+    url: `/api/drive/files/${upload.file.id}/download?disposition=inline`,
+    headers: { cookie: ownerCookie },
+  });
+  assert.equal(inline.statusCode, 503);
+  assert.deepEqual(inline.json(), { error: "preview_too_large" });
+
+  const attachment = await app.inject({
+    method: "GET",
+    url: `/api/drive/files/${upload.file.id}/download`,
+    headers: { cookie: ownerCookie },
+  });
+  assert.equal(attachment.statusCode, 200);
+  assert.match(attachment.json<{ download: { url: string } }>().download.url, /disposition=attachment/);
+});
