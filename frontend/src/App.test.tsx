@@ -919,6 +919,78 @@ describe("App", () => {
     expect(window.localStorage.getItem("academiccloud.favorites")).toBeNull();
   });
 
+  it("prevents external file drops in Favorites/Pending/Recycle workspaces without enqueueing", async () => {
+    const user = userEvent.setup();
+    const checksumFile = vi.fn(() => new Promise<string>(() => {}));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} checksumFile={checksumFile} />);
+    await screen.findByRole("heading", { name: "Library" });
+    const fileDrag = dragDataTransfer({ files: [new File(["a"], "a.pdf")], items: [{ kind: "file", getAsFile: () => new File(["a"], "a.pdf") }] });
+
+    for (const viewName of ["Favorites", "Pending uploads", "Recycle bin"]) {
+      await user.click(screen.getByRole("button", { name: viewName }));
+      const before = checksumFile.mock.calls.length;
+      const dropEvent = fireEvent.drop(workspace(), { dataTransfer: fileDrag });
+      expect(dropEvent).toBe(false); // default prevented: no browser navigation
+      expect(checksumFile).toHaveBeenCalledTimes(before); // nothing enqueued
+      expect(screen.getAllByText("Drop files into the Library workspace to upload them.").length).toBeGreaterThan(0);
+      await user.click(screen.getByRole("button", { name: "Library" }));
+    }
+  });
+
+  it("entering Favorites never calls listRecycle and still loads listFavorites", async () => {
+    const user = userEvent.setup();
+    const listRecycle = vi.fn().mockResolvedValue({ folders: [], files: [] });
+    const listFavorites = vi.fn().mockResolvedValue({ files: [], folders: [] });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listRecycle,
+      listFavorites,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    expect(listRecycle).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(await screen.findByText("No favorites yet")).toBeInTheDocument();
+    expect(listFavorites).toHaveBeenCalled();
+    expect(listRecycle).not.toHaveBeenCalled();
+  });
+
+  it("recycle failure cannot surface as an error while Favorites data succeeds", async () => {
+    const user = userEvent.setup();
+    const listRecycle = vi.fn().mockRejectedValue(new ApiError(503, "storage_unavailable"));
+    const listFavorites = vi.fn().mockResolvedValue({ files: [FILE], folders: [] });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listRecycle,
+      listFavorites,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Recycle bin" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Object storage is temporarily unavailable");
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(await screen.findByText("paper.pdf")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(listFavorites).toHaveBeenCalled();
+    expect(listRecycle).toHaveBeenCalledTimes(1);
+  });
+
+  it("entering Recycle still calls listRecycle", async () => {
+    const user = userEvent.setup();
+    const listRecycle = vi.fn().mockResolvedValue({ folders: [], files: [] });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listRecycle });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Recycle bin" }));
+    await waitFor(() => expect(listRecycle).toHaveBeenCalled());
+    expect(screen.getByText("The recycle bin is empty")).toBeInTheDocument();
+  });
+
   it("limits concurrent upload workflows to two and starts queued work as slots free", async () => {
     const user = userEvent.setup();
     const checksumResolvers: Array<(value: string) => void> = [];

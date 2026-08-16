@@ -355,10 +355,11 @@ function DriveView({
     return () => controller.abort();
   }, [api, revision]);
 
-  // Global external-file-drop protection: the Library workspace handles file
-  // drops itself (overlay + pinned upload); anywhere else in the app a real
-  // external file drop must NOT trigger browser file navigation. Text/link/
-  // internal-selection drags are never intercepted.
+  // Global external-file-drop protection: ONLY the Library workspace (in
+  // library view) may defer to the workspace upload handler. Every other
+  // genuine external file drop anywhere in the app — including the workspace
+  // while viewing Favorites/Pending/Recycle — is prevented from browser
+  // navigation and never enqueues. Text/link/internal drags are untouched.
   useEffect(() => {
     const onDragOver = (event: DragEvent) => {
       if (!hasFileDrag(event.dataTransfer)) return;
@@ -366,7 +367,7 @@ function DriveView({
     };
     const onDrop = (event: DragEvent) => {
       if (!hasFileDrag(event.dataTransfer)) return;
-      if (workspaceRef.current?.contains(event.target as Node)) return; // workspace handles it
+      if (view === "library" && workspaceRef.current?.contains(event.target as Node)) return; // workspace uploads
       event.preventDefault();
       setNotice(t("drop.outsideWorkspace"));
     };
@@ -376,18 +377,22 @@ function DriveView({
       document.removeEventListener("dragover", onDragOver);
       document.removeEventListener("drop", onDrop);
     };
-  }, [t]);
+  }, [t, view]);
 
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
 
-    const request = view === "library"
+    // Explicit four-way request state machine: the Favorites view owns its
+    // listFavorites lifecycle and must NEVER fall through to listRecycle.
+    const request: Promise<void> = view === "library"
       ? api.listEntries(currentFolderId, controller.signal).then(setEntries)
       : view === "pending"
         ? api.listPending(currentFolderId, controller.signal).then(setPending)
-        : api.listRecycle(controller.signal).then(setRecycle);
+        : view === "recycle"
+          ? api.listRecycle(controller.signal).then(setRecycle)
+          : Promise.resolve();
 
     request.catch((caught: unknown) => {
       if (!(caught instanceof DOMException && caught.name === "AbortError")) {
