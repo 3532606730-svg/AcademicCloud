@@ -52,11 +52,17 @@ Current identities (verified read-only 2026-08-15):
 The exact reviewed source artifact must exist and be cryptographically proven
 BEFORE any OSS/Porkbun/TLS mutation (builds happen in CI, never on the host):
 
-- [ ] `B0` GitHub Actions `production-build.yml` builds the EXACT reviewed
-      source commit (record run id + commit)
-- [ ] `B1` artifact identity chain: ZIP SHA-256 → four-file bundle → archive
+- [x] `B0` GitHub Actions `production-build.yml` builds the EXACT reviewed
+      source commit (record run id + commit) — executed 2026-08-16 by the
+      Owner for `codex/prod-03c2` @ `15181f90d6eecbb0ddb977a0168536a445802ec7`;
+      both jobs PASS (`linux-production-artifact` + independent
+      `verify-downloaded-artifact`). GitHub run id: Owner to record.
+- [x] `B1` artifact identity chain: ZIP SHA-256 → four-file bundle → archive
       SHA-256 → manifest (sourceCommit/platform/arch/node) →
       `scripts/production-artifact.mjs verify` on Linux x64 Node 24 → status ok
+      — ZIP `d16e969d…`, archive `0f47bb5d…`, manifest `2342aeba…`, verifier
+      `c62c98c1…` (reviewed, byte-identical), independent verify exit 0 on the
+      production host Node v24.19.0 (evidence in `output/prod05a-transaction-a-state-capture.json`)
 
 Failure of the artifact gate: **no cloud mutation**.
 
@@ -81,6 +87,120 @@ A4 explicitly NOT-PROVABLE-PRE-DNS with immediate post-DNS verification);
 A8 recorded; no public access introduced; `cloud.ajtlab.top` untouched.
 **Transaction A proves only domain mapping, CNAME, TLS, and the private
 unsigned boundary — NOT application signed-GET behavior.**
+
+---
+
+## TRANSACTION A EXECUTION RECORD — L1-PROD05A (2026-08-16, Owner-authorized)
+
+**A. Authorization & scope.** Transaction A only (OSS custom-domain binding,
+conditional ownership TXT, TLS certificate, DNS cutover, private-boundary
+verification). No UX01 app deployment, no env edit, no Nginx/systemd/DB
+mutation. `TRANSACTION_B_AUTHORIZED=false`.
+
+**B. Read-only live production audit (baseline profile).** Auditor origin
+`5a1b008` (`codex/l1-ops01-readiness-auditor`), run against
+`academiccloud-prod`: **OVERALL=READY, exit 0**. All required checks PASS —
+resources (MemAvailable 504,380 KiB ≥ 256 MiB heavy-guard; disk 12,709,816 KiB
+≥ 10 GiB; 0 OOM; 0 failed units), loopback-only `127.0.0.1:3000`, service
+active+disabled pid 44122 NRestarts 0, DB integrity/FK/schema v4, backups
+present, OSS anon listing 403, cloud TLS valid (expiry 2026-11-13), public
+health/ready/HTTPS/redirect PASS. Non-PASS items pre-explained: advisory
+`DNS_NS`/`DNS_CAA` UNKNOWN (operator-network c-ares block; NS cross-checked via
+system resolver = 4 Porkbun NS; CAA unqueryable in this network), informational
+`FILES_DNS_TARGET` FAIL (same c-ares block; system resolver showed the
+pre-cutover parking state), advisory WARNs out of scope per PROD-03C2
+(autostart disabled, backup cadence, certbot timer) and expected
+`PRODUCTION_DRIFT` (development ahead). Evidence:
+`output/prod05a-live-audit-final.json`,
+`output/prod05a-dns-system-resolver-evidence.json`.
+
+**C. Auditor hardening committed during preflight.** `journalctl -q` added to
+both remote aggregation pipelines (fixes the `-- No entries --` sentinel
+false-positive that made `NO_ERROR_OOM_ACTIVITY` FAIL on a clean host);
+regression assertions added; 42/42 tests pass; pushed as `da2c8e2` + `5a1b008`
+on the auditor branch (never merged into `codex/prod-03c2`).
+
+**D. Pre-mutation artifact gate (PASS).** See B0/B1 above; full identity chain
+recorded in `output/prod05a-transaction-a-state-capture.json` (`artifactGate`
+section). Independent `production-artifact.mjs verify` executed on the
+production host's Node v24.19.0 with complete temp isolation (exit 0; evidence
+byte-identical to CI); production service untouched (same pid, 0 restarts).
+
+**E. A1/A1a — OSS binding + ownership (PASS, Owner console).** Custom domain
+`files.ajtlab.top` bound to private bucket `ajt-academiccloud-kl-8f3c` with no
+ACL/policy/versioning/public-access change; ownership verification PASS via
+`_dnsauth.files` TXT; the TXT is now ABSENT (NXDOMAIN re-verified) and the
+wildcard parking record was never touched.
+
+**F. A2 — Assigned CNAME target (recorded).**
+`ajt-academiccloud-kl-8f3c.ap-southeast-3.thepacificqlx.com` (console-assigned;
+not the old hard-coded endpoint assumption).
+
+**G. A3 — Certificate (PASS, lifecycle OPEN).** DV single-domain
+`files.ajtlab.top`, RSA 2048, SAN `files.ajtlab.top` + `www.files.ajtlab.top`,
+issuer DigiCert "Encryption Everywhere DV TLS CA - G2" (Alibaba DV partner),
+valid 2026-08-16T08:00Z → 2026-11-14T07:59:59Z, hosted/deployed to OSS.
+Manual renewal required ⇒ `CERTIFICATE_LIFECYCLE_CLOSED=false`; renewal
+handled by PROD-03C3 hardening (hard deadline before 2026-11-14).
+
+**H. A4 — Pre-cutover validation.** `NOT-PROVABLE-PRE-DNS` (Owner-reported);
+immediate post-DNS verification performed instead (below) — permitted by the
+gate rule.
+
+**I. A5 — DNS cutover (Owner Porkbun).** The parking behavior came from
+wildcard `*.ajtlab.top CNAME pixie.porkbun.com` (TTL 600) — there was NO
+pre-existing explicit `files.ajtlab.top` record; the wildcard was NOT
+modified. Owner ADDED explicit `files.ajtlab.top CNAME
+ajt-academiccloud-kl-8f3c.ap-southeast-3.thepacificqlx.com` TTL 600 (no
+conflicting second record; `cloud.ajtlab.top` untouched).
+
+**J. A6 — Convergence (PASS).** Independent `Resolve-DnsName`:
+`files.ajtlab.top` → the OSS target (observed TTL 271 at check time);
+wildcard probe name still resolves to `pixie.porkbun.com` TTL 600;
+`cloud.ajtlab.top` A unchanged (`47.250.126.42`).
+
+**K. A7 — Private boundary (PASS, independently re-verified).** Anonymous
+unsigned GET `https://files.ajtlab.top/<probe>` → **403**; anonymous bucket
+listing (`?list-type=2`) → **403**; `Server: AliyunOSS` (custom domain routed
+at OSS); TLS handshake serves the correct certificate (SslStream-verified SAN).
+No public read permission introduced.
+
+**L. A8 — Exact rollback state (recorded).** Rollback DNS = **DELETE ONLY the
+explicit `files.ajtlab.top` CNAME** (wildcard parking remains and resumes
+serving); certificate = OSS-hosted DV cert (unbind optionally, after DNS
+restore); OSS binding = custom domain bound (unbind in console if required);
+TXT state = absent. `cloud.ajtlab.top` Nginx/backend state unchanged.
+
+**M. Production-unchanged flags.**
+`PRODUCTION_APPLICATION_CHANGED=false`, `DATABASE_CHANGED=false`,
+`FROZEN_E2E_CHANGED=false`, `PUBLIC_ACCESS_CHANGED=false` (anonymous access
+denied before AND after), `OSS_BROWSER_ENDPOINT` still unset (env occurrences
+0), served CSP unchanged (no files domain — expected until Transaction B),
+`cloud.ajtlab.top` HTTPS/health 200 and cert expiry 2026-11-13 unchanged,
+service active+disabled pid 44122 NRestarts 0.
+
+**N. OSS console domain status** reported as `待检测` (pending detection) —
+data-plane DNS/TLS/403 evidence PASS ⇒ `PENDING_NONBLOCKING` (Owner-reported;
+no console access from the harness).
+
+**O. Certificate lifecycle.** Issued + hosted; manual renewal;
+`CERTIFICATE_LIFECYCLE_CLOSED=false` (tracked for PROD-03C3).
+
+**P. No public access introduced.** Listing and unsigned object reads remain
+403 on both the native bucket endpoint and the new custom domain.
+
+**Q. Evidence files.** `output/prod05a-live-audit-final.json`,
+`output/prod05a-dns-system-resolver-evidence.json`,
+`output/prod05a-transaction-a-state-capture.json`,
+`output/prod05a-post-cutover-verification.json` (and earlier baseline captures
+`output/prod05a-live-audit-baseline.json` / `-v2.json`).
+
+**R. STOP — Transaction B NOT authorized.** Next gates remain: Owner records
+the GitHub Actions run id for B0; UX01 app deployment, `OSS_BROWSER_ENDPOINT`
+install, CSP activation, and Owner browser PV are all Transaction B steps and
+were NOT started. `TRANSACTION_B_AUTHORIZED=false`.
+
+---
 
 ## TRANSACTION B — UX01 APPLICATION DEPLOYMENT
 
