@@ -174,13 +174,13 @@ HIGH for server memory/bandwidth; MEDIUM for browser-side throughput perception
 
 | Failure | Detection | Impact | Likelihood confidence | Prevention | Rollback |
 |---|---|---|---|---|---|
-| Wrong DNS CNAME target | A6 convergence mismatch | Preview 404/SSL error; app unaffected (fails safe) | MEDIUM (A2 discipline) | A2 records console target before DNS edit | A9 parking restore |
+| Wrong DNS CNAME target | A6 convergence mismatch | Preview 404/SSL error; app unaffected (fails safe) | MEDIUM (A2 discipline) | A2 records console target before DNS edit | A8 recorded rollback state + rollback matrix (parking restore) |
 | Certificate not bound | A4 TLS probe fails | Preview unreachable | MEDIUM | A3+A4 ordering | unbind/rebind cert; DNS restore if needed |
 | TLS name mismatch | A4 served-cert SAN check | Browser warning/block | LOW | SAN pinned to files.ajtlab.top only | rebind correct cert |
 | DNS cache propagation lag | A6 delayed resolution | Temporary mixed behavior | HIGH (inherent) | TTL wait + convergence recheck | parking restore |
 | Custom domain accidentally public | A7 unsigned 403 check | Data exposure | LOW | A7 mandatory; no ACL changes | unbind domain immediately |
-| Signed URL broken on custom domain | A8/B17 | Preview/download failure | LOW | cname signing smoke before app change | env+release rollback |
-| OSS cname signing mismatch | A8 signed GET 403 | Preview unavailable | LOW | verifier + A8 | env rollback → fail-safe preview_unavailable |
+| Signed URL broken on custom domain | B15a / B17 | Preview/download failure | LOW | B15a signed-GET proof on the NEW release before CSP activation | env+release rollback |
+| OSS cname signing mismatch | B15a signed GET failure | Preview unavailable | LOW | verifier + B15a before CSP activation | env rollback → fail-safe preview_unavailable |
 | CSP blocks Preview | B17 header check | iframe/img blocked | LOW | B7/B8 add-only diff | exact CSP restore |
 | CSP loses native upload host | B8 diff | uploads break | LOW | B8 diff proves add-only | exact CSP restore |
 | OSS_BROWSER_ENDPOINT typo | config-load error at B13 startup | service fails to start | LOW | B5 exact value + loader validation | env restore + release rollback |
@@ -191,7 +191,7 @@ HIGH for server memory/bandwidth; MEDIUM for browser-side throughput perception
 | Invalid Nginx config | B9 nginx -t | reload failure | LOW | B9 before reload | keep old config (never reload invalid) |
 | Preview URL expiry (large PDF) | PV large-PDF test | later-page load fails in old dialogs | MEDIUM (documented) | PV item recorded; reopen requests fresh auth | follow-up decision (TTL or refresh UX) |
 | Certificate renewal forgotten (files domain) | expiry calendar | Preview outage at expiry | MEDIUM (manual path) | TLS lifecycle decision + calendar | reissue/rebind |
-| Rollback DNS ambiguity | A9 record quality | wrong restore | LOW | A9 exact record + TTL | A9 restore |
+| Rollback DNS ambiguity | A8 record quality | wrong restore | LOW | A8 exact recorded rollback state + TTL + rollback matrix | A8 restore |
 
 ## READINESS GATE MATRIX
 
@@ -227,8 +227,9 @@ HIGH for server memory/bandwidth; MEDIUM for browser-side throughput perception
    LOW-MEDIUM complexity.
 5. Off-host backup verification cadence (restore rehearsal) — HIGH value,
    MEDIUM complexity.
-6. Documentation reconciliation (README/PROJECT_SPEC stale statements) —
-   MEDIUM value, LOW complexity.
+6. Documentation reconciliation (README/PROJECT_SPEC current-state statements) —
+   DONE 2026-08-16 (overnight reconciliation); only re-verify after the UX01
+   deployment changes current state again.
 7. Branch protection / required CI on `main` — MEDIUM value, LOW complexity.
 8. Merge `codex/prod-03c2` back to `main` after the production checkpoint —
    MEDIUM value, LOW complexity, do after PV PASS.
