@@ -863,9 +863,7 @@ function DriveView({
 
         {view === "library" && (
           <section aria-labelledby="contents-title">
-            <div className="section-heading">
-              <h2 id="contents-title">{t("folder.contentsTitle")}</h2>
-            </div>
+            <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
             {loading ? <LoadingRows /> : isLibraryEmpty ? (
               <EmptyState title={t("folder.emptyTitle")} text={t("folder.emptyText")} />
             ) : (
