@@ -588,10 +588,10 @@ test("release service-write denied is a separate required gate", async () => {
 
 test("raw journal/cron output never crosses SSH (remote aggregation only)", () => {
   const commands = remoteCommandStrings();
-  const journalErrors = commands.find((command) => command.includes("journalctl -u academiccloud"));
+  const journalErrors = commands.find((command) => command.includes("journalctl -q -u academiccloud"));
   assert.match(journalErrors, /\| wc -l$/, "journal errors must be aggregated remotely");
   assert.match(journalErrors, /journalctl -q /, "journalctl must suppress the -- No entries -- sentinel");
-  const kernelOom = commands.find((command) => command.includes("journalctl -k"));
+  const kernelOom = commands.find((command) => command.includes("journalctl -q -k"));
   assert.match(kernelOom, /grep -ciE/, "kernel OOM must be aggregated remotely");
   assert.match(kernelOom, /journalctl -q /, "journalctl must suppress the -- No entries -- sentinel");
   const cron = commands.find((command) => command.includes("cron.d"));
@@ -750,8 +750,8 @@ test("resource guard fails closed when memory evidence is unavailable", async ()
 test("OOM gate requires every evidence source known and clean", async () => {
   const executorWith = (overrides) => async (alias, args) => {
     const key = args.join(" ").replace(/\s+/g, " ").trim();
-    if (key.includes("journalctl -u academiccloud")) return overrides.journalErrors ?? { ok: true, kind: "OK", stdout: "0", stderr: "", exitCode: 0, durationMs: 1, limited: false };
-    if (key.includes("journalctl -k")) return overrides.kernelOom ?? { ok: true, kind: "OK", stdout: "0", stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    if (key.includes("journalctl -q -u academiccloud")) return overrides.journalErrors ?? { ok: true, kind: "OK", stdout: "0", stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    if (key.includes("journalctl -q -k")) return overrides.kernelOom ?? { ok: true, kind: "OK", stdout: "0", stderr: "", exitCode: 0, durationMs: 1, limited: false };
     if (key.includes("memory.events")) return overrides.cgroupEvents ?? { ok: true, kind: "OK", stdout: "oom 0\noom_kill 0\noom_group_kill 0\n", stderr: "", exitCode: 0, durationMs: 1, limited: false };
     return fakeExecutorFor(FIXTURE_OUTPUTS)(alias, args);
   };
