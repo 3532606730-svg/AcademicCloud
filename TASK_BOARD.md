@@ -16,7 +16,7 @@
 
 ### L1-PROD04A — First Usable Production Readiness Reconciliation and Deployment Package
 
-**Status:** In Progress — documentation/readiness only; the deployment package (two-transaction checklist, corrected DNS/TLS/CSP plan, rollback matrix, PV matrix, FMEA, readiness gate matrix, hardening priorities, OSS body DR options) is prepared and awaiting the ChatGPT production-plan review. Zero production mutation.
+**Status:** Complete — documentation/readiness package prepared (two-transaction checklist, corrected DNS/TLS/CSP plan, rollback matrix, PV matrix, FMEA, readiness gate matrix, hardening priorities, OSS body DR options); the ChatGPT production-plan review PASSED; executed as Transaction A + Transaction B (see the L1-UX01 status and `docs/deployment/l1-ux01-production-gate.md`). Zero production mutation occurred at the PROD04A documentation step itself.
 
 ## Completed
 
@@ -355,13 +355,13 @@ Completion notes:
 
 ## Ready
 
-None while PROD-03C2 and L1-UX01 are in progress.
+L1-UX01 is complete (`UX01_FINAL_ACCEPTED=true`); PROD-03C2 remains in progress with its pending Owner gates (disposable-object permanent-delete confirmation and the autostart decision).
 
 ## Backlog — Layer 1
 
 - **Recursive folder recycle semantics** (follow-up product task from L1-PROD05B B18 PV; `EXISTING_PRODUCT_LIMITATION`, `NOT_A_UX01_REGRESSION`, `NOT_A_RELEASE_BLOCKER`): moving a non-empty folder to Trash should eventually move its contained subtree logically into the deleted state while preserving restore relationships. Do NOT implement now.
 - `PROD-03C3 — Operational Hardening` — Class-B cluster: backup cadence/retention, certificate renewal/reload automation (hard deadline before 2026-11-13), HSTS enablement after renewal and rollback are proven, production-format destructive restore drill, second disposable account and live cross-account isolation check, journal size/retention tuning.
-- `files.ajtlab.top` infrastructure gate: **DONE 2026-08-16** (Transaction A — OSS custom-domain binding, ownership TXT, DV certificate, explicit CNAME with untouched wildcard, private-boundary verification; see the gate doc Transaction A execution record). Remaining from the same plan: Transaction B completion decision after the ChatGPT review of the B15a diagnosis (rollback pending), then the Owner browser PV. The "preview-URL expiry" item stays open for the large-PDF PV test.
+- `files.ajtlab.top` infrastructure gate: **DONE 2026-08-16** (Transaction A — OSS custom-domain binding, ownership TXT, DV certificate, explicit CNAME with untouched wildcard, private-boundary verification; see the gate doc Transaction A execution record). **Transaction B is COMPLETE / PASS** (B2–B17 machine + `B18_OWNER_BROWSER_PV=PASS`; `UX01_FINAL_ACCEPTED=true`; no rollback pending). Remaining related known items: the documented preview signed-URL expiry limitation (large-PDF lifetime) and the preview-loading performance observation (`PERFORMANCE_UX_OBSERVATION`) — non-blocking follow-ups only.
 
 ## Explicitly Deferred
 
