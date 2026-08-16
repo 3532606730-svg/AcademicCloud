@@ -56,6 +56,7 @@ const EN = {
   // new folder dialog
   "folder.dialogTitle": "New folder",
   "folder.cancel": "Cancel",
+  "folder.closeAria": "Close new folder dialog",
   // drag & drop
   "drop.aria": "File drop overlay",
   "drop.title": "Drop to upload to “{folder}”",
@@ -223,6 +224,7 @@ const ZH_CN: Record<MessageKey, string> = {
   "menu.trashFileAria": "将文件 {name} 移入回收站",
   "folder.dialogTitle": "新建文件夹",
   "folder.cancel": "取消",
+  "folder.closeAria": "关闭新建文件夹对话框",
   "drop.aria": "文件拖放区域",
   "drop.title": "松开即可上传到「{folder}」",
   "drop.count": "{count} 个文件",

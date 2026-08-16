@@ -237,7 +237,7 @@ type MoveRequest =
   | { kind: "file"; item: FileEntry; returnFocus: HTMLElement | null };
 
 interface DropOverlayState {
-  count: number;
+  count: number | null;
 }
 
 const EMPTY_ENTRIES: EntriesResponse = { folder: null, folders: [], files: [] };
@@ -275,6 +275,24 @@ function regularFilesFrom(dataTransfer: DataTransfer): File[] {
     files.push(...Array.from(dataTransfer.files ?? []));
   }
   return files;
+}
+
+// During dragenter/dragover the browser's protected mode keeps
+// DataTransfer.files empty until drop; only the item list may be enumerated.
+// The overlay count therefore derives from file-kind items WITHOUT reading
+// file contents. When no reliable count exists (no enumerable items, or no
+// regular file among them) the count is omitted instead of lying "0 files".
+function countFileDragItems(dataTransfer: DataTransfer): number | null {
+  const items = dataTransfer.items;
+  if (!items || items.length === 0) return null;
+  let count = 0;
+  for (const item of Array.from(items)) {
+    if (item.kind !== "file") continue;
+    const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
+    if (entry && !entry.isFile) continue;
+    count += 1;
+  }
+  return count > 0 ? count : null;
 }
 
 function DriveView({
@@ -680,7 +698,7 @@ function DriveView({
     event.preventDefault();
     dragDepthRef.current += 1;
     if (dragDepthRef.current === 1) {
-      setDropOverlay({ count: event.dataTransfer.files?.length ?? 0 });
+      setDropOverlay({ count: countFileDragItems(event.dataTransfer) });
     }
   }
 
@@ -956,7 +974,7 @@ function DriveView({
             <div className="drop-panel">
               <UploadIcon size={30} className="drop-icon" />
               <strong>{t("drop.title", { folder: path.at(-1)?.name ?? t("nav.library") })}</strong>
-              <span>{t("drop.count", { count: dropOverlay.count })}</span>
+              {dropOverlay.count !== null && <span>{t("drop.count", { count: dropOverlay.count })}</span>}
             </div>
           </div>
         )}
@@ -1034,7 +1052,7 @@ function NewFolderDialog({
       >
         <header>
           <h2 id="new-folder-title">{t("folder.dialogTitle")}</h2>
-          <button className="button button--quiet" type="button" onClick={onClose} disabled={busy} aria-label={t("preview.closeAria")}>{t("preview.close")}</button>
+          <button className="button button--quiet" type="button" onClick={onClose} disabled={busy} aria-label={t("folder.closeAria")}>{t("preview.close")}</button>
         </header>
         <div className="new-folder-body">
           <label htmlFor="new-folder-name">{t("folder.newLabel")}</label>
@@ -1110,8 +1128,19 @@ function RowMenu({
         setOpen(false);
       }
     };
+    // Viewport/layout movement invalidates the fixed snapshot coordinates:
+    // the simplest robust behavior is to close the menu.
+    const closeOnMove = () => setOpen(false);
     document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+    window.addEventListener("resize", closeOnMove);
+    window.addEventListener("scroll", closeOnMove, true);
+    document.addEventListener("scroll", closeOnMove, true);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("resize", closeOnMove);
+      window.removeEventListener("scroll", closeOnMove, true);
+      document.removeEventListener("scroll", closeOnMove, true);
+    };
   }, [open]);
 
   useEffect(() => {

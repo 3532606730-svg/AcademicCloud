@@ -177,6 +177,7 @@ describe("App", () => {
     const input = within(dialog).getByLabelText("New folder");
     expect(input).toHaveFocus();
     expect(input).toHaveAttribute("maxlength", "255");
+    expect(within(dialog).getByRole("button", { name: "Close new folder dialog" })).toBeInTheDocument();
 
     await user.type(input, "Notes");
     await user.keyboard("{Enter}");
@@ -216,10 +217,20 @@ describe("App", () => {
     fireEvent.dragEnter(main, { dataTransfer: textDrag });
     expect(screen.queryByText(/Drop to upload to/)).not.toBeInTheDocument();
 
-    const fileDrag = dragDataTransfer({ types: ["Files"], files: [new File(["a"], "a.pdf"), new File(["b"], "b.pdf")] });
+    // Protected-mode shape: browsers keep DataTransfer.files empty during
+    // dragenter; the count must come from the enumerable item list.
+    const fileDrag = dragDataTransfer({
+      types: ["Files"],
+      files: [],
+      items: [
+        { kind: "file" },
+        { kind: "file" },
+      ],
+    });
     fireEvent.dragEnter(main, { dataTransfer: fileDrag });
     expect(screen.getByText(/Drop to upload to/)).toBeInTheDocument();
     expect(screen.getByText("2 files")).toBeInTheDocument();
+    expect(screen.queryByText("0 files")).not.toBeInTheDocument();
 
     // Depth counter: a child enter/leave pair must not clear the overlay.
     fireEvent.dragEnter(main, { dataTransfer: fileDrag });
@@ -228,6 +239,18 @@ describe("App", () => {
 
     fireEvent.dragLeave(main, { dataTransfer: fileDrag });
     await waitFor(() => expect(screen.queryByText(/Drop to upload to/)).not.toBeInTheDocument());
+  });
+
+  it("omits the drop count when the item list cannot be enumerated", async () => {
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    await openLibrary(api);
+    const main = workspace();
+
+    fireEvent.dragEnter(main, { dataTransfer: dragDataTransfer({ types: ["Files"], files: [], items: [] }) });
+    const overlay = screen.getByRole("status", { name: "File drop overlay" });
+    expect(within(overlay).getByText(/Drop to upload to/)).toBeInTheDocument();
+    expect(within(overlay).queryByText(/files$/)).not.toBeInTheDocument();
+    fireEvent.dragLeave(main, { dataTransfer: dragDataTransfer({ types: ["Files"], files: [], items: [] }) });
   });
 
   it("uploads dropped files through the existing pipeline with the destination pinned at drop time", async () => {
@@ -383,6 +406,26 @@ describe("App", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menu", { name: "Actions for paper.pdf" })).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+
+  it("closes the open row menu when the viewport scrolls or resizes", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await openRowMenu("paper.pdf");
+    expect(screen.getByRole("menu", { name: "Actions for paper.pdf" })).toBeInTheDocument();
+    fireEvent.scroll(window);
+    expect(screen.queryByRole("menu", { name: "Actions for paper.pdf" })).not.toBeInTheDocument();
+
+    await openRowMenu("paper.pdf");
+    expect(screen.getByRole("menu", { name: "Actions for paper.pdf" })).toBeInTheDocument();
+    fireEvent.resize(window);
+    expect(screen.queryByRole("menu", { name: "Actions for paper.pdf" })).not.toBeInTheDocument();
   });
 
   it("keeps inline preview conditional inside the file menu and restores focus after Escape", async () => {
