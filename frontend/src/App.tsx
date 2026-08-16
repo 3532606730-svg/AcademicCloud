@@ -327,6 +327,7 @@ function DriveView({
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
   const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
   const [favorites, setFavorites] = useState<FavoritesResponse | null>(null);
+  const [favoritesError, setFavoritesError] = useState<unknown>(null);
   const [favoriteFileIds, setFavoriteFileIds] = useState<ReadonlySet<string>>(new Set());
   const [favoriteFolderIds, setFavoriteFolderIds] = useState<ReadonlySet<string>>(new Set());
   const dragDepthRef = useRef(0);
@@ -337,9 +338,18 @@ function DriveView({
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
 
   // Server-backed favorites: the API response is the single source of truth
-  // (never localStorage); a refetch on every revision reconciles the UI.
+  // (never localStorage). The lifecycle is VIEW-AWARE so entering Favorites
+  // always gives a real opportunity to obtain current data — a previous
+  // failure can never strand the Favorites page in permanent loading.
+  //  - library:     load/refetch for star state (revision reconciles)
+  //  - favorites:   load/refetch as the real Favorites view
+  //  - pending/recycle: no Favorites fetch at all
+  // Failures live in a dedicated state shown only inside the Favorites view
+  // (no cross-view error leaks); aborted requests are silently discarded.
   useEffect(() => {
+    if (view !== "library" && view !== "favorites") return;
     const controller = new AbortController();
+    setFavoritesError(null);
     api.listFavorites(controller.signal).then(
       (response) => {
         setFavorites(response);
@@ -348,12 +358,12 @@ function DriveView({
       },
       (caught: unknown) => {
         if (!(caught instanceof DOMException && caught.name === "AbortError")) {
-          setError(caught);
+          setFavoritesError(caught);
         }
       },
     );
     return () => controller.abort();
-  }, [api, revision]);
+  }, [api, revision, view]);
 
   // Global external-file-drop protection: ONLY the Library workspace (in
   // library view) may defer to the workspace upload handler. Every other
@@ -1047,7 +1057,12 @@ function DriveView({
         {view === "favorites" && (
           <section aria-labelledby="favorites-title">
             <h2 id="favorites-title" className="visually-hidden">{t("nav.favorites")}</h2>
-            {favorites === null ? <LoadingRows /> : favorites.files.length + favorites.folders.length === 0 ? (
+            {favoritesError !== null ? (
+              <div className="alert alert--error" role="alert">
+                {describeError(favoritesError, language)}
+                <button type="button" onClick={refresh}>{t("pending.refresh")}</button>
+              </div>
+            ) : favorites === null ? <LoadingRows /> : favorites.files.length + favorites.folders.length === 0 ? (
               <EmptyState title={t("favorites.emptyTitle")} text={t("favorites.emptyText")} />
             ) : (
               <EntryTable

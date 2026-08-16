@@ -991,6 +991,55 @@ describe("App", () => {
     expect(screen.getByText("The recycle bin is empty")).toBeInTheDocument();
   });
 
+  it("retries favorites when entering the view after an initial failure (retry fails visibly)", async () => {
+    const user = userEvent.setup();
+    const listFavorites = vi.fn()
+      .mockRejectedValueOnce(new ApiError(503, "storage_unavailable")) // library mount
+      .mockRejectedValueOnce(new ApiError(503, "storage_unavailable")); // favorites enter retry
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listFavorites });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    // The library star-state failure never leaks into the shared error area.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    // The retry failure surfaces as an actionable Favorites error — the page
+    // is NOT silently stuck in permanent loading.
+    expect(await screen.findByRole("alert")).toHaveTextContent("Object storage is temporarily unavailable");
+    expect(within(screen.getByRole("alert")).getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(listFavorites).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries favorites when entering the view after an initial failure (retry succeeds)", async () => {
+    const user = userEvent.setup();
+    const listFavorites = vi.fn()
+      .mockRejectedValueOnce(new ApiError(503, "storage_unavailable"))
+      .mockResolvedValueOnce({ files: [FILE], folders: [] });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listFavorites });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(await screen.findByText("paper.pdf")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(listFavorites).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborted favorites requests never surface stale errors after switching views", async () => {
+    const user = userEvent.setup();
+    const listFavorites = vi.fn((signal?: AbortSignal) => new Promise<never>((_resolve, reject) => {
+      signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listFavorites });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    await user.click(screen.getByRole("button", { name: "Pending uploads" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("limits concurrent upload workflows to two and starts queued work as slots free", async () => {
     const user = userEvent.setup();
     const checksumResolvers: Array<(value: string) => void> = [];
