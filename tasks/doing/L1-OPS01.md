@@ -78,14 +78,16 @@ without echoing).
 - Initial implementation (isolated branch, 24/24 tests, pushed as `8bc6a2b`).
 - **L1-OPS01R1 review repairs**: fixed the double-`ssh` execution contract (`buildSshArgs` now returns options+quoted remote args only; the executable exists exactly once); READY now requires EVERY required gate PASS (required WARN/INFO/UNKNOWN ⇒ INDETERMINATE); TLS split into required `TLS_CLOUD_VALID` + advisory `TLS_CLOUD_EXPIRY_HEADROOM`; `--expected-files-cname` with exact normalized matching (missing expectation under ux01-ready ⇒ UNKNOWN); `OSS_BROWSER_ENDPOINT` must equal exactly `https://files.ajtlab.top`; CSP files-domain contract requires img-src AND frame-src; `DB_INTEGRITY`/`DB_FOREIGN_KEYS` split with an FK-violation fixture proving NOT_READY; expected schema derives from the repository migration count (no hard-coded v4); `RELEASE_SERVICE_WRITE_DENIED` is its own required gate; raw journal/cron/timer output is aggregated remotely (`sh -c` fixed pipelines with `wc -l`/`grep -c`, still denylist-covered) and never crosses SSH; 256 MiB resource guard skips heavy read-only audits (UNKNOWN, never PASS); SSH concurrency capped at 2 (`mapLimit`); executor now reports `OUTPUT_LIMIT_EXCEEDED` (never truncated success) with real `durationMs`; redirect origin uses exact URL origins (spoof-proof). Tests expanded 24 → **36/36** including all the above regressions. `FIRST_LIVE_AUDITOR_RUN=false`.
 
+- **L1-OPS01R2 final false-confidence repairs**: profile completeness (missing required checks materialize as deterministic UNKNOWN — repo/public modes under ux01-ready can never READY); migration version semantics corrected on both sides (repository = max numeric filename prefix via `parseMigrationVersions`, never the file count; live = `MAX(version)` from `schema_migrations`, matching the real migration engine); resource guard fails closed (heavy read-only audits run only with KNOWN sufficient memory evidence; unknown memory ⇒ UNKNOWN + skipped commands, proven via executor call history); `NO_ERROR_OOM_ACTIVITY` fails closed (PASS requires error count + kernel OOM + cgroup `oom_kill` all known and clean; any definite failure ⇒ FAIL; any missing source ⇒ UNKNOWN; nginx 5xx reported separately); `--expected-files-cname` accepts one trailing FQDN dot. Tests 36 → **42/42**. `FIRST_LIVE_AUDITOR_RUN=false`.
+
 ## Blockers
 
 None.
 
 ## Last Verification
 
-2026-08-16: `node --test scripts/production-readiness-audit.test.mjs` **36/36 PASS**; `node --check` clean on all modules; mutation denylist + adversarial secret-safety tests green; safe smokes (`--help`, `--mode plan`, `--mode repo`) run; **live mode NOT run**; `codex/prod-03c2` remote ref unchanged at `cd8ff25…`.
+2026-08-16: `node --test scripts/production-readiness-audit.test.mjs` **42/42 PASS**; `node --check` clean on all modules; mutation denylist + adversarial secret-safety tests green; safe smokes (`--help`, `--mode plan`, `--mode repo`) run; **live mode NOT run**; `codex/prod-03c2` untouched during Workstream A.
 
 ## Next Action
 
-Push the L1-OPS01R1 repairs on the isolated branch and stop for ChatGPT re-review; do NOT run live mode, do NOT merge, do NOT integrate into PROD04B.
+Push the L1-OPS01R2 repairs on the isolated branch and stop for ChatGPT final closeout review; do NOT run live mode, do NOT merge, do NOT integrate into PROD04B.
