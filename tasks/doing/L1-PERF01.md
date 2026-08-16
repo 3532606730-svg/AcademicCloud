@@ -59,24 +59,34 @@ Potential low-risk investigations:
 - performance note/tooling added by this task
 
 ## Current State
-Ready, not started. Current accepted architecture is expected to remain browser-direct upload/download with the backend acting as authorization/metadata control plane. Production UX01 recorded noticeably slow initial PDF Preview loading, but no measured bottleneck has yet been established.
+Evidence gathered. Local synthetic checksum benchmark complete; architecture
+verified from code; conclusion recorded: **no client-side optimization is
+justified by measurement** (checksum is not the upload bottleneck and is already
+near its local ceiling). Awaiting adversarial review + checkpoint.
 
 ## Completed
-None.
+- Verified the browser-direct upload (enqueue → bounded pump → checksum →
+  reserve → direct XHR POST → complete) and signed-direct download/preview paths
+  from code; backend is control-plane only.
+- Added `frontend/scripts/checksum-benchmark.ts` (generated-data, five sizes,
+  three chunk sizes; prints results, asserts no timing thresholds).
+- Measured SparkMD5 at 1/10/50/100/250 MiB: ≈350–390 MiB/s; 250 MiB ≈ 0.65–0.71 s.
+- Documented measured / inferred / not-measured facts and the no-optimization
+  decision in `docs/performance/L1-PERF01-transfer-performance.md`.
 
 ## Remaining
-- verify actual architecture;
-- add measurements/benchmarks;
-- identify measured bottlenecks;
-- make only justified low-risk improvements;
-- run adversarial review and full gates;
-- reconcile task/project state and checkpoint.
+None — evidence, documentation, adversarial review (APPROVE-WITH-NITS, fixed),
+and full gates are complete. Checkpoint and proceed to L1-FOLDER01.
 
 ## Blockers
-None known. If a desired optimization requires a new dependency, CSP weakening, production OSS configuration, credentials, or a product-architecture change, stop that optimization and continue with measurement/documentation rather than expanding scope.
+None.
 
 ## Last Verification
-2026-08-17 planning reconciliation: PERF01 is approved after L1-UX03 closure. Current development baseline is `dd42cab…`; no PERF01 code has been implemented yet.
+2026-08-17 benchmark run (Node v24.16.0): 250 MiB MD5 = 0.71 s @ 4 MiB chunks,
+0.66 s @ 8 MiB, 0.65 s @ 16 MiB; chunk-size delta <10%, negligible vs transfer.
+Full gates PASS (backend 127/127, frontend 121/121, typecheck/build,
+acceptance-tools 25/25, acceptance:compiled, diff-check clean, dependency delta
+0). Adversarial review APPROVE-WITH-NITS; documentation-precision NITs applied.
 
 ## Next Action
-After L1-UX03 is green and checkpointed, move this task to `tasks/doing/`, recover the current upload/download implementation, and begin with measurement rather than optimization.
+Checkpoint PERF01, then begin L1-FOLDER01.

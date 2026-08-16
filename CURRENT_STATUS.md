@@ -122,8 +122,8 @@ The Owner has approved a return to repository-driven autonomous development.
 
 After this planning reconciliation, the executable sequence is:
 
-1. finish the current L1-UX03 review repairs and re-run its gates;
-2. L1-PERF01 — evidence-first transfer/checksum performance baseline and only justified low-risk optimization;
+1. ~~finish the current L1-UX03 review repairs and re-run its gates~~ — **DONE** (repairs committed `a15b2e3`; adversarial re-review APPROVE-WITH-NITS);
+2. ~~L1-PERF01 — evidence-first transfer/checksum performance baseline and only justified low-risk optimization~~ — **DONE** (measured; no optimization justified; evidence note committed);
 3. L1-FOLDER01 — transactional recursive folder recycle/restore;
 4. L2-ACCOUNTS01 — Owner/Member foundation, invite-only registration, invite management, minimal Owner user administration, Member disable/enable, session revocation;
 5. L2-PASSWORD01 — conditional/optional after Accounts I is fully green;
@@ -175,4 +175,5 @@ Current continuous objective does **not** authorize:
 
 ## Next Action
 
-Finish this project-memory reconciliation, independently review the planning commit, then resume the active L1-UX03 task from its documented repair findings using the repository workflow rather than a giant chat prompt.
+Checkpoint L1-PERF01, then begin `L1-FOLDER01` (transactional recursive folder
+recycle/restore) from its Ready card.

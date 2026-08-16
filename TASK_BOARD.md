@@ -24,6 +24,10 @@ This objective is repository/local only. It does not authorize production contac
 
 ## Doing
 
+### L1-PERF01 — Evidence-First Transfer Performance
+
+**Status:** complete — evidence gathered, no client optimization justified by measurement. Browser-direct upload / signed-direct download architecture verified from code; local synthetic SparkMD5 benchmark (`frontend/scripts/checksum-benchmark.ts`) measured 1/10/50/100/250 MiB at ≈350–390 MiB/s (250 MiB ≈ 0.7s), chunk-size delta <10% (negligible). Conclusion + measured/inferred/not-measured facts recorded in `docs/performance/L1-PERF01-transfer-performance.md`. Adversarial review APPROVE-WITH-NITS (fixed). `DEPENDENCY_DELTA=0`. No product-code change.
+
 ### L1-UX03 — Dedicated Mobile Experience & Zero-Descriptive-Copy UI
 
 **Status:** repo-development closure complete — implementation `dd42cab…` + the three independent-review repairs are done and the adversarial re-review is **APPROVE-WITH-NITS**. Repairs: exact nav order `Library / Favorites / Pending / Recycle` (+exact-sequence test); Preview Download reusing the authoritative `createDownload(file.id)` attachment path while Open keeps the inline URL; 44px mobile floor for Sign In / AccountMenu Sign Out / 中文 / EN. Gates PASS (backend 127/127, frontend 121/121, typecheck/build, acceptance-tools 25/25, acceptance:compiled, diff-check clean, dependency delta 0). `OWNER_VISUAL_GATE=PENDING` (separate product/deployment gate).
@@ -42,19 +46,13 @@ Retain existing runbook/evidence. Do not contact production merely because local
 
 ## Ready
 
-### 1. L1-PERF01 — Evidence-First Transfer Performance
-
-**Task card:** `tasks/ready/L1-PERF01.md`
-
-Goal: measure checksum/reserve/transfer/verification stages and make only evidence-supported, low-risk client improvements. No production benchmark, no backend large-byte proxy, no Transfer Acceleration activation, no required OSS Multipart Upload implementation.
-
-### 2. L1-FOLDER01 — Transactional Recursive Folder Recycle/Restore
+### 1. L1-FOLDER01 — Transactional Recursive Folder Recycle/Restore
 
 **Task card:** `tasks/ready/L1-FOLDER01.md`
 
 Critical invariant: descendants deleted independently before a later parent recycle must never resurrect when the parent is restored.
 
-### 3. L2-ACCOUNTS01 — Account Foundation, Invite Registration & User Administration
+### 2. L2-ACCOUNTS01 — Account Foundation, Invite Registration & User Administration
 
 **Task card:** `tasks/ready/L2-ACCOUNTS01.md`
 
