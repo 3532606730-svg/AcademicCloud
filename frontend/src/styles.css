@@ -273,7 +273,7 @@ input:hover { border-color: #a7b2a8; }
 .row-menu-trigger:hover, .row-menu-trigger[aria-expanded="true"] { color: var(--ink); background: #e9ebe5; }
 .row-menu {
   position: absolute;
-  z-index: 30;
+  z-index: 60;
   top: calc(100% + 0.25rem);
   right: 0;
   display: grid;
@@ -284,6 +284,9 @@ input:hover { border-color: #a7b2a8; }
   background: var(--paper);
   box-shadow: 0 10px 30px rgba(22, 40, 30, 0.14);
 }
+/* Portal mode: fixed to the viewport so ancestor overflow can never clip the
+   menu; coordinates come from inline styles. */
+.row-menu--portal { position: fixed; top: auto; right: auto; }
 .row-menu-item {
   display: flex;
   min-height: 2.2rem;

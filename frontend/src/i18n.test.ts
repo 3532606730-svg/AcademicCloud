@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ApiError } from "./api.ts";
+import { DirectUploadError } from "./direct-upload.ts";
 import {
   describeError,
   ERROR_MESSAGES,
@@ -81,6 +82,15 @@ describe("describeError", () => {
     expect(describeError(aborted, "zh-CN")).toBe("操作已取消。");
     expect(describeError(new Error("boom"), "zh-CN")).toBe("boom");
     expect(describeError(null, "zh-CN")).toBe("无法完成该操作。");
+  });
+
+  it("maps coded transport failures through the localized catalog, never raw English in zh-CN", () => {
+    const unreachable = new DirectUploadError("upload_unreachable", "Could not reach object storage.");
+    expect(describeError(unreachable, "zh-CN")).toBe("无法连接到对象存储，请检查网络后重试。");
+    expect(describeError(unreachable, "en")).toBe("Could not reach object storage. Check your connection and try again.");
+    expect(describeError(new DirectUploadError("upload_timed_out", "detail"), "zh-CN")).toBe("上传超时，请重试。");
+    expect(describeError(new DirectUploadError("upload_stalled", "detail"), "zh-CN")).toBe("上传长时间没有进展，请检查网络后重试。");
+    expect(describeError(new DirectUploadError("upload_rejected", "detail"), "en")).toBe("Object storage rejected the upload. Please try again.");
   });
 
   it("provides an English catalog entry for every code the backend emits", () => {

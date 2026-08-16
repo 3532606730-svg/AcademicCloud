@@ -11,6 +11,7 @@ import {
   type FolderEntry,
 } from "./api.ts";
 import type { UploadProgressMetrics } from "./direct-upload.ts";
+import { DirectUploadError } from "./direct-upload.ts";
 
 afterEach(() => {
   window.localStorage.removeItem("academiccloud.language");
@@ -513,7 +514,7 @@ describe("App", () => {
       completeUpload,
       renewUpload,
     });
-    const directUpload = vi.fn().mockRejectedValue(new Error("Could not reach object storage."));
+    const directUpload = vi.fn().mockRejectedValue(new DirectUploadError("upload_unreachable", "Could not reach object storage."));
     render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directUpload={directUpload} />);
 
     await user.upload(await screen.findByLabelText("Upload files"), new File(["source"], "paper.pdf", { type: "application/pdf" }));
@@ -627,6 +628,29 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "中文" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("在线预览暂不可用"));
+  });
+
+  it("presents transport failures through the localized catalog in the queue", async () => {
+    const user = userEvent.setup();
+    const checksumResolvers: Array<(value: string) => void> = [];
+    const checksumFile = vi.fn(() => new Promise<string>((resolve) => checksumResolvers.push(resolve)));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({
+        file: { ...FILE, state: "pending_upload" as const, activatedAt: null },
+        upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
+      }),
+    });
+    render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockRejectedValue(new DirectUploadError("upload_unreachable", "Could not reach object storage."))} />);
+
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "中文" }));
+    await screen.findByRole("heading", { name: "资料库" });
+    await user.upload(await screen.findByLabelText("上传文件"), new File(["x"], "a.pdf", { type: "application/pdf" }));
+    checksumResolvers[0]!(FILE.checksum);
+
+    await waitFor(() => expect(screen.getByText("无法连接到对象存储，请检查网络后重试。")).toBeInTheDocument());
+    expect(screen.queryByText(/Could not reach object storage/)).not.toBeInTheDocument();
   });
 
   it("limits concurrent upload workflows to two and starts queued work as slots free", async () => {
@@ -761,7 +785,7 @@ describe("App", () => {
       upload: { method: "POST" as const, url: "https://storage.invalid", fields: {}, expiresAt: "2026-08-13T00:05:00.000Z" },
     }));
     const directUpload = vi.fn((_authorization: unknown, file: File) =>
-      file.name === "c.pdf" ? Promise.reject(new Error("Could not reach object storage.")) : Promise.resolve(undefined),
+      file.name === "c.pdf" ? Promise.reject(new DirectUploadError("upload_unreachable", "Could not reach object storage.")) : Promise.resolve(undefined),
     );
     const completeUpload = vi.fn((fileId: string) =>
       fileId === "file-c.pdf"
@@ -810,7 +834,7 @@ describe("App", () => {
     const directUpload = vi.fn((_authorization: unknown, _file: File, options?: { onMetrics?: (metrics: UploadProgressMetrics) => void }) => {
       directUploadCalls += 1;
       if (directUploadCalls === 1) {
-        return Promise.reject(new Error("Could not reach object storage."));
+        return Promise.reject(new DirectUploadError("upload_unreachable", "Could not reach object storage."));
       }
       options?.onMetrics?.({ loaded: 500, total: 1_000 });
       return new Promise<void>((resolve) => {

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 
 import {
   ApiClient,
@@ -1074,14 +1075,38 @@ function RowMenu({
   items: RowMenuItem[];
 }) {
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // The menu renders through a portal onto document.body with fixed
+  // coordinates, so no ancestor overflow/rounding can clip it. When the
+  // trigger sits too close to the viewport bottom the menu flips upward.
+  function openMenu() {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const regularItems = items.filter((item) => !item.separator);
+    const estimatedHeight = regularItems.length * 36 + (items.length - regularItems.length) * 9 + 12;
+    const style: CSSProperties = {
+      position: "fixed",
+      right: Math.max(8, window.innerWidth - rect.right),
+    };
+    if (rect.bottom + estimatedHeight > window.innerHeight && rect.top > estimatedHeight) {
+      style.bottom = window.innerHeight - rect.top + 4;
+    } else {
+      style.top = rect.bottom + 4;
+    }
+    setMenuStyle(style);
+    setOpen(true);
+  }
+
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setOpen(false);
       }
     };
@@ -1138,12 +1163,12 @@ function RowMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={triggerLabel}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => (open ? close(true) : openMenu())}
       >
         <MoreIcon size={16} />
       </button>
-      {open && (
-        <div ref={menuRef} className="row-menu" role="menu" aria-label={menuLabel} onKeyDown={onKeyDown}>
+      {open && createPortal(
+        <div ref={menuRef} className="row-menu row-menu--portal" style={menuStyle} role="menu" aria-label={menuLabel} onKeyDown={onKeyDown}>
           {items.map((item) => item.separator ? (
             <div key={item.key} className="row-menu-separator" role="separator" />
           ) : (
@@ -1161,7 +1186,8 @@ function RowMenu({
               {item.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

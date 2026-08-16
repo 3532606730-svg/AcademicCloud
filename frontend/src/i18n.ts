@@ -412,6 +412,10 @@ export const ERROR_MESSAGES: Readonly<Record<Language, Readonly<Record<string, s
     invalid_state: "该项目状态已变化，请刷新后重试。",
     upload_incomplete: "上传尚未到达存储，请稍后重试验证。",
     upload_metadata_mismatch: "存储收到的文件与预留的上传不匹配。",
+    upload_unreachable: "无法连接到对象存储，请检查网络后重试。",
+    upload_timed_out: "上传超时，请重试。",
+    upload_stalled: "上传长时间没有进展，请检查网络后重试。",
+    upload_rejected: "对象存储拒绝了这次上传，请重试。",
     storage_unavailable: "对象存储暂时不可用，你的元数据仍然安全。",
     preview_unavailable: "在线预览暂不可用，可下载后查看。",
     not_found: "该项目已不存在或对该账户不可用。",
@@ -432,6 +436,10 @@ export const ERROR_MESSAGES: Readonly<Record<Language, Readonly<Record<string, s
     invalid_state: "This item changed state. Refresh the view and try again.",
     upload_incomplete: "The upload has not reached storage yet. Retry verification shortly.",
     upload_metadata_mismatch: "Storage received a file that does not match the reserved upload.",
+    upload_unreachable: "Could not reach object storage. Check your connection and try again.",
+    upload_timed_out: "The upload timed out. Please try again.",
+    upload_stalled: "The upload stalled. Check your connection and try again.",
+    upload_rejected: "Object storage rejected the upload. Please try again.",
     storage_unavailable: "Object storage is temporarily unavailable. Your metadata is still safe.",
     preview_unavailable: "Online preview is currently unavailable. You can download the file instead.",
     not_found: "The item no longer exists or is not available to this account.",
@@ -446,6 +454,14 @@ export function describeError(error: unknown, language: Language): string {
   }
   if (error instanceof DOMException && error.name === "AbortError") {
     return language === "zh-CN" ? "操作已取消。" : "The operation was cancelled.";
+  }
+  // Coded frontend failures (e.g. direct-upload transport errors) render
+  // through the same localized catalog instead of leaking raw English
+  // infrastructure messages into a zh-CN interface.
+  if (error instanceof Error && "code" in error && typeof (error as { code: unknown }).code === "string") {
+    const code = (error as { code: string }).code;
+    const localized = ERROR_MESSAGES[language][code];
+    if (localized) return localized;
   }
   if (error instanceof Error && error.message) {
     return error.message;

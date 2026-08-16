@@ -21,6 +21,19 @@ export interface DirectUploadOptions {
 
 export const DEFAULT_INACTIVITY_TIMEOUT_MS = 120_000;
 
+// Transport failures carry a stable code so the UI can present them through
+// the localized error catalog instead of exposing raw English infrastructure
+// messages (the message stays available as the technical detail).
+export class DirectUploadError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "DirectUploadError";
+    this.code = code;
+  }
+}
+
 export function createUploadForm(authorization: UploadAuthorization, file: File): FormData {
   const form = new FormData();
   for (const [name, value] of Object.entries(authorization.fields)) {
@@ -82,7 +95,7 @@ export function uploadDirectly(
             } catch {
               // The connection may already be gone; the rejection is what matters.
             }
-            reject(new Error("The upload stalled because no progress was received. Check your connection and try again."));
+            reject(new DirectUploadError("upload_stalled", "The upload stalled because no progress was received."));
           });
         }, inactivityTimeoutMs);
       }
@@ -103,13 +116,13 @@ export function uploadDirectly(
           options.onProgress?.(1);
           resolve();
         } else {
-          reject(new Error(`Object storage rejected the upload (${xhr.status || "no status"}).`));
+          reject(new DirectUploadError("upload_rejected", `Object storage rejected the upload (${xhr.status || "no status"}).`));
         }
       });
     });
-    xhr.addEventListener("error", () => finish(() => reject(new Error("Could not reach object storage."))));
+    xhr.addEventListener("error", () => finish(() => reject(new DirectUploadError("upload_unreachable", "Could not reach object storage."))));
     xhr.addEventListener("abort", () => finish(() => reject(new DOMException("The upload was cancelled.", "AbortError"))));
-    xhr.addEventListener("timeout", () => finish(() => reject(new Error("The object-storage upload timed out."))));
+    xhr.addEventListener("timeout", () => finish(() => reject(new DirectUploadError("upload_timed_out", "The object-storage upload timed out."))));
 
     if (options.signal?.aborted) {
       reject(new DOMException("The upload was cancelled.", "AbortError"));
