@@ -73,7 +73,7 @@ async function requireJson(request: FastifyRequest, reply: FastifyReply): Promis
   }
 }
 
-function folderDto(folder: Folder) {
+export function folderDto(folder: Folder) {
   return {
     id: folder.id,
     parentId: folder.parentId,
@@ -85,7 +85,7 @@ function folderDto(folder: Folder) {
   };
 }
 
-function fileDto(file: StoredFile) {
+export function fileDto(file: StoredFile) {
   return {
     id: file.id,
     folderId: file.folderId,
