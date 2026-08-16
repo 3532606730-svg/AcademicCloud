@@ -26,6 +26,10 @@
 
 **Status:** In Progress (local/repository only, 2026-08-16) — frontend-only implementation complete on `codex/l1-ux02-academic-workspace` (visual token/typography system, workspace header + command bar + New Folder dialog, deep-forest sidebar with inline SVG icons, archive-catalogue list, row action menus, drag-and-drop multi-file upload with destination pinning and directory-skip safety, queue refresh, zh/en i18n, accessibility); automated gates PASS (backend 104/104 + frontend 69/69, typecheck, build, acceptance-tools 25/25, diff-check clean, zero new dependencies, production untouched). STOPPED at the Owner local visual-review gate — NOT deployed.
 
+### L1-UX03 — Dedicated Mobile Experience & Zero-Descriptive-Copy UI
+
+**Status:** In Progress (local/repository only, 2026-08-17) — branch `codex/l1-ux03-mobile-zero-copy` from the exact accepted baseline `d9bdfeb`. Frontend-only implementation complete: zero-descriptive-copy cleanup (login marketing removed, empty-state/section-copy prose removed, preview eyebrow/expires/new-tab copy removed, "Verify or retry" → "Retry", silent outside-workspace drop) + CSS-only mobile presentation at one <=768px breakpoint (fixed safe-area bottom nav with the same four destinations, compact topbar + avatar account menu, dedicated mobile catalogue rows with metadata line, [←] back control, fullscreen 100dvh preview, bottom-sheet New Folder, fullscreen Move, stacked upload queue, 44px+ targets) + RowMenu scroll/resize focus fix. Gates PASS: backend 127/127, frontend 117/117, typecheck/build, acceptance-tools 25/25, acceptance:compiled PASS (stale FAV01 migration count repaired), diff-check clean, zero dependency delta; local CDP layout audit green (360/390/430/768/1024/1440). `UX03_IMPLEMENTATION_PASS=true`; **`OWNER_VISUAL_GATE=PENDING`** — STOPPED for Owner local visual acceptance + ChatGPT independent review — NOT deployed; permanent delete + FAV01 semantics + CSP unchanged.
+
 ## Completed
 
 ### PROD-03R — Production Acceptance and Repository-State Reconciliation

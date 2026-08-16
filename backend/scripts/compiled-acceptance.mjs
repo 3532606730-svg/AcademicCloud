@@ -114,7 +114,7 @@ try {
     restoredSessionValid: restoredSession.account.loginName === "CompiledAcceptance",
     redeployMigrationCount: redeployMigration.appliedVersions.length,
   };
-  assert.equal(result.firstMigrationCount, 4);
+  assert.equal(result.firstMigrationCount, 5);
   assert.equal(result.provisionedLogin, "CompiledAcceptance");
   assert.equal(result.health, "ok");
   assert.equal(result.readiness, "ready");

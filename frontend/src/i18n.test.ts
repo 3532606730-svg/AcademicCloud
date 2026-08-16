@@ -66,6 +66,28 @@ describe("translate", () => {
     expect(isLanguage("en")).toBe(true);
     expect(isLanguage("fr")).toBe(false);
   });
+
+  it("bans removed descriptive copy across the whole catalog", () => {
+    const bannedEn = /quieter home|private academic workspace|private by design|welcome back|sign in to continue|open in a new tab|drop files into the library workspace|folder upload is not supported yet/i;
+    const bannedZh = /安静的家|私密学术工作空间|隐私至上|欢迎回来|在新标签页中打开|请将文件拖入资料库区域进行上传|暂不支持文件夹上传/i;
+    for (const [key, value] of Object.entries(MESSAGES.en)) {
+      expect(value, key).not.toMatch(bannedEn);
+    }
+    for (const [key, value] of Object.entries(MESSAGES["zh-CN"])) {
+      expect(value, key).not.toMatch(bannedZh);
+    }
+  });
+
+  it("carries the terse mobile navigation labels in both languages", () => {
+    expect(translate("en", "nav.pending")).toBe("Pending");
+    expect(translate("en", "nav.recycle")).toBe("Recycle");
+    expect(translate("zh-CN", "nav.pending")).toBe("待处理");
+    expect(translate("zh-CN", "nav.recycle")).toBe("回收站");
+    expect(translate("en", "preview.open")).toBe("Open");
+    expect(translate("zh-CN", "preview.open")).toBe("打开");
+    expect(translate("en", "upload.retry")).toBe("Retry");
+    expect(translate("zh-CN", "upload.retry")).toBe("重试");
+  });
 });
 
 describe("describeError", () => {

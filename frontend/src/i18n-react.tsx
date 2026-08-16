@@ -50,8 +50,9 @@ export function useLanguage(): LanguageContextValue {
 }
 
 // Compact bilingual switch: 中文 | EN. Both forms are always visible so the
-// control is usable regardless of the current language.
-export function LanguageSwitch({ labelled = false }: { labelled?: boolean }) {
+// control is usable regardless of the current language. When rendered inside
+// a menu, the buttons adopt the menuitem role to satisfy the menu contract.
+export function LanguageSwitch({ labelled = false, menuitem = false }: { labelled?: boolean; menuitem?: boolean }) {
   const { language, setLanguage, t } = useLanguage();
   const label = t("language.label");
 
@@ -62,6 +63,7 @@ export function LanguageSwitch({ labelled = false }: { labelled?: boolean }) {
         className={language === "zh-CN" ? "is-active" : undefined}
         aria-pressed={language === "zh-CN"}
         aria-label={labelled ? "中文" : undefined}
+        role={menuitem ? "menuitem" : undefined}
         onClick={() => setLanguage("zh-CN")}
       >
         中文
@@ -72,6 +74,7 @@ export function LanguageSwitch({ labelled = false }: { labelled?: boolean }) {
         className={language === "en" ? "is-active" : undefined}
         aria-pressed={language === "en"}
         aria-label={labelled ? "English" : undefined}
+        role={menuitem ? "menuitem" : undefined}
         onClick={() => setLanguage("en")}
       >
         EN

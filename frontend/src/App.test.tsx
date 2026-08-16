@@ -109,13 +109,13 @@ describe("App", () => {
     const api = fakeApi();
     render(<App api={api} />);
 
-    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AC AcademicCloud" })).toBeInTheDocument();
     await user.type(screen.getByLabelText("Login name"), "Scholar");
     await user.type(screen.getByLabelText("Password"), "valid-password");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
-    expect(await screen.findByText("This folder is ready")).toBeInTheDocument();
+    expect(await screen.findByText("This folder is empty")).toBeInTheDocument();
     expect(api.login).toHaveBeenCalledWith("Scholar", "valid-password");
     expect(api.listEntries).toHaveBeenCalledWith(null, expect.any(AbortSignal));
   });
@@ -342,7 +342,9 @@ describe("App", () => {
     });
     expect(topbarDrop).toBe(false);
     expect(checksumFile).not.toHaveBeenCalled();
-    expect(screen.getByText("Drop files into the Library workspace to upload them.")).toBeInTheDocument();
+    // Zero-copy: the outside-workspace drop is silently prevented — no
+    // descriptive notice renders.
+    expect(screen.queryByText(/Drop files into the Library workspace/)).not.toBeInTheDocument();
 
     // Text/link drags outside the workspace are never intercepted.
     const textDrop = fireEvent.drop(topbar, { dataTransfer: dragDataTransfer({ types: ["text/plain"], files: [] }) });
@@ -368,7 +370,7 @@ describe("App", () => {
     const directUpload = vi.fn().mockResolvedValue(undefined);
     render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directUpload={directUpload} />);
 
-    await user.click(await screen.findByRole("button", { name: "Pending uploads" }));
+    await user.click(await screen.findByRole("button", { name: "Pending" }));
     // The reserved upload reports a different MIME than the browser now
     // infers: the same name/size/checksum must still renew successfully.
     const chooseInput = await screen.findByLabelText("Choose same file for paper.pdf");
@@ -398,7 +400,7 @@ describe("App", () => {
     });
 
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("1 folders were skipped — folder upload is not supported yet.")).toBeInTheDocument();
+    expect(screen.getByText("1 folders were skipped.")).toBeInTheDocument();
 
     // Directory-only drop: nothing uploads, a concise localized message shows.
     const before = checksumFile.mock.calls.length;
@@ -409,7 +411,7 @@ describe("App", () => {
       }),
     });
     expect(checksumFile).toHaveBeenCalledTimes(before);
-    expect(screen.getByText("1 folders were skipped — folder upload is not supported yet.")).toBeInTheDocument();
+    expect(screen.getByText("1 folders were skipped.")).toBeInTheDocument();
   });
 
   it("keeps the row action menu compact and exposes folder/file actions inside it", async () => {
@@ -437,7 +439,7 @@ describe("App", () => {
     expect(within(fileMenu).getByRole("menuitem", { name: "Move" })).toBeInTheDocument();
     await user.click(within(fileMenu).getByRole("menuitem", { name: "Move to trash" }));
     await waitFor(() => expect(deleteFile).toHaveBeenCalledWith("file-1"));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("stored file will be preserved"));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Move “paper.pdf” to the recycle bin?"));
 
     const folderMenu = await openRowMenu("Sources");
     expect(within(folderMenu).getByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
@@ -686,7 +688,7 @@ describe("App", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<App api={api} />);
 
-    await user.click(await screen.findByRole("button", { name: "Recycle bin" }));
+    await user.click(await screen.findByRole("button", { name: "Recycle" }));
     await user.click(await screen.findByRole("button", { name: "Restore file paper.pdf" }));
     await waitFor(() => expect(restoreFile).toHaveBeenCalledWith("file-1"));
     await user.click(screen.getByRole("button", { name: "Delete paper.pdf forever" }));
@@ -700,7 +702,7 @@ describe("App", () => {
     render(<App api={api} />);
 
     await user.click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AC AcademicCloud" })).toBeInTheDocument();
     expect(logout).toHaveBeenCalledOnce();
   });
 
@@ -927,13 +929,14 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Library" });
     const fileDrag = dragDataTransfer({ files: [new File(["a"], "a.pdf")], items: [{ kind: "file", getAsFile: () => new File(["a"], "a.pdf") }] });
 
-    for (const viewName of ["Favorites", "Pending uploads", "Recycle bin"]) {
+    for (const viewName of ["Favorites", "Pending", "Recycle"]) {
       await user.click(screen.getByRole("button", { name: viewName }));
       const before = checksumFile.mock.calls.length;
       const dropEvent = fireEvent.drop(workspace(), { dataTransfer: fileDrag });
       expect(dropEvent).toBe(false); // default prevented: no browser navigation
       expect(checksumFile).toHaveBeenCalledTimes(before); // nothing enqueued
-      expect(screen.getAllByText("Drop files into the Library workspace to upload them.").length).toBeGreaterThan(0);
+      // Zero-copy: no descriptive drop sentence anywhere.
+      expect(screen.queryByText(/Drop files into the Library workspace/)).not.toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "Library" }));
     }
   });
@@ -969,7 +972,7 @@ describe("App", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
-    await user.click(screen.getByRole("button", { name: "Recycle bin" }));
+    await user.click(screen.getByRole("button", { name: "Recycle" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Object storage is temporarily unavailable");
 
     await user.click(screen.getByRole("button", { name: "Favorites" }));
@@ -986,9 +989,9 @@ describe("App", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
-    await user.click(screen.getByRole("button", { name: "Recycle bin" }));
+    await user.click(screen.getByRole("button", { name: "Recycle" }));
     await waitFor(() => expect(listRecycle).toHaveBeenCalled());
-    expect(screen.getByText("The recycle bin is empty")).toBeInTheDocument();
+    expect(screen.getByText("Recycle bin is empty")).toBeInTheDocument();
   });
 
   it("retries favorites when entering the view after an initial failure (retry fails visibly)", async () => {
@@ -1036,7 +1039,7 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Library" });
 
     await user.click(screen.getByRole("button", { name: "Favorites" }));
-    await user.click(screen.getByRole("button", { name: "Pending uploads" }));
+    await user.click(screen.getByRole("button", { name: "Pending" }));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -1306,7 +1309,7 @@ describe("App", () => {
     expect(screen.getByText("Verifying stored file")).toBeInTheDocument();
     expect(screen.getByText("1 in progress or needing attention")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Pending uploads" }));
+    await user.click(screen.getByRole("button", { name: "Pending" }));
     await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "Library" }));
     expect(completeUpload).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Verifying stored file")).toBeInTheDocument();
@@ -1315,5 +1318,278 @@ describe("App", () => {
     await waitFor(() => expect(screen.queryByText("Verifying stored file")).not.toBeInTheDocument());
     expect(completeUpload).toHaveBeenCalledTimes(2);
     expect(await screen.findByRole("status")).toHaveTextContent("Uploaded");
+  });
+});
+
+describe("zero-descriptive-copy", () => {
+  it("removes all marketing and explanatory copy from the login screen", async () => {
+    const api = fakeApi();
+    render(<App api={api} />);
+
+    expect(await screen.findByRole("heading", { name: "AC AcademicCloud" })).toBeInTheDocument();
+    expect(screen.queryByText(/quieter home|private academic workspace|private by design|welcome back|sign in to continue/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("A quieter home for serious work.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Welcome back")).not.toBeInTheDocument();
+    expect(screen.queryByText(/privacy/i)).not.toBeInTheDocument();
+    // The functional login surface is intact.
+    expect(screen.getByLabelText("Login name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "中文" })).toBeInTheDocument();
+  });
+
+  it("renders every empty state without explanatory second sentences", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} />);
+
+    expect(await screen.findByText("This folder is empty")).toBeInTheDocument();
+    expect(screen.queryByText(/upload a source file|create a folder to begin/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(await screen.findByText("No favorites yet")).toBeInTheDocument();
+    expect(screen.queryByText(/star files and folders in the library/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Pending" }));
+    expect(await screen.findByText("No pending uploads")).toBeInTheDocument();
+    expect(screen.queryByText(/choose the exact same local file|interrupted or unverified uploads/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Recycle" }));
+    expect(await screen.findByText("Recycle bin is empty")).toBeInTheDocument();
+    expect(screen.queryByText(/restoring keeps the original stored bytes|soft-deleted files and folders/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a terse preview footer: no descriptive claims and no verbose new-tab text", async () => {
+    const user = userEvent.setup();
+    const createDownload = vi.fn().mockResolvedValue({
+      method: "GET",
+      url: "https://signed.invalid/preview",
+      expiresAt: "2026-08-13T00:05:00.000Z",
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+      createDownload,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const menu = await openRowMenu("paper.pdf");
+    await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
+    const dialog = await screen.findByRole("dialog", { name: "paper.pdf" });
+
+    expect(within(dialog).queryByText(/short-lived|expires automatically/i)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("link", { name: /new tab/i })).not.toBeInTheDocument();
+    // Open remains accessible with the terse label and the signed URL.
+    expect(within(dialog).getByRole("link", { name: "Open" })).toHaveAttribute("href", "https://signed.invalid/preview");
+  });
+
+  it("renders no runtime inline styles anywhere in the drive UI (production CSP)", async () => {
+    const user = userEvent.setup();
+    const createDownload = vi.fn().mockResolvedValue({
+      method: "GET",
+      url: "https://signed.invalid/preview",
+      expiresAt: "2026-08-13T00:05:00.000Z",
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
+      createDownload,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    await openRowMenu("paper.pdf");
+    const menu = await openRowMenu("Sources");
+    await user.click(within(menu).getByRole("menuitem", { name: "Move" }));
+    await screen.findByRole("dialog", { name: "Move “Sources”" });
+    expect(document.querySelectorAll("[style]")).toHaveLength(0);
+  });
+});
+
+describe("mobile presentation structure", () => {
+  it("exposes exactly four real destinations with active-state semantics", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    // The desktop sidebar landmark exists (it becomes the mobile bottom
+    // navigation via CSS — same four real destinations, no fake ones).
+    const nav = screen.getByRole("complementary", { name: "Primary navigation" });
+    expect(document.querySelector(".sidebar")).not.toBeNull();
+    const buttons = within(nav).getAllByRole("button");
+    expect(buttons).toHaveLength(4);
+    expect(within(nav).getByRole("button", { name: "Library" })).toHaveAttribute("aria-current", "page");
+    for (const label of ["Favorites", "Pending", "Recycle"]) {
+      expect(within(nav).getByRole("button", { name: label })).toBeInTheDocument();
+    }
+
+    await user.click(within(nav).getByRole("button", { name: "Favorites" }));
+    expect(within(nav).getByRole("button", { name: "Favorites" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("button", { name: "Library" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("structures catalogue rows for the mobile presentation: name/actions separated, truncation-capable filename, metadata line", async () => {
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const rows = document.querySelectorAll(".entry-table .entry-row:not(.entry-row--head)");
+    expect(rows).toHaveLength(2);
+    for (const row of Array.from(rows)) {
+      expect(row.querySelector(".entry-name")).not.toBeNull();
+      expect(row.querySelector(".entry-actions")).not.toBeNull();
+      expect(row.querySelector(".entry-mobile-meta")).not.toBeNull();
+    }
+
+    const fileRow = screen.getByText("paper.pdf").closest(".entry-row") as HTMLElement;
+    expect(fileRow.querySelector(".entry-filename")).not.toBeNull();
+    expect(within(fileRow).getByText("PDF · 6 B")).toBeInTheDocument();
+    expect(within(fileRow).getByRole("button", { name: "Add paper.pdf to favorites" })).toBeInTheDocument();
+    expect(within(fileRow).getByRole("button", { name: "Open actions for paper.pdf" })).toBeInTheDocument();
+
+    const folderRow = screen.getByRole("button", { name: "Sources" }).closest(".entry-row") as HTMLElement;
+    expect(within(folderRow).getByText("Folder")).toBeInTheDocument();
+  });
+
+  it("keeps star and more controls independent of truncating long filenames", async () => {
+    const longName = `${"中古中国与粟特文明".repeat(40)}.pdf`;
+    const longFile = { ...FILE, displayName: longName };
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [longFile] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const filename = await screen.findByText(longName);
+    expect(filename.className).toContain("entry-filename");
+    const row = filename.closest(".entry-row") as HTMLElement;
+    expect(row.querySelector(".entry-actions")).not.toBeNull();
+    expect(within(row).getByRole("button", { name: `Open actions for ${longName}` })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: `Add ${longName} to favorites` })).toBeInTheDocument();
+  });
+
+  it("provides the compact back control with the real parent label when nested", async () => {
+    const user = userEvent.setup();
+    const listEntries = vi.fn()
+      .mockResolvedValueOnce({ folder: null, folders: [FOLDER], files: [] })
+      .mockResolvedValueOnce({ folder: FOLDER, folders: [], files: [] })
+      .mockResolvedValueOnce({ folder: null, folders: [FOLDER], files: [] });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listEntries });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    // At the root there is nothing to go back to.
+    expect(screen.queryByRole("button", { name: /Back to/ })).not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Sources" }));
+    await screen.findByRole("heading", { name: "Sources", level: 1 });
+    const back = screen.getByRole("button", { name: "Back to Library" });
+    await user.click(back);
+
+    await waitFor(() => expect(listEntries).toHaveBeenLastCalledWith(null, expect.anything()));
+    expect(screen.getByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
+  });
+
+  it("renders Favorites through the same mobile catalogue structure as Library", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listFavorites: vi.fn().mockResolvedValue({ files: [FILE], folders: [] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(await screen.findByText("paper.pdf")).toBeInTheDocument();
+    const table = document.querySelector(".entry-table");
+    expect(table).not.toBeNull();
+    expect(table!.querySelector(".entry-mobile-meta")).not.toBeNull();
+  });
+
+  it("exposes the compact account menu with account name, language, and sign out", async () => {
+    const user = userEvent.setup();
+    const logout = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), logout });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const trigger = screen.getByRole("button", { name: "Account menu" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await user.click(trigger);
+
+    const popover = document.querySelector(".account-popover") as HTMLElement;
+    const menu = within(popover).getByRole("menu", { name: "Account" });
+    expect(within(popover).getByText("Scholar")).toBeInTheDocument();
+    // Menu keyboard contract: focus moves into the menu on open.
+    expect(within(menu).getByRole("menuitem", { name: "中文" })).toHaveFocus();
+    await user.click(within(menu).getByRole("menuitem", { name: "中文" }));
+    expect(await within(menu).findByRole("menuitem", { name: "退出登录" })).toBeInTheDocument();
+
+    // Escape closes the popover and restores focus to the trigger.
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu", { name: "账户" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes the account menu on outside pointer down", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menu", { name: "Account" })).toBeInTheDocument();
+    await user.click(document.body);
+    expect(screen.queryByRole("menu", { name: "Account" })).not.toBeInTheDocument();
+  });
+
+  it("keeps upload queue jobs in the stacked mobile structure", async () => {
+    const user = userEvent.setup();
+    const checksumFile = vi.fn(() => new Promise<string>(() => {}));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} checksumFile={checksumFile} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.upload(await screen.findByLabelText("Upload files"), [new File(["a"], "a.pdf", { type: "application/pdf" })]);
+    const job = document.querySelector(".upload-job") as HTMLElement;
+    expect(job).not.toBeNull();
+    expect(job.querySelector("progress")).not.toBeNull();
+    expect(job.querySelector(".upload-percent")).not.toBeNull();
+    expect(within(job).getByRole("button", { name: "Cancel a.pdf upload" })).toBeInTheDocument();
+  });
+});
+
+describe("row menu focus safety", () => {
+  it("restores trigger focus when scroll or resize closes the menu with focus inside", async () => {
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const trigger = await screen.findByRole("button", { name: "Open actions for paper.pdf" });
+    const menu = await openRowMenu("paper.pdf");
+    const item = within(menu).getByRole("menuitem", { name: "Download" });
+    item.focus();
+    expect(item).toHaveFocus();
+
+    fireEvent.scroll(window);
+    expect(screen.queryByRole("menu", { name: "Actions for paper.pdf" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+
+    const menu2 = await openRowMenu("paper.pdf");
+    within(menu2).getByRole("menuitem", { name: "Download" }).focus();
+    fireEvent.resize(window);
+    expect(screen.queryByRole("menu", { name: "Actions for paper.pdf" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 });

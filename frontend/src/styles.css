@@ -85,37 +85,26 @@ button:disabled { cursor: wait; opacity: 0.55; }
   letter-spacing: 0.04em;
 }
 
-/* Reserved for dialogs and the login screen; never used in the workspace
-   header. */
-.eyebrow { margin: 0 0 0.55rem; color: var(--forest); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; }
-.muted, .section-copy { color: var(--muted); }
+.muted { color: var(--muted); }
 
 .centered-shell { display: grid; min-height: 100vh; place-content: center; justify-items: center; gap: 1rem; color: var(--muted); }
 .loading-mark { width: 3.5rem; height: 3.5rem; box-shadow: var(--shadow); }
 
-.login-shell { display: grid; min-height: 100vh; grid-template-columns: minmax(0, 1.2fr) minmax(22rem, 0.8fr); background: var(--paper); }
-
-.login-intro {
-  display: flex;
+/* Login: brand, two labeled inputs, one action, language switch. Nothing
+   else — desktop gets whitespace, mobile puts the form in the first
+   viewport. */
+.login-shell {
+  display: grid;
   min-height: 100vh;
-  flex-direction: column;
-  justify-content: center;
-  padding: clamp(3rem, 9vw, 8.5rem);
-  background:
-    radial-gradient(circle at 80% 20%, rgba(167, 121, 56, 0.14), transparent 24rem),
-    linear-gradient(145deg, #f0f2ec, #e7ece5 62%, #dde6df);
-  border-right: 1px solid var(--line);
+  place-items: center;
+  padding: 1.5rem;
+  background: var(--paper);
 }
-
-.login-intro h1 { max-width: 11ch; margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(3rem, 7vw, 6.5rem); font-weight: 500; letter-spacing: -0.055em; line-height: 0.96; }
-.login-intro > p:not(.eyebrow) { max-width: 35rem; margin: 1.75rem 0; color: #4e5d53; font-size: 1.02rem; line-height: 1.75; }
-.privacy-note { display: flex; align-items: center; gap: 0.6rem; color: var(--forest); font-size: 0.84rem; font-weight: 640; }
-.privacy-note span { color: var(--brass); font-size: 0.65rem; }
-
-.login-card { align-self: center; width: min(100% - 3rem, 27rem); margin: auto; padding: 2.4rem; border: 1px solid var(--line); border-radius: 0.9rem; background: var(--paper); box-shadow: var(--shadow); }
-.login-card h2 { margin: 2.4rem 0 0.4rem; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-size: 2rem; font-weight: 500; }
-.login-card form { display: grid; gap: 0.6rem; margin-top: 1.7rem; }
+.login-card { width: min(100%, 24rem); padding: 2.4rem; border: 1px solid var(--line); border-radius: 0.9rem; background: var(--paper); box-shadow: var(--shadow); }
+.login-card .brand { margin: 0 0 1.8rem; font-size: 1.05rem; }
+.login-card form { display: grid; gap: 0.6rem; }
 .login-card label { margin-top: 0.7rem; font-size: 0.85rem; font-weight: 640; }
+.login-language { margin-top: 1rem; display: flex; justify-content: flex-end; }
 
 input { width: 100%; min-height: 2.8rem; padding: 0.68rem 0.8rem; color: var(--ink); border: 1px solid #c9cfc7; border-radius: 0.5rem; background: #fbfcf9; }
 input:hover { border-color: #a7b2a8; }
@@ -170,7 +159,51 @@ input:hover { border-color: #a7b2a8; }
 .avatar { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: 50%; color: #fcfcf9; background: var(--forest); font-size: 0.78rem; font-weight: 700; }
 .account-name { font-size: 0.84rem; font-weight: 620; color: var(--ink); }
 
-/* Deep-forest research-library navigation surface. */
+/* Compact account access: a small anchored popover with the account name,
+   language switch, and sign out. Mobile-only via CSS; the popover renders
+   only while open so the always-visible desktop controls stay unique. */
+.account-trigger-root { position: relative; display: none; }
+.account-trigger {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  cursor: pointer;
+}
+.account-trigger:hover, .account-trigger[aria-expanded="true"] { background: #eceee9; }
+.account-popover {
+  position: absolute;
+  z-index: 70;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  display: grid;
+  min-width: 13rem;
+  gap: 0.55rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--paper);
+  box-shadow: 0 14px 36px rgba(22, 40, 30, 0.16);
+}
+.account-popover-name { overflow: hidden; color: var(--ink); font-size: 0.86rem; font-weight: 640; text-overflow: ellipsis; white-space: nowrap; }
+.account-popover-menu { display: grid; gap: 0.55rem; }
+.account-popover .language-switch { margin-right: 0; justify-content: flex-start; }
+.account-popover-signout {
+  min-height: 2.5rem;
+  color: var(--ink);
+  border: 1px solid #c8cfc7;
+  border-radius: 0.5rem;
+  background: var(--paper);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 620;
+}
+
+/* Deep-forest research-library navigation surface (desktop sidebar). */
 .sidebar { display: flex; flex-direction: column; justify-content: flex-start; padding: 1.2rem 0.8rem; background: var(--forest-deep); }
 .sidebar nav { display: grid; gap: 0.2rem; }
 .nav-item {
@@ -215,6 +248,10 @@ input:hover { border-color: #a7b2a8; }
 .command-bar { display: flex; align-items: center; gap: 0.6rem; }
 .upload-button { position: relative; overflow: hidden; }
 
+/* Compact [←] back control: replaces the breadcrumb row on phones. The
+   server-side path model is untouched; only the presentation differs. */
+.back-button { display: none; }
+
 .breadcrumbs ol { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin: 0 0 0.55rem; padding: 0; list-style: none; }
 .breadcrumbs li { display: flex; align-items: center; gap: 0.45rem; color: #9aa29b; }
 .breadcrumbs button { padding: 0.15rem 0.2rem; color: var(--muted); border: 0; background: transparent; cursor: pointer; font-size: 0.875rem; }
@@ -230,7 +267,6 @@ input:hover { border-color: #a7b2a8; }
   letter-spacing: 0.015em;
 }
 .section-heading span { color: var(--muted); font-size: 0.8125rem; }
-.section-copy { max-width: 48rem; margin: 0 0 1.1rem; font-size: 0.88rem; line-height: 1.6; }
 
 /* Archive-catalogue list: quiet, dense, durable. No overflow clipping here —
    row menus must be able to escape the catalogue bounds vertically. Rounded
@@ -253,10 +289,14 @@ input:hover { border-color: #a7b2a8; }
 .entry-row:not(.entry-row--head):hover { background: #f2f3ee; }
 .entry-row--head { min-height: 2.5rem; color: #858c86; background: transparent; border-top: 0; border-bottom: 1px solid var(--line); font-size: 0.8125rem; font-weight: 580; letter-spacing: 0.02em; }
 .entry-name { display: flex; min-width: 0; align-items: center; gap: 0.85rem; }
+.entry-name-body { display: grid; min-width: 0; gap: 0.1rem; }
 .entry-filename { overflow: hidden; color: var(--ink); font-size: 0.9375rem; font-weight: 620; letter-spacing: -0.004em; text-overflow: ellipsis; white-space: nowrap; }
 .entry-link { overflow: hidden; padding: 0; color: var(--ink); border: 0; background: transparent; cursor: pointer; font-size: 0.9375rem; font-weight: 620; letter-spacing: -0.004em; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .entry-link:hover { color: var(--forest); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .entry-meta { color: #98a099; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+/* Mobile-only catalogue metadata line (type · size / 文件夹). Hidden in the
+   desktop table, where the dedicated columns already carry this state. */
+.entry-mobile-meta { display: none; color: #98a099; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .entry-actions { display: flex; justify-content: flex-end; gap: 0.25rem; }
 .entry-actions-head { display: flex; justify-content: flex-end; }
 
@@ -352,7 +392,6 @@ input:hover { border-color: #a7b2a8; }
 .empty-state { display: grid; min-height: 13rem; place-items: center; align-content: center; padding: 2rem; color: var(--muted); border: 1px dashed #ccd3cb; border-radius: 0.65rem; background: rgba(252, 252, 249, 0.55); text-align: center; }
 .empty-state > span { color: var(--brass); font-size: 1.8rem; }
 .empty-state h3 { margin: 0.5rem 0 0; color: var(--ink); font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-size: 1.25rem; font-weight: 500; }
-.empty-state p { margin: 0.45rem 0; font-size: 0.88rem; }
 
 .loading-rows { display: grid; gap: 0.6rem; }
 .loading-rows > span:not(.visually-hidden) { height: 3.6rem; border-radius: 0.6rem; background: linear-gradient(90deg, #e9ece6 20%, #f6f8f4 45%, #e9ece6 70%); background-size: 220% 100%; animation: shimmer 1.3s linear infinite; }
@@ -414,7 +453,8 @@ input:hover { border-color: #a7b2a8; }
 .preview-modal[open] { display: grid; }
 .preview-modal > header, .preview-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; }
 .preview-modal h2 { max-width: 45rem; }
-.preview-modal footer { color: var(--muted); border-top: 1px solid var(--line); font-size: 0.8rem; }
+.preview-modal > header { min-width: 0; }
+.preview-modal footer { color: var(--muted); border-top: 1px solid var(--line); font-size: 0.8rem; justify-content: flex-end; }
 .preview-content { display: grid; min-height: 0; place-items: center; overflow: auto; background: #2f3832; }
 .preview-content img { display: block; max-width: 100%; max-height: 72vh; object-fit: contain; }
 .preview-content iframe { width: 100%; height: 70vh; border: 0; background: white; }
@@ -444,44 +484,204 @@ input:hover { border-color: #a7b2a8; }
   .entry-row > :nth-child(3) { display: none; }
 }
 
+/* ============================================================
+   Mobile presentation (one primary breakpoint, <= 768px):
+   bottom navigation, compact topbar + account menu, dedicated
+   catalogue rows, back control, fullscreen preview, stacked
+   upload queue, touch-sized controls, safe-area awareness.
+   ============================================================ */
 @media (max-width: 48rem) {
-  .login-shell { grid-template-columns: 1fr; background: linear-gradient(145deg, #edf1ea, #e1eae3); }
-  .login-intro { min-height: auto; padding: 3.5rem 1.5rem 2rem; border-right: 0; background: transparent; }
-  .login-intro h1 { font-size: clamp(2.7rem, 12vw, 4.5rem); }
-  .login-card { margin-bottom: 3rem; }
-  .app-shell { grid-template: 3.5rem auto 1fr / 1fr; }
-  .topbar { grid-row: 1; }
-  .sidebar { grid-row: 2; padding: 0.5rem; overflow-x: auto; }
-  .sidebar nav { display: flex; }
-  .nav-item { width: auto; flex: 0 0 auto; min-height: 2.35rem; padding: 0 0.8rem; }
-  .workspace { grid-row: 3; padding: 1.25rem 1rem 2.5rem; }
-  .workspace-head { align-items: flex-start; }
-  .workspace h1 { font-size: 2rem; }
-  .command-bar { flex-wrap: wrap; }
-  .entry-table { border: 0; background: transparent; }
+  .login-shell { place-items: start center; padding: 1rem; }
+  .login-card { margin-top: 1.25rem; padding: 1.5rem 1.25rem; border: 0; border-radius: 0; box-shadow: none; }
+  .login-card .brand { margin-bottom: 1.2rem; }
+  .login-language { justify-content: flex-start; }
+
+  /* Single-column shell: topbar + workspace; the sidebar leaves the grid
+     flow and becomes a fixed bottom navigation. */
+  .app-shell { grid-template: 3.5rem 1fr / minmax(0, 1fr); }
+  .topbar { grid-row: 1; grid-column: 1; padding: 0 0.85rem; }
+  .topbar .brand { font-size: 0.9rem; }
+  .topbar .brand > span { width: 1.9rem; height: 1.9rem; }
+
+  /* Compact account access replaces the always-visible row. */
+  .account-menu { gap: 0.35rem; }
+  .account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button { display: none; }
+  .account-trigger-root { display: block; }
+
+  /* The desktop sidebar becomes the mobile bottom navigation: same four
+     real destinations, icon + short label, >=44px targets, safe-area
+     aware, active state marked by the brass top rule. */
+  .sidebar {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 24px rgba(22, 40, 30, 0.1);
+  }
+  .sidebar nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.2rem; }
+  .nav-item {
+    min-width: 0;
+    min-height: 3rem;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.35rem 0.25rem;
+    border-radius: 0.4rem;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+  .nav-item.is-active {
+    background: rgba(252, 252, 249, 0.14);
+    border-left: 0;
+    border-top: 2px solid var(--brass);
+    border-radius: 0.4rem 0.4rem 0 0;
+    padding: calc(0.35rem - 2px) 0.25rem 0.35rem;
+  }
+
+  /* Workspace must clear the fixed bottom navigation. */
+  .workspace { grid-row: 2; padding: 1rem 1rem calc(7.5rem + env(safe-area-inset-bottom)); }
+
+  .workspace-head { flex-direction: column; align-items: stretch; gap: 0.9rem; }
+  .workspace-title { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.55rem; }
+  .workspace h1 { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-size: 1.7rem; }
+  .workspace-summary { flex-basis: 100%; }
+  /* Align the summary with the heading only when the back control is present. */
+  .workspace-title:has(> .back-button) .workspace-summary { padding-left: calc(2.75rem + 0.55rem); }
+  .back-button {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    place-items: center;
+    padding: 0;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 0.55rem;
+    background: var(--paper);
+    cursor: pointer;
+  }
+  .breadcrumbs { display: none; }
+  .command-bar { width: 100%; }
+  .command-bar .button { flex: 1; min-height: 2.75rem; }
+
+  /* Dedicated mobile catalogue: clean rows + separators, filename first,
+     star and more always visible, no squeezed desktop columns. */
+  .entry-table { border: 0; border-radius: 0; background: transparent; }
+  .entry-row:first-child, .entry-row:last-child { border-radius: 0.6rem; }
   .entry-row--head { display: none; }
-  .entry-row { grid-template-columns: minmax(0, 1fr) 2.6rem; gap: 0.45rem; margin-bottom: 0.6rem; padding: 0.85rem 0.9rem; border: 1px solid var(--line); border-radius: 0.6rem; background: var(--paper); }
-  .entry-row > :nth-child(2), .entry-row > :nth-child(3) { display: none; }
-  .upload-job { grid-template-columns: 1fr 3rem; }
-  .upload-job progress { grid-column: 1 / -1; grid-row: 2; }
+  .entry-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.35rem;
+    margin-bottom: 0.55rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.6rem;
+    background: var(--paper);
+  }
+  .entry-row > .entry-meta { display: none; }
+  .entry-name { gap: 0.7rem; }
+  .entry-mobile-meta { display: block; }
+  .star-button, .row-menu-trigger { width: 2.75rem; height: 2.75rem; }
+  .row-menu { min-width: 11rem; }
+  .row-menu-item { min-height: 2.75rem; padding: 0.5rem 0.7rem; }
+
+  /* Upload queue stacks vertically: filename/percent, progress, metrics,
+     actions each get a full row. */
+  .upload-queue { padding: 0.1rem 0.75rem 0.75rem; }
+  .upload-job {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name percent"
+      "progress progress"
+      "metrics metrics"
+      "actions actions";
+    gap: 0.35rem 0.6rem;
+    padding: 0.75rem 0;
+  }
+  .upload-job > div:first-child { grid-area: name; }
+  .upload-percent { grid-area: percent; align-self: start; }
+  .upload-job progress { grid-area: progress; }
+  .upload-metrics { grid-area: metrics; overflow-wrap: anywhere; font-size: 0.78rem; }
+  /* Without live metrics there is nothing to show in that row: collapse it
+     so queued/error jobs do not carry an empty band above the actions. */
+  .upload-job:not(:has(.upload-metrics)) {
+    grid-template-areas:
+      "name percent"
+      "progress progress"
+      "actions actions";
+  }
+  .upload-job > button { grid-area: actions; justify-self: end; }
+  .job-error { grid-area: actions; flex-wrap: wrap; }
+  .upload-job .button--small { min-height: 2.75rem; padding: 0.5rem 0.9rem; }
+
   .pending-card, .recycle-card { flex-wrap: wrap; }
   .pending-card .entry-primary, .recycle-card .entry-primary { min-width: calc(100% - 3.5rem); }
-}
+  .pending-card .button--small, .recycle-card .button--small { min-height: 2.75rem; }
 
-@media (max-width: 30rem) {
-  .topbar { padding: 0 0.65rem; }
-  .brand { font-size: 0.84rem; }
-  .brand > span { width: 1.9rem; height: 1.9rem; }
-  .account-name { display: none; }
-  .sidebar nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .nav-item { min-width: 0; justify-content: center; padding-inline: 0.4rem; font-size: 0.8rem; text-align: center; }
-  .workspace-head { flex-direction: column; align-items: stretch; }
-  .command-bar { flex-direction: column; align-items: stretch; }
-  .command-bar .button { width: 100%; }
-  .preview-modal > footer { align-items: stretch; flex-direction: column; }
-  .preview-modal > footer .button { width: 100%; }
-  .move-modal > footer { align-items: stretch; flex-direction: column; }
-  .move-modal > footer .button { width: 100%; }
+  .empty-state { min-height: 10rem; padding: 1.5rem 1rem; }
+
+  /* Fullscreen reader: the Preview dialog fills the usable viewport
+     (100dvh with a 100vh fallback), no floating-card look, compact toolbar,
+     content takes the maximum area. */
+  .preview-modal {
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .preview-modal > header { gap: 0.6rem; padding: calc(0.7rem + env(safe-area-inset-top)) 0.9rem 0.7rem; }
+  .preview-modal > header h2 { max-width: none; flex: 1; min-width: 0; }
+  .preview-close-button { min-width: 2.75rem; min-height: 2.75rem; flex: 0 0 auto; }
+  .preview-modal > footer { padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom)); }
+  .preview-open-button { width: 100%; min-height: 2.75rem; }
+  .preview-content img { max-height: 100%; }
+  .preview-content iframe { height: 100%; }
+
+  /* Move: fullscreen sheet with readable destinations and reachable action. */
+  .move-modal {
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    grid-template-rows: auto auto minmax(10rem, 1fr) auto;
+  }
+  .move-modal > header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }
+  .move-modal > footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  }
+  .move-modal > footer .button { min-height: 2.75rem; }
+  .move-modal > footer span { min-width: 0; overflow-wrap: anywhere; }
+  .destination-folder { min-height: 2.75rem; }
+
+  /* New folder: compact bottom sheet, keyboard-safe, touch-sized actions. */
+  .new-folder-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+    margin: auto auto 0;
+    border-radius: 0.9rem 0.9rem 0 0;
+  }
+  .new-folder-modal header { padding: 0.9rem 1rem; }
+  .new-folder-modal .new-folder-body { padding: 1rem 1rem 0.4rem; }
+  .new-folder-modal footer { padding: 0.9rem 1rem calc(0.9rem + env(safe-area-inset-bottom)); }
+  .new-folder-modal .button { min-height: 2.75rem; }
+  .new-folder-modal footer .button { min-width: 5.5rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -492,5 +692,4 @@ input:hover { border-color: #a7b2a8; }
 .language-switch button { padding: 0.1rem 0.3rem; border: 0; background: transparent; color: inherit; cursor: pointer; opacity: 0.72; }
 .language-switch button:hover { opacity: 1; text-decoration: underline; }
 .language-switch button.is-active { opacity: 1; font-weight: 700; }
-.login-language { margin-top: 1rem; display: flex; justify-content: flex-end; }
 .upload-metrics { color: var(--muted); font-size: 0.82rem; }

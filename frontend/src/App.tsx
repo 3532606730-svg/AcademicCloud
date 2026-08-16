@@ -13,8 +13,9 @@ import {
 } from "./api.ts";
 import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
 import { describeError, formatCount, formatDate } from "./i18n.ts";
-import { LanguageProvider, LanguageSwitch, useLanguage } from "./i18n-react.tsx";
+import { LanguageProvider, LanguageSwitch, useLanguage, type Translator } from "./i18n-react.tsx";
 import {
+  ArrowLeftIcon,
   FileIcon,
   FolderIcon,
   ImageIcon,
@@ -152,19 +153,8 @@ function LoginView({
 
   return (
     <main className="login-shell">
-      <section className="login-intro" aria-labelledby="login-title">
-        <p className="eyebrow">{t("login.eyebrow")}</p>
-        <h1 id="login-title">{t("login.title")}</h1>
-        <p>{t("login.subtitle")}</p>
-        <div className="privacy-note">
-          <span aria-hidden="true">●</span>
-          {t("login.privacy")}
-        </div>
-      </section>
-      <section className="login-card" aria-labelledby="signin-title">
-        <div className="brand"><span>AC</span> AcademicCloud</div>
-        <h2 id="signin-title">{t("login.welcome")}</h2>
-        <p className="muted">{t("login.muted")}</p>
+      <section className="login-card" aria-labelledby="brand-title">
+        <h1 className="brand" id="brand-title"><span>AC</span> AcademicCloud</h1>
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
         <form onSubmit={(event) => void submit(event)}>
           <label htmlFor="login-name">{t("login.nameLabel")}</label>
@@ -378,8 +368,9 @@ function DriveView({
     const onDrop = (event: DragEvent) => {
       if (!hasFileDrag(event.dataTransfer)) return;
       if (view === "library" && workspaceRef.current?.contains(event.target as Node)) return; // workspace uploads
+      // Silent: browser navigation is prevented, nothing enqueues, and no
+      // descriptive notice renders (zero-copy policy).
       event.preventDefault();
-      setNotice(t("drop.outsideWorkspace"));
     };
     document.addEventListener("dragover", onDragOver);
     document.addEventListener("drop", onDrop);
@@ -387,7 +378,7 @@ function DriveView({
       document.removeEventListener("dragover", onDragOver);
       document.removeEventListener("drop", onDrop);
     };
-  }, [t, view]);
+  }, [view]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -836,7 +827,7 @@ function DriveView({
     if (directoryCount > 0) {
       setNotice(t("drop.directorySkipped", { count: directoryCount }));
     } else if (validFiles.length === 0 && files.length === 0) {
-      setNotice(t("drop.onlyDirectories"));
+      setNotice(t("drop.notUploaded"));
     }
   }
 
@@ -858,9 +849,14 @@ function DriveView({
         <div className="brand"><span>AC</span> AcademicCloud</div>
         <div className="account-menu">
           <LanguageSwitch />
-          <span className="avatar" aria-hidden="true">{account.loginName.slice(0, 1).toUpperCase()}</span>
+          <AccountMenu
+            accountName={account.loginName}
+            busy={busyId === "logout"}
+            onSignOut={() => void signOut()}
+          />
+          <span className="avatar desktop-avatar" aria-hidden="true">{account.loginName.slice(0, 1).toUpperCase()}</span>
           <span className="account-name">{account.loginName}</span>
-          <button className="button button--quiet" type="button" onClick={() => void signOut()} disabled={busyId === "logout"}>
+          <button className="button button--quiet sign-out-button" type="button" onClick={() => void signOut()} disabled={busyId === "logout"}>
             {t("nav.signOut")}
           </button>
         </div>
@@ -895,6 +891,16 @@ function DriveView({
       >
         <header className="workspace-head">
           <div className="workspace-title">
+            {view === "library" && path.length > 0 && (
+              <button
+                className="back-button"
+                type="button"
+                aria-label={t("nav.backAria", { name: path.at(-2)?.name ?? t("nav.library") })}
+                onClick={() => goToCrumb(path.length - 2)}
+              >
+                <ArrowLeftIcon size={20} />
+              </button>
+            )}
             {view === "library" && path.length > 0 && (
               <nav className="breadcrumbs" aria-label={t("breadcrumb.aria")}>
                 <ol>
@@ -981,7 +987,7 @@ function DriveView({
                   <div className="job-error">
                     {job.phase === "error" && <span role="alert">{job.error}</span>}
                     {job.phase === "error" && (
-                      <button className="button button--small" type="button" aria-label={t("upload.verifyRetryAria", { name: job.file.name })} onClick={() => void retryJob(job)}>{t("upload.verifyOrRetry")}</button>
+                      <button className="button button--small" type="button" aria-label={t("upload.verifyRetryAria", { name: job.file.name })} onClick={() => void retryJob(job)}>{t("upload.retry")}</button>
                     )}
                     <button className="button button--small button--quiet" type="button" aria-label={t("upload.dismissAria", { name: job.file.name })} onClick={() => setJobs((current) => current.filter((item) => item.id !== job.id))}>{t("alert.dismiss")}</button>
                   </div>
@@ -997,7 +1003,7 @@ function DriveView({
           <section aria-labelledby="contents-title">
             <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
             {loading ? <LoadingRows /> : isLibraryEmpty ? (
-              <EmptyState title={t("folder.emptyTitle")} text={t("folder.emptyText")} />
+              <EmptyState title={t("folder.emptyTitle")} />
             ) : (
               <EntryTable
                 folders={entries.folders}
@@ -1027,9 +1033,8 @@ function DriveView({
               <h2 id="pending-title">{t("pending.title")}</h2>
               <button className="button button--quiet" type="button" onClick={refresh}>{t("pending.refresh")}</button>
             </div>
-            <p className="section-copy">{t("pending.copy")}</p>
             {loading ? <LoadingRows /> : pending.length === 0 ? (
-              <EmptyState title={t("pending.emptyTitle")} text={t("pending.emptyText")} />
+              <EmptyState title={t("pending.emptyTitle")} />
             ) : (
               <div className="card-list">
                 {pending.map((file) => (
@@ -1063,7 +1068,7 @@ function DriveView({
                 <button type="button" onClick={refresh}>{t("pending.refresh")}</button>
               </div>
             ) : favorites === null ? <LoadingRows /> : favorites.files.length + favorites.folders.length === 0 ? (
-              <EmptyState title={t("favorites.emptyTitle")} text={t("favorites.emptyText")} />
+              <EmptyState title={t("favorites.emptyTitle")} />
             ) : (
               <EntryTable
                 folders={favorites.folders}
@@ -1089,9 +1094,8 @@ function DriveView({
 
         {view === "recycle" && (
           <section aria-labelledby="recycle-title">            <div className="section-heading"><h2 id="recycle-title">{t("recycle.title")}</h2>{!loading && <span>{t("folder.items", { count: formatCount(language, recycle.folders.length + recycle.files.length) })}</span>}</div>
-            <p className="section-copy">{t("recycle.copy")}</p>
             {loading ? <LoadingRows /> : recycle.folders.length + recycle.files.length === 0 ? (
-              <EmptyState title={t("recycle.emptyTitle")} text={t("recycle.emptyText")} />
+              <EmptyState title={t("recycle.emptyTitle")} />
             ) : (
               <div className="card-list">
                 {recycle.folders.map((folder) => (
@@ -1209,7 +1213,6 @@ function NewFolderDialog({
             id="new-folder-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder={t("folder.newPlaceholder")}
             maxLength={255}
             autoFocus
           />
@@ -1269,8 +1272,15 @@ function RowMenu({
       }
     };
     // Viewport/layout movement invalidates the CSS-relative snapshot: the
-    // simplest robust behavior is to close the menu.
-    const closeOnMove = () => setOpen(false);
+    // simplest robust behavior is to close the menu. If keyboard focus is
+    // inside the menu at that moment, the focused menuitem would detach from
+    // the document — restore focus to the row trigger instead of leaving
+    // focus stranded.
+    const closeOnMove = () => {
+      const focusInside = menuRef.current?.contains(document.activeElement) ?? false;
+      setOpen(false);
+      if (focusInside) triggerRef.current?.focus();
+    };
     document.addEventListener("mousedown", onPointerDown);
     window.addEventListener("resize", closeOnMove);
     window.addEventListener("scroll", closeOnMove, true);
@@ -1415,7 +1425,10 @@ function EntryTable({
         <div className="entry-row" role="row" key={folder.id}>
           <div className="entry-name" role="cell">
             <FolderIcon size={20} className="file-badge file-badge--folder" />
-            <button className="entry-link" type="button" onClick={() => onEnterFolder(folder)}>{folder.name}</button>
+            <div className="entry-name-body">
+              <button className="entry-link" type="button" onClick={() => onEnterFolder(folder)}>{folder.name}</button>
+              <span className="entry-mobile-meta">{t("folder.kind")}</span>
+            </div>
           </div>
           <span role="cell" className="entry-meta">—</span>
           <span role="cell" className="entry-meta">{formatDate(folder.updatedAt, language)}</span>
@@ -1444,7 +1457,10 @@ function EntryTable({
         <div className="entry-row" role="row" key={file.id}>
           <div className="entry-name" role="cell">
             <FileBadge file={file} />
-            <strong className="entry-filename" title={file.displayName}>{file.displayName}</strong>
+            <div className="entry-name-body">
+              <strong className="entry-filename" title={file.displayName}>{file.displayName}</strong>
+              <span className="entry-mobile-meta">{fileKindLabel(file, t)} · {formatBytes(file.sizeBytes)}</span>
+            </div>
           </div>
           <span role="cell" className="entry-meta">{formatBytes(file.sizeBytes)}</span>
           <span role="cell" className="entry-meta">{formatDate(file.updatedAt, language)}</span>
@@ -1491,6 +1507,139 @@ function StarButton({ active, name, onToggle }: { active: boolean; name: string;
   );
 }
 
+function fileKindLabel(file: FileEntry, t: Translator): string {
+  if (file.mediaType === "application/pdf") return t("file.kindPdf");
+  if (file.mediaType.startsWith("image/")) return t("file.kindImage");
+  if (file.mediaType.startsWith("text/")) return t("file.kindText");
+  return t("file.kindFile");
+}
+
+// Compact account access for the mobile topbar: avatar trigger + popover with
+// account name, language switch, and sign out. Desktop keeps its always
+// visible row; CSS decides which presentation shows at which width. The
+// popover renders only while open, so the desktop controls stay unique. The
+// interactive section is a real ARIA menu (menuitem roles, arrow/Home/End
+// navigation, focus moves in on open) mirroring RowMenu semantics.
+function AccountMenu({
+  accountName,
+  busy,
+  onSignOut,
+}: {
+  accountName: string;
+  busy: boolean;
+  onSignOut: () => void;
+}) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  function close(restoreFocus: boolean) {
+    setOpen(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
+        setOpen(false);
+      }
+    };
+    // Same movement policy as RowMenu: closing must never strand focus on a
+    // detached element.
+    const closeOnMove = () => {
+      const focusInside = menuRef.current?.contains(document.activeElement) ?? false;
+      setOpen(false);
+      if (focusInside) triggerRef.current?.focus();
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("resize", closeOnMove);
+    window.addEventListener("scroll", closeOnMove, true);
+    document.addEventListener("scroll", closeOnMove, true);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("resize", closeOnMove);
+      window.removeEventListener("scroll", closeOnMove, true);
+      document.removeEventListener("scroll", closeOnMove, true);
+    };
+  }, [open]);
+
+  // Move focus into the menu when it opens (keyboard contract of a menu).
+  useEffect(() => {
+    if (open) {
+      menuRef.current?.querySelector<HTMLButtonElement>('[role="menu"] button:not([disabled])')?.focus();
+    }
+  }, [open]);
+
+  function onMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close(true);
+      return;
+    }
+    if (event.key === "Tab") {
+      close(false);
+      return;
+    }
+    const buttons = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menu"] button:not([disabled])') ?? []);
+    if (buttons.length === 0) return;
+    const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      buttons[(index + 1) % buttons.length]?.focus();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      buttons[(index - 1 + buttons.length) % buttons.length]?.focus();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      buttons[0]?.focus();
+    } else if (event.key === "End") {
+      event.preventDefault();
+      buttons[buttons.length - 1]?.focus();
+    }
+  }
+
+  return (
+    <div className="account-trigger-root" ref={rootRef}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="account-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t("account.menuAria")}
+        onClick={() => (open ? close(true) : setOpen(true))}
+      >
+        <span className="avatar" aria-hidden="true">{accountName.slice(0, 1).toUpperCase()}</span>
+      </button>
+      {open && (
+        <div ref={menuRef} className="account-popover">
+          <p className="account-popover-name">{accountName}</p>
+          <div className="account-popover-menu" role="menu" aria-label={t("account.menuLabel")} onKeyDown={onMenuKeyDown}>
+            <LanguageSwitch labelled menuitem />
+            <button
+              className="account-popover-signout"
+              type="button"
+              role="menuitem"
+              disabled={busy}
+              onClick={() => {
+                close(false);
+                onSignOut();
+              }}
+            >
+              {t("nav.signOut")}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FileBadge({ file }: { file: FileEntry }) {
   if (file.mediaType === "application/pdf") return <PdfIcon size={19} className="file-badge file-badge--pdf" />;
   if (file.mediaType.startsWith("image/")) return <ImageIcon size={19} className="file-badge file-badge--img" />;
@@ -1509,8 +1658,8 @@ function PreviewDialog({ preview, onClose }: { preview: PreviewState; onClose: (
   return (
       <dialog ref={dialogRef} className="preview-modal" aria-labelledby="preview-title">
         <header>
-          <div><p className="eyebrow">{t("preview.eyebrow")}</p><h2 id="preview-title">{preview.file.displayName}</h2></div>
-          <button className="button button--quiet" type="button" onClick={onClose} aria-label={t("preview.closeAria")}>{t("preview.close")}</button>
+          <h2 id="preview-title">{preview.file.displayName}</h2>
+          <button className="button button--quiet preview-close-button" type="button" onClick={onClose} aria-label={t("preview.closeAria")}>{t("preview.close")}</button>
         </header>
         <div className="preview-content">
           {preview.file.mediaType.startsWith("image/") ? (
@@ -1520,8 +1669,7 @@ function PreviewDialog({ preview, onClose }: { preview: PreviewState; onClose: (
           )}
         </div>
         <footer>
-          <span>{t("preview.expires")}</span>
-          <a className="button" href={preview.url} target="_blank" rel="noreferrer">{t("preview.openTab")}</a>
+          <a className="button preview-open-button" href={preview.url} target="_blank" rel="noreferrer">{t("preview.open")}</a>
         </footer>
       </dialog>
   );
@@ -1568,7 +1716,7 @@ function MoveDialog({
   return (
       <dialog ref={dialogRef} className="move-modal" aria-labelledby="move-title">
         <header>
-          <div><p className="eyebrow">{t("move.eyebrow")}</p><h2 id="move-title">{t("move.title", { name: itemName })}</h2></div>
+          <h2 id="move-title">{t("move.title", { name: itemName })}</h2>
           <button className="button button--quiet" type="button" onClick={onClose} disabled={moving}>{t("preview.close")}</button>
         </header>
         <nav className="breadcrumbs" aria-label={t("move.destinationBreadcrumb")}>
@@ -1673,8 +1821,8 @@ function useModalDialog(onClose: () => void, closeDisabled = false, returnFocus?
   return dialogRef;
 }
 
-function EmptyState({ title, text }: { title: string; text: string }) {
-  return <div className="empty-state"><span aria-hidden="true">◇</span><h3>{title}</h3><p>{text}</p></div>;
+function EmptyState({ title }: { title: string }) {
+  return <div className="empty-state"><span aria-hidden="true">◇</span><h3>{title}</h3></div>;
 }
 
 function LoadingRows() {
