@@ -12,7 +12,7 @@
 
 ### L1-UX01 — Bilingual UI + Upload UX + Correct Browser Preview
 
-**Status:** Implementation PASS recorded (`INDEPENDENT_L1_UX01_IMPLEMENTATION_PASS=true`) — implementation + deterministic tests complete (backend 104/104, frontend 60/60, builds green) through `L1-UX01R1`/`L1-UX01R2`; the preview-URL expiry limitation is recorded as a known Product Verification item. The production gate is documented (`docs/deployment/l1-ux01-production-gate.md`, `files-ajtlab-top-plan.md`); the `files.ajtlab.top` infrastructure step, CI artifact build, deployment, and Owner browser PV await the ChatGPT production-plan review and the Owner-authorized window.
+**Status:** Implementation PASS recorded (`INDEPENDENT_L1_UX01_IMPLEMENTATION_PASS=true`) — implementation + deterministic tests complete (backend 104/104, frontend 60/60, builds green) through `L1-UX01R1`/`L1-UX01R2`; the preview-URL expiry limitation is recorded as a known Product Verification item. **Production window (2026-08-16):** Transaction A (`files.ajtlab.top` infrastructure) complete — see `docs/deployment/l1-ux01-production-gate.md` Transaction A execution record. Transaction B executed through B15 (B2–B15 PASS: backup/encrypt/off-host `1249e12`, immutable release `15181f90…`, secret-safe env install, CSP candidate + `nginx -t` without reload, atomic switch + strict no-op migration, loopback/public smoke with new asset `index-DUJfeHJu.js` byte-identical) — **B15a signed-GET browser Preview FAIL** for two real PDFs; bounded read-only diagnosis proved the OSS custom-domain signed path fully correct (200/206 exact PDF bytes, `inline` disposition, public-path fresh-URL 200) ⇒ classification `BROWSER_ONLY_OR_OTHER`, embedded failure attributed to the not-yet-activated served CSP frame-src. `B16_CSP_ACTIVATION_ALLOWED=false`; rollback prepared (`rollback-b15a.sh` + verified pre-B5/pre-B7 artifacts) and STOPPED for ChatGPT review per Owner direction. `UX01_FINAL_ACCEPTED=false`; no permanent delete; DNS/TLS/OSS untouched during Transaction B.
 
 ### L1-PROD04A — First Usable Production Readiness Reconciliation and Deployment Package
 
@@ -360,7 +360,7 @@ None while PROD-03C2 and L1-UX01 are in progress.
 ## Backlog — Layer 1
 
 - `PROD-03C3 — Operational Hardening` — Class-B cluster: backup cadence/retention, certificate renewal/reload automation (hard deadline before 2026-11-13), HSTS enablement after renewal and rollback are proven, production-format destructive restore drill, second disposable account and live cross-account isolation check, journal size/retention tuning.
-- `files.ajtlab.top` infrastructure gate (follows L1-UX01 review): DNS CNAME, OSS custom-domain binding, certificate issue/bind, `OSS_BROWSER_ENDPOINT` install, CSP site update, private-access verification, rollback — per `docs/deployment/files-ajtlab-top-plan.md`.
+- `files.ajtlab.top` infrastructure gate: **DONE 2026-08-16** (Transaction A — OSS custom-domain binding, ownership TXT, DV certificate, explicit CNAME with untouched wildcard, private-boundary verification; see the gate doc Transaction A execution record). Remaining from the same plan: Transaction B completion decision after the ChatGPT review of the B15a diagnosis (rollback pending), then the Owner browser PV. The "preview-URL expiry" item stays open for the large-PDF PV test.
 
 ## Explicitly Deferred
 
