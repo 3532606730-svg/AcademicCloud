@@ -1,131 +1,168 @@
 # AcademicCloud Roadmap
 
-Later phases must not be pulled forward without explicit approval.
+**Last reconciled:** 2026-08-17
+
+The roadmap records product sequencing. `TASK_BOARD.md` is the executable queue. Future layers must not be pulled forward without explicit Owner approval.
 
 ## Layer 0 — Project Setup
 
-**Goal:** create a stable project and project-memory foundation.
-
-Deliverables:
-- repository structure
-- Git initialization
-- project documentation
-- task tracking
-- decision records
-- development rules
-- environment documentation
-
 **Status:** Complete
 
-## Layer 1 — Basic Private Cloud Storage
+Delivered:
+- repository structure and Git
+- persistent project-memory documents
+- task tracking and ADRs
+- autonomous repository-backed engineering workflow
+- local environment baseline
 
-**Goal:** deliver a reliable private cloud-drive MVP.
+## Layer 1 — Core Drive
 
-Planned epics:
+**Goal:** a reliable, secure, maintainable academic cloud drive.
 
-### L1-E01 Core Architecture
-- minimal frontend/backend structure
-- configuration strategy
-- local development workflow
-- health-check/basic API connectivity
+### Completed foundation
+- L1-E01 Core Architecture
+- L1-E02 Database Foundation
+- L1-E03 Authentication & Authorization
+- L1-E04 Storage Abstraction
+- L1-E05 File Management
+- L1-E06 Frontend Interface
+- L1-E07 Security & Reliability
+- L1-E08 Testing & Deployment
+- UX01 production release accepted
+- UX02 academic workspace implementation
+- BUGAUDIT01 cross-layer hardening
+- FAV01 per-user Favorites implementation and independent review
+- UX03 dedicated mobile + zero-descriptive-copy implementation
 
-### L1-E02 Database Foundation
-- account/user representation
-- folder model
-- file metadata model
-- migrations
-- integrity constraints
+### Open closure work
+1. **L1-UX03 repair** — independent review findings only: exact mobile nav order, Preview Download, remaining mobile touch-target hardening.
+2. **L1-PERF01** — measure checksum/API/transfer stages; make only evidence-supported low-risk optimizations. OSS Multipart Upload and Transfer Acceleration are not required for closure.
+3. **L1-FOLDER01** — transactional recursive non-empty-folder recycle/restore with explicit recycle provenance. Independently pre-deleted descendants must never resurrect.
 
-### L1-E03 Authentication & Authorization
-- authentication
-- protected routes/API
-- ownership/authorization checks
+**Exit condition:** Core Drive closure tasks are green, adversarially reviewed, and independently checkpointed. Production deployment is a separate gate.
 
-### L1-E04 Storage Abstraction
-- storage interface
-- Alibaba OSS adapter
-- safe object keys
-- secure upload/download authorization strategy
+## Layer 2 — Accounts & Sharing
 
-### L1-E05 File Management
-- upload
-- list
-- download
-- folders
-- rename
-- move
-- soft delete
-- recycle bin
-- restore
-- permanent delete
+**Goal:** controlled multi-user private access without public registration.
 
-### L1-E06 Frontend Interface
-- login
-- file browser
-- upload flow
-- file actions
-- basic PDF/image/text preview where practical
+### Approved next Epic — L2-ACCOUNTS01
+- global `owner | member` roles
+- deterministic legacy role migration
+- first-Owner bootstrap
+- Owner-issued invitations
+- digest-only invitation capability storage
+- invite-only Member registration
+- race-safe single redemption
+- minimal Owner user list/administration
+- disable/enable Member
+- revoke all Member sessions on disable
+- strict cross-account drive/Favorites isolation
 
-### L1-E07 Security & Reliability
-- validation
-- authorization verification
-- secret handling
-- error handling
-- logging
-- upload consistency
-- checksum/integrity strategy
-- deletion safety
+### Conditional follow-up — L2-PASSWORD01
+- authenticated current-password verification
+- concurrency-safe password update
+- revoke all sessions including current session after success
 
-### L1-E08 Testing & Deployment
-- critical-path tests
-- representative file tests
-- deployment
-- HTTPS
-- backup/recovery documentation
-- restart/redeployment verification
+### Later Layer 2 backlog
+- One-Time External Sharing
+- optional additional session-management UX
 
-Layer 1 ends when acceptance criteria are satisfied. Do not automatically begin Layer 2.
+Explicitly deferred from Accounts I:
+- public signup/email/SMTP/OAuth
+- arbitrary role editing
+- account deletion
 
-**Current phase note (2026-08-16):** Layer 1 core storage is in First Usable
-Production (live `cloud.ajtlab.top`; fresh live E2E PASS). The open Layer 1
-remainder is: the L1-UX01 production window (UX polish: bilingual UI, upload
-UX, browser-correct Preview — implementation PASS, deployment Owner-gated),
-the permanent-delete and autostart Owner decisions, and the PROD-03C3
-operational hardening cluster. Shared Library (research library) remains NOT
-started; Knowledge/RAG layers remain future-only.
+## Layer 3 — Shared Academic Library
 
-## Layer 2 — Academic Knowledge Layer
+**Status:** Future; separate authorization required.
 
-Future only:
-- academic metadata
-- tags
-- provenance
-- workflow states
-- document/version lineage
-- research questions
-- citations
+Planned Epics:
+- Library-owned resource model
+- membership and Library-scoped permissions
+- Trusted Contributor
+- contribution submission/review/approval/rejection
+- academic catalog and canonical records
+- author/editor/translator/language/publication/type metadata
+- provenance/source confidence
+- original/canonical filename model
+- duplicate/version grouping
+
+## Layer 4 — Research Infrastructure
+
+**Status:** Future.
+
+Planned directions:
+- provenance/source records
+- document relationships
+- edition/scan/translation/version lineage
+- citations and page references
+- research-question links
+- research workflow metadata
 - structured export
 - research asset graph
 
-## Layer 3 — Intelligence Layer
+## Layer 5 — Intelligence
 
-Future only:
-- OCR
-- text extraction
-- full-text indexing
-- embeddings
-- vector retrieval
+**Status:** Future.
+
+Planned directions:
+- OCR/text extraction
+- full-text indexing/search
+- embeddings/retrieval
 - RAG
 - evidence/page citation
-- research assistant
+- source-grounded research assistant
 
-## Deferred Integrations
+Heavy compute should be isolated from the core 1 GiB-class application host.
 
-- WebDAV
-- URL import
-- OneDrive
-- Google Drive
-- Baidu Netdisk
-- third-party cloud migration
-- desktop sync
-- mobile application
+## Cross-Cutting Operations Track
+
+Operations is not a product layer.
+
+### Conditional approved task — OPS01A
+Repository/local preparation only:
+- lightweight `ops:check`-style health/status tooling
+- backup verification and freshness
+- disk/RAM/swap checks
+- certificate-expiry checks
+- restore-drill tooling in isolation
+- backup-retention dry-run/planner
+- systemd timer/service templates
+- restart-policy audit
+
+Not authorized by OPS01A:
+- production SSH
+- enabling services/timers
+- destructive backup pruning
+- production restore
+- certificate replacement
+- HSTS/Nginx/DNS/TLS/OSS mutation
+- deployment
+
+## Separate Production Track
+
+The accepted production site remains a separately gated operational track. Repository feature implementation never implies production rollout.
+
+Outstanding production decisions/runbook items remain Owner-gated, including permanent-delete confirmation, autostart/reboot policy, certificate-renewal closure, and later deployment of post-UX01 code.
+
+## Current Approved Continuous Objective
+
+The Agent may autonomously progress, with an independent checkpoint after every Epic, through:
+
+```text
+Finish current L1-UX03
+        ↓
+L1-PERF01
+        ↓
+L1-FOLDER01
+        ↓
+L2-ACCOUNTS01
+        ↓
+L2-PASSWORD01       (conditional)
+        ↓
+OPS01A              (conditional)
+        ↓
+STOP
+```
+
+Do not continue into One-Time External Sharing, Shared Library, Research Infrastructure, or Intelligence without a new Owner authorization.

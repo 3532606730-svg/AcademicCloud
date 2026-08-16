@@ -1,6 +1,6 @@
 ---
 name: academiccloud-workflow
-description: Run the repository-backed AcademicCloud engineering workflow for approved work. Use when the user asks to start the next task, continue development, execute an AcademicCloud task or Epic, fix the current task, resume interrupted work, or finish the current Epic. Restore state, select and execute scoped work, validate results, maintain task memory and project documentation, create Git checkpoints, coordinate subagents when useful, and enforce escalation boundaries. This skill defines the engineering process; it is not a source of product requirements or authority beyond approved scope.
+description: Run the repository-backed AcademicCloud engineering workflow for approved work. Use when the user asks to start the next task, continue development, execute an AcademicCloud task or Epic, fix the current task, resume interrupted work, or complete an approved continuous objective. Restore state from the repository, select and execute scoped work, validate results, maintain task memory and project documentation, create Git checkpoints, coordinate subagents when useful, and enforce escalation boundaries. This skill defines the engineering process; it is not a source of product requirements beyond approved repository scope.
 ---
 
 # AcademicCloud Engineering Workflow
@@ -8,63 +8,63 @@ description: Run the repository-backed AcademicCloud engineering workflow for ap
 ## Apply the Governing Boundary
 
 - Use this workflow only for the AcademicCloud repository.
-- Treat this skill as process guidance, not as a product or architecture specification.
-- Derive product scope and technical constraints from repository facts, accepted decisions, current task scope, and actual code.
-- Follow `AGENTS.md` as the persistent repository policy. Do not let recovered implementation state waive its safety or scope rules.
-- Work autonomously only within the approved product Layer, current task scope, and accepted architecture.
+- Treat this skill as process guidance, not as the product specification.
+- Derive product scope and technical constraints from current code, Git, `AGENTS.md`, current/ready task cards, `CURRENT_STATUS.md`, `TASK_BOARD.md`, accepted ADRs, `PROJECT_SPEC.md`, and `ROADMAP.md`.
+- Work autonomously only inside the approved current task or explicitly approved continuous objective.
+- Production access, real credentials, real cost, destructive real-data operations, and unapproved product boundaries remain Owner-gated even when repository work is autonomous.
 
 ## Recover the Minimum Context
 
-Recover context automatically for a new chat or subagent, a brief continue instruction, a long pause, context compaction, an interrupted execution, or uncertainty about current state.
+Recover context automatically for a new chat/subagent, a brief continue instruction, a long pause, context compaction, interrupted execution, or uncertainty about state.
 
 Always inspect:
-
-1. `CURRENT_STATUS.md`.
-2. `TASK_BOARD.md`.
-3. The current `tasks/doing/<TASK-ID>.md` task card, if one exists.
-4. Git HEAD and recent task-level history.
-5. The Git working tree and relevant diff.
-6. Code, tests, configuration, and documentation directly related to the current task.
-7. The task card's `Last Verification`, acceptance criteria, and `Next Action`.
+1. Git branch/HEAD and working tree.
+2. `CURRENT_STATUS.md`.
+3. `TASK_BOARD.md`.
+4. `tasks/doing/<TASK-ID>.md` if an active task exists.
+5. Otherwise the first approved `tasks/ready/<TASK-ID>.md` referenced by `TASK_BOARD.md`.
+6. Recent task-level Git history and relevant diff.
+7. Code, tests, configuration, and docs directly related to the task.
+8. The task card's acceptance criteria, `Last Verification`, and `Next Action`.
 
 Read only when relevant:
-
-- directly related accepted ADRs for implementation constraints;
-- `PROJECT_SPEC.md` when product requirements or scope are unclear;
-- `ROADMAP.md` for cross-Epic, cross-Layer, or sequencing decisions;
-- `DECISION_LOG.md` when historical rationale is needed;
-- unrelated or future-Layer documents only when the current decision truly depends on them.
+- directly related accepted ADRs;
+- `PROJECT_SPEC.md` when product requirements/scope are unclear;
+- `ROADMAP.md` for cross-Epic/cross-layer sequencing;
+- `DECISION_LOG.md` for durable rationale;
+- unrelated future-layer documents only when the current decision truly depends on them.
 
 Do not re-read the entire knowledge base at every task start. Do not continue from vague chat memory.
 
 ## Resolve Project Facts
 
-Use this order when resolving claims about actual project state:
+Use this order for claims about actual project state:
+1. current code and actual files;
+2. Git history and working tree;
+3. `AGENTS.md`;
+4. active task card;
+5. approved ready task card;
+6. `CURRENT_STATUS.md`;
+7. `TASK_BOARD.md`;
+8. accepted ADRs;
+9. `DECISION_LOG.md`;
+10. `PROJECT_SPEC.md`;
+11. `ROADMAP.md`;
+12. chat history.
 
-1. Current code and actual file state.
-2. Git history and Git working tree.
-3. `AGENTS.md`.
-4. Current task card.
-5. `CURRENT_STATUS.md`.
-6. `TASK_BOARD.md`.
-7. Accepted ADRs.
-8. `DECISION_LOG.md`.
-9. `PROJECT_SPEC.md`.
-10. `ROADMAP.md`.
-11. Chat history.
+If chat memory conflicts with repository facts, use repository facts. If state files disagree with code/Git, investigate and reconcile the records within scope; do not rewrite implementation history to hide a mismatch.
 
-If chat memory conflicts with repository facts, use repository facts. If state files disagree with code or Git, investigate the mismatch and repair the records within task scope; do not silently rewrite implementation history.
+## Select and Maintain Tasks
 
-## Select and Maintain the Task
-
-When the user says `开始下一个任务`, `继续开发`, or names a task:
-
-1. Recover the minimum context.
-2. Confirm the Ready task, working-tree safety, scope, and acceptance criteria.
-3. Refuse to infer a different product task when the board or request is ambiguous enough to change scope.
-4. When an Epic genuinely begins, create `tasks/doing/<TASK-ID>.md` if it does not exist.
-5. Keep the task card concise and current throughout execution.
-6. Move the completed card to `tasks/done/` only after its acceptance criteria and applicable verification pass.
+When the user says `开始下一个任务`, `继续开发`, names a task, or authorizes a continuous objective:
+1. recover minimum context;
+2. confirm working-tree safety and the approved queue in `TASK_BOARD.md`;
+3. if a task is already in `tasks/doing/`, continue/fix it before selecting a new task unless the board explicitly supersedes it;
+4. otherwise select the first Ready task in the approved sequence;
+5. move/copy its approved specification from `tasks/ready/` to `tasks/doing/` when implementation actually begins, preserving the specification and adding live state;
+6. do not infer a different product task when ambiguity would change scope;
+7. keep the active card concise and current;
+8. move the completed active card to `tasks/done/` only after acceptance criteria and applicable verification pass.
 
 Use exactly these task-card sections:
 
@@ -84,145 +84,149 @@ Use exactly these task-card sections:
 ## Next Action
 ```
 
-Store decisions and evidence in their natural locations:
-
-- source and configuration in code;
-- behavior evidence in tests;
+Store decisions/evidence in natural locations:
+- source/configuration in code;
+- behavioral evidence in tests;
 - checkpoints in Git;
-- durable architecture changes in ADRs;
-- current Epic memory in the task card.
+- durable architecture/product-model changes in ADRs;
+- queue state in `TASK_BOARD.md`;
+- approved not-yet-active Epic specs in `tasks/ready/`;
+- active working memory in `tasks/doing/`;
+- completed Epic records in `tasks/done/`.
 
 Do not create competing `HANDOFF.md`, `STATUS2.md`, `CONTEXT.md`, `MEMORY.md`, context databases, or similar state systems.
 
 ## Execute the Standard Lifecycle
 
 ### A. Recover
-
-Restore the minimum context and reconcile interrupted or dirty work before editing.
+Restore minimum context and reconcile interrupted/dirty work before editing.
 
 ### B. Select
-
-Confirm the current Ready task, task card, acceptance criteria, relevant boundaries, and existing user changes. Preserve unrelated user work.
+Confirm the current approved task, acceptance criteria, relevant boundaries, and existing user changes.
 
 ### C. Plan
-
-Create an internal, task-bounded plan. Give the user only a concise start update. Do not request approval for ordinary engineering details.
+Create an internal task-bounded plan. Give the user only a concise start update. Do not request approval for ordinary engineering details.
 
 ### D. Execute
-
-Implement continuously within scope. Make ordinary dependency, structure, API, schema, configuration, testing, error-handling, and small refactoring choices autonomously.
+Implement continuously inside scope. Make ordinary internal structure, API, schema, configuration, testing, error-handling, and bounded refactoring choices autonomously.
 
 ### E. Verify
-
-Run only applicable checks that actually exist, such as build, typecheck, lint, unit tests, integration tests, and task-specific checks. Do not claim nonexistent tests. Repair failures caused by the current task before proceeding.
+Run only applicable checks that actually exist. Never claim nonexistent tests. Repair failures caused by the task before proceeding.
 
 ### F. Review
-
-Check acceptance criteria, diff scope, module boundaries, data safety, security consequences, rollback, and unintended changes. Use a read-only review subagent when it adds material confidence.
+Check acceptance criteria, diff scope, module boundaries, data safety, security consequences, concurrency/rollback where relevant, and unintended changes. Use a read-only reviewer/subagent when it materially increases confidence.
 
 ### G. Record
-
-Update the task card, `CURRENT_STATUS.md`, and `TASK_BOARD.md`. Update an ADR and `DECISION_LOG.md` only for a durable architecture decision; do not elevate ordinary implementation details into ADRs.
+Update the task card, `CURRENT_STATUS.md`, and `TASK_BOARD.md`. Update an ADR/`DECISION_LOG.md` only for durable product/architecture/security/workflow changes.
 
 ### H. Commit
+Create an ordinary task-level Git checkpoint when acceptance criteria are satisfied, applicable checks pass, the diff is scoped, and repository records match reality.
 
-Create an ordinary task-level Git commit without separate approval when acceptance criteria are satisfied, applicable checks pass, the diff is scoped, and repository records match reality.
+Never automatically force-push, rewrite history, deploy production, or delete unknown user work.
 
-Never automatically force-push, rewrite history, deploy to production, or delete unknown user changes.
+### I. Progress or Report
+- If no broader continuous objective is authorized: report the checkpoint and stop.
+- If a broader continuous objective is explicitly authorized: re-recover state from the repository, select the next approved Ready Epic, and continue in a fresh bounded task context where practical.
+- Never use continuous progression to bypass a mandatory escalation.
 
-### I. Report
+## Default Autonomous Authority
 
-Report what changed, verification results, commit hash, remaining issues, and the next task. Keep the report concise and evidence-based.
-
-## Exercise Default Autonomous Authority
-
-Within the current approved Layer, active task, and accepted architecture, decide and execute ordinary engineering work without asking the user to approve each detail. This includes:
-
-- directory, function, class, and type organization;
-- Fastify and React internal structure;
+Within the current approved task/objective and accepted architecture, decide ordinary engineering details without asking the Owner to choose among equivalent implementations. This includes:
+- directory/function/class/type organization;
+- Fastify/React internal structure;
 - internal API and SQLite implementation details;
-- repository and migration implementation;
-- dependency selection within the accepted stack;
-- package scripts, configuration, linting, formatting, and typechecking;
-- tests, fixtures, bug fixes, bounded refactors, logging, and ordinary error handling;
-- task-card and project-status updates;
-- ordinary task-level Git commits.
+- migrations inside the approved data model;
+- existing-stack dependency usage;
+- package scripts/configuration/typechecking;
+- tests/fixtures/bug fixes/bounded refactors;
+- logging and ordinary error handling;
+- task/project-state updates;
+- ordinary non-main Git checkpoints and pushes when the task authorizes them.
 
-For a significant but reversible technical decision within scope, perform an internal review before proceeding:
+For significant but reversible technical decisions:
+1. confirm compliance with `AGENTS.md` and relevant ADRs;
+2. confirm compatibility with the accepted 1 GiB-class production host where the component may run there (Linux `916,044 KiB` `MemTotal`, current 320/384 MiB service cgroup and 128 MiB whole-host headroom gate unless superseded by a later accepted decision);
+3. reject unnecessary resident services/dependencies;
+4. preserve modularity, fault isolation, authorization, and data safety;
+5. define verification and rollback;
+6. confirm the decision does not expand beyond the approved task/objective.
 
-1. Confirm compliance with `AGENTS.md` and accepted ADRs.
-2. Confirm compatibility with the accepted 1 GiB-class production host (Linux `916,044 KiB` `MemTotal`) and the unchanged 320/384 MiB service cgroup plus 128 MiB whole-host headroom gates.
-3. Reject unnecessary resident services and dependencies.
-4. Preserve modularity, fault isolation, and data safety.
-5. Define verification and rollback.
-6. Confirm the decision does not expand product scope.
-
-Record a new ADR only when the decision creates a durable architecture change.
+Record a new ADR only for a durable product/architecture/security/workflow decision.
 
 ## Escalate Only Mandatory Cases
 
-Stop and ask the user only when the task reaches one of these boundaries:
+Stop and ask the Owner only when the current task reaches one of these boundaries:
 
 ### Real Cost
-
-- Add or materially expand a paid service.
-- Upgrade a server or purchase a database, domain, or infrastructure.
-- Create a meaningful new recurring cost.
+- add/materially expand a paid service;
+- upgrade/purchase infrastructure;
+- create meaningful new recurring cost.
 
 ### Irreversible Real-Data Risk
-
-- Permanently delete real OSS objects or production data.
-- Run a destructive production migration.
-- Accept a credible irreversible risk to academic materials.
+- permanently delete real OSS objects/production data;
+- destructive production migration;
+- credible irreversible risk to academic materials.
 
 ### Accounts, Credentials, or System Security
+- create/modify AccessKeys, cloud accounts, GitHub accounts, VPN settings, production SSH credentials, TLS/certificate trust, or critical system-security policy;
+- disable/bypass security verification.
 
-- Create or modify AccessKeys, cloud accounts, GitHub accounts, VPN settings, TLS or certificate trust, production SSH, or critical system-security policies.
-- Disable or bypass security verification.
+Repository-only account/auth code inside an explicitly approved Accounts task is not by itself an escalation; live account creation or live credential/system-security changes are.
 
 ### Product Direction
-
-- Enter Layer 2 or Layer 3 early.
-- Add collaboration, external cloud-drive connectors, mobile applications, desktop sync, or another major product-goal change.
+- enter a product layer/Epic not approved by `TASK_BOARD.md`/current Owner objective;
+- add external connectors, native/mobile sync clients, collaboration modes, or another major product goal not already authorized.
 
 ### Severe Anomaly
-
-- Encounter unexplained corruption, abnormal Git history, large OSS/database inconsistency, a suspected severe vulnerability, or a production incident that cannot be recovered safely and automatically.
+- unexplained corruption;
+- abnormal Git history that cannot be safely isolated;
+- large OSS/database inconsistency;
+- suspected severe vulnerability;
+- production incident that cannot be recovered safely under an already approved runbook.
 
 Ordinary technical uncertainty, test failures, dependency choices, and reversible implementation problems are not escalation by themselves. Investigate and resolve them autonomously within scope.
 
-## Coordinate Main Agent and Subagents
+## Main Agent and Subagents
 
-When subagents are available and useful, use the main agent as project orchestrator:
+When subagents are useful:
+- main agent owns task selection, scope, project state, escalation, result review, and final reporting;
+- prefer one write-intensive implementation agent per Epic;
+- do not let multiple agents concurrently edit related files in the same working tree;
+- use parallel agents mainly for read-only exploration, test/log analysis, security review, performance analysis, and documentation review;
+- require subagents to recover context from repository/task cards rather than long chat handoffs;
+- require concise evidence/results, not full logs;
+- main agent inspects resulting diff, verification, and task state before committing/reporting.
 
-- Keep task selection, scope, project state, escalation, result review, and final reporting with the main agent.
-- Prefer one dedicated implementation agent for a write-intensive Epic.
-- Do not let multiple agents concurrently edit related files in the same working tree.
-- Use parallel agents primarily for read-only exploration, test or log analysis, security review, and documentation review.
-- Require subagents to recover context from the task card and repository rather than from a long chat handoff.
-- Require subagents to return a concise summary of changed files, verification, risks, and blockers instead of full logs.
-- Have the main agent inspect the resulting diff, verification, and task-card state before committing or reporting.
+### Anti-pause rule
 
-Prefer a dedicated subagent context for a normal Epic when the client supports it and isolation is useful. Otherwise use a bounded ordinary chat. Do not let one unbounded chat accumulate all Layer 1 history.
+NEVER end the parent turn merely because a required subagent is still running.
+
+If a required subagent verdict blocks the milestone, use the runtime's wait/result lifecycle and continue when the result is available. Do not narratively “pause and wait for notification” unless the runtime explicitly confirms automatic parent resumption.
+
+If a reviewer is slow, wait for that same reviewer; do not spawn duplicates merely because it has not returned yet. Replace it only when the runtime proves it failed/lost its result.
 
 ## Control Epic Progression
 
-- Continue autonomously through all ordinary subtasks inside the active Epic.
-- At Epic completion, create a task-card and Git checkpoint, update the next Ready task, report, and stop by default.
-- If the user explicitly authorizes a broader continuous objective such as completing multiple Layer 1 Epics, the main agent may begin the next ordinary roadmap Epic in a fresh bounded context after reviewing the previous checkpoint.
-- Never use task-board sequencing to bypass a mandatory escalation or expand the approved product Layer.
+- Continue autonomously through ordinary subtasks inside the active Epic.
+- At Epic completion, create an evidence-backed Git checkpoint and reconcile repository state.
+- If the Owner authorized multiple Epics as one continuous objective, begin the next ordinary Ready Epic only after the previous checkpoint is green.
+- Each Epic remains an independently reviewable unit even inside a long autonomous run.
+- Optional/conditional Epics may be skipped when the board's preconditions are not satisfied; skipping an optional Epic is not failure.
+- Never use elapsed time as a reason to invent extra features.
+- Never cut final verification/review merely to start another optional Epic.
 
 ## Keep Context Clean
 
-- Keep `CURRENT_STATUS.md` as the project-level summary.
-- Keep `TASK_BOARD.md` as the task index.
-- Keep the current task card as the Epic-level working memory.
-- Do not paste full source, long logs, or extensive architecture history into task cards or chat.
-- Do not repeatedly restate stable ADRs or inspect future Layers without need.
-- Preserve completed knowledge through code, tests, Git, ADRs, and task cards.
+- `CURRENT_STATUS.md` is the concise project-level truth.
+- `TASK_BOARD.md` is the executable queue/index.
+- `tasks/ready/` stores approved future Epic specs.
+- `tasks/doing/` stores active Epic memory.
+- `tasks/done/` stores completed Epic records.
+- Do not paste full source, long logs, or whole architecture history into task cards/chat.
+- Preserve completed knowledge through code, tests, Git, ADRs, and completed task cards.
 
-## Use Goals and Scheduling Sparingly
+## Scheduling
 
-If thread-scoped Goals are available, use one short Goal for one Epic only. Do not copy the specification, all ADRs, or the full task card into it. A Goal supplements but never replaces repository state.
+AcademicCloud feature progress is dependency-driven, not clock-driven. Do not create scheduled development tasks. Time windows may be used as safety budgets, but acceptance criteria—not elapsed time—define completion.
 
-Do not create scheduled development tasks. AcademicCloud progress is dependency-driven, not clock-driven. Scheduled checks may be proposed later for testing, repository health, dependency security, backup verification, or status reporting, but must not modify the main branch unsupervised.
+Scheduled production-health checks may be proposed/implemented only inside an approved operations task and must obey the production-mutation gates.
