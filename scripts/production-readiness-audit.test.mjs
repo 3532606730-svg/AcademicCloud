@@ -590,8 +590,10 @@ test("raw journal/cron output never crosses SSH (remote aggregation only)", () =
   const commands = remoteCommandStrings();
   const journalErrors = commands.find((command) => command.includes("journalctl -u academiccloud"));
   assert.match(journalErrors, /\| wc -l$/, "journal errors must be aggregated remotely");
+  assert.match(journalErrors, /journalctl -q /, "journalctl must suppress the -- No entries -- sentinel");
   const kernelOom = commands.find((command) => command.includes("journalctl -k"));
   assert.match(kernelOom, /grep -ciE/, "kernel OOM must be aggregated remotely");
+  assert.match(kernelOom, /journalctl -q /, "journalctl must suppress the -- No entries -- sentinel");
   const cron = commands.find((command) => command.includes("cron.d"));
   assert.match(cron, /\| wc -l$/, "cron occurrences must be aggregated remotely");
   const timers = commands.find((command) => command.includes("list-timers"));

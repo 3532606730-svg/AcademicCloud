@@ -279,8 +279,10 @@ db.close();
   // journal/cron/timer lines never enter the Node process.
   timers: [["sh", "-c", "systemctl list-timers --all --no-legend --no-pager | grep -ci academiccloud"]],
   cronAcademiccloud: [["sh", "-c", "grep -riE academiccloud /etc/cron.d /etc/cron.daily /etc/cron.weekly /etc/crontab 2>/dev/null | wc -l"]],
-  journalErrors: [["sh", "-c", "journalctl -u academiccloud --since=-24h -p err --no-pager | wc -l"]],
-  journalKernelOom: [["sh", "-c", "journalctl -k -b --no-pager | grep -ciE 'out of memory|oom-kill'"]],
+  // `-q` suppresses journalctl's piped "-- No entries --" placeholder, which
+  // would otherwise be counted as one line by `wc -l` (false positive error).
+  journalErrors: [["sh", "-c", "journalctl -q -u academiccloud --since=-24h -p err --no-pager | wc -l"]],
+  journalKernelOom: [["sh", "-c", "journalctl -q -k -b --no-pager | grep -ciE 'out of memory|oom-kill'"]],
   cgroupMemoryEvents: [["cat", "/sys/fs/cgroup/system.slice/academiccloud.service/memory.events"]],
   nginx5xx: [["grep", "-cE", "status=5[0-9][0-9]", "/var/log/academiccloud/nginx-access.log"]],
 };
