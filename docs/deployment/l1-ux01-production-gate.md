@@ -236,6 +236,121 @@ activation); B18 PV matrix completed with PASS on every row (or documented
 known-limitation outcomes for the preview-expiry item); frozen evidence
 untouched; no permanent deletion during PV.
 
+---
+
+## TRANSACTION B EXECUTION RECORD — L1-PROD05B (INTERIM: B15a FAIL, rollback pending review)
+
+**Status: B2–B15 executed; B15a FAILED; B16 NOT activated; rollback prepared
+and STOPPED for ChatGPT review (Owner-directed).**
+
+- Authorization: `PROD05B_OWNER_AUTHORIZED=true`. Docs HEAD verified
+  `806d232f1916fdc9fa3b3569f5019f89391d6596`; release source
+  `15181f90d6eecbb0ddb977a0168536a445802ec7` (NOT the docs commit); Actions run
+  `31927613398` (Run #7, both jobs PASS). Artifact identity chain re-verified
+  fresh: ZIP `d16e969d…`, exactly the 4 bundle files, archive `0f47bb5d…`,
+  manifest `2342aeba…` (linux/x64/node v24.19.0, 4619 files), runtime evidence
+  status ok, reviewed verifier `c62c98c1…`.
+- Precheck (fresh, read-only): all gates PASS — service active+disabled pid
+  44122 NRestarts 0, loopback-only `127.0.0.1:3000`, health/ready 200, 0 failed
+  units, MemAvailable 499,812 KiB, disk 12,700,500 KiB free, kernel/cgroup OOM
+  0, DB integrity ok / FK 0 / schema v4, frozen record intact (`0e83110a`,
+  checksum prefix `GvL9/U7a`, 1 pending_upload), env root:root 600 without
+  `OSS_BROWSER_ENDPOINT`, Nginx site `0686a461…` + snippet `d9a1125b…`, public
+  edge 200/301/200/200/401, old asset `index-wvVJNBv8.js`, files domain CNAME →
+  OSS target with anonymous 403 `Server: AliyunOSS`, cloud cert valid to
+  2026-11-13.
+- B2 (PASS): fresh backup `academiccloud-pre-15181f90-20260816T061600Z.sqlite`
+  — 122,880 B, sha256 `94e653ecd78004963b8dabf029671079f3a6b7de3246737aaf8d7c4d99b7b7d4`,
+  schemaVersion 4, counts `{accounts:1, folders:4, files:6, sessions:7}`,
+  create + verify ok, `academiccloud:academiccloud` 0600.
+- B3 (PASS): age-encrypted (public recipient only) to
+  `database-pre-15181f90-20260816T061600Z.age` — 123,096 B, sha256
+  `90f4588fecbd346349f09db078f15d0cb95f2089964479625302949895b0e637`; non-secret
+  manifest; pushed to private `AcademicCloud-Backups` commit
+  `1249e1276921b23e5c2edd0f78f4b66851e8f14d` (main `564fc13..1249e12`); remote
+  main re-verified and both files present; ciphertext byte-identical on host,
+  staging, and remote.
+- B4 (PASS): release staged and verified on the host — checksum OK; the
+  archive's own reviewed verifier exit 0 (status ok, argon2id/better-sqlite3/
+  ELF64 x86-64/compiled acceptance ok, isolated temp DB + ephemeral port); the
+  4 migrations byte-identical to the old release's schema-v4 set (no 005+);
+  new asset `index-DUJfeHJu.js` (+`index-DIrtnQk5.css`); no forbidden files;
+  atomically placed at `/opt/academiccloud/releases/15181f90…` root:root 755,
+  service write DENIED; `current` untouched at that point.
+- B5 (PASS): env captured (0 occurrences) → exactly one
+  `OSS_BROWSER_ENDPOINT=https://files.ajtlab.top` added; root:root 600; set-diff
+  proof: ADDED_ONLY = that one line, REMOVED_COUNT = 0; rollback copy at
+  `/root/academiccloud-rollback-prod05b/academiccloud.env.pre-b5`.
+- B6–B9 (PASS): live site + snippet captured (rollback copies stored);
+  candidate CSP = ONLY two semantic additions (`https://files.ajtlab.top` in
+  img-src AND frame-src; removed = none; exactly one line replaced); candidate
+  hash `4f1f9059…`; `nginx -t` successful; **no reload**.
+- B10–B13 (PASS): stop clean (inactive, MainPID 0, no listener, Nginx
+  untouched) → atomic temp-symlink + `mv -Tf` (`current` →
+  `15181f90…`; old release preserved) → migration STRICT NO-OP
+  `{"appliedVersions":[],"currentVersion":4}` → start (NOT enabled): active+
+  disabled pid `66326`, NRestarts 0, single `127.0.0.1:3000`.
+- B14 (PASS): loopback health/ready 200; journal 0 err/0 warn; kernel/cgroup
+  OOM 0; cgroup current ~88 MiB / peak ~92 MiB within service bounds;
+  MemAvailable 529,320 KiB; failed units 0; NRestarts 0.
+- B15 (PASS): public 200, HTTP→301, /api/health 200, /api/ready 200, anon
+  session 401; NEW frontend served (`index-DUJfeHJu.js`, old asset absent);
+  public JS sha256 `27a3c787…` == staged `27a3c787…`, CSS `4fe1dcb9…` == staged;
+  files anonymous 403 AliyunOSS; cloud TLS valid.
+- **B15a (FAIL)** — Owner real-browser evidence: embedded Preview did not
+  render; the new-tab PDF viewer showed "Failed to load PDF document" for BOTH
+  the disposable E2E PDF (`d25e0f21…`, valid `%PDF-1.4`) and the known-good
+  user PDF (`01951f40…`, 240,174,253 B, `%PDF-1.4`). No URL/query/cookie/
+  credential/key was exposed.
+  - App-side: the Owner's click produced a download authorization 200
+    (structured log, new pid).
+  - Bounded read-only diagnosis (host + operator public path): signed GET on
+    `files.ajtlab.top` returns 200/206 with the EXACT PDF bytes (sha prefix
+    `72bf1f6f` disposable; `57222e7acc17`/`d0d9ed064be8` user-PDF ranges);
+    Content-Type `application/pdf`; Accept-Ranges `bytes`; Content-Range
+    correct; **custom-domain Content-Disposition = `inline`** vs native
+    endpoint = `attachment` (documented forced-download behavior); Range
+    semantics identical across both paths; public-path fresh-URL fetch also
+    200 with correct bytes.
+  - Classification: `BROWSER_ONLY_OR_OTHER`. The embedded failure is proven to
+    be the not-yet-activated served CSP (frame-src lacks the files domain —
+    B16 was correctly never run). The new-tab failure was NOT reproducible
+    server-side or public-path with a fresh URL (signed URL lifetime 300 s;
+    stale-URL reuse suspected).
+  - Flags: `B15a_BROWSER_PREVIEW=FAIL`, `GENERAL_PDF_PREVIEW_FAILURE=true`,
+    `B16_CSP_ACTIVATION_ALLOWED=false`, `TRANSACTION_B_MACHINE_PASS=false`,
+    `UX01_FINAL_ACCEPTED=false`, `TRANSACTION_B_ROLLBACK_PENDING=true`.
+- Stopped-at state (re-verified read-only after diagnosis): new release active
+  pid 66326 (health/ready 200), served CSP UNCHANGED (old header, no files
+  domain — Nginx never reloaded, same pid), env carries the B5 line, service
+  cgroup OOM events all 0, failed units 0, MemAvailable 524,948 KiB.
+- Rollback readiness (all assets verified in place): env pre-B5 copy
+  (REMOVED_COUNT=0 proof), snippet pre-B7 copy (`d9a1125b…`), old release
+  `e5217e8…` intact root:root write-denied, migration no-op ⇒ no DB restore,
+  B2 backup + B3 off-host copy available. Approved rollback order: restore
+  pre-B7 CSP file (`nginx -t`, reload if needed) → stop → symlink back to
+  `e5217e8…` → restore pre-B5 env → start → verify health/ready. DNS/TLS/OSS
+  stay untouched.
+- Transparency note: one diagnostic probe unit (`run-u1533`, buffering the
+  240 MB object) was kernel-OOM-killed; the kernel log names that probe unit
+  (uid 0, task_memcg `/system.slice/run-u1533.service`), NOT the academiccloud
+  service — the service cgroup OOM counters remained all 0 and the service
+  stayed active. Evidence: `output/prod05b-*.txt|json`
+  (`precheck-remote`, `precheck-public`, `b2-backup`, `b4-verify`,
+  `b5-env`, `b6-capture`, `b7b8-csp`, `preswitch-snapshot`, `b10-stop`,
+  `b11-switch`, `b12-migrate`, `b13-start`, `b14-loopback`, `b15-smoke`,
+  `b15a-diagnosis`, `b15a-diagnosis2`, `b15a-baseline`, `b15a-compare`).
+- Mutation flags during Transaction B: `PRODUCTION_APPLICATION_CHANGED=true`
+  (pending rollback), `PRODUCTION_RELEASE_CHANGED=true` (pending rollback),
+  `PRODUCTION_ENV_CHANGED=true` (pending rollback),
+  `NGINX_CSP_CHANGED=false` (file edited, never served/reloaded),
+  `SYSTEMD_ENABLE_CHANGED=false`, `DATABASE_CHANGED=false`,
+  `FROZEN_E2E_CHANGED=false`, `DNS_CHANGED_DURING_TRANSACTION_B=false`,
+  `TLS_CHANGED_DURING_TRANSACTION_B=false`, `OSS_PUBLIC_ACCESS_CHANGED=false`,
+  `PERMANENT_DELETE_PERFORMED=false`.
+
+---
+
 ## ROLLBACK MATRIX (exact, in preferred order)
 
 | Component | Rollback action | Trigger |
