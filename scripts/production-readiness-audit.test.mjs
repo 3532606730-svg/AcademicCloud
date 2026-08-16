@@ -25,6 +25,7 @@ import {
   parseListeners,
   parseMemoryEvents,
   parseMeminfo,
+  parseMigrationVersions,
   parseReleaseManifest,
   parseSystemctlShow,
   remoteCommandStrings,
@@ -399,7 +400,7 @@ function fakeExecutorFor(outputs) {
 
 test("live checks evaluate a healthy synthetic baseline fixture deterministically", async () => {
   const repoChecks = [
-    { id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } },
+    { id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } },
   ];
   const checks = await runLiveRemoteChecks({ runRemoteCheck: fakeExecutorFor(FIXTURE_OUTPUTS), sshAlias: "academiccloud-prod", repoChecks });
   const byId = new Map(checks.map((check) => [check.id, check]));
@@ -545,7 +546,7 @@ test("foreign-key violations flip DB_FOREIGN_KEYS to FAIL and NOT_READY", async 
     }
     return executor(alias, args);
   };
-  const checks = await runLiveRemoteChecks({ runRemoteCheck: dbExecutor, sshAlias: "academiccloud-prod", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }] });
+  const checks = await runLiveRemoteChecks({ runRemoteCheck: dbExecutor, sshAlias: "academiccloud-prod", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } }] });
   const byId = new Map(checks.map((check) => [check.id, check]));
   assert.equal(byId.get("DB_INTEGRITY").status, "PASS");
   assert.equal(byId.get("DB_FOREIGN_KEYS").status, "FAIL");
@@ -563,8 +564,8 @@ test("schema expectation derives from repository migrations, not a constant", as
     }
     return executor(alias, args);
   };
-  const repoExpects4 = [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }];
-  const repoExpects5 = [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 5 } }];
+  const repoExpects4 = [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } }];
+  const repoExpects5 = [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 5 } }];
 
   const matchChecks = await runLiveRemoteChecks({ runRemoteCheck: dbExecutor, sshAlias: "x", repoChecks: repoExpects4 });
   assert.equal(matchChecks.find((check) => check.id === "DB_SCHEMA").status, "PASS");
@@ -581,7 +582,7 @@ test("release service-write denied is a separate required gate", async () => {
     }
     return fakeExecutorFor(FIXTURE_OUTPUTS)(alias, args);
   };
-  const checks = await runLiveRemoteChecks({ runRemoteCheck: writableExecutor, sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }] });
+  const checks = await runLiveRemoteChecks({ runRemoteCheck: writableExecutor, sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } }] });
   assert.equal(checks.find((check) => check.id === "RELEASE_SERVICE_WRITE_DENIED").status, "FAIL");
 });
 
@@ -602,7 +603,7 @@ test("resource guard skips heavy audits below the threshold and reports UNKNOWN"
     ...FIXTURE_OUTPUTS,
     "cat /proc/meminfo": `MemTotal:       916044 kB\nMemAvailable:   ${HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB - 1} kB\nSwapTotal:     1048572 kB\nSwapFree:     1048572 kB\n`,
   };
-  const checks = await runLiveRemoteChecks({ runRemoteCheck: fakeExecutorFor(lowMemory), sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }] });
+  const checks = await runLiveRemoteChecks({ runRemoteCheck: fakeExecutorFor(lowMemory), sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } }] });
   const byId = new Map(checks.map((check) => [check.id, check]));
   assert.equal(byId.get("RESOURCE_GUARD").status, "WARN");
   assert.equal(byId.get("DB_INTEGRITY").status, "UNKNOWN");
@@ -622,7 +623,7 @@ test("SSH concurrency never exceeds 2", async () => {
     concurrent -= 1;
     return { ok: true, kind: "OK", stdout: args.join(" "), stderr: "", exitCode: 0, durationMs: 5, limited: false };
   };
-  await runLiveRemoteChecks({ runRemoteCheck: slowFake, sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { count: 4 } }] });
+  await runLiveRemoteChecks({ runRemoteCheck: slowFake, sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } }] });
   assert.ok(peak <= 2, `peak SSH concurrency ${peak} exceeded 2`);
 
   const items = Array.from({ length: 8 }, (_, index) => index);
@@ -654,4 +655,117 @@ test("executor enforces timeouts, output caps, and real durations", async () => 
   const quick = await runLocalCommand(process.execPath, ["-e", "process.stdout.write('ok')"], { timeoutMs: 5000 });
   assert.equal(quick.kind, "OK");
   assert.equal(quick.durationMs >= 0, true);
+});
+
+// ---------------------------------------------------------------- L1-OPS01R2 regressions
+
+test("profile completeness: missing required checks materialize as UNKNOWN and cannot READY", async () => {
+  const gitOutputs = new Map([
+    ["branch --show-current", "codex/prod-03c2"],
+    ["rev-parse HEAD", "c".repeat(40)],
+    ["status --porcelain", ""],
+    ["remote get-url origin", "git@github.com:owner/repo.git"],
+  ]);
+  const repoOnly = await runRepoChecks({
+    runLocalCommand: async (_executable, args) => {
+      const output = gitOutputs.get(args.join(" "));
+      if (output === undefined) return { ok: false, kind: "COMMAND_FAILED", stdout: "", stderr: "", exitCode: 1, durationMs: 1, limited: false };
+      return { ok: true, kind: "OK", stdout: output, stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    },
+    repositoryPath: process.cwd(),
+  });
+  const { report } = buildReport({ mode: "repo", profile: "ux01-ready", checks: repoOnly, target: TARGET });
+  assert.equal(report.summary.overall, "INDETERMINATE");
+  const materialized = report.checks.filter((check) => check.category === "expectation");
+  assert.ok(materialized.some((check) => check.id === "FILES_BROWSER_ENDPOINT_CONFIGURED"));
+  assert.ok(materialized.some((check) => check.id === "FILES_TLS_AVAILABLE"));
+  assert.ok(materialized.every((check) => check.status === "UNKNOWN" && check.requirement === "required"));
+
+  // public-mode checks lack the env-derived check: ux01-ready must be INDETERMINATE
+  // A public-mode run where the observable files-domain checks PASS: only the
+  // env-derived check is missing, so ux01-ready must be INDETERMINATE.
+  const publicShaped = [
+    createCheck({ id: "FILES_DNS_TARGET", category: "dns", requirement: "advisory", status: "PASS", summary: "s" }),
+    createCheck({ id: "FILES_TLS_AVAILABLE", category: "tls", requirement: "informational", status: "PASS", summary: "s" }),
+    createCheck({ id: "FILES_CSP_ALLOWED", category: "edge", requirement: "informational", status: "PASS", summary: "s" }),
+  ];
+  const { report: publicReport } = buildReport({ mode: "public", profile: "ux01-ready", checks: publicShaped, target: TARGET });
+  assert.equal(publicReport.summary.overall, "INDETERMINATE");
+  assert.ok(publicReport.checks.some((check) => check.id === "FILES_BROWSER_ENDPOINT_CONFIGURED" && check.status === "UNKNOWN"));
+
+  // A definite required FAIL still dominates the materialized UNKNOWNs.
+  const failing = [
+    ...publicShaped,
+    createCheck({ id: "SERVICE_ACTIVE", category: "systemd", requirement: "required", status: "FAIL", summary: "s" }),
+  ];
+  const { report: failingReport } = buildReport({ mode: "public", profile: "ux01-ready", checks: failing, target: TARGET });
+  assert.equal(failingReport.summary.overall, "NOT_READY");
+});
+
+test("migration versions derive from numeric prefixes, never the file count", () => {
+  assert.equal(parseMigrationVersions(["001_initial_schema.sql", "002_auth_sessions.sql", "003_file_purging_state.sql", "004_file_revision.sql"]).maxVersion, 4);
+  assert.equal(parseMigrationVersions(["001_a.sql", "002_b.sql", "003_c.sql", "005_e.sql"]).maxVersion, 5);
+  const malformed = parseMigrationVersions(["001_a.sql", "not-a-migration.sql"]);
+  assert.deepEqual(malformed.malformed, ["not-a-migration.sql"]);
+  assert.equal(malformed.maxVersion, 1);
+});
+
+test("DB_SCHEMA compares live MAX(version) with repository max version", async () => {
+  const dbExecutorWith = (schemaVersion) => async (alias, args) => {
+    const key = args.join(" ").replace(/\s+/g, " ").trim();
+    if (key.includes("sudo -n node -e") && !key.includes("ARTIFACT-MANIFEST")) {
+      return { ok: true, kind: "OK", stdout: JSON.stringify({ integrity: "ok", fkRows: 0, schemaVersion, counts: {}, states: {} }), stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    }
+    return fakeExecutorFor(FIXTURE_OUTPUTS)(alias, args);
+  };
+  const repo5 = [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 5 } }];
+  const match = await runLiveRemoteChecks({ runRemoteCheck: dbExecutorWith(5), sshAlias: "x", repoChecks: repo5 });
+  assert.equal(match.find((check) => check.id === "DB_SCHEMA").status, "PASS");
+  const behind = await runLiveRemoteChecks({ runRemoteCheck: dbExecutorWith(4), sshAlias: "x", repoChecks: repo5 });
+  assert.equal(behind.find((check) => check.id === "DB_SCHEMA").status, "FAIL");
+});
+
+test("resource guard fails closed when memory evidence is unavailable", async () => {
+  const calls = [];
+  const executor = async (alias, args) => {
+    const key = args.join(" ").replace(/\s+/g, " ").trim();
+    calls.push(key);
+    if (key.includes("cat /proc/meminfo")) {
+      return { ok: false, kind: "COMMAND_FAILED", stdout: "", stderr: "", exitCode: 1, durationMs: 1, limited: false };
+    }
+    return fakeExecutorFor(FIXTURE_OUTPUTS)(alias, args);
+  };
+  const checks = await runLiveRemoteChecks({ runRemoteCheck: executor, sshAlias: "x", repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } }] });
+  const byId = new Map(checks.map((check) => [check.id, check]));
+  assert.equal(byId.get("RESOURCE_GUARD").status, "UNKNOWN");
+  assert.equal(byId.get("DB_INTEGRITY").status, "UNKNOWN");
+  assert.equal(byId.get("NO_ERROR_OOM_ACTIVITY").status, "UNKNOWN");
+  // Heavy commands must NOT have been invoked at all.
+  assert.equal(calls.some((key) => key.includes("sudo -n node -e") && !key.includes("ARTIFACT-MANIFEST")), false, "db audit must not run without memory evidence");
+  assert.equal(calls.some((key) => key.includes("journalctl")), false, "journal aggregation must not run without memory evidence");
+});
+
+test("OOM gate requires every evidence source known and clean", async () => {
+  const executorWith = (overrides) => async (alias, args) => {
+    const key = args.join(" ").replace(/\s+/g, " ").trim();
+    if (key.includes("journalctl -u academiccloud")) return overrides.journalErrors ?? { ok: true, kind: "OK", stdout: "0", stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    if (key.includes("journalctl -k")) return overrides.kernelOom ?? { ok: true, kind: "OK", stdout: "0", stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    if (key.includes("memory.events")) return overrides.cgroupEvents ?? { ok: true, kind: "OK", stdout: "oom 0\noom_kill 0\noom_group_kill 0\n", stderr: "", exitCode: 0, durationMs: 1, limited: false };
+    return fakeExecutorFor(FIXTURE_OUTPUTS)(alias, args);
+  };
+  const repoChecks = [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } }];
+  const gateOf = async (overrides) => {
+    const checks = await runLiveRemoteChecks({ runRemoteCheck: executorWith(overrides), sshAlias: "x", repoChecks });
+    return checks.find((check) => check.id === "NO_ERROR_OOM_ACTIVITY").status;
+  };
+  assert.equal(await gateOf({}), "PASS");
+  assert.equal(await gateOf({ cgroupEvents: { ok: false, kind: "COMMAND_FAILED", stdout: "", stderr: "", exitCode: 1, durationMs: 1, limited: false } }), "UNKNOWN");
+  assert.equal(await gateOf({ journalErrors: { ok: true, kind: "OK", stdout: "3", stderr: "", exitCode: 0, durationMs: 1, limited: false } }), "FAIL");
+  assert.equal(await gateOf({ kernelOom: { ok: true, kind: "OK", stdout: "1", stderr: "", exitCode: 0, durationMs: 1, limited: false } }), "FAIL");
+  assert.equal(await gateOf({ cgroupEvents: { ok: true, kind: "OK", stdout: "oom 0\noom_kill 2\noom_group_kill 0\n", stderr: "", exitCode: 0, durationMs: 1, limited: false } }), "FAIL");
+});
+
+test("--expected-files-cname accepts one trailing FQDN dot", () => {
+  const output = execFileSync(process.execPath, [SCRIPT, "--mode", "plan", "--expected-files-cname", "target.example."], { encoding: "utf8" });
+  assert.match(output, /Mode: plan/);
 });

@@ -1,18 +1,18 @@
 // Deterministic report rendering (markdown / json / both) and the final
 // report-safety assertion gate.
 
-import { computeOverall, exitCodeFor } from "./model.mjs";
-import { applyProfile } from "./profiles.mjs";
+import { computeOverall, exitCodeFor, createCheck } from "./model.mjs";
+import { applyProfile, PROFILE_RULES } from "./profiles.mjs";
 import { assertSafeReport } from "./safety.mjs";
 
 export const REPORT_SCHEMA_VERSION = 1;
-export const TOOL_VERSION = "1.0.0";
+export const TOOL_VERSION = "1.1.0";
 export const MAX_REPORT_BYTES = 1_000_000;
 
 const CATEGORY_ORDER = [
   "transport", "repo", "dns", "tls", "edge", "host", "resources",
   "systemd", "network", "app", "release", "nginx", "env", "database",
-  "backup", "automation", "oss",
+  "backup", "automation", "oss", "expectation",
 ];
 
 export function orderChecks(checks) {
@@ -25,9 +25,33 @@ export function orderChecks(checks) {
   });
 }
 
+// Profile completeness: a missing REQUIRED check can never silently allow
+// READY. Any check ID the selected profile declares required but that was not
+// produced by the audit mode is materialized as a deterministic UNKNOWN.
+export function materializeMissingRequiredChecks(checks, profile, now = () => new Date()) {
+  const present = new Set(checks.map((check) => check.id));
+  const materialized = [];
+  for (const [id, rules] of Object.entries(PROFILE_RULES[profile] ?? {})) {
+    if (rules.requirement !== "required" || present.has(id)) continue;
+    materialized.push(createCheck({
+      id,
+      category: "expectation",
+      requirement: "required",
+      status: "UNKNOWN",
+      summary: "required evidence unavailable in this audit mode",
+      evidence: {},
+      provenance: "RECORDED_EXPECTATION",
+      detail: `profile ${profile} requires ${id}; the selected mode did not produce it`,
+      observedAt: now().toISOString(),
+    }));
+  }
+  return [...checks, ...materialized];
+}
+
 export function buildReport({ mode, profile, checks, target }) {
   const profiled = checks.map((check) => applyProfile(check, profile));
-  const ordered = orderChecks(profiled);
+  const complete = materializeMissingRequiredChecks(profiled, profile);
+  const ordered = orderChecks(complete);
   const { overall, counts } = computeOverall(ordered);
 
   const report = {

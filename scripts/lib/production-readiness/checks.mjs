@@ -173,6 +173,32 @@ export function parseReleaseManifest(text) {
   }
 }
 
+// Repository migration-set semantics match the real migration engine: the
+// numeric filename prefix IS the version, and currentVersion is the HIGHEST
+// applied version — never the file count.
+export const MIGRATION_FILENAME_PATTERN = /^(\d{3,})_.+\.sql$/;
+
+export function parseMigrationVersions(names) {
+  const versions = [];
+  const malformed = [];
+  for (const name of names) {
+    const match = MIGRATION_FILENAME_PATTERN.exec(name);
+    if (match) {
+      const version = Number(match[1]);
+      if (Number.isSafeInteger(version) && version > 0) {
+        versions.push(version);
+        continue;
+      }
+    }
+    malformed.push(name);
+  }
+  return {
+    versions: [...versions].sort((left, right) => left - right),
+    maxVersion: versions.length > 0 ? Math.max(...versions) : null,
+    malformed,
+  };
+}
+
 export function classifyDrift(localHead, productionCommit) {
   if (!localHead || !productionCommit) return { status: "UNKNOWN", summary: "drift cannot be computed" };
   if (localHead === productionCommit) return { status: "PASS", summary: "repository HEAD equals production runtime" };
@@ -226,7 +252,7 @@ const db = new Database('/var/lib/academiccloud/academiccloud.sqlite', { readonl
 const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(r => r.name);
 const integrity = db.prepare('PRAGMA integrity_check').all().map(r => Object.values(r)[0]).join('|');
 const fkRows = db.prepare('PRAGMA foreign_key_check').all().length;
-const schemaVersion = db.prepare('SELECT COUNT(*) AS c FROM schema_migrations').get().c;
+const schemaVersion = db.prepare('SELECT COALESCE(MAX(version), 0) AS v FROM schema_migrations').get().v;
 const counts = {};
 for (const t of ['accounts','sessions','folders','files']) {
   if (tables.includes(t)) counts[t] = db.prepare('SELECT COUNT(*) AS c FROM ' + t).get().c;
@@ -340,11 +366,21 @@ export async function runRepoChecks({ runLocalCommand = null, repositoryPath = p
 
   const migrationsDir = resolve(repositoryPath, "database/migrations");
   const migrations = existsSync(migrationsDir) ? readdirSync(migrationsDir).filter((name) => name.endsWith(".sql")).sort() : [];
+  const migrationSet = parseMigrationVersions(migrations);
   checks.push(createCheck({
     id: "GIT_MIGRATION_FILES", category: "repo", requirement: "required",
-    status: migrations.length >= 4 ? "PASS" : "FAIL",
-    summary: `${migrations.length} migration file(s) present`,
-    evidence: { count: migrations.length, names: migrations }, provenance: "LOCAL_FILESYSTEM", observedAt: now().toISOString(),
+    status: migrations.length >= 1 && migrationSet.malformed.length === 0 ? "PASS" : "FAIL",
+    summary: migrationSet.malformed.length > 0
+      ? `${migrationSet.malformed.length} malformed migration filename(s)`
+      : `${migrations.length} migration file(s), max version ${migrationSet.maxVersion ?? "n/a"}`,
+    evidence: {
+      count: migrations.length,
+      names: migrations,
+      versions: migrationSet.versions,
+      maxVersion: migrationSet.maxVersion,
+      malformed: migrationSet.malformed,
+    },
+    provenance: "LOCAL_FILESYSTEM", observedAt: now().toISOString(),
   }));
 
   const doingDir = resolve(repositoryPath, "tasks/doing");

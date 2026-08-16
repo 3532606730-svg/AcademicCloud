@@ -125,17 +125,23 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
-  // Resource guard: below the heavy-check threshold, skip the expensive
-  // read-only audits (SQLite integrity, journal aggregations) and mark them
-  // UNKNOWN — a skipped check is never PASS.
-  const heavyChecksAllowed = memoryHeadroomKiB === null || memoryHeadroomKiB >= HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB;
+  // Resource guard (fail-closed): heavy read-only audits run ONLY when memory
+  // evidence is KNOWN and sufficient. Unknown memory evidence never runs them.
+  let heavyChecksAllowed = false;
+  let resourceGuardStatus = "UNKNOWN";
+  if (memoryHeadroomKiB !== null) {
+    heavyChecksAllowed = memoryHeadroomKiB >= HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB;
+    resourceGuardStatus = heavyChecksAllowed ? "PASS" : "WARN";
+  }
   checks.push(createCheck({
     id: "RESOURCE_GUARD", category: "resources", requirement: "advisory",
-    status: heavyChecksAllowed ? "PASS" : "WARN",
+    status: resourceGuardStatus,
     summary: heavyChecksAllowed
       ? "resource guard clear (heavy read-only audits allowed)"
-      : `MemAvailable below ${HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB} KiB — heavy read-only audits skipped (UNKNOWN)`,
-    evidence: { heavyChecksAllowed, thresholdKiB: HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB },
+      : memoryHeadroomKiB === null
+        ? "memory evidence unavailable — heavy read-only audits skipped (UNKNOWN)"
+        : `MemAvailable below ${HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB} KiB — heavy read-only audits skipped (UNKNOWN)`,
+    evidence: { heavyChecksAllowed, thresholdKiB: HEAVY_CHECK_MIN_MEM_AVAILABLE_KIB, memAvailableKiB: memoryHeadroomKiB },
     provenance: "REMOTE_SSH", observedAt: at,
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
@@ -388,10 +394,14 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
-  // Expected schema derives from the REPOSITORY migration set, never a
-  // hard-coded constant.
+  // Expected schema derives from the REPOSITORY migration set (highest
+  // numeric version), never a hard-coded constant or the file count. The live
+  // value is MAX(version) from schema_migrations — matching the real
+  // migration engine's currentVersion semantics.
   const migrationCheck = repoChecks.find((check) => check.id === "GIT_MIGRATION_FILES");
-  const expectedVersion = typeof migrationCheck?.evidence?.count === "number" ? migrationCheck.evidence.count : null;
+  const expectedVersion = typeof migrationCheck?.evidence?.maxVersion === "number"
+    ? migrationCheck.evidence.maxVersion
+    : null;
   const liveVersion = db?.schemaVersion ?? null;
   checks.push(createCheck({
     id: "DB_SCHEMA", category: "database", requirement: "required",
@@ -474,9 +484,19 @@ export async function runLiveRemoteChecks({
   }
   checks.push(createCheck({
     id: "NO_ERROR_OOM_ACTIVITY", category: "resources", requirement: "required",
-    status: !heavyChecksAllowed ? "UNKNOWN"
-      : errorCount === null && kernelOomCount === null ? "UNKNOWN"
-        : errorCount === 0 && kernelOomCount === 0 && (cgroupEventsData?.oom_kill ?? 0) === 0 ? "PASS" : "FAIL",
+    status: (() => {
+      if (!heavyChecksAllowed) return "UNKNOWN";
+      const errorKnown = errorCount !== null;
+      const kernelKnown = kernelOomCount !== null;
+      const cgroupKnown = typeof cgroupEventsData?.oom_kill === "number";
+      // Any DEFINITE failure wins.
+      if ((errorKnown && errorCount > 0) || (kernelKnown && kernelOomCount > 0) || (cgroupKnown && cgroupEventsData.oom_kill > 0)) {
+        return "FAIL";
+      }
+      // PASS requires EVERY required evidence source known and clean.
+      if (!errorKnown || !kernelKnown || !cgroupKnown) return "UNKNOWN";
+      return "PASS";
+    })(),
     summary: `recent errors ${errorCount ?? "unknown"}, kernel OOM ${kernelOomCount ?? "unknown"}, cgroup oom_kill ${cgroupEventsData?.oom_kill ?? "unknown"}, nginx 5xx ${nginx5xxCount ?? "unknown"}`,
     evidence: { academiccloudErrorCountRecent: errorCount, kernelOomCountCurrentBoot: kernelOomCount, cgroupOomKill: cgroupEventsData?.oom_kill ?? null, cgroupOom: cgroupEventsData?.oom ?? null, nginx5xxCountRecent: nginx5xxCount },
     provenance: "REMOTE_SSH", observedAt: at,

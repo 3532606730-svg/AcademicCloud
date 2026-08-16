@@ -120,10 +120,12 @@ function parseArgs(argv) {
       }
       case "--expected-files-cname": {
         const hostname = takeValue();
-        if (hostname === null || !/^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$/.test(hostname)) {
+        // Accept one trailing dot (FQDN form from DNS tools), then normalize.
+        const stripped = hostname !== null && hostname.endsWith(".") ? hostname.slice(0, -1) : hostname;
+        if (stripped === null || !/^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$/.test(stripped)) {
           return fail("invalid --expected-files-cname (must be a plain hostname)");
         }
-        options.expectedFilesCname = normalizeHostname(hostname);
+        options.expectedFilesCname = normalizeHostname(stripped);
         break;
       }
       case "--output": {
