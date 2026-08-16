@@ -238,12 +238,10 @@ untouched; no permanent deletion during PV.
 
 ---
 
-## TRANSACTION B EXECUTION RECORD — L1-PROD05B (FINAL: B2–B17 PASS, STOP at B18 Owner PV)
+## TRANSACTION B EXECUTION RECORD — L1-PROD05B (FINAL: B2–B18 PASS, UX01 ACCEPTED)
 
-**Status: B2–B17 all PASS after the ChatGPT review lifted the B15a STOP;
-B16 CSP activated and browser inline Preview re-verified PASS; machine
-deployment complete; STOPPED at B18 Owner Product Verification (UX01 NOT yet
-accepted).**
+**Status: B2–B17 machine PASS; B18 Owner browser Product Verification PASS
+(Owner-reported, 2026-08-16). `UX01_FINAL_ACCEPTED=true`. No merge to main.**
 
 - Authorization: `PROD05B_OWNER_AUTHORIZED=true`. Docs HEAD verified
   `806d232f1916fdc9fa3b3569f5019f89391d6596`; release source
@@ -367,9 +365,40 @@ accepted).**
   `b11-switch`, `b12-migrate`, `b13-start`, `b14-loopback`, `b15-smoke`,
   `b15a-diagnosis`, `b15a-diagnosis2`, `b15a-baseline`, `b15a-compare`,
   `b17-remote`, `b17-public`, `b17-signedget`).
-- Machine verdict: **`TRANSACTION_B_MACHINE_PASS=true`**,
-  `OWNER_BROWSER_PV_REQUIRED=true`, **`UX01_FINAL_ACCEPTED=false`** (B18 PV
-  not yet performed). Mutation flags: `PRODUCTION_APPLICATION_CHANGED=true`,
+- **B18 Owner browser Product Verification (PASS, Owner-reported 2026-08-16).**
+  Overall functional result PASS; no blocking functional regressions in normal
+  use. `B18_OWNER_BROWSER_PV=PASS`, `UX01_PRODUCTION_PV_PASS=true`.
+  - Checklist areas (Owner-reported overall PASS): LANGUAGE (zh/en default,
+    switch both directions, reload persistence, lang attribute, localized
+    errors), UPLOAD (small file, 50–200 MB PDF with speed/ETA and phases,
+    concurrency + queue, pinned destination, completion, stall/error
+    messaging), PREVIEW (PDF/PNG/JPEG/TXT inline, no unsafe HTML/SVG preview
+    button, Chinese filenames, no object-key filename leakage), DOWNLOAD
+    (Chinese filenames, spaces, accented Latin, attachment semantics), FILE
+    OPS (rename/move/recycle/restore disposable files), AUTH (login, session
+    persistence, logout, revoked session 401), LARGE PDF / signed-URL lifetime
+    (no blocking outcome reported; the preview-URL expiry limitation remains a
+    documented known-limitation item).
+  - Explicit observations:
+    1. PDF inline Preview works after B16.
+    2. Initial PDF Preview loading feels noticeably slow —
+       `PERFORMANCE_UX_OBSERVATION`, `NOT_A_RELEASE_BLOCKER`.
+    3. Non-empty folders cannot be moved directly to Trash (must be empty
+       first) — `EXISTING_PRODUCT_LIMITATION`, `NOT_A_UX01_REGRESSION`,
+       `NOT_A_RELEASE_BLOCKER`. Follow-up product task recorded on the task
+       board (recursive folder recycle semantics: moving a folder to Trash
+       should eventually move its contained subtree logically into deleted
+       state while preserving restore relationships). Do NOT implement now.
+    4. No permanent delete was performed during B18.
+- **Final flags.** `B18_OWNER_BROWSER_PV=PASS`,
+  `TRANSACTION_B_MACHINE_PASS=true`, `UX01_PRODUCTION_PV_PASS=true`,
+  **`UX01_FINAL_ACCEPTED=true`**, `L1_PROD05B_TRANSACTION_B_PASS=true`,
+  `L1_UX01_PRODUCTION_PASS=true`. No merge to main (per Owner). Preserved:
+  preview slowness = nonblocking performance observation; non-empty-folder
+  recycle restriction = follow-up product limitation; no permanent delete;
+  systemd service remains disabled; DNS/TLS/OSS state unchanged; rollback
+  assets retained; release source remains `15181f90d6eecbb0ddb977a0168536a445802ec7`.
+  Mutation flags: `PRODUCTION_APPLICATION_CHANGED=true`,
   `PRODUCTION_RELEASE_CHANGED=true`, `PRODUCTION_ENV_CHANGED=true`,
   `NGINX_CSP_CHANGED=true` (served via reload after B16),
   `SYSTEMD_ENABLE_CHANGED=false`, `DATABASE_CHANGED=false`,
