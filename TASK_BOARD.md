@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, and RF-LIBRARY01 is complete and green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. The accelerated queue continues at `RF-LIBRARY02`; the combined Library/review boundary remains the final approved stop.**
+**The repository-local objective through RF-LIBRARY02 is complete and independently green. PROD-04A continues to run exact checkpoint `34a2eada…`. The accelerated queue is exhausted and repository development is stopped pending Owner direction.**
 
 Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Repository HEAD remains newer and does not automatically select another production target.
 
@@ -19,7 +19,7 @@ The new Owner-approved execution sequence is:
 5. `RF-LIBRARY02` — Member contribution review;
 6. STOP.
 
-The three polish cards may be completed in the most efficient order. `RF-LIBRARY01` must be green before `RF-LIBRARY02`. After `RF-LIBRARY02`, stop before any production rollout or unrelated Pre-OCR work.
+All six steps are complete. The required STOP after `RF-LIBRARY02` is now active; no production rollout or unrelated Pre-OCR work is authorized.
 
 This is an explicit Owner reprioritization based on first-use need. `RF-META01` and every unrelated later Pre-OCR card remain parked. `RF-LIBRARY03` and `RF-LIBRARY04` also remain parked; catalog, Library Tags, provenance governance, and duplicate/version grouping are not part of this accelerated slice.
 
@@ -31,14 +31,13 @@ This repository objective does not authorize production access/mutation, deploym
 
 ## Doing
 
-None between checkpoints. Select `RF-LIBRARY02` after the RF-LIBRARY01 checkpoint.
+None. Await explicit Owner direction.
 
 ## Ready — Accelerated First-Use Queue
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 5 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Member submit → reviewer approve/reject/withdraw → Library ownership |
-| 5 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Member submit → reviewer approve/reject/withdraw → Library ownership |
+| — | None | — | Accelerated queue exhausted; STOP |
 
 The first three cards are small first-use polish and should not trigger broad architecture or production-level verification. The two Library cards are authorization/ownership work and require focused privacy/ownership tests plus one focused independent review, but not repeated unrelated audit campaigns once relevant evidence is green.
 
@@ -115,7 +114,13 @@ It is not silently pulled into the accelerated Shared Library program.
 
 **Task card:** `tasks/done/RF-LIBRARY01.md`
 
-**Status:** complete; focused privacy/authorization review and verification green. ADR-020 and append-only migration 014 add explicit Library entities on `library:<id>` ownership domains, durable manager/member memberships, active-account and last-effective-manager guards, credential/content-free Library audit vocabulary, and no-backfill semantics. `LibraryService` and HTTP routes provide server-derived membership, non-disclosing Library reads, and Library-owned holdings list/preview/download authorization; the responsive Shared Library panel preserves private Drive/Personal Research Overlay boundaries. Library service `3/3`, migration `2/2`, HTTP `1/1`, frontend `159/159`, workspace typecheck/build, and `git diff --check` PASS. Checkpoint `901d13d081c6c4994416184dc5b98709bf5f43a6` is pushed and synchronized. RF-LIBRARY02 remains the next approved task; no production action occurred.
+**Status:** complete; focused privacy/authorization review and verification green. ADR-020 and append-only migration 014 add explicit Library entities on `library:<id>` ownership domains, durable manager/member memberships, active-account and last-effective-manager guards, credential/content-free Library audit vocabulary, and no-backfill semantics. `LibraryService` and HTTP routes provide server-derived membership, non-disclosing Library reads, and Library-owned holdings list/preview/download authorization; the responsive Shared Library panel preserves private Drive/Personal Research Overlay boundaries. Library service `3/3`, migration `2/2`, HTTP `1/1`, frontend `159/159`, workspace typecheck/build, and `git diff --check` PASS. Checkpoint `901d13d081c6c4994416184dc5b98709bf5f43a6` is pushed and synchronized; no production action occurred.
+
+### RF-LIBRARY02 — Contribution Review and Ownership Promotion
+
+**Task card:** `tasks/done/RF-LIBRARY02.md`
+
+**Status:** complete; final independent read-only review PASS. ADR-021 and append-only migration 015 implement explicit contribution review and guarded terminal promotion of a single-Artifact Record into Library ownership. State-aware ownership candidates prevent stale cross-Library enumeration/download; database insert/update guards prevent fabricated terminal state or approval outside a matching promotion intent and complete Library ownership chain; private overlays and stable file/resource identity remain intact. Final repair-focused contribution/migration `10/10`, frontend `165/165`, backend/frontend typecheck/build, and `git diff --check` PASS. The accelerated queue is exhausted; no production or external system was contacted.
 
 ### L2-ACCOUNTARCHIVE01 — Member Account Archival
 

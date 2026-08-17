@@ -265,6 +265,8 @@ input:hover { border-color: #a7b2a8; }
 .shared-library-members { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .shared-library-member select { min-height: 2.1rem; padding: 0.25rem 0.45rem; border: 1px solid var(--line); border-radius: 0.45rem; background: var(--paper); }
 .shared-library-empty { color: var(--muted); }
+.scholarly-contribution-library { display: grid; grid-template-columns: minmax(8rem, auto) minmax(10rem, 1fr); align-items: center; gap: 0.65rem; padding: 0.65rem 0; color: var(--muted); font-size: 0.82rem; }
+.scholarly-contribution-library select { min-height: 2.1rem; padding: 0.25rem 0.45rem; border: 1px solid var(--line); border-radius: 0.45rem; background: var(--paper); }
 .workspace-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.4rem; }
 .workspace-title { min-width: 0; }
 .workspace h1 {
@@ -907,6 +909,7 @@ input:hover { border-color: #a7b2a8; }
   .scholarly-records-modal > header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }
   .scholarly-records-body { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
   .scholarly-record-create, .scholarly-attach-form, .scholarly-records-layout { grid-template-columns: 1fr; }
+  .scholarly-contribution-library { grid-template-columns: 1fr; }
   .scholarly-record-create label, .scholarly-attach-form label { grid-column: auto; }
   .scholarly-record-list { max-height: 12rem; overflow-y: auto; }
   .scholarly-artifact-row { align-items: flex-start; flex-direction: column; }

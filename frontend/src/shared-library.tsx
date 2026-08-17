@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { AcademicCloudApi, LibraryHolding, LibraryMember, LibraryRole, LibrarySummary } from "./api.ts";
+import type { AcademicCloudApi, LibraryContribution, LibraryHolding, LibraryMember, LibraryRole, LibrarySummary } from "./api.ts";
 import { describeError } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
 
@@ -11,11 +11,12 @@ function formatBytes(bytes: number): string {
 }
 
 export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [libraries, setLibraries] = useState<LibrarySummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [holdings, setHoldings] = useState<LibraryHolding[]>([]);
   const [members, setMembers] = useState<LibraryMember[]>([]);
+  const [contributions, setContributions] = useState<LibraryContribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -42,17 +43,23 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
     if (!selectedId) {
       setHoldings([]);
       setMembers([]);
+      setContributions([]);
       return;
     }
     let cancelled = false;
+    setHoldings([]);
+    setMembers([]);
+    setContributions([]);
     setLoading(true);
     Promise.all([
       api.listLibraryHoldings(selectedId),
       selected?.role === "manager" ? api.listLibraryMembers(selectedId) : Promise.resolve([]),
-    ]).then(([nextHoldings, nextMembers]) => {
+      selected?.role === "manager" ? api.listLibraryContributions(selectedId) : api.listMyLibraryContributions(selectedId),
+    ]).then(([nextHoldings, nextMembers, nextContributions]) => {
       if (cancelled) return;
       setHoldings(nextHoldings);
       setMembers(nextMembers);
+      setContributions(nextContributions);
     }, (caught) => {
       if (!cancelled) setError(caught);
     }).finally(() => {
@@ -137,6 +144,48 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
     }
   }
 
+  async function openContribution(contribution: LibraryContribution, disposition: "attachment" | "inline") {
+    if (!selectedId) return;
+    setBusy(true);
+    try {
+      const authorization = await api.createContributionDownload(selectedId, contribution.id, disposition);
+      window.open(authorization.url, "_blank", "noopener,noreferrer");
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function decideContribution(contribution: LibraryContribution, decision: "approve" | "reject") {
+    if (!selectedId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.reviewLibraryContribution(selectedId, contribution.id, decision);
+      setContributions((current) => current.filter((item) => item.id !== contribution.id));
+      setHoldings(await api.listLibraryHoldings(selectedId));
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function withdrawContribution(contribution: LibraryContribution) {
+    if (!selectedId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await api.withdrawLibraryContribution(selectedId, contribution.id);
+      setContributions((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="shared-library-panel" aria-labelledby="shared-library-title">
       <div className="shared-library-layout">
@@ -148,7 +197,7 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
           {loading && libraries.length === 0 ? <p role="status">{t("sharedLibrary.loading")}</p> : libraries.length === 0 ? <p>{t("sharedLibrary.empty")}</p> : (
             <div className="shared-library-library-buttons">
               {libraries.map((library) => (
-                <button key={library.id} type="button" className={library.id === selectedId ? "shared-library-library is-active" : "shared-library-library"} onClick={() => setSelectedId(library.id)}>
+                <button key={library.id} type="button" className={library.id === selectedId ? "shared-library-library is-active" : "shared-library-library"} onClick={() => setSelectedId(library.id)} disabled={busy}>
                   <strong>{library.name}</strong><span>{library.role}</span>
                 </button>
               ))}
@@ -156,7 +205,7 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
           )}
         </aside>
         <div className="shared-library-content">
-          {error !== null && <div className="alert alert--error" role="alert">{describeError(error, "en")} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
+          {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
           {!selected ? <p className="shared-library-empty">{t("sharedLibrary.selectPrompt")}</p> : (
             <>
               <header className="section-heading">
@@ -177,6 +226,7 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
                 </div>
               )}
               {selected.role === "manager" && (
+                <>
                 <section className="shared-library-members" aria-labelledby="shared-library-members-title">
                   <div className="section-heading"><h3 id="shared-library-members-title">{t("sharedLibrary.members")}</h3><button className="button button--small" type="button" onClick={() => void addMember()} disabled={busy}>{t("sharedLibrary.addMember")}</button></div>
                   <div className="shared-library-member-list">
@@ -190,6 +240,40 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
                       </div>
                     ))}
                   </div>
+                </section>
+                <section className="shared-library-members" aria-labelledby="shared-library-contributions-title">
+                  <div className="section-heading"><h3 id="shared-library-contributions-title">{t("sharedLibrary.contributions")}</h3><span>{contributions.length}</span></div>
+                  {contributions.length === 0 ? <p className="shared-library-empty">{t("sharedLibrary.noContributions")}</p> : (
+                    <div className="shared-library-member-list">
+                      {contributions.map((contribution) => (
+                        <article className="shared-library-member" key={contribution.id}>
+                          <span><strong>{contribution.file.displayName}</strong><small>{contribution.recordLabel} · {t("sharedLibrary.submitter", { name: contribution.submitterLoginName ?? "—" })}</small></span>
+                          <div className="shared-library-actions">
+                            <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => void openContribution(contribution, "inline")}>{t("menu.preview")}</button>
+                            <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => void openContribution(contribution, "attachment")}>{t("menu.download")}</button>
+                            <button className="button button--small" type="button" disabled={busy} onClick={() => void decideContribution(contribution, "approve")}>{t("sharedLibrary.approve")}</button>
+                            <button className="button button--small button--danger" type="button" disabled={busy} onClick={() => void decideContribution(contribution, "reject")}>{t("sharedLibrary.reject")}</button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+                </>
+              )}
+              {selected.role !== "manager" && (
+                <section className="shared-library-members" aria-labelledby="shared-library-my-contributions-title">
+                  <div className="section-heading"><h3 id="shared-library-my-contributions-title">{t("sharedLibrary.contributions")}</h3><span>{contributions.length}</span></div>
+                  {contributions.length === 0 ? <p className="shared-library-empty">{t("sharedLibrary.noContributions")}</p> : (
+                    <div className="shared-library-member-list">
+                      {contributions.map((contribution) => (
+                        <article className="shared-library-member" key={contribution.id}>
+                          <span><strong>{contribution.file.displayName}</strong><small>{contribution.recordLabel} · {contribution.state}</small></span>
+                          {contribution.state === "submitted" && <button className="button button--small button--danger" type="button" disabled={busy} onClick={() => void withdrawContribution(contribution)}>{t("sharedLibrary.withdraw")}</button>}
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </section>
               )}
             </>

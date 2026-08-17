@@ -1523,6 +1523,9 @@ function ScholarlyRecordsDialog({
   const [nextBeforeId, setNextBeforeId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [fileId, setFileId] = useState("");
+  const [sharedLibraries, setSharedLibraries] = useState<Awaited<ReturnType<AcademicCloudApi["listLibraries"]>>>([]);
+  const [submissionLibraryId, setSubmissionLibraryId] = useState("");
+  const [submissionNotice, setSubmissionNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -1550,9 +1553,11 @@ function ScholarlyRecordsDialog({
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    api.listScholarlyRecords(controller.signal).then(
-      (page) => {
+    Promise.all([api.listScholarlyRecords(controller.signal), api.listLibraries(controller.signal)]).then(
+      ([page, libraries]) => {
         setRecords(page.records);
+        setSharedLibraries(libraries);
+        setSubmissionLibraryId((current) => current && libraries.some((library) => library.id === current) ? current : libraries[0]?.id ?? "");
         setNextBeforeId(page.nextBeforeId);
         setSelectedId((current) => current && page.records.some((record) => record.id === current)
           ? current
@@ -1664,6 +1669,21 @@ function ScholarlyRecordsDialog({
     }
   }
 
+  async function submitArtifact(artifactId: string): Promise<void> {
+    if (!submissionLibraryId) return;
+    setBusy(`submit:${artifactId}`);
+    setError(null);
+    setSubmissionNotice("");
+    try {
+      await api.submitLibraryContribution(submissionLibraryId, artifactId);
+      setSubmissionNotice(t("sharedLibrary.submitted"));
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <dialog ref={dialogRef} className="scholarly-records-modal" aria-labelledby="scholarly-records-title">
       <header>
@@ -1672,6 +1692,7 @@ function ScholarlyRecordsDialog({
       </header>
       <div className="scholarly-records-body">
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+        {submissionNotice && <div className="alert alert--success" role="status">{submissionNotice}</div>}
         <form className="scholarly-record-create" onSubmit={(event) => void createRecord(event)}>
           <label htmlFor="scholarly-record-label">{t("records.label")}</label>
           <input
@@ -1732,6 +1753,15 @@ function ScholarlyRecordsDialog({
                   <p className="muted">{t("records.noArtifacts")}</p>
                 ) : (
                   <div className="scholarly-artifact-list">
+                    {sharedLibraries.length > 0 && (
+                      <label className="scholarly-contribution-library" htmlFor="scholarly-contribution-library">
+                        <span>{t("sharedLibrary.submitTo")}</span>
+                        <select id="scholarly-contribution-library" value={submissionLibraryId} onChange={(event) => setSubmissionLibraryId(event.target.value)}>
+                          <option value="">{t("sharedLibrary.chooseLibrary")}</option>
+                          {sharedLibraries.map((library) => <option key={library.id} value={library.id}>{library.name}</option>)}
+                        </select>
+                      </label>
+                    )}
                     {selected.artifacts.map((artifact) => {
                       const file = artifact.version?.file ?? null;
                       return (
@@ -1742,7 +1772,12 @@ function ScholarlyRecordsDialog({
                             <span>{t(`records.${file?.availability ?? "tombstoned"}`)}</span>
                           </div>
                           {artifact.attachmentState === "attached" ? (
-                            <button className="button button--small" type="button" disabled={busy !== null} onClick={() => void detach(selected.id, artifact.id)}>{t("records.detach")}</button>
+                            <div className="shared-library-actions">
+                              {file?.availability === "available" && submissionLibraryId && (
+                                <button className="button button--small button--secondary" type="button" disabled={busy !== null} onClick={() => void submitArtifact(artifact.id)}>{t("sharedLibrary.submitTo")}</button>
+                              )}
+                              <button className="button button--small" type="button" disabled={busy !== null} onClick={() => void detach(selected.id, artifact.id)}>{t("records.detach")}</button>
+                            </div>
                           ) : file?.availability === "available" ? (
                             <button className="button button--small" type="button" disabled={busy !== null} onClick={() => void attach(selected.id, file.id)}>{t("records.reattach")}</button>
                           ) : null}

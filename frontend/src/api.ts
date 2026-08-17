@@ -50,11 +50,12 @@ export type AuditEventKind =
   | "accounts.invitation_revoke" | "accounts.member_state_change"
   | "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish" | "announcements.delete"
   | "libraries.create" | "libraries.membership_add" | "libraries.membership_change" | "libraries.membership_remove"
+  | "libraries.contribution_submit" | "libraries.contribution_approve" | "libraries.contribution_reject" | "libraries.contribution_withdraw"
   | "drive.upload_activate" | "drive.folder_recycle" | "drive.folder_restore"
   | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
 export type AuditActorKind = "account" | "system" | "anonymous";
-export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "file" | "folder";
+export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "file" | "folder";
 export type AuditReasonCode =
   | "invalid_credentials" | "invalid_current_password" | "password_change_conflict" | "password_unchanged"
   | "invalid_invitation" | "login_unavailable" | "authorization_denied" | "not_found" | "invalid_target"
@@ -200,6 +201,26 @@ export interface LibraryHolding {
   };
 }
 
+export interface LibraryContribution {
+  id: string;
+  libraryId: string;
+  artifactId: string;
+  state: "submitted" | "approved" | "rejected" | "withdrawn";
+  revision: number;
+  recordId: string;
+  recordLabel: string;
+  submitterLoginName: string | null;
+  file: {
+    id: string;
+    displayName: string;
+    mediaType: string | null;
+    sizeBytes: number;
+    state: FileState;
+  };
+  submittedAt: string;
+  reviewedAt: string | null;
+}
+
 export interface UploadAuthorization {
   method: "POST";
   url: string;
@@ -287,6 +308,12 @@ export interface AcademicCloudApi {
   removeLibraryMember(libraryId: string, accountId: string): Promise<void>;
   listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]>;
   createLibraryDownload(libraryId: string, fileId: string, disposition?: "attachment" | "inline"): Promise<DownloadAuthorization>;
+  submitLibraryContribution(libraryId: string, artifactId: string): Promise<LibraryContribution>;
+  listLibraryContributions(libraryId: string): Promise<LibraryContribution[]>;
+  listMyLibraryContributions(libraryId: string): Promise<LibraryContribution[]>;
+  reviewLibraryContribution(libraryId: string, contributionId: string, decision: "approve" | "reject"): Promise<LibraryContribution>;
+  withdrawLibraryContribution(libraryId: string, contributionId: string): Promise<LibraryContribution>;
+  createContributionDownload(libraryId: string, contributionId: string, disposition?: "attachment" | "inline"): Promise<DownloadAuthorization>;
   setFileFavorite(fileId: string, favorite: boolean): Promise<void>;
   setFolderFavorite(folderId: string, favorite: boolean): Promise<void>;
   createFolder(name: string, parentId: string | null): Promise<FolderEntry>;
@@ -608,6 +635,55 @@ export class ApiClient implements AcademicCloudApi {
     const query = new URLSearchParams({ disposition });
     return (await this.#request<{ download: DownloadAuthorization }>(
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/download?${query.toString()}`,
+    )).download;
+  }
+
+  async submitLibraryContribution(libraryId: string, artifactId: string): Promise<LibraryContribution> {
+    return (await this.#jsonBody<{ contribution: LibraryContribution }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/contributions`,
+      "POST",
+      { artifactId },
+    )).contribution;
+  }
+
+  async listLibraryContributions(libraryId: string): Promise<LibraryContribution[]> {
+    return (await this.#request<{ contributions: LibraryContribution[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/contributions`,
+    )).contributions;
+  }
+
+  async listMyLibraryContributions(libraryId: string): Promise<LibraryContribution[]> {
+    return (await this.#request<{ contributions: LibraryContribution[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/contributions/mine`,
+    )).contributions;
+  }
+
+  async reviewLibraryContribution(
+    libraryId: string,
+    contributionId: string,
+    decision: "approve" | "reject",
+  ): Promise<LibraryContribution> {
+    return (await this.#action<{ contribution: LibraryContribution }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/contributions/${encodeURIComponent(contributionId)}/${decision}`,
+      "POST",
+    )).contribution;
+  }
+
+  async withdrawLibraryContribution(libraryId: string, contributionId: string): Promise<LibraryContribution> {
+    return (await this.#action<{ contribution: LibraryContribution }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/contributions/${encodeURIComponent(contributionId)}/withdraw`,
+      "POST",
+    )).contribution;
+  }
+
+  async createContributionDownload(
+    libraryId: string,
+    contributionId: string,
+    disposition: "attachment" | "inline" = "attachment",
+  ): Promise<DownloadAuthorization> {
+    const query = new URLSearchParams({ disposition });
+    return (await this.#request<{ download: DownloadAuthorization }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/contributions/${encodeURIComponent(contributionId)}/download?${query.toString()}`,
     )).download;
   }
 

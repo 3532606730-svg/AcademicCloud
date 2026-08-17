@@ -365,6 +365,49 @@ describe("ApiClient", () => {
     assertBodylessRequestInit(fetcher.mock.calls[4]?.[1], "DELETE");
   });
 
+  it("uses scoped Library contribution submit/review/withdraw/download contracts", async () => {
+    const contribution = {
+      id: "contribution / one",
+      libraryId: "library / one",
+      artifactId: "artifact / one",
+      state: "submitted" as const,
+      revision: 0,
+      recordId: "record-1",
+      recordLabel: "Source",
+      submitterLoginName: "Member",
+      file: { id: "file-1", displayName: "source.pdf", mediaType: "application/pdf", sizeBytes: 12, state: "active" as const },
+      submittedAt: "2026-08-18T00:00:00.000Z",
+      reviewedAt: null,
+    };
+    const responses = [
+      new Response(JSON.stringify({ contribution }), { status: 201, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ contributions: [contribution] }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ contributions: [contribution] }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ contribution: { ...contribution, state: "approved" } }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ contribution: { ...contribution, state: "withdrawn" } }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ download: { method: "GET", url: "https://example.invalid/signed", expiresAt: "2026-08-18T00:05:00.000Z" } }), { status: 200, headers: { "content-type": "application/json" } }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+
+    await api.submitLibraryContribution(contribution.libraryId, contribution.artifactId);
+    await api.listLibraryContributions(contribution.libraryId);
+    await api.listMyLibraryContributions(contribution.libraryId);
+    await api.reviewLibraryContribution(contribution.libraryId, contribution.id, "approve");
+    await api.withdrawLibraryContribution(contribution.libraryId, contribution.id);
+    await api.createContributionDownload(contribution.libraryId, contribution.id, "inline");
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions");
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBe(JSON.stringify({ artifactId: contribution.artifactId }));
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions");
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions/mine");
+    expect(fetcher.mock.calls[3]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions/contribution%20%2F%20one/approve");
+    assertBodylessRequestInit(fetcher.mock.calls[3]?.[1], "POST");
+    expect(fetcher.mock.calls[4]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions/contribution%20%2F%20one/withdraw");
+    assertBodylessRequestInit(fetcher.mock.calls[4]?.[1], "POST");
+    expect(fetcher.mock.calls[5]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions/contribution%20%2F%20one/download?disposition=inline");
+  });
+
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {
     const responses = [
       new Response(null, { status: 204 }), // setFileFavorite(true)

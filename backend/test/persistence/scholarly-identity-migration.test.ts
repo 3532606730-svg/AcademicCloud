@@ -29,8 +29,8 @@ test("migration 011 accepts zero accounts and creates empty identity tables", (c
   try {
     runMigrations(database, pinnedDirectory(context, 10));
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [11, 12, 13, 14],
-      currentVersion: 14,
+      appliedVersions: [11, 12, 13, 14, 15],
+      currentVersion: 15,
     });
     for (const table of ["scholarly_records", "scholarly_artifacts", "scholarly_artifact_versions"]) {
       assert.equal(database.prepare<[], { count: number }>(`SELECT count(*) AS count FROM ${table}`).get()!.count, 0);
@@ -52,8 +52,8 @@ test("migration 011 preserves one-account Drive state without fabricating a reco
       VALUES ('account-a', 'account-a', 'hash', 'owner', 'active', ?, ?)
     `).run(NOW, NOW);
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [11, 12, 13, 14],
-      currentVersion: 14,
+      appliedVersions: [11, 12, 13, 14, 15],
+      currentVersion: 15,
     });
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM ownership_domains").get()!.count, 1);
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM scholarly_records").get()!.count, 0);
@@ -86,8 +86,8 @@ test("migration 011 never backfills existing multi-account Drive files", (contex
     }
 
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [11, 12, 13, 14],
-      currentVersion: 14,
+      appliedVersions: [11, 12, 13, 14, 15],
+      currentVersion: 15,
     });
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM files").get()!.count, 2);
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM scholarly_records").get()!.count, 0);

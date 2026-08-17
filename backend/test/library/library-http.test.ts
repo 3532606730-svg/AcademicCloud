@@ -40,12 +40,38 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
     createdAt: new Date("2026-08-18T12:00:00.000Z"),
     updatedAt: new Date("2026-08-18T12:00:00.000Z"),
   });
+  const timestamp = new Date("2026-08-18T12:00:00.000Z").toISOString();
+  const objectKey = `objects/ee/${"f".repeat(62)}`;
+  provisioning.prepare(`
+    INSERT INTO files (
+      id, owner_domain_id, uploaded_by_account_id, folder_id, display_name,
+      storage_provider, object_key, media_type, size_bytes, checksum_algorithm,
+      checksum, state, revision, created_at, updated_at, activated_at,
+      deleted_at, purged_at, recycle_group_id
+    ) VALUES ('http-contrib-file', 'account:member-http', 'member-http', NULL, 'http-contrib.pdf',
+      'memory', ?, 'application/pdf', 12, 'md5', '1B2M2Y8AsgTpgAmY7PhCfg==', 'active', 0, ?, ?, ?, NULL, NULL, NULL)
+  `).run(objectKey, timestamp, timestamp, timestamp);
+  provisioning.prepare(`
+    INSERT INTO scholarly_records (id, owner_domain_id, created_by_account_id, label, created_at, updated_at)
+    VALUES ('http-contrib-record', 'account:member-http', 'member-http', 'HTTP contribution', ?, ?)
+  `).run(timestamp, timestamp);
+  provisioning.prepare(`
+    INSERT INTO scholarly_artifacts (id, owner_domain_id, record_id, attachment_state, created_at, updated_at)
+    VALUES ('http-contrib-artifact', 'account:member-http', 'http-contrib-record', 'detached', ?, ?)
+  `).run(timestamp, timestamp);
+  provisioning.prepare(`
+    INSERT INTO scholarly_artifact_versions (id, owner_domain_id, artifact_id, stored_file_id, created_at, updated_at)
+    VALUES ('http-contrib-version', 'account:member-http', 'http-contrib-artifact', 'http-contrib-file', ?, ?)
+  `).run(timestamp, timestamp);
+  provisioning.prepare("UPDATE scholarly_artifacts SET attachment_state = 'attached' WHERE id = 'http-contrib-artifact'").run();
   provisioning.close();
 
+  const storage = new InMemoryStorageAdapter();
+  storage.putObject({ objectKey, sizeBytes: 12, etag: "etag", checksumAlgorithm: "md5", checksum: "1B2M2Y8AsgTpgAmY7PhCfg==", mediaType: "application/pdf", modifiedAt: new Date("2026-08-18T12:00:00.000Z") });
   const app = await createApplication(
     { host: "127.0.0.1", port: 0, logLevel: "silent", environment: "test", appOrigin: ORIGIN },
     { databasePath: dbPath, migrationsDirectory: MIGRATIONS_DIRECTORY },
-    new InMemoryStorageAdapter(),
+    storage,
   );
 
   function headers(cookie: string) {
@@ -94,13 +120,27 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
     assert.equal(memberLogin.statusCode, 200);
     const memberCookie = cookieFrom(memberLogin);
 
+    const submitted = await app.inject({
+      method: "POST",
+      url: `/api/libraries/${libraryId}/contributions`,
+      headers: { ...headers(memberCookie), "content-type": "application/json" },
+      payload: { artifactId: "http-contrib-artifact" },
+    });
+    assert.equal(submitted.statusCode, 201);
+    const contributionId = (submitted.json() as { contribution: { id: string } }).contribution.id;
+    const pending = await app.inject({ method: "GET", url: `/api/libraries/${libraryId}/contributions`, headers: headers(ownerCookie) });
+    assert.equal(pending.statusCode, 200);
+    assert.equal((pending.json() as { contributions: unknown[] }).contributions.length, 1);
+    const approved = await app.inject({ method: "POST", url: `/api/libraries/${libraryId}/contributions/${contributionId}/approve`, headers: headers(ownerCookie) });
+    assert.equal(approved.statusCode, 200);
+
     const libraries = await app.inject({ method: "GET", url: "/api/libraries", headers: headers(memberCookie) });
     assert.equal(libraries.statusCode, 200);
     assert.equal((libraries.json() as { libraries: unknown[] }).libraries.length, 1);
 
     const holdings = await app.inject({ method: "GET", url: `/api/libraries/${libraryId}/holdings`, headers: headers(memberCookie) });
     assert.equal(holdings.statusCode, 200);
-    assert.deepEqual(holdings.json(), { holdings: [] });
+    assert.equal((holdings.json() as { holdings: unknown[] }).holdings.length, 1);
 
     const nonexistent = await app.inject({ method: "GET", url: "/api/libraries/not-a-library/holdings", headers: headers(memberCookie) });
     assert.equal(nonexistent.statusCode, 404);

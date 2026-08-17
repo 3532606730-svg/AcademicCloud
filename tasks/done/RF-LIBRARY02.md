@@ -34,6 +34,7 @@ This checkpoint is intentionally accelerated immediately after `RF-LIBRARY01` by
 
 ## Relevant ADRs
 - `docs/decisions/ADR-014-privacy-ownership-and-research-activity-boundaries.md`
+- `docs/decisions/ADR-021-library-contribution-promotion.md`
 - `RF-OWNERSHIP01`, `RF-LIBRARY01`, `RF-AUDIT01` decisions
 - concise contribution-promotion decision/ADR required for terminal ownership transfer, folder detachment, immediate Library access, retained overlays, and failure semantics
 
@@ -45,24 +46,29 @@ This checkpoint is intentionally accelerated immediately after `RF-LIBRARY01` by
 - focused workflow/concurrency/privacy/migration/UI tests
 
 ## Current State
-Owner-accelerated and Ready after `RF-LIBRARY01`. There is currently no contribution/reviewer model; unrelated Pre-OCR tasks remain parked.
+Complete and independently green after the pushed `RF-LIBRARY01` checkpoint. The contribution/reviewer model, append-only migration 015, authorization repairs, and responsive UI are verified; the approved accelerated queue is exhausted and unrelated Pre-OCR tasks remain parked.
 
 ## Completed
 - Planning defines approval as explicit ownership promotion, not shared-folder access or contributor custody.
 - Personal Overlay non-promotion is a hard ADR-014 invariant.
 - Owner explicitly prioritized real Member submission/review ahead of RF-META01 and the rest of the parked queue.
+- ADR-021 records the explicit `submitted → approved | rejected | withdrawn` authority and terminal promotion boundary, including the single-Artifact accelerated safety constraint.
+- Migration 015 adds immutable contribution state, one-active-submission uniqueness, guarded promotion intents, and append-only contribution audit vocabulary.
+- Repository/service/HTTP/UI support explicit submit, scoped list/preview/download, approve/reject/withdraw, immediate Library holdings, and Member status/withdrawal presentation.
+- Approval transactionally preserves stable Record/Artifact/Version/File IDs, object key, uploader provenance, Favorite/Overlay rows, and clears only incompatible account-folder placement.
+- State-aware candidate reads keep submitted/rejected/withdrawn bytes in the contributor account domain and approved bytes in the target Library domain; approval in one Library makes any other Library's concurrent stale submission inert and non-disclosing.
+- Database insert/update guards and submitted-only repository types prevent terminal-state creation and require approved state to be coupled to the active promotion intent plus the complete Library-owned resource chain.
+- Library-scoped UI rows clear on selection, and Library selection is disabled until an in-flight scoped mutation and refresh finish.
+- The independent read-only Reviewer returned final PASS after the original cross-Library authorization Blocker and all follow-up Medium/Low findings were repaired and retested.
 
 ## Remaining
-- record the concise contribution-promotion authority/state decision;
-- implement submission/review persistence, API, and UI;
-- verify focused authorization, privacy, ownership, persistence, and concurrency cases;
-- independently review once and checkpoint.
+None. Record the exact task checkpoint, push the synchronized branch, and STOP.
 
 ## Blockers
-Byte deletion, public contribution, automatic private-data promotion, global browse-all content authority, production migration/deployment, or a transfer that cannot preserve stable identity/lifecycle requires Owner/data-integrity review.
+None within RF-LIBRARY02. Production rollout and every parked product task remain separately Owner-gated.
 
 ## Last Verification
-2026-08-17: no Library contribution model exists yet; the accelerated prerequisite is `RF-LIBRARY01` only.
+2026-08-18: final independent read-only review PASS with no remaining Blocker/Medium/Low finding. Final repair-focused contribution service + migration checks PASS (10/10); the prior combined backend/persistence/account/audit/research/preview/platform baseline remains PASS (74/74); frontend Vitest PASS (165/165); backend/frontend typecheck and production build PASS; `git diff --check` PASS. Coverage includes cross-Library stale-submission non-disclosure, direct terminal INSERT and unguarded approval rejection, normal transactional promotion, duplicate submission, scoped preview/download, approve/reject/withdraw, stable-ID/object-key/uploader/Favorite preservation, folder detachment, disabled/removed submitter behavior, immediate Library holdings, one-winner concurrency, audit-failure rollback, append-only migration 015, and Library selection/mutation races. No production or external system was contacted.
 
 ## Next Action
-After `RF-LIBRARY01` is green, implement the minimum Member submit → reviewer approve/reject/withdraw workflow, checkpoint it, reconcile durable state, and STOP before any production rollout.
+Create and push the exact RF-LIBRARY02 checkpoint, verify local HEAD equals origin, and STOP before all parked work.

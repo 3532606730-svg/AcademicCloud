@@ -1,0 +1,260 @@
+import assert from "node:assert/strict";
+import { test, type TestContext } from "node:test";
+
+import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
+import { DriveService } from "../../src/drive/drive-service.js";
+import { LibraryError, LibraryService } from "../../src/library/library-service.js";
+import { ScholarlyRecordService } from "../../src/research/service.js";
+import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
+import { createTestPersistence } from "../persistence/helpers.js";
+
+const NOW = new Date("2026-08-18T12:00:00.000Z");
+const OWNER: AuthenticatedAccount = { id: "owner-contrib", loginName: "owner-contrib", role: "owner" };
+const MEMBER: AuthenticatedAccount = { id: "member-contrib", loginName: "member-contrib", role: "member" };
+const OUTSIDER: AuthenticatedAccount = { id: "outsider-contrib", loginName: "outsider-contrib", role: "member" };
+const MD5 = "1B2M2Y8AsgTpgAmY7PhCfg==";
+
+function fixture(context: TestContext) {
+  const { database, persistence } = createTestPersistence(context);
+  for (const account of [OWNER, MEMBER, OUTSIDER]) {
+    persistence.repositories.accounts.create({
+      id: account.id,
+      loginName: account.loginName,
+      passwordHash: "test",
+      role: account.role,
+      state: "active",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+  }
+  const storage = new InMemoryStorageAdapter(() => NOW);
+  const drive = new DriveService(persistence, storage, () => NOW);
+  const libraries = new LibraryService(persistence, drive, () => NOW, (() => {
+    let next = 0;
+    return () => `contrib-id-${++next}`;
+  })());
+  const research = new ScholarlyRecordService(persistence, () => NOW);
+  return { database, persistence, storage, drive, libraries, research };
+}
+
+function addAccountHolding(database: ReturnType<typeof fixture>["database"], accountId: string, prefix: string): { fileId: string; artifactId: string; recordId: string; versionId: string; folderId: string } {
+  const fileId = `${prefix}-file`;
+  const recordId = `${prefix}-record`;
+  const artifactId = `${prefix}-artifact`;
+  const versionId = `${prefix}-version`;
+  const folderId = `${prefix}-folder`;
+  const domainId = `account:${accountId}`;
+  const objectKey = `objects/${prefix.slice(0, 2).padEnd(2, "a")}/${"c".repeat(62)}`;
+  const timestamp = NOW.toISOString();
+  database.prepare(`
+    INSERT INTO folders (
+      id, owner_domain_id, created_by_account_id, parent_id, name, state,
+      created_at, updated_at, deleted_at, recycle_group_id
+    ) VALUES (?, ?, ?, NULL, ?, 'active', ?, ?, NULL, NULL)
+  `).run(folderId, domainId, accountId, `${prefix} folder`, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO files (
+      id, owner_domain_id, uploaded_by_account_id, folder_id, display_name,
+      storage_provider, object_key, media_type, size_bytes, checksum_algorithm,
+      checksum, state, revision, created_at, updated_at, activated_at,
+      deleted_at, purged_at, recycle_group_id
+    ) VALUES (?, ?, ?, ?, ?, 'memory', ?, 'application/pdf', 12, 'md5', ?, 'active', 0, ?, ?, ?, NULL, NULL, NULL)
+  `).run(fileId, domainId, accountId, folderId, `${prefix}.pdf`, objectKey, MD5, timestamp, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_records (id, owner_domain_id, created_by_account_id, label, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(recordId, domainId, accountId, `${prefix} record`, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_artifacts (id, owner_domain_id, record_id, attachment_state, created_at, updated_at)
+    VALUES (?, ?, ?, 'detached', ?, ?)
+  `).run(artifactId, domainId, recordId, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_artifact_versions (id, owner_domain_id, artifact_id, stored_file_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(versionId, domainId, artifactId, fileId, timestamp, timestamp);
+  database.prepare("UPDATE scholarly_artifacts SET attachment_state = 'attached' WHERE id = ?").run(artifactId);
+  database.prepare("INSERT INTO favorite_files (account_id, file_id, created_at) VALUES (?, ?, ?)").run(accountId, fileId, timestamp);
+  return { fileId, artifactId, recordId, versionId, folderId };
+}
+
+function putObject(storage: InMemoryStorageAdapter, prefix: string): void {
+  storage.putObject({
+    objectKey: `objects/${prefix.slice(0, 2).padEnd(2, "a")}/${"c".repeat(62)}`,
+    sizeBytes: 12,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+}
+
+test("submit → approve promotes one explicit artifact atomically while preserving identity, bytes, provenance, and private overlay rows", async (context) => {
+  const { database, persistence, storage, libraries, research } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Contribution Library");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const resource = addAccountHolding(database, MEMBER.id, "aa-submit");
+  putObject(storage, "aa-submit");
+
+  const submitted = libraries.submitContribution(MEMBER, library.id, resource.artifactId);
+  assert.equal(submitted.state, "submitted");
+  assert.throws(() => libraries.submitContribution(MEMBER, library.id, resource.artifactId), (error) => error instanceof LibraryError && error.code === "conflict");
+  assert.equal(libraries.listContributions(OWNER, library.id)[0]?.file.displayName, "aa-submit.pdf");
+  assert.equal(libraries.listMyContributions(MEMBER, library.id)[0]?.id, submitted.id);
+  assert.throws(() => libraries.listContributions(OUTSIDER, library.id), (error) => error instanceof LibraryError && error.code === "not_found");
+  const reviewDownload = await libraries.createContributionDownload(OWNER, library.id, submitted.id, "inline");
+  assert.match(reviewDownload.url, /objects%2Faa%2F/);
+
+  const approved = libraries.reviewContribution(OWNER, library.id, submitted.id, "approve");
+  assert.equal(approved.state, "approved");
+  assert.equal(libraries.listContributions(OWNER, library.id).length, 0);
+  assert.equal(libraries.listHoldings(MEMBER.id, library.id)[0]?.file.id, resource.fileId);
+  const promotedFile = database.prepare<[string], { owner_domain_id: string; folder_id: string | null; uploaded_by_account_id: string; object_key: string }>("SELECT owner_domain_id, folder_id, uploaded_by_account_id, object_key FROM files WHERE id = ?").get(resource.fileId);
+  assert.deepEqual(promotedFile, {
+    owner_domain_id: `library:${library.id}`,
+    folder_id: null,
+    uploaded_by_account_id: MEMBER.id,
+    object_key: `objects/aa/${"c".repeat(62)}`,
+  });
+  assert.equal(database.prepare<[string, string], { count: number }>("SELECT count(*) AS count FROM favorite_files WHERE account_id = ? AND file_id = ?").get(MEMBER.id, resource.fileId)?.count, 1);
+  assert.equal(persistence.repositories.research?.listRecords(MEMBER.id, null, 100).length, 0);
+  assert.equal(database.prepare<[string], { count: number }>("SELECT count(*) AS count FROM scholarly_artifact_versions WHERE stored_file_id = ?").get(resource.fileId)?.count, 1);
+  assert.equal(persistence.repositories.accounts.updateState(MEMBER.id, "active", "disabled", NOW), true);
+  assert.equal(libraries.listHoldings(OWNER.id, library.id)[0]?.file.id, resource.fileId);
+  assert.throws(() => libraries.listHoldings(MEMBER.id, library.id), (error) => error instanceof LibraryError && error.code === "not_found");
+  assert.equal(persistence.repositories.accounts.updateState(MEMBER.id, "disabled", "active", NOW), true);
+  libraries.removeMember(OWNER, library.id, MEMBER.id);
+  assert.equal(libraries.listHoldings(OWNER.id, library.id)[0]?.file.id, resource.fileId);
+  await assert.rejects(libraries.createContributionDownload(MEMBER, library.id, submitted.id), (error) => error instanceof LibraryError && error.code === "not_found");
+});
+
+test("reject and withdraw are terminal state-only decisions and leave account ownership unchanged", async (context) => {
+  const { database, persistence, libraries } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Contribution Library");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const rejectedResource = addAccountHolding(database, MEMBER.id, "bb-reject");
+  const withdrawnResource = addAccountHolding(database, MEMBER.id, "cc-withdraw");
+  const rejected = libraries.submitContribution(MEMBER, library.id, rejectedResource.artifactId);
+  const withdrawn = libraries.submitContribution(MEMBER, library.id, withdrawnResource.artifactId);
+
+  assert.equal(libraries.reviewContribution(OWNER, library.id, rejected.id, "reject").state, "rejected");
+  assert.equal(libraries.withdrawContribution(MEMBER, library.id, withdrawn.id).state, "withdrawn");
+  for (const resource of [rejectedResource, withdrawnResource]) {
+    assert.equal(database.prepare<[string], { owner_domain_id: string; folder_id: string | null }>("SELECT owner_domain_id, folder_id FROM files WHERE id = ?").get(resource.fileId)?.owner_domain_id, `account:${MEMBER.id}`);
+    assert.equal(database.prepare<[string], { owner_domain_id: string; folder_id: string | null }>("SELECT owner_domain_id, folder_id FROM files WHERE id = ?").get(resource.fileId)?.folder_id, resource.folderId);
+  }
+  assert.throws(() => libraries.reviewContribution(OWNER, library.id, rejected.id, "approve"), (error) => error instanceof LibraryError && error.code === "not_found");
+  assert.throws(() => libraries.withdrawContribution(MEMBER, library.id, withdrawn.id), (error) => error instanceof LibraryError && error.code === "not_found");
+  assert.equal(persistence.repositories.accounts.findById(MEMBER.id)?.state, "active");
+});
+
+test("approval cannot bypass the guarded ownership-promotion transaction", (context) => {
+  const { database, libraries } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Contribution Library");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const resource = addAccountHolding(database, MEMBER.id, "bi-guarded");
+
+  for (const state of ["approved", "rejected", "withdrawn"] as const) {
+    assert.throws(() => database.prepare(`
+      INSERT INTO library_contributions (
+        id, library_id, artifact_id, contributor_account_id, state, revision,
+        submitted_at, reviewed_at, reviewed_by_account_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+    `).run(`direct-${state}`, library.id, resource.artifactId, MEMBER.id, state,
+      NOW.toISOString(), NOW.toISOString(), OWNER.id, NOW.toISOString(), NOW.toISOString()),
+    /library contribution must begin submitted/);
+  }
+  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_contributions").get()?.count, 0);
+
+  const submitted = libraries.submitContribution(MEMBER, library.id, resource.artifactId);
+
+  assert.throws(() => database.prepare(`
+    UPDATE library_contributions
+    SET state = 'approved', revision = revision + 1,
+        reviewed_at = ?, reviewed_by_account_id = ?, updated_at = ?
+    WHERE id = ?
+  `).run(NOW.toISOString(), OWNER.id, NOW.toISOString(), submitted.id), /approved contribution requires completed Library ownership promotion/);
+  assert.equal(libraries.listContributions(OWNER, library.id)[0]?.state, "submitted");
+  assert.equal(database.prepare<[string], { owner_domain_id: string }>("SELECT owner_domain_id FROM files WHERE id = ?").get(resource.fileId)?.owner_domain_id, `account:${MEMBER.id}`);
+
+  assert.equal(libraries.reviewContribution(OWNER, library.id, submitted.id, "approve").state, "approved");
+  assert.equal(database.prepare<[string], { owner_domain_id: string }>("SELECT owner_domain_id FROM files WHERE id = ?").get(resource.fileId)?.owner_domain_id, `library:${library.id}`);
+});
+
+test("approval in one Library invalidates another Library's stale submission authority", async (context) => {
+  const { database, storage, libraries } = fixture(context);
+  const libraryA = libraries.createLibrary(OWNER, "Library A");
+  const libraryB = libraries.createLibrary(OUTSIDER, "Library B");
+  libraries.addMember(OWNER, libraryA.id, MEMBER.id, "member");
+  libraries.addMember(OUTSIDER, libraryB.id, MEMBER.id, "member");
+  const resource = addAccountHolding(database, MEMBER.id, "ba-cross-library");
+  putObject(storage, "ba-cross-library");
+
+  const submittedA = libraries.submitContribution(MEMBER, libraryA.id, resource.artifactId);
+  const submittedB = libraries.submitContribution(MEMBER, libraryB.id, resource.artifactId);
+  assert.equal(libraries.listContributions(OUTSIDER, libraryB.id)[0]?.id, submittedB.id);
+
+  assert.equal(libraries.reviewContribution(OWNER, libraryA.id, submittedA.id, "approve").state, "approved");
+  assert.equal(database.prepare<[string], { state: string }>("SELECT state FROM library_contributions WHERE id = ?").get(submittedB.id)?.state, "submitted");
+  assert.equal(libraries.listContributions(OUTSIDER, libraryB.id).length, 0);
+  libraries.removeMember(OWNER, libraryA.id, MEMBER.id);
+  assert.equal(libraries.listMyContributions(MEMBER, libraryB.id).length, 0);
+  await assert.rejects(libraries.createContributionDownload(OUTSIDER, libraryB.id, submittedB.id), (error) => error instanceof LibraryError && error.code === "not_found");
+  await assert.rejects(libraries.createContributionDownload(MEMBER, libraryB.id, submittedB.id), (error) => error instanceof LibraryError && error.code === "not_found");
+  assert.throws(() => libraries.reviewContribution(OUTSIDER, libraryB.id, submittedB.id, "reject"), (error) => error instanceof LibraryError && error.code === "not_found");
+  assert.throws(() => libraries.withdrawContribution(MEMBER, libraryB.id, submittedB.id), (error) => error instanceof LibraryError && error.code === "not_found");
+});
+
+test("a disabled submitter cannot complete stale approval, and one terminal winner prevents a second decision", (context) => {
+  const { database, persistence, libraries } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Contribution Library");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const resource = addAccountHolding(database, MEMBER.id, "dd-disabled");
+  const submitted = libraries.submitContribution(MEMBER, library.id, resource.artifactId);
+  assert.equal(persistence.repositories.accounts.updateState(MEMBER.id, "active", "disabled", NOW), true);
+  assert.throws(() => libraries.reviewContribution(OWNER, library.id, submitted.id, "approve"), (error) => error instanceof LibraryError && error.code === "invalid_state");
+  assert.equal(libraries.reviewContribution(OWNER, library.id, submitted.id, "reject").state, "rejected");
+  assert.throws(() => libraries.reviewContribution(OWNER, library.id, submitted.id, "approve"), (error) => error instanceof LibraryError && error.code === "not_found");
+});
+
+test("membership removal before approval blocks stale promotion without exposing unrelated resources", (context) => {
+  const { database, libraries } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Contribution Library");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const resource = addAccountHolding(database, MEMBER.id, "ff-removed");
+  const submitted = libraries.submitContribution(MEMBER, library.id, resource.artifactId);
+  libraries.removeMember(OWNER, library.id, MEMBER.id);
+  assert.throws(() => libraries.reviewContribution(OWNER, library.id, submitted.id, "approve"), (error) => error instanceof LibraryError && error.code === "invalid_state");
+  assert.equal(database.prepare<[string], { owner_domain_id: string }>("SELECT owner_domain_id FROM files WHERE id = ?").get(resource.fileId)?.owner_domain_id, `account:${MEMBER.id}`);
+  assert.equal(libraries.reviewContribution(OWNER, library.id, submitted.id, "reject").state, "rejected");
+});
+
+test("the minimum promotion refuses a partial multi-Artifact Record instead of moving unsubmitted siblings", (context) => {
+  const { database, libraries } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Contribution Library");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const resource = addAccountHolding(database, MEMBER.id, "gg-multi");
+  const timestamp = NOW.toISOString();
+  database.prepare(`
+    INSERT INTO scholarly_artifacts (id, owner_domain_id, record_id, attachment_state, created_at, updated_at)
+    VALUES ('gg-private-sibling', ?, ?, 'detached', ?, ?)
+  `).run(`account:${MEMBER.id}`, resource.recordId, timestamp, timestamp);
+  assert.throws(() => libraries.submitContribution(MEMBER, library.id, resource.artifactId), (error) => error instanceof LibraryError && error.code === "invalid_state");
+  assert.equal(database.prepare<[string], { count: number }>("SELECT count(*) AS count FROM library_contributions WHERE artifact_id = ?").get(resource.artifactId)?.count, 0);
+});
+
+test("approval and ownership promotion roll back completely when governance audit persistence fails", (context) => {
+  const { database, persistence, libraries } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Contribution Library");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const resource = addAccountHolding(database, MEMBER.id, "hh-rollback");
+  const submitted = libraries.submitContribution(MEMBER, library.id, resource.artifactId);
+  const createAudit = persistence.repositories.audit.create.bind(persistence.repositories.audit);
+  persistence.repositories.audit.create = () => { throw new Error("injected audit failure"); };
+  assert.throws(() => libraries.reviewContribution(OWNER, library.id, submitted.id, "approve"), /injected audit failure/);
+  persistence.repositories.audit.create = createAudit;
+
+  assert.equal(database.prepare<[string], { owner_domain_id: string }>("SELECT owner_domain_id FROM files WHERE id = ?").get(resource.fileId)?.owner_domain_id, `account:${MEMBER.id}`);
+  assert.equal(persistence.repositories.contributions.findById(library.id, submitted.id)?.state, "submitted");
+  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_ownership_promotions").get()?.count, 0);
+});

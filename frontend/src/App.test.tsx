@@ -94,6 +94,12 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     removeLibraryMember: vi.fn().mockResolvedValue(undefined),
     listLibraryHoldings: vi.fn().mockResolvedValue([]),
     createLibraryDownload: vi.fn(),
+    submitLibraryContribution: vi.fn(),
+    listLibraryContributions: vi.fn().mockResolvedValue([]),
+    listMyLibraryContributions: vi.fn().mockResolvedValue([]),
+    reviewLibraryContribution: vi.fn(),
+    withdrawLibraryContribution: vi.fn(),
+    createContributionDownload: vi.fn(),
     setFileFavorite: vi.fn().mockResolvedValue(undefined),
     setFolderFavorite: vi.fn().mockResolvedValue(undefined),
     createFolder: vi.fn(),
@@ -2340,6 +2346,162 @@ describe("governance audit presentation", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
     expect(screen.queryByRole("button", { name: "Governance audit" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Shared Library contribution UI", () => {
+  const library = { id: "library-1", name: "Sources", role: "manager" as const, createdAt: "2026-08-18T00:00:00.000Z" };
+  const contribution = {
+    id: "contribution-1",
+    libraryId: library.id,
+    artifactId: "artifact-1",
+    state: "submitted" as const,
+    revision: 0,
+    recordId: "record-1",
+    recordLabel: "Submitted source",
+    submitterLoginName: "Member",
+    file: { id: "file-1", displayName: "submitted.pdf", mediaType: "application/pdf", sizeBytes: 12, state: "active" as const },
+    submittedAt: "2026-08-18T00:00:00.000Z",
+    reviewedAt: null,
+  };
+
+  it("shows only explicitly submitted reviewer rows and approves through the scoped API", async () => {
+    const user = userEvent.setup();
+    const reviewLibraryContribution = vi.fn().mockResolvedValue({ ...contribution, state: "approved" as const, revision: 1 });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraries: vi.fn().mockResolvedValue([library]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([]),
+      listLibraryMembers: vi.fn().mockResolvedValue([]),
+      listLibraryContributions: vi.fn().mockResolvedValue([contribution]),
+      reviewLibraryContribution,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "Shared Library" }));
+    expect(await screen.findByRole("heading", { name: "Contribution review" })).toBeInTheDocument();
+    expect(screen.getByText("submitted.pdf")).toBeInTheDocument();
+    expect(screen.queryByText("unrelated-private.pdf")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(reviewLibraryContribution).toHaveBeenCalledWith(library.id, contribution.id, "approve"));
+    expect(await screen.findByText("No submitted contributions")).toBeInTheDocument();
+  });
+
+  it("clears Library-scoped contribution rows immediately when switching Libraries", async () => {
+    const user = userEvent.setup();
+    const secondLibrary = { ...library, id: "library-2", name: "Second sources" };
+    const listLibraryContributions = vi.fn().mockImplementation(async (libraryId: string) => {
+      if (libraryId === library.id) return [contribution];
+      return await new Promise<never>(() => undefined);
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraries: vi.fn().mockResolvedValue([library, secondLibrary]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([]),
+      listLibraryMembers: vi.fn().mockResolvedValue([]),
+      listLibraryContributions,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "Shared Library" }));
+    expect(await screen.findByText("submitted.pdf")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Second sources/ }));
+
+    await waitFor(() => expect(screen.queryByText("submitted.pdf")).not.toBeInTheDocument());
+    expect(listLibraryContributions).toHaveBeenLastCalledWith(secondLibrary.id);
+  });
+
+  it("prevents Library switching while a scoped review mutation is in flight", async () => {
+    const user = userEvent.setup();
+    const secondLibrary = { ...library, id: "library-2", name: "Second sources" };
+    let resolveReview!: (value: Awaited<ReturnType<AcademicCloudApi["reviewLibraryContribution"]>>) => void;
+    const pendingReview = new Promise<Awaited<ReturnType<AcademicCloudApi["reviewLibraryContribution"]>>>((resolve) => {
+      resolveReview = resolve;
+    });
+    const reviewLibraryContribution = vi.fn().mockReturnValue(pendingReview);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraries: vi.fn().mockResolvedValue([library, secondLibrary]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([]),
+      listLibraryMembers: vi.fn().mockResolvedValue([]),
+      listLibraryContributions: vi.fn().mockImplementation(async (libraryId: string) => libraryId === library.id ? [contribution] : []),
+      reviewLibraryContribution,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "Shared Library" }));
+    expect(await screen.findByText("submitted.pdf")).toBeInTheDocument();
+    const secondButton = screen.getByRole("button", { name: /Second sources/ });
+
+    await user.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(reviewLibraryContribution).toHaveBeenCalledWith(library.id, contribution.id, "approve"));
+    expect(secondButton).toBeDisabled();
+    await user.click(secondButton);
+    expect(screen.getByRole("heading", { name: library.name, level: 3 })).toBeInTheDocument();
+
+    resolveReview({ ...contribution, state: "approved", revision: 1, reviewedAt: "2026-08-18T00:01:00.000Z" });
+    await waitFor(() => expect(secondButton).toBeEnabled());
+    await user.click(secondButton);
+    expect(await screen.findByRole("heading", { name: secondLibrary.name, level: 3 })).toBeInTheDocument();
+  });
+
+  it("lets a member explicitly submit one attached artifact to an accessible Library", async () => {
+    const user = userEvent.setup();
+    const memberLibrary = { ...library, role: "member" as const };
+    const record = {
+      id: "record-1",
+      label: "Private record",
+      createdAt: "2026-08-18T00:00:00.000Z",
+      updatedAt: "2026-08-18T00:00:00.000Z",
+      artifactCount: 1,
+      nextBeforeArtifactId: null,
+      artifacts: [{
+        id: "artifact-1",
+        recordId: "record-1",
+        attachmentState: "attached" as const,
+        createdAt: "2026-08-18T00:00:00.000Z",
+        updatedAt: "2026-08-18T00:00:00.000Z",
+        version: { id: "version-1", createdAt: "2026-08-18T00:00:00.000Z", updatedAt: "2026-08-18T00:00:00.000Z", file: { id: "file-1", displayName: "private.pdf", state: "active" as const, availability: "available" as const } },
+      }],
+    };
+    const submitLibraryContribution = vi.fn().mockResolvedValue(contribution);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue({ id: "member-1", loginName: "Member", role: "member" as const }),
+      listLibraries: vi.fn().mockResolvedValue([memberLibrary]),
+      listScholarlyRecords: vi.fn().mockResolvedValue({ records: [{ ...record, artifacts: undefined, nextBeforeArtifactId: undefined }], nextBeforeId: null }),
+      getScholarlyRecord: vi.fn().mockResolvedValue(record),
+      submitLibraryContribution,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "Scholarly records" }));
+    const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
+    const submit = await within(dialog).findByRole("button", { name: "Submit to shared library" });
+    await user.click(submit);
+    await waitFor(() => expect(submitLibraryContribution).toHaveBeenCalledWith(memberLibrary.id, "artifact-1"));
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("Submitted");
+  });
+
+  it("shows a Member only their own contribution statuses and allows explicit withdrawal", async () => {
+    const user = userEvent.setup();
+    const memberLibrary = { ...library, role: "member" as const };
+    const withdrawn = { ...contribution, state: "withdrawn" as const, revision: 1, reviewedAt: "2026-08-18T00:01:00.000Z" };
+    const withdrawLibraryContribution = vi.fn().mockResolvedValue(withdrawn);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue({ id: "member-1", loginName: "Member", role: "member" as const }),
+      listLibraries: vi.fn().mockResolvedValue([memberLibrary]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([]),
+      listMyLibraryContributions: vi.fn().mockResolvedValue([contribution]),
+      withdrawLibraryContribution,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "Shared Library" }));
+    expect(await screen.findByText("submitted.pdf")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Withdraw" }));
+    await waitFor(() => expect(withdrawLibraryContribution).toHaveBeenCalledWith(memberLibrary.id, contribution.id));
+    expect(await screen.findByText(/withdrawn/i)).toBeInTheDocument();
   });
 });
 

@@ -8,6 +8,7 @@ import type { FavoriteRepository } from "../favorites/favorite-repository.js";
 import type { AuditRepository } from "../audit/audit-repository.js";
 import type { ScholarlyRepository } from "../research/repositories.js";
 import type { LibraryRepository } from "../library/repositories.js";
+import type { ContributionRepository } from "../library/contribution-repositories.js";
 
 export interface RepositorySet {
   accounts: AccountRepository;
@@ -21,6 +22,7 @@ export interface RepositorySet {
   audit: AuditRepository;
   research?: ScholarlyRepository;
   libraries: LibraryRepository;
+  contributions: ContributionRepository;
 }
 
 export interface Persistence {

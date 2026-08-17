@@ -7,6 +7,7 @@ import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
 import type { AuditEventKind, AuditReasonCode } from "../audit/audit-event.js";
 import type { Library, LibraryHolding, LibraryMembership, LibraryRole } from "./library.js";
+import type { ContributionCandidate, ContributionState, LibraryContribution } from "./contribution.js";
 
 export type LibraryErrorCode =
   | "not_found"
@@ -49,6 +50,26 @@ export interface LibraryHoldingView {
     mediaType: string | null;
     sizeBytes: number;
   };
+}
+
+export interface ContributionView {
+  id: string;
+  libraryId: string;
+  artifactId: string;
+  state: ContributionState;
+  revision: number;
+  recordId: string;
+  recordLabel: string;
+  submitterLoginName: string | null;
+  file: {
+    id: string;
+    displayName: string;
+    mediaType: string | null;
+    sizeBytes: number;
+    state: "active" | "deleted" | "purging" | "purged" | "pending_upload";
+  };
+  submittedAt: string;
+  reviewedAt: string | null;
 }
 
 function normalizeName(value: string): string {
@@ -110,6 +131,23 @@ export class LibraryService {
   recordAuditAttempt(
     actor: AuthenticatedAccount,
     action: Extract<AuditEventKind, "libraries.membership_add" | "libraries.membership_change" | "libraries.membership_remove">,
+    error: unknown,
+  ): boolean {
+    const reason = reasonFor(error);
+    return tryRecordAuditAttempt(this.#persistence, {
+      action,
+      actorKind: "account",
+      actorAccountId: actor.id,
+      targetId: null,
+      outcome: reason === "storage_unavailable" ? "failed" : "denied",
+      reason,
+      occurredAt: this.#now(),
+    });
+  }
+
+  recordContributionAuditAttempt(
+    actor: AuthenticatedAccount,
+    action: Extract<AuditEventKind, "libraries.contribution_submit" | "libraries.contribution_approve" | "libraries.contribution_reject" | "libraries.contribution_withdraw">,
     error: unknown,
   ): boolean {
     const reason = reasonFor(error);
@@ -289,8 +327,214 @@ export class LibraryService {
     }
   }
 
+  submitContribution(actor: AuthenticatedAccount, libraryId: string, artifactId: string): ContributionView {
+    return this.#persistence.runInTransaction((repositories) => {
+      this.#requireMember(actor.id, libraryId, repositories);
+      const candidate = repositories.contributions.findCandidateForSubmission(artifactId, actor.id);
+      if (!candidate || candidate.artifactState !== "attached" || candidate.file.state !== "active") {
+        throw new LibraryError("not_found");
+      }
+      const research = repositories.research;
+      if (!research || research.countArtifacts(actor.id, candidate.recordId) !== 1) {
+        // A Record promotion is terminal. Promoting a subset would either
+        // break the Record/Artifact composite FK or disclose unsubmitted
+        // siblings, so the accelerated minimum accepts single-Artifact
+        // Records only.
+        throw new LibraryError("invalid_state");
+      }
+      if (repositories.contributions.findSubmittedByArtifact(libraryId, artifactId)) {
+        throw new LibraryError("conflict");
+      }
+      const now = this.#now();
+      let contribution: LibraryContribution;
+      try {
+        contribution = repositories.contributions.create({
+          id: this.#createId(),
+          libraryId,
+          artifactId,
+          contributorAccountId: actor.id,
+          state: "submitted",
+          revision: 0,
+          submittedAt: now,
+          reviewedAt: null,
+          reviewedByAccountId: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+      } catch (error: unknown) {
+        if (this.#isConstraint(error)) throw new LibraryError("conflict", { cause: error });
+        throw error;
+      }
+      recordAuditEvent(repositories, {
+        action: "libraries.contribution_submit",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: contribution.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+      return this.#contributionView(repositories.contributions.findCandidate(libraryId, contribution.id)!);
+    });
+  }
+
+  listContributions(actor: AuthenticatedAccount, libraryId: string, limit = 100): ContributionView[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new LibraryError("invalid_input");
+    this.#requireManager(actor.id, libraryId, this.#persistence.repositories);
+    return this.#persistence.repositories.contributions.listSubmitted(libraryId, limit).map((candidate) => this.#contributionView(candidate));
+  }
+
+  listMyContributions(actor: AuthenticatedAccount, libraryId: string, limit = 100): ContributionView[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new LibraryError("invalid_input");
+    this.#requireMember(actor.id, libraryId, this.#persistence.repositories);
+    return this.#persistence.repositories.contributions.listForContributor(libraryId, actor.id, limit).map((candidate) => this.#contributionView(candidate));
+  }
+
+  reviewContribution(
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    contributionId: string,
+    decision: "approve" | "reject",
+  ): ContributionView {
+    return this.#persistence.runInTransaction((repositories) => {
+      this.#requireManager(actor.id, libraryId, repositories);
+      const candidate = repositories.contributions.findCandidate(libraryId, contributionId);
+      if (!candidate || candidate.contribution.state !== "submitted") throw new LibraryError("not_found");
+      const now = this.#now();
+      try {
+        let updated: LibraryContribution | null;
+        if (decision === "approve") {
+          const contributor = repositories.accounts.findById(candidate.contribution.contributorAccountId);
+          if (
+            !contributor
+            || contributor.state !== "active"
+            || !this.#isEffectiveMember(contributor.id, libraryId, repositories)
+            || candidate.artifactState !== "attached"
+            || candidate.file.state !== "active"
+            || candidate.file.ownerDomainId !== `account:${contributor.id}`
+          ) {
+            throw new LibraryError("invalid_state");
+          }
+          updated = repositories.contributions.promote(
+            libraryId,
+            contributionId,
+            candidate.contribution.revision,
+            contributor.id,
+            candidate.recordId,
+            candidate.contribution.artifactId,
+            candidate.versionId,
+            candidate.file.id,
+            actor.id,
+            now,
+          );
+        } else {
+          updated = repositories.contributions.updateState(
+            libraryId,
+            contributionId,
+            candidate.contribution.revision,
+            "rejected",
+            actor.id,
+            now,
+          );
+        }
+        if (!updated) throw new LibraryError("conflict");
+        recordAuditEvent(repositories, {
+          action: decision === "approve" ? "libraries.contribution_approve" : "libraries.contribution_reject",
+          actorKind: "account",
+          actorAccountId: actor.id,
+          targetId: contributionId,
+          outcome: "succeeded",
+          reason: null,
+          occurredAt: now,
+        });
+        return this.#contributionView(repositories.contributions.findCandidate(libraryId, contributionId)!);
+      } catch (error: unknown) {
+        if (error instanceof LibraryError) throw error;
+        if (this.#isConstraint(error) || error instanceof Error && /promotion .* changed|state changed/i.test(error.message)) {
+          throw new LibraryError("conflict", { cause: error });
+        }
+        throw error;
+      }
+    });
+  }
+
+  withdrawContribution(actor: AuthenticatedAccount, libraryId: string, contributionId: string): ContributionView {
+    return this.#persistence.runInTransaction((repositories) => {
+      this.#requireActiveActor(actor, repositories);
+      const candidate = repositories.contributions.findCandidate(libraryId, contributionId);
+      if (!candidate || candidate.contribution.contributorAccountId !== actor.id || candidate.contribution.state !== "submitted") {
+        throw new LibraryError("not_found");
+      }
+      const now = this.#now();
+      const updated = repositories.contributions.updateState(
+        libraryId,
+        contributionId,
+        candidate.contribution.revision,
+        "withdrawn",
+        actor.id,
+        now,
+      );
+      if (!updated) throw new LibraryError("conflict");
+      recordAuditEvent(repositories, {
+        action: "libraries.contribution_withdraw",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: contributionId,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+      return this.#contributionView(repositories.contributions.findCandidate(libraryId, contributionId)!);
+    });
+  }
+
+  async createContributionDownload(
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    contributionId: string,
+    disposition: "attachment" | "inline" = "attachment",
+  ) {
+    const repositories = this.#persistence.repositories;
+    const candidate = repositories.contributions.findCandidate(libraryId, contributionId);
+    if (!candidate) throw new LibraryError("not_found");
+    const isContributor = candidate.contribution.contributorAccountId === actor.id
+      && repositories.accounts.findById(actor.id)?.state === "active";
+    const canReview = candidate.contribution.state === "submitted"
+      ? this.#isEffectiveManager(actor.id, libraryId, repositories)
+      : candidate.contribution.state === "approved"
+        ? this.#isEffectiveMember(actor.id, libraryId, repositories)
+        : false;
+    const canContributorRead = candidate.contribution.state !== "approved" && isContributor;
+    if (!canContributorRead && !canReview) throw new LibraryError("not_found");
+    const file = repositories.files.findByDomainId(candidate.file.ownerDomainId, candidate.file.id);
+    if (!file) throw new LibraryError("not_found");
+    return this.#drive.createDownloadForAuthorizedFile(file, disposition);
+  }
+
   #summary(library: Library, role: LibraryRole): LibrarySummary {
     return { id: library.id, name: library.name, role, createdAt: library.createdAt.toISOString() };
+  }
+
+  #contributionView(candidate: ContributionCandidate): ContributionView {
+    return {
+      id: candidate.contribution.id,
+      libraryId: candidate.contribution.libraryId,
+      artifactId: candidate.contribution.artifactId,
+      state: candidate.contribution.state,
+      revision: candidate.contribution.revision,
+      recordId: candidate.recordId,
+      recordLabel: candidate.recordLabel,
+      submitterLoginName: candidate.submitterLoginName,
+      file: {
+        id: candidate.file.id,
+        displayName: candidate.file.displayName,
+        mediaType: candidate.file.mediaType,
+        sizeBytes: candidate.file.sizeBytes,
+        state: candidate.file.state,
+      },
+      submittedAt: candidate.contribution.submittedAt.toISOString(),
+      reviewedAt: candidate.contribution.reviewedAt?.toISOString() ?? null,
+    };
   }
 
   #requireActiveActor(actor: AuthenticatedAccount, repositories: RepositorySet): void {
@@ -319,6 +563,16 @@ export class LibraryService {
 
   #isEffectiveMembership(repositories: RepositorySet, membership: LibraryMembership): boolean {
     return repositories.accounts.findById(membership.accountId)?.state === "active";
+  }
+
+  #isEffectiveMember(accountId: string, libraryId: string, repositories: RepositorySet): boolean {
+    const membership = repositories.libraries.findMembership(libraryId, accountId);
+    return Boolean(membership && this.#isEffectiveMembership(repositories, membership));
+  }
+
+  #isEffectiveManager(accountId: string, libraryId: string, repositories: RepositorySet): boolean {
+    const membership = repositories.libraries.findMembership(libraryId, accountId);
+    return Boolean(membership && membership.role === "manager" && this.#isEffectiveMembership(repositories, membership));
   }
 
   #memberView(repositories: RepositorySet, libraryId: string, accountId: string): LibraryMemberView | null {

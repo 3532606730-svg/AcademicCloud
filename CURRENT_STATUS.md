@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local line through `RF-DOMAIN01` and `RF-LIBRARY01` is complete and green, PROD-04A has deployed/accepted the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8, and all three first-use polish cards are complete with focused verification green. The approved repository-development objective continues at `RF-LIBRARY02`.**
+**The repository-local line through `RF-LIBRARY02` is complete and independently green. PROD-04A continues to run the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8. The approved accelerated repository-development queue is exhausted and development is stopped pending Owner direction.**
 
 Production remains live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8. Repository development is newer and remains repository-only until a separate Owner deployment gate selects an exact candidate.
 
@@ -17,14 +17,14 @@ Current development lineage before this planning reconciliation:
 - RF-OWNERSHIP01 checkpoint: `636a19e6f55aba8d84855e266954a08b3b415065`;
 - RF-BULK01 checkpoint: `fc30aed2eeb4536ec3747869bb5b99b22fbf94e8`;
 - RF-DOMAIN01 checkpoint: `ddcc19eb41428bbdbececd8868a11a09dae97e98`;
-- latest repository migration: `014_shared_libraries.sql`.
+- latest repository migration: `015_library_contributions.sql`.
 
 Current execution branch:
 - `codex/project-memory-reconcile-20260817`;
 - accelerated-queue planning checkpoint before implementation: `e915825fd546a122ff8606e699a9fd678c020001`;
 - contains repository development only; no production mutation.
 
-Historical migrations 001–014 must not be modified or renumbered. New persistent work must use append-only versions after the actual development schema head.
+Historical migrations 001–015 must not be modified or renumbered. New persistent work must use append-only versions after the actual development schema head.
 
 ## Production State
 
@@ -33,7 +33,7 @@ Production is the accepted routine multi-user release `34a2eada158dcf08783dc9538
 Production database state:
 - schema v8 with exact append-only history 1–8;
 - only migrations 005–008 were added by PROD-04A;
-- repository migrations 009–013 remain undeployed.
+- repository migrations 009–015 remain undeployed.
 
 Accepted production behavior includes Owner/Member invitations and login, cross-account Drive isolation, password/session revocation, disable/re-enable, announcements, Favorites, recycle/restore, upload/download/Preview, and final integrity/resource checks.
 
@@ -77,7 +77,7 @@ RF-LIBRARY02
 STOP
 ```
 
-Current progress: `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01`, and `RF-LIBRARY01` are complete. Next is `RF-LIBRARY02`, followed by STOP.
+Current progress: `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01`, `RF-LIBRARY01`, and `RF-LIBRARY02` are complete. The authorized sequence has reached STOP.
 
 ### L1-UX04
 - clear localized feedback when a same-folder active/pending file name already exists;
@@ -124,6 +124,8 @@ Current progress: `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01`, and `RF-
 - unrelated Member Drive and private research state remain invisible;
 - Trusted Contributor expansion is deferred from this accelerated minimum slice unless required for base correctness.
 
+**Complete.** ADR-021 and append-only migration 015 implement explicit submitted/approved/rejected/withdrawn contributions, reviewer-only enumeration, scoped preview/download, and one-transaction terminal ownership promotion preserving stable identities, bytes/object keys, uploader provenance, and private overlays. State-aware ownership guards make stale cross-Library submissions inert/non-disclosing; database guards prevent terminal-state INSERT or approval outside the matching promotion intent and complete target-Library ownership chain. Responsive Member/reviewer UI includes selection/mutation race isolation. Final independent read-only review PASS; final repair-focused contribution/migration checks `10/10`, frontend `165/165`, backend/frontend typecheck/build, and `git diff --check` are green. No production or external system was contacted.
+
 ## Parked Work
 
 During this objective, do **not** consume:
@@ -164,4 +166,4 @@ This repository objective does **not** authorize:
 
 ## Next Action
 
-Create/push the green `RF-LIBRARY01` checkpoint, then execute `RF-LIBRARY02` with focused contribution/ownership/privacy verification. Continue only through that checkpoint and STOP before any production rollout.
+STOP. Await explicit Owner direction. Do not select parked Pre-OCR work and do not contact or mutate production.

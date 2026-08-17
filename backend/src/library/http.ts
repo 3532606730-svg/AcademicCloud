@@ -18,6 +18,8 @@ interface MembershipBody { accountId: string; role: LibraryRole; }
 interface RoleBody { role: LibraryRole; }
 interface HoldingsQuery { limit?: number; }
 interface DownloadQuery { disposition?: "attachment" | "inline"; }
+interface ContributionParams extends LibraryParams { contributionId: string; }
+interface ContributionBody { artifactId: string; }
 
 function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
   if (!account) throw new LibraryError("not_found");
@@ -235,6 +237,154 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
             requireActor(request.authAccount).id,
             request.params.libraryId,
             request.params.fileId,
+            request.query.disposition,
+          ),
+        };
+      } catch (error: unknown) {
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: LibraryParams; Body: ContributionBody }>(
+    "/api/libraries/:libraryId/contributions",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 8 * 1024,
+      schema: {
+        params: { type: "object", required: ["libraryId"], properties: { libraryId: idSchema } },
+        querystring: emptyQuerySchema,
+        body: { type: "object", additionalProperties: false, required: ["artifactId"], properties: { artifactId: idSchema } },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return reply.code(201).send({
+          contribution: service.submitContribution(requireActor(request.authAccount), request.params.libraryId, request.body.artifactId),
+        });
+      } catch (error: unknown) {
+        service.recordContributionAuditAttempt(requireActor(request.authAccount), "libraries.contribution_submit", error);
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.get<{ Params: LibraryParams; Querystring: HoldingsQuery }>(
+    "/api/libraries/:libraryId/contributions",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: { type: "object", required: ["libraryId"], properties: { libraryId: idSchema } },
+        querystring: { type: "object", additionalProperties: false, properties: { limit: { type: "integer", minimum: 1, maximum: 100 } } },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return { contributions: service.listContributions(requireActor(request.authAccount), request.params.libraryId, request.query.limit) };
+      } catch (error: unknown) {
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.get<{ Params: LibraryParams; Querystring: HoldingsQuery }>(
+    "/api/libraries/:libraryId/contributions/mine",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: { type: "object", required: ["libraryId"], properties: { libraryId: idSchema } },
+        querystring: { type: "object", additionalProperties: false, properties: { limit: { type: "integer", minimum: 1, maximum: 100 } } },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return { contributions: service.listMyContributions(requireActor(request.authAccount), request.params.libraryId, request.query.limit) };
+      } catch (error: unknown) {
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: ContributionParams }>(
+    "/api/libraries/:libraryId/contributions/:contributionId/approve",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireBodyless,
+      schema: {
+        params: { type: "object", required: ["libraryId", "contributionId"], properties: { libraryId: idSchema, contributionId: idSchema } },
+        querystring: emptyQuerySchema,
+      },
+    },
+    async (request, reply) => {
+      try {
+        return { contribution: service.reviewContribution(requireActor(request.authAccount), request.params.libraryId, request.params.contributionId, "approve") };
+      } catch (error: unknown) {
+        service.recordContributionAuditAttempt(requireActor(request.authAccount), "libraries.contribution_approve", error);
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: ContributionParams }>(
+    "/api/libraries/:libraryId/contributions/:contributionId/reject",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireBodyless,
+      schema: {
+        params: { type: "object", required: ["libraryId", "contributionId"], properties: { libraryId: idSchema, contributionId: idSchema } },
+        querystring: emptyQuerySchema,
+      },
+    },
+    async (request, reply) => {
+      try {
+        return { contribution: service.reviewContribution(requireActor(request.authAccount), request.params.libraryId, request.params.contributionId, "reject") };
+      } catch (error: unknown) {
+        service.recordContributionAuditAttempt(requireActor(request.authAccount), "libraries.contribution_reject", error);
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: ContributionParams }>(
+    "/api/libraries/:libraryId/contributions/:contributionId/withdraw",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireBodyless,
+      schema: {
+        params: { type: "object", required: ["libraryId", "contributionId"], properties: { libraryId: idSchema, contributionId: idSchema } },
+        querystring: emptyQuerySchema,
+      },
+    },
+    async (request, reply) => {
+      try {
+        return { contribution: service.withdrawContribution(requireActor(request.authAccount), request.params.libraryId, request.params.contributionId) };
+      } catch (error: unknown) {
+        service.recordContributionAuditAttempt(requireActor(request.authAccount), "libraries.contribution_withdraw", error);
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.get<{ Params: ContributionParams; Querystring: DownloadQuery }>(
+    "/api/libraries/:libraryId/contributions/:contributionId/download",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: { type: "object", required: ["libraryId", "contributionId"], properties: { libraryId: idSchema, contributionId: idSchema } },
+        querystring: {
+          type: "object", additionalProperties: false,
+          properties: { disposition: { enum: ["attachment", "inline"] } },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return {
+          download: await service.createContributionDownload(
+            requireActor(request.authAccount),
+            request.params.libraryId,
+            request.params.contributionId,
             request.query.disposition,
           ),
         };
