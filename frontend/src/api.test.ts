@@ -196,6 +196,51 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[5]?.[1]?.body).toBe(JSON.stringify({ state: "disabled" }));
   });
 
+  it("uses announcement read/admin contracts and bodyless publication actions", async () => {
+    const announcement = {
+      id: "announcement / one",
+      title: "Notice",
+      body: "Body",
+      severity: "info",
+      linkUrl: null,
+      isActive: false,
+      publishedAt: null,
+      expiresAt: null,
+      createdByAccountId: "owner-1",
+      createdAt: "2026-08-17T00:00:00.000Z",
+      updatedAt: "2026-08-17T00:00:00.000Z",
+    };
+    const input = { title: "Notice", body: "Body", severity: "info" as const, linkUrl: null, expiresAt: null };
+    const responses = [
+      new Response(JSON.stringify({ announcements: [announcement] }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ announcements: [announcement] }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ announcement }), { status: 201, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ announcement }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ announcement: { ...announcement, isActive: true } }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ announcement }), { status: 200, headers: { "content-type": "application/json" } }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+
+    await api.listAnnouncements();
+    await api.listAllAnnouncements();
+    await api.createAnnouncement(input);
+    await api.updateAnnouncement(announcement.id, input);
+    await api.publishAnnouncement(announcement.id);
+    await api.unpublishAnnouncement(announcement.id);
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/announcements");
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/announcements/admin");
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/announcements");
+    expect(fetcher.mock.calls[2]?.[1]?.body).toBe(JSON.stringify(input));
+    expect(fetcher.mock.calls[3]?.[0]).toBe("/api/announcements/announcement%20%2F%20one");
+    expect(fetcher.mock.calls[3]?.[1]?.method).toBe("PATCH");
+    expect(fetcher.mock.calls[4]?.[0]).toBe("/api/announcements/announcement%20%2F%20one/publish");
+    assertBodylessRequestInit(fetcher.mock.calls[4]?.[1], "POST");
+    expect(fetcher.mock.calls[5]?.[0]).toBe("/api/announcements/announcement%20%2F%20one/unpublish");
+    assertBodylessRequestInit(fetcher.mock.calls[5]?.[1], "POST");
+  });
+
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {
     const responses = [
       new Response(null, { status: 204 }), // setFileFavorite(true)

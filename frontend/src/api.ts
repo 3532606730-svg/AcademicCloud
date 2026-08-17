@@ -22,6 +22,28 @@ export interface Invitation {
   status: "available" | "expired" | "consumed" | "revoked";
 }
 
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  severity: "info" | "warning" | "critical";
+  linkUrl: string | null;
+  isActive: boolean;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  createdByAccountId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnnouncementInput {
+  title: string;
+  body: string;
+  severity: Announcement["severity"];
+  linkUrl: string | null;
+  expiresAt: string | null;
+}
+
 export type FolderState = "active" | "deleted";
 export type FileState = "pending_upload" | "active" | "deleted" | "purging" | "purged";
 
@@ -111,6 +133,12 @@ export interface AcademicCloudApi {
   revokeInvitation(invitationId: string): Promise<Invitation>;
   listAccounts(): Promise<ManagedAccount[]>;
   setAccountState(accountId: string, state: "active" | "disabled"): Promise<ManagedAccount>;
+  listAnnouncements(signal?: AbortSignal): Promise<Announcement[]>;
+  listAllAnnouncements(): Promise<Announcement[]>;
+  createAnnouncement(input: AnnouncementInput): Promise<Announcement>;
+  updateAnnouncement(announcementId: string, input: AnnouncementInput): Promise<Announcement>;
+  publishAnnouncement(announcementId: string): Promise<Announcement>;
+  unpublishAnnouncement(announcementId: string): Promise<Announcement>;
   listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse>;
   listPending(folderId: string | null, signal?: AbortSignal): Promise<FileEntry[]>;
   listRecycle(signal?: AbortSignal): Promise<RecycleResponse>;
@@ -246,6 +274,47 @@ export class ApiClient implements AcademicCloudApi {
       "PATCH",
       { state },
     )).account;
+  }
+
+  async listAnnouncements(signal?: AbortSignal): Promise<Announcement[]> {
+    return (await this.#request<{ announcements: Announcement[] }>(
+      "/api/announcements",
+      signal ? { signal } : {},
+    )).announcements;
+  }
+
+  async listAllAnnouncements(): Promise<Announcement[]> {
+    return (await this.#request<{ announcements: Announcement[] }>("/api/announcements/admin")).announcements;
+  }
+
+  async createAnnouncement(input: AnnouncementInput): Promise<Announcement> {
+    return (await this.#jsonBody<{ announcement: Announcement }>(
+      "/api/announcements",
+      "POST",
+      input,
+    )).announcement;
+  }
+
+  async updateAnnouncement(announcementId: string, input: AnnouncementInput): Promise<Announcement> {
+    return (await this.#jsonBody<{ announcement: Announcement }>(
+      `/api/announcements/${encodeURIComponent(announcementId)}`,
+      "PATCH",
+      input,
+    )).announcement;
+  }
+
+  publishAnnouncement(announcementId: string): Promise<Announcement> {
+    return this.#action<{ announcement: Announcement }>(
+      `/api/announcements/${encodeURIComponent(announcementId)}/publish`,
+      "POST",
+    ).then((response) => response.announcement);
+  }
+
+  unpublishAnnouncement(announcementId: string): Promise<Announcement> {
+    return this.#action<{ announcement: Announcement }>(
+      `/api/announcements/${encodeURIComponent(announcementId)}/unpublish`,
+      "POST",
+    ).then((response) => response.announcement);
   }
 
   async listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse> {

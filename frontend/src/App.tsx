@@ -14,6 +14,7 @@ import {
   type RecycleResponse,
 } from "./api.ts";
 import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
+import { AnnouncementAdministrationDialog, AnnouncementFeed } from "./announcements.tsx";
 import { describeError, formatCount, formatDate } from "./i18n.ts";
 import { LanguageProvider, LanguageSwitch, useLanguage, type Translator } from "./i18n-react.tsx";
 import {
@@ -400,6 +401,8 @@ function DriveView({
   const [favoriteFileIds, setFavoriteFileIds] = useState<ReadonlySet<string>>(new Set());
   const [favoriteFolderIds, setFavoriteFolderIds] = useState<ReadonlySet<string>>(new Set());
   const [accountAdministrationOpen, setAccountAdministrationOpen] = useState(false);
+  const [announcementAdministrationOpen, setAnnouncementAdministrationOpen] = useState(false);
+  const [announcementRevision, setAnnouncementRevision] = useState(0);
   const dragDepthRef = useRef(0);
   const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
@@ -923,7 +926,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen}>
+    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen || announcementAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -934,14 +937,20 @@ function DriveView({
             owner={account.role === "owner"}
             busy={busyId === "logout"}
             onManageAccounts={() => setAccountAdministrationOpen(true)}
+            onManageAnnouncements={() => setAnnouncementAdministrationOpen(true)}
             onSignOut={() => void signOut()}
           />
           <span className="avatar desktop-avatar" aria-hidden="true">{account.loginName.slice(0, 1).toUpperCase()}</span>
           <span className="account-name">{account.loginName}</span>
           {account.role === "owner" && (
-            <button className="button button--quiet account-admin-button" type="button" onClick={() => setAccountAdministrationOpen(true)}>
-              {t("account.manage")}
-            </button>
+            <>
+              <button className="button button--quiet account-admin-button" type="button" onClick={() => setAccountAdministrationOpen(true)}>
+                {t("account.manage")}
+              </button>
+              <button className="button button--quiet account-admin-button" type="button" onClick={() => setAnnouncementAdministrationOpen(true)}>
+                {t("announcements.manage")}
+              </button>
+            </>
           )}
           <button className="button button--quiet sign-out-button" type="button" onClick={() => void signOut()} disabled={busyId === "logout"}>
             {t("nav.signOut")}
@@ -1044,6 +1053,10 @@ function DriveView({
 
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
         {notice && <div className="alert alert--success" role="status">{notice}</div>}
+
+        {view === "library" && path.length === 0 && (
+          <AnnouncementFeed api={api} revision={announcementRevision} />
+        )}
 
         {activeJobs.length > 0 && (
           <section className="upload-queue" aria-labelledby="upload-queue-title">
@@ -1235,6 +1248,13 @@ function DriveView({
           api={api}
           ownerId={account.id}
           onClose={() => setAccountAdministrationOpen(false)}
+        />
+      )}
+      {announcementAdministrationOpen && (
+        <AnnouncementAdministrationDialog
+          api={api}
+          onClose={() => setAnnouncementAdministrationOpen(false)}
+          onChanged={() => setAnnouncementRevision((value) => value + 1)}
         />
       )}
       {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void downloadFile(preview.file)} />}
@@ -1770,12 +1790,14 @@ function AccountMenu({
   owner,
   busy,
   onManageAccounts,
+  onManageAnnouncements,
   onSignOut,
 }: {
   accountName: string;
   owner: boolean;
   busy: boolean;
   onManageAccounts: () => void;
+  onManageAnnouncements: () => void;
   onSignOut: () => void;
 }) {
   const { t } = useLanguage();
@@ -1871,17 +1893,30 @@ function AccountMenu({
           <div className="account-popover-menu" role="menu" aria-label={t("account.menuLabel")} onKeyDown={onMenuKeyDown}>
             <LanguageSwitch labelled menuitem />
             {owner && (
-              <button
-                className="account-popover-signout"
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  close(false);
-                  onManageAccounts();
-                }}
-              >
-                {t("account.manage")}
-              </button>
+              <>
+                <button
+                  className="account-popover-signout"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    close(false);
+                    onManageAccounts();
+                  }}
+                >
+                  {t("account.manage")}
+                </button>
+                <button
+                  className="account-popover-signout"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    close(false);
+                    onManageAnnouncements();
+                  }}
+                >
+                  {t("announcements.manage")}
+                </button>
+              </>
             )}
             <button
               className="account-popover-signout"

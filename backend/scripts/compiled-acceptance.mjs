@@ -64,12 +64,30 @@ try {
   if (loginResponse.status !== 200) throw new Error("compiled login failed");
   const cookie = loginResponse.headers.get("set-cookie")?.split(";", 1)[0];
   if (!cookie?.startsWith("__Host-ac_session=")) throw new Error("compiled session cookie missing");
+  const createdAnnouncement = await fetchJson(`http://127.0.0.1:${port}/api/announcements`, {
+    method: "POST",
+    headers: { cookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
+    body: JSON.stringify({
+      title: "Compiled announcement",
+      body: "Compiled runtime announcement persistence.",
+      severity: "info",
+      linkUrl: null,
+      expiresAt: null,
+    }),
+  });
+  await fetchJson(`http://127.0.0.1:${port}/api/announcements/${createdAnnouncement.announcement.id}/publish`, {
+    method: "POST",
+    headers: { cookie, origin: environment.APP_ORIGIN },
+  });
   await stopApplication(application);
   application = undefined;
 
   application = startApplication();
   await waitForJson(`http://127.0.0.1:${port}/api/health`);
   const session = await fetchJson(`http://127.0.0.1:${port}/api/auth/session`, {
+    headers: { cookie },
+  });
+  const announcements = await fetchJson(`http://127.0.0.1:${port}/api/announcements`, {
     headers: { cookie },
   });
   await stopApplication(application);
@@ -95,6 +113,9 @@ try {
   const restoredSession = await fetchJson(`http://127.0.0.1:${port}/api/auth/session`, {
     headers: { cookie },
   });
+  const restoredAnnouncements = await fetchJson(`http://127.0.0.1:${port}/api/announcements`, {
+    headers: { cookie },
+  });
   await stopApplication(application);
   application = undefined;
   const redeployMigration = runJson(join(distDirectory, "persistence", "sqlite", "migrate.js"));
@@ -107,23 +128,31 @@ try {
     health: health.status,
     readiness: readiness.status,
     sessionSurvivedRestart: session.account.loginName === "CompiledAcceptance",
+    announcementSurvivedRestart: announcements.announcements.some(
+      (announcement) => announcement.id === createdAnnouncement.announcement.id,
+    ),
     maintenanceDryRun: maintenance.mode === "dry_run",
     backupVerified: createdBackup.sha256 === verifiedBackup.sha256,
     isolatedRestoreVerified: verifiedRestore.sha256 === verifiedBackup.sha256,
     restoredReadiness: restoredReadiness.status,
     restoredSessionValid: restoredSession.account.loginName === "CompiledAcceptance",
+    restoredAnnouncementValid: restoredAnnouncements.announcements.some(
+      (announcement) => announcement.id === createdAnnouncement.announcement.id,
+    ),
     redeployMigrationCount: redeployMigration.appliedVersions.length,
   };
-  assert.equal(result.firstMigrationCount, 7);
+  assert.equal(result.firstMigrationCount, 8);
   assert.equal(result.provisionedLogin, "CompiledAcceptance");
   assert.equal(result.health, "ok");
   assert.equal(result.readiness, "ready");
   assert.equal(result.sessionSurvivedRestart, true);
+  assert.equal(result.announcementSurvivedRestart, true);
   assert.equal(result.maintenanceDryRun, true);
   assert.equal(result.backupVerified, true);
   assert.equal(result.isolatedRestoreVerified, true);
   assert.equal(result.restoredReadiness, "ready");
   assert.equal(result.restoredSessionValid, true);
+  assert.equal(result.restoredAnnouncementValid, true);
   assert.equal(result.redeployMigrationCount, 0);
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } finally {

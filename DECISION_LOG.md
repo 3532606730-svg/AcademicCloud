@@ -135,3 +135,11 @@ The immediate continuous objective is repository/local only: finish UX03 repair 
 **Full record:** `docs/decisions/ADR-011-accounts-and-invitation-security-model.md`
 
 Accounts use exactly `owner | member`; ambiguous multi-account legacy databases fail migration rather than guessing an Owner. Invitations are single-use digest-backed capabilities. Member registration hashes outside the write transaction and revalidates/consumes the capability atomically. Member state transitions advance a durable authentication revision, revoke all existing sessions on disable, and prevent a pre-disable login attempt from publishing a session after disable or reviving after enable. Global role does not grant cross-account drive access.
+
+## ADR-012 — Global Announcement Publication Model
+
+**Date:** 2026-08-17
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-012-global-announcement-publication-model.md`
+
+Global announcements reuse the exact Owner authority from Accounts I and give all active authenticated accounts the same effective read set without changing private-drive isolation. Schema 008 uses server-authoritative publication/expiry boundaries and deterministic ordering; no cleanup worker is required for visibility correctness. Content remains plain text, optional links are normalized credential-free HTTPS URLs, and explicit idempotent publish/unpublish actions cannot be supplied through general content inputs.

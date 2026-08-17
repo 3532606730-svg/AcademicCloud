@@ -27,7 +27,7 @@ test("migration 007 accepts an empty database without auto-creating an account",
   const database = openSqliteDatabase(join(directory, "empty.sqlite"));
   try {
     runMigrations(database, pinnedDirectory(context, 6));
-    const result = runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY);
+    const result = runMigrations(database, pinnedDirectory(context, 7));
     assert.deepEqual(result, { appliedVersions: [7], currentVersion: 7 });
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM accounts").get()!.count, 0);
     assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='invitations'").get());
@@ -71,7 +71,7 @@ test("migration 007 promotes exactly one legacy account to Owner without changin
       VALUES ('legacy-owner', 'file-1', ?)
     `).run(NOW);
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [7], currentVersion: 7 });
+    assert.deepEqual(runMigrations(database, pinnedDirectory(context, 7)), { appliedVersions: [7], currentVersion: 7 });
     assert.deepEqual(
       database.prepare("SELECT id, login_name, role, state FROM accounts").all(),
       [{ id: "legacy-owner", login_name: "Legacy", role: "owner", state: "active" }],
@@ -108,7 +108,7 @@ test("migration 007 fails atomically when legacy account count is greater than o
     insert.run("legacy-a", "LegacyA", NOW, NOW);
     insert.run("legacy-b", "LegacyB", NOW, NOW);
 
-    assert.throws(() => runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), /CHECK constraint failed/);
+    assert.throws(() => runMigrations(database, pinnedDirectory(context, 7)), /CHECK constraint failed/);
     assert.equal(database.prepare("SELECT 1 FROM schema_migrations WHERE version = 7").get(), undefined);
     assert.equal(database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='invitations'").get(), undefined);
     assert.equal(database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='account_role_migration_guard'").get(), undefined);
@@ -124,7 +124,7 @@ test("migration 007 constraints reject missing roles and malformed invitation st
   context.after(() => rmSync(directory, { recursive: true, force: true }));
   const database = openSqliteDatabase(join(directory, "constraints.sqlite"));
   try {
-    runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY);
+    runMigrations(database, pinnedDirectory(context, 7));
     assert.throws(() => database.prepare(`
       INSERT INTO accounts (id, login_name, password_hash, state, created_at, updated_at)
       VALUES ('missing-role', 'MissingRole', 'hash', 'active', ?, ?)

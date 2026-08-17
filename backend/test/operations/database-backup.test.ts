@@ -71,6 +71,19 @@ test("online backup creates a verified non-overwriting snapshot that survives re
       consumedByAccountId: null,
       revokedAt: null,
     });
+    source.repositories.announcements.create({
+      id: "announcement-1",
+      title: "Archive hours",
+      body: "The reading room closes at 18:00.",
+      severity: "info",
+      linkUrl: null,
+      isActive: true,
+      publishedAt: NOW,
+      expiresAt: null,
+      createdByAccountId: "owner-1",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
     const stored = source.repositories.files.create(file("file-1"));
     const created = await createDatabaseBackup(
       sourcePath,
@@ -78,8 +91,8 @@ test("online backup creates a verified non-overwriting snapshot that survives re
       backupPath,
     );
 
-    assert.equal(created.schemaVersion, 7);
-    assert.deepEqual(created.counts, { accounts: 1, folders: 0, files: 1, sessions: 0, invitations: 1 });
+    assert.equal(created.schemaVersion, 8);
+    assert.deepEqual(created.counts, { accounts: 1, folders: 0, files: 1, sessions: 0, invitations: 1, announcements: 1 });
     assert.match(created.sha256, /^[a-f0-9]{64}$/);
     assert.ok(created.bytes > 0);
     source.repositories.files.create(file("file-2"));
@@ -100,6 +113,7 @@ test("online backup creates a verified non-overwriting snapshot that survives re
       const recovered = restored.repositories.files.findById("owner-1", stored.id);
       assert.equal(recovered?.objectKey, stored.objectKey);
       assert.equal(restored.repositories.files.findById("owner-1", "file-2"), null);
+      assert.equal(restored.repositories.announcements.findById("announcement-1")?.title, "Archive hours");
       assert.equal(restored.isReady(), true);
     } finally {
       restored.close();

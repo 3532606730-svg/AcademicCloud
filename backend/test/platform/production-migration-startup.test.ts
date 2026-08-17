@@ -73,7 +73,7 @@ test("development startup initializes and migrates a disposable database", async
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 7);
+  assert.equal(readSchemaVersion(databasePath), 8);
 });
 
 test("production startup with a current schema succeeds without mutating it", async (context) => {
@@ -90,7 +90,7 @@ test("production startup with a current schema succeeds without mutating it", as
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 7);
+  assert.equal(readSchemaVersion(databasePath), 8);
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -124,8 +124,8 @@ test("the explicit migration runner still applies pending migrations normally", 
   const upgraded = openSqliteDatabase(databasePath);
   const result = runMigrations(upgraded, latest);
   upgraded.close();
-  assert.deepEqual(result.appliedVersions, [5, 6, 7]);
-  assert.equal(result.currentVersion, 7);
+  assert.deepEqual(result.appliedVersions, [5, 6, 7, 8]);
+  assert.equal(result.currentVersion, 8);
   assert.equal(hasFavoritesTable(databasePath), true);
   rmSync(directory, { recursive: true, force: true });
 });

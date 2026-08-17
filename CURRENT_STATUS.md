@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**Layer 1 Core Drive and Layer 2 Accounts I are green in repository development; the approved global homepage announcements MVP is next.**
+**Layer 1 Core Drive, Layer 2 Accounts I, and the global homepage announcements MVP are green in repository development; the conditional password-change gate is next.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains local/repository-only unless a separate Owner production gate is opened.
 
@@ -15,7 +15,7 @@ Current repository-development line:
 - branch: `codex/project-memory-reconcile-20260817`
 - recovery baseline before L1-FOLDER01: `4d706bb9ce821a6f70af24dbd097209e0aa62cd3`
 - accepted ancestor: `d9bdfebfab0cfb4fc0b5067ec1ba1ce91fe31c21`
-- latest repository migration: `007_accounts_and_invitations.sql`
+- latest repository migration: `008_global_announcements.sql`
 - dependency delta from the accepted UX03 baseline: zero
 
 This work remains on a separate `codex/` branch; no main merge or production rollout is authorized.
@@ -123,6 +123,22 @@ Verification on 2026-08-17:
 - `git diff --check` PASS, 57 changed-file credential-pattern scan clear, dependency delta 0;
 - independent read-only Reviewer: PASS after repairing and re-testing the disable/login/re-enable race, with no remaining blocker or medium finding.
 
+### L2-ANNOUNCE01
+
+**Repository-development complete; independent adversarial review PASS.** Migration 008 adds constrained global announcements without editing historical migrations. Current active Owners can create, edit, publish, and unpublish through server-side authority re-reads; every authenticated active account receives the same effective global set. The database/API enforce plain-text content, `info | warning | critical`, credential-free HTTPS links, server-owned identity/creator/timestamps, exact `published_at <= now` and `expires_at > now` boundaries, and deterministic ordering.
+
+The homepage feed has no hard-coded fallback. Owner administration uses the existing account controls; the four-item mobile navigation remains unchanged. Independent review found and closed one responsive regression: desktop Owner administration buttons are now hidden from the narrow topbar and remain available in the compact AccountMenu. ADR-012 records the publication/effective-window model; no worker, notification delivery, third global role, or new dependency was added.
+
+Verification on 2026-08-17:
+- backend `165/165` PASS;
+- frontend `131/131` PASS;
+- workspace typecheck and production build PASS;
+- acceptance tools `25/25` PASS;
+- compiled acceptance PASS with migration count 8, session and announcement persistence across restart, backup/isolated restore, restored session/announcement validity, and zero redeploy migrations;
+- migration v7→v8/fresh/replay/checksum/integrity and production-startup fail-closed tests PASS;
+- `git diff --check` PASS, targeted secret scan clear, dependency delta 0;
+- independent read-only Reviewer: PASS after the mobile-topbar repair, no remaining blocker or medium finding.
+
 ### L1-UX03
 
 Implementation exists at `dd42cab…`; zero-descriptive-copy and the dedicated responsive mobile architecture were verified in the independent GitHub review. The three required repair findings are now repaired and independently re-reviewed **PASS** (APPROVE-WITH-NITS, non-blocking NITs only):
@@ -160,7 +176,7 @@ After this planning reconciliation, the executable sequence is:
 2. ~~L1-PERF01 — evidence-first transfer/checksum performance baseline and only justified low-risk optimization~~ — **DONE** (measured; no optimization justified; evidence note committed);
 3. ~~L1-FOLDER01 — transactional recursive folder recycle/restore~~ — **DONE** (migration 006, full gates, independent review PASS);
 4. ~~L2-ACCOUNTS01 — Owner/Member foundation, invite-only registration, invite management, minimal Owner user administration, Member disable/enable, session revocation~~ — **DONE** (migration 007, full gates, independent security/race review PASS);
-5. L2-ANNOUNCE01 — Owner-administered, database/API-backed global homepage announcements for authenticated users;
+5. ~~L2-ANNOUNCE01 — Owner-administered, database/API-backed global homepage announcements for authenticated users~~ — **DONE** (migration 008, full gates, independent review PASS);
 6. L2-PASSWORD01 — conditional/optional after Accounts I and announcements are fully green;
 7. OPS01A — conditional repository/local operations preparation only;
 8. stop.
@@ -210,4 +226,4 @@ Current continuous objective does **not** authorize:
 
 ## Next Action
 
-Record the green `L2-ACCOUNTS01` checkpoint, then activate `L2-ANNOUNCE01` from its approved Ready card. Keep announcements repository/local only and reuse the accepted Owner authorization boundary without adding a third global role.
+Create the local L2-ANNOUNCE01 checkpoint, then recover `L2-PASSWORD01` from its Ready card and evaluate its existing conditional gate. Continue only if that gate remains satisfied; otherwise record the skip and evaluate OPS01A. Keep all work repository/local and do not contact production, push, or merge main.

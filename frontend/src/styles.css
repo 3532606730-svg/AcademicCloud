@@ -428,7 +428,7 @@ input:hover { border-color: #a7b2a8; }
 @keyframes drop-overlay-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* Dialogs */
-.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
+.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
 .move-modal { width: min(38rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto auto minmax(10rem, 1fr) auto; overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
 .move-modal[open] { display: grid; }
 .move-modal > header, .move-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; }
@@ -507,6 +507,41 @@ input:hover { border-color: #a7b2a8; }
 .invitation-link input { width: 100%; }
 .invitation-link .button { justify-self: end; }
 
+.announcement-feed { display: grid; gap: 0.65rem; margin-bottom: 1.2rem; }
+.announcement { display: grid; gap: 0.5rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-left: 0.3rem solid #547a69; border-radius: 0.55rem; background: var(--paper); }
+.announcement--warning { border-left-color: #a36b1f; background: #fffaf0; }
+.announcement--critical { border-left-color: #a43c35; background: #fff6f4; }
+.announcement-heading { display: flex; min-width: 0; align-items: baseline; gap: 0.65rem; }
+.announcement-heading h3 { margin: 0; overflow-wrap: anywhere; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-size: 1rem; }
+.announcement-severity { flex: 0 0 auto; color: var(--forest-deep); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.announcement--warning .announcement-severity { color: #815012; }
+.announcement--critical .announcement-severity { color: #8b2c27; }
+.announcement p { margin: 0; overflow-wrap: anywhere; color: var(--ink); line-height: 1.55; white-space: pre-wrap; }
+.announcement a { justify-self: start; color: var(--forest-deep); font-size: 0.86rem; font-weight: 650; }
+.announcement-feed-error { margin-bottom: 1.2rem; }
+
+.announcement-administration-modal { width: min(58rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
+.announcement-administration-modal[open] { display: grid; }
+.announcement-administration-modal > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--line); }
+.announcement-administration-modal h2, .announcement-administration-modal h3 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; }
+.announcement-administration-modal h2 { font-size: 1.15rem; }
+.announcement-administration-modal h3 { font-size: 1rem; }
+.announcement-administration-body { display: grid; grid-template-columns: minmax(17rem, 0.85fr) minmax(20rem, 1.15fr); gap: 1.2rem; overflow-y: auto; padding: 1.2rem; }
+.announcement-administration-body > .alert { grid-column: 1 / -1; }
+.announcement-administration-body > section { display: grid; align-content: start; gap: 0.75rem; }
+.announcement-form { display: grid; align-content: start; gap: 0.45rem; }
+.announcement-form-heading { display: flex; min-height: 2rem; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.announcement-form label { display: grid; gap: 0.3rem; color: var(--muted); font-size: 0.8rem; font-weight: 650; }
+.announcement-form textarea { resize: vertical; }
+.announcement-form-grid { display: grid; grid-template-columns: 1fr 1.35fr; gap: 0.7rem; }
+.announcement-administration-list { display: grid; border: 1px solid var(--line); border-radius: 0.6rem; overflow: hidden; }
+.announcement-administration-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.8rem; padding: 0.8rem 0.9rem; background: var(--paper); }
+.announcement-administration-row + .announcement-administration-row { border-top: 1px solid var(--line); }
+.announcement-administration-row > div:first-child { display: grid; min-width: 0; gap: 0.2rem; }
+.announcement-administration-row strong { overflow-wrap: anywhere; font-size: 0.9rem; }
+.announcement-administration-row span { color: var(--muted); font-size: 0.78rem; }
+.announcement-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
+
 @keyframes shimmer { to { background-position: -220% 0; } }
 
 @media (max-width: 64rem) {
@@ -536,7 +571,7 @@ input:hover { border-color: #a7b2a8; }
 
   /* Compact account access replaces the always-visible row. */
   .account-menu { gap: 0.35rem; }
-  .account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button { display: none; }
+  .account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-admin-button { display: none; }
   .account-trigger-root { display: block; }
 
   /* The desktop sidebar becomes the mobile bottom navigation: same four
@@ -728,6 +763,15 @@ input:hover { border-color: #a7b2a8; }
   .account-administration-body { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
   .account-administration-row { align-items: flex-start; }
   .account-administration-row .button, .account-administration-section-heading .button { min-height: 2.75rem; }
+
+  .announcement-heading { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
+  .announcement-administration-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  .announcement-administration-modal > header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }
+  .announcement-administration-body { grid-template-columns: 1fr; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
+  .announcement-form-grid { grid-template-columns: 1fr; }
+  .announcement-administration-row { grid-template-columns: 1fr; align-items: start; }
+  .announcement-row-actions { justify-content: flex-start; }
+  .announcement-row-actions .button, .announcement-form .button { min-height: 2.75rem; }
 
   /* Approximately 44px touch floor for the remaining compact controls:
      login submit, the account-menu sign out, and the bilingual switch. */

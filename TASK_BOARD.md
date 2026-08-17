@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**Repository-driven Accounts & Sharing I: Accounts foundation green; global announcements next.**
+**Repository-driven Accounts & Sharing I: Accounts foundation and global announcements green; conditional password gate next.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
@@ -16,7 +16,7 @@ The Agent may autonomously progress through the following sequence, one independ
 2. `L1-PERF01` — complete;
 3. `L1-FOLDER01` — complete;
 4. `L2-ACCOUNTS01` — complete;
-5. `L2-ANNOUNCE01` after Accounts I is fully green;
+5. `L2-ANNOUNCE01` — complete;
 6. `L2-PASSWORD01` only if its existing conditional gate remains satisfied;
 7. `OPS01A` only if its Ready-card preconditions are satisfied;
 8. STOP.
@@ -25,15 +25,11 @@ This objective is repository/local only. It does not authorize production contac
 
 ## Doing
 
-None while the green `L2-ACCOUNTS01` checkpoint is being recorded. The next approved activation is `L2-ANNOUNCE01`.
+None while the L2-ANNOUNCE01 local checkpoint is being synchronized.
 
 ## Ready
 
-### 1. L2-ANNOUNCE01 — Global Homepage Announcements
-
-**Task card:** `tasks/ready/L2-ANNOUNCE01.md`
-
-Approved after Accounts I: Owner administration authority creates/edits/publishes/unpublishes database/API-backed plain-text announcements; all authenticated active users read the currently effective set on the homepage. No new global role, notification delivery, receipts, acknowledgement workflow, notification center, or rich-text editor.
+None. Conditional tasks below are not active.
 
 ## Conditional Ready
 
@@ -48,6 +44,14 @@ Begin only after L2-ACCOUNTS01 and L2-ANNOUNCE01 are fully green and independent
 **Task card:** `tasks/ready/OPS01A.md`
 
 Begin only after Core Drive + Accounts I + ANNOUNCE01 are green and enough safe capacity remains for implementation, adversarial review, and final gates. Repository/local preparation only; no production activation.
+
+## Completed
+
+### L2-ANNOUNCE01 — Global Homepage Announcements
+
+**Task card:** `tasks/done/L2-ANNOUNCE01.md`
+
+**Status:** complete in repository development. Migration 008, Owner-authorized administration, identical authenticated effective reads, exact server-time filtering, safe plain-text/HTTPS-link boundaries, API-backed responsive homepage, backup/restore/runtime evidence, and independent adversarial review are green. Backend `165/165`, frontend `131/131`, compiled migration count 8; dependency delta 0. No production access, push, or main merge occurred.
 
 ## Separate Owner-Gated Production Track
 
@@ -115,6 +119,7 @@ Heavy compute must remain isolated from the core drive service.
 - L1-PERF01 — evidence gathered; no client optimization justified; independent review PASS
 - L1-FOLDER01 — migration 006 + recursive recycle/restore; backend 135/135, frontend 121/121, canonical gates and independent review PASS
 - L2-ACCOUNTS01 — migration 007 + exact `owner | member` roles, digest-only invitations, race-safe Member registration, Owner Member administration, atomic disable/session revocation, zero-copy frontend integration, cross-account isolation matrix, ADR-011, backend 156/156, frontend 125/125, canonical gates and independent review PASS
+- L2-ANNOUNCE01 — migration 008 + Owner-authorized global announcements, exact effective-window/order semantics, safe plain-text/HTTPS-link boundary, API-backed responsive homepage, backup/restore/runtime coverage, ADR-012, backend 165/165, frontend 131/131, canonical gates and independent review PASS
 
 Historical detail remains in Git, completed task cards, production runbooks, and existing task records rather than being duplicated here.
 

@@ -97,6 +97,11 @@ describe("mobile presentation stylesheet", () => {
     expect(ruleHas(block, ".language-switch button {", /min-height:\s*2\.75rem/)).toBe(true);
   });
 
+  it("keeps Owner administration actions in the compact account popover instead of the mobile topbar", () => {
+    const block = mobileBlock();
+    expect(ruleHas(block, ".account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-admin-button {", /display:\s*none/)).toBe(true);
+  });
+
   it("lays the preview Open/Download actions out side by side at the 44px floor", () => {
     const block = mobileBlock();
     expect(ruleHas(block, ".preview-open-button, .preview-download-button {", /flex:\s*1;\s*min-height:\s*2\.75rem/)).toBe(true);

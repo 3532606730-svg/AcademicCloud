@@ -58,6 +58,12 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     revokeInvitation: vi.fn(),
     listAccounts: vi.fn().mockResolvedValue([{ ...ACCOUNT, state: "active", createdAt: "2026-08-17T00:00:00.000Z" }]),
     setAccountState: vi.fn(),
+    listAnnouncements: vi.fn().mockResolvedValue([]),
+    listAllAnnouncements: vi.fn().mockResolvedValue([]),
+    createAnnouncement: vi.fn(),
+    updateAnnouncement: vi.fn(),
+    publishAnnouncement: vi.fn(),
+    unpublishAnnouncement: vi.fn(),
     listEntries: vi.fn().mockResolvedValue(EMPTY_ENTRIES),
     listPending: vi.fn().mockResolvedValue([]),
     listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [] }),
@@ -239,6 +245,127 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: "Manage accounts" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Account menu" }));
     expect(within(screen.getByRole("menu", { name: "Account" })).queryByRole("menuitem", { name: "Manage accounts" })).not.toBeInTheDocument();
+  });
+
+  it("renders only server-backed effective announcements as escaped plain text with semantic severity", async () => {
+    const announcement = {
+      id: "announcement-1",
+      title: "Archive hours",
+      body: "<img src=x onerror=alert(1)>",
+      severity: "critical" as const,
+      linkUrl: "https://example.edu/archive",
+      isActive: true,
+      publishedAt: "2026-08-17T10:00:00.000Z",
+      expiresAt: null,
+      createdByAccountId: ACCOUNT.id,
+      createdAt: "2026-08-17T09:00:00.000Z",
+      updatedAt: "2026-08-17T10:00:00.000Z",
+    };
+    const listAnnouncements = vi.fn().mockResolvedValue([announcement]);
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAnnouncements });
+    render(<App api={api} />);
+
+    expect(await screen.findByRole("article", { name: "Critical announcement: Archive hours" })).toBeInTheDocument();
+    expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeInTheDocument();
+    expect(document.querySelector(".announcement img")).toBeNull();
+    const link = screen.getByRole("link", { name: "Open link" });
+    expect(link).toHaveAttribute("href", announcement.linkUrl);
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(listAnnouncements).toHaveBeenCalledWith(expect.any(AbortSignal));
+  });
+
+  it("has no hard-coded announcement fallback when the authenticated API returns none", async () => {
+    const listAnnouncements = vi.fn().mockResolvedValue([]);
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAnnouncements });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await waitFor(() => expect(listAnnouncements).toHaveBeenCalledOnce());
+    expect(document.querySelector(".announcement-feed")).toBeNull();
+  });
+
+  it("lets the Owner create, edit, publish, and unpublish announcements without a fifth navigation item", async () => {
+    const user = userEvent.setup();
+    const base = {
+      id: "announcement-1",
+      title: "Archive hours",
+      body: "Closes at 18:00.",
+      severity: "warning" as const,
+      linkUrl: null,
+      isActive: false,
+      publishedAt: null,
+      expiresAt: null,
+      createdByAccountId: ACCOUNT.id,
+      createdAt: "2026-08-17T10:00:00.000Z",
+      updatedAt: "2026-08-17T10:00:00.000Z",
+    };
+    const createAnnouncement = vi.fn().mockResolvedValue(base);
+    const updateAnnouncement = vi.fn().mockImplementation(async (_id, input) => ({
+      ...base,
+      ...input,
+      title: "Archive schedule",
+      updatedAt: "2026-08-17T10:01:00.000Z",
+    }));
+    const publishAnnouncement = vi.fn().mockResolvedValue({
+      ...base,
+      title: "Archive schedule",
+      isActive: true,
+      publishedAt: "2026-08-17T10:02:00.000Z",
+      updatedAt: "2026-08-17T10:02:00.000Z",
+    });
+    const unpublishAnnouncement = vi.fn().mockResolvedValue({
+      ...base,
+      title: "Archive schedule",
+      isActive: false,
+      publishedAt: "2026-08-17T10:02:00.000Z",
+      updatedAt: "2026-08-17T10:03:00.000Z",
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listAllAnnouncements: vi.fn().mockResolvedValue([]),
+      createAnnouncement,
+      updateAnnouncement,
+      publishAnnouncement,
+      unpublishAnnouncement,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    expect(within(screen.getByRole("complementary", { name: "Primary navigation" })).getAllByRole("button")).toHaveLength(4);
+    await user.click(screen.getByRole("button", { name: "Manage announcements" }));
+    const dialog = await screen.findByRole("dialog", { name: "Manage announcements" });
+    await user.type(within(dialog).getByLabelText("Title"), "Archive hours");
+    await user.type(within(dialog).getByLabelText("Body"), "Closes at 18:00.");
+    await user.selectOptions(within(dialog).getByLabelText("Severity"), "warning");
+    await user.click(within(dialog).getByRole("button", { name: "Create announcement" }));
+    await waitFor(() => expect(createAnnouncement).toHaveBeenCalledWith({
+      title: "Archive hours",
+      body: "Closes at 18:00.",
+      severity: "warning",
+      linkUrl: null,
+      expiresAt: null,
+    }));
+
+    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    const title = within(dialog).getByLabelText("Title");
+    await user.clear(title);
+    await user.type(title, "Archive schedule");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(updateAnnouncement).toHaveBeenCalledWith("announcement-1", expect.objectContaining({ title: "Archive schedule" })));
+
+    await user.click(within(dialog).getByRole("button", { name: "Publish" }));
+    await waitFor(() => expect(publishAnnouncement).toHaveBeenCalledWith("announcement-1"));
+    await user.click(within(dialog).getByRole("button", { name: "Unpublish" }));
+    await waitFor(() => expect(unpublishAnnouncement).toHaveBeenCalledWith("announcement-1"));
+  });
+
+  it("does not expose announcement administration to Members", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue({ ...ACCOUNT, role: "member" as const }) });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    expect(screen.queryByRole("button", { name: "Manage announcements" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(within(screen.getByRole("menu", { name: "Account" })).queryByRole("menuitem", { name: "Manage announcements" })).not.toBeInTheDocument();
   });
 
   it("renders the root library without an eyebrow, without a redundant breadcrumb, with title and counts", async () => {

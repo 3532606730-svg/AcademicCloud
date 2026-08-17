@@ -23,6 +23,7 @@ export interface DatabaseBackupSummary {
     files: number;
     sessions: number;
     invitations: number;
+    announcements: number;
   };
 }
 
@@ -86,6 +87,7 @@ export async function verifyDatabaseBackup(
         files: countRows(database, "files"),
         sessions: countRows(database, "sessions"),
         invitations: countRows(database, "invitations"),
+        announcements: countRows(database, "announcements"),
       },
     };
   } finally {
@@ -109,7 +111,7 @@ function assertDatabaseHealthy(database: SqliteDatabase, migrationsDirectory: st
   return migration.currentVersion;
 }
 
-function countRows(database: SqliteDatabase, table: "accounts" | "folders" | "files" | "sessions" | "invitations"): number {
+function countRows(database: SqliteDatabase, table: "accounts" | "folders" | "files" | "sessions" | "invitations" | "announcements"): number {
   return database.prepare<[], { count: number }>(`SELECT count(*) AS count FROM ${table}`).get()!.count;
 }
 

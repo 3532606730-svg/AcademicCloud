@@ -4,9 +4,9 @@
 
 **AcademicCloud** is a long-term academic digital infrastructure project.
 
-**Current execution phase:** Core Drive repository closure and Accounts I are complete in repository development while the accepted UX01 production release remains live. The approved next product boundary is the global homepage announcements MVP. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
+**Current execution phase:** Core Drive repository closure, Accounts I, and Global Homepage Announcements are complete in repository development while the accepted UX01 production release remains live. The conditional Password Change gate is next. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
 
-**Approved continuous objective (repository/local only):** UX03, PERF01, FOLDER01, and Accounts I are complete; next execute the global homepage announcements MVP. PASSWORD01 is optional after Accounts I and announcements are green. OPS01A is a conditional cross-cutting operations-preparation task. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
+**Approved continuous objective (repository/local only):** UX03, PERF01, FOLDER01, Accounts I, and Global Homepage Announcements are complete. PASSWORD01 is optional only if its existing conditional gate remains satisfied; OPS01A is a later conditional cross-cutting operations-preparation task. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
 
 ## Engineering Workflow
 
@@ -55,7 +55,7 @@ Approved first Epic: **Accounts I**
 - Member disable/enable
 - revoke all sessions on disable
 
-Approved second Epic: **Global Homepage Announcements**
+Completed second Epic: **Global Homepage Announcements**
 - Owner-administered create/edit/publish/unpublish
 - authenticated global read on the homepage
 - database/API-backed plain-text announcements with severity and effective/expiry windows

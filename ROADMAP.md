@@ -58,13 +58,14 @@ Delivered:
 - revoke all Member sessions on disable
 - strict cross-account drive/Favorites isolation
 
-### Approved next Epic — L2-ANNOUNCE01
+### Completed Epic — L2-ANNOUNCE01
 - Owner administration authority creates, edits, publishes, and unpublishes global announcements
 - every authenticated active account reads currently effective announcements on the homepage
 - fields cover title, plain-text body, `info | warning | critical`, nullable link, active/published/expiry state, creator, and timestamps
 - expired announcements disappear by server-authoritative time filtering
 - no new `admin` role, email/push, read receipts, acknowledgement workflow, notification center, or rich-text editor
 - database/API-backed; never hard-coded frontend configuration
+- completed with migration 008, backup/restore/runtime coverage, and independent adversarial review PASS
 
 ### Conditional follow-up — L2-PASSWORD01
 - authenticated current-password verification

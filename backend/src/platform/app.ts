@@ -8,6 +8,8 @@ import Fastify, {
 
 import type { AccountAdministrationService } from "../accounts/account-administration-service.js";
 import { registerAccountsHttp } from "../accounts/http.js";
+import type { AnnouncementService } from "../announcements/announcement-service.js";
+import { registerAnnouncementsHttp } from "../announcements/http.js";
 import type { AuthService } from "../auth/auth-service.js";
 import { registerAuthHttp } from "../auth/http.js";
 import type { DriveService } from "../drive/drive-service.js";
@@ -99,6 +101,7 @@ export interface CreateAppOptions {
     loginRateLimitMax?: number;
   };
   accounts?: { service: AccountAdministrationService; registrationRateLimitMax?: number };
+  announcements?: { service: AnnouncementService };
   drive?: { service: DriveService };
   favorites?: { service: FavoriteService };
   readinessCheck?: () => boolean;
@@ -213,6 +216,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
         ? {}
         : { registrationRateLimitMax: options.accounts.registrationRateLimitMax }),
     });
+  }
+
+  if (options.announcements) {
+    if (!options.auth) throw new Error("announcement routes require authentication composition");
+    await registerAnnouncementsHttp(app, options.announcements.service);
   }
 
   if (options.favorites) {

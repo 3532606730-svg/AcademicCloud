@@ -53,7 +53,8 @@ Give the Owner a small database/API-backed way to publish time-bounded global an
 - `docs/decisions/ADR-007-layer-1-technical-architecture.md`
 - `docs/decisions/ADR-009-authentication-security-baseline.md`
 - `docs/decisions/ADR-010-product-roadmap-and-execution-model.md`
-- Accounts-specific ADR created by `L2-ACCOUNTS01`, if one exists.
+- `docs/decisions/ADR-011-accounts-and-invitation-security-model.md`
+- `docs/decisions/ADR-012-global-announcement-publication-model.md`
 
 ## Relevant Modules / Files
 - next database migration after `L2-ACCOUNTS01`
@@ -64,24 +65,28 @@ Give the Owner a small database/API-backed way to publish time-bounded global an
 - migration, authorization, time-boundary, injection, and integration tests
 
 ## Current State
-Approved Ready, not started. The Owner approved this task after `L2-ACCOUNTS01`; the current repository has no announcement schema, API, or homepage implementation.
+Complete in repository development after the green L2-ACCOUNTS01 checkpoint `817ace51268f949f09c89964e09d6050c1a231f0`. Migration 008, server-authoritative announcement administration/effective reads, the API-backed homepage feed, Owner management UI, backup/restore coverage, ADR-012, and the full verification matrix are implemented. Production remains on UX01 and was not contacted.
 
 ## Completed
 - MVP product contract and sequencing recorded durably on 2026-08-17.
-- Dependency on the future Accounts I Owner authorization boundary made explicit.
+- Accounts I dependency completed and checkpointed with independent review PASS.
+- Added additive migration 008 with database constraints for severity, creator attribution, publication state, server-time windows, and safe nullable HTTPS links without editing historical migrations.
+- Added the announcement domain, repository, SQLite adapter, service, authenticated read route, and Owner-only create/edit/publish/unpublish routes with authority fields and timestamps kept server-controlled.
+- Added API-only homepage rendering for every authenticated active account and Owner administration through the existing desktop/account-menu surfaces, preserving the four-item mobile navigation and plain-text/XSS boundary.
+- Added exact publish/expiry-boundary, deterministic-order, stale/disabled identity, unsafe-link/input, migration, backup, restart, isolated-restore, API, responsive, and no-fallback tests.
+- Added ADR-012 for the global publication and effective-window model; no new role, worker, notification system, or dependency was introduced.
+- Repaired the independent review finding that desktop Owner administration buttons remained visible in the narrow mobile topbar; both actions now live only in the compact AccountMenu at `<=48rem`, with a stylesheet contract test.
+- Completed canonical tests, typecheck, production build, compiled runtime acceptance, acceptance-tool tests, diff/dependency/secret checks, and independent read-only adversarial review.
+- Confirmed the task remained repository/local only with no production contact, content creation, deployment, push, or main merge.
 
 ## Remaining
-- wait until `L2-ACCOUNTS01` is fully green, independently reviewed, and checkpointed;
-- recover the final Accounts role/authorization model and actual next migration number;
-- design the minimal announcement schema/API/homepage integration;
-- implement the full acceptance matrix without expanding into notifications or rich text;
-- run adversarial review, canonical gates, state reconciliation, and a task-level checkpoint.
+None for L2-ANNOUNCE01. The local task checkpoint and conditional-next-task recovery remain workflow closing steps, not implementation scope.
 
 ## Blockers
-Do not begin implementation before `L2-ACCOUNTS01` is fully green and independently checkpointed. Stop for any need to introduce a new global role, unsafe rich content, production access, irreversible migration ambiguity, or an unapproved dependency/product boundary.
+None. No mandatory escalation boundary was crossed.
 
 ## Last Verification
-2026-08-17 Owner authorization: `L2-ANNOUNCE01` is an approved future task after Accounts I. Repository inspection confirmed Accounts I currently specifies exactly `owner | member`, so this card reuses Owner administration authority and does not silently add an `admin` role.
+2026-08-17 completion verification on branch `codex/project-memory-reconcile-20260817`: backend `165/165` PASS; frontend `131/131` PASS; workspace typecheck PASS; production build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with migration count 8, session and announcement persistence across restart, verified backup/isolated restore, restored session/announcement validity, and zero redeploy migrations. `git diff --check` PASS; dependency delta 0; changed-file high-confidence secret scan 0. Independent read-only adversarial Reviewer PASS after the mobile-topbar repair, with no remaining blocker or medium finding.
 
 ## Next Action
-After `L2-ACCOUNTS01` is green and checkpointed, move this card to `tasks/doing/`, recover the final account/authorization implementation, and begin with the migration and server-authoritative authorization/time invariants before frontend work.
+Create the local task checkpoint, then recover and evaluate the existing conditional gate for `L2-PASSWORD01`. Do not push, merge main, contact production, or begin later unauthorized boundaries.

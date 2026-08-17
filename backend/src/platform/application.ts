@@ -1,6 +1,7 @@
 import { AuthService } from "../auth/auth-service.js";
 import { Argon2idPasswordHasher } from "../auth/password-hasher.js";
 import { AccountAdministrationService } from "../accounts/account-administration-service.js";
+import { AnnouncementService } from "../announcements/announcement-service.js";
 import { DriveService } from "../drive/drive-service.js";
 import { FavoriteService } from "../favorites/favorite-service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
@@ -35,6 +36,7 @@ export async function createApplication(
       passwordHasher,
     });
     const accountAdministrationService = new AccountAdministrationService({ persistence, passwordHasher });
+    const announcementService = new AnnouncementService({ persistence });
     const driveService = new DriveService(persistence, storage);
     const favoriteService = new FavoriteService(persistence);
     const app = await createApp({
@@ -45,6 +47,7 @@ export async function createApplication(
         environment: config.environment,
       },
       accounts: { service: accountAdministrationService },
+      announcements: { service: announcementService },
       drive: { service: driveService },
       favorites: { service: favoriteService },
       readinessCheck: () => persistence.isReady(),
