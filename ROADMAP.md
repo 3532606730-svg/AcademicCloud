@@ -31,6 +31,28 @@ Mandatory principles across all future layers:
 - duplicate detection must not reveal inaccessible resources across account boundaries;
 - AI/derived-intelligence authority never exceeds the requesting user's effective authority.
 
+## Immediate Owner Priority Override — First-Use Sharing
+
+Real first-use feedback on 2026-08-17 changes execution order without changing the long-term architecture.
+
+The immediate repository-development sequence is now:
+
+```text
+L1-UX04 + L2-ACCOUNTARCHIVE01 + L2-ADMINPOLISH01
+        ↓
+RF-LIBRARY01 — minimum real Shared Library
+        ↓
+RF-LIBRARY02 — Member contribution review
+        ↓
+STOP before production rollout
+```
+
+`RF-META01` and every unrelated later Pre-OCR card remain parked during this accelerated slice. `RF-LIBRARY03`/`RF-LIBRARY04` also remain parked after the minimum sharing/review slice; catalog, Library Tags, provenance governance, and duplicate/version grouping are not silently pulled forward.
+
+This priority override exists because real sharing and contribution review are now required for actual use. It does **not** authorize a fake shared folder, browse-all Owner authority, Personal Research Overlay exposure, production deployment, or OCR/RAG work.
+
+Verification policy for this accelerated slice is proportionate: focused changed-component tests, one typecheck/build pass as applicable, and one focused independent review for the Shared Library + review boundary are sufficient when green. Repeated historical acceptance, artifact, backup/restore, benchmark, or unrelated audit campaigns are not required unless a concrete failure or material risk justifies them.
+
 ## Layer 0 — Project Setup
 
 **Status:** Complete
@@ -46,7 +68,7 @@ Delivered:
 
 **Goal:** reliable, secure, maintainable private file storage and file management.
 
-**Status:** Repository-development foundation and closure complete. Production rollout remains separately Owner-gated.
+**Status:** Repository-development foundation and closure complete. One bounded first-use UX polish checkpoint is now approved before Shared Library acceleration. Production rollout remains separately Owner-gated.
 
 Completed foundation:
 - L1-E01 Core Architecture;
@@ -65,6 +87,9 @@ Completed foundation:
 - PERF01 evidence-first transfer performance closure;
 - FOLDER01 transactional recursive recycle/restore with explicit recycle provenance.
 
+Immediate bounded polish:
+- **L1-UX04** — clear same-folder duplicate-name upload feedback while preserving the existing uniqueness rule; persistent desktop sidebar while long file lists scroll; no content-level deduplication or mobile redesign.
+
 ### Pre-OCR Core Research UX — Approved Program Scope
 
 The following daily-use capabilities are approved for decomposition under the Pre-OCR Research Foundation program. They remain separate, reviewable Epics rather than one bulk implementation:
@@ -79,26 +104,30 @@ The following daily-use capabilities are approved for decomposition under the Pr
 
 **Goal:** controlled multi-user access and lightweight governance without public registration.
 
-**Status:** Foundation complete in repository development.
+**Status:** Foundation complete in repository development; bounded first-use administration polish is approved and accelerated.
 
 Completed:
 - **L2-ACCOUNTS01** — global `owner | member`, deterministic migration, first-Owner bootstrap, digest-only invitations, race-safe invite redemption, Owner administration, Member disable/enable, session revocation, strict drive isolation;
 - **L2-ANNOUNCE01** — database/API-backed Owner-administered global homepage announcements with effective/expiry windows;
 - **L2-PASSWORD01** — self-only authenticated password change with concurrency-safe CAS and atomic revoke-all sessions.
 
+Immediate bounded polish:
+- **L2-ACCOUNTARCHIVE01** — add non-destructive Member archival after disable, keep identity/data/history/login reserved, hide archived accounts by default, and restore archived → disabled;
+- **L2-ADMINPOLISH01** — Owner-only announcement deletion plus collapsed invitation history while preserving consumed/revoked/expired records and digest-only invitation semantics.
+
 Later independent Layer 2 backlog:
 - **L2-SHARE01 — One-Time External Sharing** — bounded no-login capability, revoke/expiry, short signed download, no public bucket exposure;
 - optional additional session-management UX.
 
-Explicitly not implied by the Pre-OCR program:
+Explicitly not implied by this layer:
 - public signup/email/SMTP/OAuth;
 - arbitrary global role editing;
-- account deletion;
+- hard account deletion or username reuse;
 - unrelated external-sharing expansion.
 
 ## Layer 3 — Personal Scholarly Workspace & Scholarly Model
 
-**Status:** Owner-approved and independently decomposed into the bounded executable queue recorded in `docs/architecture/pre-ocr-execution-plan.md`.
+**Status:** Owner-approved and independently decomposed into the bounded executable queue recorded in `docs/architecture/pre-ocr-execution-plan.md`. The queue is temporarily parked except for the accelerated Library slice recorded above.
 
 This layer is what turns AcademicCloud from a general cloud drive into personal scholarly infrastructure.
 
@@ -122,13 +151,7 @@ Approved foundation:
 - **Scholarly Record** as the logical academic object separate from a physical file;
 - one record may attach multiple Artifacts and Artifact Versions without duplicating the logical record;
 - **Canonical Scholarly Metadata** appropriate to material type;
-- **Metadata Templates**, initially extensible across material classes such as:
-  - Book;
-  - Article;
-  - Manuscript;
-  - Inscription;
-  - Archival Document;
-  - later Map/Photograph/other types as justified;
+- **Metadata Templates**, initially extensible across material classes such as Book, Article, Manuscript, Inscription, and Archival Document;
 - **Provenance / acquisition records** such as source URL, acquisition date/method, original filename/checksum, source/repository information, and explicit notes where appropriate;
 - **Document Fingerprint / checksum identity** and safe duplicate detection;
 - **artifact/version relationships** such as edition, scan, translation, transcription, and derived-artifact lineage;
@@ -179,15 +202,16 @@ Private annotations, citation work, evidence organization, and Research Question
 
 ## Layer 4 — Shared Academic Library
 
-**Status:** Owner-approved and decomposed after the prerequisite private scholarly/resource model; Library execution remains sequenced after `RF-EXPORT01` in the Pre-OCR plan.
+**Status:** Owner-approved. The minimum Library foundation and contribution-review workflow are now intentionally accelerated ahead of `RF-META01`; later Library catalog/governance checkpoints remain in their original parked sequence.
 
 A Library is a real ownership/domain boundary, not a specially named `/shared` folder.
 
-Approved direction:
-- Library-owned resources;
-- membership and Library-scoped permissions;
-- Library-scoped contributor roles, including Trusted Contributor where appropriate;
-- contribution submission/review/approval/rejection;
+Accelerated immediate scope:
+- **RF-LIBRARY01** — explicit Library entity/ownership domain, minimal manager/member authority, membership, Shared Library navigation, and authorized holdings list/preview/download;
+- **RF-LIBRARY02** — explicit Member submit → reviewer approve/reject/withdraw workflow, with approval atomically promoting the resource to Library ownership while preserving stable IDs/object bytes/contributor provenance and keeping unrelated private data invisible.
+
+Still-later approved direction:
+- Library-scoped contributor roles such as Trusted Contributor where justified;
 - **Library Tags** distinct from Personal Tags;
 - shared academic catalog and canonical records;
 - canonical/original filename concepts;
@@ -205,11 +229,11 @@ User A Personal Research Overlay   (A only)
 User B Personal Research Overlay   (B only)
 ```
 
-Library access never implicitly exposes another member's reading progress, private tags, Collections, annotations, citation work, Evidence Bundles, Research Questions, or private notes.
+Library access or review authority never implicitly exposes another member's unrelated private Drive, reading progress, private tags, Collections, annotations, citation work, Evidence Bundles, Research Questions, or private notes. Reviewers may inspect only resources explicitly submitted into the contribution workflow.
 
 ## Layer 5 — Research Infrastructure & Pre-OCR Hardening
 
-**Status:** Owner-approved and decomposed as separate integrity, recovery, permission-matrix, and derived-contract checkpoints at the end of the Pre-OCR queue.
+**Status:** Owner-approved and decomposed as separate integrity, recovery, permission-matrix, and derived-contract checkpoints at the end of the Pre-OCR queue; currently parked.
 
 Approved foundations:
 - **Integrity Monitor** for metadata/object identity and other safe consistency signals without automatic destructive repair;
@@ -226,7 +250,7 @@ Pre-OCR completion means these models and boundaries are coherent, tested, and i
 
 ## Layer 6 — Intelligence
 
-**Status:** Future; NOT authorized by the current Pre-OCR continuous program.
+**Status:** Future; NOT authorized by the current program.
 
 Future sequence, each separately scoped:
 - OCR / text extraction;
@@ -272,45 +296,38 @@ OPS01A does not authorize service/timer/journald installation, production SSH, d
 
 ## Separate Production Track
 
-The accepted production site remains a separately gated operational track. Repository feature completion never implies rollout.
+Production is live on the accepted `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8 multi-user release. Repository feature completion never implies rollout.
 
-Outstanding production changes, deployment of post-UX01 code, permanent-delete decisions, autostart/reboot policy, certificate lifecycle, backup scheduling/off-host delivery, and other live mutations require explicit Owner approval and the applicable runbook.
+`PROD-03C2` permanent-delete confirmation and reboot/autostart policy remain separately Owner-gated. Any later rollout of the first-use polish or Shared Library checkpoints requires a new exact production candidate, migration review, and explicit Owner deployment window.
 
-## Approved Pre-OCR Continuous Objective
+## Approved Repository Objective
 
-The previous repository/local objective through OPS01A is complete.
+The previous repository/local objective through `RF-DOMAIN01` and the bounded `PROD-04A` production release are complete.
 
-The Owner has approved the **Pre-OCR Research Foundation** continuous program. Planning-only `RF-PLAN01` is complete and independently reviewed; `docs/architecture/pre-ocr-execution-plan.md` and `TASK_BOARD.md` now contain the dependency-safe 25-card queue.
-
-The Agent may autonomously consume those cards **only within the approved Pre-OCR boundaries above**, one green Epic at a time:
+The newly approved repository objective is the accelerated first-use queue only:
 
 ```text
-RF-PLAN01 — decomposition complete
+L1-UX04
+L2-ACCOUNTARCHIVE01
+L2-ADMINPOLISH01
         ↓
-Core Research UX foundations
+RF-LIBRARY01
         ↓
-Personal Research Overlay
+RF-LIBRARY02
         ↓
-Scholarly Records / Metadata / Provenance / Relationships
-        ↓
-Research Intake
-        ↓
-Annotation / Citation / Evidence / Research Questions
-        ↓
-Shared Academic Library
-        ↓
-Pre-OCR Integrity / Identity / Derived-artifact hardening
-        ↓
-STOP BEFORE OCR
+STOP
 ```
 
-Large workstreams must be split into smaller cards before implementation when needed. The queue, not elapsed time, controls execution.
+The three polish cards may be completed in the most efficient order, but each remains a bounded checkpoint. After the polish checkpoint(s), `RF-LIBRARY01` must precede `RF-LIBRARY02`. The Agent must not continue into `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, or any other parked task after `RF-LIBRARY02` without new Owner direction.
+
+Execution remains repository-driven: long runs consume the explicit queue rather than expanding the chat prompt. Verification should be proportionate to changed risk and should stop once relevant evidence is green and one focused review finds no material issue.
 
 Still separately Owner-gated:
 - production access/mutation/deployment;
 - main merge;
 - real credentials or paid infrastructure;
 - destructive/irreversible real-data operations;
+- `PROD-03C2` permanent-delete testing;
 - OCR execution;
 - embeddings/retrieval/RAG;
 - any product boundary not captured by this roadmap and the resulting approved queue.
