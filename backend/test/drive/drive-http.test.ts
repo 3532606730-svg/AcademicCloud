@@ -32,11 +32,12 @@ async function fixture(
 ) {
   const { persistence } = createTestPersistence(context);
 
-  for (const id of ["owner-1", "owner-2"]) {
+  for (const id of ["owner-1", "member-2"]) {
     persistence.repositories.accounts.create({
       id,
       loginName: id,
       passwordHash: "test:password",
+      role: id === "owner-1" ? "owner" : "member",
       state: "active",
       createdAt: NOW,
       updatedAt: NOW,
@@ -44,8 +45,7 @@ async function fixture(
   }
 
   const authService = new AuthService({
-    accounts: persistence.repositories.accounts,
-    sessions: persistence.repositories.sessions,
+    persistence,
     passwordHasher: hasher,
     now: () => NOW,
   });
@@ -75,7 +75,7 @@ async function fixture(
 test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hides storage internals", async (context) => {
   const { app, storage, login } = await fixture(context);
   const ownerCookie = await login("owner-1");
-  const otherCookie = await login("owner-2");
+  const otherCookie = await login("member-2");
 
   const anonymous = await app.inject({ method: "GET", url: "/api/drive/entries" });
   assert.equal(anonymous.statusCode, 401);
@@ -92,7 +92,7 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
     method: "POST",
     url: "/api/drive/folders",
     headers: { cookie: ownerCookie, origin: ORIGIN },
-    payload: { name: "Sources", ownerId: "owner-2" },
+    payload: { name: "Sources", ownerId: "member-2" },
   });
   assert.equal(rejectedOwner.statusCode, 400);
   assert.deepEqual(rejectedOwner.json(), { error: "invalid_request" });
@@ -269,10 +269,11 @@ test("every drive route enforces authentication and every unsafe route enforces 
   }
 });
 
-test("owner-scoped routes uniformly hide another account's resources", async (context) => {
+test("owner-scoped routes uniformly hide another account's resources from a Member", async (context) => {
   const { app, persistence, storage, driveService, login } = await fixture(context);
-  const otherCookie = await login("owner-2");
+  const otherCookie = await login("member-2");
   const activeFolder = driveService.createFolder("owner-1", "Active folder", null);
+  const nestedFolder = driveService.createFolder("owner-1", "Nested folder", activeFolder.id);
   const deletedFolder = driveService.createFolder("owner-1", "Deleted folder", null);
   driveService.deleteFolder("owner-1", deletedFolder.id);
   const pending = await driveService.createUpload("owner-1", {
@@ -283,9 +284,9 @@ test("owner-scoped routes uniformly hide another account's resources", async (co
     checksum: { algorithm: "md5", value: MD5 },
   });
 
-  async function activeFile(name: string) {
+  async function activeFile(name: string, folderId: string | null = null) {
     const upload = await driveService.createUpload("owner-1", {
-      folderId: null,
+      folderId,
       displayName: name,
       mediaType: "application/pdf",
       sizeBytes: 7,
@@ -304,18 +305,22 @@ test("owner-scoped routes uniformly hide another account's resources", async (co
   }
 
   const active = await activeFile("active.pdf");
+  const nested = await activeFile("nested.pdf", nestedFolder.id);
   const deleted = await activeFile("deleted.pdf");
   driveService.deleteFile("owner-1", deleted.id);
   const attempts: Array<{ method: TestMethod; url: string; payload?: object }> = [
     { method: "GET", url: `/api/drive/entries?folderId=${activeFolder.id}` },
     { method: "PATCH", url: `/api/drive/folders/${activeFolder.id}`, payload: { name: "Stolen" } },
+    { method: "PATCH", url: `/api/drive/folders/${nestedFolder.id}`, payload: { parentId: null } },
     { method: "DELETE", url: `/api/drive/folders/${activeFolder.id}` },
     { method: "POST", url: `/api/drive/folders/${deletedFolder.id}/restore` },
     { method: "GET", url: `/api/drive/uploads?folderId=${activeFolder.id}` },
     { method: "POST", url: `/api/drive/uploads/${pending.file.id}/authorization` },
     { method: "POST", url: `/api/drive/uploads/${pending.file.id}/complete` },
     { method: "GET", url: `/api/drive/files/${active.id}/download` },
+    { method: "GET", url: `/api/drive/files/${active.id}/download?disposition=inline` },
     { method: "PATCH", url: `/api/drive/files/${active.id}`, payload: { displayName: "Stolen.pdf" } },
+    { method: "PATCH", url: `/api/drive/files/${nested.id}`, payload: { folderId: null } },
     { method: "DELETE", url: `/api/drive/files/${active.id}` },
     { method: "POST", url: `/api/drive/files/${deleted.id}/restore` },
     { method: "DELETE", url: `/api/drive/files/${deleted.id}/permanent` },
@@ -341,9 +346,11 @@ test("owner-scoped routes uniformly hide another account's resources", async (co
   });
   assert.deepEqual(otherRecycle.json(), { folders: [], files: [] });
   assert.equal(persistence.repositories.folders.findById("owner-1", activeFolder.id)?.name, "Active folder");
+  assert.equal(persistence.repositories.folders.findById("owner-1", nestedFolder.id)?.parentId, activeFolder.id);
   assert.equal(persistence.repositories.folders.findById("owner-1", deletedFolder.id)?.state, "deleted");
   assert.equal(persistence.repositories.files.findById("owner-1", pending.file.id)?.state, "pending_upload");
   assert.equal(persistence.repositories.files.findById("owner-1", active.id)?.state, "active");
+  assert.equal(persistence.repositories.files.findById("owner-1", nested.id)?.folderId, nestedFolder.id);
   assert.equal(persistence.repositories.files.findById("owner-1", deleted.id)?.state, "deleted");
 });
 
@@ -352,7 +359,7 @@ test("drive authorization and destructive outcomes emit stable account-scoped au
   const stream = { write(chunk: string) { chunks.push(String(chunk)); } };
   const { app, driveService, login } = await fixture(context, { level: "info", stream });
   const ownerCookie = await login("owner-1");
-  const otherCookie = await login("owner-2");
+  const otherCookie = await login("member-2");
   const folder = driveService.createFolder("owner-1", "Disposable", null);
 
   await app.inject({
@@ -370,7 +377,7 @@ test("drive authorization and destructive outcomes emit stable account-scoped au
   assert.match(logs, /drive\.folder_soft_delete/);
   assert.match(logs, /drive\.owner_scope_check/);
   assert.match(logs, /owner-1/);
-  assert.match(logs, /owner-2/);
+  assert.match(logs, /member-2/);
   assert.doesNotMatch(logs, new RegExp(folder.id));
 });
 

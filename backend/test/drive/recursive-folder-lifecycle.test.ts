@@ -22,7 +22,7 @@ class ControlledStorage extends InMemoryStorageAdapter {
 }
 
 function account(id: string): NewAccount {
-  return { id, loginName: id, passwordHash: "test", state: "active", createdAt: NOW, updatedAt: NOW };
+  return { id, loginName: id, passwordHash: "test", role: "owner", state: "active", createdAt: NOW, updatedAt: NOW };
 }
 
 function fixture(context: TestContext) {

@@ -12,7 +12,7 @@ The repository and Git are the durable project memory. Chat is planning context 
 
 **Production:** the accepted UX01 generation remains live at `https://cloud.ajtlab.top`. Production is a separate Owner-gated track.
 
-**Development:** the latest UX03 implementation is on `codex/l1-ux03-mobile-zero-copy` at `dd42cab…`. Zero-descriptive-copy and the dedicated mobile architecture are real, but final independent review still requires three bounded repairs: mobile nav order, Preview Download, and remaining mobile touch-target hardening.
+**Development:** Core Drive repository closure and Accounts I are green on `codex/project-memory-reconcile-20260817`; Global Homepage Announcements is the next approved repository task. This newer repository generation is not deployed.
 
 **Accepted local/repository checkpoints:**
 - Layer 1 foundation L1-E01–L1-E08
@@ -20,9 +20,12 @@ The repository and Git are the durable project memory. Chat is planning context 
 - UX02 academic workspace implementation
 - BUGAUDIT01 independent review PASS
 - FAV01 independent review PASS
-- UX03 implementation complete, final independent review pending repair
+- UX03 repairs independently reviewed and checkpointed
+- PERF01 evidence checkpoint
+- FOLDER01 transactional recursive recycle/restore independently reviewed and checkpointed
+- Accounts I Owner/Member, invitation, administration, and isolation foundation independently reviewed and checkpointed
 
-**Approved next sequence:** finish UX03 → PERF01 → FOLDER01 → Accounts I. Password Change is optional after Accounts I; OPS01A is conditional. External Sharing, Shared Library, OCR, and RAG are not part of the current continuous objective.
+**Approved remaining sequence:** Global Homepage Announcements → Password Change only if its conditional gate remains satisfied → OPS01A only if its gate remains satisfied → stop. External Sharing, Shared Library, OCR, RAG, production rollout, and main merge are not part of the current continuous objective.
 
 Read:
 - `AGENTS.md` — mandatory repository policy
@@ -42,7 +45,7 @@ Read:
 
 Private academic cloud-drive foundation: auth, folders, direct upload/download, preview, move/rename, recycle/restore, Favorites, mobile/desktop UI, security/reliability, deployment/recovery foundation.
 
-Open closure tasks: UX03 repair, PERF01, FOLDER01.
+Core Drive repository closure tasks are complete. Production rollout remains a separate Owner gate.
 
 ### Layer 2 — Accounts & Sharing
 
@@ -55,7 +58,7 @@ Approved Accounts I scope:
 - Member disable/enable
 - revoke all sessions on disable
 
-Password Change is optional next. One-Time External Sharing is later Layer 2 work.
+Global Homepage Announcements follows Accounts I. Password Change is optional only after both are green. One-Time External Sharing is later Layer 2 work.
 
 ### Layer 3 — Shared Academic Library
 

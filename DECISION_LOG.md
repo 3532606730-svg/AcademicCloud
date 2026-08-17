@@ -126,4 +126,12 @@ AcademicCloud's post-Core-Drive product sequence is now explicit:
 
 Operations is a cross-cutting track rather than a product layer.
 
-The immediate continuous objective is repository/local only: finish UX03 repair → PERF01 → FOLDER01 → Accounts I, with Password Change optional and OPS01A conditional. Each Epic must remain independently verified/checkpointed. One-Time External Sharing, Shared Library, Research Infrastructure, Intelligence, and production rollout require later explicit gates.
+The immediate continuous objective is repository/local only: finish UX03 repair → PERF01 → FOLDER01 → Accounts I → Global Homepage Announcements, with Password Change optional afterward and OPS01A conditional. Each Epic must remain independently verified/checkpointed. One-Time External Sharing, Shared Library, Research Infrastructure, Intelligence, and production rollout require later explicit gates.
+
+## ADR-011 — Accounts, Invitations, and Member Access Administration
+
+**Date:** 2026-08-17
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-011-accounts-and-invitation-security-model.md`
+
+Accounts use exactly `owner | member`; ambiguous multi-account legacy databases fail migration rather than guessing an Owner. Invitations are single-use digest-backed capabilities. Member registration hashes outside the write transaction and revalidates/consumes the capability atomically. Member state transitions advance a durable authentication revision, revoke all existing sessions on disable, and prevent a pre-disable login attempt from publishing a session after disable or reviving after enable. Global role does not grant cross-account drive access.

@@ -197,6 +197,7 @@ Strengthen direct API tests proving Member cannot operate on another account's:
 - `docs/decisions/ADR-007-layer-1-technical-architecture.md`
 - `docs/decisions/ADR-009-authentication-security-baseline.md`
 - `docs/decisions/ADR-010-product-roadmap-and-execution-model.md`
+- `docs/decisions/ADR-011-accounts-and-invitation-security-model.md`
 
 A new Accounts-specific ADR may be added during implementation if the final schema/capability/session-admin model introduces durable details not already captured here.
 
@@ -210,27 +211,30 @@ A new Accounts-specific ADR may be added during implementation if the final sche
 - cross-account drive/Favorites tests
 
 ## Current State
-Ready, not started. Current schema has account id/login/password hash/state/timestamps but no role. Current account repository supports create/find only. Current authentication/session foundation is already accepted and should be extended, not replaced.
+Complete in repository development after the clean L1-FOLDER01 checkpoint `5c3bae9…`. Schema 007, the exact `owner | member` model, first-Owner bootstrap, digest-only invitation capabilities, invite-only Member registration, Owner administration, atomic Member disable/session revocation, and the restrained frontend are implemented and green. No production migration, deployment, account, invitation, or credential action occurred.
 
 ## Completed
-None.
+- Added migration 007 without editing historical migrations: empty databases remain empty, a singleton legacy account becomes Owner with identity/ownership preserved, and ambiguous multi-account legacy state rolls back atomically.
+- Added database-enforced exact roles and authentication revisions; ADR-011 records the account, invitation, registration, disable/session, and cross-account ownership model.
+- Converted provisioning into a zero-account-only first-Owner bootstrap with Argon2 outside the write transaction and a transaction-time account-count recheck.
+- Added reusable server-side Owner authorization, safe account DTOs, Owner invitation create/list/revoke, and Member disable/enable with atomic revoke-all-sessions.
+- Added 32-byte base64url invitation capabilities with SHA-256-digest-only persistence, one-time raw-token return, seven-day default expiry, non-enumerating invalid outcomes, and race-safe transaction-time redemption.
+- Closed the disable/login/re-enable race: login re-reads active state, password hash, and durable authentication revision inside the same SQLite transaction boundary that publishes the session; deterministic same-timestamp ABA coverage proves an old attempt cannot revive.
+- Added invitation-fragment registration and Owner account administration under the existing account menu; raw tokens remain component-memory-only and the mobile navigation remains exactly four items.
+- Strengthened true-Member cross-account tests across folders, files, Favorites, pending uploads, recycle groups, Preview, Download, rename, move, delete, restore, and permanent-file operations.
+- Updated backup/schema/compiled-acceptance coverage for invitations and migration count 7 while preserving production startup fail-closed behavior.
+- Ran the canonical gates: backend 156/156, frontend 125/125, typecheck, production build, acceptance tools 25/25, and compiled acceptance all PASS; dependency delta is zero.
+- Independent read-only adversarial review found one disable/login race blocker, verified its durable revision/transaction fix and deterministic test, and returned PASS with no remaining blocker or medium finding.
+- Final diff whitespace check and changed-file credential-pattern scan PASS; no recognizable credential was found in 57 changed files.
 
 ## Remaining
-- inspect actual post-FOLDER01 migration number and current auth/persistence conventions;
-- design role/invitation schema and Owner guard;
-- implement migration/bootstrap;
-- implement invitation service/API and race-safe redemption;
-- implement minimal zero-copy registration/admin UI;
-- implement disable/enable + revoke-all-sessions;
-- strengthen cross-account tests;
-- run adversarial security/race review and repair;
-- full gates/state reconciliation/checkpoint.
+None for L2-ACCOUNTS01.
 
 ## Blockers
-None known. Stop only for a genuine security/product-model contradiction, unavoidable new dependency, irreversible migration ambiguity, production/credential need, or another mandatory escalation boundary.
+None for the repository-development checkpoint. Production migration/deployment and live account or invitation creation remain separate Owner gates and were not attempted.
 
 ## Last Verification
-2026-08-17 planning reconciliation: Accounts I is explicitly approved as the first Layer 2 Epic after Core Drive closure. No Accounts I code/migration has been implemented on baseline `dd42cab…`.
+2026-08-17 final Writer verification: backend 156/156 PASS; frontend 125/125 PASS; workspace typecheck PASS; production build PASS; acceptance tools 25/25 PASS; compiled acceptance PASS with `firstMigrationCount: 7`, restart/session, maintenance dry-run, backup/isolated restore, restored session, and `redeployMigrationCount: 0`; `git diff --check` PASS; changed-file credential-pattern scan 57 files/0 hits; package and lockfile delta none. Independent read-only Reviewer PASS after verifying the disable/login/re-enable race repair and the complete migration, authorization, capability, isolation, UI, backup, startup, and compiled-runtime matrix.
 
 ## Next Action
-After L1-FOLDER01 is fully green and checkpointed, move this task to `tasks/doing/`, recover the current post-FOLDER schema/auth implementation, and begin with migration/security invariants before UI.
+L2-ACCOUNTS01 is complete. After this coherent green checkpoint is created, recover and activate the approved `L2-ANNOUNCE01` Ready task without crossing any production or main-merge gate.

@@ -41,14 +41,14 @@ describe("ApiClient", () => {
     const receiver = globalThis;
     const fetcher = vi.fn(function (this: typeof globalThis) {
       if (this !== receiver) throw new TypeError("Illegal invocation");
-      return Promise.resolve(new Response(JSON.stringify({ account: { id: "a", loginName: "Scholar" } }), {
+      return Promise.resolve(new Response(JSON.stringify({ account: { id: "a", loginName: "Scholar", role: "owner" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
       }));
     });
     globalThis.fetch = fetcher as typeof fetch;
     try {
-      await expect(new ApiClient().getSession()).resolves.toEqual({ id: "a", loginName: "Scholar" });
+      await expect(new ApiClient().getSession()).resolves.toEqual({ id: "a", loginName: "Scholar", role: "owner" });
     } finally {
       globalThis.fetch = original;
     }
@@ -103,7 +103,7 @@ describe("ApiClient", () => {
 
   it("sends body-bearing JSON requests with Content-Type and a serialized body", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ account: { id: "a", loginName: "Scholar" } }), {
+      new Response(JSON.stringify({ account: { id: "a", loginName: "Scholar", role: "owner" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
       }),
@@ -152,6 +152,48 @@ describe("ApiClient", () => {
     assertBodylessRequestInit(calls[3]?.init, "POST");
     expect(calls[4]?.path).toBe("/api/drive/files/file-1/restore");
     assertBodylessRequestInit(calls[4]?.init, "POST");
+  });
+
+  it("uses the invitation and account-administration contracts without leaking tokens into request paths", async () => {
+    const invitation = {
+      id: "invite / one",
+      createdByAccountId: "owner-1",
+      createdAt: "2026-08-17T00:00:00.000Z",
+      expiresAt: "2026-08-24T00:00:00.000Z",
+      consumedAt: null,
+      consumedByAccountId: null,
+      revokedAt: null,
+      status: "available",
+    };
+    const account = { id: "member / one", loginName: "Reader", role: "member", state: "active", createdAt: "2026-08-17T00:00:00.000Z" };
+    const responses = [
+      new Response(JSON.stringify({ account }), { status: 201, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ invitation, rawToken: "T".repeat(43) }), { status: 201, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ invitations: [invitation] }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ invitation: { ...invitation, status: "revoked" } }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ accounts: [account] }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ account: { ...account, state: "disabled" } }), { status: 200, headers: { "content-type": "application/json" } }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+
+    await api.registerMember("R".repeat(43), "Reader", "member-password-123");
+    await api.createInvitation();
+    await api.listInvitations();
+    await api.revokeInvitation("invite / one");
+    await api.listAccounts();
+    await api.setAccountState("member / one", "disabled");
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/auth/register");
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBe(JSON.stringify({ inviteToken: "R".repeat(43), loginName: "Reader", password: "member-password-123" }));
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/accounts/invitations");
+    assertBodylessRequestInit(fetcher.mock.calls[1]?.[1], "POST");
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/accounts/invitations");
+    expect(fetcher.mock.calls[3]?.[0]).toBe("/api/accounts/invitations/invite%20%2F%20one");
+    assertBodylessRequestInit(fetcher.mock.calls[3]?.[1], "DELETE");
+    expect(fetcher.mock.calls[4]?.[0]).toBe("/api/accounts");
+    expect(fetcher.mock.calls[5]?.[0]).toBe("/api/accounts/member%20%2F%20one/state");
+    expect(fetcher.mock.calls[5]?.[1]?.body).toBe(JSON.stringify({ state: "disabled" }));
   });
 
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {

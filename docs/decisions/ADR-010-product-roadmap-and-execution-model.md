@@ -107,6 +107,7 @@ finish L1-UX03 repair
 → L1-PERF01
 → L1-FOLDER01
 → L2-ACCOUNTS01
+→ L2-ANNOUNCE01
 → L2-PASSWORD01 (optional)
 → OPS01A (conditional)
 → STOP
@@ -119,6 +120,8 @@ Not authorized by this objective:
 - Shared Academic Library;
 - Research Infrastructure;
 - OCR/RAG/AI.
+
+The Owner added `L2-ANNOUNCE01` to this repository/local objective on 2026-08-17. It follows Accounts I because it reuses Owner authority; it does not introduce a new global role or authorize production rollout.
 
 ## Consequences
 

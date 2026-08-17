@@ -25,6 +25,7 @@ test("account provisioning stores a hash and never returns the password", async 
   assert.equal(result.loginName, "Scholar");
   assert.match(result.id, /^[0-9a-f-]{36}$/);
   assert.equal(stored?.passwordHash, "hashed:correct-horse-battery");
+  assert.equal(stored?.role, "owner");
   assert.equal(JSON.stringify(result).includes("correct-horse-battery"), false);
   await assert.rejects(
     provisionAccount(persistence, hasher, "SCHOLAR", "another-secure-password"),

@@ -1,5 +1,6 @@
 import { AuthService } from "../auth/auth-service.js";
 import { Argon2idPasswordHasher } from "../auth/password-hasher.js";
+import { AccountAdministrationService } from "../accounts/account-administration-service.js";
 import { DriveService } from "../drive/drive-service.js";
 import { FavoriteService } from "../favorites/favorite-service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
@@ -28,11 +29,12 @@ export async function createApplication(
       runMigrations(database, sqliteConfig.migrationsDirectory);
     }
     const persistence = new SqlitePersistence(database);
+    const passwordHasher = new Argon2idPasswordHasher();
     const authService = new AuthService({
-      accounts: persistence.repositories.accounts,
-      sessions: persistence.repositories.sessions,
-      passwordHasher: new Argon2idPasswordHasher(),
+      persistence,
+      passwordHasher,
     });
+    const accountAdministrationService = new AccountAdministrationService({ persistence, passwordHasher });
     const driveService = new DriveService(persistence, storage);
     const favoriteService = new FavoriteService(persistence);
     const app = await createApp({
@@ -42,6 +44,7 @@ export async function createApplication(
         appOrigin: config.appOrigin,
         environment: config.environment,
       },
+      accounts: { service: accountAdministrationService },
       drive: { service: driveService },
       favorites: { service: favoriteService },
       readinessCheck: () => persistence.isReady(),

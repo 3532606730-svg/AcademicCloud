@@ -45,7 +45,7 @@ Delivered:
 
 **Goal:** controlled multi-user private access without public registration.
 
-### Approved next Epic — L2-ACCOUNTS01
+### Completed Epic — L2-ACCOUNTS01
 - global `owner | member` roles
 - deterministic legacy role migration
 - first-Owner bootstrap
@@ -58,7 +58,7 @@ Delivered:
 - revoke all Member sessions on disable
 - strict cross-account drive/Favorites isolation
 
-### Approved Epic after Accounts — L2-ANNOUNCE01
+### Approved next Epic — L2-ANNOUNCE01
 - Owner administration authority creates, edits, publishes, and unpublishes global announcements
 - every authenticated active account reads currently effective announcements on the homepage
 - fields cover title, plain-text body, `info | warning | critical`, nullable link, active/published/expiry state, creator, and timestamps

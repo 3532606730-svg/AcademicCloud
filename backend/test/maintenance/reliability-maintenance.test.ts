@@ -41,6 +41,7 @@ function account(id: string): NewAccount {
     id,
     loginName: id,
     passwordHash: "test",
+    role: "owner",
     state: "active",
     createdAt: START,
     updatedAt: START,

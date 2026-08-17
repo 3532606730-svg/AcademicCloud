@@ -33,6 +33,7 @@ export class SqliteSessionRepository implements SessionRepository {
   readonly #insert;
   readonly #findByTokenDigest;
   readonly #revokeByTokenDigest;
+  readonly #revokeAllByAccountId;
   readonly #countExpired;
   readonly #pruneExpired;
 
@@ -50,6 +51,10 @@ export class SqliteSessionRepository implements SessionRepository {
       UPDATE sessions
       SET revoked_at = ?
       WHERE token_digest = ? AND revoked_at IS NULL
+    `);
+    this.#revokeAllByAccountId = database.prepare<[string, string]>(`
+      UPDATE sessions SET revoked_at = ?
+      WHERE account_id = ? AND revoked_at IS NULL
     `);
     this.#countExpired = database.prepare<[string, number], { count: number }>(`
       SELECT count(*) AS count FROM (
@@ -90,6 +95,10 @@ export class SqliteSessionRepository implements SessionRepository {
   revokeByTokenDigest(tokenDigest: string, revokedAt: Date): boolean {
     const result = this.#revokeByTokenDigest.run(toDatabaseTimestamp(revokedAt)!, tokenDigest);
     return result.changes > 0;
+  }
+
+  revokeAllByAccountId(accountId: string, revokedAt: Date): number {
+    return this.#revokeAllByAccountId.run(toDatabaseTimestamp(revokedAt)!, accountId).changes;
   }
 
   countExpired(before: Date, limit: number): number {

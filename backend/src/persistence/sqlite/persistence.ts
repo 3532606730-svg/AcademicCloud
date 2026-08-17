@@ -1,5 +1,6 @@
 import type { Persistence, RepositorySet } from "../contracts.js";
 import { SqliteAccountRepository } from "./account-repository.js";
+import { SqliteInvitationRepository } from "./invitation-repository.js";
 import type { SqliteDatabase } from "./database.js";
 import { openSqliteDatabase } from "./database.js";
 import { SqliteFavoriteRepository } from "./favorite-repository.js";
@@ -17,6 +18,7 @@ export class SqlitePersistence implements Persistence {
     this.repositories = {
       accounts: new SqliteAccountRepository(database),
       sessions: new SqliteSessionRepository(database),
+      invitations: new SqliteInvitationRepository(database),
       folders: new SqliteFolderRepository(database),
       files: new SqliteStoredFileRepository(database),
       recycle: new SqliteRecycleRepository(database),

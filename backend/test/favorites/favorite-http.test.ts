@@ -28,11 +28,12 @@ function cookieFrom(headers: OutgoingHttpHeaders): string {
 
 async function fixture(context: TestContext) {
   const { persistence } = createTestPersistence(context);
-  for (const id of ["owner-1", "owner-2"]) {
+  for (const id of ["owner-1", "member-2"]) {
     persistence.repositories.accounts.create({
       id,
       loginName: id,
       passwordHash: "test:password",
+      role: id === "owner-1" ? "owner" : "member",
       state: "active",
       createdAt: NOW,
       updatedAt: NOW,
@@ -40,8 +41,7 @@ async function fixture(context: TestContext) {
   }
 
   const authService = new AuthService({
-    accounts: persistence.repositories.accounts,
-    sessions: persistence.repositories.sessions,
+    persistence,
     passwordHasher: hasher,
     now: () => NOW,
   });
@@ -95,7 +95,7 @@ async function fixture(context: TestContext) {
 test("favorites API enforces authentication, origin, exact status codes, and idempotency", async (context) => {
   const { app, login, activeFile } = await fixture(context);
   const ownerCookie = await login("owner-1");
-  const otherCookie = await login("owner-2");
+  const otherCookie = await login("member-2");
   const { fileId, folderId } = await activeFile("owner-1", "paper.pdf");
 
   // Anonymous requests are rejected.
@@ -156,6 +156,13 @@ test("favorites API enforces authentication, origin, exact status codes, and ide
     headers: { cookie: otherCookie, origin: ORIGIN },
   });
   assert.equal(foreignDelete.statusCode, 404);
+
+  const foreignFolderPut = await app.inject({
+    method: "PUT",
+    url: `/api/favorites/folders/${folderId}`,
+    headers: { cookie: otherCookie, origin: ORIGIN },
+  });
+  assert.equal(foreignFolderPut.statusCode, 404);
 
   // DELETE is idempotent and removes only the owner's relation.
   const remove = await app.inject({

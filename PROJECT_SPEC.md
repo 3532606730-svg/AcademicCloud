@@ -320,8 +320,10 @@ Repository/local work only:
 2. PERF01 evidence-first performance baseline and safe low-risk optimization;
 3. FOLDER01 transactional recursive folder recycle/restore;
 4. Accounts I — roles, invite-only registration, invitation management, Owner user administration, disable/enable, session revocation;
-5. PASSWORD01 only if Accounts I is fully green and the task remains safe;
-6. OPS01A only if its board preconditions are met.
+5. ANNOUNCE01 — database/API-backed Owner-administered global homepage announcements for authenticated users;
+6. PASSWORD01 only if Accounts I and ANNOUNCE01 are fully green and the task remains safe;
+7. OPS01A only if its board preconditions are met;
+8. stop.
 
 Not authorized by this objective:
 - production deployment/migration/SSH/config mutation

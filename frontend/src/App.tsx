@@ -5,6 +5,8 @@ import {
   ApiError,
   type AcademicCloudApi,
   type Account,
+  type Invitation,
+  type ManagedAccount,
   type EntriesResponse,
   type FileEntry,
   type FolderEntry,
@@ -37,6 +39,13 @@ type AuthState =
   | { phase: "anonymous"; message?: unknown }
   | { phase: "authenticated"; account: Account };
 
+function takeInvitationTokenFromLocation(): string | null {
+  const match = /^#\/invite\/([A-Za-z0-9_-]{43})$/.exec(window.location.hash);
+  if (!match) return null;
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  return match[1]!;
+}
+
 export interface AppProps {
   api?: AcademicCloudApi;
   checksumFile?: typeof calculateFileMd5;
@@ -61,6 +70,7 @@ function AppContent({
   directUpload: typeof uploadDirectly;
 }) {
   const [auth, setAuth] = useState<AuthState>({ phase: "checking" });
+  const [invitationToken, setInvitationToken] = useState<string | null>(takeInvitationTokenFromLocation);
   const api = useMemo(
     () =>
       injectedApi ??
@@ -93,6 +103,16 @@ function AppContent({
   }
 
   if (auth.phase === "anonymous") {
+    if (invitationToken) {
+      return (
+        <RegistrationView
+          api={api}
+          inviteToken={invitationToken}
+          onCancel={() => setInvitationToken(null)}
+          onRegistered={() => setInvitationToken(null)}
+        />
+      );
+    }
     return (
       <LoginView
         api={api}
@@ -110,6 +130,65 @@ function AppContent({
       directUpload={directUpload}
       onSignedOut={(message) => setAuth({ phase: "anonymous", ...(message ? { message } : {}) })}
     />
+  );
+}
+
+function RegistrationView({
+  api,
+  inviteToken,
+  onCancel,
+  onRegistered,
+}: {
+  api: AcademicCloudApi;
+  inviteToken: string;
+  onCancel: () => void;
+  onRegistered: () => void;
+}) {
+  const { language, t } = useLanguage();
+  const [loginName, setLoginName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState<unknown>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    if (password !== confirmation) {
+      setError(new ApiError(400, "password_mismatch"));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.registerMember(inviteToken, loginName, password);
+      setPassword("");
+      setConfirmation("");
+      onRegistered();
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="login-shell">
+      <section className="login-card" aria-labelledby="registration-title">
+        <h1 className="brand" id="registration-title"><span>AC</span> {t("registration.title")}</h1>
+        {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+        <form onSubmit={(event) => void submit(event)}>
+          <label htmlFor="registration-name">{t("login.nameLabel")}</label>
+          <input id="registration-name" autoComplete="username" value={loginName} onChange={(event) => setLoginName(event.target.value)} required autoFocus />
+          <label htmlFor="registration-password">{t("login.passwordLabel")}</label>
+          <input id="registration-password" type="password" autoComplete="new-password" minLength={12} value={password} onChange={(event) => setPassword(event.target.value)} required />
+          <label htmlFor="registration-confirm">{t("registration.confirmPassword")}</label>
+          <input id="registration-confirm" type="password" autoComplete="new-password" minLength={12} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required />
+          <button className="button button--primary button--wide" type="submit" disabled={submitting}>{submitting ? t("registration.submitting") : t("registration.submit")}</button>
+          <button className="button button--quiet button--wide" type="button" onClick={onCancel}>{t("registration.cancel")}</button>
+        </form>
+        <div className="login-language"><LanguageSwitch labelled /></div>
+      </section>
+    </main>
   );
 }
 
@@ -320,6 +399,7 @@ function DriveView({
   const [favoritesError, setFavoritesError] = useState<unknown>(null);
   const [favoriteFileIds, setFavoriteFileIds] = useState<ReadonlySet<string>>(new Set());
   const [favoriteFolderIds, setFavoriteFolderIds] = useState<ReadonlySet<string>>(new Set());
+  const [accountAdministrationOpen, setAccountAdministrationOpen] = useState(false);
   const dragDepthRef = useRef(0);
   const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
@@ -843,7 +923,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || moveRequest !== null}>
+    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -851,11 +931,18 @@ function DriveView({
           <LanguageSwitch />
           <AccountMenu
             accountName={account.loginName}
+            owner={account.role === "owner"}
             busy={busyId === "logout"}
+            onManageAccounts={() => setAccountAdministrationOpen(true)}
             onSignOut={() => void signOut()}
           />
           <span className="avatar desktop-avatar" aria-hidden="true">{account.loginName.slice(0, 1).toUpperCase()}</span>
           <span className="account-name">{account.loginName}</span>
+          {account.role === "owner" && (
+            <button className="button button--quiet account-admin-button" type="button" onClick={() => setAccountAdministrationOpen(true)}>
+              {t("account.manage")}
+            </button>
+          )}
           <button className="button button--quiet sign-out-button" type="button" onClick={() => void signOut()} disabled={busyId === "logout"}>
             {t("nav.signOut")}
           </button>
@@ -1143,6 +1230,13 @@ function DriveView({
           returnFocus={newFolderTriggerRef.current}
         />
       )}
+      {accountAdministrationOpen && (
+        <AccountAdministrationDialog
+          api={api}
+          ownerId={account.id}
+          onClose={() => setAccountAdministrationOpen(false)}
+        />
+      )}
       {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void downloadFile(preview.file)} />}
       {moveRequest && (
         <MoveDialog
@@ -1176,6 +1270,157 @@ function uploadPhaseKey(phase: UploadPhase) {
     case "error": return "phase.error" as const;
     case "cancelled": return "phase.cancelled" as const;
   }
+}
+
+function invitationStatusKey(status: Invitation["status"]) {
+  switch (status) {
+    case "available": return "accounts.invitationAvailable" as const;
+    case "expired": return "accounts.invitationExpired" as const;
+    case "consumed": return "accounts.invitationConsumed" as const;
+    case "revoked": return "accounts.invitationRevoked" as const;
+  }
+}
+
+function AccountAdministrationDialog({
+  api,
+  ownerId,
+  onClose,
+}: {
+  api: AcademicCloudApi;
+  ownerId: string;
+  onClose: () => void;
+}) {
+  const { language, t } = useLanguage();
+  const [accounts, setAccounts] = useState<ManagedAccount[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [oneTimeLink, setOneTimeLink] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const dialogRef = useModalDialog(onClose, busyId !== null);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    Promise.all([api.listAccounts(), api.listInvitations()]).then(
+      ([nextAccounts, nextInvitations]) => {
+        if (!live) return;
+        setAccounts(nextAccounts);
+        setInvitations(nextInvitations);
+      },
+      (caught: unknown) => {
+        if (live) setError(caught);
+      },
+    ).finally(() => {
+      if (live) setLoading(false);
+    });
+    return () => {
+      live = false;
+    };
+  }, [api]);
+
+  async function createInvitation() {
+    setBusyId("create-invitation");
+    setError(null);
+    setOneTimeLink(null);
+    try {
+      const created = await api.createInvitation();
+      setOneTimeLink(`${window.location.origin}/#/invite/${created.rawToken}`);
+      setInvitations((current) => [created.invitation, ...current.filter((item) => item.id !== created.invitation.id)]);
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function revokeInvitation(invitationId: string) {
+    setBusyId(`invite-${invitationId}`);
+    setError(null);
+    try {
+      const updated = await api.revokeInvitation(invitationId);
+      setInvitations((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function setMemberState(account: ManagedAccount) {
+    setBusyId(`account-${account.id}`);
+    setError(null);
+    try {
+      const updated = await api.setAccountState(account.id, account.state === "active" ? "disabled" : "active");
+      setAccounts((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <dialog ref={dialogRef} className="account-administration-modal" aria-labelledby="account-administration-title">
+      <header>
+        <h2 id="account-administration-title">{t("accounts.title")}</h2>
+        <button className="button button--quiet" type="button" onClick={onClose} disabled={busyId !== null} aria-label={t("accounts.closeAria")}>{t("preview.close")}</button>
+      </header>
+      <div className="account-administration-body">
+        {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+        {loading ? <LoadingRows /> : (
+          <>
+            <section aria-labelledby="account-list-title">
+              <h3 id="account-list-title">{t("accounts.members")}</h3>
+              <div className="account-administration-list">
+                {accounts.map((account) => (
+                  <article className="account-administration-row" key={account.id}>
+                    <div>
+                      <strong>{account.loginName}</strong>
+                      <span>{account.role === "owner" ? t("accounts.owner") : t("accounts.member")} · {account.state === "active" ? t("accounts.active") : t("accounts.disabled")}</span>
+                    </div>
+                    {account.role === "member" && account.id !== ownerId && (
+                      <button className={account.state === "active" ? "button button--small button--danger" : "button button--small"} type="button" disabled={busyId !== null} onClick={() => void setMemberState(account)}>
+                        {account.state === "active" ? t("accounts.disable") : t("accounts.enable")}
+                      </button>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+            <section aria-labelledby="invitation-list-title">
+              <div className="account-administration-section-heading">
+                <h3 id="invitation-list-title">{t("accounts.invitations")}</h3>
+                <button className="button button--primary button--small" type="button" disabled={busyId !== null} onClick={() => void createInvitation()}>{t("accounts.createInvitation")}</button>
+              </div>
+              {oneTimeLink !== null && (
+                <div className="invitation-link" role="status">
+                  <label htmlFor="one-time-invitation-link">{t("accounts.oneTimeLink")}</label>
+                  <input id="one-time-invitation-link" readOnly value={oneTimeLink} onFocus={(event) => event.currentTarget.select()} />
+                  <button className="button button--quiet button--small" type="button" onClick={() => setOneTimeLink(null)}>{t("accounts.dismissLink")}</button>
+                </div>
+              )}
+              {invitations.length === 0 ? <p className="account-administration-empty">{t("accounts.noInvitations")}</p> : (
+                <div className="account-administration-list">
+                  {invitations.map((invitation) => (
+                    <article className="account-administration-row" key={invitation.id}>
+                      <div>
+                        <strong>{t(invitationStatusKey(invitation.status))}</strong>
+                        <span>{t("accounts.expires", { date: formatDate(invitation.expiresAt, language) })}</span>
+                      </div>
+                      {invitation.status === "available" && (
+                        <button className="button button--small button--danger" type="button" disabled={busyId !== null} onClick={() => void revokeInvitation(invitation.id)}>{t("accounts.revoke")}</button>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    </dialog>
+  );
 }
 
 function NewFolderDialog({
@@ -1522,11 +1767,15 @@ function fileKindLabel(file: FileEntry, t: Translator): string {
 // navigation, focus moves in on open) mirroring RowMenu semantics.
 function AccountMenu({
   accountName,
+  owner,
   busy,
+  onManageAccounts,
   onSignOut,
 }: {
   accountName: string;
+  owner: boolean;
   busy: boolean;
+  onManageAccounts: () => void;
   onSignOut: () => void;
 }) {
   const { t } = useLanguage();
@@ -1621,6 +1870,19 @@ function AccountMenu({
           <p className="account-popover-name">{accountName}</p>
           <div className="account-popover-menu" role="menu" aria-label={t("account.menuLabel")} onKeyDown={onMenuKeyDown}>
             <LanguageSwitch labelled menuitem />
+            {owner && (
+              <button
+                className="account-popover-signout"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  close(false);
+                  onManageAccounts();
+                }}
+              >
+                {t("account.manage")}
+              </button>
+            )}
             <button
               className="account-popover-signout"
               type="button"

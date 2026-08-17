@@ -240,6 +240,7 @@ async function fixture(context: TestContext) {
     id: "owner-1",
     loginName: "Scholar",
     passwordHash: "test:password",
+    role: "owner",
     state: "active",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -255,8 +256,7 @@ async function fixture(context: TestContext) {
     logger: false,
     auth: {
       service: new AuthService({
-        accounts: persistence.repositories.accounts,
-        sessions: persistence.repositories.sessions,
+        persistence,
         passwordHasher: hasher,
       }),
       appOrigin: ORIGIN,

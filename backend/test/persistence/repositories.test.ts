@@ -13,6 +13,7 @@ function account(id: string, loginName = id): NewAccount {
     id,
     loginName,
     passwordHash: "$future-auth-task-hash$",
+    role: "owner",
     state: "active",
     createdAt: NOW,
     updatedAt: NOW,

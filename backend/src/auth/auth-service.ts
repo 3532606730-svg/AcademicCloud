@@ -1,9 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import type { Account } from "./account.js";
-import type { AccountRepository } from "./account-repository.js";
 import type { PasswordHasher } from "./password-hasher.js";
-import type { SessionRepository } from "./session-repository.js";
+import type { Persistence } from "../persistence/contracts.js";
 
 const SESSION_SECRET_BYTES = 32;
 export const SESSION_DURATION_MILLISECONDS = 7 * 24 * 60 * 60 * 1_000;
@@ -22,6 +21,7 @@ export class InvalidCredentialsError extends Error {
 export interface AuthenticatedAccount {
   id: string;
   loginName: string;
+  role: Account["role"];
 }
 
 export interface LoginResult {
@@ -31,8 +31,7 @@ export interface LoginResult {
 }
 
 export interface AuthServiceOptions {
-  accounts: AccountRepository;
-  sessions: SessionRepository;
+  persistence: Persistence;
   passwordHasher: PasswordHasher;
   now?: () => Date;
   createSessionSecret?: () => string;
@@ -43,19 +42,17 @@ export function digestSessionSecret(secret: string): string {
 }
 
 function toAuthenticatedAccount(account: Account): AuthenticatedAccount {
-  return { id: account.id, loginName: account.loginName };
+  return { id: account.id, loginName: account.loginName, role: account.role };
 }
 
 export class AuthService {
-  readonly #accounts: AccountRepository;
-  readonly #sessions: SessionRepository;
+  readonly #persistence: Persistence;
   readonly #passwordHasher: PasswordHasher;
   readonly #now: () => Date;
   readonly #createSessionSecret: () => string;
 
   constructor(options: AuthServiceOptions) {
-    this.#accounts = options.accounts;
-    this.#sessions = options.sessions;
+    this.#persistence = options.persistence;
     this.#passwordHasher = options.passwordHasher;
     this.#now = options.now ?? (() => new Date());
     this.#createSessionSecret =
@@ -63,7 +60,7 @@ export class AuthService {
   }
 
   async login(loginName: string, password: string): Promise<LoginResult> {
-    const account = this.#accounts.findByLoginName(loginName);
+    const account = this.#persistence.repositories.accounts.findByLoginName(loginName);
     const passwordMatches = await this.#passwordHasher.verify(
       account?.passwordHash ?? UNKNOWN_ACCOUNT_PASSWORD_HASH,
       password,
@@ -77,34 +74,46 @@ export class AuthService {
     const expiresAt = new Date(now.getTime() + SESSION_DURATION_MILLISECONDS);
     const sessionSecret = this.#createSessionSecret();
 
-    this.#sessions.create({
-      tokenDigest: digestSessionSecret(sessionSecret),
-      accountId: account.id,
-      createdAt: now,
-      expiresAt,
-      revokedAt: null,
+    const authenticatedAccount = this.#persistence.runInTransaction((repositories) => {
+      const current = repositories.accounts.findById(account.id);
+      if (
+        !current ||
+        current.state !== "active" ||
+        current.passwordHash !== account.passwordHash ||
+        current.authRevision !== account.authRevision
+      ) {
+        throw new InvalidCredentialsError();
+      }
+      repositories.sessions.create({
+        tokenDigest: digestSessionSecret(sessionSecret),
+        accountId: current.id,
+        createdAt: now,
+        expiresAt,
+        revokedAt: null,
+      });
+      return toAuthenticatedAccount(current);
     });
 
     return {
-      account: toAuthenticatedAccount(account),
+      account: authenticatedAccount,
       sessionSecret,
       expiresAt,
     };
   }
 
   resolveSession(sessionSecret: string): AuthenticatedAccount | null {
-    const session = this.#sessions.findByTokenDigest(digestSessionSecret(sessionSecret));
+    const session = this.#persistence.repositories.sessions.findByTokenDigest(digestSessionSecret(sessionSecret));
     const now = this.#now();
 
     if (!session || session.revokedAt || session.expiresAt.getTime() <= now.getTime()) {
       return null;
     }
 
-    const account = this.#accounts.findById(session.accountId);
+    const account = this.#persistence.repositories.accounts.findById(session.accountId);
     return account?.state === "active" ? toAuthenticatedAccount(account) : null;
   }
 
   logout(sessionSecret: string): void {
-    this.#sessions.revokeByTokenDigest(digestSessionSecret(sessionSecret), this.#now());
+    this.#persistence.repositories.sessions.revokeByTokenDigest(digestSessionSecret(sessionSecret), this.#now());
   }
 }

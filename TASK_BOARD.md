@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**Repository-driven Core Drive closure → Accounts & Sharing I transition.**
+**Repository-driven Accounts & Sharing I: Accounts foundation green; global announcements next.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
@@ -15,7 +15,7 @@ The Agent may autonomously progress through the following sequence, one independ
 1. `L1-UX03` review repairs — complete;
 2. `L1-PERF01` — complete;
 3. `L1-FOLDER01` — complete;
-4. `L2-ACCOUNTS01`;
+4. `L2-ACCOUNTS01` — complete;
 5. `L2-ANNOUNCE01` after Accounts I is fully green;
 6. `L2-PASSWORD01` only if its existing conditional gate remains satisfied;
 7. `OPS01A` only if its Ready-card preconditions are satisfied;
@@ -25,17 +25,11 @@ This objective is repository/local only. It does not authorize production contac
 
 ## Doing
 
-None at the L1-FOLDER01 completion checkpoint. `L2-ACCOUNTS01` is the next task to activate.
+None while the green `L2-ACCOUNTS01` checkpoint is being recorded. The next approved activation is `L2-ANNOUNCE01`.
 
 ## Ready
 
-### 1. L2-ACCOUNTS01 — Account Foundation, Invite Registration & User Administration
-
-**Task card:** `tasks/ready/L2-ACCOUNTS01.md`
-
-Approved scope: `owner | member`, deterministic migration, first-Owner bootstrap, digest-only invitations, race-safe invite registration, Owner invitation/user administration, Member disable/enable, revoke all Member sessions, strict cross-account isolation.
-
-### 2. L2-ANNOUNCE01 — Global Homepage Announcements
+### 1. L2-ANNOUNCE01 — Global Homepage Announcements
 
 **Task card:** `tasks/ready/L2-ANNOUNCE01.md`
 
@@ -120,6 +114,7 @@ Heavy compute must remain isolated from the core drive service.
 - L1-UX03 implementation at `dd42cab…` + review repairs — independent re-review APPROVE-WITH-NITS; `OWNER_VISUAL_GATE=PENDING`
 - L1-PERF01 — evidence gathered; no client optimization justified; independent review PASS
 - L1-FOLDER01 — migration 006 + recursive recycle/restore; backend 135/135, frontend 121/121, canonical gates and independent review PASS
+- L2-ACCOUNTS01 — migration 007 + exact `owner | member` roles, digest-only invitations, race-safe Member registration, Owner Member administration, atomic disable/session revocation, zero-copy frontend integration, cross-account isolation matrix, ADR-011, backend 156/156, frontend 125/125, canonical gates and independent review PASS
 
 Historical detail remains in Git, completed task cards, production runbooks, and existing task records rather than being duplicated here.
 

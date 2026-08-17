@@ -20,6 +20,7 @@ function account(id: string): NewAccount {
     id,
     loginName: id,
     passwordHash: "test-hash",
+    role: "owner",
     state: "active",
     createdAt: NOW,
     updatedAt: NOW,
@@ -60,6 +61,16 @@ test("online backup creates a verified non-overwriting snapshot that survives re
 
   try {
     source.repositories.accounts.create(account("owner-1"));
+    source.repositories.invitations.create({
+      id: "invite-1",
+      tokenDigest: "a".repeat(64),
+      createdByAccountId: "owner-1",
+      createdAt: NOW,
+      expiresAt: new Date(NOW.getTime() + 86_400_000),
+      consumedAt: null,
+      consumedByAccountId: null,
+      revokedAt: null,
+    });
     const stored = source.repositories.files.create(file("file-1"));
     const created = await createDatabaseBackup(
       sourcePath,
@@ -67,8 +78,8 @@ test("online backup creates a verified non-overwriting snapshot that survives re
       backupPath,
     );
 
-    assert.equal(created.schemaVersion, 6);
-    assert.deepEqual(created.counts, { accounts: 1, folders: 0, files: 1, sessions: 0 });
+    assert.equal(created.schemaVersion, 7);
+    assert.deepEqual(created.counts, { accounts: 1, folders: 0, files: 1, sessions: 0, invitations: 1 });
     assert.match(created.sha256, /^[a-f0-9]{64}$/);
     assert.ok(created.bytes > 0);
     source.repositories.files.create(file("file-2"));

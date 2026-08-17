@@ -26,6 +26,7 @@ function fixture(context: TestContext) {
     id: "owner-1",
     loginName: "owner-1",
     passwordHash: "test",
+    role: "owner",
     state: "active",
     createdAt: NOW,
     updatedAt: NOW,

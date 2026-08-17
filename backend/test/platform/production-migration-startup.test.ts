@@ -11,7 +11,7 @@ import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adap
 import { INITIAL_MIGRATIONS_DIRECTORY } from "../persistence/helpers.js";
 
 // A pinned v4-only directory plus the REAL repository migrations directory
-// (which includes migrations 005 and 006): deterministic pending-migration scenarios
+// (which includes migrations 005 through 007): deterministic pending-migration scenarios
 // that stay valid as later migrations land in the repo.
 function migrationFixtures(context: TestContext) {
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-migstart-"));
@@ -23,7 +23,7 @@ function migrationFixtures(context: TestContext) {
   }
 
   context.after(() => rmSync(directory, { recursive: true, force: true }));
-  return { v4, v5: INITIAL_MIGRATIONS_DIRECTORY };
+  return { v4, latest: INITIAL_MIGRATIONS_DIRECTORY };
 }
 
 function productionConfig() {
@@ -60,11 +60,11 @@ function hasFavoritesTable(databasePath: string): boolean {
 }
 
 test("development startup initializes and migrates a disposable database", async (context) => {
-  const { v5 } = migrationFixtures(context);
+  const { latest } = migrationFixtures(context);
   const databasePath = join(mkdtempSync(join(tmpdir(), "academiccloud-devstart-")), "dev.sqlite");
   const app = await createApplication(
     { ...productionConfig(), environment: "test", appOrigin: "http://127.0.0.1:5173" },
-    { databasePath, migrationsDirectory: v5 },
+    { databasePath, migrationsDirectory: latest },
     new InMemoryStorageAdapter(),
   );
   try {
@@ -73,29 +73,29 @@ test("development startup initializes and migrates a disposable database", async
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 6);
+  assert.equal(readSchemaVersion(databasePath), 7);
 });
 
 test("production startup with a current schema succeeds without mutating it", async (context) => {
-  const { v5 } = migrationFixtures(context);
+  const { latest } = migrationFixtures(context);
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-prodstart-"));
   const databasePath = join(directory, "prod.sqlite");
   const database = openSqliteDatabase(databasePath);
-  runMigrations(database, v5);
+  runMigrations(database, latest);
   database.close();
 
-  const app = await createApplication(productionConfig(), { databasePath, migrationsDirectory: v5 }, new InMemoryStorageAdapter());
+  const app = await createApplication(productionConfig(), { databasePath, migrationsDirectory: latest }, new InMemoryStorageAdapter());
   try {
     assert.equal((await app.inject({ method: "GET", url: "/api/health" })).statusCode, 200);
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 6);
+  assert.equal(readSchemaVersion(databasePath), 7);
   rmSync(directory, { recursive: true, force: true });
 });
 
 test("production startup with a pending migration fails closed", async (context) => {
-  const { v4, v5 } = migrationFixtures(context);
+  const { v4, latest } = migrationFixtures(context);
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-prodfail-"));
   const databasePath = join(directory, "prod.sqlite");
   const database = openSqliteDatabase(databasePath);
@@ -103,7 +103,7 @@ test("production startup with a pending migration fails closed", async (context)
   database.close();
 
   await assert.rejects(
-    () => createApplication(productionConfig(), { databasePath, migrationsDirectory: v5 }, new InMemoryStorageAdapter()),
+    () => createApplication(productionConfig(), { databasePath, migrationsDirectory: latest }, new InMemoryStorageAdapter()),
     /schema is not current/,
   );
 
@@ -114,7 +114,7 @@ test("production startup with a pending migration fails closed", async (context)
 });
 
 test("the explicit migration runner still applies pending migrations normally", async (context) => {
-  const { v4, v5 } = migrationFixtures(context);
+  const { v4, latest } = migrationFixtures(context);
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-explicit-"));
   const databasePath = join(directory, "prod.sqlite");
   const database = openSqliteDatabase(databasePath);
@@ -122,21 +122,21 @@ test("the explicit migration runner still applies pending migrations normally", 
   database.close();
 
   const upgraded = openSqliteDatabase(databasePath);
-  const result = runMigrations(upgraded, v5);
+  const result = runMigrations(upgraded, latest);
   upgraded.close();
-  assert.deepEqual(result.appliedVersions, [5, 6]);
-  assert.equal(result.currentVersion, 6);
+  assert.deepEqual(result.appliedVersions, [5, 6, 7]);
+  assert.equal(result.currentVersion, 7);
   assert.equal(hasFavoritesTable(databasePath), true);
   rmSync(directory, { recursive: true, force: true });
 });
 
 test("production startup refuses an uninitialized database", async (context) => {
-  const { v5 } = migrationFixtures(context);
+  const { latest } = migrationFixtures(context);
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-prodempty-"));
   const databasePath = join(directory, "prod.sqlite");
 
   await assert.rejects(
-    () => createApplication(productionConfig(), { databasePath, migrationsDirectory: v5 }, new InMemoryStorageAdapter()),
+    () => createApplication(productionConfig(), { databasePath, migrationsDirectory: latest }, new InMemoryStorageAdapter()),
     /schema is not initialized/,
   );
   rmSync(directory, { recursive: true, force: true });

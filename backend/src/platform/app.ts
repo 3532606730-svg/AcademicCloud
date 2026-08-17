@@ -6,6 +6,8 @@ import Fastify, {
   LogController,
 } from "fastify";
 
+import type { AccountAdministrationService } from "../accounts/account-administration-service.js";
+import { registerAccountsHttp } from "../accounts/http.js";
 import type { AuthService } from "../auth/auth-service.js";
 import { registerAuthHttp } from "../auth/http.js";
 import type { DriveService } from "../drive/drive-service.js";
@@ -32,6 +34,11 @@ export const LOGGER_REDACT_PATHS = [
   "body.password",
   "password",
   "*.password",
+  "body.inviteToken",
+  "inviteToken",
+  "*.inviteToken",
+  "rawToken",
+  "*.rawToken",
   "sessionSecret",
   "*.sessionSecret",
   "accessKeyId",
@@ -91,6 +98,7 @@ export interface CreateAppOptions {
     environment: AppConfig["environment"];
     loginRateLimitMax?: number;
   };
+  accounts?: { service: AccountAdministrationService; registrationRateLimitMax?: number };
   drive?: { service: DriveService };
   favorites?: { service: FavoriteService };
   readinessCheck?: () => boolean;
@@ -195,6 +203,16 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
     }
 
     await registerDriveHttp(app, options.drive.service);
+  }
+
+  if (options.accounts) {
+    if (!options.auth) throw new Error("account routes require authentication composition");
+    await registerAccountsHttp(app, {
+      service: options.accounts.service,
+      ...(options.accounts.registrationRateLimitMax === undefined
+        ? {}
+        : { registrationRateLimitMax: options.accounts.registrationRateLimitMax }),
+    });
   }
 
   if (options.favorites) {

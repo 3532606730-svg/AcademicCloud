@@ -59,13 +59,13 @@ async function createFixture(
     id: "account-1",
     loginName: "Scholar",
     passwordHash: "test:valid-password",
+    role: "owner",
     state: options.disabled ? "disabled" : "active",
     createdAt: START,
     updatedAt: START,
   });
   const authService = new AuthService({
-    accounts: persistence.repositories.accounts,
-    sessions: persistence.repositories.sessions,
+    persistence,
     passwordHasher: hasher,
     now: () => now,
   });
@@ -105,7 +105,7 @@ test("login stores only a digest and the guard supplies server-derived account i
   });
 
   assert.equal(login.statusCode, 200);
-  assert.deepEqual(login.json(), { account: { id: "account-1", loginName: "Scholar" } });
+  assert.deepEqual(login.json(), { account: { id: "account-1", loginName: "Scholar", role: "owner" } });
   const setCookie = getSetCookie(login);
   assert.match(setCookie, /^ac_session=[A-Za-z0-9_-]{43};/);
   assert.match(setCookie, /Max-Age=604800/);
@@ -135,7 +135,7 @@ test("login stores only a digest and the guard supplies server-derived account i
   });
   assert.equal(currentSession.statusCode, 200);
   assert.deepEqual(currentSession.json(), {
-    account: { id: "account-1", loginName: "Scholar" },
+    account: { id: "account-1", loginName: "Scholar", role: "owner" },
   });
 });
 
@@ -461,6 +461,7 @@ test("password KDF queue saturation fails login with a retryable 429", async (co
     id: "busy-account",
     loginName: "Busy",
     passwordHash: "test:anything",
+    role: "owner",
     state: "active",
     createdAt: START,
     updatedAt: START,
@@ -470,8 +471,7 @@ test("password KDF queue saturation fails login with a retryable 429", async (co
     verify: () => Promise.reject(new PasswordKdfOverloadedError()),
   };
   const service = new AuthService({
-    accounts: persistence.repositories.accounts,
-    sessions: persistence.repositories.sessions,
+    persistence,
     passwordHasher: busyHasher,
   });
   const app = await createApp({
@@ -506,13 +506,13 @@ test("SQLite sessions survive a persistence restart", async () => {
       id: "persistent-account",
       loginName: "Persistent",
       passwordHash: "test:valid-password",
+      role: "owner",
       state: "active",
       createdAt: START,
       updatedAt: START,
     });
     const firstAuth = new AuthService({
-      accounts: first.repositories.accounts,
-      sessions: first.repositories.sessions,
+      persistence: first,
       passwordHasher: hasher,
       now: () => START,
     });
@@ -524,14 +524,14 @@ test("SQLite sessions survive a persistence restart", async () => {
     const second = new SqlitePersistence(secondDatabase);
     try {
       const secondAuth = new AuthService({
-        accounts: second.repositories.accounts,
-        sessions: second.repositories.sessions,
+        persistence: second,
         passwordHasher: hasher,
         now: () => START,
       });
       assert.deepEqual(secondAuth.resolveSession(secret), {
         id: "persistent-account",
         loginName: "Persistent",
+        role: "owner",
       });
     } finally {
       second.close();

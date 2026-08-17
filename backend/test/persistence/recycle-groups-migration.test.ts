@@ -12,9 +12,9 @@ import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 const NOW = "2026-08-17T08:00:00.000Z";
 const MD5 = "1B2M2Y8AsgTpgAmY7PhCfg==";
 
-function pinnedV5Directory(context: TestContext): string {
-  const directory = mkdtempSync(join(tmpdir(), "academiccloud-recycle-v5-"));
-  for (const name of readdirSync(INITIAL_MIGRATIONS_DIRECTORY).filter((entry) => /^00[1-5]_/.test(entry))) {
+function pinnedDirectory(context: TestContext, version: number): string {
+  const directory = mkdtempSync(join(tmpdir(), `academiccloud-recycle-v${version}-`));
+  for (const name of readdirSync(INITIAL_MIGRATIONS_DIRECTORY).filter((entry) => Number(entry.slice(0, 3)) <= version)) {
     copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, name), join(directory, name));
   }
   context.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -27,7 +27,7 @@ test("migration 006 upgrades legacy recycle rows as independent roots without ch
   const database = openSqliteDatabase(join(directory, "legacy.sqlite"));
 
   try {
-    runMigrations(database, pinnedV5Directory(context));
+    runMigrations(database, pinnedDirectory(context, 5));
     database.prepare(`
       INSERT INTO accounts (id, login_name, password_hash, state, created_at, updated_at)
       VALUES ('owner-1', 'owner-1', 'hash', 'active', ?, ?)
@@ -52,7 +52,7 @@ test("migration 006 upgrades legacy recycle rows as independent roots without ch
     database.prepare("INSERT INTO favorite_folders (account_id, folder_id, created_at) VALUES ('owner-1', 'deleted-folder', ?)").run(NOW);
     database.prepare("INSERT INTO favorite_files (account_id, file_id, created_at) VALUES ('owner-1', 'deleted-file', ?)").run(NOW);
 
-    const result = runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY);
+    const result = runMigrations(database, pinnedDirectory(context, 6));
     assert.deepEqual(result, { appliedVersions: [6], currentVersion: 6 });
 
     assert.deepEqual(
@@ -94,6 +94,7 @@ test("migration 006 upgrades legacy recycle rows as independent roots without ch
     assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
     assert.equal(database.prepare<[], { integrity_check: string }>("PRAGMA integrity_check").get()?.integrity_check, "ok");
 
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [7], currentVersion: 7 });
     const persistence = new SqlitePersistence(database);
     assert.deepEqual(persistence.repositories.folders.listDeleted("owner-1").map((folder) => folder.id), ["deleted-folder"]);
     assert.deepEqual(persistence.repositories.files.listDeleted("owner-1").map((file) => file.id).sort(), ["deleted-file", "purging-file"]);
@@ -110,9 +111,9 @@ test("migration 006 constraints reject deleted lifecycle rows without same-owner
     runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY);
     for (const owner of ["owner-1", "owner-2"]) {
       database.prepare(`
-        INSERT INTO accounts (id, login_name, password_hash, state, created_at, updated_at)
-        VALUES (?, ?, 'hash', 'active', ?, ?)
-      `).run(owner, owner, NOW, NOW);
+        INSERT INTO accounts (id, login_name, password_hash, role, state, created_at, updated_at)
+        VALUES (?, ?, 'hash', ?, 'active', ?, ?)
+      `).run(owner, owner, owner === "owner-1" ? "owner" : "member", NOW, NOW);
     }
     database.prepare(`
       INSERT INTO recycle_groups (id, owner_id, root_kind, root_id, folder_count, file_count, created_at)

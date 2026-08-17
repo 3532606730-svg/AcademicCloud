@@ -12,7 +12,7 @@ const NOW = new Date("2026-08-12T08:00:00.000Z");
 const MD5 = "1B2M2Y8AsgTpgAmY7PhCfg==";
 
 function account(id: string): NewAccount {
-  return { id, loginName: id, passwordHash: "test", state: "active", createdAt: NOW, updatedAt: NOW };
+  return { id, loginName: id, passwordHash: "test", role: "owner", state: "active", createdAt: NOW, updatedAt: NOW };
 }
 
 function fixture(context: TestContext) {

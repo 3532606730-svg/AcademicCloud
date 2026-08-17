@@ -3,6 +3,23 @@ import { ERROR_MESSAGES } from "./i18n.ts";
 export interface Account {
   id: string;
   loginName: string;
+  role: "owner" | "member";
+}
+
+export interface ManagedAccount extends Account {
+  state: "active" | "disabled";
+  createdAt: string;
+}
+
+export interface Invitation {
+  id: string;
+  createdByAccountId: string;
+  createdAt: string;
+  expiresAt: string;
+  consumedAt: string | null;
+  consumedByAccountId: string | null;
+  revokedAt: string | null;
+  status: "available" | "expired" | "consumed" | "revoked";
 }
 
 export type FolderState = "active" | "deleted";
@@ -87,7 +104,13 @@ type Fetcher = typeof fetch;
 export interface AcademicCloudApi {
   getSession(signal?: AbortSignal): Promise<Account>;
   login(loginName: string, password: string): Promise<Account>;
+  registerMember(inviteToken: string, loginName: string, password: string): Promise<ManagedAccount>;
   logout(): Promise<void>;
+  createInvitation(): Promise<{ invitation: Invitation; rawToken: string }>;
+  listInvitations(): Promise<Invitation[]>;
+  revokeInvitation(invitationId: string): Promise<Invitation>;
+  listAccounts(): Promise<ManagedAccount[]>;
+  setAccountState(accountId: string, state: "active" | "disabled"): Promise<ManagedAccount>;
   listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse>;
   listPending(folderId: string | null, signal?: AbortSignal): Promise<FileEntry[]>;
   listRecycle(signal?: AbortSignal): Promise<RecycleResponse>;
@@ -185,8 +208,44 @@ export class ApiClient implements AcademicCloudApi {
     return response.account;
   }
 
+  async registerMember(inviteToken: string, loginName: string, password: string): Promise<ManagedAccount> {
+    const response = await this.#jsonBody<{ account: ManagedAccount }>("/api/auth/register", "POST", {
+      inviteToken,
+      loginName,
+      password,
+    });
+    return response.account;
+  }
+
   logout(): Promise<void> {
     return this.#action<void>("/api/auth/logout", "POST");
+  }
+
+  createInvitation(): Promise<{ invitation: Invitation; rawToken: string }> {
+    return this.#action("/api/accounts/invitations", "POST");
+  }
+
+  async listInvitations(): Promise<Invitation[]> {
+    return (await this.#request<{ invitations: Invitation[] }>("/api/accounts/invitations")).invitations;
+  }
+
+  async revokeInvitation(invitationId: string): Promise<Invitation> {
+    return (await this.#action<{ invitation: Invitation }>(
+      `/api/accounts/invitations/${encodeURIComponent(invitationId)}`,
+      "DELETE",
+    )).invitation;
+  }
+
+  async listAccounts(): Promise<ManagedAccount[]> {
+    return (await this.#request<{ accounts: ManagedAccount[] }>("/api/accounts")).accounts;
+  }
+
+  async setAccountState(accountId: string, state: "active" | "disabled"): Promise<ManagedAccount> {
+    return (await this.#jsonBody<{ account: ManagedAccount }>(
+      `/api/accounts/${encodeURIComponent(accountId)}/state`,
+      "PATCH",
+      { state },
+    )).account;
   }
 
   async listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse> {

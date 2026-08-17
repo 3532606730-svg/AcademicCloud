@@ -15,11 +15,13 @@ import { DirectUploadError } from "./direct-upload.ts";
 
 afterEach(() => {
   window.localStorage.removeItem("academiccloud.language");
+  window.sessionStorage.clear();
+  window.history.replaceState(null, "", "/");
   document.documentElement.lang = "";
 });
 
 const EMPTY_ENTRIES: EntriesResponse = { folder: null, folders: [], files: [] };
-const ACCOUNT = { id: "account-1", loginName: "Scholar" };
+const ACCOUNT = { id: "account-1", loginName: "Scholar", role: "owner" as const };
 const FOLDER: FolderEntry = {
   id: "folder-1",
   parentId: null,
@@ -49,7 +51,13 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
   return {
     getSession: vi.fn().mockRejectedValue(new ApiError(401, "authentication_required")),
     login: vi.fn().mockResolvedValue(ACCOUNT),
+    registerMember: vi.fn(),
     logout: vi.fn().mockResolvedValue(undefined),
+    createInvitation: vi.fn(),
+    listInvitations: vi.fn().mockResolvedValue([]),
+    revokeInvitation: vi.fn(),
+    listAccounts: vi.fn().mockResolvedValue([{ ...ACCOUNT, state: "active", createdAt: "2026-08-17T00:00:00.000Z" }]),
+    setAccountState: vi.fn(),
     listEntries: vi.fn().mockResolvedValue(EMPTY_ENTRIES),
     listPending: vi.fn().mockResolvedValue([]),
     listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [] }),
@@ -97,6 +105,14 @@ function workspace() {
   return screen.getByRole("main");
 }
 
+function storageContains(storage: Storage, value: string): boolean {
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (key && storage.getItem(key)?.includes(value)) return true;
+  }
+  return false;
+}
+
 async function openRowMenu(name: string) {
   const trigger = await screen.findByRole("button", { name: `Open actions for ${name}` });
   await userEvent.click(trigger);
@@ -131,6 +147,98 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("incorrect"));
     expect(screen.queryByText(/SQL|OSSAccessKeyId/i)).not.toBeInTheDocument();
+  });
+
+  it("registers from an invitation fragment without retaining the raw token in the URL or browser storage", async () => {
+    const user = userEvent.setup();
+    const rawToken = "A".repeat(43);
+    const registerMember = vi.fn().mockResolvedValue({
+      id: "member-1",
+      loginName: "Reader",
+      role: "member",
+      state: "active",
+      createdAt: "2026-08-17T00:00:00.000Z",
+    });
+    window.history.replaceState(null, "", `/#/invite/${rawToken}`);
+    const api = fakeApi({ registerMember });
+
+    render(<App api={api} />);
+
+    expect(await screen.findByRole("heading", { name: /Create account/ })).toBeInTheDocument();
+    expect(window.location.hash).toBe("");
+    expect(storageContains(window.localStorage, rawToken)).toBe(false);
+    expect(storageContains(window.sessionStorage, rawToken)).toBe(false);
+    await user.type(screen.getByLabelText("Login name"), "Reader");
+    await user.type(screen.getByLabelText("Password"), "member-password-123");
+    await user.type(screen.getByLabelText("Confirm password"), "member-password-123");
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    await waitFor(() => expect(registerMember).toHaveBeenCalledWith(rawToken, "Reader", "member-password-123"));
+    expect(await screen.findByRole("heading", { name: "AC AcademicCloud" })).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain(rawToken);
+    expect(storageContains(window.localStorage, rawToken)).toBe(false);
+    expect(storageContains(window.sessionStorage, rawToken)).toBe(false);
+  });
+
+  it("lets the Owner create and revoke invitations and disable a Member without adding a navigation destination", async () => {
+    const user = userEvent.setup();
+    const rawToken = "B".repeat(43);
+    const owner = { ...ACCOUNT, state: "active" as const, createdAt: "2026-08-17T00:00:00.000Z" };
+    const member = { id: "member-1", loginName: "Reader", role: "member" as const, state: "active" as const, createdAt: "2026-08-17T00:00:00.000Z" };
+    const invitation = {
+      id: "invite-1",
+      createdByAccountId: ACCOUNT.id,
+      createdAt: "2026-08-17T00:00:00.000Z",
+      expiresAt: "2026-08-24T00:00:00.000Z",
+      consumedAt: null,
+      consumedByAccountId: null,
+      revokedAt: null,
+      status: "available" as const,
+    };
+    const createInvitation = vi.fn().mockResolvedValue({ invitation, rawToken });
+    const revokeInvitation = vi.fn().mockResolvedValue({ ...invitation, revokedAt: "2026-08-17T01:00:00.000Z", status: "revoked" as const });
+    const setAccountState = vi.fn().mockResolvedValue({ ...member, state: "disabled" as const });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listAccounts: vi.fn().mockResolvedValue([owner, member]),
+      listInvitations: vi.fn().mockResolvedValue([invitation]),
+      createInvitation,
+      revokeInvitation,
+      setAccountState,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    expect(within(screen.getByRole("complementary", { name: "Primary navigation" })).getAllByRole("button")).toHaveLength(4);
+    await user.click(screen.getByRole("button", { name: "Manage accounts" }));
+    const dialog = await screen.findByRole("dialog", { name: "Account administration" });
+    expect(await within(dialog).findByText("Reader")).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Create invitation" }));
+    const link = await within(dialog).findByLabelText("One-time invitation link");
+    expect(link).toHaveValue(`${window.location.origin}/#/invite/${rawToken}`);
+    expect(storageContains(window.localStorage, rawToken)).toBe(false);
+    expect(storageContains(window.sessionStorage, rawToken)).toBe(false);
+
+    await user.click(within(dialog).getByRole("button", { name: "Disable" }));
+    await waitFor(() => expect(setAccountState).toHaveBeenCalledWith("member-1", "disabled"));
+    expect(await within(dialog).findByRole("button", { name: "Enable" })).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Revoke" }));
+    await waitFor(() => expect(revokeInvitation).toHaveBeenCalledWith("invite-1"));
+    expect(await within(dialog).findByText("Revoked")).toBeInTheDocument();
+  });
+
+  it("does not expose account administration to Members", async () => {
+    const user = userEvent.setup();
+    const memberAccount = { ...ACCOUNT, role: "member" as const };
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(memberAccount) });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    expect(screen.queryByRole("button", { name: "Manage accounts" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(within(screen.getByRole("menu", { name: "Account" })).queryByRole("menuitem", { name: "Manage accounts" })).not.toBeInTheDocument();
   });
 
   it("renders the root library without an eyebrow, without a redundant breadcrumb, with title and counts", async () => {
@@ -1443,6 +1551,7 @@ describe("mobile presentation structure", () => {
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
+    await screen.findByText("paper.pdf");
 
     const rows = document.querySelectorAll(".entry-table .entry-row:not(.entry-row--head)");
     expect(rows).toHaveLength(2);

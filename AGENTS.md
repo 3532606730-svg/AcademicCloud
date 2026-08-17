@@ -4,9 +4,9 @@
 
 **AcademicCloud** is a long-term academic digital infrastructure project.
 
-**Current execution phase:** Core Drive repository closure is complete while the accepted UX01 production release remains live. The approved next product boundary is Accounts & Sharing I, followed by the approved global homepage announcements MVP. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
+**Current execution phase:** Core Drive repository closure and Accounts I are complete in repository development while the accepted UX01 production release remains live. The approved next product boundary is the global homepage announcements MVP. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
 
-**Approved continuous objective (repository/local only):** complete UX03, PERF01, and FOLDER01; then execute Accounts I and the global homepage announcements MVP. PASSWORD01 is optional after Accounts I and announcements are green. OPS01A is a conditional cross-cutting operations-preparation task. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
+**Approved continuous objective (repository/local only):** UX03, PERF01, FOLDER01, and Accounts I are complete; next execute the global homepage announcements MVP. PASSWORD01 is optional after Accounts I and announcements are green. OPS01A is a conditional cross-cutting operations-preparation task. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
 
 ## Engineering Workflow
 
