@@ -98,7 +98,7 @@ Explicitly not implied by the Pre-OCR program:
 
 ## Layer 3 — Personal Scholarly Workspace & Scholarly Model
 
-**Status:** Owner-approved as part of the Pre-OCR Research Foundation program; detailed task decomposition is the next planning task.
+**Status:** Owner-approved and independently decomposed into the bounded executable queue recorded in `docs/architecture/pre-ocr-execution-plan.md`.
 
 This layer is what turns AcademicCloud from a general cloud drive into personal scholarly infrastructure.
 
@@ -179,7 +179,7 @@ Private annotations, citation work, evidence organization, and Research Question
 
 ## Layer 4 — Shared Academic Library
 
-**Status:** Owner-approved as part of the Pre-OCR Research Foundation program, but must be implemented only after the prerequisite private scholarly/resource model is green.
+**Status:** Owner-approved and decomposed after the prerequisite private scholarly/resource model; Library execution remains sequenced after `RF-EXPORT01` in the Pre-OCR plan.
 
 A Library is a real ownership/domain boundary, not a specially named `/shared` folder.
 
@@ -209,7 +209,7 @@ Library access never implicitly exposes another member's reading progress, priva
 
 ## Layer 5 — Research Infrastructure & Pre-OCR Hardening
 
-**Status:** Owner-approved as the final pre-OCR foundation layer.
+**Status:** Owner-approved and decomposed as separate integrity, recovery, permission-matrix, and derived-contract checkpoints at the end of the Pre-OCR queue.
 
 Approved foundations:
 - **Integrity Monitor** for metadata/object identity and other safe consistency signals without automatic destructive repair;
@@ -280,12 +280,12 @@ Outstanding production changes, deployment of post-UX01 code, permanent-delete d
 
 The previous repository/local objective through OPS01A is complete.
 
-The Owner has now approved a new **Pre-OCR Research Foundation** continuous program. The immediate executable step is the planning-only task `RF-PLAN01`, which must compile this roadmap into dependency-safe, independently reviewable Ready task cards and an explicit queue before product implementation continues.
+The Owner has approved the **Pre-OCR Research Foundation** continuous program. Planning-only `RF-PLAN01` is complete and independently reviewed; `docs/architecture/pre-ocr-execution-plan.md` and `TASK_BOARD.md` now contain the dependency-safe 25-card queue.
 
-After `RF-PLAN01` itself is green and checkpointed, the Agent may autonomously consume the task cards it materializes **only within the approved Pre-OCR boundaries above**, one green Epic at a time:
+The Agent may autonomously consume those cards **only within the approved Pre-OCR boundaries above**, one green Epic at a time:
 
 ```text
-RF-PLAN01 — decompose approved Pre-OCR program
+RF-PLAN01 — decomposition complete
         ↓
 Core Research UX foundations
         ↓

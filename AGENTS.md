@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, and OPS01A are complete in repository development while the accepted UX01 production release remains live. The Owner has authorized the repository-local **Pre-OCR Research Foundation** program. `RF-PLAN01` is the next Ready task and must first materialize that approved program into bounded executable task cards/queue.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, and the independently reviewed RF-PLAN01 execution decomposition are complete while the accepted UX01 production release remains live. The Owner-authorized repository-local **Pre-OCR Research Foundation** queue is recorded in `docs/architecture/pre-ocr-execution-plan.md` and `TASK_BOARD.md`; `RF-AUDIT01` is the next Ready Epic.
 
-**Approved continuous objective (repository/local only):** execute `RF-PLAN01`; after its independently green planning checkpoint, consume the dependency-safe Pre-OCR task queue it records, one independently verified/checkpointed Epic at a time; stop before OCR/text-extraction execution, embeddings, retrieval, or RAG. Production deployment/migration/mutation, main merge, real credentials/cost, and destructive real-data work remain separately Owner-gated.
+**Approved continuous objective (repository/local only):** RF-PLAN01 is complete; consume its dependency-safe Pre-OCR task queue one independently verified/checkpointed Epic at a time, beginning with `RF-AUDIT01`; stop after terminal `RF-DERIVED01` and before OCR/text-extraction execution, full-text indexing, embeddings, retrieval, or RAG. Production deployment/migration/mutation, main merge, real credentials/cost, and destructive real-data work remain separately Owner-gated.
 
 ## Engineering Workflow
 

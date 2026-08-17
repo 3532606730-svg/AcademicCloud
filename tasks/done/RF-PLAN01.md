@@ -88,27 +88,46 @@ Update `TASK_BOARD.md` with the concrete dependency-safe continuous queue. Recon
 - current persistence/domain/API code only for dependency discovery; no product-code edits.
 
 ## Current State
-The prior repository/local continuous objective through OPS01A is complete. The Owner has approved the Pre-OCR Research Foundation product boundary, and ADR-014 plus the reconciled Roadmap now record its privacy/data model and complete feature inventory. No concrete implementation queue has yet been materialized for that program.
+**Complete in repository planning; independently reviewed PASS.** The prior repository/local continuous objective through OPS01A remains complete. The Owner-approved Pre-OCR Research Foundation is now represented by `docs/architecture/pre-ocr-execution-plan.md`, a matching executable `TASK_BOARD.md` sequence, and 25 bounded Ready cards from `RF-AUDIT01` through terminal `RF-DERIVED01`. The accepted production UX01 generation remains unchanged and separately gated.
 
 ## Completed
 - Owner approved the Pre-OCR Research Foundation program boundary.
 - ADR-014 records privacy, ownership, scholarly-resource, personal-overlay, governance, and future intelligence authority rules.
 - `ROADMAP.md` records the complete approved Pre-OCR product inventory and non-blocking future backlog.
+- Recovered the clean Git checkpoint, current code/data model, task lifecycle, accepted ADRs, production separation, and stop boundary without relying on chat memory.
+- Selected this card as the only executable repository/local task; `PROD-03C2` remains parked and non-executable.
+- Added `docs/architecture/pre-ocr-execution-plan.md` with a 25-checkpoint dependency sequence and an exactly-once primary capability coverage matrix.
+- Materialized 25 bounded Ready cards from `RF-AUDIT01` through terminal `RF-DERIVED01`; every card has the exact 13 standard sections.
+- Split ownership-domain migration, provenance versus lineage, Library catalog versus provenance/grouping, and integrity versus recovery versus authorization-matrix work into independent risk/checkpoint boundaries.
+- Defined future Library-safe ownership before Scholarly Records, contributor-independent Library promotion, one leak-safe duplicate/search authority path, stable Artifact-Version Page anchors, no research-surveillance audit, and production-disabled/test-fixture-only derived contracts.
+- Reconciled `PROJECT_SPEC.md`, `ROADMAP.md`, `CURRENT_STATUS.md`, and `TASK_BOARD.md` where the previous objective or Shared Library authorization state was stale.
+- Incorporated the first independent read-only planning review findings, including task sizing, audit allowlists, non-disclosing duplicate/search behavior, legacy-file lifecycle/identity rules, ownership transfer, deterministic non-AI intake suggestion boundary, and exact Library privacy promotion semantics.
+- Repaired final independent-review findings: account/private export now precedes explicit Library export integration; approved Library resources are immediately readable and require a dedicated terminal-promotion ADR; recovery cannot treat global Owner as authority over another account's overlay; Page identity has one concurrency-safe natural-key mapping preserving earlier progress.
+- Received final independent read-only Reviewer verdict **PASS** with no remaining blocker or medium finding.
+- Added no product code, migration, dependency, runtime configuration, production access, OCR execution, or main merge.
 
 ## Remaining
-- inspect current architecture enough to identify dependencies and safe task sizes;
-- build the complete coverage/dependency matrix;
-- create bounded Ready task cards;
-- update the executable queue;
-- independently review planning coverage/boundaries;
-- create the planning checkpoint;
-- then re-recover and continue to the first generated Ready Epic under the approved continuous objective.
+None inside RF-PLAN01 planning scope.
+
+The containing Git checkpoint closes this task. The separately bounded `RF-AUDIT01` card is the next executable repository/local Epic.
 
 ## Blockers
-Any planning conclusion that would require OCR execution, a new paid/resident infrastructure service, production mutation, destructive real-data behavior, or a product boundary not already approved in `ROADMAP.md` must stop for the Owner rather than being smuggled into a generated task card.
+None for RF-PLAN01 closure.
+
+The generated queue retains mandatory Owner gates for OCR/text-extraction execution, full-text indexing, embeddings/retrieval/RAG, production access/migration/deployment, main merge, real credentials/cost, destructive real-data work, or any unrecorded product boundary.
 
 ## Last Verification
-2026-08-17 planning reconciliation: the previous code-bearing objective through OPS01A is independently green; ADR-014 and the new Roadmap establish the approved Pre-OCR boundary. This task itself has not yet been executed.
+2026-08-17 final planning verification from baseline `775f9eabba363ca0d7f4bf06493c6f677268cbd7`:
+
+- execution plan, Task Board, and Ready directory contain the same 25 unique RF task IDs in the same order;
+- every generated Ready card and this Done card has the exact 13 standard sections;
+- all literal repository/ADR references exist;
+- the complete approved Roadmap inventory is assigned exactly once as primary implementation scope;
+- tracked and newly created files pass whitespace checks;
+- high-confidence secret-like scan: 0 hits;
+- product-code, migration, dependency, runtime/deployment delta: 0;
+- independent read-only Reviewer: **PASS**, no blocker or medium finding;
+- production and OCR/Intelligence execution were not contacted or changed.
 
 ## Next Action
-Recover the repository, build a feature-to-task/dependency coverage matrix from the approved Roadmap and ADR-014, materialize bounded Ready cards plus the concrete `TASK_BOARD.md` queue, run a read-only planning review, checkpoint the planning state, then continue to the first generated Ready Epic if no Owner gate is reached.
+Create the local RF-PLAN01 Git checkpoint, recover from repository state, move `RF-AUDIT01` from Ready to Doing, and execute it as the first bounded Pre-OCR implementation Epic.

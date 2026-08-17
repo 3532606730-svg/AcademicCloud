@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A is complete. The Owner has authorized the Pre-OCR Research Foundation program; `RF-PLAN01` is the next executable planning task.**
+**The repository-local objective through OPS01A and RF-PLAN01 is complete. The Owner-authorized Pre-OCR Research Foundation queue is executable; `RF-AUDIT01` is next.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
@@ -22,8 +22,8 @@ The previous sequence is complete:
 
 The new Owner-approved repository/local objective is:
 
-1. `RF-PLAN01` — compile the approved Pre-OCR program in `ROADMAP.md` and ADR-014 into dependency-safe, independently executable task cards and an explicit queue;
-2. after that planning checkpoint, autonomously consume the generated task cards one green Epic at a time, only inside the approved Pre-OCR boundaries;
+1. `RF-PLAN01` — complete; it compiled `ROADMAP.md` and ADR-014 into dependency-safe, independently executable task cards and an explicit queue;
+2. autonomously consume the generated task cards one green Epic at a time, only inside the approved Pre-OCR boundaries;
 3. STOP before OCR/text extraction execution, embeddings, retrieval, or RAG.
 
 Every product Epic remains independently reviewable/checkpointed. Large workstreams must be split in planning rather than implemented as giant diffs.
@@ -32,84 +32,41 @@ This objective does not authorize production access/mutation, deployment, produc
 
 ## Doing
 
-None.
-
-`tasks/doing/` is intentionally empty at this checkpoint. Historical completed cards belong under `tasks/done/`; parked production work must not remain in `tasks/doing/` because repository recovery treats that directory as active work.
+None. `RF-AUDIT01` becomes Doing when its implementation begins after the RF-PLAN01 checkpoint.
 
 ## Ready — Current Repository/Local Objective
 
-### 1. RF-PLAN01 — Pre-OCR Execution Decomposition
+The following independently reviewed queue is fully specified in `docs/architecture/pre-ocr-execution-plan.md` and is executable strictly in this order, one independently green checkpoint at a time. A later card may not be pulled forward because its local code looks convenient.
 
-**Task card:** `tasks/ready/RF-PLAN01.md`
+| Order | Task | Task card | Bounded result |
+|---:|---|---|---|
+| 1 | `RF-AUDIT01` | `tasks/ready/RF-AUDIT01.md` | governance/security audit without research surveillance |
+| 2 | `RF-OWNERSHIP01` | `tasks/ready/RF-OWNERSHIP01.md` | account ownership domains and future Library-safe resource ownership |
+| 3 | `RF-BULK01` | `tasks/ready/RF-BULK01.md` | safe existing-Drive bulk operations |
+| 4 | `RF-DOMAIN01` | `tasks/ready/RF-DOMAIN01.md` | Scholarly Record/Artifact/Version identity and attachment |
+| 5 | `RF-META01` | `tasks/ready/RF-META01.md` | bounded canonical metadata/templates/minimal authorities |
+| 6 | `RF-PROV01` | `tasks/ready/RF-PROV01.md` | canonical provenance, fingerprint, leak-safe duplicate contract |
+| 7 | `RF-LINEAGE01` | `tasks/ready/RF-LINEAGE01.md` | artifact/version/derived relationship lineage |
+| 8 | `RF-STATS01` | `tasks/ready/RF-STATS01.md` | storage statistics and quota-policy foundation |
+| 9 | `RF-OVERLAY01` | `tasks/ready/RF-OVERLAY01.md` | private reading state/progress/flags/Recent/note |
+| 10 | `RF-ORGANIZE01` | `tasks/ready/RF-ORGANIZE01.md` | Personal Tags, Collections, Favorites integration |
+| 11 | `RF-SEARCH01` | `tasks/ready/RF-SEARCH01.md` | authority-scoped metadata/name search, no OCR full text |
+| 12 | `RF-VIEWS01` | `tasks/ready/RF-VIEWS01.md` | private Saved Research Views |
+| 13 | `RF-INTAKE01` | `tasks/ready/RF-INTAKE01.md` | Research Inbox, safe triage, deterministic suggestion/intake API |
+| 14 | `RF-ANNOTATE01` | `tasks/ready/RF-ANNOTATE01.md` | stable Page anchors and private sidecar annotations |
+| 15 | `RF-CITE01` | `tasks/ready/RF-CITE01.md` | private Citation Workspace and page Evidence |
+| 16 | `RF-EVIDENCE01` | `tasks/ready/RF-EVIDENCE01.md` | Evidence Bundles, Research Questions, explicit links |
+| 17 | `RF-EXPORT01` | `tasks/ready/RF-EXPORT01.md` | structured authorized scholarly export contracts |
+| 18 | `RF-LIBRARY01` | `tasks/ready/RF-LIBRARY01.md` | Library domains, membership, permissions |
+| 19 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Trusted Contributor and atomic contribution review/promotion |
+| 20 | `RF-LIBRARY03` | `tasks/ready/RF-LIBRARY03.md` | shared catalog, Library Tags, canonical/original naming |
+| 21 | `RF-LIBRARY04` | `tasks/ready/RF-LIBRARY04.md` | shared provenance confidence and duplicate/version grouping |
+| 22 | `RF-INTEGRITY01` | `tasks/ready/RF-INTEGRITY01.md` | read-only integrity monitor |
+| 23 | `RF-RECOVERY01` | `tasks/ready/RF-RECOVERY01.md` | no-clobber metadata snapshot and isolated recovery rehearsal |
+| 24 | `RF-AUTHMATRIX01` | `tasks/ready/RF-AUTHMATRIX01.md` | complete cross-plane authorization/non-disclosure matrix |
+| 25 | `RF-DERIVED01` | `tasks/ready/RF-DERIVED01.md` | production-disabled OCR/text/index authorization contracts only |
 
-Planning-only. It must account for the complete approved product inventory in `ROADMAP.md`, apply ADR-014 privacy/ownership rules, split the program into bounded Ready cards, and update this board with the concrete dependency-safe queue. It must not implement product code.
-
-## Approved Program Inventory — To Be Materialized by RF-PLAN01
-
-The following areas are authorized but are not one task. `RF-PLAN01` must decompose them without dropping approved capabilities:
-
-### Core Research UX
-- metadata/name Search, excluding OCR full-text search;
-- private Recent;
-- Bulk Operations;
-- Security/Administrative Audit without research surveillance;
-- Storage Statistics / quota foundations.
-
-### Personal Research Overlay
-- Reading State (`unread | queued | reading | finished` equivalent);
-- reading progress / last page / last opened;
-- private Important and To Cite flags;
-- Personal Tags;
-- Collections distinct from Folders;
-- Saved Research Views;
-- private “Why do I have this?” / acquisition-research notes;
-- Favorites/Recent integration.
-
-### Scholarly Records & Metadata
-- Scholarly Record separate from physical Artifact;
-- attached artifacts and artifact versions;
-- canonical scholarly metadata;
-- Metadata Templates for Book / Article / Manuscript / Inscription / Archival Document and extensibility;
-- provenance/acquisition records;
-- checksum/fingerprint and safe duplicate detection;
-- edition/scan/translation/transcription/derived-artifact relationships;
-- minimal Authority Records foundation, not a mature RDF system.
-
-### Research Intake
-- Research Inbox;
-- fingerprint/duplicate and metadata/provenance capture;
-- triage to existing Record / new Record / ordinary archive / discard;
-- stable Save-to-AcademicCloud intake API boundary.
-
-### Annotation / Citation / Evidence
-- sidecar/database annotations;
-- highlights/page notes;
-- Citation Workspace;
-- page-level Evidence;
-- Evidence Bundles;
-- Research Questions and resource/evidence/question links;
-- structured export foundations.
-
-### Shared Academic Library
-- Library as a real ownership/domain boundary;
-- membership/permissions;
-- Trusted Contributor where appropriate;
-- contribution review;
-- Library Tags distinct from Personal Tags;
-- shared catalog/canonical records/naming;
-- provenance/source confidence;
-- duplicate/version grouping;
-- strict preservation of each member's private Personal Research Overlay.
-
-### Pre-OCR Hardening
-- integrity-monitoring foundations;
-- metadata snapshot/recovery foundations where justified;
-- permission-matrix verification;
-- structured export contracts;
-- stable Resource / Artifact / Version / Page identity;
-- derived-artifact lineage;
-- OCR adapter and extracted-text storage contracts only;
-- future indexing/RAG authorization boundary.
+`RF-DERIVED01` is terminal. After it is independently green and checkpointed, STOP before OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, or any production rollout.
 
 ## Separate Owner-Gated Production Track
 
@@ -145,6 +102,12 @@ One-Time External Sharing remains a separately scoped capability:
 It is not silently pulled into the Pre-OCR program merely because other sharing work is authorized.
 
 ## Completed
+
+### RF-PLAN01 — Pre-OCR Execution Decomposition
+
+**Task card:** `tasks/done/RF-PLAN01.md`
+
+**Status:** complete; independent read-only planning review PASS. The complete approved Pre-OCR inventory is assigned exactly once across 25 bounded Ready cards with explicit dependencies, privacy/ownership planes, append-only migration and rollback/concurrency rules, frontend/backend/persistence acceptance, adversarial review focus, production gates, and terminal STOP before OCR execution.
 
 ### OPS01A — Operations Observability & Recovery Preparation
 

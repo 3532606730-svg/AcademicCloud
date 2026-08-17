@@ -39,12 +39,7 @@ Implemented foundation includes:
 - security/reliability hardening
 - deployment, backup, and recovery foundation
 
-Open closure work:
-- finish the independent UX03 repair gate
-- performance measurement and only evidence-supported low-risk optimization
-- transactional recursive non-empty-folder recycle/restore
-
-Layer 1 ends when these closure tasks are green and independently reviewable. Production deployment remains a separate Owner gate.
+Repository closure is complete through independent UX03 repair, evidence-first PERF01, and transactional recursive FOLDER01 recycle/restore. Production deployment remains a separate Owner gate.
 
 ### Layer 2 — Accounts & Sharing
 
@@ -52,7 +47,7 @@ Goal:
 
 > Turn the private drive into a controlled multi-user private academic cloud without opening public registration.
 
-Approved first Epic — Accounts I:
+Completed foundation — Accounts I:
 - global roles: `owner | member`
 - deterministic legacy migration
 - first-Owner bootstrap
@@ -64,7 +59,8 @@ Approved first Epic — Accounts I:
 - revoke all Member sessions on disable
 - strict cross-account isolation
 
-Optional near-term follow-up:
+Completed follow-ups:
+- database/API-backed Owner-administered Global Homepage Announcements
 - authenticated password change with concurrency-safe update and session invalidation
 
 Later Layer 2 work, not part of the current continuous objective:
@@ -79,50 +75,57 @@ Explicit Layer 2 non-goals for the current Accounts I Epic:
 - account deletion
 - Shared Library membership
 
-### Layer 3 — Shared Academic Library
+### Layer 3 — Personal Scholarly Workspace and Scholarly Model
 
 Goal:
 
-> Move from account-owned private storage to governed shared academic collections.
+> Turn stored artifacts into private scholarly resources, research organization, annotations, citations, evidence, and intake while preserving per-account privacy.
 
-Planned capabilities:
+Owner-approved Pre-OCR capabilities are specified in `ROADMAP.md` and ADR-014: Scholarly Records separate from Physical Artifacts, canonical metadata/templates, provenance/fingerprints/relationships, private Reading State/Tags/Collections/Views/notes, Research Inbox, sidecar annotations, citations, page evidence, Evidence Bundles, Research Questions, and structured export foundations.
+
+### Layer 4 — Shared Academic Library
+
+Goal:
+
+> Move from private scholarly resources to governed shared academic collections without exposing members' Personal Research Overlays.
+
+Owner-approved Pre-OCR capabilities, after the prerequisite private/resource model is green:
 - Library-owned resources distinct from uploader identity
 - Library membership and permissions
-- Library-scoped Owner/Member/Trusted Contributor semantics
+- Library-scoped contributor/Trusted Contributor semantics
 - contribution lifecycle and review
-- approved/rejected/submitted workflow
-- academic catalog records
-- author/editor/translator/language/publication/type metadata
+- Library Tags and shared catalog/canonical records
 - provenance/source confidence
-- original filename and canonical filename
-- duplicate/canonical-record relationships
-- multiple physical files/versions attached to one bibliographic record
+- original and canonical naming
+- duplicate/version grouping
 
-This layer requires separate authorization after Layer 2 closure.
+The Library is a real ownership/domain boundary rather than a shared folder. Approval of a shared resource never exposes another member's reading state, Personal Tags, Collections, Saved Views, private notes, annotations, citation/evidence work, or Research Questions.
 
-### Layer 4 — Research Infrastructure
+### Layer 5 — Research Infrastructure and Pre-OCR Hardening
 
 Goal:
 
 > Represent academic materials as research assets rather than isolated files.
 
-Potential capabilities:
+Owner-approved Pre-OCR foundations:
 - provenance/source records
 - document relationships
 - version/scan/edition/translation lineage
 - citations and page references
 - research-question links
 - structured export
-- research workflow state
-- research asset graph
+- integrity monitoring and bounded metadata recovery foundations
+- complete permission/ownership matrix verification
+- stable Resource/Artifact/Version/Page identity
+- OCR adapter, extracted-text storage, and future index/retrieval authorization contracts only
 
-### Layer 5 — Intelligence
+### Layer 6 — Intelligence
 
 Goal:
 
 > Add source-grounded machine assistance without becoming authoritative over originals.
 
-Potential capabilities:
+Future capabilities not authorized by the current program:
 - OCR and text extraction
 - full-text indexing/search
 - embeddings and retrieval
@@ -138,7 +141,7 @@ Operations is not a product layer.
 
 The repository already contains deployment, backup/restore, systemd, Nginx, log rotation, health/readiness, migration verification, and production runbooks.
 
-Approved conditional OPS01A may prepare:
+Completed repository/local OPS01A preparation includes:
 - a lightweight operations status/check command
 - backup verification/freshness checks
 - disk/memory/swap checks
@@ -148,7 +151,7 @@ Approved conditional OPS01A may prepare:
 - systemd service/timer templates
 - restart-policy review
 
-OPS01A does **not** authorize:
+OPS01A completion does **not** authorize:
 - SSH to production
 - enabling timers/services
 - destructive backup pruning
@@ -242,7 +245,7 @@ Global account roles are deliberately small:
 - `owner`
 - `member`
 
-Library-scoped roles belong to Layer 3 and must not be confused with global account roles.
+Library-scoped roles belong to Layer 4 and must not be confused with global account roles.
 
 No public signup is planned. New normal users enter through Owner-issued invitations.
 
@@ -316,21 +319,16 @@ The Owner may authorize a continuous objective across multiple Epics. That autho
 
 Repository/local work only:
 
-1. finish current UX03 independent-review repairs;
-2. PERF01 evidence-first performance baseline and safe low-risk optimization;
-3. FOLDER01 transactional recursive folder recycle/restore;
-4. Accounts I — roles, invite-only registration, invitation management, Owner user administration, disable/enable, session revocation;
-5. ANNOUNCE01 — database/API-backed Owner-administered global homepage announcements for authenticated users;
-6. PASSWORD01 only if Accounts I and ANNOUNCE01 are fully green and the task remains safe;
-7. OPS01A only if its board preconditions are met;
-8. stop.
+1. `RF-PLAN01` planning decomposition is complete and independently reviewed;
+2. autonomously consume its recorded 25-card queue one independently verified/checkpointed Epic at a time, beginning with `RF-AUDIT01`;
+3. stop after the final Pre-OCR contracts checkpoint and before OCR/text-extraction execution.
 
 Not authorized by this objective:
 - production deployment/migration/SSH/config mutation
 - main merge
-- One-Time External Sharing
-- Shared Library
-- OCR/RAG/AI
+- real credentials, paid infrastructure, or destructive real-data operations
+- One-Time External Sharing or any product boundary outside the recorded Pre-OCR queue
+- OCR/text-extraction execution, full-text indexing, embeddings, retrieval, RAG, or AI execution
 
 ## 12. Long-Term Design Intent
 
@@ -338,6 +336,8 @@ Not authorized by this objective:
 Reliable Core Drive
         ↓
 Controlled Accounts & Sharing
+        ↓
+Personal Scholarly Workspace & Scholarly Model
         ↓
 Shared Academic Library
         ↓

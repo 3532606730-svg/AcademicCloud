@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, and OPS01A is complete and independently green. The Owner has authorized the Pre-OCR Research Foundation program; `RF-PLAN01` is the next Ready task.**
+**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, and RF-PLAN01 is complete and independently green. The Owner-authorized Pre-OCR Research Foundation has a concrete 25-Epic queue; `RF-AUDIT01` is the next Ready task.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains repository-only unless a separate Owner production gate is opened.
 
@@ -107,7 +107,13 @@ Critical rules:
 - duplicate detection must not reveal inaccessible resources;
 - future AI authority must never exceed the requesting user's effective authority.
 
-`ROADMAP.md` records the complete approved Pre-OCR inventory: Core Research UX, Reading State/private overlays, Collections/Views, Scholarly Records/Metadata/Provenance, Research Inbox/intake, sidecar annotations/citations/evidence/questions, Shared Academic Library, and final integrity/identity/derived-artifact/OCR-contract hardening.
+`ROADMAP.md` records the complete approved Pre-OCR inventory. The independently reviewed `docs/architecture/pre-ocr-execution-plan.md` maps that inventory exactly once across a dependency-safe 25-card queue: governance audit; ownership domains; bounded Core UX; Scholarly Record/metadata/provenance/lineage; private overlays/organization/search/views; intake; annotation/citation/evidence/export; four Library checkpoints; separate integrity/recovery/authorization-matrix checkpoints; and a terminal production-disabled derived-contract card.
+
+### RF-PLAN01 — Execution Decomposition
+
+**Complete; independent planning review PASS.** All 25 Ready cards use the exact 13-section task contract. The queue explicitly preserves server authority, append-only migration rules, cross-account non-disclosure, no research surveillance, distinct Folder/Collection and Personal/Library state, original/derived lineage, contributor-independent Library ownership, recoverable transactions, compiled/recovery gates, and the terminal STOP before OCR.
+
+Planning verification: documentation/task-state only; 0 product-code/migration/dependency/runtime-configuration delta; 0 high-confidence secret-like hits; whitespace/structural/reference checks PASS.
 
 ## Approved Continuous Objective
 
@@ -115,9 +121,9 @@ The previous objective through OPS01A is complete.
 
 The new objective begins with:
 
-1. `RF-PLAN01` — planning-only decomposition of the approved Pre-OCR program into bounded Ready task cards and a concrete dependency-safe queue;
-2. after that planning checkpoint, autonomously execute the generated Pre-OCR queue one independently green Epic at a time;
-3. STOP before OCR/text-extraction execution, embeddings, retrieval, or RAG.
+1. `RF-PLAN01` — complete and independently reviewed;
+2. autonomously execute the recorded Pre-OCR queue one independently green Epic at a time, beginning with `RF-AUDIT01`;
+3. after terminal `RF-DERIVED01`, STOP before OCR/text-extraction execution, full-text indexing, embeddings, retrieval, or RAG.
 
 ## Safety Boundaries
 
@@ -135,4 +141,4 @@ The current program still does **not** authorize:
 
 ## Next Action
 
-Execute `RF-PLAN01` from `tasks/ready/RF-PLAN01.md`: materialize the approved Pre-OCR Roadmap and ADR-014 into bounded implementation task cards and the concrete continuous queue, independently review the planning coverage/boundaries, checkpoint it, then continue to the first generated Ready Epic if no Owner gate is reached.
+Create/recover from the RF-PLAN01 checkpoint, select `tasks/ready/RF-AUDIT01.md`, and execute the bounded governance security-audit foundation without recording private research activity.
