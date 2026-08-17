@@ -2,98 +2,116 @@
 
 ## Project
 
-**AcademicCloud** is a long-term academic digital infrastructure project.
+**AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, and Authenticated Password Change are complete in repository development while the accepted UX01 production release remains live. Conditional OPS01A is the remaining approved local task. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, and OPS01A are complete in repository development while the accepted UX01 production release remains live. The Owner has authorized the repository-local **Pre-OCR Research Foundation** program. `RF-PLAN01` is the next Ready task and must first materialize that approved program into bounded executable task cards/queue.
 
-**Approved continuous objective (repository/local only):** UX03, PERF01, FOLDER01, Accounts I, Global Homepage Announcements, and PASSWORD01 are complete. OPS01A remains a conditional cross-cutting operations-preparation task, after which this objective stops. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
+**Approved continuous objective (repository/local only):** execute `RF-PLAN01`; after its independently green planning checkpoint, consume the dependency-safe Pre-OCR task queue it records, one independently verified/checkpointed Epic at a time; stop before OCR/text-extraction execution, embeddings, retrieval, or RAG. Production deployment/migration/mutation, main merge, real credentials/cost, and destructive real-data work remain separately Owner-gated.
 
 ## Engineering Workflow
 
-Ordinary AcademicCloud engineering tasks follow `.agents/skills/academiccloud-workflow/SKILL.md`. The repository is the durable project memory. Product and architecture facts come from current code, Git, task cards, current-state documents, and accepted ADRs—not from chat memory.
+Ordinary AcademicCloud engineering follows `.agents/skills/academiccloud-workflow/SKILL.md`. The repository is durable project memory. Product and architecture facts come from current code, Git, task cards, current-state documents, and accepted ADRs—not from chat memory.
 
 ## Highest-Priority Rules
 
-1. **Modularity first.** Core modules must have clear boundaries and interfaces. Failure or replacement in one module must not unnecessarily break unrelated modules.
-2. **Fault isolation is mandatory.** Optional modules must never become hard dependencies of the core file system.
-3. **Do not expand beyond the approved objective.** Record later ideas instead of implementing them.
-4. **Do not change architecture silently.** Durable architecture or product-model changes require a recorded decision with migration and rollback consequences.
+1. **Modularity first.** Core modules have clear boundaries/interfaces; optional research/intelligence modules must not become hard dependencies of the core file system.
+2. **Fault isolation is mandatory.** Failure/replacement in one module must not unnecessarily break unrelated modules.
+3. **Do not expand beyond the approved objective.** Record later ideas rather than implementing them.
+4. **Do not change architecture silently.** Durable product/architecture/security changes require an ADR with migration/rollback consequences where relevant.
 5. **Prefer simple, maintainable solutions.** The current 1 GiB-class control-plane host is intentionally small; do not add unnecessary resident services.
-6. **Data safety outranks feature count.** Never silently overwrite, destroy, resurrect, or misattribute academic files.
-7. **External services must be abstracted.** File bytes remain behind storage adapters; compute-heavy OCR/RAG/AI must stay isolated from the core drive.
-8. **Server authority is mandatory.** Never trust client-provided owner, role, membership, or authorization claims.
-9. **Production is a separate gate.** Repository implementation does not authorize SSH, live migration, DNS/TLS/OSS mutation, deployment, destructive production tests, or main merge.
-10. **Each Epic must end at an evidence-backed checkpoint.** Tests, adversarial review, task-state reconciliation, and a Git checkpoint come before autonomous progression to the next approved Epic.
+6. **Data safety outranks feature count.** Never silently overwrite, destroy, resurrect, misattribute, or expose academic data.
+7. **External services stay abstracted.** File bytes remain behind storage adapters; compute-heavy OCR/RAG/AI stays isolated from Core Drive.
+8. **Server authority is mandatory.** Never trust client-provided owner, role, membership, privacy, or authorization claims.
+9. **Production is a separate gate.** Repository implementation never authorizes SSH, live migration, DNS/TLS/OSS mutation, deployment, destructive production tests, or main merge.
+10. **Every Epic ends at an evidence-backed checkpoint.** Tests, adversarial review, task-state reconciliation, and Git checkpoint precede autonomous progression.
+11. **Shared resource does not imply shared research activity.** ADR-014 governs future research data boundaries.
+12. **AI authority never exceeds the requesting user's effective authority.** There is no AI super-admin research view.
+
+## Durable Data / Privacy Model
+
+Follow `docs/decisions/ADR-014-privacy-ownership-and-research-activity-boundaries.md`.
+
+### Physical Artifact
+Stored bytes/file representation, object identity, checksum, media/lifecycle metadata. Visibility follows the owning resource/Library authorization.
+
+### Scholarly Resource / Scholarly Record
+Logical academic object and canonical scholarly facts. One Record may relate to several artifacts/versions/editions/scans/translations/derived artifacts.
+
+### Personal Research Overlay
+Private per-account research state, including when implemented: Reading State/progress, Important/To Cite, Favorites/Recent, Personal Tags, Collections, Saved Research Views, private research/acquisition notes, annotations, citation/evidence organization, Evidence Bundles, Research Questions, and private search/history state.
+
+**Owner/Admin has no implicit product/API read authority over another account's Personal Research Overlay.** Infrastructure operator access is a separate production-security matter, not a product permission.
+
+### Collaborative Overlay
+Explicit Library/shared state such as Library Tags, contribution review, shared catalog/canonical records, shared provenance, or future explicitly shared research objects. A Personal Overlay never crosses into this plane implicitly.
+
+### Governance / Operations
+Accounts, invitations, account status, permissions, announcements, quota/statistics, security audit, integrity/recovery evidence. Administrative audit must not become default research surveillance.
+
+### Derived Intelligence
+OCR/extracted text/index/embeddings/retrieval/RAG-derived state. Authorization must inherit source-resource and applicable private-overlay authority.
+
+Additional invariants:
+- Folder = storage hierarchy; Collection = research-semantic organization.
+- Personal Tags and Library Tags are distinct.
+- canonical metadata and private interpretation/notes are distinct.
+- original acquired artifacts remain preservable evidence; derived artifacts have explicit lineage.
+- duplicate/fingerprint results must not reveal inaccessible resources across accounts.
 
 ## Product Layers
 
 ### Layer 1 — Core Drive
 
-Reliable private file storage and file management:
-- authentication foundation
-- user/account isolation
-- folders
-- direct browser upload/download
-- listing, rename, move
-- favorites
-- recycle/restore
-- preview
-- mobile/desktop UI
-- security/reliability
-- deployment/recovery foundation
+**Repository-development foundation complete.** Authentication, account isolation, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, and deployment/recovery foundation are green. Pre-OCR work may add bounded Core Research UX such as metadata/name Search, private Recent, Bulk Operations, governance Audit, and storage/quota statistics.
 
-Core Drive closure checkpoint: UX03 repair, PERF01 evidence, and FOLDER01 recursive recycle/restore are complete in repository development. Production rollout remains separate.
+### Layer 2 — Accounts & Governance
 
-### Layer 2 — Accounts & Sharing
+**Foundation complete.** Exact `owner | member`, invite-only registration, Owner administration, disable/enable/session revocation, Global Homepage Announcements, and Authenticated Password Change are green. One-Time External Sharing remains a separate later Layer 2 capability unless explicitly queued.
 
-Approved first Epic: **Accounts I**
-- global `owner | member` roles
-- first-Owner bootstrap
-- invite-only registration
-- invitation management
-- Owner user administration
-- Member disable/enable
-- revoke all sessions on disable
+### Layer 3 — Personal Scholarly Workspace & Scholarly Model
 
-Completed second Epic: **Global Homepage Announcements**
-- Owner-administered create/edit/publish/unpublish
-- authenticated global read on the homepage
-- database/API-backed plain-text announcements with severity and effective/expiry windows
-- no notification delivery, read receipts, acknowledgement workflow, or new global role
+Owner-approved Pre-OCR direction includes:
+- Personal Research Overlay (Reading State/progress/flags, Personal Tags, Collections, Saved Views, private research notes);
+- Scholarly Records separate from physical Artifacts;
+- metadata templates, canonical metadata, provenance/acquisition records;
+- fingerprints/safe duplicate detection;
+- artifact/version/edition/scan/translation/transcription relationships and derived lineage;
+- minimal Authority Records foundation without turning the phase into a mature RDF system;
+- Research Inbox/intake;
+- sidecar annotations, citations, page-level evidence, Evidence Bundles, Research Questions, structured export foundations.
 
-Authenticated Password Change is complete after Accounts I and announcements. One-Time External Sharing is a later Layer 2 task and is not part of the current continuous objective.
+### Layer 4 — Shared Academic Library
 
-### Layer 3 — Shared Academic Library
+Owner-approved within the Pre-OCR program after prerequisite private/resource models are green:
+- Library as real ownership/domain boundary;
+- membership/permissions;
+- Library-scoped contributor roles/Trusted Contributor where appropriate;
+- contribution review;
+- Library Tags;
+- shared catalog/canonical records/naming;
+- provenance/source confidence;
+- duplicate/version grouping.
 
-Future, separate authorization:
-- Library-owned resources
-- Library membership and permissions
-- Library-scoped Trusted Contributor
-- contribution review
-- academic catalog and canonical records
+Shared Library resources never implicitly expose members' Personal Research Overlays.
 
-### Layer 4 — Research Infrastructure
+### Layer 5 — Research Infrastructure & Pre-OCR Hardening
 
-Future:
-- provenance
-- document/version relationships
-- citations and page references
-- research questions
-- structured export
-- research asset graph
+Owner-approved final pre-OCR foundation:
+- integrity monitoring;
+- metadata snapshot/recovery foundations where justified;
+- permission-matrix verification;
+- structured-export contracts;
+- stable Resource/Artifact/Version/Page identity;
+- derived-artifact lineage;
+- OCR adapter and extracted-text storage/authorization contracts only.
 
-### Layer 5 — Intelligence
+### Layer 6 — Intelligence
 
-Future:
-- OCR/text extraction
-- indexing/search
-- embeddings/retrieval
-- RAG
-- source-grounded research assistance
+**Future / not authorized by the current program:** OCR/text extraction execution, full-text indexing/search, embeddings/retrieval, RAG, evidence-grounded assistance.
 
 ### Operations Track
 
-Operations is cross-cutting rather than a product layer. OPS01A may prepare read/verify/rehearsal tooling, but production activation or destructive recovery always remains separately Owner-gated.
+Operations is cross-cutting. OPS01A repository/local preparation is complete. Any live activation, scheduling, restore, pruning, certificate action, or production mutation remains separately Owner-gated.
 
 ## Architecture Principles
 
@@ -109,48 +127,48 @@ Storage Adapter
 Provider
 ```
 
-File bytes belong in object storage. Application/database state stores logical metadata such as account ownership, folder, display filename, object key, provider, media type, size, checksum, lifecycle state, and timestamps.
-
-Moving or recursively recycling logical resources should primarily mutate metadata, not copy or delete object bytes.
+File bytes belong in object storage. Application/database state stores logical metadata and relationships. Moving, organizing, recursively recycling, or adding research overlays should primarily mutate metadata/relations rather than copy/delete object bytes unless a task explicitly requires a new artifact.
 
 Do not use user-facing filenames as trusted physical storage keys.
 
 ## Security Rules
 
 - Never commit secrets.
-- Use environment variables or approved secret management.
-- Provide `.env.example`, never real secrets.
-- Validate all input.
-- Verify authorization server-side for every protected operation.
-- Never trust client-provided `owner_id`, account role, or Library role.
-- Do not expose permanent privileged OSS credentials to the browser.
-- Prefer short-lived scoped upload/download authorization.
-- Prevent path traversal and unsafe filename handling.
-- Use established authentication libraries/services; avoid custom cryptography.
-- Log security failures without credentials, raw capability tokens, signed URLs, password material, or session secrets.
-- Destructive operations should default to recoverable soft deletion.
+- Use environment variables/approved secret management; `.env.example`, never real secrets.
+- Validate all input and verify authorization server-side for every protected operation.
+- Never trust client-provided `owner_id`, account role, Library role, privacy scope, or creator identity.
+- Never expose permanent privileged OSS credentials to the browser; prefer short-lived scoped authorization.
+- Prevent path traversal/unsafe filename handling.
+- Use established auth/crypto libraries; avoid custom cryptography.
+- Log security failures without credentials, raw capabilities, signed URLs, password material, session secrets, or private research content.
+- Destructive operations default to recoverable soft deletion.
 - Do not use real production academic data for development tests.
+- Cross-account tests must verify non-disclosure as well as write isolation.
 
 ## Working Method
 
 Before changing code:
 1. Follow `.agents/skills/academiccloud-workflow/SKILL.md`.
-2. Recover the active/next approved task from repository state.
-3. Inspect relevant code, tests, task acceptance criteria, and ADRs.
-4. Preserve unrelated work and keep blast radius bounded.
+2. Recover active/next approved task from repository state.
+3. Inspect relevant code/tests/task acceptance/ADRs.
+4. Preserve unrelated work and bounded blast radius.
 
 After implementation:
-1. Run applicable tests and checks.
-2. Repair failures caused by the task.
-3. Perform an adversarial review appropriate to risk.
-4. Update the task card, `CURRENT_STATUS.md`, and `TASK_BOARD.md`; update durable decisions only when needed.
-5. Review the diff and create the task-level Git checkpoint.
-6. Continue only to the next task inside an explicitly approved continuous objective; otherwise stop.
+1. Run applicable real checks.
+2. Repair task-caused failures.
+3. Perform risk-appropriate adversarial review.
+4. Update task card, `CURRENT_STATUS.md`, `TASK_BOARD.md`, and durable decisions when needed.
+5. Review diff and create task-level Git checkpoint.
+6. Continue only to the next task inside the approved continuous objective; otherwise stop.
 
 ## Documentation and Git
 
-Project files, code, tests, task cards, ADRs, and Git history are persistent project memory. Chat history is temporary planning context.
+Project files, tests, task cards, ADRs, and Git history are persistent memory. Chat is temporary planning context.
 
-`ROADMAP.md` defines product sequencing. `TASK_BOARD.md` defines the executable queue. `tasks/ready/` stores approved task specifications that are not active yet; `tasks/doing/` stores active Epic state; `tasks/done/` stores completed Epic records.
+- `ROADMAP.md` defines durable product sequencing/inventory.
+- `TASK_BOARD.md` defines the executable queue.
+- `tasks/ready/` stores approved future Epic specs.
+- `tasks/doing/` stores the active Epic.
+- `tasks/done/` stores completed Epic records.
 
 Do not create parallel handoff/status/memory systems.

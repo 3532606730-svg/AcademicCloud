@@ -4,81 +4,118 @@ AcademicCloud is long-term academic digital infrastructure.
 
 Current product direction:
 
-> Reliable Core Drive → controlled Accounts & Sharing → Shared Academic Library → Research Infrastructure → source-grounded Intelligence.
+> **Reliable Drive → Accounts & Governance → Personal Scholarly Workspace → Shared Academic Library → Research Infrastructure → Source-grounded Intelligence**
 
-The repository and Git are the durable project memory. Chat is planning context only.
+The repository and Git are durable project memory. Chat is planning context only.
 
 ## Current Status
 
 **Production:** the accepted UX01 generation remains live at `https://cloud.ajtlab.top`. Production is a separate Owner-gated track.
 
-**Development:** Core Drive repository closure, Accounts I, Global Homepage Announcements, and Authenticated Password Change are green on `codex/project-memory-reconcile-20260817`; conditional OPS01A is next. This newer repository generation is not deployed.
+**Development:** Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, and repository/local OPS01A are independently green on the current development line. This newer repository generation is not deployed.
 
-**Accepted local/repository checkpoints:**
-- Layer 1 foundation L1-E01–L1-E08
-- UX01 production acceptance
-- UX02 academic workspace implementation
-- BUGAUDIT01 independent review PASS
-- FAV01 independent review PASS
-- UX03 repairs independently reviewed and checkpointed
-- PERF01 evidence checkpoint
-- FOLDER01 transactional recursive recycle/restore independently reviewed and checkpointed
-- Accounts I Owner/Member, invitation, administration, and isolation foundation independently reviewed and checkpointed
-- Global Homepage Announcements database/API, Owner administration, responsive homepage, and effective-window model independently reviewed and checkpointed
-- Authenticated self-password change with concurrency-safe mutation and atomic all-session invalidation independently reviewed and checkpoint-ready
-
-**Approved remaining sequence:** OPS01A only if its Ready-card gate remains satisfied → stop. External Sharing, Shared Library, OCR, RAG, production rollout, and main merge are not part of the current continuous objective.
+**Next:** the Owner has authorized the **Pre-OCR Research Foundation** program. `RF-PLAN01` is the next Ready task; it will compile the approved roadmap into bounded implementation task cards and the concrete executable queue before product implementation continues.
 
 Read:
-- `AGENTS.md` — mandatory repository policy
-- `.agents/skills/academiccloud-workflow/SKILL.md` — autonomous engineering workflow
-- `PROJECT_SPEC.md` — product specification
-- `ROADMAP.md` — product sequencing
-- `CURRENT_STATUS.md` — concise current truth
-- `TASK_BOARD.md` — executable queue
-- `DECISION_LOG.md` — durable decisions
-- `tasks/ready/` — approved not-yet-active Epic specifications
-- `tasks/doing/` — active Epic state
-- `tasks/done/` — completed Epic records
+- `AGENTS.md` — mandatory repository policy and current product/privacy boundaries;
+- `.agents/skills/academiccloud-workflow/SKILL.md` — autonomous engineering workflow;
+- `ROADMAP.md` — durable product sequencing and complete approved Pre-OCR inventory;
+- `CURRENT_STATUS.md` — concise current truth;
+- `TASK_BOARD.md` — executable queue;
+- `DECISION_LOG.md` — durable decisions;
+- `docs/decisions/ADR-014-privacy-ownership-and-research-activity-boundaries.md` — research privacy/data model;
+- `tasks/ready/`, `tasks/doing/`, `tasks/done/` — Epic state.
+
+## Product Model
+
+AcademicCloud distinguishes:
+
+1. **Physical Artifact** — stored file/byte representation and checksum/lifecycle identity.
+2. **Scholarly Resource / Scholarly Record** — the logical academic object and canonical scholarly metadata/provenance.
+3. **Personal Research Overlay** — private per-account reading, organizing, annotation, citation, evidence, and research state.
+4. **Collaborative Overlay** — explicitly shared Library/catalog/contribution state.
+5. **Governance / Operations** — accounts, permissions, announcements, audit, quota, integrity/recovery evidence.
+6. **Derived Intelligence** — OCR/index/retrieval/RAG state whose authority may never exceed source authorization.
+
+Core privacy rule:
+
+> **Shared resource does not imply shared research activity.**
+
+Owner/Admin has no implicit product/API read authority over another user's private Reading State, progress, Personal Tags, Collections, annotations, citation/evidence work, Research Questions, or equivalent Personal Research Overlay state.
 
 ## Product Layers
 
 ### Layer 1 — Core Drive
 
-Private academic cloud-drive foundation: auth, folders, direct upload/download, preview, move/rename, recycle/restore, Favorites, mobile/desktop UI, security/reliability, deployment/recovery foundation.
+Repository-development foundation complete: authentication, account isolation, folders, direct browser upload/download, Preview, move/rename, Favorites, transactional recycle/restore, responsive UI, security/reliability, and deployment/recovery foundation.
 
-Core Drive repository closure tasks are complete. Production rollout remains a separate Owner gate.
+The approved Pre-OCR program may add bounded daily-use research UX: metadata/name Search, private Recent, Bulk Operations, governance Audit, and storage/quota statistics.
 
-### Layer 2 — Accounts & Sharing
+### Layer 2 — Accounts & Governance
 
-Approved Accounts I scope:
-- `owner | member`
-- first-Owner bootstrap
-- invite-only registration
-- invitation management
-- minimal Owner user administration
-- Member disable/enable
-- revoke all sessions on disable
+Foundation complete:
+- exact `owner | member`;
+- first-Owner bootstrap;
+- invite-only registration/invitation management;
+- Owner Member administration;
+- disable/enable with session revocation;
+- Global Homepage Announcements;
+- Authenticated Password Change.
 
-Global Homepage Announcements and Authenticated Password Change are complete in repository development. One-Time External Sharing is later Layer 2 work.
+One-Time External Sharing remains a separately scoped later Layer 2 capability.
 
-### Layer 3 — Shared Academic Library
+### Layer 3 — Personal Scholarly Workspace & Scholarly Model
 
-Future separate authorization: Library-owned resources, membership/permissions, Trusted Contributor, contribution review, academic catalog, canonical records.
+Owner-approved Pre-OCR direction includes:
+- Reading State/progress and private Important/To Cite flags;
+- Personal Tags;
+- Collections distinct from Folders;
+- Saved Research Views;
+- private research/acquisition notes;
+- Scholarly Records separate from physical Artifacts;
+- Metadata Templates and canonical metadata;
+- provenance/acquisition records;
+- fingerprint/safe duplicate detection;
+- edition/scan/translation/transcription/derived-artifact relationships;
+- minimal Authority Records foundation;
+- Research Inbox and Save-to-AcademicCloud intake boundary;
+- sidecar annotations, highlights/page notes;
+- Citation Workspace, page-level Evidence, Evidence Bundles, Research Questions;
+- structured export foundations.
 
-### Layer 4 — Research Infrastructure
+### Layer 4 — Shared Academic Library
 
-Future: provenance, document/version relationships, citations/page refs, research questions, export, research asset graph.
+Owner-approved after prerequisite private/resource models are green: real Library ownership boundary, membership/permissions, contributor roles/Trusted Contributor where appropriate, contribution review, Library Tags, shared catalog/canonical naming, provenance/source confidence, duplicate/version grouping.
 
-### Layer 5 — Intelligence
+A shared resource never implicitly exposes each member's Personal Research Overlay.
 
-Future: OCR, indexing/search, embeddings/retrieval, RAG, source-grounded research assistance.
+### Layer 5 — Research Infrastructure & Pre-OCR Hardening
+
+Integrity monitoring, metadata recovery foundations, permission-matrix verification, structured-export contracts, stable Resource/Artifact/Version/Page identity, derived-artifact lineage, and the adapter/storage/authorization contracts required by future OCR.
+
+### Layer 6 — Intelligence
+
+Future and not authorized by the current program: OCR/text extraction execution, full-text indexing/search, embeddings/retrieval, RAG, evidence-grounded research assistance.
 
 ## Operations Track
 
-Operations is cross-cutting. The repository already contains deployment, backup/restore, Nginx, systemd, log rotation, health/readiness, migration verification, and runbooks.
+Operations is cross-cutting. OPS01A repository/local preparation is complete: readiness auditing, backup receipt/freshness, retention dry-run, isolated restore rehearsal, restart/log-growth preparation, and production-artifact verification. No live activation is implied.
 
-Conditional OPS01A may prepare lightweight status/health, backup freshness, disk/RAM/swap, certificate-expiry, restore-drill, retention dry-run, and timer-template tooling. It does not authorize production activation or mutation.
+## Core Principles
+
+- modularity and fault isolation;
+- data safety before feature count;
+- server-authoritative identity/authorization;
+- storage portability;
+- explicit lifecycle and lineage;
+- independently reviewable Epic checkpoints;
+- shared-resource/private-research separation;
+- no research-surveillance-by-default;
+- no silent architecture/product changes;
+- repository-driven autonomous progression;
+- production as a separate explicit gate;
+- heavy intelligence isolated from authoritative Core Drive;
+- AI authority ≤ requesting user's effective authority.
 
 ## Project Structure
 
@@ -91,6 +128,7 @@ AcademicCloud/
 │   ├── architecture/
 │   ├── api/
 │   ├── deployment/
+│   ├── operations/
 │   └── decisions/
 ├── tasks/
 │   ├── ready/
@@ -99,34 +137,9 @@ AcademicCloud/
 ├── workers/
 ├── plugins/
 ├── tests/
+├── scripts/
 └── deployment/
 ```
-
-## Core Principles
-
-- modularity
-- fault isolation
-- data safety before feature count
-- server-authoritative identity/authorization
-- storage portability
-- explicit lifecycle state
-- independently reviewable Epic checkpoints
-- no silent architecture/product changes
-- repository-driven autonomous progression
-- production as a separate explicit gate
-- AI/compute features isolated from authoritative original files
-
-## Current Infrastructure
-
-Alibaba Cloud Simple Application Server:
-- 2 vCPU
-- 1 GiB-class RAM (`916,044 KiB` Linux `MemTotal` in accepted measurements)
-- 1 GiB swap
-- 20 GB disk
-- Ubuntu 24.04
-- Malaysia region
-
-File bytes live in private Alibaba OSS behind `StorageAdapter`; the server is primarily the API/auth/metadata/control plane. This architecture is expected to remain suitable for Accounts and shared-library metadata at the current low-concurrency scale. OCR/embedding/RAG compute should be isolated later.
 
 ## Development Rule
 
@@ -135,19 +148,21 @@ Normal development follows:
 ```text
 recover repository state
 → select approved Ready/Doing task
+→ plan within task boundary
 → implement
-→ test
-→ adversarial review
-→ reconcile docs/task state
+→ verify
+→ independent/adversarial review
+→ repair
+→ reconcile repository memory
 → Git checkpoint
 → next approved task if continuous objective allows
 ```
 
-Completion is acceptance-driven, not clock-driven. Long Agent runs must not invent work merely to consume time.
+Completion is acceptance-driven, not clock-driven. Long Agent runs consume the repository queue; they do not invent work or depend on giant chat prompts.
 
 ## Local Development
 
-Prerequisites: Node.js `24.16.0` (recorded in `.nvmrc`) and npm.
+Prerequisites: Node.js 24 and npm.
 
 ```powershell
 npm.cmd install
@@ -177,11 +192,13 @@ Use the actual scripts in `package.json` if they change.
 
 ## Security / Data Flow Summary
 
-Authentication uses Argon2id with the accepted 64 MiB / three-iteration / one-lane profile and bounded KDF work. Sessions are opaque, revocable, SQLite-backed, and digest-only at rest.
+Authentication uses bounded Argon2id and SQLite-backed opaque sessions. Sessions are revocable and digest-only at rest.
 
-Large file bytes use browser-direct object-storage paths. The backend authorizes/signs and maintains logical metadata; it must not become a large-byte proxy merely to add product features.
+Large file bytes use browser-direct object-storage paths. The backend authorizes/signs and maintains logical metadata; it must not become a large-byte proxy merely to add research features.
 
-Production configuration, credentials, migrations, DNS/TLS/OSS, destructive real-data operations, deployment, and main merge remain separately gated.
+Original acquired artifacts should remain preservable evidence. Derived artifacts such as later OCR/transcription/translation/annotated exports must have explicit lineage rather than silently overwriting the source.
+
+Production configuration, credentials, migrations, DNS/TLS/OSS, destructive real-data operations, deployment, main merge, OCR execution, and RAG remain separately gated according to the active task/objective.
 
 ## License
 

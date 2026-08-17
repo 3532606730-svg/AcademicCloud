@@ -4,13 +4,13 @@
 
 ## Current Phase
 
-**Repository-driven objective: product checkpoints are green; repository/local OPS01A preparation is active as the final conditional task.**
+**The repository-local objective through OPS01A is complete. The Owner has authorized the Pre-OCR Research Foundation program; `RF-PLAN01` is the next executable planning task.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
 ## Approved Continuous Objective
 
-The Agent may autonomously progress through the following sequence, one independently verified/checkpointed Epic at a time:
+The previous sequence is complete:
 
 1. `L1-UX03` review repairs — complete;
 2. `L1-PERF01` — complete;
@@ -18,111 +18,156 @@ The Agent may autonomously progress through the following sequence, one independ
 4. `L2-ACCOUNTS01` — complete;
 5. `L2-ANNOUNCE01` — complete;
 6. `L2-PASSWORD01` — complete;
-7. `OPS01A` only if its Ready-card preconditions are satisfied;
-8. STOP.
+7. `OPS01A` — complete.
 
-This objective is repository/local only. It does not authorize production contact, deployment, production migration, main merge, One-Time External Sharing, Shared Library, OCR, or RAG.
+The new Owner-approved repository/local objective is:
+
+1. `RF-PLAN01` — compile the approved Pre-OCR program in `ROADMAP.md` and ADR-014 into dependency-safe, independently executable task cards and an explicit queue;
+2. after that planning checkpoint, autonomously consume the generated task cards one green Epic at a time, only inside the approved Pre-OCR boundaries;
+3. STOP before OCR/text extraction execution, embeddings, retrieval, or RAG.
+
+Every product Epic remains independently reviewable/checkpointed. Large workstreams must be split in planning rather than implemented as giant diffs.
+
+This objective does not authorize production access/mutation, deployment, production migration, main merge, real credentials, paid infrastructure, destructive real-data operations, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary.
 
 ## Doing
 
-### OPS01A — Operations Observability & Recovery Preparation
-
-**Task card:** `tasks/doing/OPS01A.md`
-
-**Status:** in progress after the L2-PASSWORD01 checkpoint completed and the Conditional Ready gate was recovered as satisfied. Repository/local read, verify, dry-run, isolated-rehearsal, and inactive-template preparation only; no production contact or mutation.
+None.
 
 ## Ready
 
-None. Conditional tasks below are not active.
+### 1. RF-PLAN01 — Pre-OCR Execution Decomposition
 
-## Conditional Ready
+**Task card:** `tasks/ready/RF-PLAN01.md`
 
-None. OPS01A is active; later product and production boundaries remain unauthorized.
+Planning-only. It must account for the complete approved product inventory in `ROADMAP.md`, apply ADR-014 privacy/ownership rules, split the program into bounded Ready cards, and update this board with the concrete dependency-safe queue. It must not implement product code.
+
+## Approved Program Inventory — To Be Materialized by RF-PLAN01
+
+The following areas are authorized but are not one task. `RF-PLAN01` must decompose them without dropping approved capabilities:
+
+### Core Research UX
+- metadata/name Search, excluding OCR full-text search;
+- private Recent;
+- Bulk Operations;
+- Security/Administrative Audit without research surveillance;
+- Storage Statistics / quota foundations.
+
+### Personal Research Overlay
+- Reading State (`unread | queued | reading | finished` equivalent);
+- reading progress / last page / last opened;
+- private Important and To Cite flags;
+- Personal Tags;
+- Collections distinct from Folders;
+- Saved Research Views;
+- private “Why do I have this?” / acquisition-research notes;
+- Favorites/Recent integration.
+
+### Scholarly Records & Metadata
+- Scholarly Record separate from physical Artifact;
+- attached artifacts and artifact versions;
+- canonical scholarly metadata;
+- Metadata Templates for Book / Article / Manuscript / Inscription / Archival Document and extensibility;
+- provenance/acquisition records;
+- checksum/fingerprint and safe duplicate detection;
+- edition/scan/translation/transcription/derived-artifact relationships;
+- minimal Authority Records foundation, not a mature RDF system.
+
+### Research Intake
+- Research Inbox;
+- fingerprint/duplicate and metadata/provenance capture;
+- triage to existing Record / new Record / ordinary archive / discard;
+- stable Save-to-AcademicCloud intake API boundary.
+
+### Annotation / Citation / Evidence
+- sidecar/database annotations;
+- highlights/page notes;
+- Citation Workspace;
+- page-level Evidence;
+- Evidence Bundles;
+- Research Questions and resource/evidence/question links;
+- structured export foundations.
+
+### Shared Academic Library
+- Library as a real ownership/domain boundary;
+- membership/permissions;
+- Trusted Contributor where appropriate;
+- contribution review;
+- Library Tags distinct from Personal Tags;
+- shared catalog/canonical records/naming;
+- provenance/source confidence;
+- duplicate/version grouping;
+- strict preservation of each member's private Personal Research Overlay.
+
+### Pre-OCR Hardening
+- integrity-monitoring foundations;
+- metadata snapshot/recovery foundations where justified;
+- permission-matrix verification;
+- structured export contracts;
+- stable Resource / Artifact / Version / Page identity;
+- derived-artifact lineage;
+- OCR adapter and extracted-text storage contracts only;
+- future indexing/RAG authorization boundary.
+
+## Future / Non-Blocking Backlog
+
+These are preserved but must not block Pre-OCR completion:
+- Private Vault / client-side encryption;
+- External Deposit Link;
+- polished browser extension after the intake API;
+- mature Authority/RDF/semantic-web system;
+- full Time Machine/Rewind;
+- unrelated expansion of One-Time External Sharing.
+
+### Layer 2 separate backlog — L2-SHARE01
+
+One-Time External Sharing remains a separately scoped capability:
+- no-login external capability;
+- digest-only/single-use or bounded short-lived redemption semantics;
+- short signed download;
+- revoke/expiry;
+- no public bucket exposure.
+
+It is not silently pulled into the Pre-OCR program merely because other sharing work is authorized.
 
 ## Completed
+
+### OPS01A — Operations Observability & Recovery Preparation
+
+**Task card:** `tasks/done/OPS01A.md`
+
+**Status:** complete in repository development. The exact code-bearing checkpoint `34a2eada158dcf08783dc9538d853f9361425e8a` received independent final review and exact-head Linux CI validation. The workflow passed full tests, typechecks, production build, compiled acceptance, dependency audits, Argon2 benchmark, production artifact creation/runtime verification, and a fresh-runner independent artifact download/runtime verification. Repository-owned backup receipt/freshness, dry-run retention, isolated restore drill, readiness audit, restart policy, and inactive journald preparation remain non-production tooling. No migration/dependency or production activation was added.
 
 ### L2-PASSWORD01 — Authenticated Password Change
 
 **Task card:** `tasks/done/L2-PASSWORD01.md`
 
-**Status:** complete in repository development. Both roles can change only their own password through an exact-origin API; the accepted shared Argon2id executor, expected-hash plus authentication-revision compare-and-swap, and atomic revoke-all transaction prevent concurrent overwrite and old-session revival. Backend `178/178`, frontend `136/136`, compiled migration count 8, dependency/migration delta 0, ADR-013, and independent adversarial review are green. No production access, push, or main merge occurred.
+**Status:** complete in repository development. Self-only password change uses the shared bounded Argon2id executor, expected-hash/auth-revision CAS, and atomic revoke-all sessions. Independent adversarial review PASS.
 
 ### L2-ANNOUNCE01 — Global Homepage Announcements
 
 **Task card:** `tasks/done/L2-ANNOUNCE01.md`
 
-**Status:** complete in repository development. Migration 008, Owner-authorized administration, identical authenticated effective reads, exact server-time filtering, safe plain-text/HTTPS-link boundaries, API-backed responsive homepage, backup/restore/runtime evidence, and independent adversarial review are green. Backend `165/165`, frontend `131/131`, compiled migration count 8; dependency delta 0. No production access, push, or main merge occurred.
-
-## Separate Owner-Gated Production Track
-
-### PROD-03C2 — Remaining First-Usable Production Gates
-
-Retain the existing runbook/evidence. This track is not active under the repository/local continuous objective, and repository feature progress does not authorize production contact.
-
-## Backlog — Layer 2
-
-### L2-SHARE01 — One-Time External Sharing
-
-Later separate task:
-- no-login external capability
-- digest-only/single-use or bounded short-lived redemption semantics
-- short signed download
-- revoke/expiry
-- no public bucket exposure
-
-Not authorized in the current continuous objective.
-
-## Backlog — Layer 3 Shared Academic Library
-
-Future separate authorization:
-- Library-owned resources
-- membership/permissions
-- Library-scoped Trusted Contributor
-- contribution review
-- academic catalog/canonical records
-- provenance/source-confidence fields
-- original/canonical filename model
-- duplicate/version grouping
-
-## Backlog — Layer 4 Research Infrastructure
-
-Future:
-- provenance
-- document/version/edition/translation relationships
-- citations/page references
-- research questions
-- workflow metadata
-- structured export
-- research asset graph
-
-## Backlog — Layer 5 Intelligence
-
-Future:
-- OCR/text extraction
-- indexing/full-text search
-- embeddings/retrieval
-- RAG
-- source-grounded research assistant
-
-Heavy compute must remain isolated from the core drive service.
+**Status:** complete in repository development. Migration 008, Owner-authorized administration, server-time effective windows, safe plain-text/HTTPS-link boundaries, responsive homepage integration, backup/restore/runtime evidence, and independent adversarial review are green.
 
 ## Completed / Accepted Checkpoints
 
-- Layer 0 project setup and repository-backed workflow
-- L1-E01 through L1-E08 foundation
-- accepted 1 GiB-class production runtime baseline
-- public HTTPS production foundation and UX01 production acceptance
-- L1-UX02 implementation foundation
-- L1-BUGAUDIT01 implementation + independent review PASS
-- L1-FAV01 implementation + independent review PASS
-- L1-UX03 implementation at `dd42cab…` + review repairs — independent re-review APPROVE-WITH-NITS; `OWNER_VISUAL_GATE=PENDING`
-- L1-PERF01 — evidence gathered; no client optimization justified; independent review PASS
-- L1-FOLDER01 — migration 006 + recursive recycle/restore; backend 135/135, frontend 121/121, canonical gates and independent review PASS
-- L2-ACCOUNTS01 — migration 007 + exact `owner | member` roles, digest-only invitations, race-safe Member registration, Owner Member administration, atomic disable/session revocation, zero-copy frontend integration, cross-account isolation matrix, ADR-011, backend 156/156, frontend 125/125, canonical gates and independent review PASS
-- L2-ANNOUNCE01 — migration 008 + Owner-authorized global announcements, exact effective-window/order semantics, safe plain-text/HTTPS-link boundary, API-backed responsive homepage, backup/restore/runtime coverage, ADR-012, backend 165/165, frontend 131/131, canonical gates and independent review PASS
-- L2-PASSWORD01 — shared bounded Argon2id, expected-hash/revision CAS, atomic revoke-all sessions, self-only API/account UI, ADR-013, backend 178/178, frontend 136/136, canonical gates and independent review PASS
+- Layer 0 project setup and repository-backed workflow;
+- L1-E01 through L1-E08 foundation;
+- accepted 1 GiB-class production runtime baseline;
+- public HTTPS production foundation and UX01 production acceptance;
+- L1-UX02 implementation foundation;
+- L1-BUGAUDIT01 + independent review PASS;
+- L1-FAV01 + independent review PASS;
+- L1-UX03 repairs + independent re-review PASS (`OWNER_VISUAL_GATE=PENDING` for future deployment);
+- L1-PERF01 evidence closure;
+- L1-FOLDER01 migration 006 recursive recycle/restore + independent review PASS;
+- L2-ACCOUNTS01 migration 007 Owner/Member/invitations/isolation + independent review PASS;
+- L2-ANNOUNCE01 migration 008 + independent review PASS;
+- L2-PASSWORD01 + independent review PASS;
+- OPS01A repository/local operations preparation + independent final review and exact-head Linux artifact CI PASS.
 
-Historical detail remains in Git, completed task cards, production runbooks, and existing task records rather than being duplicated here.
+Historical details remain in Git, completed task cards, ADRs, tests, and runbooks rather than being duplicated here.
 
 ## Stop / Escalation Boundaries
 
@@ -131,7 +176,9 @@ Autonomous progression stops for:
 - production SSH/credentials/security-policy changes;
 - destructive or irreversible real-data risk;
 - production DB/OSS/DNS/TLS/Nginx/systemd mutation;
+- production deployment or main merge;
+- OCR/text-extraction execution, embeddings, retrieval, or RAG under the current program;
 - severe unexplained corruption/security anomaly;
-- a new product boundary not listed in the approved continuous objective.
+- a new product boundary not represented by the approved roadmap/queue.
 
-Ordinary reversible implementation details, tests, local migrations, local benchmarks, and bounded refactors should be resolved autonomously.
+Ordinary reversible repository implementation, local migrations inside an approved data model, tests, bounded refactors, and task/project-state reconciliation should be resolved autonomously.

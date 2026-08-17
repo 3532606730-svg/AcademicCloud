@@ -4,243 +4,135 @@
 
 ## Current Phase
 
-**Layer 1 Core Drive, Layer 2 Accounts I, Global Homepage Announcements, and Authenticated Password Change are green in repository development; OPS01A is active as the final repository/local task in the approved objective.**
+**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, and OPS01A is complete and independently green. The Owner has authorized the Pre-OCR Research Foundation program; `RF-PLAN01` is the next Ready task.**
 
-The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains local/repository-only unless a separate Owner production gate is opened.
+The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains repository-only unless a separate Owner production gate is opened.
 
 ## Source-of-Truth Development Baseline
 
-Current repository-development line:
+Current development line:
+- branch: `codex/project-memory-reconcile-20260817`;
+- recovery baseline before FOLDER01: `4d706bb9ce821a6f70af24dbd097209e0aa62cd3`;
+- FOLDER01 checkpoint: `5c3bae9…`;
+- Accounts I checkpoint: `817ace5…`;
+- Announcements checkpoint: `9b64ed7c945f687eef2b80ea3c509c1849e70807`;
+- Password Change checkpoint: `6ef6fb612d2bdac808e3682eb5bcae6bdb3a0de3`;
+- OPS01A code-bearing independent-review checkpoint: `34a2eada158dcf08783dc9538d853f9361425e8a`;
+- latest repository migration: `008_global_announcements.sql`;
+- dependency delta for OPS01A: zero;
+- migration delta for OPS01A: zero.
 
-- branch: `codex/project-memory-reconcile-20260817`
-- recovery baseline before L1-FOLDER01: `4d706bb9ce821a6f70af24dbd097209e0aa62cd3`
-- accepted ancestor: `d9bdfebfab0cfb4fc0b5067ec1ba1ce91fe31c21`
-- latest repository migration: `008_global_announcements.sql`
-- dependency delta from the accepted UX03 baseline: zero
-
-This work remains on a separate `codex/` branch; no main merge or production rollout is authorized.
+No main merge or production rollout is authorized by repository completion.
 
 ## Production State
 
-Production remains the accepted UX01 generation, not the current UX03 development branch.
+Production remains the accepted UX01 generation.
 
-Verified/recorded production facts:
-- public site: `https://cloud.ajtlab.top`
-- backend remains loopback-only behind Nginx
-- private Alibaba OSS remains the file-byte store
-- `files.ajtlab.top` is the browser-facing OSS custom domain from the UX01 production window
-- production UX01 browser Product Verification passed
-- no UX02, FAV01, UX03, FOLDER01, Accounts I, announcements, Password Change, or OPS01A code has been deployed
-- systemd autostart/permanent-delete/certificate-lifecycle hardening remain separately Owner-gated according to the production runbooks
+Recorded production boundary:
+- public site: `https://cloud.ajtlab.top`;
+- backend loopback-only behind Nginx;
+- file bytes in private Alibaba OSS behind the storage abstraction;
+- `files.ajtlab.top` remains the browser-facing OSS custom domain from the accepted production window;
+- post-UX01 repository features listed below have not been deployed merely because they are complete in development;
+- systemd/autostart, backup scheduling/off-host delivery, certificate lifecycle, destructive recovery, deployment, and other live mutations remain separately Owner-gated.
 
-Do not infer production rollout from repository completion.
+## Completed Repository-Development Checkpoints
 
-## Completed Core Foundation
+### Core Drive closure
 
-Layer 0 and Layer 1 foundation Epics L1-E01 through L1-E08 are complete:
-- Node.js/TypeScript/Fastify backend
-- React/TypeScript/Vite frontend
-- SQLite persistence and checksummed migrations
-- Argon2id + opaque SQLite sessions
-- exact-origin unsafe-request protection
-- private object-storage abstraction and Alibaba OSS adapter
-- direct browser upload and signed/direct download
-- folder/file lifecycle, move/rename, recycle/restore, permanent file deletion safeguards
-- preview authorization
-- security/reliability hardening
-- deployment artifact/runbooks, backup/restore tooling, Nginx/systemd templates
-
-## UX / Favorites / Hardening Progress
-
-### UX01
-
-**Production accepted.** Bilingual UI, upload UX, browser-correct Preview, and `files.ajtlab.top` production path were accepted in the UX01 production window.
-
-### UX02
-
-Academic workspace visual refresh and drag/drop implementation is complete in repository history. It introduced the current scholarly/editorial visual language, catalogue rows, command bar, row menus, drop upload, queue behavior, and bilingual UX foundation. It was not independently deployed as a separate production release.
-
-### L1-BUGAUDIT01
-
-Implementation and independent ChatGPT review **PASS**.
-
-Accepted hardening includes:
-- CSP-safe RowMenu positioning with no runtime inline styles
-- NFC/size/MD5 upload-recovery identity
-- production startup fail-closed on missing/not-current schema
-- backend-authoritative inline-preview size limits
-- correct RowMenu→modal focus restoration
-- app-wide external file-drop protection
-
-No new evidence currently requires reopening BUGAUDIT01.
-
-### L1-FAV01
-
-Implementation and independent ChatGPT review **PASS** for continued repository development.
-
-Accepted behavior includes:
-- migration 005 per-user Favorite relations
-- account-scoped Favorites API
-- Library/Favorites state-machine separation
-- explicit `favoritesError`
-- Favorites refetch/retry behavior
-- abort/stale-request safety
-- Favorites account isolation
-
-A separate Owner visual/product gate remains pending before any future deployment of this generation.
-
-### L1-FOLDER01
-
-**Repository-development complete; independent adversarial review PASS.** Migration 006 adds same-owner recycle-operation groups without editing migrations 001–005. Recursive folder recycle now collects only the active subtree, rejects any direct/deep pending upload before mutation, and transitions the complete group in one `BEGIN IMMEDIATE` transaction. Restore revalidates exact group membership/counts and the original parent, restores the group topologically, and rolls the transaction back on stale state, sibling conflict, CAS failure, or injected failure.
-
-The critical invariant is verified: independently pre-deleted files/folders and their Favorites remain in their own groups and never revive with a later parent restore. Recycle lists operation roots only; recursive recycle/restore never deletes storage bytes or changes IDs, hierarchy, display metadata, or object keys. Standalone file permanent-delete retry semantics remain intact, while grouped descendants cannot be recursively purged.
-
-Verification on 2026-08-17:
-- backend `135/135` PASS;
-- frontend `121/121` PASS;
-- workspace typecheck and production build PASS;
-- acceptance tools `25/25` PASS;
-- compiled acceptance PASS with migration count 6, restart/session, maintenance dry-run, backup, and isolated restore;
-- migration fresh/prior/replay/checksum/integrity and production-startup fail-closed tests PASS;
-- `git diff --check` PASS, targeted secret scan clear, dependency delta 0;
-- independent read-only Reviewer: PASS, no blocker or medium finding.
+- UX02 academic workspace foundation;
+- BUGAUDIT01 independent review PASS;
+- FAV01 independent review PASS;
+- UX03 required mobile/Preview/touch-target repairs independently re-reviewed PASS;
+- PERF01 evidence closure: browser-direct transfer architecture verified; measured checksum stage did not justify product optimization;
+- FOLDER01 migration 006 transactional recursive recycle/restore independently reviewed PASS. The central invariant is preserved: independently pre-deleted descendants never join or revive with a later parent recycle group.
 
 ### L2-ACCOUNTS01
 
-**Repository-development complete; independent adversarial review PASS.** Migration 007 adds database-enforced `owner | member` roles, fail-closed legacy-owner selection, durable authentication revisions, and digest-only single-use invitations without editing migrations 001–006. First-account provisioning now creates the sole initial Owner only when the database has zero accounts; all later accounts enter as Members through race-safe invitation redemption.
+**Complete; independent adversarial review PASS.** Migration 007 established exact global `owner | member` roles, first-Owner bootstrap, digest-only single-use invitations, race-safe Member registration, Owner administration, atomic disable/session revocation, and strict cross-account drive/Favorites isolation. The disable/login/re-enable session-publication race found during review was repaired and deterministically tested.
 
-Owner authorization is re-read server-side. Owner invitation management and safe account listing expose no password hash, session secret, raw invitation digest, or repeatable raw invitation token. Member disable/enable is restricted to Owner administration; disable and revoke-all-sessions are atomic, and login publishes a session only after a post-Argon transaction re-read confirms unchanged active state, password hash, and authentication revision. A deterministic disable→enable race test proves an authentication attempt begun before disable cannot revive after re-enable.
-
-The restrained frontend adds fragment-based invite registration and Owner account administration under the existing account menu. Invitation capabilities are removed from the URL immediately and remain memory-only; the four-item mobile navigation is unchanged. True Member identities remain isolated across folders, files, pending uploads, recycle operations, Preview, Download, Move/Rename/Restore, and Favorites. ADR-011 records the durable security and concurrency model.
-
-Verification on 2026-08-17:
-- backend `156/156` PASS;
-- frontend `125/125` PASS;
-- workspace typecheck and production build PASS;
-- acceptance tools `25/25` PASS;
-- compiled acceptance PASS with migration count 7, restart/session, maintenance dry-run, backup, isolated restore, restored session, and zero redeploy migrations;
-- migration empty/singleton/ambiguous-legacy, replay/checksum/integrity, backup, and production-startup fail-closed tests PASS;
-- `git diff --check` PASS, 57 changed-file credential-pattern scan clear, dependency delta 0;
-- independent read-only Reviewer: PASS after repairing and re-testing the disable/login/re-enable race, with no remaining blocker or medium finding.
+Final recorded suite at completion: backend `156/156`, frontend `125/125`, canonical build/typecheck/acceptance green, dependency delta 0.
 
 ### L2-ANNOUNCE01
 
-**Repository-development complete; independent adversarial review PASS.** Migration 008 adds constrained global announcements without editing historical migrations. Current active Owners can create, edit, publish, and unpublish through server-side authority re-reads; every authenticated active account receives the same effective global set. The database/API enforce plain-text content, `info | warning | critical`, credential-free HTTPS links, server-owned identity/creator/timestamps, exact `published_at <= now` and `expires_at > now` boundaries, and deterministic ordering.
+**Complete; independent adversarial review PASS.** Migration 008 added Owner-administered database/API-backed global homepage announcements with plain text, `info | warning | critical`, safe HTTPS links, server-owned creator/timestamps, exact publication/expiry boundaries, deterministic ordering, and responsive homepage integration. No new global role or notification worker was introduced.
 
-The homepage feed has no hard-coded fallback. Owner administration uses the existing account controls; the four-item mobile navigation remains unchanged. Independent review found and closed one responsive regression: desktop Owner administration buttons are now hidden from the narrow topbar and remain available in the compact AccountMenu. ADR-012 records the publication/effective-window model; no worker, notification delivery, third global role, or new dependency was added.
-
-Verification on 2026-08-17:
-- backend `165/165` PASS;
-- frontend `131/131` PASS;
-- workspace typecheck and production build PASS;
-- acceptance tools `25/25` PASS;
-- compiled acceptance PASS with migration count 8, session and announcement persistence across restart, backup/isolated restore, restored session/announcement validity, and zero redeploy migrations;
-- migration v7→v8/fresh/replay/checksum/integrity and production-startup fail-closed tests PASS;
-- `git diff --check` PASS, targeted secret scan clear, dependency delta 0;
-- independent read-only Reviewer: PASS after the mobile-topbar repair, no remaining blocker or medium finding.
+Final recorded suite at completion: backend `165/165`, frontend `131/131`, canonical build/typecheck/acceptance green, dependency delta 0.
 
 ### L2-PASSWORD01
 
-**Repository-development complete; independent adversarial review PASS.** Authenticated Owners and Members can change only their own password through an exact-origin, strict-shape API. Current-password verification and new-password hashing reuse the application-wide bounded Argon2id executor outside the write transaction without changing the accepted `m=65536`, `t=3`, `p=1` profile.
+**Complete; independent adversarial review PASS.** Authenticated Owner/Member self-password change reuses the bounded Argon2id executor. Expected old hash plus durable authentication revision forms the CAS boundary; password mutation and revoke-all sessions commit atomically, preventing concurrent overwrite, disable/enable ABA revival, and stale login publication. No migration/dependency was added.
 
-The write boundary re-reads the active account, password hash, role, and durable authentication revision inside `BEGIN IMMEDIATE`, then uses an expected-hash plus expected-revision compare-and-swap before revoking all sessions in the same transaction. This prevents concurrent last-write-wins, disable→enable ABA revival, and publication of a pending old-password login; injected partial revocation rolls back the password, revision, and session state together.
+Final recorded suite at completion: backend `178/178`, frontend `136/136`, canonical build/typecheck/acceptance green.
 
-The account-surface dialog is available to both roles, keeps confirmation memory-only, clears authenticated frontend state and aborts active upload jobs after success, and returns to Login. It preserves the four-item mobile navigation and the 44px mobile touch floor. ADR-013 records the model; no migration or dependency was added.
+### OPS01A — Operations Observability & Recovery Preparation
 
-Verification on 2026-08-17:
-- backend `178/178` PASS;
-- frontend `136/136` PASS;
-- workspace typecheck and production build PASS;
-- acceptance tools `25/25` PASS;
-- compiled acceptance PASS with migration count 8, permanent old-session rejection, fresh new-password login, restart, backup/isolated restore, restored-session validity, announcement persistence, and zero redeploy migrations;
-- `git diff --check` PASS, 23 present changed-file high-confidence secret scan clear, dependency delta 0, migration delta 0;
-- independent read-only Reviewer: PASS after the mobile Close touch-target repair, no remaining blocker or medium finding.
+**Complete in repository development; final independent acceptance PASS / APPROVE-WITH-NIT.**
 
-### L1-UX03
+Delivered repository/local preparation:
+- default zero-network readiness auditor with explicit plan/public/live read-only modes;
+- fixed/validated SSH/read-only check surface, bounded execution, UNKNOWN rather than false-green evidence, and report secret filtering;
+- verified SQLite backup generation receipt and bounded freshness semantics;
+- backup verification against a task-owned 0600 copy so verification cannot leave WAL/SHM companions beside the selected backup;
+- deterministic 7-daily / 4-weekly / 6-monthly retention dry-run with conservative `hold` state and no apply/delete path;
+- isolated restore drill using verified task-owned temporary state, `InMemoryStorageAdapter`, Fastify injection, maintenance dry-run, source/copy identity re-verification, and exact cleanup ownership;
+- bounded restart-storm systemd template and inactive journald-retention template;
+- production artifact inclusion plus compiled/runtime validation.
 
-Implementation exists at `dd42cab…`; zero-descriptive-copy and the dedicated responsive mobile architecture were verified in the independent GitHub review. The three required repair findings are now repaired and independently re-reviewed **PASS** (APPROVE-WITH-NITS, non-blocking NITs only):
+Final evidence:
+- Codex local: backend `189/189` PASS; frontend `136/136` PASS; readiness auditor `48/48` PASS; acceptance tools `25/25` PASS; workspace typecheck PASS; `git diff --check` PASS; independent read-only Reviewer PASS with no blocker/medium finding.
+- ChatGPT independently reviewed the exact `6ef6fb6…34a2eada` change scope and found no blocker/medium issue. One non-blocking wording nit remains: the auditor help text says it “never writes anything” although explicit `--output` may create a no-clobber local report under `output/operations`; this does not mutate an inspected/production system and does not block closure.
+- Draft validation PR #3 triggered the existing Linux production-build workflow against exact head `34a2eada…`. Workflow run `31997033717` passed full tests, typechecks, production build, compiled acceptance, dependency audits, Argon2 benchmark, deterministic artifact packaging, extracted runtime verification, and a second fresh-runner independent artifact download/runtime verification.
+- No OPS01A migration/dependency was added and no production host/data/OSS/DNS/TLS/Nginx/systemd service was contacted or mutated for task acceptance.
 
-1. mobile bottom-nav DOM/semantic order now exactly `Library / Favorites / Pending / Recycle` (exact-sequence test added);
-2. Preview now exposes Close / Open / Download, with Download reusing the authoritative `createDownload(file.id)` attachment path while Open keeps the inline signed URL;
-3. mobile 44px touch floor added for Sign In, AccountMenu Sign Out, 中文, and EN (selector-scoped to the mobile media block).
+Task record: `tasks/done/OPS01A.md`.
 
-Verified non-regressions (both reviews):
-- FAV01 behavior preserved
-- global drop guard preserved
-- RowMenu scroll/resize focus repair is real
-- fullscreen mobile Preview structure exists
-- zero-descriptive-copy cleanup is real, not CSS hiding
-- migration-count 4→5 acceptance fix is valid
-- no CSP regression found
+## New Durable Product Boundary — Pre-OCR Research Foundation
 
-Formal state:
+The Owner has approved a new repository/local program before OCR. ADR-014 now defines the privacy/data model:
 
-```text
-INDEPENDENT_L1_UX03_REVIEW_PASS=true
-UX03_REQUIRED_REPAIRS=0
-OWNER_VISUAL_GATE=PENDING
-```
+- Physical Artifact;
+- Scholarly Resource / Scholarly Record;
+- Personal Research Overlay;
+- Collaborative Overlay;
+- Governance / Operations;
+- Derived Intelligence.
 
-A separate Owner visual/product gate remains pending before any future deployment of this generation.
+Critical rules:
+- shared resource does not imply shared research activity;
+- Owner/Admin has no implicit product read authority over another user's private research state;
+- administrative audit is not research surveillance;
+- Folder and Collection are distinct;
+- original acquired artifacts remain preservable evidence while derived artifacts have explicit lineage;
+- duplicate detection must not reveal inaccessible resources;
+- future AI authority must never exceed the requesting user's effective authority.
+
+`ROADMAP.md` records the complete approved Pre-OCR inventory: Core Research UX, Reading State/private overlays, Collections/Views, Scholarly Records/Metadata/Provenance, Research Inbox/intake, sidecar annotations/citations/evidence/questions, Shared Academic Library, and final integrity/identity/derived-artifact/OCR-contract hardening.
 
 ## Approved Continuous Objective
 
-The Owner has approved a return to repository-driven autonomous development.
+The previous objective through OPS01A is complete.
 
-After this planning reconciliation, the executable sequence is:
+The new objective begins with:
 
-1. ~~finish the current L1-UX03 review repairs and re-run its gates~~ — **DONE** (repairs committed `a15b2e3`; adversarial re-review APPROVE-WITH-NITS);
-2. ~~L1-PERF01 — evidence-first transfer/checksum performance baseline and only justified low-risk optimization~~ — **DONE** (measured; no optimization justified; evidence note committed);
-3. ~~L1-FOLDER01 — transactional recursive folder recycle/restore~~ — **DONE** (migration 006, full gates, independent review PASS);
-4. ~~L2-ACCOUNTS01 — Owner/Member foundation, invite-only registration, invite management, minimal Owner user administration, Member disable/enable, session revocation~~ — **DONE** (migration 007, full gates, independent security/race review PASS);
-5. ~~L2-ANNOUNCE01 — Owner-administered, database/API-backed global homepage announcements for authenticated users~~ — **DONE** (migration 008, full gates, independent review PASS);
-6. ~~L2-PASSWORD01 — authenticated self-password change with concurrency-safe mutation and atomic session revocation~~ — **DONE** (no migration/dependency, full gates, independent review PASS);
-7. OPS01A — conditional repository/local operations preparation only;
-8. stop.
-
-Each Epic must be independently reviewable and checkpointed before autonomous progression.
-
-## Key Future Product Boundaries
-
-After the current objective, later work may include:
-- Layer 2 One-Time External Sharing
-- Layer 3 Shared Academic Library: Library-owned resources, membership/permissions, Trusted Contributor, contribution review, academic catalog
-- Layer 4 Research Infrastructure: provenance, lineage, citations/page refs, research questions, export, asset graph
-- Layer 5 Intelligence: OCR, indexing/search, embeddings/retrieval, RAG
-
-None of these later boundaries is authorized by the current continuous objective unless already represented by an approved Ready task.
-
-## Operations / Infrastructure Reality
-
-Current production host class remains suitable for the present control-plane architecture:
-- 2 vCPU
-- Linux `916,044 KiB` `MemTotal`
-- 1 GiB swap
-- 20 GB system disk
-- object bytes in OSS rather than local disk
-- current service cgroup policy 320/384 MiB with 128 MiB whole-host headroom gate
-
-Accounts, invitations, shared-library metadata, and catalog metadata are expected to remain lightweight relative to file bytes. OCR/embedding/RAG compute should be isolated when introduced.
-
-OPS01A may prepare health/backup/certificate/disk/memory/restore-drill tooling, but must not activate or mutate production.
+1. `RF-PLAN01` — planning-only decomposition of the approved Pre-OCR program into bounded Ready task cards and a concrete dependency-safe queue;
+2. after that planning checkpoint, autonomously execute the generated Pre-OCR queue one independently green Epic at a time;
+3. STOP before OCR/text-extraction execution, embeddings, retrieval, or RAG.
 
 ## Safety Boundaries
 
-Current continuous objective does **not** authorize:
-- production SSH
-- production DB migration
-- production account/invite creation
-- production OSS/DNS/TLS/Nginx/systemd changes
-- destructive production tests
-- backup pruning on real production data
-- production restore
-- certificate replacement
-- main merge
-- deployment
-- One-Time External Sharing
-- Shared Library
-- OCR/RAG
+The current program still does **not** authorize:
+- production SSH or production mutation;
+- production DB migration;
+- production OSS/DNS/TLS/Nginx/systemd changes;
+- destructive production tests, backup pruning, or production restore;
+- certificate replacement;
+- main merge or deployment;
+- real credentials or paid infrastructure changes;
+- OCR/text-extraction execution;
+- embeddings, retrieval, or RAG;
+- an unrecorded product boundary outside the approved Roadmap/Task Board.
 
 ## Next Action
 
-Implement `OPS01A` from its active card as lightweight repository-owned read/verify/dry-run/isolated-rehearsal tooling. Keep all work repository/local; do not contact production, enable services/timers, prune backups, restore production, push, or merge main.
+Execute `RF-PLAN01` from `tasks/ready/RF-PLAN01.md`: materialize the approved Pre-OCR Roadmap and ADR-014 into bounded implementation task cards and the concrete continuous queue, independently review the planning coverage/boundaries, checkpoint it, then continue to the first generated Ready Epic if no Owner gate is reached.

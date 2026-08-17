@@ -114,19 +114,12 @@ The same-origin SPA uses exact `APP_ORIGIN` enforcement on unsafe API requests p
 ## ADR-010 — Product Roadmap Expansion and Repository-Driven Continuous Objectives
 
 **Date:** 2026-08-17  
-**Status:** Accepted  
+**Status:** Accepted / refined by ADR-014 and the 2026-08-17 Pre-OCR roadmap reconciliation  
 **Full record:** `docs/decisions/ADR-010-product-roadmap-and-execution-model.md`
 
-AcademicCloud's post-Core-Drive product sequence is now explicit:
-1. Layer 1 — Core Drive closure;
-2. Layer 2 — Accounts & Sharing;
-3. Layer 3 — Shared Academic Library;
-4. Layer 4 — Research Infrastructure;
-5. Layer 5 — Intelligence.
+ADR-010 established the post-Core-Drive sequence and repository-driven continuous-objective model. The coarse original product layers were Core Drive → Accounts & Sharing → Shared Academic Library → Research Infrastructure → Intelligence, with Operations cross-cutting.
 
-Operations is a cross-cutting track rather than a product layer.
-
-The immediate continuous objective is repository/local only: finish UX03 repair → PERF01 → FOLDER01 → Accounts I → Global Homepage Announcements, with Password Change optional afterward and OPS01A conditional. Each Epic must remain independently verified/checkpointed. One-Time External Sharing, Shared Library, Research Infrastructure, Intelligence, and production rollout require later explicit gates.
+The execution model remains authoritative: each Epic is bounded, verified, independently reviewable, recorded, and checkpointed; long runs consume an explicit repository queue rather than a giant chat prompt. The later ADR-014/roadmap reconciliation refines the research layers and privacy/data model without weakening this workflow.
 
 ## ADR-011 — Accounts, Invitations, and Member Access Administration
 
@@ -151,3 +144,17 @@ Global announcements reuse the exact Owner authority from Accounts I and give al
 **Full record:** `docs/decisions/ADR-013-authenticated-password-change-model.md`
 
 Password change is self-only for authenticated Owner and Member accounts. Current-password verification and replacement hashing reuse the single bounded Argon2id executor outside the SQLite write transaction. The captured password hash plus durable authentication revision form a conditional update token; the successful password update and revoke-all-sessions commit atomically, so concurrent changes, disable/enable races, pending logins, and revocation failures cannot overwrite or revive old authentication state. No migration or dependency is added.
+
+## ADR-014 — Privacy, Ownership, Scholarly Resource, and Research-Activity Boundaries
+
+**Date:** 2026-08-17  
+**Status:** Accepted  
+**Full record:** `docs/decisions/ADR-014-privacy-ownership-and-research-activity-boundaries.md`
+
+AcademicCloud separates Physical Artifact, Scholarly Resource/Record, Personal Research Overlay, Collaborative Overlay, Governance/Operations, and Derived Intelligence.
+
+The core rule is: **shared resource does not imply shared research activity.** Reading State/progress, Personal Tags, Collections, Saved Views, private notes, annotations, citation/evidence work, Evidence Bundles, Research Questions, and equivalent personal research state are account-private by default; Owner/Admin receives no implicit product read authority over another account's Personal Research Overlay. Administrative audit must not become research surveillance.
+
+Folder and Collection are distinct; canonical metadata and private interpretation are distinct; original acquired artifacts remain preservable evidence while derived artifacts have explicit lineage; duplicate detection must not expose inaccessible resources; and future OCR/index/retrieval/RAG authority may never exceed the requesting user's effective authority.
+
+The 2026-08-17 Roadmap reconciliation uses these boundaries to authorize the Pre-OCR Research Foundation program before any OCR execution begins.
