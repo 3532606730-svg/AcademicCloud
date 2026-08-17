@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 are complete and independently green while the accepted UX01 production release remains live. No Epic is active. The remaining **Pre-OCR Research Foundation** queue begins with RF-META01 but is parked Ready/backlog at an external independent predeployment review gate.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, and PROD-04A are complete and independently green. Exact OPS01A checkpoint `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted production generation at schema v8. No task or feature Epic is active. The remaining **Pre-OCR Research Foundation** queue begins with RF-META01 but is parked Ready/backlog by Owner direction.
 
-**Approved continuous objective:** interrupted by Owner after the independently green RF-DOMAIN01 checkpoint. Do not select or execute RF-META01 or any later feature task until new Owner direction. External review must choose an exact production candidate, which may be RF-DOMAIN01 or an earlier exact green checkpoint; repository HEAD is not automatically production HEAD. Production SSH/deployment/migration/mutation, main merge, real credentials/cost, and destructive real-data work remain separately Owner-gated.
+**Approved continuous objective:** interrupted by Owner after the independently green RF-DOMAIN01 checkpoint. PROD-04A deployed and accepted the externally selected earlier OPS01A checkpoint and is complete. Stop. Do not select or execute RF-META01 or any later feature task until new Owner direction. Repository HEAD remains newer and is not production HEAD. Any further production SSH/deployment/migration/mutation, main merge, real credentials/cost, and destructive real-data work remain separately Owner-gated.
 
 ## Engineering Workflow
 

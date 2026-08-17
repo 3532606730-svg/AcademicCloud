@@ -10,11 +10,11 @@ The repository and Git are durable project memory. Chat is planning context only
 
 ## Current Status
 
-**Production:** the accepted UX01 generation remains live at `https://cloud.ajtlab.top`. Production is a separate Owner-gated track.
+**Production:** exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted multi-user generation at `https://cloud.ajtlab.top`, with schema v8/migrations 1–8. Production remains a separate Owner-gated track.
 
 **Development:** Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, repository/local OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 are independently green on the current development line. Schema head is append-only migration 011. This newer repository generation is not deployed.
 
-**Active:** none. Feature development is stopped at an external independent predeployment review gate. `RF-META01` and the remaining Pre-OCR queue stay Ready/backlog and must not be consumed without new Owner direction. A future production candidate may be the RF-DOMAIN01 checkpoint or an earlier exact green checkpoint; development HEAD does not select production HEAD.
+**Active:** none. PROD-04A is complete and independently reviewed. `RF-META01` and the remaining Pre-OCR queue stay Ready/backlog and must not be consumed without new Owner direction. Development HEAD remains newer than production and does not select production HEAD.
 
 Read:
 - `AGENTS.md` — mandatory repository policy and current product/privacy boundaries;

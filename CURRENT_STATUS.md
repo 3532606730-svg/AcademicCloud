@@ -4,9 +4,9 @@
 
 ## Current Phase
 
-**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. No Epic is active. Feature development is stopped at the Owner-required external independent predeployment review gate.**
+**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, and PROD-04A is complete and independently green. The independently reviewed OPS01A checkpoint is the accepted production generation. No task or feature Epic is active; RF-META01 and every later Pre-OCR task remain parked.**
 
-The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains repository-only unless a separate Owner production gate is opened.
+Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Current repository HEAD is newer and remains repository-only; this completed release does not authorize another deployment, main merge, or feature progression.
 
 ## Source-of-Truth Development Baseline
 
@@ -20,7 +20,7 @@ Current development line:
 - OPS01A code-bearing independent-review checkpoint: `34a2eada158dcf08783dc9538d853f9361425e8a`;
 - RF-AUDIT01 checkpoint: `cb25ce01a5e25c89ae4de3db1110433b71bb45fa`;
 - RF-BULK01 / pre-Domain checkpoint: `fc30aed2eeb4536ec3747869bb5b99b22fbf94e8`;
-- RF-DOMAIN01 checkpoint: the clean completion commit at current development HEAD (record its exact SHA after commit/push recovery);
+- RF-DOMAIN01 checkpoint: `ddcc19eb41428bbdbececd8868a11a09dae97e98`;
 - latest repository migration: `011_scholarly_record_identity.sql`;
 - dependency delta for OPS01A: zero;
 - migration delta for OPS01A: zero.
@@ -29,17 +29,21 @@ No main merge or production rollout is authorized by repository completion.
 
 ## Production State
 
-Production remains the accepted UX01 generation.
+Production is the accepted routine multi-user release `34a2eada158dcf08783dc9538d853f9361425e8a`, deployed from successful GitHub Actions run `31997033717` using its verified Linux x64 / Node 24 artifact. Alibaba did not run npm, a build, native compilation, or Docker.
 
-The accepted production database is schema v4. The append-only migrations present in development but not current production are `005_per_user_favorites.sql`, `006_recycle_groups.sql`, `007_accounts_and_invitations.sql`, `008_global_announcements.sql`, `009_governance_audit.sql`, `010_resource_ownership_domains.sql`, and `011_scholarly_record_identity.sql`. No migration in this delta has been authorized or run by RF-DOMAIN01 closure.
+The production database is schema v8 with exact append-only history 1–8. The authorized v4→v8 transition applied only `005_per_user_favorites.sql`, `006_recycle_groups.sql`, `007_accounts_and_invitations.sql`, and `008_global_announcements.sql`. Repository migrations `009_governance_audit.sql`, `010_resource_ownership_domains.sql`, and `011_scholarly_record_identity.sql` remain undeployed.
+
+Final accepted account aggregate is four: one active Owner, one active real Member intentionally created by the Owner, and two disabled acceptance Members with zero live sessions. The disposable acceptance announcement is unpublished. The 235-byte synthetic acceptance TXT remains active and recoverable after successful upload, exact download/hash, Preview, Favorite add/remove, recycle, and restore; no production file or OSS object was permanently deleted.
 
 Recorded production boundary:
 - public site: `https://cloud.ajtlab.top`;
 - backend loopback-only behind Nginx;
 - file bytes in private Alibaba OSS behind the storage abstraction;
 - `files.ajtlab.top` remains the browser-facing OSS custom domain from the accepted production window;
-- post-UX01 repository features listed below have not been deployed merely because they are complete in development;
-- systemd/autostart, backup scheduling/off-host delivery, certificate lifecycle, destructive recovery, deployment, and other live mutations remain separately Owner-gated.
+- production service remains active with autostart disabled, one `127.0.0.1:3000` listener, unchanged 320/384 MiB cgroup bounds, zero restarts, and zero cgroup or post-release kernel OOM evidence;
+- pre-migration v4 backup SHA-256 `7635f6cb…` and old release `15181f90d6eecbb0ddb977a0168536a445802ec7` are the inseparable rollback pair; never run the old release against schema v8 or invent reverse SQL;
+- the encrypted off-host backup is verified in private backup commit `4b527e48be8d4f91c50c93ef9ea49caf9560b088`;
+- systemd/autostart policy changes, backup scheduling/pruning, certificate lifecycle, destructive recovery, later deployment, and other live mutations remain separately Owner-gated.
 
 ## Completed Repository-Development Checkpoints
 
@@ -152,19 +156,19 @@ Final local evidence: backend `227/227` PASS; frontend `154/154` PASS; workspace
 
 ## Approved Continuous Objective
 
-The Owner interrupted autonomous progression after RF-DOMAIN01. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, `RF-BULK01`, and `RF-DOMAIN01` are complete and independently reviewed. No task is Doing. `RF-META01` and every later Pre-OCR card remain Ready/backlog and must not be selected or consumed until new Owner direction.
+The Owner interrupted autonomous progression after RF-DOMAIN01. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, `RF-BULK01`, and `RF-DOMAIN01` are complete and independently reviewed. `RF-META01` and every later Pre-OCR card remain Ready/backlog and must not be selected or consumed until new Owner direction.
 
-External independent predeployment review must choose an exact green production target. That target may be the RF-DOMAIN01 completion checkpoint or an earlier checkpoint if migration risk is lower. Repository HEAD does not automatically equal production HEAD.
+External predeployment review selected the earlier exact green OPS01A checkpoint `34a2eada…`; PROD-04A deployed and accepted that exact target. Repository HEAD remains deliberately newer than production HEAD. After the PROD-04A record/checkpoint is complete, no task is Doing.
 
 ## Safety Boundaries
 
-The current program still does **not** authorize:
+The completed PROD-04A window does **not** authorize any further:
 - production SSH or production mutation;
-- production DB migration;
+- production DB migration or deployment;
 - production OSS/DNS/TLS/Nginx/systemd changes;
 - destructive production tests, backup pruning, or production restore;
 - certificate replacement;
-- main merge or deployment;
+- main merge;
 - real credentials or paid infrastructure changes;
 - OCR/text-extraction execution;
 - embeddings, retrieval, or RAG;
@@ -172,4 +176,4 @@ The current program still does **not** authorize:
 
 ## Next Action
 
-Stop. Obtain external independent predeployment review and await Owner selection of the exact production candidate. Do not start RF-META01, contact production, run production migrations, deploy, or mutate OSS/DNS/TLS/Nginx/systemd.
+STOP. Await Owner direction. Do not start RF-META01 or PROD-03C2; do not contact production again, run another migration/deployment, or mutate OSS/DNS/TLS/Nginx/systemd without a new Owner-gated window.

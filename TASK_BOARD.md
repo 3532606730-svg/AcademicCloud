@@ -4,9 +4,9 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. Feature development is stopped at an external independent predeployment review gate.**
+**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. Feature development remains stopped and no task is active.**
 
-Production remains on the accepted UX01 release and is a separate Owner-gated track.
+Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Repository HEAD remains newer and does not automatically select another production target.
 
 ## Approved Continuous Objective
 
@@ -22,11 +22,11 @@ The previous sequence is complete:
 
 The Owner interrupted the repository/local continuous objective after RF-DOMAIN01. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, `RF-BULK01`, and `RF-DOMAIN01` are complete. RF-META01 and every later Pre-OCR card remain Ready/backlog and may not be selected until new Owner direction.
 
-External independent predeployment review must select an exact green production candidate. It may select the RF-DOMAIN01 checkpoint or an earlier exact green checkpoint if that reduces production migration risk. Repository HEAD is not automatically production HEAD.
+External predeployment review selected the earlier exact green OPS01A checkpoint `34a2eada…`; the bounded PROD-04A window deployed and accepted that exact target. Repository HEAD remains deliberately newer than production HEAD.
 
 Every product Epic remains independently reviewable/checkpointed. Large workstreams must be split in planning rather than implemented as giant diffs.
 
-This objective does not authorize production access/mutation, deployment, production migration, main merge, real credentials, paid infrastructure, destructive real-data operations, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary.
+The completed PROD-04A window does not authorize any further production access/mutation, deployment, migration, main merge, real credentials, paid infrastructure, destructive real-data operations, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary.
 
 ## Doing
 
@@ -34,7 +34,7 @@ None.
 
 ## Ready / Backlog — Parked Pre-OCR Queue
 
-The following independently reviewed queue remains durably specified in `docs/architecture/pre-ocr-execution-plan.md`, but it is parked at the external predeployment review gate. Do not move any card to Doing or consume the queue without new Owner direction. If resumed later, preserve the listed dependency order.
+The following independently reviewed queue remains durably specified in `docs/architecture/pre-ocr-execution-plan.md`, but it is parked by the Owner's explicit stop after RF-DOMAIN01. Do not move any card to Doing or consume the queue without new Owner direction. If resumed later, preserve the listed dependency order.
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
@@ -70,9 +70,9 @@ The following independently reviewed queue remains durably specified in `docs/ar
 
 **Status:** parked, not executable under the current Pre-OCR continuous objective. It may resume only after an explicit Owner instruction opens a production operations window.
 
-The remaining bounded decisions are the exact disposable-object permanent-delete confirmation and the reboot/autostart policy. Historical authenticated/live disposable-object acceptance and the accepted UX01 production generation are already recorded and must not be replayed merely because this card exists.
+The remaining bounded decisions are the exact disposable-object permanent-delete confirmation and the reboot/autostart policy. Historical authenticated/live disposable-object acceptance, the accepted UX01 generation, and the accepted PROD-04A multi-user release are already recorded and must not be replayed merely because this card exists.
 
-Any later deployment of post-UX01 repository code is a separate Owner-gated production rollout, not silently part of RF-PLAN01 or the Pre-OCR queue.
+Any later deployment is a separate Owner-gated production rollout, not silently part of RF-PLAN01 or the Pre-OCR queue. PROD-04A did not consume or authorize PROD-03C2's permanent-delete or reboot/autostart decisions.
 
 ## Future / Non-Blocking Backlog
 
@@ -96,6 +96,12 @@ One-Time External Sharing remains a separately scoped capability:
 It is not silently pulled into the Pre-OCR program merely because other sharing work is authorized.
 
 ## Completed
+
+### PROD-04A — Routine Multi-User Release 34a2eada
+
+**Task card:** `tasks/done/PROD-04A.md`
+
+**Status:** complete; independent read-only review PASS. Exact GitHub Actions Linux x64 / Node 24 artifact `34a2eada…` was verified, backed up, rehearsed, and deployed with only migrations 005–008. Production is schema v8/history 1–8; browser/runtime acceptance covers invitations, isolation, password/session revocation, disable/re-enable, announcements, Favorites, recycle/restore, upload/download/Preview, and final resource/integrity checks. Final aggregate is one active Owner, one active Owner-confirmed real Member, two disabled acceptance Members, an unpublished acceptance announcement, and an active recoverable synthetic TXT. No permanent deletion, later migration, feature work, infrastructure mutation, build on Alibaba, or unconsumed Owner gate entered the window.
 
 ### RF-DOMAIN01 — Scholarly Resource and Artifact Identity Foundation
 
@@ -151,6 +157,7 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 - L1-E01 through L1-E08 foundation;
 - accepted 1 GiB-class production runtime baseline;
 - public HTTPS production foundation and UX01 production acceptance;
+- PROD-04A exact `34a2eada…` multi-user production release at schema v8 + independent review PASS;
 - L1-UX02 implementation foundation;
 - L1-BUGAUDIT01 + independent review PASS;
 - L1-FAV01 + independent review PASS;
