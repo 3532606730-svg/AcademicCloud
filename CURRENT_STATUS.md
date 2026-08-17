@@ -18,6 +18,7 @@ Current development line:
 - Announcements checkpoint: `9b64ed7c945f687eef2b80ea3c509c1849e70807`;
 - Password Change checkpoint: `6ef6fb612d2bdac808e3682eb5bcae6bdb3a0de3`;
 - OPS01A code-bearing independent-review checkpoint: `34a2eada158dcf08783dc9538d853f9361425e8a`;
+- RF-AUDIT01 checkpoint: `cb25ce01a5e25c89ae4de3db1110433b71bb45fa`;
 - latest repository migration: `009_governance_audit.sql`;
 - dependency delta for OPS01A: zero;
 - migration delta for OPS01A: zero.

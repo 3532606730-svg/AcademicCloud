@@ -43,7 +43,7 @@ Implement the Governance/Operations audit plane across persistence, service/API 
 - backend/frontend/compiled acceptance and backup tests
 
 ## Current State
-**Complete from RF-PLAN01 checkpoint `9e02165b3f4b9e99d0906f4a15e8a4620c87cf71`; repository-only and not deployed.** Migration 009 is the current schema head. Governance/security events are fixed-column, transaction-coupled for successful mutations, target-free for unsuccessful attempts, bounded to the newest 20,000 rows, and exposed only through an Owner-authorized keyset page/dialog.
+**Complete at checkpoint `cb25ce01a5e25c89ae4de3db1110433b71bb45fa`; repository-only and not deployed.** Migration 009 is the current schema head. Governance/security events are fixed-column, transaction-coupled for successful mutations, target-free for unsuccessful attempts, bounded to the newest 20,000 rows, and exposed only through an Owner-authorized keyset page/dialog.
 
 ## Completed
 - ADR-014 classifies audit as Governance/Operations and explicitly forbids research surveillance.
@@ -65,4 +65,4 @@ None.
 2026-08-17 final Writer verification: backend `196/196` PASS; frontend `142/142` PASS; workspace typecheck and production build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with `firstMigrationCount: 9`, health/readiness, restart/session/password behavior, maintenance dry-run, verified backup receipt, isolated restore, restored readiness/session/announcement, and `redeployMigrationCount: 0`; full and production dependency audits report 0 vulnerabilities; `git diff --check` PASS; no package/lockfile delta; high-confidence credential scan found only pre-existing explicit scanner fixtures. Independent read-only adversarial Reviewer PASS after repair of transaction-race denial evidence, append-only registry guards, complete target-free denied/busy/failed coverage, and audit-dialog loading/error/empty/mobile/focus behavior. No blocker or medium finding remains.
 
 ## Next Action
-Create the RF-AUDIT01 Git checkpoint, run exact-commit Linux production-artifact CI, then select `RF-OWNERSHIP01` without pulling forward Library implementation.
+Recover from the pushed RF-AUDIT01 checkpoint and select `RF-OWNERSHIP01` without pulling forward Library implementation.
