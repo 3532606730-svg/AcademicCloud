@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, and RF-BULK01 is complete. The Owner-authorized Pre-OCR Research Foundation queue continues with `RF-DOMAIN01` next.**
+**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. Feature development is stopped at an external independent predeployment review gate.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
@@ -20,11 +20,9 @@ The previous sequence is complete:
 6. `L2-PASSWORD01` — complete;
 7. `OPS01A` — complete.
 
-The new Owner-approved repository/local objective is:
+The Owner interrupted the repository/local continuous objective after RF-DOMAIN01. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, `RF-BULK01`, and `RF-DOMAIN01` are complete. RF-META01 and every later Pre-OCR card remain Ready/backlog and may not be selected until new Owner direction.
 
-1. `RF-PLAN01` — complete; it compiled `ROADMAP.md` and ADR-014 into dependency-safe, independently executable task cards and an explicit queue;
-2. autonomously consume the generated task cards one green Epic at a time, only inside the approved Pre-OCR boundaries;
-3. STOP before OCR/text extraction execution, embeddings, retrieval, or RAG.
+External independent predeployment review must select an exact green production candidate. It may select the RF-DOMAIN01 checkpoint or an earlier exact green checkpoint if that reduces production migration risk. Repository HEAD is not automatically production HEAD.
 
 Every product Epic remains independently reviewable/checkpointed. Large workstreams must be split in planning rather than implemented as giant diffs.
 
@@ -32,15 +30,14 @@ This objective does not authorize production access/mutation, deployment, produc
 
 ## Doing
 
-None. `RF-DOMAIN01` becomes Doing only after the independently green RF-BULK01 checkpoint is committed and the next task is selected.
+None.
 
-## Ready — Current Repository/Local Objective
+## Ready / Backlog — Parked Pre-OCR Queue
 
-The following independently reviewed queue is fully specified in `docs/architecture/pre-ocr-execution-plan.md` and is executable strictly in this order, one independently green checkpoint at a time. A later card may not be pulled forward because its local code looks convenient.
+The following independently reviewed queue remains durably specified in `docs/architecture/pre-ocr-execution-plan.md`, but it is parked at the external predeployment review gate. Do not move any card to Doing or consume the queue without new Owner direction. If resumed later, preserve the listed dependency order.
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 4 | `RF-DOMAIN01` | `tasks/ready/RF-DOMAIN01.md` | Scholarly Record/Artifact/Version identity and attachment |
 | 5 | `RF-META01` | `tasks/ready/RF-META01.md` | bounded canonical metadata/templates/minimal authorities |
 | 6 | `RF-PROV01` | `tasks/ready/RF-PROV01.md` | canonical provenance, fingerprint, leak-safe duplicate contract |
 | 7 | `RF-LINEAGE01` | `tasks/ready/RF-LINEAGE01.md` | artifact/version/derived relationship lineage |
@@ -99,6 +96,12 @@ One-Time External Sharing remains a separately scoped capability:
 It is not silently pulled into the Pre-OCR program merely because other sharing work is authorized.
 
 ## Completed
+
+### RF-DOMAIN01 — Scholarly Resource and Artifact Identity Foundation
+
+**Task card:** `tasks/done/RF-DOMAIN01.md`
+
+**Status:** complete; independent read-only review PASS. ADR-018 and append-only migration 011 establish zero-backfill ownership-domain-owned Record/Artifact/Version identities, immutable one-file Version linkage, retained tombstones, account-private server authority, strict bounded keyset pages, metadata-only attach/detach, same-Record stable reattach, lifecycle availability, and service/transaction/trigger attached-purge defense. Backend `227/227`, frontend `154/154`, workspace typecheck/build, acceptance tools, dependency audits, and compiled production-runtime migration/restart/backup/isolated-restore identity acceptance are green with zero redeploy migrations and no dependency/provider/production action.
 
 ### RF-OWNERSHIP01 — Explicit Resource Ownership Domains
 
@@ -160,6 +163,8 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 - OPS01A repository/local operations preparation + independent final review and exact-head Linux artifact CI PASS.
 - RF-AUDIT01 migration 009 governance/security audit + independent adversarial review PASS.
 - RF-OWNERSHIP01 migration 010 explicit resource ownership domains + independent adversarial review PASS.
+- RF-BULK01 bounded atomic Drive/Favorites operations + independent read-only review PASS.
+- RF-DOMAIN01 migration 011 scholarly Record/Artifact/Version identity + independent read-only review PASS.
 
 Historical completed task cards are archived under `tasks/done/`; they no longer remain in `tasks/doing/`.
 

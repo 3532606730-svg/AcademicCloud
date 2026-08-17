@@ -32,8 +32,8 @@ test("migration 010 handles zero accounts and atomically gives every new account
   const database = openSqliteDatabase(join(directory, "empty.sqlite"));
   try {
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-      currentVersion: 10,
+      appliedVersions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      currentVersion: 11,
     });
     assert.deepEqual(database.prepare("SELECT * FROM ownership_domains").all(), []);
 
@@ -76,8 +76,8 @@ test("migration 010 gives one existing account exactly one stable account domain
     `).run(CREATED, UPDATED);
 
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [10],
-      currentVersion: 10,
+      appliedVersions: [10, 11],
+      currentVersion: 11,
     });
     assert.deepEqual(database.prepare(`
       SELECT id, kind, account_id, created_at FROM ownership_domains
@@ -161,8 +161,8 @@ test("migration 010 preserves exact multi-account resource, lifecycle, recycle, 
     const favoriteFoldersBefore = database.prepare("SELECT * FROM favorite_folders ORDER BY account_id, folder_id").all();
 
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [10],
-      currentVersion: 10,
+      appliedVersions: [10, 11],
+      currentVersion: 11,
     });
 
     assert.deepEqual(database.prepare(`

@@ -307,6 +307,42 @@ describe("ApiClient", () => {
     expect(headers.get("Content-Type")).toBe("application/json");
   });
 
+  it("uses strict scholarly record create, attach, read, and bodyless detach contracts", async () => {
+    const record = {
+      id: "record / one",
+      label: "Private source",
+      createdAt: "2026-08-17T12:00:00.000Z",
+      updatedAt: "2026-08-17T12:00:00.000Z",
+      artifactCount: 0,
+      artifacts: [],
+      nextBeforeArtifactId: null,
+    };
+    const responses = [
+      new Response(JSON.stringify({ records: [record], nextBeforeId: null }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ record }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ record }), { status: 201, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ record }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ record }), { status: 200, headers: { "content-type": "application/json" } }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+
+    await api.listScholarlyRecords(undefined, "record / cursor", 10);
+    await api.getScholarlyRecord(record.id, undefined, "artifact / cursor", 5);
+    await api.createScholarlyRecord(record.label);
+    await api.attachFileToScholarlyRecord(record.id, "file / one");
+    await api.detachScholarlyArtifact(record.id, "artifact / one");
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/research/records?beforeId=record+%2F+cursor&limit=10");
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/research/records/record%20%2F%20one?beforeArtifactId=artifact+%2F+cursor&limit=5");
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/research/records");
+    expect(fetcher.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({ label: record.label }));
+    expect(fetcher.mock.calls[3]?.[0]).toBe("/api/research/records/record%20%2F%20one/artifacts");
+    expect(fetcher.mock.calls[3]?.[1]?.body).toBe(JSON.stringify({ fileId: "file / one" }));
+    expect(fetcher.mock.calls[4]?.[0]).toBe("/api/research/records/record%20%2F%20one/artifacts/artifact%20%2F%20one");
+    assertBodylessRequestInit(fetcher.mock.calls[4]?.[1], "DELETE");
+  });
+
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {
     const responses = [
       new Response(null, { status: 204 }), // setFileFavorite(true)

@@ -14,6 +14,8 @@ import {
   type FolderEntry,
   type FavoritesResponse,
   type RecycleResponse,
+  type ScholarlyRecord,
+  type ScholarlyRecordSummary,
 } from "./api.ts";
 import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
 import { AnnouncementAdministrationDialog, AnnouncementFeed } from "./announcements.tsx";
@@ -421,9 +423,11 @@ function DriveView({
   const [announcementAdministrationOpen, setAnnouncementAdministrationOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
+  const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const [announcementRevision, setAnnouncementRevision] = useState(0);
   const dragDepthRef = useRef(0);
   const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
+  const recordTriggerRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
@@ -1011,7 +1015,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen || announcementAdministrationOpen || passwordChangeOpen || auditOpen}>
+    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen || announcementAdministrationOpen || passwordChangeOpen || auditOpen || recordDialogOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -1125,6 +1129,9 @@ function DriveView({
           </div>
           {view === "library" && (
             <div className="command-bar">
+              <button ref={recordTriggerRef} className="button button--secondary" type="button" onClick={() => setRecordDialogOpen(true)}>
+                {t("records.open")}
+              </button>
               <button className="button button--secondary" type="button" onClick={openNewFolderDialog}>
                 {t("workspace.newFolder")}
               </button>
@@ -1404,6 +1411,14 @@ function DriveView({
           returnFocus={newFolderTriggerRef.current}
         />
       )}
+      {recordDialogOpen && (
+        <ScholarlyRecordsDialog
+          api={api}
+          availableFiles={entries.files}
+          onClose={() => setRecordDialogOpen(false)}
+          returnFocus={recordTriggerRef.current}
+        />
+      )}
       {accountAdministrationOpen && (
         <AccountAdministrationDialog
           api={api}
@@ -1477,6 +1492,266 @@ function invitationStatusKey(status: Invitation["status"]) {
     case "consumed": return "accounts.invitationConsumed" as const;
     case "revoked": return "accounts.invitationRevoked" as const;
   }
+}
+
+function ScholarlyRecordsDialog({
+  api,
+  availableFiles,
+  onClose,
+  returnFocus,
+}: {
+  api: AcademicCloudApi;
+  availableFiles: FileEntry[];
+  onClose: () => void;
+  returnFocus: HTMLElement | null;
+}) {
+  const { language, t } = useLanguage();
+  const [records, setRecords] = useState<ScholarlyRecordSummary[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<ScholarlyRecord | null>(null);
+  const [nextBeforeId, setNextBeforeId] = useState<string | null>(null);
+  const [label, setLabel] = useState("");
+  const [fileId, setFileId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const dialogRef = useModalDialog(onClose, busy !== null, returnFocus);
+  const selected = selectedRecord?.id === selectedId ? selectedRecord : null;
+  const attachableFiles = availableFiles.filter((file) => file.state === "active");
+
+  function replaceRecord(record: ScholarlyRecord): void {
+    const summary: ScholarlyRecordSummary = {
+      id: record.id,
+      label: record.label,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      artifactCount: record.artifactCount,
+    };
+    setRecords((current) => current.some((item) => item.id === record.id)
+      ? current.map((item) => item.id === record.id ? summary : item)
+      : [summary, ...current]);
+    setSelectedRecord(record);
+    setSelectedId(record.id);
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    api.listScholarlyRecords(controller.signal).then(
+      (page) => {
+        setRecords(page.records);
+        setNextBeforeId(page.nextBeforeId);
+        setSelectedId((current) => current && page.records.some((record) => record.id === current)
+          ? current
+          : page.records[0]?.id ?? null);
+      },
+      (caught: unknown) => {
+        if (!(caught instanceof DOMException && caught.name === "AbortError")) setError(caught);
+      },
+    ).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
+  }, [api]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedRecord(null);
+      return;
+    }
+    const controller = new AbortController();
+    setDetailLoading(true);
+    setError(null);
+    api.getScholarlyRecord(selectedId, controller.signal).then(
+      (record) => setSelectedRecord(record),
+      (caught: unknown) => {
+        if (!(caught instanceof DOMException && caught.name === "AbortError")) setError(caught);
+      },
+    ).finally(() => {
+      if (!controller.signal.aborted) setDetailLoading(false);
+    });
+    return () => controller.abort();
+  }, [api, selectedId]);
+
+  async function loadMoreRecords(): Promise<void> {
+    if (!nextBeforeId) return;
+    setBusy("more-records");
+    setError(null);
+    try {
+      const page = await api.listScholarlyRecords(undefined, nextBeforeId);
+      setRecords((current) => [
+        ...current,
+        ...page.records.filter((record) => !current.some((existing) => existing.id === record.id)),
+      ]);
+      setNextBeforeId(page.nextBeforeId);
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function loadMoreArtifacts(): Promise<void> {
+    if (!selected?.nextBeforeArtifactId) return;
+    setBusy("more-artifacts");
+    setError(null);
+    try {
+      const page = await api.getScholarlyRecord(selected.id, undefined, selected.nextBeforeArtifactId);
+      setSelectedRecord((current) => current?.id === page.id ? {
+        ...page,
+        artifacts: [
+          ...current.artifacts,
+          ...page.artifacts.filter((artifact) => !current.artifacts.some((existing) => existing.id === artifact.id)),
+        ],
+      } : current);
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function createRecord(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setBusy("create");
+    setError(null);
+    try {
+      const created = await api.createScholarlyRecord(label);
+      replaceRecord(created);
+      setLabel("");
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function attach(recordId: string, selectedFileId: string): Promise<void> {
+    setBusy(`attach:${selectedFileId}`);
+    setError(null);
+    try {
+      replaceRecord(await api.attachFileToScholarlyRecord(recordId, selectedFileId));
+      setFileId("");
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function detach(recordId: string, artifactId: string): Promise<void> {
+    setBusy(`detach:${artifactId}`);
+    setError(null);
+    try {
+      replaceRecord(await api.detachScholarlyArtifact(recordId, artifactId));
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <dialog ref={dialogRef} className="scholarly-records-modal" aria-labelledby="scholarly-records-title">
+      <header>
+        <h2 id="scholarly-records-title">{t("records.title")}</h2>
+        <button className="button button--quiet" type="button" onClick={onClose} disabled={busy !== null}>{t("preview.close")}</button>
+      </header>
+      <div className="scholarly-records-body">
+        {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+        <form className="scholarly-record-create" onSubmit={(event) => void createRecord(event)}>
+          <label htmlFor="scholarly-record-label">{t("records.label")}</label>
+          <input
+            id="scholarly-record-label"
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            minLength={1}
+            maxLength={255}
+            required
+          />
+          <button className="button button--primary" type="submit" disabled={busy !== null}>{t("records.create")}</button>
+        </form>
+        {loading ? <LoadingRows /> : records.length === 0 ? (
+          <EmptyState title={t("records.empty")} />
+        ) : (
+          <div className="scholarly-records-layout">
+            <nav className="scholarly-record-list" aria-label={t("records.listAria")}>
+              {records.map((record) => (
+                <button
+                  key={record.id}
+                  type="button"
+                  className={record.id === selectedId ? "is-selected" : undefined}
+                  aria-current={record.id === selectedId ? "page" : undefined}
+                  onClick={() => setSelectedId(record.id)}
+                >
+                  <strong>{record.label}</strong>
+                  <span>{t("records.artifactCount", { count: record.artifactCount })}</span>
+                </button>
+              ))}
+              {nextBeforeId && (
+                <button type="button" disabled={busy !== null} onClick={() => void loadMoreRecords()}>
+                  {t("records.loadMore")}
+                </button>
+              )}
+            </nav>
+            {detailLoading && !selected && <LoadingRows />}
+            {selected && (
+              <section className="scholarly-record-detail" aria-labelledby="scholarly-record-detail-title">
+                <div className="section-heading">
+                  <h3 id="scholarly-record-detail-title">{selected.label}</h3>
+                  <span>{formatDate(selected.updatedAt, language)}</span>
+                </div>
+                <form
+                  className="scholarly-attach-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (fileId) void attach(selected.id, fileId);
+                  }}
+                >
+                  <label htmlFor="scholarly-attach-file">{t("records.currentFolderFiles")}</label>
+                  <select id="scholarly-attach-file" value={fileId} onChange={(event) => setFileId(event.target.value)} required>
+                    <option value="">{t("records.chooseFile")}</option>
+                    {attachableFiles.map((file) => <option key={file.id} value={file.id}>{file.displayName}</option>)}
+                  </select>
+                  <button className="button button--secondary" type="submit" disabled={busy !== null || !fileId}>{t("records.attach")}</button>
+                </form>
+                {selected.artifacts.length === 0 ? (
+                  <p className="muted">{t("records.noArtifacts")}</p>
+                ) : (
+                  <div className="scholarly-artifact-list">
+                    {selected.artifacts.map((artifact) => {
+                      const file = artifact.version?.file ?? null;
+                      return (
+                        <article key={artifact.id} className="scholarly-artifact-row">
+                          <div>
+                            <strong>{file?.displayName || t("records.tombstoned")}</strong>
+                            <span>{t(`records.${artifact.attachmentState}`)}</span>
+                            <span>{t(`records.${file?.availability ?? "tombstoned"}`)}</span>
+                          </div>
+                          {artifact.attachmentState === "attached" ? (
+                            <button className="button button--small" type="button" disabled={busy !== null} onClick={() => void detach(selected.id, artifact.id)}>{t("records.detach")}</button>
+                          ) : file?.availability === "available" ? (
+                            <button className="button button--small" type="button" disabled={busy !== null} onClick={() => void attach(selected.id, file.id)}>{t("records.reattach")}</button>
+                          ) : null}
+                        </article>
+                      );
+                    })}
+                    {selected.nextBeforeArtifactId && (
+                      <button className="button button--secondary" type="button" disabled={busy !== null} onClick={() => void loadMoreArtifacts()}>
+                        {t("records.loadMore")}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+        )}
+      </div>
+    </dialog>
+  );
 }
 
 function AccountAdministrationDialog({

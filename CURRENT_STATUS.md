@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, and RF-BULK01 is complete and independently green. The Owner-authorized Pre-OCR Research Foundation continues with `RF-DOMAIN01` as the next approved task.**
+**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. No Epic is active. Feature development is stopped at the Owner-required external independent predeployment review gate.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains repository-only unless a separate Owner production gate is opened.
 
@@ -19,7 +19,9 @@ Current development line:
 - Password Change checkpoint: `6ef6fb612d2bdac808e3682eb5bcae6bdb3a0de3`;
 - OPS01A code-bearing independent-review checkpoint: `34a2eada158dcf08783dc9538d853f9361425e8a`;
 - RF-AUDIT01 checkpoint: `cb25ce01a5e25c89ae4de3db1110433b71bb45fa`;
-- latest repository migration: `010_resource_ownership_domains.sql`;
+- RF-BULK01 / pre-Domain checkpoint: `fc30aed2eeb4536ec3747869bb5b99b22fbf94e8`;
+- RF-DOMAIN01 checkpoint: the clean completion commit at current development HEAD (record its exact SHA after commit/push recovery);
+- latest repository migration: `011_scholarly_record_identity.sql`;
 - dependency delta for OPS01A: zero;
 - migration delta for OPS01A: zero.
 
@@ -28,6 +30,8 @@ No main merge or production rollout is authorized by repository completion.
 ## Production State
 
 Production remains the accepted UX01 generation.
+
+The accepted production database is schema v4. The append-only migrations present in development but not current production are `005_per_user_favorites.sql`, `006_recycle_groups.sql`, `007_accounts_and_invitations.sql`, `008_global_announcements.sql`, `009_governance_audit.sql`, `010_resource_ownership_domains.sql`, and `011_scholarly_record_identity.sql`. No migration in this delta has been authorized or run by RF-DOMAIN01 closure.
 
 Recorded production boundary:
 - public site: `https://cloud.ajtlab.top`;
@@ -138,15 +142,19 @@ Final local evidence: backend `201/201` PASS; frontend `142/142` PASS; workspace
 
 Final local evidence: backend `214/214` PASS; frontend `149/149` PASS; workspace typecheck/build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with migration count 10 and zero redeploy migrations; dependency audits 0 vulnerabilities; `git diff --check` PASS; no migration/dependency/lockfile delta; independent read-only Reviewer PASS with no blocker/medium finding.
 
+### RF-DOMAIN01 — Scholarly Resource and Artifact Identity Foundation
+
+**Complete in repository development; independent read-only review PASS.** ADR-018 and migration 011 add empty, zero-backfill ownership-domain-owned Scholarly Record, Artifact, and Artifact Version tables with immutable containment/identity, one non-null globally unique stored-file representation, and retained tombstones. The account-private API derives authority server-side, rejects body/query authority injection, uses strict `1..100` keyset pages, and grants the global Owner role no cross-account research access.
+
+Attach/detach is metadata-only and transactional. Same-Record reattach preserves Record/Artifact/Version/file IDs; cross-Record reuse conflicts. Recycle/restore toggles file availability without deleting identity. Attached permanent purge is stopped before provider access, rechecked inside the immediate transaction, and blocked by a database trigger; explicit detach permits the existing purge workflow while metadata lineage remains tombstoned. The responsive Owner/Member UI keeps Folder separate from Record and covers empty/loading/error/conflict/pagination behavior.
+
+Final local evidence: backend `227/227` PASS; frontend `154/154` PASS; workspace typecheck/build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with migration count 11, attach→detach→reattach stable IDs, exact identity/file availability across restart and verified backup/isolated restore, and zero redeploy migrations; dependency audits 0 vulnerabilities; `git diff --check` PASS; independent read-only Reviewer PASS with no blocker/medium finding. No dependency, production, or object-provider action was added.
+
 ## Approved Continuous Objective
 
-The previous objective through OPS01A is complete.
+The Owner interrupted autonomous progression after RF-DOMAIN01. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, `RF-BULK01`, and `RF-DOMAIN01` are complete and independently reviewed. No task is Doing. `RF-META01` and every later Pre-OCR card remain Ready/backlog and must not be selected or consumed until new Owner direction.
 
-The new objective begins with:
-
-1. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, and `RF-BULK01` — complete and independently reviewed;
-2. autonomously execute the remaining Pre-OCR queue one independently green Epic at a time, beginning with `RF-DOMAIN01`;
-3. after terminal `RF-DERIVED01`, STOP before OCR/text-extraction execution, full-text indexing, embeddings, retrieval, or RAG.
+External independent predeployment review must choose an exact green production target. That target may be the RF-DOMAIN01 completion checkpoint or an earlier checkpoint if migration risk is lower. Repository HEAD does not automatically equal production HEAD.
 
 ## Safety Boundaries
 
@@ -164,4 +172,4 @@ The current program still does **not** authorize:
 
 ## Next Action
 
-Create/recover from the RF-BULK01 checkpoint, select `tasks/ready/RF-DOMAIN01.md`, and implement the smallest private Scholarly Record/Artifact/Version identity slice without pulling forward canonical metadata, provenance, overlays, Library, OCR, or production behavior.
+Stop. Obtain external independent predeployment review and await Owner selection of the exact production candidate. Do not start RF-META01, contact production, run production migrations, deploy, or mutate OSS/DNS/TLS/Nginx/systemd.

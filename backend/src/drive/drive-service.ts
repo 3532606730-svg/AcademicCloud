@@ -1174,6 +1174,10 @@ export class DriveService {
       throw new DriveError("not_found");
     }
 
+    if (this.persistence.repositories.research?.isFileAttached(ownerId, fileId)) {
+      throw new DriveError("invalid_state");
+    }
+
     this.assertCurrentStorageProvider(current);
 
     const purging = current.state === "purging"
@@ -1181,6 +1185,9 @@ export class DriveService {
       : this.persistence.runInTransaction((repositories) => {
           const latest = repositories.files.findById(ownerId, fileId);
           if (!latest || latest.state !== "deleted" || latest.revision !== current.revision) {
+            throw new DriveError("invalid_state");
+          }
+          if (repositories.research?.isFileAttached(ownerId, fileId)) {
             throw new DriveError("invalid_state");
           }
           const now = this.now();

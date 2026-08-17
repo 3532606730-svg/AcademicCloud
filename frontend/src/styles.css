@@ -460,7 +460,7 @@ input:hover { border-color: #a7b2a8; }
 @keyframes drop-overlay-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* Dialogs */
-.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop, .password-change-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
+.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop, .password-change-modal::backdrop, .scholarly-records-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
 .move-modal { width: min(38rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto auto minmax(10rem, 1fr) auto; overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
 .move-modal[open] { display: grid; }
 .move-modal > header, .move-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; }
@@ -547,6 +547,33 @@ input:hover { border-color: #a7b2a8; }
 .password-change-body { display: grid; gap: 0.45rem; padding: 1.2rem; }
 .password-change-body label { color: var(--muted); font-size: 0.8rem; font-weight: 650; }
 .password-change-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.6rem; }
+
+.scholarly-records-modal { width: min(62rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
+.scholarly-records-modal[open] { display: grid; }
+.scholarly-records-modal > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--line); }
+.scholarly-records-modal h2, .scholarly-records-modal h3 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; }
+.scholarly-records-modal h2 { font-size: 1.15rem; }
+.scholarly-records-modal h3 { font-size: 1rem; }
+.scholarly-records-body { display: grid; align-content: start; gap: 1rem; min-height: 0; overflow-y: auto; padding: 1.2rem; }
+.scholarly-record-create { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.45rem 0.65rem; }
+.scholarly-record-create label { grid-column: 1 / -1; color: var(--muted); font-size: 0.8rem; font-weight: 650; }
+.scholarly-records-layout { display: grid; grid-template-columns: minmax(12rem, 0.7fr) minmax(20rem, 1.3fr); gap: 1rem; min-height: 18rem; }
+.scholarly-record-list { display: grid; align-content: start; border: 1px solid var(--line); border-radius: 0.6rem; overflow: hidden; }
+.scholarly-record-list button { display: grid; gap: 0.2rem; min-height: 3rem; padding: 0.7rem 0.8rem; color: var(--ink); text-align: left; border: 0; border-bottom: 1px solid var(--line); background: var(--paper); cursor: pointer; }
+.scholarly-record-list button:last-child { border-bottom: 0; }
+.scholarly-record-list button.is-selected { background: var(--forest-soft); box-shadow: inset 3px 0 0 var(--forest); }
+.scholarly-record-list strong { overflow-wrap: anywhere; }
+.scholarly-record-list span { color: var(--muted); font-size: 0.78rem; }
+.scholarly-record-detail { display: grid; align-content: start; gap: 0.8rem; min-width: 0; }
+.scholarly-attach-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.45rem 0.65rem; }
+.scholarly-attach-form label { grid-column: 1 / -1; color: var(--muted); font-size: 0.8rem; font-weight: 650; }
+.scholarly-attach-form select { min-height: 2.45rem; min-width: 0; padding: 0.5rem 0.6rem; color: var(--ink); border: 1px solid var(--line); border-radius: 0.45rem; background: var(--paper); }
+.scholarly-artifact-list { display: grid; border: 1px solid var(--line); border-radius: 0.6rem; overflow: hidden; }
+.scholarly-artifact-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 0.75rem 0.8rem; }
+.scholarly-artifact-row + .scholarly-artifact-row { border-top: 1px solid var(--line); }
+.scholarly-artifact-row > div { display: grid; min-width: 0; gap: 0.15rem; }
+.scholarly-artifact-row strong { overflow-wrap: anywhere; }
+.scholarly-artifact-row span { color: var(--muted); font-size: 0.78rem; }
 
 .announcement-feed { display: grid; gap: 0.65rem; margin-bottom: 1.2rem; }
 .announcement { display: grid; gap: 0.5rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-left: 0.3rem solid #547a69; border-radius: 0.55rem; background: var(--paper); }
@@ -832,6 +859,15 @@ input:hover { border-color: #a7b2a8; }
   .password-change-body { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
   .password-change-modal header .button { min-width: 2.75rem; min-height: 2.75rem; }
   .password-change-actions .button { min-height: 2.75rem; }
+
+  .scholarly-records-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  .scholarly-records-modal > header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }
+  .scholarly-records-body { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
+  .scholarly-record-create, .scholarly-attach-form, .scholarly-records-layout { grid-template-columns: 1fr; }
+  .scholarly-record-create label, .scholarly-attach-form label { grid-column: auto; }
+  .scholarly-record-list { max-height: 12rem; overflow-y: auto; }
+  .scholarly-artifact-row { align-items: flex-start; flex-direction: column; }
+  .scholarly-records-modal .button, .scholarly-records-modal select { min-height: 2.75rem; }
 
   .announcement-heading { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
   .announcement-administration-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border-radius: 0; }

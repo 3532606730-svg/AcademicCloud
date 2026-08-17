@@ -31,7 +31,7 @@ Introduce additive persistence/domain/repository/service/API foundations for own
 - `docs/decisions/ADR-014-privacy-ownership-and-research-activity-boundaries.md`
 - `docs/decisions/ADR-007-layer-1-technical-architecture.md`
 - `docs/decisions/ADR-010-product-roadmap-and-execution-model.md`
-- a new ADR is required if implementation chooses a durable ownership-domain schema not already resolved by ADR-014.
+- `docs/decisions/ADR-018-scholarly-resource-artifact-version-identity.md`
 
 ## Relevant Modules / Files
 - `database/migrations/`
@@ -42,23 +42,27 @@ Introduce additive persistence/domain/repository/service/API foundations for own
 - migration, API, frontend, backup/restore, compiled acceptance tests
 
 ## Current State
-Blocked by `RF-OWNERSHIP01` and queue order through `RF-BULK01`. The repository has stored files/folders but no Scholarly Record, retained record-artifact/version link, or scholarly identity.
+Complete in repository development after the independently green RF-BULK01 checkpoint `fc30aed2eeb4536ec3747869bb5b99b22fbf94e8`. Migration 011, ADR-018, the private Record/Artifact/Version vertical slice, lifecycle/purge guards, bounded API/UI, and compiled restart/backup/restore evidence are independently green. Production remains unchanged on schema v4.
 
 ## Completed
 - ADR-014 defines Physical Artifact versus Scholarly Record and future Collaborative Overlay boundaries.
 - RF-PLAN01 made this the identity prerequisite for metadata, provenance, overlays, intake, annotations, Library, and derived contracts.
+- Added append-only migration 011 with zero legacy backfill; explicit ownership-domain-owned Record, Artifact, and Version identities; immutable Record containment and stored-file identity; globally unique file representation; same-domain active-file guards; retained identity rows; and attached-purge prevention.
+- Added ADR-018 and the account-private repository/service/HTTP slice. Attach/detach is one immediate SQLite transaction, same-Record reattach preserves every ID, cross-Record reuse conflicts, and no storage adapter is called.
+- Added strict `1..100` keyset pagination with lightweight Record summaries and separately bounded Artifact detail. Mutation bodies/query strings reject authority injection, and foreign/missing IDs/cursors do not disclose cross-account existence.
+- Integrated attached-file recycle/restore availability and a service/transaction/trigger permanent-purge boundary. Explicit detach permits the existing purge path while Record/Artifact/Version/file metadata remains a tombstone.
+- Added responsive Owner/Member UI with empty/loading/error/conflict states, stable focus/inert behavior, current-folder attachment, detach/reattach, and paginated loading without treating Folder as Record.
+- Extended migration/startup/backup/recovery and compiled acceptance to schema head 011. The compiled production runtime proves create→attach→detach→reattach stable IDs, restart persistence, verified backup/isolated restore, available stored-file identity, and zero redeploy migrations without provider network access.
+- Independent read-only Reviewer final verdict PASS with no blocker, medium, or required nit after repairing stored-file nullability, unbounded reads, compiled identity coverage, authority query injection, and a stale pagination-selection race.
 
 ## Remaining
-- resolve and record the exact future-safe ownership/identity schema;
-- implement additive persistence and minimal vertical UI/API;
-- verify legacy, concurrency, backup/restore, privacy, and artifact invariants;
-- independently review and checkpoint.
+None. The remaining Pre-OCR queue is deliberately parked Ready; RF-META01 was not started.
 
 ## Blockers
-Any design that grants Owner implicit private-record access, treats a folder as Library/Collection, rewrites existing object identity, or requires destructive production migration must stop for architecture/Owner review.
+None for repository closure. External independent predeployment review is now the active Owner gate; no production target, migration, or rollout is authorized.
 
 ## Last Verification
-2026-08-17 architecture recovery confirmed `StoredFile` is account-owned physical metadata and schema 008 has no scholarly-resource tables or generalized ownership domain.
+2026-08-17 final Writer verification: backend `227/227` PASS; frontend `154/154` PASS; workspace typecheck PASS; production build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with `firstMigrationCount: 11`, `scholarlyDetachReattachStable: true`, exact identity survival across restart and restored backup, and `redeployMigrationCount: 0`; dependency and production-only audits reported 0 vulnerabilities; `git diff --check` PASS. Independent read-only Reviewer final verdict PASS with no blocker/medium finding. No production or object-provider action occurred.
 
 ## Next Action
-Start after `RF-BULK01`; inspect the new ownership-domain and current Drive lifecycle contracts, record any remaining identity decision in an ADR, then implement the smallest private record/artifact identity slice.
+Stop feature development at the external independent predeployment review gate. Preserve RF-META01 and every later Pre-OCR card in Ready/backlog. The eventual production target may be this RF-DOMAIN01 checkpoint or an earlier exact green checkpoint; repository HEAD is not automatically production HEAD. Wait for Owner direction.

@@ -10,6 +10,7 @@ import {
   type EntriesResponse,
   type FileEntry,
   type FolderEntry,
+  type ScholarlyRecord,
 } from "./api.ts";
 import type { UploadProgressMetrics } from "./direct-upload.ts";
 import { DirectUploadError } from "./direct-upload.ts";
@@ -78,6 +79,11 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
       atomic: true as const,
       items: input.items.map((selected) => ({ ...selected, outcome: "succeeded" as const })),
     })),
+    listScholarlyRecords: vi.fn().mockResolvedValue({ records: [], nextBeforeId: null }),
+    getScholarlyRecord: vi.fn(),
+    createScholarlyRecord: vi.fn(),
+    attachFileToScholarlyRecord: vi.fn(),
+    detachScholarlyArtifact: vi.fn(),
     setFileFavorite: vi.fn().mockResolvedValue(undefined),
     setFolderFavorite: vi.fn().mockResolvedValue(undefined),
     createFolder: vi.fn(),
@@ -1787,6 +1793,132 @@ describe("bounded atomic bulk operations", () => {
     expect(screen.getByRole("toolbar", { name: "Selected item actions" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Favorites" }));
     expect(screen.queryByRole("toolbar", { name: "Selected item actions" })).not.toBeInTheDocument();
+  });
+});
+
+describe("private scholarly record identity UI", () => {
+  const EMPTY_RECORD: ScholarlyRecord = {
+    id: "record-1",
+    label: "Private source",
+    createdAt: "2026-08-17T12:00:00.000Z",
+    updatedAt: "2026-08-17T12:00:00.000Z",
+    artifactCount: 0,
+    artifacts: [],
+    nextBeforeArtifactId: null,
+  };
+  const ATTACHED_RECORD: ScholarlyRecord = {
+    ...EMPTY_RECORD,
+    artifactCount: 1,
+    artifacts: [{
+      id: "artifact-1",
+      recordId: EMPTY_RECORD.id,
+      attachmentState: "attached",
+      createdAt: EMPTY_RECORD.createdAt,
+      updatedAt: EMPTY_RECORD.updatedAt,
+      version: {
+        id: "version-1",
+        createdAt: EMPTY_RECORD.createdAt,
+        updatedAt: EMPTY_RECORD.updatedAt,
+        file: { id: FILE.id, displayName: FILE.displayName, state: "active", availability: "available" },
+      },
+    }],
+  };
+
+  it("creates a distinct record, attaches a current-folder file, detaches, and reattaches stable identities", async () => {
+    const user = userEvent.setup();
+    const createScholarlyRecord = vi.fn().mockResolvedValue(EMPTY_RECORD);
+    const attachFileToScholarlyRecord = vi.fn().mockResolvedValue(ATTACHED_RECORD);
+    const detached = {
+      ...ATTACHED_RECORD,
+      artifacts: ATTACHED_RECORD.artifacts.map((artifact) => ({ ...artifact, attachmentState: "detached" as const })),
+    };
+    const detachScholarlyArtifact = vi.fn().mockResolvedValue(detached);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+      listScholarlyRecords: vi.fn().mockResolvedValue({ records: [], nextBeforeId: null }),
+      getScholarlyRecord: vi.fn().mockResolvedValue(EMPTY_RECORD),
+      createScholarlyRecord,
+      attachFileToScholarlyRecord,
+      detachScholarlyArtifact,
+    });
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole("button", { name: "Scholarly records" }));
+    const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
+    expect(within(dialog).getByText("No scholarly records")).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText("Record label"), EMPTY_RECORD.label);
+    await user.click(within(dialog).getByRole("button", { name: "Create record" }));
+    await waitFor(() => expect(createScholarlyRecord).toHaveBeenCalledWith(EMPTY_RECORD.label));
+
+    await user.selectOptions(within(dialog).getByLabelText("Files in this folder"), FILE.id);
+    await user.click(within(dialog).getByRole("button", { name: "Attach file" }));
+    await waitFor(() => expect(attachFileToScholarlyRecord).toHaveBeenCalledWith(EMPTY_RECORD.id, FILE.id));
+    expect(within(dialog).getAllByText(FILE.displayName).length).toBeGreaterThanOrEqual(1);
+    expect(within(dialog).getByText("Attached")).toBeInTheDocument();
+    expect(within(dialog).getByText("Available")).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Detach" }));
+    await waitFor(() => expect(detachScholarlyArtifact).toHaveBeenCalledWith(EMPTY_RECORD.id, "artifact-1"));
+    expect(within(dialog).getByText("Detached")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Reattach" }));
+    await waitFor(() => expect(attachFileToScholarlyRecord).toHaveBeenLastCalledWith(EMPTY_RECORD.id, FILE.id));
+  });
+
+  it("is available to Members and keeps conflict feedback in the record dialog", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue({ ...ACCOUNT, role: "member" as const }),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+      listScholarlyRecords: vi.fn().mockResolvedValue({ records: [EMPTY_RECORD], nextBeforeId: null }),
+      getScholarlyRecord: vi.fn().mockResolvedValue(EMPTY_RECORD),
+      attachFileToScholarlyRecord: vi.fn().mockRejectedValue(new ApiError(409, "conflict")),
+    });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Scholarly records" }));
+    const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
+    await user.selectOptions(within(dialog).getByLabelText("Files in this folder"), FILE.id);
+    await user.click(within(dialog).getByRole("button", { name: "Attach file" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("already attached to another scholarly record");
+    expect(within(dialog).getByLabelText("Files in this folder")).toHaveValue(FILE.id);
+  });
+
+  it("does not let a stale artifact page overwrite a newly selected record", async () => {
+    const user = userEvent.setup();
+    const first: ScholarlyRecord = {
+      ...ATTACHED_RECORD,
+      artifactCount: 2,
+      nextBeforeArtifactId: "artifact-1",
+    };
+    const second: ScholarlyRecord = {
+      ...EMPTY_RECORD,
+      id: "record-2",
+      label: "Second source",
+    };
+    let resolveOlder!: (record: ScholarlyRecord) => void;
+    const olderPage = new Promise<ScholarlyRecord>((resolve) => {
+      resolveOlder = resolve;
+    });
+    const getScholarlyRecord = vi.fn((recordId: string, _signal?: AbortSignal, beforeArtifactId?: string) => {
+      if (recordId === first.id && beforeArtifactId) return olderPage;
+      return Promise.resolve(recordId === first.id ? first : second);
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listScholarlyRecords: vi.fn().mockResolvedValue({ records: [first, second], nextBeforeId: null }),
+      getScholarlyRecord,
+    });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Scholarly records" }));
+    const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
+    await within(dialog).findByRole("heading", { name: first.label });
+    await user.click(within(dialog).getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(getScholarlyRecord).toHaveBeenCalledWith(first.id, undefined, "artifact-1"));
+    await user.click(within(dialog).getByRole("button", { name: /Second source/ }));
+    await within(dialog).findByRole("heading", { name: second.label });
+
+    resolveOlder({ ...first, nextBeforeArtifactId: null });
+    await waitFor(() => expect(within(dialog).getByRole("heading", { name: second.label })).toBeInTheDocument());
   });
 });
 

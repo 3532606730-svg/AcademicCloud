@@ -317,11 +317,9 @@ The Owner may authorize a continuous objective across multiple Epics. That autho
 
 ## 11. Current Approved Continuous Objective
 
-Repository/local work only:
+The Owner interrupted the repository-local continuous objective after the independently green `RF-DOMAIN01` checkpoint. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, `RF-BULK01`, and `RF-DOMAIN01` are complete. No Epic is active; `RF-META01` and all later Pre-OCR cards remain Ready/backlog.
 
-1. `RF-PLAN01` planning decomposition, `RF-AUDIT01` governance audit, `RF-OWNERSHIP01` resource-ownership domains, and `RF-BULK01` safe bulk Drive operations are complete and independently reviewed;
-2. autonomously consume the remaining recorded Pre-OCR queue one independently verified/checkpointed Epic at a time, beginning with `RF-DOMAIN01`;
-3. stop after the final Pre-OCR contracts checkpoint and before OCR/text-extraction execution.
+Current action is limited to external independent predeployment review and Owner selection of an exact production candidate. The candidate may be RF-DOMAIN01 or an earlier exact green checkpoint if that reduces migration risk. Repository HEAD is not automatically production HEAD. Do not resume feature development or production action without new Owner direction.
 
 Not authorized by this objective:
 - production deployment/migration/SSH/config mutation

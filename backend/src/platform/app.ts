@@ -19,6 +19,8 @@ import type { FavoriteService } from "../favorites/favorite-service.js";
 import type { AppConfig } from "./config.js";
 import type { AuditService } from "../audit/audit-service.js";
 import { registerAuditHttp } from "../audit/http.js";
+import type { ScholarlyRecordService } from "../research/service.js";
+import { registerResearchHttp } from "../research/http.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -114,6 +116,7 @@ export interface CreateAppOptions {
   drive?: { service: DriveService };
   favorites?: { service: FavoriteService };
   audit?: { service: AuditService };
+  research?: { service: ScholarlyRecordService };
   readinessCheck?: () => boolean;
 }
 
@@ -247,6 +250,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   if (options.audit) {
     if (!options.auth) throw new Error("audit routes require authentication composition");
     await registerAuditHttp(app, options.audit.service);
+  }
+
+  if (options.research) {
+    if (!options.auth) throw new Error("research routes require authentication composition");
+    await registerResearchHttp(app, options.research.service);
   }
 
   return app;

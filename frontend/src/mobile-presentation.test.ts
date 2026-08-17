@@ -127,6 +127,14 @@ describe("mobile presentation stylesheet", () => {
     expect(ruleHas(block, ".audit-load-older {", /min-height:\s*2\.75rem/)).toBe(true);
   });
 
+  it("presents scholarly records as a fullscreen mobile identity dialog with touch-sized controls", () => {
+    const block = mobileBlock();
+    expect(ruleHas(block, ".scholarly-records-modal {", /height:\s*100dvh/)).toBe(true);
+    expect(ruleHas(block, ".scholarly-records-modal {", /border-radius:\s*0/)).toBe(true);
+    expect(ruleHas(block, ".scholarly-record-create, .scholarly-attach-form, .scholarly-records-layout {", /grid-template-columns:\s*1fr/)).toBe(true);
+    expect(ruleHas(block, ".scholarly-records-modal .button, .scholarly-records-modal select {", /min-height:\s*2\.75rem/)).toBe(true);
+  });
+
   it("lays the preview Open/Download actions out side by side at the 44px floor", () => {
     const block = mobileBlock();
     expect(ruleHas(block, ".preview-open-button, .preview-download-button {", /flex:\s*1;\s*min-height:\s*2\.75rem/)).toBe(true);

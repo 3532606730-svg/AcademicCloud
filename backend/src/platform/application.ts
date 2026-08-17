@@ -5,6 +5,7 @@ import { AnnouncementService } from "../announcements/announcement-service.js";
 import { DriveService } from "../drive/drive-service.js";
 import { FavoriteService } from "../favorites/favorite-service.js";
 import { AuditService } from "../audit/audit-service.js";
+import { ScholarlyRecordService } from "../research/service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
 import { openSqliteDatabase } from "../persistence/sqlite/database.js";
 import { assertMigrationsCurrent, runMigrations } from "../persistence/sqlite/migrations.js";
@@ -41,6 +42,7 @@ export async function createApplication(
     const driveService = new DriveService(persistence, storage);
     const favoriteService = new FavoriteService(persistence);
     const auditService = new AuditService(persistence);
+    const scholarlyRecordService = new ScholarlyRecordService(persistence);
     const app = await createApp({
       logger: { level: config.logLevel },
       auth: {
@@ -53,6 +55,7 @@ export async function createApplication(
       drive: { service: driveService },
       favorites: { service: favoriteService },
       audit: { service: auditService },
+      research: { service: scholarlyRecordService },
       readinessCheck: () => persistence.isReady(),
     });
 

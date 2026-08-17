@@ -128,6 +128,46 @@ export interface BulkOperationResult {
   items: Array<BulkItem & { outcome: "succeeded" }>;
 }
 
+export type ScholarlyAttachmentState = "attached" | "detached";
+export type ScholarlyAvailability = "available" | "unavailable" | "tombstoned";
+
+export interface ScholarlyRecordSummary {
+  id: string;
+  label: string;
+  createdAt: string;
+  updatedAt: string;
+  artifactCount: number;
+}
+
+export interface ScholarlyRecord extends ScholarlyRecordSummary {
+  artifacts: ScholarlyArtifact[];
+  nextBeforeArtifactId: string | null;
+}
+
+export interface ScholarlyRecordPage {
+  records: ScholarlyRecordSummary[];
+  nextBeforeId: string | null;
+}
+
+export interface ScholarlyArtifact {
+  id: string;
+  recordId: string;
+  attachmentState: ScholarlyAttachmentState;
+  createdAt: string;
+  updatedAt: string;
+  version: {
+    id: string;
+    createdAt: string;
+    updatedAt: string;
+    file: {
+      id: string;
+      displayName: string;
+      state: FileState;
+      availability: ScholarlyAvailability;
+    } | null;
+  } | null;
+}
+
 export interface UploadAuthorization {
   method: "POST";
   url: string;
@@ -201,6 +241,11 @@ export interface AcademicCloudApi {
   listRecycle(signal?: AbortSignal): Promise<RecycleResponse>;
   listFavorites(signal?: AbortSignal): Promise<FavoritesResponse>;
   bulkOperation(input: BulkOperationInput): Promise<BulkOperationResult>;
+  listScholarlyRecords(signal?: AbortSignal, beforeId?: string, limit?: number): Promise<ScholarlyRecordPage>;
+  getScholarlyRecord(recordId: string, signal?: AbortSignal, beforeArtifactId?: string, limit?: number): Promise<ScholarlyRecord>;
+  createScholarlyRecord(label: string): Promise<ScholarlyRecord>;
+  attachFileToScholarlyRecord(recordId: string, fileId: string): Promise<ScholarlyRecord>;
+  detachScholarlyArtifact(recordId: string, artifactId: string): Promise<ScholarlyRecord>;
   setFileFavorite(fileId: string, favorite: boolean): Promise<void>;
   setFolderFavorite(folderId: string, favorite: boolean): Promise<void>;
   createFolder(name: string, parentId: string | null): Promise<FolderEntry>;
@@ -409,6 +454,60 @@ export class ApiClient implements AcademicCloudApi {
 
   bulkOperation(input: BulkOperationInput): Promise<BulkOperationResult> {
     return this.#jsonBody<BulkOperationResult>("/api/drive/bulk", "POST", input);
+  }
+
+  listScholarlyRecords(signal?: AbortSignal, beforeId?: string, limit?: number): Promise<ScholarlyRecordPage> {
+    const query = new URLSearchParams();
+    if (beforeId !== undefined) query.set("beforeId", beforeId);
+    if (limit !== undefined) query.set("limit", String(limit));
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    return this.#request<ScholarlyRecordPage>(
+      `/api/research/records${suffix}`,
+      signal ? { signal } : {},
+    );
+  }
+
+  async getScholarlyRecord(
+    recordId: string,
+    signal?: AbortSignal,
+    beforeArtifactId?: string,
+    limit?: number,
+  ): Promise<ScholarlyRecord> {
+    const query = new URLSearchParams();
+    if (beforeArtifactId !== undefined) query.set("beforeArtifactId", beforeArtifactId);
+    if (limit !== undefined) query.set("limit", String(limit));
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    const response = await this.#request<{ record: ScholarlyRecord }>(
+      `/api/research/records/${encodeURIComponent(recordId)}${suffix}`,
+      signal ? { signal } : {},
+    );
+    return response.record;
+  }
+
+  async createScholarlyRecord(label: string): Promise<ScholarlyRecord> {
+    const response = await this.#jsonBody<{ record: ScholarlyRecord }>(
+      "/api/research/records",
+      "POST",
+      { label },
+    );
+    return response.record;
+  }
+
+  async attachFileToScholarlyRecord(recordId: string, fileId: string): Promise<ScholarlyRecord> {
+    const response = await this.#jsonBody<{ record: ScholarlyRecord }>(
+      `/api/research/records/${encodeURIComponent(recordId)}/artifacts`,
+      "POST",
+      { fileId },
+    );
+    return response.record;
+  }
+
+  async detachScholarlyArtifact(recordId: string, artifactId: string): Promise<ScholarlyRecord> {
+    const response = await this.#request<{ record: ScholarlyRecord }>(
+      `/api/research/records/${encodeURIComponent(recordId)}/artifacts/${encodeURIComponent(artifactId)}`,
+      { method: "DELETE" },
+    );
+    return response.record;
   }
 
   setFileFavorite(fileId: string, favorite: boolean): Promise<void> {

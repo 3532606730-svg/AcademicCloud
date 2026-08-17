@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, and RF-BULK01 are complete while the accepted UX01 production release remains live. The Owner-authorized repository-local **Pre-OCR Research Foundation** queue is recorded in `docs/architecture/pre-ocr-execution-plan.md` and `TASK_BOARD.md`; `RF-DOMAIN01` is the next approved Epic.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 are complete and independently green while the accepted UX01 production release remains live. No Epic is active. The remaining **Pre-OCR Research Foundation** queue begins with RF-META01 but is parked Ready/backlog at an external independent predeployment review gate.
 
-**Approved continuous objective (repository/local only):** RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, and RF-BULK01 are complete; consume the remaining dependency-safe Pre-OCR task queue one independently verified/checkpointed Epic at a time, beginning with `RF-DOMAIN01`; stop after terminal `RF-DERIVED01` and before OCR/text-extraction execution, full-text indexing, embeddings, retrieval, or RAG. Production deployment/migration/mutation, main merge, real credentials/cost, and destructive real-data work remain separately Owner-gated.
+**Approved continuous objective:** interrupted by Owner after the independently green RF-DOMAIN01 checkpoint. Do not select or execute RF-META01 or any later feature task until new Owner direction. External review must choose an exact production candidate, which may be RF-DOMAIN01 or an earlier exact green checkpoint; repository HEAD is not automatically production HEAD. Production SSH/deployment/migration/mutation, main merge, real credentials/cost, and destructive real-data work remain separately Owner-gated.
 
 ## Engineering Workflow
 

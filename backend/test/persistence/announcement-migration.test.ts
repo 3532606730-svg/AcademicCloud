@@ -21,7 +21,7 @@ function pinnedDirectory(context: TestContext, version: number): string {
   return directory;
 }
 
-test("migrations 008 through 010 preserve the Accounts I foundation", (context) => {
+test("migrations 008 through 011 preserve the Accounts I foundation", (context) => {
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-announcements-migration-"));
   context.after(() => rmSync(directory, { recursive: true, force: true }));
   const database = openSqliteDatabase(join(directory, "migration.sqlite"));
@@ -33,8 +33,8 @@ test("migrations 008 through 010 preserve the Accounts I foundation", (context) 
     `).run(NOW, NOW);
 
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [8, 9, 10],
-      currentVersion: 10,
+      appliedVersions: [8, 9, 10, 11],
+      currentVersion: 11,
     });
     assert.deepEqual(database.prepare("SELECT id, role, state FROM accounts").all(), [
       { id: "owner-1", role: "owner", state: "active" },

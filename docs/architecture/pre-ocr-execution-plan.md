@@ -1,8 +1,8 @@
 # Pre-OCR Research Foundation Execution Plan
 
-**Status:** Independently reviewed execution plan; `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, and `RF-BULK01` complete
+**Status:** Independently reviewed execution plan; `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, `RF-BULK01`, and `RF-DOMAIN01` complete; remaining queue parked at external predeployment review gate
 **Baseline:** `775f9eabba363ca0d7f4bf06493c6f677268cbd7`
-**Current schema head:** append-only migration 010 (`RF-OWNERSHIP01`)
+**Current schema head:** append-only migration 011 (`RF-DOMAIN01`)
 
 This plan compiles `ROADMAP.md` and ADR-014 into the executable task queue. It does not add product behavior, authorize production rollout, or authorize OCR/text extraction, embeddings, retrieval, or RAG.
 
@@ -13,7 +13,7 @@ This plan compiles `ROADMAP.md` and ADR-014 into the executable task queue. It d
 3. Extend the current Drive through explicit scholarly identities rather than renaming a file or folder into a Scholarly Record or Collection. An accepted future Library artifact must be owned by its Library domain, not remain lifecycle-dependent on its contributor account.
 4. Establish private Scholarly Record and Personal Research Overlay semantics before creating any Shared Library domain rows or membership.
 5. Keep canonical metadata, personal interpretation, collaborative catalog state, governance evidence, and future derived data in separate authority planes.
-6. Allocate every schema change as a new migration after the then-current head. Historical migrations 001–010 are immutable.
+6. Allocate every schema change as a new migration after the then-current head. Historical migrations 001–011 are immutable.
 7. Treat every API as server-authoritative. Client-supplied account, role, owner-domain, Library membership, provenance authority, or visibility claims are never trusted.
 8. End the program at tested identity, integrity, adapter, storage, and authorization contracts. Do not execute OCR or create real extracted text, indexes, embeddings, retrieval, or RAG state.
 
@@ -53,7 +53,8 @@ The queue is intentionally linear for autonomous execution even where some imple
 
 - `RF-AUDIT01` — immutable governance/security audit foundation; migration 009.
 - `RF-OWNERSHIP01` — explicit account ownership-domain substrate; migration 010.
-- `RF-BULK01` — bounded account-private atomic Drive/Favorites bulk actions, completed at the independently reviewed repository checkpoint following the ownership-domain head. It adds no migration or dependency delta and does not mutate object-provider bytes. The next executable card is `RF-DOMAIN01`.
+- `RF-BULK01` — bounded account-private atomic Drive/Favorites bulk actions, completed at the independently reviewed repository checkpoint following the ownership-domain head. It adds no migration or dependency delta and does not mutate object-provider bytes.
+- `RF-DOMAIN01` — account-private Scholarly Record/Artifact/Version identity foundation; migration 011; independently reviewed and green. The remaining queue begins with `RF-META01` but is parked Ready/backlog pending external predeployment review and new Owner direction.
 
 ## Complete Capability Coverage
 
@@ -101,7 +102,7 @@ Each approved capability has exactly one primary implementation task. Later task
 Every implementation card in this queue must:
 
 - start from a clean checkpoint and move only its own card from Ready to Doing;
-- preserve migrations 001–010 and every migration added by earlier cards; production startup remains migration fail-closed;
+- preserve migrations 001–011 and every migration added by earlier cards; production startup remains migration fail-closed;
 - test Owner and Member behavior, same-account success, cross-account denial, disabled-account/session behavior where applicable, and authority-field rejection;
 - use database transactions/CAS or explicit idempotency where concurrent writes could overwrite, duplicate, revive, or misattribute state;
 - preserve rollback at the transaction boundary and never auto-delete or rewrite original academic bytes;
