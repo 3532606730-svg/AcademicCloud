@@ -147,6 +147,43 @@ test("upload reserves a name, binds checksum and no-overwrite fields, then verif
   assert.equal((await service.completeUpload("owner-1", pending.file.id)).state, "active");
 });
 
+test("upload name reservations reject active or pending duplicates only within the same folder", async (context) => {
+  const { service, storage } = fixture(context);
+  const folderA = service.createFolder("owner-1", "Folder A", null);
+  const folderB = service.createFolder("owner-1", "Folder B", null);
+  const input = {
+    displayName: "same-name.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 1024,
+    checksum: { algorithm: "md5" as const, value: MD5 },
+  };
+
+  const pending = await service.createUpload("owner-1", { ...input, folderId: folderA.id });
+  await assert.rejects(
+    service.createUpload("owner-1", { ...input, folderId: folderA.id }),
+    (error) => error instanceof DriveError && error.code === "name_conflict",
+  );
+
+  storage.putObject({
+    objectKey: pending.upload.fields.key!,
+    sizeBytes: input.sizeBytes,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: input.mediaType,
+    modifiedAt: NOW,
+  });
+  await service.completeUpload("owner-1", pending.file.id);
+  await assert.rejects(
+    service.createUpload("owner-1", { ...input, folderId: folderA.id }),
+    (error) => error instanceof DriveError && error.code === "name_conflict",
+  );
+
+  const differentFolder = await service.createUpload("owner-1", { ...input, folderId: folderB.id });
+  assert.equal(differentFolder.file.folderId, folderB.id);
+  assert.equal(differentFolder.file.displayName, input.displayName);
+});
+
 test("renew recovers pending uploads without exposing another owner", async (context) => {
   const { persistence, service, storage } = fixture(context);
   const pending = await service.createUpload("owner-1", {

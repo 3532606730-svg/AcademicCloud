@@ -1476,6 +1476,9 @@ describe("App", () => {
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
     checksumResolvers[0]!(FILE.checksum);
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText(/was not uploaded because an active or pending file with the same name already exists in this folder/i)).toHaveTextContent(
+      "No duplicate was created.",
+    );
   });
 
   it("cancelling a running upload releases its slot for the next queued file", async () => {

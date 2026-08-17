@@ -203,8 +203,21 @@ input:hover { border-color: #a7b2a8; }
   font-weight: 620;
 }
 
-/* Deep-forest research-library navigation surface (desktop sidebar). */
-.sidebar { display: flex; flex-direction: column; justify-content: flex-start; padding: 1.2rem 0.8rem; background: var(--forest-deep); }
+/* Deep-forest research-library navigation surface (desktop sidebar).
+   It shares the document scrollbar with the workspace: sticky positioning
+   keeps navigation below the sticky topbar without a nested scroll area. */
+.sidebar {
+  position: sticky;
+  top: 3.5rem;
+  display: flex;
+  height: calc(100vh - 3.5rem);
+  height: calc(100dvh - 3.5rem);
+  align-self: start;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 1.2rem 0.8rem;
+  background: var(--forest-deep);
+}
 .sidebar nav { display: grid; gap: 0.2rem; }
 .nav-item {
   display: flex;
@@ -666,10 +679,13 @@ input:hover { border-color: #a7b2a8; }
   .sidebar {
     position: fixed;
     z-index: 30;
+    top: auto;
     right: 0;
     bottom: 0;
     left: 0;
     display: block;
+    height: auto;
+    align-self: auto;
     padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
     box-shadow: 0 -8px 24px rgba(22, 40, 30, 0.1);

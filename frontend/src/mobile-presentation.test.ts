@@ -35,10 +35,25 @@ function ruleHas(block: string, selector: string, declaration: RegExp): boolean 
   return declaration.test(block.slice(openBrace, closeBrace));
 }
 
+describe("desktop presentation stylesheet", () => {
+  it("keeps the sidebar below the topbar on the document scrollbar without a nested scroll area", () => {
+    const desktop = styles.slice(0, styles.indexOf("@media (max-width: 64rem)"));
+    const sidebarRule = /\.sidebar\s*\{([^}]*)\}/.exec(desktop)?.[1] ?? "";
+    expect(sidebarRule).toMatch(/position:\s*sticky/);
+    expect(sidebarRule).toMatch(/top:\s*3\.5rem/);
+    expect(sidebarRule).toContain("height: calc(100vh - 3.5rem)");
+    expect(sidebarRule).toContain("height: calc(100dvh - 3.5rem)");
+    expect(sidebarRule).toMatch(/align-self:\s*start/);
+    expect(sidebarRule).not.toMatch(/overflow(?:-y)?:\s*(?:auto|scroll)/);
+  });
+});
+
 describe("mobile presentation stylesheet", () => {
   it("turns the sidebar itself into a fixed safe-area bottom navigation with four equal destinations", () => {
     const block = mobileBlock();
     expect(ruleHas(block, ".sidebar {", /position:\s*fixed/)).toBe(true);
+    expect(ruleHas(block, ".sidebar {", /top:\s*auto/)).toBe(true);
+    expect(ruleHas(block, ".sidebar {", /height:\s*auto/)).toBe(true);
     expect(ruleHas(block, ".sidebar {", /calc\(0\.35rem \+ env\(safe-area-inset-bottom\)\)/)).toBe(true);
     expect(ruleHas(block, ".sidebar nav {", /repeat\(4,\s*minmax\(0,\s*1fr\)\)/)).toBe(true);
     // The workspace must clear the fixed navigation.

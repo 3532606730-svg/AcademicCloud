@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, and PROD-04A are complete and independently green. Exact OPS01A checkpoint `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted production generation at schema v8. The Owner has now opened one bounded repository-development objective for first-use polish followed by minimum Shared Library and Member contribution review.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, PROD-04A, and L1-UX04 are complete and green. Exact OPS01A checkpoint `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted production generation at schema v8. The bounded repository-development objective continues with `L2-ACCOUNTARCHIVE01`.
 
-**Approved continuous objective:** execute only `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01`, `RF-LIBRARY01`, then `RF-LIBRARY02`, and STOP. The three polish cards may be completed in the most efficient order; `RF-LIBRARY01` must precede `RF-LIBRARY02`. `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, and every unrelated later Pre-OCR task remain parked. Repository HEAD remains newer than production HEAD. Any production SSH/deployment/migration/mutation, main merge, real credentials/cost, destructive real-data work, `PROD-03C2`, or OCR/RAG remains separately Owner-gated.
+**Approved continuous objective:** `L1-UX04` is complete; execute only `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01`, `RF-LIBRARY01`, then `RF-LIBRARY02`, and STOP. `RF-LIBRARY01` must precede `RF-LIBRARY02`. `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, and every unrelated later Pre-OCR task remain parked. Repository HEAD remains newer than production HEAD. Any production SSH/deployment/migration/mutation, main merge, real credentials/cost, destructive real-data work, `PROD-03C2`, or OCR/RAG remains separately Owner-gated.
 
 ## Engineering Workflow
 

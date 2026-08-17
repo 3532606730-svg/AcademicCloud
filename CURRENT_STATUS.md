@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local line through `RF-DOMAIN01` is complete and independently green, and PROD-04A has deployed/accepted the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8. The Owner has now opened a new repository-development objective: first-use polish → minimum Shared Library → Member contribution review → STOP.**
+**The repository-local line through `RF-DOMAIN01` is complete and independently green, PROD-04A has deployed/accepted the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8, and `L1-UX04` first-use Drive polish is complete with focused verification green. The approved repository-development objective continues at `L2-ACCOUNTARCHIVE01`.**
 
 Production remains live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8. Repository development is newer and remains repository-only until a separate Owner deployment gate selects an exact candidate.
 
@@ -19,9 +19,10 @@ Current development lineage before this planning reconciliation:
 - RF-DOMAIN01 checkpoint: `ddcc19eb41428bbdbececd8868a11a09dae97e98`;
 - latest existing repository migration before new work: `011_scholarly_record_identity.sql`.
 
-Planning reconciliation branch:
-- `chatgpt/first-use-sharing-priority-20260817`;
-- contains only durable priority/task-definition changes; no product implementation or production mutation.
+Current execution branch:
+- `codex/project-memory-reconcile-20260817`;
+- accelerated-queue planning checkpoint before implementation: `e915825fd546a122ff8606e699a9fd678c020001`;
+- contains repository development only; no production mutation.
 
 Historical migrations 001–011 must not be modified or renumbered. New persistent work must use append-only versions after the actual development schema head.
 
@@ -72,6 +73,8 @@ RF-LIBRARY02
         ↓
 STOP
 ```
+
+Current progress: `L1-UX04` is complete. Next is `L2-ACCOUNTARCHIVE01`, followed by `L2-ADMINPOLISH01`, `RF-LIBRARY01`, and `RF-LIBRARY02`.
 
 ### L1-UX04
 - clear localized feedback when a same-folder active/pending file name already exists;
@@ -152,4 +155,4 @@ This repository objective does **not** authorize:
 
 ## Next Action
 
-Codex should recover from the planning branch/repository truth, execute the five-card accelerated queue, use proportionate focused verification, reconcile durable state, commit each bounded checkpoint, and STOP after `RF-LIBRARY02` before any production rollout.
+Create/push the green `L1-UX04` checkpoint, then execute `L2-ACCOUNTARCHIVE01` with proportionate focused verification. Continue only through the approved queue and STOP after `RF-LIBRARY02` before any production rollout.

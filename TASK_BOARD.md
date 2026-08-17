@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. The Owner has now opened a new repository-development queue for first-use polish followed immediately by minimum Shared Library and contribution review.**
+**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. `L1-UX04` is complete and green; the accelerated repository-development queue continues at `L2-ACCOUNTARCHIVE01`.**
 
 Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Repository HEAD remains newer and does not automatically select another production target.
 
@@ -31,13 +31,12 @@ This repository objective does not authorize production access/mutation, deploym
 
 ## Doing
 
-None yet. The queue is Owner-approved and Ready for Codex recovery/selection.
+None between checkpoints. Select `L2-ACCOUNTARCHIVE01` after the L1-UX04 checkpoint.
 
 ## Ready — Accelerated First-Use Queue
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 1 | `L1-UX04` | `tasks/ready/L1-UX04.md` | duplicate-name feedback + sticky desktop sidebar |
 | 2 | `L2-ACCOUNTARCHIVE01` | `tasks/ready/L2-ACCOUNTARCHIVE01.md` | disabled→archived Member lifecycle, identity/data retained |
 | 3 | `L2-ADMINPOLISH01` | `tasks/ready/L2-ADMINPOLISH01.md` | announcement delete + collapsed invitation history |
 | 4 | `RF-LIBRARY01` | `tasks/ready/RF-LIBRARY01.md` | real Library domain, membership, permissions, holdings read surface |
@@ -107,6 +106,12 @@ One-Time External Sharing remains a separately scoped capability:
 It is not silently pulled into the accelerated Shared Library program.
 
 ## Completed
+
+### L1-UX04 — First-Use Core Drive UX Polish
+
+**Task card:** `tasks/done/L1-UX04.md`
+
+**Status:** complete; focused review and verification green. Upload conflicts now give explicit bilingual same-folder duplicate feedback without changing authoritative uniqueness or auto-renaming behavior. Desktop navigation stays sticky below the top bar on the document scrollbar, while mobile bottom navigation is unchanged. Focused frontend `115/115`, Drive service `12/12`, frontend typecheck/build, and `git diff --check` PASS.
 
 ### PROD-04A — Routine Multi-User Release 34a2eada
 

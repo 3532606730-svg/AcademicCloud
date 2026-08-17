@@ -98,6 +98,15 @@ describe("describeError", () => {
     expect(describeError(new ApiError(401, "invalid_credentials"), "zh-CN")).toBe("登录名或密码不正确。");
   });
 
+  it("explains upload name conflicts without implying that a duplicate was created", () => {
+    expect(translate("en", "upload.nameConflict", { name: "paper.pdf" })).toBe(
+      "“paper.pdf” was not uploaded because an active or pending file with the same name already exists in this folder. No duplicate was created.",
+    );
+    expect(translate("zh-CN", "upload.nameConflict", { name: "paper.pdf" })).toBe(
+      "未上传“paper.pdf”：当前文件夹已有同名的有效文件或待处理上传，系统没有创建重复副本。",
+    );
+  });
+
   it("localizes cancellation and fallback messages", () => {
     const aborted = new DOMException("aborted", "AbortError");
     expect(describeError(aborted, "en")).toBe("The operation was cancelled.");

@@ -615,7 +615,10 @@ function DriveView({
       if (caught instanceof DOMException && caught.name === "AbortError") {
         patchJob(job.id, { phase: "cancelled" });
       } else {
-        patchJob(job.id, { phase: "error", error: describeError(caught, language) });
+        const message = caught instanceof ApiError && caught.code === "name_conflict"
+          ? t("upload.nameConflict", { name: job.file.name })
+          : describeError(caught, language);
+        patchJob(job.id, { phase: "error", error: message });
       }
     }
   }
