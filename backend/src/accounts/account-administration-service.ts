@@ -281,9 +281,11 @@ export class AccountAdministrationService {
     }
   }
 
-  listAccounts(actor: AuthenticatedAccount): SafeAccount[] {
+  listAccounts(actor: AuthenticatedAccount, includeArchived = false): SafeAccount[] {
     this.#assertCurrentOwner(actor, this.#persistence.repositories);
-    return this.#persistence.repositories.accounts.list().map(safeAccount);
+    return this.#persistence.repositories.accounts.list()
+      .filter((account) => includeArchived || account.state !== "archived")
+      .map(safeAccount);
   }
 
   setMemberState(actor: AuthenticatedAccount, accountId: string, state: AccountState): SafeAccount {
@@ -296,11 +298,16 @@ export class AccountAdministrationService {
         throw new AccountAdministrationError("invalid_target");
       }
       if (target.state === state) return safeAccount(target);
+      const allowed =
+        (target.state === "active" && state === "disabled")
+        || (target.state === "disabled" && (state === "active" || state === "archived"))
+        || (target.state === "archived" && state === "disabled");
+      if (!allowed) throw new AccountAdministrationError("invalid_state");
       const now = this.#now();
       if (!repositories.accounts.updateState(target.id, target.state, state, now)) {
         throw new AccountAdministrationError("invalid_state");
       }
-      if (state === "disabled") repositories.sessions.revokeAllByAccountId(target.id, now);
+      if (state !== "active") repositories.sessions.revokeAllByAccountId(target.id, now);
       recordAuditEvent(repositories, {
         action: "accounts.member_state_change",
         actorKind: "account",

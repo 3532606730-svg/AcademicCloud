@@ -9,7 +9,8 @@ interface AccountRow {
   password_hash: string;
   role: AccountRole;
   auth_revision: number;
-  state: AccountState;
+  state: Exclude<AccountState, "archived">;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -19,8 +20,16 @@ interface AccountParameters {
   loginName: string;
   passwordHash: string;
   role: AccountRole;
-  state: AccountState;
+  state: Exclude<AccountState, "archived">;
   createdAt: string;
+  updatedAt: string;
+}
+
+interface AccountStateParameters {
+  id: string;
+  expectedState: AccountState;
+  storedState: Exclude<AccountState, "archived">;
+  archivedAt: string | null;
   updatedAt: string;
 }
 
@@ -31,7 +40,7 @@ function toAccount(row: AccountRow): Account {
     passwordHash: row.password_hash,
     role: row.role,
     authRevision: row.auth_revision,
-    state: row.state,
+    state: row.archived_at === null ? row.state : "archived",
     createdAt: fromDatabaseTimestamp(row.created_at)!,
     updatedAt: fromDatabaseTimestamp(row.updated_at)!,
   };
@@ -52,29 +61,35 @@ export class SqliteAccountRepository implements AccountRepository {
       VALUES (@id, @loginName, @passwordHash, @role, @state, @createdAt, @updatedAt)
     `);
     this.#findById = database.prepare<[string], AccountRow>(`
-      SELECT id, login_name, password_hash, role, auth_revision, state, created_at, updated_at
+      SELECT id, login_name, password_hash, role, auth_revision, state, archived_at, created_at, updated_at
       FROM accounts
       WHERE id = ?
     `);
     this.#findByLoginName = database.prepare<[string], AccountRow>(`
-      SELECT id, login_name, password_hash, role, auth_revision, state, created_at, updated_at
+      SELECT id, login_name, password_hash, role, auth_revision, state, archived_at, created_at, updated_at
       FROM accounts
       WHERE login_name = ? COLLATE NOCASE
     `);
     this.#count = database.prepare<[], { count: number }>("SELECT count(*) AS count FROM accounts");
     this.#list = database.prepare<[], AccountRow>(`
-      SELECT id, login_name, password_hash, role, auth_revision, state, created_at, updated_at
+      SELECT id, login_name, password_hash, role, auth_revision, state, archived_at, created_at, updated_at
       FROM accounts
       ORDER BY created_at, id
     `);
-    this.#updateState = database.prepare<[AccountState, string, string, AccountState]>(`
-      UPDATE accounts SET state = ?, updated_at = ?, auth_revision = auth_revision + 1
-      WHERE id = ? AND state = ?
+    this.#updateState = database.prepare<AccountStateParameters>(`
+      UPDATE accounts
+      SET state = @storedState,
+          archived_at = @archivedAt,
+          updated_at = @updatedAt,
+          auth_revision = auth_revision + 1
+      WHERE id = @id
+        AND CASE WHEN archived_at IS NOT NULL THEN 'archived' ELSE state END = @expectedState
     `);
     this.#updatePassword = database.prepare<[string, string, string, string, number]>(`
       UPDATE accounts
       SET password_hash = ?, updated_at = ?, auth_revision = auth_revision + 1
-      WHERE id = ? AND state = 'active' AND password_hash = ? AND auth_revision = ?
+      WHERE id = ? AND state = 'active' AND archived_at IS NULL
+        AND password_hash = ? AND auth_revision = ?
     `);
   }
 
@@ -111,7 +126,14 @@ export class SqliteAccountRepository implements AccountRepository {
   }
 
   updateState(id: string, expectedState: AccountState, state: AccountState, updatedAt: Date): boolean {
-    return this.#updateState.run(state, toDatabaseTimestamp(updatedAt)!, id, expectedState).changes === 1;
+    const timestamp = toDatabaseTimestamp(updatedAt)!;
+    return this.#updateState.run({
+      id,
+      expectedState,
+      storedState: state === "archived" ? "disabled" : state,
+      archivedAt: state === "archived" ? timestamp : null,
+      updatedAt: timestamp,
+    }).changes === 1;
   }
 
   updatePassword(

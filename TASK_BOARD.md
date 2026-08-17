@@ -1,10 +1,10 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-17
+**Last reconciled:** 2026-08-18
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. `L1-UX04` is complete and green; the accelerated repository-development queue continues at `L2-ACCOUNTARCHIVE01`.**
+**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. `L1-UX04` and `L2-ACCOUNTARCHIVE01` are complete and green; the accelerated queue continues at `L2-ADMINPOLISH01`.**
 
 Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Repository HEAD remains newer and does not automatically select another production target.
 
@@ -31,13 +31,12 @@ This repository objective does not authorize production access/mutation, deploym
 
 ## Doing
 
-None between checkpoints. Select `L2-ACCOUNTARCHIVE01` after the L1-UX04 checkpoint.
+None between checkpoints. Select `L2-ADMINPOLISH01` after the L2-ACCOUNTARCHIVE01 checkpoint.
 
 ## Ready — Accelerated First-Use Queue
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 2 | `L2-ACCOUNTARCHIVE01` | `tasks/ready/L2-ACCOUNTARCHIVE01.md` | disabled→archived Member lifecycle, identity/data retained |
 | 3 | `L2-ADMINPOLISH01` | `tasks/ready/L2-ADMINPOLISH01.md` | announcement delete + collapsed invitation history |
 | 4 | `RF-LIBRARY01` | `tasks/ready/RF-LIBRARY01.md` | real Library domain, membership, permissions, holdings read surface |
 | 5 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Member submit → reviewer approve/reject/withdraw → Library ownership |
@@ -106,6 +105,12 @@ One-Time External Sharing remains a separately scoped capability:
 It is not silently pulled into the accelerated Shared Library program.
 
 ## Completed
+
+### L2-ACCOUNTARCHIVE01 — Member Account Archival
+
+**Task card:** `tasks/done/L2-ACCOUNTARCHIVE01.md`
+
+**Status:** complete; focused review and verification green. ADR-019 and append-only migration 012 add a disabled-only, non-destructive archived Member lifecycle without rebuilding `accounts`; unarchive returns to disabled, sessions remain invalid, identity/login/data/provenance/history are retained, default lists hide archived Members, and explicit Owner reveal is available. Account service `12/12`, account HTTP `7/7`, migration `1/1`, frontend `115/115`, workspace typecheck/build, and `git diff --check` PASS.
 
 ### L1-UX04 — First-Use Core Drive UX Polish
 

@@ -216,6 +216,24 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[5]?.[1]?.body).toBe(JSON.stringify({ state: "disabled" }));
   });
 
+  it("reveals archived accounts only through the explicit query and sends exact lifecycle states", async () => {
+    const archived = { id: "member / one", loginName: "Reader", role: "member", state: "archived", createdAt: "2026-08-17T00:00:00.000Z" };
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ accounts: [] }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ accounts: [archived] }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ account: archived }), { status: 200, headers: { "content-type": "application/json" } }));
+    const api = new ApiClient({ fetcher });
+
+    await api.listAccounts();
+    await api.listAccounts(true);
+    await api.setAccountState(archived.id, "archived");
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/accounts");
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/accounts?includeArchived=true");
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/accounts/member%20%2F%20one/state");
+    expect(fetcher.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({ state: "archived" }));
+  });
+
   it("uses announcement read/admin contracts and bodyless publication actions", async () => {
     const announcement = {
       id: "announcement / one",

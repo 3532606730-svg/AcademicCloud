@@ -1,4 +1,4 @@
-export const ACCOUNT_STATES = ["active", "disabled"] as const;
+export const ACCOUNT_STATES = ["active", "disabled", "archived"] as const;
 export const ACCOUNT_ROLES = ["owner", "member"] as const;
 
 export type AccountState = (typeof ACCOUNT_STATES)[number];
@@ -15,4 +15,6 @@ export interface Account {
   updatedAt: Date;
 }
 
-export type NewAccount = Omit<Account, "authRevision">;
+export type NewAccount = Omit<Account, "authRevision" | "state"> & {
+  state: Exclude<AccountState, "archived">;
+};

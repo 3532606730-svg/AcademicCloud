@@ -68,6 +68,7 @@ test("Member cannot create, list, revoke invitations, or list accounts", (contex
   assert.throws(() => service.createInvitation(MEMBER), AuthorizationDeniedError);
   assert.throws(() => service.listInvitations(MEMBER), AuthorizationDeniedError);
   assert.throws(() => service.listAccounts(MEMBER), AuthorizationDeniedError);
+  assert.throws(() => service.listAccounts(MEMBER, true), AuthorizationDeniedError);
 });
 
 test("valid invitation creates exactly one Member and consumes the digest-only capability", async (context) => {
@@ -229,6 +230,65 @@ test("Owner disable revokes every Member session; enable never revives them", (c
   );
 });
 
+test("Member archival is disabled-only, hidden by default, session-invalid, and unarchives to disabled", async (context) => {
+  const { service, persistence } = fixture(context);
+  persistence.repositories.accounts.create({
+    id: MEMBER.id,
+    loginName: MEMBER.loginName,
+    passwordHash: "hash:member-password-123",
+    role: "member",
+    state: "active",
+    createdAt: NOW,
+    updatedAt: NOW,
+  });
+  assert.throws(
+    () => service.setMemberState(OWNER, MEMBER.id, "archived"),
+    (error) => error instanceof AccountAdministrationError && error.code === "invalid_state",
+  );
+  assert.throws(() => service.setMemberState(MEMBER, MEMBER.id, "disabled"), AuthorizationDeniedError);
+
+  assert.equal(service.setMemberState(OWNER, MEMBER.id, "disabled").state, "disabled");
+  persistence.repositories.sessions.create({
+    tokenDigest: "d".repeat(64),
+    accountId: MEMBER.id,
+    createdAt: NOW,
+    expiresAt: new Date(NOW.getTime() + 60_000),
+    revokedAt: null,
+  });
+  const archived = service.setMemberState(OWNER, MEMBER.id, "archived");
+  assert.deepEqual({ id: archived.id, loginName: archived.loginName, state: archived.state }, {
+    id: MEMBER.id,
+    loginName: MEMBER.loginName,
+    state: "archived",
+  });
+  assert.ok(persistence.repositories.sessions.findByTokenDigest("d".repeat(64))?.revokedAt);
+  assert.equal(service.listAccounts(OWNER).some((account) => account.id === MEMBER.id), false);
+  assert.equal(service.listAccounts(OWNER, true).find((account) => account.id === MEMBER.id)?.state, "archived");
+
+  const auth = new AuthService({ persistence, passwordHasher: hasher, now: () => NOW });
+  await assert.rejects(auth.login(MEMBER.loginName, "member-password-123"), InvalidCredentialsError);
+  assert.throws(
+    () => service.setMemberState(OWNER, MEMBER.id, "active"),
+    (error) => error instanceof AccountAdministrationError && error.code === "invalid_state",
+  );
+  assert.equal(service.setMemberState(OWNER, MEMBER.id, "disabled").state, "disabled");
+  await assert.rejects(auth.login(MEMBER.loginName, "member-password-123"), InvalidCredentialsError);
+  assert.equal(service.setMemberState(OWNER, MEMBER.id, "active").state, "active");
+  assert.equal((await auth.login(MEMBER.loginName, "member-password-123")).account.id, MEMBER.id);
+  assert.equal(persistence.repositories.accounts.findById(MEMBER.id)?.authRevision, 4);
+  assert.throws(
+    () => service.setMemberState(OWNER, OWNER.id, "archived"),
+    (error) => error instanceof AccountAdministrationError && error.code === "invalid_target",
+  );
+  persistence.repositories.accounts.create({
+    id: "owner-2", loginName: "OtherOwner", passwordHash: "hash", role: "owner", state: "active", createdAt: NOW, updatedAt: NOW,
+  });
+  assert.throws(
+    () => service.setMemberState(OWNER, "owner-2", "archived"),
+    (error) => error instanceof AccountAdministrationError && error.code === "invalid_target",
+  );
+});
+
 test("a login hashing across disable and re-enable cannot create a revived pre-disable session", async (context) => {
   const { service, persistence, database } = fixture(context);
   persistence.repositories.accounts.create({
@@ -309,5 +369,23 @@ test("a session-revocation failure rolls back the Member state and auth revision
       revokedAt: persistence.repositories.sessions.findByTokenDigest("c".repeat(64))?.revokedAt,
     },
     { state: "active", authRevision: 0, revokedAt: null },
+  );
+
+  assert.equal(persistence.repositories.accounts.updateState(MEMBER.id, "active", "disabled", NOW), true);
+  persistence.repositories.sessions.create({
+    tokenDigest: "e".repeat(64),
+    accountId: MEMBER.id,
+    createdAt: NOW,
+    expiresAt: new Date(NOW.getTime() + 60_000),
+    revokedAt: null,
+  });
+  assert.throws(() => failingService.setMemberState(OWNER, MEMBER.id, "archived"), /injected session revocation failure/);
+  assert.deepEqual(
+    {
+      state: persistence.repositories.accounts.findById(MEMBER.id)?.state,
+      authRevision: persistence.repositories.accounts.findById(MEMBER.id)?.authRevision,
+      revokedAt: persistence.repositories.sessions.findByTokenDigest("e".repeat(64))?.revokedAt,
+    },
+    { state: "disabled", authRevision: 1, revokedAt: null },
   );
 });

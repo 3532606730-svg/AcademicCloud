@@ -1773,12 +1773,13 @@ function AccountAdministrationDialog({
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const dialogRef = useModalDialog(onClose, busyId !== null);
 
   useEffect(() => {
     let live = true;
     setLoading(true);
-    Promise.all([api.listAccounts(), api.listInvitations()]).then(
+    Promise.all([api.listAccounts(showArchived), api.listInvitations()]).then(
       ([nextAccounts, nextInvitations]) => {
         if (!live) return;
         setAccounts(nextAccounts);
@@ -1793,7 +1794,7 @@ function AccountAdministrationDialog({
     return () => {
       live = false;
     };
-  }, [api]);
+  }, [api, showArchived]);
 
   async function createInvitation() {
     setBusyId("create-invitation");
@@ -1823,12 +1824,14 @@ function AccountAdministrationDialog({
     }
   }
 
-  async function setMemberState(account: ManagedAccount) {
+  async function setMemberState(account: ManagedAccount, state: ManagedAccount["state"]) {
     setBusyId(`account-${account.id}`);
     setError(null);
     try {
-      const updated = await api.setAccountState(account.id, account.state === "active" ? "disabled" : "active");
-      setAccounts((current) => current.map((item) => item.id === updated.id ? updated : item));
+      const updated = await api.setAccountState(account.id, state);
+      setAccounts((current) => updated.state === "archived" && !showArchived
+        ? current.filter((item) => item.id !== updated.id)
+        : current.map((item) => item.id === updated.id ? updated : item));
     } catch (caught: unknown) {
       setError(caught);
     } finally {
@@ -1847,18 +1850,34 @@ function AccountAdministrationDialog({
         {loading ? <LoadingRows /> : (
           <>
             <section aria-labelledby="account-list-title">
-              <h3 id="account-list-title">{t("accounts.members")}</h3>
+              <div className="account-administration-section-heading">
+                <h3 id="account-list-title">{t("accounts.members")}</h3>
+                <button className="button button--quiet button--small" type="button" disabled={busyId !== null} onClick={() => setShowArchived((current) => !current)}>
+                  {showArchived ? t("accounts.hideArchived") : t("accounts.showArchived")}
+                </button>
+              </div>
               <div className="account-administration-list">
                 {accounts.map((account) => (
                   <article className="account-administration-row" key={account.id}>
                     <div>
                       <strong>{account.loginName}</strong>
-                      <span>{account.role === "owner" ? t("accounts.owner") : t("accounts.member")} · {account.state === "active" ? t("accounts.active") : t("accounts.disabled")}</span>
+                      <span>{account.role === "owner" ? t("accounts.owner") : t("accounts.member")} · {account.state === "active" ? t("accounts.active") : account.state === "disabled" ? t("accounts.disabled") : t("accounts.archived")}</span>
                     </div>
                     {account.role === "member" && account.id !== ownerId && (
-                      <button className={account.state === "active" ? "button button--small button--danger" : "button button--small"} type="button" disabled={busyId !== null} onClick={() => void setMemberState(account)}>
-                        {account.state === "active" ? t("accounts.disable") : t("accounts.enable")}
-                      </button>
+                      <div className="account-administration-row-actions">
+                        {account.state === "active" && (
+                          <button className="button button--small button--danger" type="button" disabled={busyId !== null} onClick={() => void setMemberState(account, "disabled")}>{t("accounts.disable")}</button>
+                        )}
+                        {account.state === "disabled" && (
+                          <>
+                            <button className="button button--small" type="button" disabled={busyId !== null} onClick={() => void setMemberState(account, "active")}>{t("accounts.enable")}</button>
+                            <button className="button button--small button--quiet" type="button" disabled={busyId !== null} onClick={() => void setMemberState(account, "archived")}>{t("accounts.archive")}</button>
+                          </>
+                        )}
+                        {account.state === "archived" && (
+                          <button className="button button--small" type="button" disabled={busyId !== null} onClick={() => void setMemberState(account, "disabled")}>{t("accounts.unarchive")}</button>
+                        )}
+                      </div>
                     )}
                   </article>
                 ))}

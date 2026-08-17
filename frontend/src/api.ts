@@ -7,7 +7,7 @@ export interface Account {
 }
 
 export interface ManagedAccount extends Account {
-  state: "active" | "disabled";
+  state: "active" | "disabled" | "archived";
   createdAt: string;
 }
 
@@ -227,8 +227,8 @@ export interface AcademicCloudApi {
   createInvitation(): Promise<{ invitation: Invitation; rawToken: string }>;
   listInvitations(): Promise<Invitation[]>;
   revokeInvitation(invitationId: string): Promise<Invitation>;
-  listAccounts(): Promise<ManagedAccount[]>;
-  setAccountState(accountId: string, state: "active" | "disabled"): Promise<ManagedAccount>;
+  listAccounts(includeArchived?: boolean): Promise<ManagedAccount[]>;
+  setAccountState(accountId: string, state: "active" | "disabled" | "archived"): Promise<ManagedAccount>;
   listAnnouncements(signal?: AbortSignal): Promise<Announcement[]>;
   listAllAnnouncements(): Promise<Announcement[]>;
   createAnnouncement(input: AnnouncementInput): Promise<Announcement>;
@@ -371,11 +371,12 @@ export class ApiClient implements AcademicCloudApi {
     )).invitation;
   }
 
-  async listAccounts(): Promise<ManagedAccount[]> {
-    return (await this.#request<{ accounts: ManagedAccount[] }>("/api/accounts")).accounts;
+  async listAccounts(includeArchived = false): Promise<ManagedAccount[]> {
+    const path = includeArchived ? "/api/accounts?includeArchived=true" : "/api/accounts";
+    return (await this.#request<{ accounts: ManagedAccount[] }>(path)).accounts;
   }
 
-  async setAccountState(accountId: string, state: "active" | "disabled"): Promise<ManagedAccount> {
+  async setAccountState(accountId: string, state: "active" | "disabled" | "archived"): Promise<ManagedAccount> {
     return (await this.#jsonBody<{ account: ManagedAccount }>(
       `/api/accounts/${encodeURIComponent(accountId)}/state`,
       "PATCH",

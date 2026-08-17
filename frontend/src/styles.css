@@ -545,6 +545,7 @@ input:hover { border-color: #a7b2a8; }
 .account-administration-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.8rem 0.9rem; background: var(--paper); }
 .account-administration-row + .account-administration-row { border-top: 1px solid var(--line); }
 .account-administration-row > div { display: grid; min-width: 0; gap: 0.2rem; }
+.account-administration-row > .account-administration-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.45rem; }
 .account-administration-row strong { overflow-wrap: anywhere; font-size: 0.9rem; }
 .account-administration-row span, .account-administration-empty { color: var(--muted); font-size: 0.8rem; }
 .invitation-link { display: grid; gap: 0.4rem; padding: 0.8rem; border: 1px solid #c2d6c8; border-radius: 0.6rem; background: var(--forest-soft); }

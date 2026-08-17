@@ -265,6 +265,42 @@ describe("App", () => {
     expect(menu.getByRole("menuitem", { name: "Change password" })).toBeInTheDocument();
   });
 
+  it("hides archived Members by default and makes archive/unarchive a disabled-only Owner workflow", async () => {
+    const user = userEvent.setup();
+    const owner = { ...ACCOUNT, state: "active" as const, createdAt: "2026-08-17T00:00:00.000Z" };
+    const disabled = { id: "member-disabled", loginName: "Former Reader", role: "member" as const, state: "disabled" as const, createdAt: "2026-08-17T00:00:00.000Z" };
+    const archived = { id: "member-archived", loginName: "Archived Reader", role: "member" as const, state: "archived" as const, createdAt: "2026-08-17T00:00:00.000Z" };
+    const listAccounts = vi.fn((includeArchived = false) => Promise.resolve(includeArchived ? [owner, archived] : [owner, disabled]));
+    const setAccountState = vi.fn((accountId: string, state: "active" | "disabled" | "archived") => Promise.resolve(
+      accountId === disabled.id ? { ...disabled, state } : { ...archived, state },
+    ));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listAccounts,
+      setAccountState,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(screen.getByRole("button", { name: "Manage accounts" }));
+    const dialog = await screen.findByRole("dialog", { name: "Account administration" });
+    expect(await within(dialog).findByText("Former Reader")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Archived Reader")).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(setAccountState).toHaveBeenCalledWith(disabled.id, "archived"));
+    await waitFor(() => expect(within(dialog).queryByText("Former Reader")).not.toBeInTheDocument());
+
+    await user.click(within(dialog).getByRole("button", { name: "Show archived" }));
+    expect(await within(dialog).findByText("Archived Reader")).toBeInTheDocument();
+    expect(listAccounts).toHaveBeenLastCalledWith(true);
+    await user.click(within(dialog).getByRole("button", { name: "Unarchive" }));
+    await waitFor(() => expect(setAccountState).toHaveBeenCalledWith(archived.id, "disabled"));
+    expect(await within(dialog).findByText(/Disabled/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Enable" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Archive" })).toBeInTheDocument();
+  });
+
   it("lets both Members and Owners change only their own password and returns to Login", async () => {
     const user = userEvent.setup();
     const changePassword = vi.fn().mockResolvedValue(undefined);

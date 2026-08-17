@@ -110,6 +110,7 @@ test("Member direct calls to every Owner surface are denied and no role/delete r
     { method: "GET", url: "/api/accounts/invitations" },
     { method: "DELETE", url: "/api/accounts/invitations/any" },
     { method: "GET", url: "/api/accounts" },
+    { method: "GET", url: "/api/accounts?includeArchived=true" },
     { method: "PATCH", url: "/api/accounts/member-1/state", payload: { state: "disabled" } },
   ] as const) {
     const response = await app.inject({
@@ -175,6 +176,46 @@ test("disabling a Member revokes all sessions; enabling requires a fresh login",
     method: "POST", url: "/api/auth/login", headers: { origin: ORIGIN, "content-type": "application/json" }, payload: { loginName: "Member", password: "member-password-123" },
   });
   assert.equal(fresh.statusCode, 200);
+});
+
+test("archived Members are default-hidden and require disabled archive/unarchive transitions", async (context) => {
+  const { app, ownerCookie, memberCookie } = await fixture(context);
+  const activeArchive = await app.inject({
+    method: "PATCH", url: "/api/accounts/member-1/state", headers: { origin: ORIGIN, cookie: ownerCookie }, payload: { state: "archived" },
+  });
+  assert.deepEqual({ status: activeArchive.statusCode, body: activeArchive.json() }, { status: 409, body: { error: "invalid_state" } });
+
+  assert.equal((await app.inject({
+    method: "PATCH", url: "/api/accounts/member-1/state", headers: { origin: ORIGIN, cookie: ownerCookie }, payload: { state: "disabled" },
+  })).statusCode, 200);
+  const archived = await app.inject({
+    method: "PATCH", url: "/api/accounts/member-1/state", headers: { origin: ORIGIN, cookie: ownerCookie }, payload: { state: "archived" },
+  });
+  assert.equal(archived.statusCode, 200);
+  assert.equal(archived.json().account.state, "archived");
+  assert.equal((await app.inject({ method: "GET", url: "/api/auth/session", headers: { cookie: memberCookie } })).statusCode, 401);
+  assert.equal((await app.inject({
+    method: "POST", url: "/api/auth/login", headers: { origin: ORIGIN }, payload: { loginName: "Member", password: "member-password-123" },
+  })).statusCode, 401);
+
+  const defaultList = await app.inject({ method: "GET", url: "/api/accounts", headers: { cookie: ownerCookie } });
+  assert.deepEqual(defaultList.json().accounts.map((account: { id: string }) => account.id), ["owner-1"]);
+  const revealed = await app.inject({ method: "GET", url: "/api/accounts?includeArchived=true", headers: { cookie: ownerCookie } });
+  assert.equal(revealed.statusCode, 200);
+  assert.equal(revealed.json().accounts.find((account: { id: string }) => account.id === "member-1")?.state, "archived");
+
+  const directEnable = await app.inject({
+    method: "PATCH", url: "/api/accounts/member-1/state", headers: { origin: ORIGIN, cookie: ownerCookie }, payload: { state: "active" },
+  });
+  assert.deepEqual({ status: directEnable.statusCode, body: directEnable.json() }, { status: 409, body: { error: "invalid_state" } });
+  const unarchived = await app.inject({
+    method: "PATCH", url: "/api/accounts/member-1/state", headers: { origin: ORIGIN, cookie: ownerCookie }, payload: { state: "disabled" },
+  });
+  assert.equal(unarchived.json().account.state, "disabled");
+  const enabled = await app.inject({
+    method: "PATCH", url: "/api/accounts/member-1/state", headers: { origin: ORIGIN, cookie: ownerCookie }, payload: { state: "active" },
+  });
+  assert.equal(enabled.json().account.state, "active");
 });
 
 test("unsafe account routes require exact Origin and logs never contain invite capability", async (context) => {

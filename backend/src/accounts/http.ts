@@ -18,7 +18,11 @@ interface RegisterBody {
 }
 
 interface AccountStateBody {
-  state: "active" | "disabled";
+  state: "active" | "disabled" | "archived";
+}
+
+interface AccountListQuery {
+  includeArchived?: boolean;
 }
 
 interface IdParameters {
@@ -198,13 +202,22 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
     },
   );
 
-  app.get(
+  app.get<{ Querystring: AccountListQuery }>(
     "/api/accounts",
-    { preHandler: app.authenticate },
+    {
+      preHandler: app.authenticate,
+      schema: {
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          properties: { includeArchived: { type: "boolean", default: false } },
+        },
+      },
+    },
     async (request, reply) => {
       if (!requireOwnerRequest(request, reply)) return;
       try {
-        return { accounts: options.service.listAccounts(request.authAccount!).map(accountDto) };
+        return { accounts: options.service.listAccounts(request.authAccount!, request.query.includeArchived).map(accountDto) };
       } catch (error: unknown) {
         return mapAdministrationError(error, reply);
       }
@@ -217,7 +230,7 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
       preHandler: app.authenticate,
       schema: {
         params: { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "string", minLength: 1, maxLength: 128 } } },
-        body: { type: "object", additionalProperties: false, required: ["state"], properties: { state: { type: "string", enum: ["active", "disabled"] } } },
+        body: { type: "object", additionalProperties: false, required: ["state"], properties: { state: { type: "string", enum: ["active", "disabled", "archived"] } } },
       },
     },
     async (request, reply) => {
