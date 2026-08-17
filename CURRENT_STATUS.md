@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, and RF-OWNERSHIP01 is complete and independently green. The Owner-authorized Pre-OCR Research Foundation continues with `RF-BULK01` as the next Ready task.**
+**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, and RF-BULK01 is complete and independently green. The Owner-authorized Pre-OCR Research Foundation continues with `RF-DOMAIN01` as the next approved task.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains repository-only unless a separate Owner production gate is opened.
 
@@ -132,14 +132,20 @@ The migration preserves exact IDs, object keys, hierarchy, lifecycle state, revi
 
 Final local evidence: backend `201/201` PASS; frontend `142/142` PASS; workspace typecheck/build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with migration count 10, backup/operations/isolated restore, and zero redeploy migrations; dependency audits 0 vulnerabilities; `git diff --check` PASS; independent read-only Reviewer PASS with no blocker/medium finding.
 
+### RF-BULK01 — Safe Bulk Drive Operations
+
+**Complete in repository development; independent read-only review PASS.** ADR-017 defines five bounded, account-private, all-or-nothing actions over the existing Drive/Favorites lifecycle: move, recycle, restore, Favorite add, and Favorite remove. The implementation uses server-derived ownership, opaque version preconditions, one SQLite transaction per batch, FOLDER01-compatible recycle provenance, restore-time exact storage metadata reads without provider writes, bounded 1–100 requests and 10,000 expanded resources, deterministic replay/conflict behavior, and no bulk permanent purge or object-byte mutation. The HTTP/API/UI layer adds strict validation, version-bearing DTOs, desktop/mobile selection, destructive confirmation, keyboard-safe bulk move, and failed-selection retention. No Library, scholarly metadata, OCR, or production behavior was added.
+
+Final local evidence: backend `214/214` PASS; frontend `149/149` PASS; workspace typecheck/build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with migration count 10 and zero redeploy migrations; dependency audits 0 vulnerabilities; `git diff --check` PASS; no migration/dependency/lockfile delta; independent read-only Reviewer PASS with no blocker/medium finding.
+
 ## Approved Continuous Objective
 
 The previous objective through OPS01A is complete.
 
 The new objective begins with:
 
-1. `RF-PLAN01`, `RF-AUDIT01`, and `RF-OWNERSHIP01` — complete and independently reviewed;
-2. autonomously execute the remaining Pre-OCR queue one independently green Epic at a time, beginning with `RF-BULK01`;
+1. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, and `RF-BULK01` — complete and independently reviewed;
+2. autonomously execute the remaining Pre-OCR queue one independently green Epic at a time, beginning with `RF-DOMAIN01`;
 3. after terminal `RF-DERIVED01`, STOP before OCR/text-extraction execution, full-text indexing, embeddings, retrieval, or RAG.
 
 ## Safety Boundaries
@@ -158,4 +164,4 @@ The current program still does **not** authorize:
 
 ## Next Action
 
-Create/recover from the RF-OWNERSHIP01 checkpoint, select `tasks/ready/RF-BULK01.md`, and implement bounded account-authorized bulk operations over the existing Drive/Favorites lifecycle without pulling forward Scholarly Record or Library behavior.
+Create/recover from the RF-BULK01 checkpoint, select `tasks/ready/RF-DOMAIN01.md`, and implement the smallest private Scholarly Record/Artifact/Version identity slice without pulling forward canonical metadata, provenance, overlays, Library, OCR, or production behavior.

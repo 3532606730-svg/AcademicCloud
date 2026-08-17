@@ -5,6 +5,8 @@ import {
   ApiError,
   type AcademicCloudApi,
   type Account,
+  type BulkAction,
+  type BulkItem,
   type Invitation,
   type ManagedAccount,
   type EntriesResponse,
@@ -307,7 +309,20 @@ interface PreviewState {
 
 type MoveRequest =
   | { kind: "folder"; item: FolderEntry; returnFocus: HTMLElement | null }
-  | { kind: "file"; item: FileEntry; returnFocus: HTMLElement | null };
+  | { kind: "file"; item: FileEntry; returnFocus: HTMLElement | null }
+  | { kind: "bulk"; items: SelectableEntry[]; returnFocus: HTMLElement | null };
+
+type SelectableEntry =
+  | { kind: "folder"; item: FolderEntry }
+  | { kind: "file"; item: FileEntry };
+
+function selectionKey(kind: SelectableEntry["kind"], id: string): string {
+  return `${kind}:${id}`;
+}
+
+function toBulkItem(entry: SelectableEntry): BulkItem {
+  return { kind: entry.kind, id: entry.item.id, version: entry.item.version };
+}
 
 interface DropOverlayState {
   count: number | null;
@@ -396,6 +411,7 @@ function DriveView({
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
   const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
   const [favorites, setFavorites] = useState<FavoritesResponse | null>(null);
   const [favoritesError, setFavoritesError] = useState<unknown>(null);
@@ -411,7 +427,30 @@ function DriveView({
   const workspaceRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
+  const visibleSelectableEntries: SelectableEntry[] = view === "library"
+    ? [
+        ...entries.folders.map((item): SelectableEntry => ({ kind: "folder", item })),
+        ...entries.files.map((item): SelectableEntry => ({ kind: "file", item })),
+      ]
+    : view === "favorites" && favorites !== null
+      ? [
+          ...favorites.folders.map((item): SelectableEntry => ({ kind: "folder", item })),
+          ...favorites.files.map((item): SelectableEntry => ({ kind: "file", item })),
+        ]
+      : view === "recycle"
+        ? [
+            ...recycle.folders.map((item): SelectableEntry => ({ kind: "folder", item })),
+            ...recycle.files.map((item): SelectableEntry => ({ kind: "file", item })),
+          ]
+        : [];
+  const selectedEntries = visibleSelectableEntries.filter((entry) =>
+    selectedKeys.has(selectionKey(entry.kind, entry.item.id)));
+
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
+
+  useEffect(() => {
+    setSelectedKeys(new Set());
+  }, [currentFolderId, revision, view]);
 
   // Server-backed favorites: the API response is the single source of truth
   // (never localStorage). The lifecycle is VIEW-AWARE so entering Favorites
@@ -728,14 +767,51 @@ function DriveView({
     }
   }
 
+  function toggleSelection(entry: SelectableEntry): void {
+    const key = selectionKey(entry.kind, entry.item.id);
+    setSelectedKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else if (next.size < 100) next.add(key);
+      return next;
+    });
+  }
+
+  async function runBulk(action: BulkAction, destinationFolderId?: string | null): Promise<void> {
+    if (selectedEntries.length === 0) return;
+    setBusyId("bulk");
+    setError(null);
+    setNotice("");
+    try {
+      await api.bulkOperation({
+        action,
+        items: selectedEntries.map(toBulkItem),
+        ...(action === "move" ? { destinationFolderId: destinationFolderId ?? null } : {}),
+      });
+      setSelectedKeys(new Set());
+      setNotice(t("bulk.completed", { count: selectedEntries.length }));
+      refresh();
+    } catch (caught: unknown) {
+      // Every RF-BULK01 action is atomic. Keep the selection so the user can
+      // inspect/retry it, and state explicitly that no selected item changed.
+      setError(caught);
+      setNotice(t("bulk.failedAtomic"));
+      throw caught;
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function goToView(next: DriveViewName) {
     setView(next);
+    setSelectedKeys(new Set());
     setError(null);
     setNotice("");
   }
 
   function enterFolder(folder: FolderEntry) {
     setPath((current) => [...current, folder]);
+    setSelectedKeys(new Set());
     setError(null);
   }
 
@@ -1119,6 +1195,22 @@ function DriveView({
         {view === "library" && (
           <section aria-labelledby="contents-title">
             <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
+            {selectedEntries.length > 0 && (
+              <BulkToolbar
+                mode="library"
+                selectedCount={selectedEntries.length}
+                busy={busyId === "bulk"}
+                onClear={() => setSelectedKeys(new Set())}
+                onMove={(trigger) => setMoveRequest({ kind: "bulk", items: selectedEntries, returnFocus: trigger })}
+                onRecycle={() => {
+                  if (window.confirm(t("bulk.recycleConfirm", { count: selectedEntries.length }))) {
+                    void runBulk("recycle").catch(() => undefined);
+                  }
+                }}
+                onFavoriteAdd={() => void runBulk("favorite_add").catch(() => undefined)}
+                onFavoriteRemove={() => void runBulk("favorite_remove").catch(() => undefined)}
+              />
+            )}
             {loading ? <LoadingRows /> : isLibraryEmpty ? (
               <EmptyState title={t("folder.emptyTitle")} />
             ) : (
@@ -1139,6 +1231,9 @@ function DriveView({
                 starFolderIds={favoriteFolderIds}
                 onToggleFileFavorite={(file) => void toggleFileFavorite(file)}
                 onToggleFolderFavorite={(folder) => void toggleFolderFavorite(folder)}
+                selectedKeys={selectedKeys}
+                onToggleSelected={toggleSelection}
+                selectionDisabled={busyId === "bulk"}
               />
             )}
           </section>
@@ -1179,6 +1274,21 @@ function DriveView({
         {view === "favorites" && (
           <section aria-labelledby="favorites-title">
             <h2 id="favorites-title" className="visually-hidden">{t("nav.favorites")}</h2>
+            {selectedEntries.length > 0 && (
+              <BulkToolbar
+                mode="favorites"
+                selectedCount={selectedEntries.length}
+                busy={busyId === "bulk"}
+                onClear={() => setSelectedKeys(new Set())}
+                onMove={(trigger) => setMoveRequest({ kind: "bulk", items: selectedEntries, returnFocus: trigger })}
+                onRecycle={() => {
+                  if (window.confirm(t("bulk.recycleConfirm", { count: selectedEntries.length }))) {
+                    void runBulk("recycle").catch(() => undefined);
+                  }
+                }}
+                onFavoriteRemove={() => void runBulk("favorite_remove").catch(() => undefined)}
+              />
+            )}
             {favoritesError !== null ? (
               <div className="alert alert--error" role="alert">
                 {describeError(favoritesError, language)}
@@ -1204,6 +1314,9 @@ function DriveView({
                 starFolderIds={favoriteFolderIds}
                 onToggleFileFavorite={(file) => void toggleFileFavorite(file)}
                 onToggleFolderFavorite={(folder) => void toggleFolderFavorite(folder)}
+                selectedKeys={selectedKeys}
+                onToggleSelected={toggleSelection}
+                selectionDisabled={busyId === "bulk"}
               />
             )}
           </section>
@@ -1211,12 +1324,32 @@ function DriveView({
 
         {view === "recycle" && (
           <section aria-labelledby="recycle-title">            <div className="section-heading"><h2 id="recycle-title">{t("recycle.title")}</h2>{!loading && <span>{t("folder.items", { count: formatCount(language, recycle.folders.length + recycle.files.length) })}</span>}</div>
+            {selectedEntries.length > 0 && (
+              <BulkToolbar
+                mode="recycle"
+                selectedCount={selectedEntries.length}
+                busy={busyId === "bulk"}
+                onClear={() => setSelectedKeys(new Set())}
+                onRestore={() => void runBulk("restore").catch(() => undefined)}
+              />
+            )}
             {loading ? <LoadingRows /> : recycle.folders.length + recycle.files.length === 0 ? (
               <EmptyState title={t("recycle.emptyTitle")} />
             ) : (
               <div className="card-list">
                 {recycle.folders.map((folder) => (
                   <article className="recycle-card" key={folder.id}>
+                    <label className="entry-select-control">
+                      <input
+                        className="entry-select"
+                        type="checkbox"
+                        aria-label={t("bulk.selectAria", { name: folder.name })}
+                        checked={selectedKeys.has(selectionKey("folder", folder.id))}
+                        disabled={busyId === "bulk" || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("folder", folder.id)))}
+                        onChange={() => toggleSelection({ kind: "folder", item: folder })}
+                      />
+                      <span className="entry-select-box" aria-hidden="true" />
+                    </label>
                     <FolderBadge />
                     <div className="entry-primary"><strong>{folder.name}</strong><span>{t("recycle.folderDeleted", { date: formatDate(folder.deletedAt, language) })}</span></div>
                     <button className="button button--small" type="button" aria-label={t("recycle.restoreFolderAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => void runAction(folder.id, t("recycle.folderRestored"), () => api.restoreFolder(folder.id))}>{t("recycle.restore")}</button>
@@ -1224,6 +1357,17 @@ function DriveView({
                 ))}
                 {recycle.files.map((file) => (
                   <article className="recycle-card" key={file.id}>
+                    <label className="entry-select-control">
+                      <input
+                        className="entry-select"
+                        type="checkbox"
+                        aria-label={t("bulk.selectAria", { name: file.displayName })}
+                        checked={selectedKeys.has(selectionKey("file", file.id))}
+                        disabled={busyId === "bulk" || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("file", file.id)))}
+                        onChange={() => toggleSelection({ kind: "file", item: file })}
+                      />
+                      <span className="entry-select-box" aria-hidden="true" />
+                    </label>
                     <FileBadge file={file} />
                     <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t("recycle.fileDeleted", { date: formatDate(file.deletedAt, language) })}</span></div>
                     <button className="button button--small" type="button" aria-label={t("recycle.restoreFileAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => void runAction(file.id, t("file.restored"), () => api.restoreFile(file.id))}>{t("recycle.restore")}</button>
@@ -1289,12 +1433,21 @@ function DriveView({
           request={moveRequest}
           onClose={() => setMoveRequest(null)}
           onMove={async (folderId) => {
-            if (moveRequest.kind === "folder") {
+            if (moveRequest.kind === "bulk") {
+              await api.bulkOperation({
+                action: "move",
+                items: moveRequest.items.map(toBulkItem),
+                destinationFolderId: folderId,
+              });
+              setSelectedKeys(new Set());
+              setNotice(t("bulk.completed", { count: moveRequest.items.length }));
+            } else if (moveRequest.kind === "folder") {
               await api.updateFolder(moveRequest.item.id, { parentId: folderId });
+              setNotice(t("move.folderMoved"));
             } else {
               await api.updateFile(moveRequest.item.id, { folderId });
+              setNotice(t("move.fileMoved"));
             }
-            setNotice(moveRequest.kind === "folder" ? t("move.folderMoved") : t("move.fileMoved"));
             refresh();
             setMoveRequest(null);
           }}
@@ -1730,6 +1883,47 @@ function RowMenu({
   );
 }
 
+function BulkToolbar({
+  mode,
+  selectedCount,
+  busy,
+  onClear,
+  onMove,
+  onRecycle,
+  onRestore,
+  onFavoriteAdd,
+  onFavoriteRemove,
+}: {
+  mode: "library" | "favorites" | "recycle";
+  selectedCount: number;
+  busy: boolean;
+  onClear: () => void;
+  onMove?: (trigger: HTMLElement) => void;
+  onRecycle?: () => void;
+  onRestore?: () => void;
+  onFavoriteAdd?: () => void;
+  onFavoriteRemove?: () => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <div className="bulk-toolbar" data-mode={mode} role="toolbar" aria-label={t("bulk.toolbarAria")}>
+      <strong>{t("bulk.selected", { count: selectedCount })}</strong>
+      <div className="bulk-toolbar-actions">
+        {onMove && (
+          <button className="button button--small" type="button" disabled={busy} onClick={(event) => onMove(event.currentTarget)}>
+            {t("bulk.move")}
+          </button>
+        )}
+        {onFavoriteAdd && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteAdd}>{t("bulk.favoriteAdd")}</button>}
+        {onFavoriteRemove && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteRemove}>{t("bulk.favoriteRemove")}</button>}
+        {onRestore && <button className="button button--small" type="button" disabled={busy} onClick={onRestore}>{t("bulk.restore")}</button>}
+        {onRecycle && <button className="button button--small button--danger" type="button" disabled={busy} onClick={onRecycle}>{t("bulk.recycle")}</button>}
+        <button className="button button--small button--quiet" type="button" disabled={busy} onClick={onClear}>{t("bulk.clear")}</button>
+      </div>
+    </div>
+  );
+}
+
 function EntryTable({
   folders,
   files,
@@ -1747,6 +1941,9 @@ function EntryTable({
   starFolderIds,
   onToggleFileFavorite,
   onToggleFolderFavorite,
+  selectedKeys,
+  onToggleSelected,
+  selectionDisabled,
 }: {
   folders: FolderEntry[];
   files: FileEntry[];
@@ -1764,6 +1961,9 @@ function EntryTable({
   starFolderIds?: ReadonlySet<string>;
   onToggleFileFavorite?: (file: FileEntry) => void;
   onToggleFolderFavorite?: (folder: FolderEntry) => void;
+  selectedKeys: ReadonlySet<string>;
+  onToggleSelected: (entry: SelectableEntry) => void;
+  selectionDisabled: boolean;
 }) {
   const { language, t } = useLanguage();
   return (
@@ -1775,8 +1975,19 @@ function EntryTable({
         <span role="columnheader" className="entry-actions-head"><span className="visually-hidden">{t("table.actions")}</span></span>
       </div>
       {folders.map((folder) => (
-        <div className="entry-row" role="row" key={folder.id}>
+        <div className={selectedKeys.has(selectionKey("folder", folder.id)) ? "entry-row is-selected" : "entry-row"} role="row" key={folder.id}>
           <div className="entry-name" role="cell">
+            <label className="entry-select-control">
+              <input
+                className="entry-select"
+                type="checkbox"
+                aria-label={t("bulk.selectAria", { name: folder.name })}
+                checked={selectedKeys.has(selectionKey("folder", folder.id))}
+                disabled={selectionDisabled || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("folder", folder.id)))}
+                onChange={() => onToggleSelected({ kind: "folder", item: folder })}
+              />
+              <span className="entry-select-box" aria-hidden="true" />
+            </label>
             <FolderIcon size={20} className="file-badge file-badge--folder" />
             <div className="entry-name-body">
               <button className="entry-link" type="button" onClick={() => onEnterFolder(folder)}>{folder.name}</button>
@@ -1807,8 +2018,19 @@ function EntryTable({
         </div>
       ))}
       {files.map((file) => (
-        <div className="entry-row" role="row" key={file.id}>
+        <div className={selectedKeys.has(selectionKey("file", file.id)) ? "entry-row is-selected" : "entry-row"} role="row" key={file.id}>
           <div className="entry-name" role="cell">
+            <label className="entry-select-control">
+              <input
+                className="entry-select"
+                type="checkbox"
+                aria-label={t("bulk.selectAria", { name: file.displayName })}
+                checked={selectedKeys.has(selectionKey("file", file.id))}
+                disabled={selectionDisabled || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("file", file.id)))}
+                onChange={() => onToggleSelected({ kind: "file", item: file })}
+              />
+              <span className="entry-select-box" aria-hidden="true" />
+            </label>
             <FileBadge file={file} />
             <div className="entry-name-body">
               <strong className="entry-filename" title={file.displayName}>{file.displayName}</strong>
@@ -2106,14 +2328,21 @@ function MoveDialog({
   const [moving, setMoving] = useState(false);
   const dialogRef = useModalDialog(onClose, moving, request.returnFocus);
   const destinationId = path.at(-1)?.id ?? null;
-  const currentParentId = request.kind === "folder" ? request.item.parentId : request.item.folderId;
+  const currentParentIds = request.kind === "bulk"
+    ? new Set(request.items.map((entry) => entry.kind === "folder" ? entry.item.parentId : entry.item.folderId))
+    : new Set([request.kind === "folder" ? request.item.parentId : request.item.folderId]);
+  const selectedFolderIds = new Set(
+    request.kind === "bulk"
+      ? request.items.filter((entry) => entry.kind === "folder").map((entry) => entry.item.id)
+      : request.kind === "folder" ? [request.item.id] : [],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
     api.listEntries(destinationId, controller.signal).then(
-      (response) => setFolders(response.folders.filter((folder) => request.kind !== "folder" || folder.id !== request.item.id)),
+      (response) => setFolders(response.folders.filter((folder) => !selectedFolderIds.has(folder.id))),
       (caught: unknown) => {
         if (!(caught instanceof DOMException && caught.name === "AbortError")) setError(caught);
       },
@@ -2123,7 +2352,9 @@ function MoveDialog({
     return () => controller.abort();
   }, [api, destinationId, request]);
 
-  const itemName = request.kind === "folder" ? request.item.name : request.item.displayName;
+  const itemName = request.kind === "bulk"
+    ? t("bulk.selected", { count: request.items.length })
+    : request.kind === "folder" ? request.item.name : request.item.displayName;
 
   return (
       <dialog ref={dialogRef} className="move-modal" aria-labelledby="move-title">
@@ -2159,7 +2390,7 @@ function MoveDialog({
           <button
             className="button button--primary"
             type="button"
-            disabled={moving || loading || destinationId === currentParentId}
+            disabled={moving || loading || (currentParentIds.size === 1 && currentParentIds.has(destinationId))}
             onClick={() => {
               setMoving(true);
               setError(null);

@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, and RF-OWNERSHIP01 is complete. The Owner-authorized Pre-OCR Research Foundation queue continues with `RF-BULK01` next.**
+**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, and RF-BULK01 is complete. The Owner-authorized Pre-OCR Research Foundation queue continues with `RF-DOMAIN01` next.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
@@ -32,7 +32,7 @@ This objective does not authorize production access/mutation, deployment, produc
 
 ## Doing
 
-None. `RF-BULK01` becomes Doing after the independently green RF-OWNERSHIP01 checkpoint.
+None. `RF-DOMAIN01` becomes Doing only after the independently green RF-BULK01 checkpoint is committed and the next task is selected.
 
 ## Ready — Current Repository/Local Objective
 
@@ -40,7 +40,6 @@ The following independently reviewed queue is fully specified in `docs/architect
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 3 | `RF-BULK01` | `tasks/ready/RF-BULK01.md` | safe existing-Drive bulk operations |
 | 4 | `RF-DOMAIN01` | `tasks/ready/RF-DOMAIN01.md` | Scholarly Record/Artifact/Version identity and attachment |
 | 5 | `RF-META01` | `tasks/ready/RF-META01.md` | bounded canonical metadata/templates/minimal authorities |
 | 6 | `RF-PROV01` | `tasks/ready/RF-PROV01.md` | canonical provenance, fingerprint, leak-safe duplicate contract |
@@ -106,6 +105,12 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 **Task card:** `tasks/done/RF-OWNERSHIP01.md`
 
 **Status:** complete; independent read-only adversarial review PASS. ADR-016 and migration 010 add one concrete account/future-Library ownership-domain parent, exact account-domain backfill, separate creator/uploader/initiator provenance, atomic Favorite-preserving table rebuilds, domain-scoped hierarchy/recycle constraints, and server-only account-domain resolution with no API behavior change. Backend `201/201`, frontend `142/142`, build/typecheck, compiled migration/restart/backup/restore acceptance, dependency audits, and acceptance tools are green.
+
+### RF-BULK01 — Safe Bulk Drive Operations
+
+**Task card:** `tasks/done/RF-BULK01.md`
+
+**Status:** complete; independent read-only review PASS. ADR-017 defines bounded, atomic account-private move/recycle/restore/Favorite actions with opaque version concurrency tokens, FOLDER01-compatible provenance, exact restore metadata preflight, no object-byte mutation, strict 1–100 request bounds, 10,000 expanded-subtree bound, rollback-safe audit behavior, and conservative replay semantics. Backend `214/214`, frontend `149/149`, workspace typecheck/build, compiled acceptance (migration 10, redeploy 0), acceptance tools, dependency audits, and `git diff --check` are green with zero migration/dependency delta.
 
 ### RF-AUDIT01 — Governance Security Audit Foundation
 

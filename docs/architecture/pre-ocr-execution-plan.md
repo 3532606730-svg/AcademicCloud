@@ -1,6 +1,6 @@
 # Pre-OCR Research Foundation Execution Plan
 
-**Status:** Independently reviewed execution plan; `RF-PLAN01` complete
+**Status:** Independently reviewed execution plan; `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, and `RF-BULK01` complete
 **Baseline:** `775f9eabba363ca0d7f4bf06493c6f677268cbd7`
 **Current schema head:** append-only migration 010 (`RF-OWNERSHIP01`)
 
@@ -48,6 +48,12 @@ This plan compiles `ROADMAP.md` and ADR-014 into the executable task queue. It d
 | 25 | `RF-DERIVED01` | OCR adapter, extracted-text storage, lineage and future index/retrieval authorization contracts only | `RF-AUTHMATRIX01` |
 
 The queue is intentionally linear for autonomous execution even where some implementation dependencies could form a DAG. A later card may not be pulled forward merely because it is locally convenient.
+
+## Completed Queue Checkpoints
+
+- `RF-AUDIT01` — immutable governance/security audit foundation; migration 009.
+- `RF-OWNERSHIP01` — explicit account ownership-domain substrate; migration 010.
+- `RF-BULK01` — bounded account-private atomic Drive/Favorites bulk actions, completed at the independently reviewed repository checkpoint following the ownership-domain head. It adds no migration or dependency delta and does not mutate object-provider bytes. The next executable card is `RF-DOMAIN01`.
 
 ## Complete Capability Coverage
 

@@ -6,6 +6,7 @@ import { App } from "./App.tsx";
 import {
   ApiError,
   type AcademicCloudApi,
+  type BulkOperationInput,
   type EntriesResponse,
   type FileEntry,
   type FolderEntry,
@@ -30,6 +31,7 @@ const FOLDER: FolderEntry = {
   createdAt: "2026-08-13T00:00:00.000Z",
   updatedAt: "2026-08-13T00:00:00.000Z",
   deletedAt: null,
+  version: "f".repeat(43),
 };
 const FILE: FileEntry = {
   id: "file-1",
@@ -45,6 +47,7 @@ const FILE: FileEntry = {
   activatedAt: "2026-08-13T00:00:00.000Z",
   deletedAt: null,
   purgedAt: null,
+  version: "g".repeat(43),
 };
 
 function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
@@ -70,6 +73,11 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     listPending: vi.fn().mockResolvedValue([]),
     listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [] }),
     listFavorites: vi.fn().mockResolvedValue({ files: [], folders: [] }),
+    bulkOperation: vi.fn().mockImplementation(async (input: BulkOperationInput) => ({
+      action: input.action,
+      atomic: true as const,
+      items: input.items.map((selected) => ({ ...selected, outcome: "succeeded" as const })),
+    })),
     setFileFavorite: vi.fn().mockResolvedValue(undefined),
     setFolderFavorite: vi.fn().mockResolvedValue(undefined),
     createFolder: vi.fn(),
@@ -1638,6 +1646,147 @@ describe("App", () => {
     await waitFor(() => expect(screen.queryByText("Verifying stored file")).not.toBeInTheDocument());
     expect(completeUpload).toHaveBeenCalledTimes(2);
     expect(await screen.findByRole("status")).toHaveTextContent("Uploaded");
+  });
+});
+
+describe("bounded atomic bulk operations", () => {
+  it("selects mixed rows, sends one Favorite batch with opaque versions, and clears on success", async () => {
+    const user = userEvent.setup();
+    const bulkOperation = vi.fn().mockImplementation(async (input: BulkOperationInput) => ({
+      action: input.action,
+      atomic: true as const,
+      items: input.items.map((selected) => ({ ...selected, outcome: "succeeded" as const })),
+    }));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
+      bulkOperation,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(await screen.findByRole("checkbox", { name: "Select Sources" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select paper.pdf" }));
+    const toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
+    expect(within(toolbar).getByText("2 selected")).toBeInTheDocument();
+    await user.click(within(toolbar).getByRole("button", { name: "Add favorites" }));
+
+    await waitFor(() => expect(bulkOperation).toHaveBeenCalledWith({
+      action: "favorite_add",
+      items: [
+        { kind: "folder", id: FOLDER.id, version: FOLDER.version },
+        { kind: "file", id: FILE.id, version: FILE.version },
+      ],
+    }));
+    expect(screen.queryByRole("toolbar", { name: "Selected item actions" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("status")).toHaveTextContent("Updated 2 selected items");
+  });
+
+  it("confirms destructive recycle, reports atomic failure, and retains a retryable selection", async () => {
+    const user = userEvent.setup();
+    const bulkOperation = vi.fn().mockRejectedValue(new ApiError(409, "concurrent_change"));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+      bulkOperation,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Select paper.pdf" });
+    await user.click(checkbox);
+    await user.click(screen.getByRole("button", { name: "Move to trash" }));
+
+    await waitFor(() => expect(bulkOperation).toHaveBeenCalledWith({
+      action: "recycle",
+      items: [{ kind: "file", id: FILE.id, version: FILE.version }],
+    }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("1 selected items"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The batch was not applied");
+    expect(screen.getByRole("status")).toHaveTextContent("No selected item was changed");
+    expect(checkbox).toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(screen.queryByRole("toolbar", { name: "Selected item actions" })).not.toBeInTheDocument();
+  });
+
+  it("bulk-restores selected recycle roots and exposes touch-sized labeled selection controls", async () => {
+    const user = userEvent.setup();
+    const deleted = {
+      ...FILE,
+      state: "deleted" as const,
+      deletedAt: "2026-08-17T12:00:00.000Z",
+      version: "r".repeat(43),
+    };
+    const bulkOperation = vi.fn().mockImplementation(async (input: BulkOperationInput) => ({
+      action: input.action,
+      atomic: true as const,
+      items: input.items.map((selected) => ({ ...selected, outcome: "succeeded" as const })),
+    }));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [deleted] }),
+      bulkOperation,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "Recycle" }));
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Select paper.pdf" });
+    expect(checkbox.closest(".entry-select-control")).not.toBeNull();
+    await user.click(checkbox);
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+    await waitFor(() => expect(bulkOperation).toHaveBeenCalledWith({
+      action: "restore",
+      items: [{ kind: "file", id: deleted.id, version: deleted.version }],
+    }));
+  });
+
+  it("moves a selected batch through the existing keyboard-safe destination dialog", async () => {
+    const user = userEvent.setup();
+    const destination = { ...FOLDER, id: "folder-2", name: "Destination", version: "d".repeat(43) };
+    const listEntries = vi.fn((folderId: string | null) => Promise.resolve(
+      folderId === null
+        ? { folder: null, folders: [FOLDER, destination], files: [] }
+        : { folder: destination, folders: [], files: [] },
+    ));
+    const bulkOperation = vi.fn().mockImplementation(async (input: BulkOperationInput) => ({
+      action: input.action,
+      atomic: true as const,
+      items: input.items.map((selected) => ({ ...selected, outcome: "succeeded" as const })),
+    }));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listEntries, bulkOperation });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    await user.click(await screen.findByRole("checkbox", { name: "Select Sources" }));
+    await user.click(screen.getByRole("button", { name: "Move" }));
+    const dialog = await screen.findByRole("dialog", { name: "Move “1 selected”" });
+    await user.click(within(dialog).getByRole("button", { name: "Destination" }));
+    await waitFor(() => expect(listEntries).toHaveBeenCalledWith(destination.id, expect.any(AbortSignal)));
+    await user.click(within(dialog).getByRole("button", { name: "Move here" }));
+
+    await waitFor(() => expect(bulkOperation).toHaveBeenCalledWith({
+      action: "move",
+      items: [{ kind: "folder", id: FOLDER.id, version: FOLDER.version }],
+      destinationFolderId: destination.id,
+    }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("clears stale selection on navigation before another view renders", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(await screen.findByRole("checkbox", { name: "Select paper.pdf" }));
+    expect(screen.getByRole("toolbar", { name: "Selected item actions" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(screen.queryByRole("toolbar", { name: "Selected item actions" })).not.toBeInTheDocument();
   });
 });
 

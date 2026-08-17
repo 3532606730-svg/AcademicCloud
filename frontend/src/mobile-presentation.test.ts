@@ -79,6 +79,16 @@ describe("mobile presentation stylesheet", () => {
     expect(ruleHas(block, ".star-button, .row-menu-trigger {", /width:\s*2\.75rem;\s*height:\s*2\.75rem/)).toBe(true);
   });
 
+  it("keeps bulk selection and atomic action controls touch-sized and wrapping on mobile", () => {
+    const block = mobileBlock();
+    const outside = styles.slice(0, styles.indexOf(MOBILE_BLOCK_START));
+    expect(ruleHas(outside, ".entry-select-control {", /width:\s*2\.75rem/)).toBe(true);
+    expect(ruleHas(outside, ".entry-select-control {", /height:\s*2\.75rem/)).toBe(true);
+    expect(ruleHas(block, ".bulk-toolbar {", /flex-direction:\s*column/)).toBe(true);
+    expect(ruleHas(block, ".bulk-toolbar-actions {", /repeat\(2,\s*minmax\(0,\s*1fr\)\)/)).toBe(true);
+    expect(ruleHas(block, ".bulk-toolbar .button {", /min-height:\s*2\.75rem/)).toBe(true);
+  });
+
   it("hides the desktop table columns on the mobile catalogue instead of squeezing them", () => {
     const block = mobileBlock();
     expect(ruleHas(block, ".entry-row--head {", /display:\s*none/)).toBe(true);

@@ -10,6 +10,7 @@ const FOLDER = {
   createdAt: "2026-08-15T00:00:00.000Z",
   updatedAt: "2026-08-15T00:00:00.000Z",
   deletedAt: null,
+  version: "f".repeat(43),
 };
 
 const FILE = {
@@ -26,6 +27,7 @@ const FILE = {
   activatedAt: "2026-08-15T00:00:00.000Z",
   deletedAt: null,
   purgedAt: null,
+  version: "g".repeat(43),
 };
 
 function assertBodylessRequestInit(init: RequestInit | undefined, method: string) {
@@ -270,6 +272,39 @@ describe("ApiClient", () => {
       "/api/audit/events?beforeId=42&limit=25",
       expect.objectContaining({ credentials: "same-origin", signal: controller.signal }),
     );
+  });
+
+  it("sends one exact bounded bulk JSON request and returns atomic item results", async () => {
+    const input = {
+      action: "move" as const,
+      items: [
+        { kind: "folder" as const, id: FOLDER.id, version: FOLDER.version },
+        { kind: "file" as const, id: FILE.id, version: FILE.version },
+      ],
+      destinationFolderId: null,
+    };
+    const result = {
+      action: "move" as const,
+      atomic: true as const,
+      items: input.items.map((item) => ({ ...item, outcome: "succeeded" as const })),
+    };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    const api = new ApiClient({ fetcher });
+
+    await expect(api.bulkOperation(input)).resolves.toEqual(result);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/drive/bulk",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "same-origin",
+        body: JSON.stringify(input),
+      }),
+    );
+    const headers = new Headers(fetcher.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("Content-Type")).toBe("application/json");
   });
 
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {

@@ -3,11 +3,17 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { DriveError, type DriveService } from "./drive-service.js";
 import type { StoredFile } from "./file.js";
 import type { Folder } from "./folder.js";
+import {
+  driveEntryVersion,
+  MAX_BULK_ITEMS,
+  type BulkOperationInput,
+} from "./bulk.js";
 
 const ID_PATTERN = "^[A-Za-z0-9_-]{1,128}$";
 const idSchema = { type: "string", pattern: ID_PATTERN, minLength: 1, maxLength: 128 } as const;
 const nullableIdSchema = { anyOf: [idSchema, { type: "null" }] } as const;
 const nameSchema = { type: "string", minLength: 1, maxLength: 255 } as const;
+const versionSchema = { type: "string", pattern: "^[A-Za-z0-9_-]{43}$", minLength: 43, maxLength: 43 } as const;
 
 const LIFECYCLE_AUDIT_EVENTS = new Map([
   ["DELETE /api/drive/folders/:folderId", "drive.folder_soft_delete"],
@@ -82,6 +88,7 @@ export function folderDto(folder: Folder) {
     createdAt: folder.createdAt.toISOString(),
     updatedAt: folder.updatedAt.toISOString(),
     deletedAt: folder.deletedAt?.toISOString() ?? null,
+    version: driveEntryVersion(folder),
   };
 }
 
@@ -100,6 +107,7 @@ export function fileDto(file: StoredFile) {
     activatedAt: file.activatedAt?.toISOString() ?? null,
     deletedAt: file.deletedAt?.toISOString() ?? null,
     purgedAt: file.purgedAt?.toISOString() ?? null,
+    version: driveEntryVersion(file),
   };
 }
 
@@ -457,6 +465,59 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
     async (request) => {
       const recycle = driveService.listRecycle(requireOwnerId(request.authAccount));
       return { folders: recycle.folders.map(folderDto), files: recycle.files.map(fileDto) };
+    },
+  );
+
+  app.post<{ Body: BulkOperationInput }>(
+    "/api/drive/bulk",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 32 * 1024,
+      schema: {
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["action", "items"],
+          properties: {
+            action: { enum: ["move", "recycle", "restore", "favorite_add", "favorite_remove"] },
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: MAX_BULK_ITEMS,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["kind", "id", "version"],
+                properties: {
+                  kind: { enum: ["folder", "file"] },
+                  id: idSchema,
+                  version: versionSchema,
+                },
+              },
+            },
+            destinationFolderId: nullableIdSchema,
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return await driveService.bulkOperation(requireOwnerId(request.authAccount), request.body);
+      } catch (error: unknown) {
+        if (request.body.action === "recycle" || request.body.action === "restore") {
+          const eventKinds = new Set<Parameters<DriveService["recordAuditAttempt"]>[1]>();
+          for (const item of request.body.items) {
+            if (item.kind === "folder") {
+              eventKinds.add(request.body.action === "recycle" ? "drive.folder_recycle" : "drive.folder_restore");
+            } else {
+              eventKinds.add(request.body.action === "recycle" ? "drive.file_recycle" : "drive.file_restore");
+            }
+          }
+          for (const action of eventKinds) recordDriveAttempt(request, driveService, action, error);
+        }
+        return sendDriveError(reply, error);
+      }
     },
   );
 

@@ -13,6 +13,13 @@ import type { StoredFile } from "./file.js";
 import type { Folder } from "./folder.js";
 import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
 import type { AuditEventKind, AuditOutcome, AuditReasonCode } from "../audit/audit-event.js";
+import {
+  driveEntryVersion,
+  MAX_BULK_ITEMS,
+  type BulkItemInput,
+  type BulkOperationInput,
+  type BulkOperationResult,
+} from "./bulk.js";
 
 export type DriveErrorCode =
   | "not_found"
@@ -20,6 +27,7 @@ export type DriveErrorCode =
   | "folder_not_empty"
   | "invalid_move"
   | "invalid_state"
+  | "concurrent_change"
   | "upload_incomplete"
   | "upload_metadata_mismatch"
   | "preview_unavailable"
@@ -110,6 +118,26 @@ function requireActiveFolder(
 
 type StorageAuditActor = "account" | "system";
 
+type ResolvedBulkItem =
+  | { input: BulkItemInput; kind: "folder"; resource: Folder }
+  | { input: BulkItemInput; kind: "file"; resource: StoredFile };
+
+interface FolderRestorePlan {
+  root: Folder;
+  groupId: string;
+  folders: Folder[];
+  files: StoredFile[];
+}
+
+interface FileRestorePlan {
+  file: StoredFile;
+  groupId: string;
+}
+
+const MAX_BULK_ANCESTOR_DEPTH = 256;
+const MAX_BULK_EXPANDED_ITEMS = 10_000;
+const BULK_VERSION_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+
 function recordDriveAudit(
   repositories: RepositorySet,
   eventKind: AuditEventKind,
@@ -134,6 +162,7 @@ function driveAuditReason(error: unknown): AuditReasonCode {
     switch (error.code) {
       case "not_found": return "not_found";
       case "name_conflict": return "name_conflict";
+      case "concurrent_change": return "concurrent_change";
       case "invalid_state":
       case "folder_not_empty": return "invalid_state";
       case "upload_incomplete": return "upload_incomplete";
@@ -151,6 +180,7 @@ function collectActiveFolderSubtree(
   repositories: RepositorySet,
   ownerId: string,
   root: Folder,
+  maximumMembers = Number.MAX_SAFE_INTEGER,
 ): { folders: Folder[]; files: StoredFile[] } {
   const folders: Folder[] = [root];
   const files: StoredFile[] = [];
@@ -162,16 +192,84 @@ function collectActiveFolderSubtree(
       throw new DriveError("invalid_state");
     }
     files.push(...repositories.files.listByFolder(ownerId, folder.id, "active"));
+    if (folders.length + files.length > maximumMembers) {
+      throw new RangeError("bulk expanded selection exceeds 10000 resources");
+    }
     for (const child of repositories.folders.listByParent(ownerId, folder.id, "active")) {
       if (seen.has(child.id)) {
         throw new DriveError("invalid_state");
       }
       seen.add(child.id);
       folders.push(child);
+      if (folders.length + files.length > maximumMembers) {
+        throw new RangeError("bulk expanded selection exceeds 10000 resources");
+      }
     }
   }
 
   return { folders, files };
+}
+
+function validateBulkInput(input: BulkOperationInput): void {
+  const validActions = new Set(["move", "recycle", "restore", "favorite_add", "favorite_remove"]);
+  if (!validActions.has(input.action)) throw new TypeError("invalid bulk action");
+  if (!Array.isArray(input.items) || input.items.length < 1 || input.items.length > MAX_BULK_ITEMS) {
+    throw new RangeError(`bulk selection must contain 1 to ${MAX_BULK_ITEMS} items`);
+  }
+
+  const seenIds = new Set<string>();
+  for (const item of input.items) {
+    if (
+      (item.kind !== "folder" && item.kind !== "file")
+      || typeof item.id !== "string"
+      || item.id.length < 1
+      || item.id.length > 128
+      || item.id !== item.id.trim()
+      || !/^[A-Za-z0-9_-]+$/.test(item.id)
+      || typeof item.version !== "string"
+      || !BULK_VERSION_PATTERN.test(item.version)
+    ) {
+      throw new TypeError("invalid bulk item");
+    }
+    if (seenIds.has(item.id)) throw new TypeError("duplicate bulk item id");
+    seenIds.add(item.id);
+  }
+
+  const hasDestination = Object.prototype.hasOwnProperty.call(input, "destinationFolderId");
+  if (input.action === "move") {
+    if (!hasDestination) throw new TypeError("bulk move destination is required");
+    if (
+      input.destinationFolderId !== null
+      && (
+        typeof input.destinationFolderId !== "string"
+        || input.destinationFolderId.length < 1
+        || input.destinationFolderId.length > 128
+        || input.destinationFolderId !== input.destinationFolderId.trim()
+        || !/^[A-Za-z0-9_-]+$/.test(input.destinationFolderId)
+      )
+    ) {
+      throw new TypeError("invalid bulk move destination");
+    }
+  } else if (hasDestination) {
+    throw new TypeError("bulk destination is only valid for move");
+  }
+}
+
+function selectedAncestorExists(
+  repositories: RepositorySet,
+  ownerId: string,
+  parentId: string | null,
+  selectedFolderIds: ReadonlySet<string>,
+): boolean {
+  let currentId = parentId;
+  for (let depth = 0; currentId !== null; depth += 1) {
+    if (depth >= MAX_BULK_ANCESTOR_DEPTH) throw new DriveError("invalid_state");
+    if (selectedFolderIds.has(currentId)) return true;
+    const current = repositories.folders.findById(ownerId, currentId);
+    if (!current) throw new DriveError("invalid_state");
+    currentId = current.parentId;
+  }
+  return false;
 }
 
 export function storageMetadataMatches(file: StoredFile, metadata: StorageObjectMetadata): boolean {
@@ -682,6 +780,356 @@ export class DriveService {
     } catch (error: unknown) {
       if (error instanceof DriveError) throw error;
       mapConstraint(error);
+    }
+  }
+
+  async bulkOperation(ownerId: string, input: BulkOperationInput): Promise<BulkOperationResult> {
+    validateBulkInput(input);
+
+    // Standalone file restore retains the single-item contract: every object
+    // must still exist with exact metadata. All provider reads finish before
+    // the one metadata transaction begins, so any failed member writes nothing.
+    if (input.action === "restore") {
+      for (const item of input.items) {
+        if (item.kind !== "file") continue;
+        const file = this.persistence.repositories.files.findById(ownerId, item.id);
+        const group = this.persistence.repositories.recycle.findGroupByRoot(ownerId, "file", item.id);
+        if (!file || !group) throw new DriveError("not_found");
+        if (driveEntryVersion(file) !== item.version) throw new DriveError("concurrent_change");
+        if (file.state !== "deleted") throw new DriveError("invalid_state");
+        this.assertCurrentStorageProvider(file);
+        requireActiveFolder(this.persistence.repositories, ownerId, file.folderId);
+        let metadata: StorageObjectMetadata | null;
+        try {
+          metadata = await this.storage.statObject(file.objectKey);
+        } catch (error: unknown) {
+          throw new DriveError("storage_unavailable", { cause: error });
+        }
+        if (!metadata || !storageMetadataMatches(file, metadata)) {
+          throw new DriveError("upload_metadata_mismatch");
+        }
+      }
+    }
+
+    try {
+      return this.persistence.runInTransaction((repositories) => {
+        const resolved = this.resolveBulkItems(repositories, ownerId, input.items);
+        switch (input.action) {
+          case "move":
+            this.bulkMove(repositories, ownerId, resolved, input.destinationFolderId!);
+            break;
+          case "recycle":
+            this.bulkRecycle(repositories, ownerId, resolved);
+            break;
+          case "restore":
+            this.bulkRestore(repositories, ownerId, resolved);
+            break;
+          case "favorite_add":
+          case "favorite_remove":
+            this.bulkFavorite(repositories, ownerId, resolved, input.action === "favorite_add");
+            break;
+        }
+
+        return {
+          action: input.action,
+          atomic: true,
+          items: input.items.map((item) => {
+            const current = item.kind === "folder"
+              ? repositories.folders.findById(ownerId, item.id)
+              : repositories.files.findById(ownerId, item.id);
+            if (!current) throw new DriveError("invalid_state");
+            return {
+              kind: item.kind,
+              id: item.id,
+              outcome: "succeeded" as const,
+              version: driveEntryVersion(current),
+            };
+          }),
+        };
+      });
+    } catch (error: unknown) {
+      if (error instanceof DriveError || error instanceof TypeError || error instanceof RangeError) throw error;
+      if (isConstraintConflict(error)) throw new DriveError("name_conflict", { cause: error });
+      throw error;
+    }
+  }
+
+  private resolveBulkItems(
+    repositories: RepositorySet,
+    ownerId: string,
+    inputs: readonly BulkItemInput[],
+  ): ResolvedBulkItem[] {
+    return inputs.map((input): ResolvedBulkItem => {
+      if (input.kind === "folder") {
+        const resource = repositories.folders.findById(ownerId, input.id);
+        if (!resource) throw new DriveError("not_found");
+        if (driveEntryVersion(resource) !== input.version) throw new DriveError("concurrent_change");
+        return { input, kind: "folder", resource };
+      }
+      const resource = repositories.files.findById(ownerId, input.id);
+      if (!resource) throw new DriveError("not_found");
+      if (driveEntryVersion(resource) !== input.version) throw new DriveError("concurrent_change");
+      return { input, kind: "file", resource };
+    });
+  }
+
+  private bulkMove(
+    repositories: RepositorySet,
+    ownerId: string,
+    items: readonly ResolvedBulkItem[],
+    destinationFolderId: string | null,
+  ): void {
+    requireActiveFolder(repositories, ownerId, destinationFolderId);
+    const selectedFolderIds = new Set(
+      items.filter((item): item is Extract<ResolvedBulkItem, { kind: "folder" }> => item.kind === "folder")
+        .map((item) => item.resource.id),
+    );
+
+    if (selectedAncestorExists(repositories, ownerId, destinationFolderId, selectedFolderIds)) {
+      throw new DriveError("invalid_move");
+    }
+
+    for (const item of items) {
+      if (item.resource.state !== "active") throw new DriveError("invalid_state");
+      const parentId = item.kind === "folder" ? item.resource.parentId : item.resource.folderId;
+      if (selectedAncestorExists(repositories, ownerId, parentId, selectedFolderIds)) {
+        throw new DriveError("invalid_move");
+      }
+    }
+
+    const now = this.now();
+    for (const item of items) {
+      if (item.kind === "folder") {
+        if (item.resource.parentId === destinationFolderId) continue;
+        repositories.folders.update({ ...item.resource, parentId: destinationFolderId, updatedAt: now });
+      } else {
+        if (item.resource.folderId === destinationFolderId) continue;
+        const updated = repositories.files.update(
+          { ...item.resource, folderId: destinationFolderId, updatedAt: now },
+          "active",
+          item.resource.revision,
+        );
+        if (!updated) throw new DriveError("concurrent_change");
+      }
+    }
+  }
+
+  private bulkRecycle(
+    repositories: RepositorySet,
+    ownerId: string,
+    items: readonly ResolvedBulkItem[],
+  ): void {
+    const folderPlans = new Map<string, { folders: Folder[]; files: StoredFile[] }>();
+    const claimed = new Set<string>();
+
+    for (const item of items) {
+      if (item.resource.state !== "active") throw new DriveError("invalid_state");
+      if (item.kind !== "folder") continue;
+      const subtree = collectActiveFolderSubtree(
+        repositories,
+        ownerId,
+        item.resource,
+        MAX_BULK_EXPANDED_ITEMS - claimed.size,
+      );
+      folderPlans.set(item.resource.id, subtree);
+      for (const folder of subtree.folders) {
+        const key = `folder:${folder.id}`;
+        if (claimed.has(key)) throw new DriveError("invalid_state");
+        claimed.add(key);
+      }
+      for (const file of subtree.files) {
+        const key = `file:${file.id}`;
+        if (claimed.has(key)) throw new DriveError("invalid_state");
+        claimed.add(key);
+      }
+    }
+    for (const item of items) {
+      if (item.kind === "file" && claimed.has(`file:${item.resource.id}`)) {
+        throw new DriveError("invalid_state");
+      }
+    }
+
+    const now = this.now();
+    for (const item of items) {
+      const groupId = randomUUID();
+      if (item.kind === "folder") {
+        const subtree = folderPlans.get(item.resource.id)!;
+        repositories.recycle.createGroup({
+          id: groupId,
+          ownerId,
+          rootKind: "folder",
+          rootId: item.resource.id,
+          folderCount: subtree.folders.length,
+          fileCount: subtree.files.length,
+          createdAt: now,
+        });
+        for (const folder of subtree.folders) {
+          if (!repositories.recycle.recycleFolder(ownerId, folder.id, groupId, now)) {
+            throw new DriveError("concurrent_change");
+          }
+        }
+        for (const file of subtree.files) {
+          if (!repositories.recycle.recycleFile(ownerId, file.id, groupId, file.revision, now)) {
+            throw new DriveError("concurrent_change");
+          }
+        }
+        recordDriveAudit(repositories, "drive.folder_recycle", "account", ownerId, item.resource.id, now);
+      } else {
+        repositories.recycle.createGroup({
+          id: groupId,
+          ownerId,
+          rootKind: "file",
+          rootId: item.resource.id,
+          folderCount: 0,
+          fileCount: 1,
+          createdAt: now,
+        });
+        if (!repositories.recycle.recycleFile(
+          ownerId,
+          item.resource.id,
+          groupId,
+          item.resource.revision,
+          now,
+        )) {
+          throw new DriveError("concurrent_change");
+        }
+        recordDriveAudit(repositories, "drive.file_recycle", "account", ownerId, item.resource.id, now);
+      }
+    }
+  }
+
+  private bulkRestore(
+    repositories: RepositorySet,
+    ownerId: string,
+    items: readonly ResolvedBulkItem[],
+  ): void {
+    const folderPlans = new Map<string, FolderRestorePlan>();
+    const filePlans = new Map<string, FileRestorePlan>();
+    const groupIds = new Set<string>();
+    let expandedItems = 0;
+
+    // Complete preflight before mutating any selected group. In particular,
+    // one selected parent restore cannot make another selected child valid.
+    for (const item of items) {
+      if (item.resource.state !== "deleted") throw new DriveError("invalid_state");
+      const group = repositories.recycle.findGroupByRoot(ownerId, item.kind, item.resource.id);
+      if (!group) throw new DriveError("not_found");
+      if (groupIds.has(group.id)) throw new DriveError("invalid_state");
+      groupIds.add(group.id);
+      requireActiveFolder(
+        repositories,
+        ownerId,
+        item.kind === "folder" ? item.resource.parentId : item.resource.folderId,
+      );
+
+      const folderIds = repositories.recycle.listFolderIds(ownerId, group.id);
+      const fileIds = repositories.recycle.listFileIds(ownerId, group.id);
+      expandedItems += folderIds.length + fileIds.length;
+      if (expandedItems > MAX_BULK_EXPANDED_ITEMS) {
+        throw new RangeError("bulk expanded selection exceeds 10000 resources");
+      }
+      if (folderIds.length !== group.folderCount || fileIds.length !== group.fileCount) {
+        throw new DriveError("invalid_state");
+      }
+
+      if (item.kind === "folder") {
+        const folders = folderIds.map((id) => repositories.folders.findById(ownerId, id));
+        const files = fileIds.map((id) => repositories.files.findById(ownerId, id));
+        if (
+          group.rootKind !== "folder"
+          || !folders.some((folder) => folder?.id === item.resource.id)
+          || folders.some((folder) => !folder || folder.state !== "deleted")
+          || files.some((file) => !file || file.state !== "deleted")
+        ) {
+          throw new DriveError("invalid_state");
+        }
+        folderPlans.set(item.resource.id, {
+          root: item.resource,
+          groupId: group.id,
+          folders: folders as Folder[],
+          files: files as StoredFile[],
+        });
+      } else {
+        if (
+          group.rootKind !== "file"
+          || group.folderCount !== 0
+          || group.fileCount !== 1
+          || folderIds.length !== 0
+          || fileIds.length !== 1
+          || fileIds[0] !== item.resource.id
+        ) {
+          throw new DriveError("invalid_state");
+        }
+        filePlans.set(item.resource.id, { file: item.resource, groupId: group.id });
+      }
+    }
+
+    const now = this.now();
+    for (const item of items) {
+      if (item.kind === "folder") {
+        const plan = folderPlans.get(item.resource.id)!;
+        const pending = new Map(plan.folders.map((folder) => [folder.id, folder]));
+        const restoredFolderIds = new Set<string>();
+        while (pending.size > 0) {
+          let progressed = false;
+          for (const folder of [...pending.values()]) {
+            const parentReady = folder.id === plan.root.id
+              || (folder.parentId !== null && restoredFolderIds.has(folder.parentId));
+            if (!parentReady) continue;
+            if (!repositories.recycle.restoreFolder(ownerId, folder.id, plan.groupId, now)) {
+              throw new DriveError("concurrent_change");
+            }
+            pending.delete(folder.id);
+            restoredFolderIds.add(folder.id);
+            progressed = true;
+          }
+          if (!progressed) throw new DriveError("invalid_state");
+        }
+        for (const file of plan.files) {
+          if (
+            file.folderId === null
+            || !restoredFolderIds.has(file.folderId)
+            || !repositories.recycle.restoreFile(ownerId, file.id, plan.groupId, file.revision, now)
+          ) {
+            throw new DriveError("concurrent_change");
+          }
+        }
+        if (!repositories.recycle.deleteGroup(ownerId, plan.groupId)) throw new DriveError("invalid_state");
+        recordDriveAudit(repositories, "drive.folder_restore", "account", ownerId, item.resource.id, now);
+      } else {
+        const plan = filePlans.get(item.resource.id)!;
+        if (!repositories.recycle.restoreFile(
+          ownerId,
+          plan.file.id,
+          plan.groupId,
+          plan.file.revision,
+          now,
+        )) {
+          throw new DriveError("concurrent_change");
+        }
+        if (!repositories.recycle.deleteGroup(ownerId, plan.groupId)) throw new DriveError("invalid_state");
+        recordDriveAudit(repositories, "drive.file_restore", "account", ownerId, item.resource.id, now);
+      }
+    }
+  }
+
+  private bulkFavorite(
+    repositories: RepositorySet,
+    ownerId: string,
+    items: readonly ResolvedBulkItem[],
+    favorite: boolean,
+  ): void {
+    const now = this.now();
+    for (const item of items) {
+      if (item.resource.state !== "active") throw new DriveError("invalid_state");
+      if (item.kind === "folder") {
+        if (favorite) repositories.favorites.addFolder(ownerId, item.resource.id, now);
+        else repositories.favorites.removeFolder(ownerId, item.resource.id);
+      } else if (favorite) {
+        repositories.favorites.addFile(ownerId, item.resource.id, now);
+      } else {
+        repositories.favorites.removeFile(ownerId, item.resource.id);
+      }
     }
   }
 

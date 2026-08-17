@@ -12,9 +12,9 @@ The repository and Git are durable project memory. Chat is planning context only
 
 **Production:** the accepted UX01 generation remains live at `https://cloud.ajtlab.top`. Production is a separate Owner-gated track.
 
-**Development:** Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, and repository/local OPS01A are independently green on the current development line. This newer repository generation is not deployed.
+**Development:** Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, repository/local OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, and RF-BULK01 are independently green on the current development line. This newer repository generation is not deployed.
 
-**Next:** the independently reviewed `RF-PLAN01`, `RF-AUDIT01`, and `RF-OWNERSHIP01` checkpoints are complete. The Owner-authorized **Pre-OCR Research Foundation** continues with `RF-BULK01` as the next Ready implementation card.
+**Next:** the independently reviewed `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, and `RF-BULK01` checkpoints are complete. The Owner-authorized **Pre-OCR Research Foundation** continues with `RF-DOMAIN01` as the next implementation card.
 
 Read:
 - `AGENTS.md` — mandatory repository policy and current product/privacy boundaries;

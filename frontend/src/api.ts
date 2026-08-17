@@ -87,6 +87,7 @@ export interface FolderEntry {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  version: string;
 }
 
 export interface FileEntry {
@@ -103,6 +104,28 @@ export interface FileEntry {
   activatedAt: string | null;
   deletedAt: string | null;
   purgedAt: string | null;
+  version: string;
+}
+
+export type BulkAction = "move" | "recycle" | "restore" | "favorite_add" | "favorite_remove";
+export type BulkResourceKind = "folder" | "file";
+
+export interface BulkItem {
+  kind: BulkResourceKind;
+  id: string;
+  version: string;
+}
+
+export interface BulkOperationInput {
+  action: BulkAction;
+  items: BulkItem[];
+  destinationFolderId?: string | null;
+}
+
+export interface BulkOperationResult {
+  action: BulkAction;
+  atomic: true;
+  items: Array<BulkItem & { outcome: "succeeded" }>;
 }
 
 export interface UploadAuthorization {
@@ -177,6 +200,7 @@ export interface AcademicCloudApi {
   listPending(folderId: string | null, signal?: AbortSignal): Promise<FileEntry[]>;
   listRecycle(signal?: AbortSignal): Promise<RecycleResponse>;
   listFavorites(signal?: AbortSignal): Promise<FavoritesResponse>;
+  bulkOperation(input: BulkOperationInput): Promise<BulkOperationResult>;
   setFileFavorite(fileId: string, favorite: boolean): Promise<void>;
   setFolderFavorite(folderId: string, favorite: boolean): Promise<void>;
   createFolder(name: string, parentId: string | null): Promise<FolderEntry>;
@@ -381,6 +405,10 @@ export class ApiClient implements AcademicCloudApi {
 
   listFavorites(signal?: AbortSignal): Promise<FavoritesResponse> {
     return this.#request<FavoritesResponse>("/api/favorites", signal ? { signal } : {});
+  }
+
+  bulkOperation(input: BulkOperationInput): Promise<BulkOperationResult> {
+    return this.#jsonBody<BulkOperationResult>("/api/drive/bulk", "POST", input);
   }
 
   setFileFavorite(fileId: string, favorite: boolean): Promise<void> {
