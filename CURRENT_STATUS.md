@@ -4,21 +4,21 @@
 
 ## Current Phase
 
-**Transition from Layer 1 Core Drive closure to the approved Layer 2 Accounts & Sharing I boundary.**
+**Layer 1 Core Drive repository closure is green; the next approved boundary is Layer 2 Accounts & Sharing I.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains local/repository-only unless a separate Owner production gate is opened.
 
 ## Source-of-Truth Development Baseline
 
-Current reviewed development branch before this planning reconciliation:
+Current repository-development line:
 
-- branch: `codex/l1-ux03-mobile-zero-copy`
-- HEAD: `dd42cabedce199c38b69287fbe3c4836bfa18cc3`
+- branch: `codex/project-memory-reconcile-20260817`
+- recovery baseline before L1-FOLDER01: `4d706bb9ce821a6f70af24dbd097209e0aa62cd3`
 - accepted ancestor: `d9bdfebfab0cfb4fc0b5067ec1ba1ce91fe31c21`
-- latest committed migration on this baseline: `005_per_user_favorites.sql`
+- latest repository migration: `006_recycle_groups.sql`
 - dependency delta from the accepted UX03 baseline: zero
 
-This planning reconciliation is intentionally performed on a separate branch so the UX03 implementation SHA remains unchanged and independently reviewable.
+This work remains on a separate `codex/` branch; no main merge or production rollout is authorized.
 
 ## Production State
 
@@ -30,7 +30,7 @@ Verified/recorded production facts:
 - private Alibaba OSS remains the file-byte store
 - `files.ajtlab.top` is the browser-facing OSS custom domain from the UX01 production window
 - production UX01 browser Product Verification passed
-- no UX02, FAV01, UX03, FOLDER01, Accounts I, or OPS01A code has been deployed
+- no UX02, FAV01, UX03, FOLDER01, Accounts I, announcements, or OPS01A code has been deployed
 - systemd autostart/permanent-delete/certificate-lifecycle hardening remain separately Owner-gated according to the production runbooks
 
 Do not infer production rollout from repository completion.
@@ -89,6 +89,22 @@ Accepted behavior includes:
 
 A separate Owner visual/product gate remains pending before any future deployment of this generation.
 
+### L1-FOLDER01
+
+**Repository-development complete; independent adversarial review PASS.** Migration 006 adds same-owner recycle-operation groups without editing migrations 001–005. Recursive folder recycle now collects only the active subtree, rejects any direct/deep pending upload before mutation, and transitions the complete group in one `BEGIN IMMEDIATE` transaction. Restore revalidates exact group membership/counts and the original parent, restores the group topologically, and rolls the transaction back on stale state, sibling conflict, CAS failure, or injected failure.
+
+The critical invariant is verified: independently pre-deleted files/folders and their Favorites remain in their own groups and never revive with a later parent restore. Recycle lists operation roots only; recursive recycle/restore never deletes storage bytes or changes IDs, hierarchy, display metadata, or object keys. Standalone file permanent-delete retry semantics remain intact, while grouped descendants cannot be recursively purged.
+
+Verification on 2026-08-17:
+- backend `135/135` PASS;
+- frontend `121/121` PASS;
+- workspace typecheck and production build PASS;
+- acceptance tools `25/25` PASS;
+- compiled acceptance PASS with migration count 6, restart/session, maintenance dry-run, backup, and isolated restore;
+- migration fresh/prior/replay/checksum/integrity and production-startup fail-closed tests PASS;
+- `git diff --check` PASS, targeted secret scan clear, dependency delta 0;
+- independent read-only Reviewer: PASS, no blocker or medium finding.
+
 ### L1-UX03
 
 Implementation exists at `dd42cab…`; zero-descriptive-copy and the dedicated responsive mobile architecture were verified in the independent GitHub review. The three required repair findings are now repaired and independently re-reviewed **PASS** (APPROVE-WITH-NITS, non-blocking NITs only):
@@ -124,11 +140,12 @@ After this planning reconciliation, the executable sequence is:
 
 1. ~~finish the current L1-UX03 review repairs and re-run its gates~~ — **DONE** (repairs committed `a15b2e3`; adversarial re-review APPROVE-WITH-NITS);
 2. ~~L1-PERF01 — evidence-first transfer/checksum performance baseline and only justified low-risk optimization~~ — **DONE** (measured; no optimization justified; evidence note committed);
-3. L1-FOLDER01 — transactional recursive folder recycle/restore;
+3. ~~L1-FOLDER01 — transactional recursive folder recycle/restore~~ — **DONE** (migration 006, full gates, independent review PASS);
 4. L2-ACCOUNTS01 — Owner/Member foundation, invite-only registration, invite management, minimal Owner user administration, Member disable/enable, session revocation;
-5. L2-PASSWORD01 — conditional/optional after Accounts I is fully green;
-6. OPS01A — conditional repository/local operations preparation only;
-7. stop.
+5. L2-ANNOUNCE01 — Owner-administered, database/API-backed global homepage announcements for authenticated users;
+6. L2-PASSWORD01 — conditional/optional after Accounts I and announcements are fully green;
+7. OPS01A — conditional repository/local operations preparation only;
+8. stop.
 
 Each Epic must be independently reviewable and checkpointed before autonomous progression.
 
@@ -175,5 +192,5 @@ Current continuous objective does **not** authorize:
 
 ## Next Action
 
-Checkpoint L1-PERF01, then begin `L1-FOLDER01` (transactional recursive folder
-recycle/restore) from its Ready card.
+After the green `L1-FOLDER01` checkpoint, re-recover and activate `L2-ACCOUNTS01`.
+`L2-ANNOUNCE01` remains Ready and must not begin before Accounts I is green.

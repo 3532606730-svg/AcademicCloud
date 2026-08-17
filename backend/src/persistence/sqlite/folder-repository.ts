@@ -72,10 +72,16 @@ export class SqliteFolderRepository implements FolderRepository {
       ORDER BY name COLLATE NOCASE, id
     `);
     this.#listDeleted = database.prepare<[string], FolderRow>(`
-      SELECT id, owner_id, parent_id, name, state, created_at, updated_at, deleted_at
+      SELECT
+        folders.id, folders.owner_id, folders.parent_id, folders.name,
+        folders.state, folders.created_at, folders.updated_at, folders.deleted_at
       FROM folders
-      WHERE owner_id = ? AND state = 'deleted'
-      ORDER BY deleted_at DESC, id
+      JOIN recycle_groups ON recycle_groups.id = folders.recycle_group_id
+      WHERE folders.owner_id = ? AND folders.state = 'deleted'
+        AND recycle_groups.owner_id = folders.owner_id
+        AND recycle_groups.root_kind = 'folder'
+        AND recycle_groups.root_id = folders.id
+      ORDER BY folders.deleted_at DESC, folders.id
     `);
     this.#update = database.prepare<FolderParameters>(`
       UPDATE folders

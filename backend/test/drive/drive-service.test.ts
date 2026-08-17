@@ -75,18 +75,19 @@ async function createAndUpload(service: DriveService, storage: ControlledStorage
   return { ...result, objectKey };
 }
 
-test("folder workflows are owner scoped, metadata-only, and reject non-empty deletion", async (context) => {
+test("folder workflows are owner scoped, recursive, and metadata-only", async (context) => {
   const { service, storage } = fixture(context);
   const parent = service.createFolder("owner-1", "Sources", null);
   const child = service.createFolder("owner-1", "Primary", parent.id);
 
   assert.deepEqual(service.listEntries("owner-1", parent.id).folders.map((item) => item.id), [child.id]);
   assert.throws(() => service.listEntries("owner-2", parent.id), (error) => error instanceof DriveError && error.code === "not_found");
-  assert.throws(() => service.deleteFolder("owner-1", parent.id), (error) => error instanceof DriveError && error.code === "folder_not_empty");
-
-  service.deleteFolder("owner-1", child.id);
-  const restored = service.restoreFolder("owner-1", child.id);
+  service.deleteFolder("owner-1", parent.id);
+  assert.equal(service.listRecycle("owner-1").folders[0]?.id, parent.id);
+  assert.throws(() => service.restoreFolder("owner-1", child.id), (error) => error instanceof DriveError && error.code === "not_found");
+  const restored = service.restoreFolder("owner-1", parent.id);
   assert.equal(restored.state, "active");
+  assert.equal(service.listEntries("owner-1", parent.id).folders[0]?.id, child.id);
   assert.equal(storage.deleteCalls.length, 0);
   const renamed = service.updateFolder("owner-1", child.id, { name: "Edited", parentId: null });
   assert.equal(renamed.name, "Edited");

@@ -8,9 +8,12 @@ import { openSqliteDatabase } from "../../src/persistence/sqlite/database.js";
 import { runMigrations } from "../../src/persistence/sqlite/migrations.js";
 import { createTestPersistence, INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
-function pinnedV4Directory(context: TestContext): string {
-  const directory = mkdtempSync(join(tmpdir(), "academiccloud-v4-"));
-  const pinned = readdirSync(INITIAL_MIGRATIONS_DIRECTORY).filter((name) => /^00[1-4]_/.test(name));
+function pinnedDirectory(context: TestContext, version: number): string {
+  const directory = mkdtempSync(join(tmpdir(), `academiccloud-v${version}-`));
+  const pinned = readdirSync(INITIAL_MIGRATIONS_DIRECTORY).filter((name) => {
+    const migrationVersion = Number(name.slice(0, 3));
+    return Number.isSafeInteger(migrationVersion) && migrationVersion <= version;
+  });
   for (const name of pinned) {
     copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, name), join(directory, name));
   }
@@ -18,12 +21,12 @@ function pinnedV4Directory(context: TestContext): string {
   return directory;
 }
 
-test("fresh database migrates 0 -> 5 with favorites tables and clean integrity", (context) => {
+test("fresh database migrates 0 -> 6 with favorites tables and clean integrity", (context) => {
   const { database } = createTestPersistence(context);
   const version = database
     .prepare<[], { version: number }>("SELECT MAX(version) AS version FROM schema_migrations")
     .get()?.version;
-  assert.equal(version, 5);
+  assert.equal(version, 6);
 
   const tables = database
     .prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'favorite_%' ORDER BY name")
@@ -41,8 +44,8 @@ test("upgrade 4 -> 5 applies only migration 005 with valid checksums", (context)
   const databasePath = join(directory, "db.sqlite");
   const database = openSqliteDatabase(databasePath);
   try {
-    runMigrations(database, pinnedV4Directory(context));
-    const result = runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY);
+    runMigrations(database, pinnedDirectory(context, 4));
+    const result = runMigrations(database, pinnedDirectory(context, 5));
     assert.deepEqual(result.appliedVersions, [5]);
     assert.equal(result.currentVersion, 5);
 

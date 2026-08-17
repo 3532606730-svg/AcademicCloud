@@ -4,9 +4,9 @@
 
 **AcademicCloud** is a long-term academic digital infrastructure project.
 
-**Current execution phase:** Core Drive closure is in local/repository development while the accepted UX01 production release remains live. The approved next product boundary is Accounts & Sharing I. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
+**Current execution phase:** Core Drive repository closure is complete while the accepted UX01 production release remains live. The approved next product boundary is Accounts & Sharing I, followed by the approved global homepage announcements MVP. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
 
-**Approved continuous objective (repository/local only):** finish the current UX03 review repairs, then PERF01, FOLDER01, and Accounts I. PASSWORD01 is optional after Accounts I is green. OPS01A is a conditional cross-cutting operations-preparation task. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
+**Approved continuous objective (repository/local only):** complete UX03, PERF01, and FOLDER01; then execute Accounts I and the global homepage announcements MVP. PASSWORD01 is optional after Accounts I and announcements are green. OPS01A is a conditional cross-cutting operations-preparation task. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
 
 ## Engineering Workflow
 
@@ -42,7 +42,7 @@ Reliable private file storage and file management:
 - security/reliability
 - deployment/recovery foundation
 
-Current closure work: UX03 repair, PERF01 evidence/low-risk optimization, FOLDER01 recursive recycle/restore.
+Core Drive closure checkpoint: UX03 repair, PERF01 evidence, and FOLDER01 recursive recycle/restore are complete in repository development. Production rollout remains separate.
 
 ### Layer 2 — Accounts & Sharing
 
@@ -55,7 +55,13 @@ Approved first Epic: **Accounts I**
 - Member disable/enable
 - revoke all sessions on disable
 
-Optional follow-up: password change. One-Time External Sharing is a later Layer 2 task and is not part of the current continuous objective.
+Approved second Epic: **Global Homepage Announcements**
+- Owner-administered create/edit/publish/unpublish
+- authenticated global read on the homepage
+- database/API-backed plain-text announcements with severity and effective/expiry windows
+- no notification delivery, read receipts, acknowledgement workflow, or new global role
+
+Optional follow-up after Accounts I and announcements: password change. One-Time External Sharing is a later Layer 2 task and is not part of the current continuous objective.
 
 ### Layer 3 — Shared Academic Library
 

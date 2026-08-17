@@ -12,51 +12,34 @@ Production remains on the accepted UX01 release and is a separate Owner-gated tr
 
 The Agent may autonomously progress through the following sequence, one independently verified/checkpointed Epic at a time:
 
-1. finish active `L1-UX03` review repairs;
-2. `L1-PERF01`;
-3. `L1-FOLDER01`;
+1. `L1-UX03` review repairs — complete;
+2. `L1-PERF01` — complete;
+3. `L1-FOLDER01` — complete;
 4. `L2-ACCOUNTS01`;
-5. `L2-PASSWORD01` only if Accounts I is fully green and the optional task remains safe;
-6. `OPS01A` only if its Ready-card preconditions are satisfied;
-7. STOP.
+5. `L2-ANNOUNCE01` after Accounts I is fully green;
+6. `L2-PASSWORD01` only if its existing conditional gate remains satisfied;
+7. `OPS01A` only if its Ready-card preconditions are satisfied;
+8. STOP.
 
 This objective is repository/local only. It does not authorize production contact, deployment, production migration, main merge, One-Time External Sharing, Shared Library, OCR, or RAG.
 
 ## Doing
 
-### L1-PERF01 — Evidence-First Transfer Performance
-
-**Status:** complete — evidence gathered, no client optimization justified by measurement. Browser-direct upload / signed-direct download architecture verified from code; local synthetic SparkMD5 benchmark (`frontend/scripts/checksum-benchmark.ts`) measured 1/10/50/100/250 MiB at ≈350–390 MiB/s (250 MiB ≈ 0.7s), chunk-size delta <10% (negligible). Conclusion + measured/inferred/not-measured facts recorded in `docs/performance/L1-PERF01-transfer-performance.md`. Adversarial review APPROVE-WITH-NITS (fixed). `DEPENDENCY_DELTA=0`. No product-code change.
-
-### L1-UX03 — Dedicated Mobile Experience & Zero-Descriptive-Copy UI
-
-**Status:** repo-development closure complete — implementation `dd42cab…` + the three independent-review repairs are done and the adversarial re-review is **APPROVE-WITH-NITS**. Repairs: exact nav order `Library / Favorites / Pending / Recycle` (+exact-sequence test); Preview Download reusing the authoritative `createDownload(file.id)` attachment path while Open keeps the inline URL; 44px mobile floor for Sign In / AccountMenu Sign Out / 中文 / EN. Gates PASS (backend 127/127, frontend 121/121, typecheck/build, acceptance-tools 25/25, acceptance:compiled, diff-check clean, dependency delta 0). `OWNER_VISUAL_GATE=PENDING` (separate product/deployment gate).
-
-### L1-FAV01 — Per-User Favorites
-
-**Status:** implementation and independent ChatGPT review PASS for repository development; separate Owner visual/product gate remains pending before future deployment.
-
-No new implementation work is required absent new evidence.
-
-### PROD-03C2 — Remaining First-Usable Production Gates
-
-**Status:** separate Owner-gated production track; not part of the autonomous local continuous objective.
-
-Retain existing runbook/evidence. Do not contact production merely because local feature work progresses.
+None at the L1-FOLDER01 completion checkpoint. `L2-ACCOUNTS01` is the next task to activate.
 
 ## Ready
 
-### 1. L1-FOLDER01 — Transactional Recursive Folder Recycle/Restore
-
-**Task card:** `tasks/ready/L1-FOLDER01.md`
-
-Critical invariant: descendants deleted independently before a later parent recycle must never resurrect when the parent is restored.
-
-### 2. L2-ACCOUNTS01 — Account Foundation, Invite Registration & User Administration
+### 1. L2-ACCOUNTS01 — Account Foundation, Invite Registration & User Administration
 
 **Task card:** `tasks/ready/L2-ACCOUNTS01.md`
 
 Approved scope: `owner | member`, deterministic migration, first-Owner bootstrap, digest-only invitations, race-safe invite registration, Owner invitation/user administration, Member disable/enable, revoke all Member sessions, strict cross-account isolation.
+
+### 2. L2-ANNOUNCE01 — Global Homepage Announcements
+
+**Task card:** `tasks/ready/L2-ANNOUNCE01.md`
+
+Approved after Accounts I: Owner administration authority creates/edits/publishes/unpublishes database/API-backed plain-text announcements; all authenticated active users read the currently effective set on the homepage. No new global role, notification delivery, receipts, acknowledgement workflow, notification center, or rich-text editor.
 
 ## Conditional Ready
 
@@ -64,13 +47,19 @@ Approved scope: `owner | member`, deterministic migration, first-Owner bootstrap
 
 **Task card:** `tasks/ready/L2-PASSWORD01.md`
 
-Begin only after L2-ACCOUNTS01 is fully green and independently checkpointed. May be deferred without failing the continuous objective.
+Begin only after L2-ACCOUNTS01 and L2-ANNOUNCE01 are fully green and independently checkpointed. May be deferred without failing the continuous objective.
 
 ### OPS01A — Operations Observability & Recovery Preparation
 
 **Task card:** `tasks/ready/OPS01A.md`
 
-Begin only after Core Drive + Accounts I are green and enough safe capacity remains for implementation, adversarial review, and final gates. Repository/local preparation only; no production activation.
+Begin only after Core Drive + Accounts I + ANNOUNCE01 are green and enough safe capacity remains for implementation, adversarial review, and final gates. Repository/local preparation only; no production activation.
+
+## Separate Owner-Gated Production Track
+
+### PROD-03C2 — Remaining First-Usable Production Gates
+
+Retain the existing runbook/evidence. This track is not active under the repository/local continuous objective, and repository feature progress does not authorize production contact.
 
 ## Backlog — Layer 2
 
@@ -129,6 +118,8 @@ Heavy compute must remain isolated from the core drive service.
 - L1-BUGAUDIT01 implementation + independent review PASS
 - L1-FAV01 implementation + independent review PASS
 - L1-UX03 implementation at `dd42cab…` + review repairs — independent re-review APPROVE-WITH-NITS; `OWNER_VISUAL_GATE=PENDING`
+- L1-PERF01 — evidence gathered; no client optimization justified; independent review PASS
+- L1-FOLDER01 — migration 006 + recursive recycle/restore; backend 135/135, frontend 121/121, canonical gates and independent review PASS
 
 Historical detail remains in Git, completed task cards, production runbooks, and existing task records rather than being duplicated here.
 

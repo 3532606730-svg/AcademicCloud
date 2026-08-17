@@ -102,6 +102,13 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
       media_type, size_bytes, checksum_algorithm, checksum, state, revision,
       created_at, updated_at, activated_at, deleted_at, purged_at
     `;
+    const qualifiedColumns = `
+      files.id, files.owner_id, files.folder_id, files.display_name,
+      files.storage_provider, files.object_key, files.media_type,
+      files.size_bytes, files.checksum_algorithm, files.checksum,
+      files.state, files.revision, files.created_at, files.updated_at,
+      files.activated_at, files.deleted_at, files.purged_at
+    `;
     this.#listRootByState = database.prepare<[string, StoredFileState], StoredFileRow>(`
       SELECT ${columns} FROM files
       WHERE owner_id = ? AND folder_id IS NULL AND state = ?
@@ -113,9 +120,14 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
       ORDER BY display_name COLLATE NOCASE, id
     `);
     this.#listDeleted = database.prepare<[string], StoredFileRow>(`
-      SELECT ${columns} FROM files
-      WHERE owner_id = ? AND state IN ('deleted', 'purging')
-      ORDER BY deleted_at DESC, id
+      SELECT ${qualifiedColumns}
+      FROM files
+      JOIN recycle_groups ON recycle_groups.id = files.recycle_group_id
+      WHERE files.owner_id = ? AND files.state IN ('deleted', 'purging')
+        AND recycle_groups.owner_id = files.owner_id
+        AND recycle_groups.root_kind = 'file'
+        AND recycle_groups.root_id = files.id
+      ORDER BY files.deleted_at DESC, files.id
     `);
     this.#update = database.prepare<StoredFileParameters>(`
       UPDATE files SET

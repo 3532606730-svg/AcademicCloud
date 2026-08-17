@@ -68,10 +68,10 @@ None.
 All implementation, tests, review, reconciliation, and checkpoint work.
 
 ## Blockers
-Do not begin unless L2-ACCOUNTS01 is fully green and independently checkpointed. May be deferred without failing the approved continuous objective.
+Do not begin unless L2-ACCOUNTS01 and the preceding L2-ANNOUNCE01 queue item are fully green and independently checkpointed. May be deferred without failing the approved continuous objective.
 
 ## Last Verification
 2026-08-17 planning reconciliation: task specification approved as optional follow-up; no implementation exists.
 
 ## Next Action
-If Accounts I is complete and this task is selected by the continuous-objective policy, move to `tasks/doing/`, recover the final Accounts auth/session model, then implement with CAS + revoke-all-sessions as central invariants.
+If Accounts I and ANNOUNCE01 are complete and this optional task is selected by the continuous-objective policy, move to `tasks/doing/`, recover the final Accounts auth/session model, then implement with CAS + revoke-all-sessions as central invariants.

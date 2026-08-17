@@ -150,10 +150,10 @@ None for OPS01A.
 - reconcile documentation and checkpoint.
 
 ## Blockers
-Do not begin until Core Drive and L2-ACCOUNTS01 are green and checkpointed. If safe execution/review capacity is insufficient, defer this task. Any live production mutation, credential requirement, new paid service, destructive retention, or production restore is a mandatory stop/gate rather than part of OPS01A.
+Do not begin until Core Drive, L2-ACCOUNTS01, and the preceding L2-ANNOUNCE01 queue item are green and checkpointed. If safe execution/review capacity is insufficient, defer this task. Any live production mutation, credential requirement, new paid service, destructive retention, or production restore is a mandatory stop/gate rather than part of OPS01A.
 
 ## Last Verification
 2026-08-17 planning reconciliation: OPS01A approved as a conditional cross-cutting repository/local task. No OPS01A implementation or production activation has occurred.
 
 ## Next Action
-If selected after Accounts I, move to `tasks/doing/`, recover the existing deployment/backup/recovery tools first, and implement only missing lightweight read/verify/rehearsal capabilities. Stop before production activation.
+If selected after Accounts I and ANNOUNCE01, move to `tasks/doing/`, recover the existing deployment/backup/recovery tools first, and implement only missing lightweight read/verify/rehearsal capabilities. Stop before production activation.

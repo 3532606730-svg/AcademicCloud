@@ -67,7 +67,7 @@ test("online backup creates a verified non-overwriting snapshot that survives re
       backupPath,
     );
 
-    assert.equal(created.schemaVersion, 5);
+    assert.equal(created.schemaVersion, 6);
     assert.deepEqual(created.counts, { accounts: 1, folders: 0, files: 1, sessions: 0 });
     assert.match(created.sha256, /^[a-f0-9]{64}$/);
     assert.ok(created.bytes > 0);

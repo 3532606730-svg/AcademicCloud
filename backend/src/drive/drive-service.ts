@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { Persistence } from "../persistence/contracts.js";
+import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import { assertBase64Md5, assertContentLength, assertMediaType } from "../storage/authorization.js";
 import { createObjectKey } from "../storage/object-key.js";
 import type {
@@ -9,7 +9,7 @@ import type {
   StorageAdapter,
   StorageObjectMetadata,
 } from "../storage/storage-adapter.js";
-import type { StoredFile, StoredFileState } from "./file.js";
+import type { StoredFile } from "./file.js";
 import type { Folder } from "./folder.js";
 
 export type DriveErrorCode =
@@ -89,7 +89,7 @@ function mapConstraint(error: unknown, fallback: DriveErrorCode = "invalid_move"
 }
 
 function requireActiveFolder(
-  persistence: Persistence,
+  repositories: RepositorySet,
   ownerId: string,
   folderId: string | null,
 ): Folder | null {
@@ -97,13 +97,40 @@ function requireActiveFolder(
     return null;
   }
 
-  const folder = persistence.repositories.folders.findById(ownerId, folderId);
+  const folder = repositories.folders.findById(ownerId, folderId);
 
   if (!folder || folder.state !== "active") {
     throw new DriveError("not_found");
   }
 
   return folder;
+}
+
+function collectActiveFolderSubtree(
+  repositories: RepositorySet,
+  ownerId: string,
+  root: Folder,
+): { folders: Folder[]; files: StoredFile[] } {
+  const folders: Folder[] = [root];
+  const files: StoredFile[] = [];
+  const seen = new Set([root.id]);
+
+  for (let index = 0; index < folders.length; index += 1) {
+    const folder = folders[index]!;
+    if (repositories.files.listByFolder(ownerId, folder.id, "pending_upload").length > 0) {
+      throw new DriveError("invalid_state");
+    }
+    files.push(...repositories.files.listByFolder(ownerId, folder.id, "active"));
+    for (const child of repositories.folders.listByParent(ownerId, folder.id, "active")) {
+      if (seen.has(child.id)) {
+        throw new DriveError("invalid_state");
+      }
+      seen.add(child.id);
+      folders.push(child);
+    }
+  }
+
+  return { folders, files };
 }
 
 export function storageMetadataMatches(file: StoredFile, metadata: StorageObjectMetadata): boolean {
@@ -130,7 +157,7 @@ export class DriveService {
 
     try {
       return this.persistence.runInTransaction((repositories) => {
-        requireActiveFolder(this.persistence, ownerId, parentId);
+        requireActiveFolder(repositories, ownerId, parentId);
         const now = this.now();
         return repositories.folders.create({
           id: randomUUID(),
@@ -149,7 +176,7 @@ export class DriveService {
   }
 
   listEntries(ownerId: string, folderId: string | null): DriveEntries {
-    const folder = requireActiveFolder(this.persistence, ownerId, folderId);
+    const folder = requireActiveFolder(this.persistence.repositories, ownerId, folderId);
 
     return {
       folder,
@@ -176,7 +203,7 @@ export class DriveService {
         throw new DriveError("invalid_move");
       }
 
-      requireActiveFolder(this.persistence, ownerId, parentId);
+      requireActiveFolder(repositories, ownerId, parentId);
 
       try {
         return repositories.folders.update({
@@ -199,41 +226,99 @@ export class DriveService {
         throw new DriveError("not_found");
       }
 
-      const hasChildren = repositories.folders.listByParent(ownerId, folderId, "active").length > 0;
-      const hasFiles = ["pending_upload", "active"].some(
-        (state) => repositories.files.listByFolder(ownerId, folderId, state as StoredFileState).length > 0,
-      );
-
-      if (hasChildren || hasFiles) {
-        throw new DriveError("folder_not_empty");
-      }
-
+      const subtree = collectActiveFolderSubtree(repositories, ownerId, folder);
       const now = this.now();
-      repositories.folders.update({ ...folder, state: "deleted", updatedAt: now, deletedAt: now });
+      const groupId = randomUUID();
+      repositories.recycle.createGroup({
+        id: groupId,
+        ownerId,
+        rootKind: "folder",
+        rootId: folder.id,
+        folderCount: subtree.folders.length,
+        fileCount: subtree.files.length,
+        createdAt: now,
+      });
+
+      for (const subtreeFolder of subtree.folders) {
+        if (!repositories.recycle.recycleFolder(ownerId, subtreeFolder.id, groupId, now)) {
+          throw new DriveError("invalid_state");
+        }
+      }
+      for (const file of subtree.files) {
+        if (!repositories.recycle.recycleFile(ownerId, file.id, groupId, file.revision, now)) {
+          throw new DriveError("invalid_state");
+        }
+      }
     });
   }
 
   restoreFolder(ownerId: string, folderId: string): Folder {
-    return this.persistence.runInTransaction((repositories) => {
-      const folder = repositories.folders.findById(ownerId, folderId);
+    try {
+      return this.persistence.runInTransaction((repositories) => {
+        const root = repositories.folders.findById(ownerId, folderId);
+        const group = repositories.recycle.findGroupByRoot(ownerId, "folder", folderId);
 
-      if (!folder || folder.state !== "deleted") {
-        throw new DriveError("not_found");
-      }
+        if (!root || root.state !== "deleted" || !group) {
+          throw new DriveError("not_found");
+        }
 
-      requireActiveFolder(this.persistence, ownerId, folder.parentId);
+        requireActiveFolder(repositories, ownerId, root.parentId);
+        const folderIds = repositories.recycle.listFolderIds(ownerId, group.id);
+        const fileIds = repositories.recycle.listFileIds(ownerId, group.id);
+        if (folderIds.length !== group.folderCount || fileIds.length !== group.fileCount) {
+          throw new DriveError("invalid_state");
+        }
 
-      try {
-        return repositories.folders.update({
-          ...folder,
-          state: "active",
-          updatedAt: this.now(),
-          deletedAt: null,
-        });
-      } catch (error: unknown) {
-        mapConstraint(error);
-      }
-    });
+        const pendingFolders = new Map<string, Folder>();
+        for (const memberId of folderIds) {
+          const member = repositories.folders.findById(ownerId, memberId);
+          if (!member || member.state !== "deleted") throw new DriveError("invalid_state");
+          pendingFolders.set(member.id, member);
+        }
+        if (!pendingFolders.has(root.id)) throw new DriveError("invalid_state");
+
+        const now = this.now();
+        const restoredFolderIds = new Set<string>();
+        while (pendingFolders.size > 0) {
+          let progressed = false;
+          for (const member of [...pendingFolders.values()]) {
+            const parentReady = member.id === root.id
+              ? true
+              : member.parentId !== null && restoredFolderIds.has(member.parentId);
+            if (!parentReady) continue;
+            if (!repositories.recycle.restoreFolder(ownerId, member.id, group.id, now)) {
+              throw new DriveError("invalid_state");
+            }
+            pendingFolders.delete(member.id);
+            restoredFolderIds.add(member.id);
+            progressed = true;
+          }
+          if (!progressed) throw new DriveError("invalid_state");
+        }
+
+        for (const memberId of fileIds) {
+          const member = repositories.files.findById(ownerId, memberId);
+          if (
+            !member ||
+            member.state !== "deleted" ||
+            member.folderId === null ||
+            !restoredFolderIds.has(member.folderId) ||
+            !repositories.recycle.restoreFile(ownerId, member.id, group.id, member.revision, now)
+          ) {
+            throw new DriveError("invalid_state");
+          }
+        }
+
+        if (!repositories.recycle.deleteGroup(ownerId, group.id)) {
+          throw new DriveError("invalid_state");
+        }
+        return repositories.folders.findById(ownerId, root.id)!;
+      });
+    } catch (error: unknown) {
+      if (error instanceof DriveError) throw error;
+      if (isConstraintConflict(error)) throw new DriveError("name_conflict", { cause: error });
+      throw error;
+    }
   }
 
   async createUpload(
@@ -259,7 +344,7 @@ export class DriveService {
 
     try {
       file = this.persistence.runInTransaction((repositories) => {
-        requireActiveFolder(this.persistence, ownerId, input.folderId);
+        requireActiveFolder(repositories, ownerId, input.folderId);
         return repositories.files.create({
           id: randomUUID(),
           ownerId,
@@ -318,7 +403,7 @@ export class DriveService {
   }
 
   listPendingUploads(ownerId: string, folderId: string | null): StoredFile[] {
-    requireActiveFolder(this.persistence, ownerId, folderId);
+    requireActiveFolder(this.persistence.repositories, ownerId, folderId);
     return this.persistence.repositories.files.listByFolder(ownerId, folderId, "pending_upload");
   }
 
@@ -423,7 +508,7 @@ export class DriveService {
       }
 
       const folderId = changes.folderId === undefined ? file.folderId : changes.folderId;
-      requireActiveFolder(this.persistence, ownerId, folderId);
+      requireActiveFolder(repositories, ownerId, folderId);
 
       try {
         const updated = repositories.files.update(
@@ -450,33 +535,37 @@ export class DriveService {
   }
 
   deleteFile(ownerId: string, fileId: string): void {
-    const file = this.persistence.repositories.files.findById(ownerId, fileId);
+    this.persistence.runInTransaction((repositories) => {
+      const file = repositories.files.findById(ownerId, fileId);
+      if (!file || file.state !== "active") throw new DriveError("not_found");
 
-    if (!file || file.state !== "active") {
-      throw new DriveError("not_found");
-    }
-
-    const now = this.now();
-    const deleted = this.persistence.repositories.files.update(
-      { ...file, state: "deleted", deletedAt: now, updatedAt: now },
-      "active",
-      file.revision,
-    );
-
-    if (!deleted) {
-      throw new DriveError("invalid_state");
-    }
+      const now = this.now();
+      const groupId = randomUUID();
+      repositories.recycle.createGroup({
+        id: groupId,
+        ownerId,
+        rootKind: "file",
+        rootId: file.id,
+        folderCount: 0,
+        fileCount: 1,
+        createdAt: now,
+      });
+      if (!repositories.recycle.recycleFile(ownerId, file.id, groupId, file.revision, now)) {
+        throw new DriveError("invalid_state");
+      }
+    });
   }
 
   async restoreFile(ownerId: string, fileId: string): Promise<StoredFile> {
     const file = this.persistence.repositories.files.findById(ownerId, fileId);
+    const group = this.persistence.repositories.recycle.findGroupByRoot(ownerId, "file", fileId);
 
-    if (!file || file.state !== "deleted") {
+    if (!file || file.state !== "deleted" || !group) {
       throw new DriveError("not_found");
     }
 
     this.assertCurrentStorageProvider(file);
-    requireActiveFolder(this.persistence, ownerId, file.folderId);
+    requireActiveFolder(this.persistence.repositories, ownerId, file.folderId);
     let metadata: StorageObjectMetadata | null;
 
     try {
@@ -490,14 +579,32 @@ export class DriveService {
     }
 
     try {
-      const restored = this.persistence.repositories.files.update(
-        { ...file, state: "active", deletedAt: null, updatedAt: this.now() },
-        "deleted",
-        file.revision,
-      );
-
-      if (!restored) throw new DriveError("invalid_state");
-      return restored;
+      return this.persistence.runInTransaction((repositories) => {
+        const current = repositories.files.findById(ownerId, fileId);
+        const currentGroup = repositories.recycle.findGroupByRoot(ownerId, "file", fileId);
+        const groupFileIds = repositories.recycle.listFileIds(ownerId, group.id);
+        if (
+          !current ||
+          current.state !== "deleted" ||
+          !currentGroup ||
+          currentGroup.id !== group.id ||
+          currentGroup.folderCount !== 0 ||
+          currentGroup.fileCount !== 1 ||
+          repositories.recycle.listFolderIds(ownerId, group.id).length !== 0 ||
+          groupFileIds.length !== 1 ||
+          groupFileIds[0] !== fileId
+        ) {
+          throw new DriveError("invalid_state");
+        }
+        requireActiveFolder(repositories, ownerId, current.folderId);
+        if (!repositories.recycle.restoreFile(ownerId, current.id, group.id, current.revision, this.now())) {
+          throw new DriveError("invalid_state");
+        }
+        if (!repositories.recycle.deleteGroup(ownerId, group.id)) {
+          throw new DriveError("invalid_state");
+        }
+        return repositories.files.findById(ownerId, current.id)!;
+      });
     } catch (error: unknown) {
       if (error instanceof DriveError) throw error;
       mapConstraint(error);
@@ -531,8 +638,9 @@ export class DriveService {
 
   private async performPermanentDelete(ownerId: string, fileId: string): Promise<void> {
     const current = this.persistence.repositories.files.findById(ownerId, fileId);
+    const group = this.persistence.repositories.recycle.findGroupByRoot(ownerId, "file", fileId);
 
-    if (!current || (current.state !== "deleted" && current.state !== "purging")) {
+    if (!current || !group || (current.state !== "deleted" && current.state !== "purging")) {
       throw new DriveError("not_found");
     }
 
@@ -571,18 +679,20 @@ export class DriveService {
     }
 
     const now = this.now();
-    const purged = this.persistence.repositories.files.update(
-      { ...purging, state: "purged", purgedAt: now, updatedAt: now },
-      "purging",
-      purging.revision,
-    );
-
-    if (!purged) {
-      if (this.persistence.repositories.files.findById(ownerId, fileId)?.state === "purged") {
-        return;
+    this.persistence.runInTransaction((repositories) => {
+      const latest = repositories.files.findById(ownerId, fileId);
+      const latestGroup = repositories.recycle.findGroupByRoot(ownerId, "file", fileId);
+      if (
+        !latest ||
+        latest.state !== "purging" ||
+        !latestGroup ||
+        latestGroup.id !== group.id ||
+        !repositories.recycle.markFilePurged(ownerId, fileId, group.id, latest.revision, now) ||
+        !repositories.recycle.deleteGroup(ownerId, group.id)
+      ) {
+        throw new DriveError("invalid_state");
       }
-      throw new DriveError("invalid_state");
-    }
+    });
   }
 
   private authorizePendingFile(file: StoredFile): Promise<BrowserUploadAuthorization> {

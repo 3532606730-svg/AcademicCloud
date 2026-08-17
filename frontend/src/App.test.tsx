@@ -446,6 +446,7 @@ describe("App", () => {
     expect(within(folderMenu).getByRole("menuitem", { name: "Move" })).toBeInTheDocument();
     await user.click(within(folderMenu).getByRole("menuitem", { name: "Move to trash" }));
     await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith("folder-1"));
+    expect(window.confirm).toHaveBeenCalledWith("Move “Sources” and its active contents to the recycle bin?");
   });
 
   it("closes the row menu on Escape and restores focus to the trigger", async () => {

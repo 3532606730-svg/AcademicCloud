@@ -109,25 +109,27 @@ Full canonical tests/typecheck/build/acceptance/diff/secret checks must pass; de
 - Favorites integration tests
 
 ## Current State
-Ready, not started. Production UX01 and current development baseline can recycle empty folders but intentionally do not safely support recursive non-empty-folder recycle/restore.
+Complete in repository development. Migration 006 and the existing folder lifecycle path now support transactional recursive recycle/restore while production remains unchanged on UX01.
 
 ## Completed
-None.
+- Inspected the existing repository interfaces, `BEGIN IMMEDIATE` transaction boundary, file revision CAS, Recycle/Favorites behavior, HTTP routes, and frontend contract before implementation.
+- Added migration `006_recycle_groups.sql` without editing migrations 001–005; fresh and prior-schema upgrades, replay/checksum, integrity, backup/restore, and production-startup fail-closed behavior pass.
+- Added explicit same-owner recycle groups, root identity, member counts, lifecycle provenance guards, legacy one-resource-per-group backfill, and root-only Recycle queries.
+- Implemented active-subtree collection, deep pending-upload rejection, one-transaction recursive recycle, exact-group/topological restore, parent/name-conflict gates, file CAS, and transactional group cleanup.
+- Preserved standalone file recycle/restore/purge recovery and blocked recursive permanent purge of grouped descendants.
+- Verified the complete 24-item behavioral matrix, including deep trees, independently pre-deleted resources/Favorites, zero mutation on rejects/faults, account isolation, competing calls, unchanged IDs/object keys/hierarchy, and zero storage deletion.
+- Updated the bilingual folder confirmation to state that active contents move with the folder; existing APIs remain unchanged.
+- Passed backend 135/135, frontend 121/121, workspace typecheck/build, acceptance tools 25/25, compiled acceptance, migration checks, diff/secret checks, and dependency delta 0.
+- Independent read-only adversarial review PASS with no blocker or medium finding.
 
 ## Remaining
-- inspect current lifecycle/repository/CAS conventions;
-- select explicit recycle provenance model;
-- add migration and transaction-safe subtree operations;
-- integrate service/API/frontend;
-- implement mandatory matrix and failure injection;
-- adversarial review/repair;
-- full gates, state reconciliation, checkpoint.
+None.
 
 ## Blockers
-None known. Stop only if actual repository constraints make the central invariant impossible without a broader product-model change, or if an irreversible/production migration would be required.
+None for task completion. Production migration/deployment remains separately Owner-gated and was not performed.
 
 ## Last Verification
-2026-08-17 planning reconciliation: FOLDER01 is approved after PERF01. Current committed migration count is 5; current production/UX01 limitation on non-empty-folder recycle is explicitly recorded as an existing product limitation.
+2026-08-17 final verification: backend 135/135 and frontend 121/121 PASS; typecheck/build PASS; acceptance tools 25/25 PASS; compiled acceptance PASS with migration count 6 and restart/maintenance/backup/isolated-restore checks; diff and targeted secret scans clean; package/lockfile delta zero. Independent Reviewer PASS, no blocker or medium finding.
 
 ## Next Action
-After PERF01 is green and checkpointed, move this task to `tasks/doing/`, recover current drive lifecycle code/tests, and design the recycle provenance/transaction model before implementation.
+Stop L1-FOLDER01 after its coherent green Git checkpoint. Re-recover repository state and activate `L2-ACCOUNTS01`; do not implement `L2-ANNOUNCE01` before Accounts I is green.

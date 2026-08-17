@@ -11,7 +11,7 @@ import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adap
 import { INITIAL_MIGRATIONS_DIRECTORY } from "../persistence/helpers.js";
 
 // A pinned v4-only directory plus the REAL repository migrations directory
-// (which includes migration 005): deterministic pending-migration scenarios
+// (which includes migrations 005 and 006): deterministic pending-migration scenarios
 // that stay valid as later migrations land in the repo.
 function migrationFixtures(context: TestContext) {
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-migstart-"));
@@ -73,7 +73,7 @@ test("development startup initializes and migrates a disposable database", async
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 5);
+  assert.equal(readSchemaVersion(databasePath), 6);
 });
 
 test("production startup with a current schema succeeds without mutating it", async (context) => {
@@ -90,7 +90,7 @@ test("production startup with a current schema succeeds without mutating it", as
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 5);
+  assert.equal(readSchemaVersion(databasePath), 6);
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -124,8 +124,8 @@ test("the explicit migration runner still applies pending migrations normally", 
   const upgraded = openSqliteDatabase(databasePath);
   const result = runMigrations(upgraded, v5);
   upgraded.close();
-  assert.deepEqual(result.appliedVersions, [5]);
-  assert.equal(result.currentVersion, 5);
+  assert.deepEqual(result.appliedVersions, [5, 6]);
+  assert.equal(result.currentVersion, 6);
   assert.equal(hasFavoritesTable(databasePath), true);
   rmSync(directory, { recursive: true, force: true });
 });

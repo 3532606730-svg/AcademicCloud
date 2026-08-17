@@ -34,10 +34,10 @@ Delivered:
 - FAV01 per-user Favorites implementation and independent review
 - UX03 dedicated mobile + zero-descriptive-copy implementation
 
-### Open closure work
-1. **L1-UX03 repair** — independent review findings only: exact mobile nav order, Preview Download, remaining mobile touch-target hardening.
-2. **L1-PERF01** — measure checksum/API/transfer stages; make only evidence-supported low-risk optimizations. OSS Multipart Upload and Transfer Acceleration are not required for closure.
-3. **L1-FOLDER01** — transactional recursive non-empty-folder recycle/restore with explicit recycle provenance. Independently pre-deleted descendants must never resurrect.
+### Closure checkpoint
+1. **L1-UX03 repair — complete.** Exact mobile nav order, Preview Download, and remaining mobile touch-target hardening passed independent review.
+2. **L1-PERF01 — complete.** Evidence did not justify a client optimization; OSS Multipart Upload and Transfer Acceleration were not required for closure.
+3. **L1-FOLDER01 — complete.** Transactional recursive non-empty-folder recycle/restore uses explicit recycle provenance; independently pre-deleted descendants never join or revive with a later parent group.
 
 **Exit condition:** Core Drive closure tasks are green, adversarially reviewed, and independently checkpointed. Production deployment is a separate gate.
 
@@ -57,6 +57,14 @@ Delivered:
 - disable/enable Member
 - revoke all Member sessions on disable
 - strict cross-account drive/Favorites isolation
+
+### Approved Epic after Accounts — L2-ANNOUNCE01
+- Owner administration authority creates, edits, publishes, and unpublishes global announcements
+- every authenticated active account reads currently effective announcements on the homepage
+- fields cover title, plain-text body, `info | warning | critical`, nullable link, active/published/expiry state, creator, and timestamps
+- expired announcements disappear by server-authoritative time filtering
+- no new `admin` role, email/push, read receipts, acknowledgement workflow, notification center, or rich-text editor
+- database/API-backed; never hard-coded frontend configuration
 
 ### Conditional follow-up — L2-PASSWORD01
 - authenticated current-password verification
@@ -157,6 +165,8 @@ L1-PERF01
 L1-FOLDER01
         ↓
 L2-ACCOUNTS01
+        ↓
+L2-ANNOUNCE01
         ↓
 L2-PASSWORD01       (conditional)
         ↓
