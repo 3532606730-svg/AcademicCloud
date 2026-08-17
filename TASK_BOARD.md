@@ -4,39 +4,52 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. Feature development remains stopped and no task is active.**
+**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. The Owner has now opened a new repository-development queue for first-use polish followed immediately by minimum Shared Library and contribution review.**
 
 Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Repository HEAD remains newer and does not automatically select another production target.
 
 ## Approved Continuous Objective
 
-The previous sequence is complete:
+The new Owner-approved execution sequence is:
 
-1. `L1-UX03` review repairs — complete;
-2. `L1-PERF01` — complete;
-3. `L1-FOLDER01` — complete;
-4. `L2-ACCOUNTS01` — complete;
-5. `L2-ANNOUNCE01` — complete;
-6. `L2-PASSWORD01` — complete;
-7. `OPS01A` — complete.
+1. `L1-UX04` — duplicate-name UX + persistent desktop sidebar;
+2. `L2-ACCOUNTARCHIVE01` — non-destructive Member archival;
+3. `L2-ADMINPOLISH01` — announcement deletion + invitation-history cleanup;
+4. `RF-LIBRARY01` — minimum real Shared Library foundation;
+5. `RF-LIBRARY02` — Member contribution review;
+6. STOP.
 
-The Owner interrupted the repository/local continuous objective after RF-DOMAIN01. `RF-PLAN01`, `RF-AUDIT01`, `RF-OWNERSHIP01`, `RF-BULK01`, and `RF-DOMAIN01` are complete. RF-META01 and every later Pre-OCR card remain Ready/backlog and may not be selected until new Owner direction.
+The three polish cards may be completed in the most efficient order. `RF-LIBRARY01` must be green before `RF-LIBRARY02`. After `RF-LIBRARY02`, stop before any production rollout or unrelated Pre-OCR work.
 
-External predeployment review selected the earlier exact green OPS01A checkpoint `34a2eada…`; the bounded PROD-04A window deployed and accepted that exact target. Repository HEAD remains deliberately newer than production HEAD.
+This is an explicit Owner reprioritization based on first-use need. `RF-META01` and every unrelated later Pre-OCR card remain parked. `RF-LIBRARY03` and `RF-LIBRARY04` also remain parked; catalog, Library Tags, provenance governance, and duplicate/version grouping are not part of this accelerated slice.
+
+Verification is intentionally proportionate: focused changed-component tests, one typecheck/build pass as applicable, and one focused independent review for the Shared Library + review boundary are sufficient when green. Do not repeatedly run historical full acceptance, production artifact builds, restore drills, backup campaigns, benchmarks, or unrelated audits unless a concrete failure or material risk justifies them.
 
 Every product Epic remains independently reviewable/checkpointed. Large workstreams must be split in planning rather than implemented as giant diffs.
 
-The completed PROD-04A window does not authorize any further production access/mutation, deployment, migration, main merge, real credentials, paid infrastructure, destructive real-data operations, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary.
+This repository objective does not authorize production access/mutation, deployment, migration, main merge, real credentials, paid infrastructure, destructive real-data operations, `PROD-03C2`, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary.
 
 ## Doing
 
-None.
+None yet. The queue is Owner-approved and Ready for Codex recovery/selection.
+
+## Ready — Accelerated First-Use Queue
+
+| Order | Task | Task card | Bounded result |
+|---:|---|---|---|
+| 1 | `L1-UX04` | `tasks/ready/L1-UX04.md` | duplicate-name feedback + sticky desktop sidebar |
+| 2 | `L2-ACCOUNTARCHIVE01` | `tasks/ready/L2-ACCOUNTARCHIVE01.md` | disabled→archived Member lifecycle, identity/data retained |
+| 3 | `L2-ADMINPOLISH01` | `tasks/ready/L2-ADMINPOLISH01.md` | announcement delete + collapsed invitation history |
+| 4 | `RF-LIBRARY01` | `tasks/ready/RF-LIBRARY01.md` | real Library domain, membership, permissions, holdings read surface |
+| 5 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Member submit → reviewer approve/reject/withdraw → Library ownership |
+
+The first three cards are small first-use polish and should not trigger broad architecture or production-level verification. The two Library cards are authorization/ownership work and require focused privacy/ownership tests plus one focused independent review, but not repeated unrelated audit campaigns once relevant evidence is green.
 
 ## Ready / Backlog — Parked Pre-OCR Queue
 
-The following independently reviewed queue remains durably specified in `docs/architecture/pre-ocr-execution-plan.md`, but it is parked by the Owner's explicit stop after RF-DOMAIN01. Do not move any card to Doing or consume the queue without new Owner direction. If resumed later, preserve the listed dependency order.
+The remaining independently reviewed queue stays durably specified in `docs/architecture/pre-ocr-execution-plan.md`, but it is parked during the accelerated first-use queue. Do not consume it without new Owner direction.
 
-| Order | Task | Task card | Bounded result |
+| Original order | Task | Task card | Bounded result |
 |---:|---|---|---|
 | 5 | `RF-META01` | `tasks/ready/RF-META01.md` | bounded canonical metadata/templates/minimal authorities |
 | 6 | `RF-PROV01` | `tasks/ready/RF-PROV01.md` | canonical provenance, fingerprint, leak-safe duplicate contract |
@@ -51,8 +64,6 @@ The following independently reviewed queue remains durably specified in `docs/ar
 | 15 | `RF-CITE01` | `tasks/ready/RF-CITE01.md` | private Citation Workspace and page Evidence |
 | 16 | `RF-EVIDENCE01` | `tasks/ready/RF-EVIDENCE01.md` | Evidence Bundles, Research Questions, explicit links |
 | 17 | `RF-EXPORT01` | `tasks/ready/RF-EXPORT01.md` | structured authorized scholarly export contracts |
-| 18 | `RF-LIBRARY01` | `tasks/ready/RF-LIBRARY01.md` | Library domains, membership, permissions |
-| 19 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Trusted Contributor and atomic contribution review/promotion |
 | 20 | `RF-LIBRARY03` | `tasks/ready/RF-LIBRARY03.md` | shared catalog, Library Tags, canonical/original naming |
 | 21 | `RF-LIBRARY04` | `tasks/ready/RF-LIBRARY04.md` | shared provenance confidence and duplicate/version grouping |
 | 22 | `RF-INTEGRITY01` | `tasks/ready/RF-INTEGRITY01.md` | read-only integrity monitor |
@@ -60,7 +71,7 @@ The following independently reviewed queue remains durably specified in `docs/ar
 | 24 | `RF-AUTHMATRIX01` | `tasks/ready/RF-AUTHMATRIX01.md` | complete cross-plane authorization/non-disclosure matrix |
 | 25 | `RF-DERIVED01` | `tasks/ready/RF-DERIVED01.md` | production-disabled OCR/text/index authorization contracts only |
 
-`RF-DERIVED01` is terminal. After it is independently green and checkpointed, STOP before OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, or any production rollout.
+`RF-DERIVED01` remains terminal. The accelerated Library slice does not authorize OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, or production rollout.
 
 ## Separate Owner-Gated Production Track
 
@@ -68,15 +79,15 @@ The following independently reviewed queue remains durably specified in `docs/ar
 
 **Task card:** `tasks/ready/PROD-03C2.md`
 
-**Status:** parked, not executable under the current Pre-OCR continuous objective. It may resume only after an explicit Owner instruction opens a production operations window.
+**Status:** parked and not executable under the repository-development queue. It may resume only after an explicit Owner instruction opens a production operations window.
 
 The remaining bounded decisions are the exact disposable-object permanent-delete confirmation and the reboot/autostart policy. Historical authenticated/live disposable-object acceptance, the accepted UX01 generation, and the accepted PROD-04A multi-user release are already recorded and must not be replayed merely because this card exists.
 
-Any later deployment is a separate Owner-gated production rollout, not silently part of RF-PLAN01 or the Pre-OCR queue. PROD-04A did not consume or authorize PROD-03C2's permanent-delete or reboot/autostart decisions.
+Any later deployment is a separate Owner-gated production rollout. PROD-04A did not consume or authorize PROD-03C2's permanent-delete or reboot/autostart decisions.
 
 ## Future / Non-Blocking Backlog
 
-These are preserved but must not block Pre-OCR completion:
+These are preserved but must not block the current objective:
 - Private Vault / client-side encryption;
 - External Deposit Link;
 - polished browser extension after the intake API;
@@ -93,7 +104,7 @@ One-Time External Sharing remains a separately scoped capability:
 - revoke/expiry;
 - no public bucket exposure.
 
-It is not silently pulled into the Pre-OCR program merely because other sharing work is authorized.
+It is not silently pulled into the accelerated Shared Library program.
 
 ## Completed
 
@@ -113,7 +124,7 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 
 **Task card:** `tasks/done/RF-OWNERSHIP01.md`
 
-**Status:** complete; independent read-only adversarial review PASS. ADR-016 and migration 010 add one concrete account/future-Library ownership-domain parent, exact account-domain backfill, separate creator/uploader/initiator provenance, atomic Favorite-preserving table rebuilds, domain-scoped hierarchy/recycle constraints, and server-only account-domain resolution with no API behavior change. Backend `201/201`, frontend `142/142`, build/typecheck, compiled migration/restart/backup/restore acceptance, dependency audits, and acceptance tools are green.
+**Status:** complete; independent adversarial review PASS. ADR-016 and migration 010 add one concrete account/future-Library ownership-domain parent, exact account-domain backfill, separate creator/uploader/initiator provenance, atomic Favorite-preserving table rebuilds, domain-scoped hierarchy/recycle constraints, and server-only account-domain resolution with no API behavior change. Backend `201/201`, frontend `142/142`, build/typecheck, compiled migration/restart/backup/restore acceptance, dependency audits, and acceptance tools are green.
 
 ### RF-BULK01 — Safe Bulk Drive Operations
 
@@ -125,13 +136,13 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 
 **Task card:** `tasks/done/RF-AUDIT01.md`
 
-**Status:** complete; independent read-only adversarial review PASS. Migration 009 provides immutable fixed-column events and append-only registries, transaction-coupled successful governance mutations, target-free denied/busy/failed attempts, two-phase permanent-purge evidence, newest-20,000 retention, and Owner-only bounded keyset review without private research surveillance. Backend `196/196`, frontend `142/142`, build/typecheck, compiled migration/restart/backup/restore acceptance, dependency audits, and acceptance tools are green.
+**Status:** complete; independent adversarial review PASS. Migration 009 provides immutable fixed-column events and append-only registries, transaction-coupled successful governance mutations, target-free denied/busy/failed attempts, two-phase permanent-purge evidence, newest-20,000 retention, and Owner-only bounded keyset review without private research surveillance. Backend `196/196`, frontend `142/142`, build/typecheck, compiled migration/restart/backup/restore acceptance, dependency audits, and acceptance tools are green.
 
 ### RF-PLAN01 — Pre-OCR Execution Decomposition
 
 **Task card:** `tasks/done/RF-PLAN01.md`
 
-**Status:** complete; independent read-only planning review PASS. The complete approved Pre-OCR inventory is assigned exactly once across 25 bounded Ready cards with explicit dependencies, privacy/ownership planes, append-only migration and rollback/concurrency rules, frontend/backend/persistence acceptance, adversarial review focus, production gates, and terminal STOP before OCR execution.
+**Status:** complete; independent read-only planning review PASS. The complete approved Pre-OCR inventory is assigned exactly once across 25 bounded Ready cards with explicit dependencies, privacy/ownership planes, append-only migration and rollback/concurrency rules, frontend/backend/persistence acceptance, adversarial review focus, production gates, and terminal STOP before OCR execution. The Owner's later first-use priority override changes execution order for the bounded Library slice but does not invalidate the preserved full queue.
 
 ### OPS01A — Operations Observability & Recovery Preparation
 
@@ -161,16 +172,16 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 - L1-UX02 implementation foundation;
 - L1-BUGAUDIT01 + independent review PASS;
 - L1-FAV01 + independent review PASS;
-- L1-UX03 repairs + independent re-review PASS (`OWNER_VISUAL_GATE=PENDING` for future deployment);
+- L1-UX03 repairs + independent re-review PASS;
 - L1-PERF01 evidence closure;
 - L1-FOLDER01 migration 006 recursive recycle/restore + independent review PASS;
 - L2-ACCOUNTS01 migration 007 Owner/Member/invitations/isolation + independent review PASS;
 - L2-ANNOUNCE01 migration 008 + independent review PASS;
 - L2-PASSWORD01 + independent review PASS;
-- OPS01A repository/local operations preparation + independent final review and exact-head Linux artifact CI PASS.
-- RF-AUDIT01 migration 009 governance/security audit + independent adversarial review PASS.
-- RF-OWNERSHIP01 migration 010 explicit resource ownership domains + independent adversarial review PASS.
-- RF-BULK01 bounded atomic Drive/Favorites operations + independent read-only review PASS.
+- OPS01A repository/local operations preparation + independent final review and exact-head Linux artifact CI PASS;
+- RF-AUDIT01 migration 009 governance/security audit + independent adversarial review PASS;
+- RF-OWNERSHIP01 migration 010 explicit resource ownership domains + independent adversarial review PASS;
+- RF-BULK01 bounded atomic Drive/Favorites operations + independent read-only review PASS;
 - RF-DOMAIN01 migration 011 scholarly Record/Artifact/Version identity + independent read-only review PASS.
 
 Historical completed task cards are archived under `tasks/done/`; they no longer remain in `tasks/doing/`.
@@ -178,13 +189,15 @@ Historical completed task cards are archived under `tasks/done/`; they no longer
 ## Stop / Escalation Boundaries
 
 Autonomous progression stops for:
+- completion of `RF-LIBRARY02` under the current queue;
 - real cost or infrastructure purchase/upgrade;
 - production SSH/credentials/security-policy changes;
 - destructive or irreversible real-data risk;
 - production DB/OSS/DNS/TLS/Nginx/systemd mutation;
 - production deployment or main merge;
-- OCR/text-extraction execution, embeddings, retrieval, or RAG under the current program;
+- `PROD-03C2` permanent-delete testing;
+- OCR/text-extraction execution, embeddings, retrieval, or RAG;
 - severe unexplained corruption/security anomaly;
 - a new product boundary not represented by the approved roadmap/queue.
 
-Ordinary reversible repository implementation, local migrations inside an approved data model, tests, bounded refactors, and task/project-state reconciliation should be resolved autonomously.
+Ordinary reversible repository implementation, local append-only migrations inside an approved data model, focused tests, bounded refactors, and task/project-state reconciliation should be resolved autonomously. Once relevant verification is green and the required focused review has no material finding, record/commit rather than continuing to search for hypothetical issues.
