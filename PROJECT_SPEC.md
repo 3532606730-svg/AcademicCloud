@@ -319,8 +319,8 @@ The Owner may authorize a continuous objective across multiple Epics. That autho
 
 Repository/local work only:
 
-1. `RF-PLAN01` planning decomposition is complete and independently reviewed;
-2. autonomously consume its recorded 25-card queue one independently verified/checkpointed Epic at a time, beginning with `RF-AUDIT01`;
+1. `RF-PLAN01` planning decomposition and `RF-AUDIT01` governance audit are complete and independently reviewed;
+2. autonomously consume the remaining recorded Pre-OCR queue one independently verified/checkpointed Epic at a time, beginning with `RF-OWNERSHIP01`;
 3. stop after the final Pre-OCR contracts checkpoint and before OCR/text-extraction execution.
 
 Not authorized by this objective:

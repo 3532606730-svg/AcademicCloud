@@ -352,6 +352,20 @@ test("owner-scoped routes uniformly hide another account's resources from a Memb
   assert.equal(persistence.repositories.files.findById("owner-1", active.id)?.state, "active");
   assert.equal(persistence.repositories.files.findById("owner-1", nested.id)?.folderId, nestedFolder.id);
   assert.equal(persistence.repositories.files.findById("owner-1", deleted.id)?.state, "deleted");
+  assert.deepEqual(
+    persistence.repositories.audit.listBefore(null, 50)
+      .filter((event) => event.actorAccountId === "member-2" && event.outcome === "denied" && event.action.startsWith("drive."))
+      .map((event) => ({ action: event.action, target: event.targetId, reason: event.reason }))
+      .sort((left, right) => left.action.localeCompare(right.action)),
+    [
+      { action: "drive.file_purge_request", target: null, reason: "not_found" },
+      { action: "drive.file_recycle", target: null, reason: "not_found" },
+      { action: "drive.file_restore", target: null, reason: "not_found" },
+      { action: "drive.folder_recycle", target: null, reason: "not_found" },
+      { action: "drive.folder_restore", target: null, reason: "not_found" },
+      { action: "drive.upload_activate", target: null, reason: "not_found" },
+    ],
+  );
 });
 
 test("drive authorization and destructive outcomes emit stable account-scoped audit events", async (context) => {
@@ -379,6 +393,49 @@ test("drive authorization and destructive outcomes emit stable account-scoped au
   assert.match(logs, /owner-1/);
   assert.match(logs, /member-2/);
   assert.doesNotMatch(logs, new RegExp(folder.id));
+});
+
+test("permanent-delete provider failure records a target-free failed completion attempt", async (context) => {
+  const { app, persistence, storage, driveService, login } = await fixture(context);
+  const ownerCookie = await login("owner-1");
+  const upload = await driveService.createUpload("owner-1", {
+    folderId: null,
+    displayName: "disposable.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 7,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  storage.putObject({
+    objectKey: upload.file.objectKey,
+    sizeBytes: 7,
+    etag: null,
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+  await driveService.completeUpload("owner-1", upload.file.id);
+  driveService.deleteFile("owner-1", upload.file.id);
+  Object.defineProperty(storage, "deleteObject", {
+    value: async () => { throw new Error("provider failure sentinel"); },
+  });
+
+  const response = await app.inject({
+    method: "DELETE",
+    url: `/api/drive/files/${upload.file.id}/permanent`,
+    headers: { cookie: ownerCookie, origin: ORIGIN },
+  });
+  assert.equal(response.statusCode, 503);
+  assert.equal(persistence.repositories.files.findById("owner-1", upload.file.id)?.state, "purging");
+  assert.deepEqual(
+    persistence.repositories.audit.listBefore(null, 20)
+      .filter((event) => event.action === "drive.file_purge_request" || event.action === "drive.file_purge_complete")
+      .map((event) => ({ action: event.action, outcome: event.outcome, target: event.targetId, reason: event.reason })),
+    [
+      { action: "drive.file_purge_complete", outcome: "failed", target: null, reason: "storage_unavailable" },
+      { action: "drive.file_purge_request", outcome: "succeeded", target: upload.file.id, reason: null },
+    ],
+  );
 });
 
 test("inline preview without a browser endpoint returns 503 preview_unavailable", async (context) => {

@@ -339,7 +339,7 @@ test("password change failures preserve the account and use stable errors", asyn
 });
 
 test("password change rate limiting is independent and retryable", async (context) => {
-  const { app } = await createFixture(context, { passwordChangeRateLimitMax: 1 });
+  const { app, database } = await createFixture(context, { passwordChangeRateLimitMax: 1 });
   const loggedIn = await app.inject({
     method: "POST",
     url: "/api/auth/login",
@@ -358,6 +358,15 @@ test("password change rate limiting is independent and retryable", async (contex
   const limited = await request();
   assert.equal(limited.statusCode, 429);
   assert.deepEqual(limited.json(), { error: "rate_limit_exceeded" });
+  assert.deepEqual(
+    database.prepare<[], { outcome: string; reason: string }>(
+      "SELECT outcome, reason FROM governance_audit_events WHERE action = 'auth.password_change' ORDER BY id",
+    ).all(),
+    [
+      { outcome: "denied", reason: "invalid_current_password" },
+      { outcome: "busy", reason: "rate_limit_exceeded" },
+    ],
+  );
 });
 
 test("password change KDF overload returns a retryable password-specific error without mutation", async (context) => {

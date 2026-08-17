@@ -75,11 +75,12 @@ function writeAudit(
   );
 }
 
-function requireOwnerRequest(request: FastifyRequest, reply: FastifyReply): boolean {
+function requireOwnerRequest(request: FastifyRequest, reply: FastifyReply, onDenied?: () => void): boolean {
   try {
     requireOwner(request.authAccount);
     return true;
   } catch {
+    onDenied?.();
     writeAudit(request, "announcements.owner_guard", "denied", { reason: "forbidden" });
     void reply.code(403).send({ error: "forbidden" });
     return false;
@@ -127,7 +128,9 @@ export async function registerAnnouncementsHttp(app: FastifyInstance, service: A
     "/api/announcements",
     { preHandler: app.authenticate, schema: { body: announcementBodySchema } },
     async (request, reply) => {
-      if (!requireOwnerRequest(request, reply)) return;
+      if (!requireOwnerRequest(request, reply, () => service.recordAuditAttempt(
+        request.authAccount!, "announcements.create", new AuthorizationDeniedError(),
+      ))) return;
       try {
         const announcement = service.create(request.authAccount!, parseBody(request.body));
         writeAudit(request, "announcements.create", "succeeded", {
@@ -136,6 +139,7 @@ export async function registerAnnouncementsHttp(app: FastifyInstance, service: A
         });
         return reply.code(201).send({ announcement: announcementDto(announcement) });
       } catch (error: unknown) {
+        service.recordAuditAttempt(request.authAccount!, "announcements.create", error);
         return mapError(error, reply);
       }
     },
@@ -145,7 +149,9 @@ export async function registerAnnouncementsHttp(app: FastifyInstance, service: A
     "/api/announcements/:id",
     { preHandler: app.authenticate, schema: { params: idParametersSchema, body: announcementBodySchema } },
     async (request, reply) => {
-      if (!requireOwnerRequest(request, reply)) return;
+      if (!requireOwnerRequest(request, reply, () => service.recordAuditAttempt(
+        request.authAccount!, "announcements.edit", new AuthorizationDeniedError(),
+      ))) return;
       try {
         const announcement = service.edit(request.authAccount!, request.params.id, parseBody(request.body));
         writeAudit(request, "announcements.edit", "succeeded", {
@@ -154,6 +160,7 @@ export async function registerAnnouncementsHttp(app: FastifyInstance, service: A
         });
         return { announcement: announcementDto(announcement) };
       } catch (error: unknown) {
+        service.recordAuditAttempt(request.authAccount!, "announcements.edit", error);
         return mapError(error, reply);
       }
     },
@@ -164,7 +171,9 @@ export async function registerAnnouncementsHttp(app: FastifyInstance, service: A
       `/api/announcements/:id/${action}`,
       { preHandler: app.authenticate, schema: { params: idParametersSchema } },
       async (request, reply) => {
-        if (!requireOwnerRequest(request, reply)) return;
+        if (!requireOwnerRequest(request, reply, () => service.recordAuditAttempt(
+          request.authAccount!, `announcements.${action}`, new AuthorizationDeniedError(),
+        ))) return;
         try {
           const announcement = service[action](request.authAccount!, request.params.id);
           writeAudit(request, `announcements.${action}`, "succeeded", {
@@ -173,6 +182,7 @@ export async function registerAnnouncementsHttp(app: FastifyInstance, service: A
           });
           return { announcement: announcementDto(announcement) };
         } catch (error: unknown) {
+          service.recordAuditAttempt(request.authAccount!, `announcements.${action}`, error);
           return mapError(error, reply);
         }
       },

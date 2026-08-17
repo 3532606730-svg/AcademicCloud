@@ -109,6 +109,14 @@ describe("mobile presentation stylesheet", () => {
     expect(ruleHas(block, ".password-change-actions .button {", /min-height:\s*2\.75rem/)).toBe(true);
   });
 
+  it("presents governance audit as a fullscreen mobile dialog with bounded horizontal rows", () => {
+    const block = mobileBlock();
+    expect(ruleHas(block, ".audit-modal {", /height:\s*100dvh/)).toBe(true);
+    expect(ruleHas(block, ".audit-modal {", /border-radius:\s*0/)).toBe(true);
+    expect(ruleHas(block, ".audit-table {", /min-width:\s*46rem/)).toBe(true);
+    expect(ruleHas(block, ".audit-load-older {", /min-height:\s*2\.75rem/)).toBe(true);
+  });
+
   it("lays the preview Open/Download actions out side by side at the 44px floor", () => {
     const block = mobileBlock();
     expect(ruleHas(block, ".preview-open-button, .preview-download-button {", /flex:\s*1;\s*min-height:\s*2\.75rem/)).toBe(true);

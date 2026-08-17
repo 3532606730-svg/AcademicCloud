@@ -161,6 +161,12 @@ test("an old-password login pending across password change cannot publish a sess
 
   await assert.rejects(pendingLogin, InvalidCredentialsError);
   assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM sessions WHERE revoked_at IS NULL").get()!.count, 0);
+  assert.deepEqual(
+    database.prepare<[], { outcome: string; actor_account_id: string | null; target_id: string | null; reason: string }>(
+      "SELECT outcome, actor_account_id, target_id, reason FROM governance_audit_events WHERE action = 'auth.login' ORDER BY id",
+    ).all(),
+    [{ outcome: "denied", actor_account_id: null, target_id: null, reason: "invalid_credentials" }],
+  );
 });
 
 test("session-revocation failure rolls password, revision, and partial revocations back", async (context) => {

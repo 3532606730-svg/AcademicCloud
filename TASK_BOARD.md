@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A and RF-PLAN01 is complete. The Owner-authorized Pre-OCR Research Foundation queue is executable; `RF-AUDIT01` is next.**
+**The repository-local objective through OPS01A, RF-PLAN01, and RF-AUDIT01 is complete. The Owner-authorized Pre-OCR Research Foundation queue continues with `RF-OWNERSHIP01` next.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
@@ -32,7 +32,7 @@ This objective does not authorize production access/mutation, deployment, produc
 
 ## Doing
 
-None. `RF-AUDIT01` becomes Doing when its implementation begins after the RF-PLAN01 checkpoint.
+None. `RF-OWNERSHIP01` becomes Doing after the independently green RF-AUDIT01 checkpoint.
 
 ## Ready — Current Repository/Local Objective
 
@@ -40,7 +40,6 @@ The following independently reviewed queue is fully specified in `docs/architect
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 1 | `RF-AUDIT01` | `tasks/ready/RF-AUDIT01.md` | governance/security audit without research surveillance |
 | 2 | `RF-OWNERSHIP01` | `tasks/ready/RF-OWNERSHIP01.md` | account ownership domains and future Library-safe resource ownership |
 | 3 | `RF-BULK01` | `tasks/ready/RF-BULK01.md` | safe existing-Drive bulk operations |
 | 4 | `RF-DOMAIN01` | `tasks/ready/RF-DOMAIN01.md` | Scholarly Record/Artifact/Version identity and attachment |
@@ -103,6 +102,12 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 
 ## Completed
 
+### RF-AUDIT01 — Governance Security Audit Foundation
+
+**Task card:** `tasks/done/RF-AUDIT01.md`
+
+**Status:** complete; independent read-only adversarial review PASS. Migration 009 provides immutable fixed-column events and append-only registries, transaction-coupled successful governance mutations, target-free denied/busy/failed attempts, two-phase permanent-purge evidence, newest-20,000 retention, and Owner-only bounded keyset review without private research surveillance. Backend `196/196`, frontend `142/142`, build/typecheck, compiled migration/restart/backup/restore acceptance, dependency audits, and acceptance tools are green.
+
 ### RF-PLAN01 — Pre-OCR Execution Decomposition
 
 **Task card:** `tasks/done/RF-PLAN01.md`
@@ -143,6 +148,7 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 - L2-ANNOUNCE01 migration 008 + independent review PASS;
 - L2-PASSWORD01 + independent review PASS;
 - OPS01A repository/local operations preparation + independent final review and exact-head Linux artifact CI PASS.
+- RF-AUDIT01 migration 009 governance/security audit + independent adversarial review PASS.
 
 Historical completed task cards are archived under `tasks/done/`; they no longer remain in `tasks/doing/`.
 

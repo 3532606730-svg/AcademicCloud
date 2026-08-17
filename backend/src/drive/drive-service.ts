@@ -11,6 +11,8 @@ import type {
 } from "../storage/storage-adapter.js";
 import type { StoredFile } from "./file.js";
 import type { Folder } from "./folder.js";
+import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
+import type { AuditEventKind, AuditOutcome, AuditReasonCode } from "../audit/audit-event.js";
 
 export type DriveErrorCode =
   | "not_found"
@@ -106,6 +108,45 @@ function requireActiveFolder(
   return folder;
 }
 
+type StorageAuditActor = "account" | "system";
+
+function recordDriveAudit(
+  repositories: RepositorySet,
+  eventKind: AuditEventKind,
+  actorKind: StorageAuditActor,
+  ownerId: string,
+  targetId: string,
+  createdAt: Date,
+): void {
+  recordAuditEvent(repositories, {
+    action: eventKind,
+    actorKind,
+    actorAccountId: actorKind === "account" ? ownerId : null,
+    targetId,
+    outcome: "succeeded",
+    reason: null,
+    occurredAt: createdAt,
+  });
+}
+
+function driveAuditReason(error: unknown): AuditReasonCode {
+  if (error instanceof DriveError) {
+    switch (error.code) {
+      case "not_found": return "not_found";
+      case "name_conflict": return "name_conflict";
+      case "invalid_state":
+      case "folder_not_empty": return "invalid_state";
+      case "upload_incomplete": return "upload_incomplete";
+      case "upload_metadata_mismatch": return "upload_metadata_mismatch";
+      case "storage_unavailable": return "storage_unavailable";
+      case "invalid_move": return "invalid_target";
+      default: return "invalid_input";
+    }
+  }
+  if (error instanceof TypeError || error instanceof RangeError) return "invalid_input";
+  return "storage_unavailable";
+}
+
 function collectActiveFolderSubtree(
   repositories: RepositorySet,
   ownerId: string,
@@ -151,6 +192,25 @@ export class DriveService {
     private readonly storage: StorageAdapter,
     private readonly now: () => Date = () => new Date(),
   ) {}
+
+  recordAuditAttempt(
+    ownerId: string,
+    action: Extract<AuditEventKind, "drive.upload_activate" | "drive.folder_recycle" | "drive.folder_restore" | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete">,
+    error: unknown,
+    actorKind: StorageAuditActor = "account",
+  ): boolean {
+    const reason = driveAuditReason(error);
+    const outcome: AuditOutcome = reason === "storage_unavailable" ? "failed" : "denied";
+    return tryRecordAuditAttempt(this.persistence, {
+      action,
+      actorKind,
+      actorAccountId: actorKind === "account" ? ownerId : null,
+      targetId: null,
+      outcome,
+      reason,
+      occurredAt: this.now(),
+    });
+  }
 
   createFolder(ownerId: string, nameValue: string, parentId: string | null): Folder {
     const name = normalizeName(nameValue);
@@ -249,6 +309,7 @@ export class DriveService {
           throw new DriveError("invalid_state");
         }
       }
+      recordDriveAudit(repositories, "drive.folder_recycle", "account", ownerId, folder.id, now);
     });
   }
 
@@ -312,6 +373,7 @@ export class DriveService {
         if (!repositories.recycle.deleteGroup(ownerId, group.id)) {
           throw new DriveError("invalid_state");
         }
+        recordDriveAudit(repositories, "drive.folder_restore", "account", ownerId, root.id, now);
         return repositories.folders.findById(ownerId, root.id)!;
       });
     } catch (error: unknown) {
@@ -407,7 +469,11 @@ export class DriveService {
     return this.persistence.repositories.files.listByFolder(ownerId, folderId, "pending_upload");
   }
 
-  async completeUpload(ownerId: string, fileId: string): Promise<StoredFile> {
+  async completeUpload(
+    ownerId: string,
+    fileId: string,
+    auditActor: StorageAuditActor = "account",
+  ): Promise<StoredFile> {
     const file = this.persistence.repositories.files.findById(ownerId, fileId);
 
     if (!file) {
@@ -440,17 +506,22 @@ export class DriveService {
       throw new DriveError("upload_metadata_mismatch");
     }
 
-    const activated = this.persistence.repositories.files.update(
-      { ...file, state: "active", activatedAt: this.now(), updatedAt: this.now() },
-      "pending_upload",
-      file.revision,
-    );
+    return this.persistence.runInTransaction((repositories) => {
+      const current = repositories.files.findById(ownerId, fileId);
+      if (!current || current.state !== "pending_upload" || current.revision !== file.revision) {
+        throw new DriveError("invalid_state");
+      }
+      const now = this.now();
+      const activated = repositories.files.update(
+        { ...current, state: "active", activatedAt: now, updatedAt: now },
+        "pending_upload",
+        current.revision,
+      );
 
-    if (!activated) {
-      throw new DriveError("invalid_state");
-    }
-
-    return activated;
+      if (!activated) throw new DriveError("invalid_state");
+      recordDriveAudit(repositories, "drive.upload_activate", auditActor, ownerId, fileId, now);
+      return activated;
+    });
   }
 
   async createDownload(
@@ -553,6 +624,7 @@ export class DriveService {
       if (!repositories.recycle.recycleFile(ownerId, file.id, groupId, file.revision, now)) {
         throw new DriveError("invalid_state");
       }
+      recordDriveAudit(repositories, "drive.file_recycle", "account", ownerId, file.id, now);
     });
   }
 
@@ -597,12 +669,14 @@ export class DriveService {
           throw new DriveError("invalid_state");
         }
         requireActiveFolder(repositories, ownerId, current.folderId);
-        if (!repositories.recycle.restoreFile(ownerId, current.id, group.id, current.revision, this.now())) {
+        const now = this.now();
+        if (!repositories.recycle.restoreFile(ownerId, current.id, group.id, current.revision, now)) {
           throw new DriveError("invalid_state");
         }
         if (!repositories.recycle.deleteGroup(ownerId, group.id)) {
           throw new DriveError("invalid_state");
         }
+        recordDriveAudit(repositories, "drive.file_restore", "account", ownerId, current.id, now);
         return repositories.files.findById(ownerId, current.id)!;
       });
     } catch (error: unknown) {
@@ -618,7 +692,11 @@ export class DriveService {
     };
   }
 
-  async permanentlyDeleteFile(ownerId: string, fileId: string): Promise<void> {
+  async permanentlyDeleteFile(
+    ownerId: string,
+    fileId: string,
+    auditActor: StorageAuditActor = "account",
+  ): Promise<void> {
     const operationKey = `${ownerId}\0${fileId}`;
     const currentOperation = this.purgeOperations.get(operationKey);
 
@@ -626,7 +704,7 @@ export class DriveService {
       return currentOperation;
     }
 
-    const operation = this.performPermanentDelete(ownerId, fileId).finally(() => {
+    const operation = this.performPermanentDelete(ownerId, fileId, auditActor).finally(() => {
       if (this.purgeOperations.get(operationKey) === operation) {
         this.purgeOperations.delete(operationKey);
       }
@@ -636,7 +714,11 @@ export class DriveService {
     return operation;
   }
 
-  private async performPermanentDelete(ownerId: string, fileId: string): Promise<void> {
+  private async performPermanentDelete(
+    ownerId: string,
+    fileId: string,
+    auditActor: StorageAuditActor,
+  ): Promise<void> {
     const current = this.persistence.repositories.files.findById(ownerId, fileId);
     const group = this.persistence.repositories.recycle.findGroupByRoot(ownerId, "file", fileId);
 
@@ -648,11 +730,28 @@ export class DriveService {
 
     const purging = current.state === "purging"
       ? current
-      : this.persistence.repositories.files.update(
-          { ...current, state: "purging", updatedAt: this.now() },
-          "deleted",
-          current.revision,
-        );
+      : this.persistence.runInTransaction((repositories) => {
+          const latest = repositories.files.findById(ownerId, fileId);
+          if (!latest || latest.state !== "deleted" || latest.revision !== current.revision) {
+            throw new DriveError("invalid_state");
+          }
+          const now = this.now();
+          const updated = repositories.files.update(
+            { ...latest, state: "purging", updatedAt: now },
+            "deleted",
+            latest.revision,
+          );
+          if (!updated) throw new DriveError("invalid_state");
+          recordDriveAudit(
+            repositories,
+            "drive.file_purge_request",
+            auditActor,
+            ownerId,
+            fileId,
+            now,
+          );
+          return updated;
+        });
 
     if (!purging) {
       throw new DriveError("invalid_state");
@@ -692,6 +791,14 @@ export class DriveService {
       ) {
         throw new DriveError("invalid_state");
       }
+      recordDriveAudit(
+        repositories,
+        "drive.file_purge_complete",
+        auditActor,
+        ownerId,
+        fileId,
+        now,
+      );
     });
   }
 

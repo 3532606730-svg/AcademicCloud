@@ -65,6 +65,7 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     updateAnnouncement: vi.fn(),
     publishAnnouncement: vi.fn(),
     unpublishAnnouncement: vi.fn(),
+    listAuditEvents: vi.fn().mockResolvedValue({ events: [], nextBeforeId: null, retentionPolicy: "latest_20000_events" as const }),
     listEntries: vi.fn().mockResolvedValue(EMPTY_ENTRIES),
     listPending: vi.fn().mockResolvedValue([]),
     listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [] }),
@@ -1888,6 +1889,82 @@ describe("mobile presentation structure", () => {
     expect(job.querySelector("progress")).not.toBeNull();
     expect(job.querySelector(".upload-percent")).not.toBeNull();
     expect(within(job).getByRole("button", { name: "Cancel a.pdf upload" })).toBeInTheDocument();
+  });
+});
+
+describe("governance audit presentation", () => {
+  it("shows loading and then the exclusive empty state", async () => {
+    const user = userEvent.setup();
+    let resolvePage!: (page: { events: []; nextBeforeId: null; retentionPolicy: "latest_20000_events" }) => void;
+    const listAuditEvents = vi.fn(() => new Promise<{ events: []; nextBeforeId: null; retentionPolicy: "latest_20000_events" }>((resolve) => {
+      resolvePage = resolve;
+    }));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAuditEvents });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getAllByRole("button", { name: "Governance audit" })[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "Governance and security audit" });
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Loading audit events");
+    expect(within(dialog).queryByText("No governance events")).not.toBeInTheDocument();
+    resolvePage({ events: [], nextBeforeId: null, retentionPolicy: "latest_20000_events" });
+    expect(await within(dialog).findByText("No governance events")).toBeInTheDocument();
+  });
+
+  it("keeps an initial error exclusive from empty and retries safely", async () => {
+    const user = userEvent.setup();
+    const listAuditEvents = vi.fn()
+      .mockRejectedValueOnce(new ApiError(500, "request_failed"))
+      .mockResolvedValueOnce({ events: [], nextBeforeId: null, retentionPolicy: "latest_20000_events" as const });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAuditEvents });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getAllByRole("button", { name: "Governance audit" })[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "Governance and security audit" });
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Could not load audit events");
+    expect(within(dialog).queryByText("No governance events")).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Retry" }));
+    expect(await within(dialog).findByText("No governance events")).toBeInTheDocument();
+    expect(listAuditEvents).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the audit launch Owner-only and renders fixed, opaque event fields", async () => {
+    const user = userEvent.setup();
+    const listAuditEvents = vi.fn().mockResolvedValue({
+      events: [{
+        id: 7,
+        occurredAt: "2026-08-17T08:00:00.000Z",
+        action: "drive.file_purge_complete" as const,
+        outcome: "succeeded" as const,
+        actorKind: "system" as const,
+        actorAccountId: null,
+        targetKind: "file" as const,
+        targetId: "file-opaque-7",
+        reason: null,
+      }],
+      nextBeforeId: null,
+      retentionPolicy: "latest_20000_events" as const,
+    });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAuditEvents });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const trigger = screen.getAllByRole("button", { name: "Governance audit" })[0]!;
+    await user.click(trigger);
+    const dialog = await screen.findByRole("dialog", { name: "Governance and security audit" });
+    expect(await within(dialog).findByText("Permanent deletion completed")).toBeInTheDocument();
+    expect(within(dialog).getByText("file · file-opaque-7")).toBeInTheDocument();
+    expect(within(dialog).queryByText(/paper\.pdf|private note|search/i)).not.toBeInTheDocument();
+    expect(listAuditEvents).toHaveBeenCalledWith(undefined, 50);
+    await user.click(within(dialog).getByRole("button", { name: "Close governance audit" }));
+    expect(trigger).toHaveFocus();
+  });
+
+  it("does not expose the audit launch to Members", async () => {
+    const member = { id: "member-1", loginName: "Reader", role: "member" as const };
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(member) });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    expect(screen.queryByRole("button", { name: "Governance audit" })).not.toBeInTheDocument();
   });
 });
 

@@ -6,6 +6,7 @@ import test from "node:test";
 
 import type { NewAccount } from "../../src/auth/account.js";
 import type { NewStoredFile } from "../../src/drive/file.js";
+import { recordAuditEvent } from "../../src/audit/audit-service.js";
 import { parseBackupArguments } from "../../src/operations/backup-options.js";
 import { createDatabaseBackup, verifyDatabaseBackup } from "../../src/operations/database-backup.js";
 import { openSqliteDatabase } from "../../src/persistence/sqlite/database.js";
@@ -61,6 +62,15 @@ test("online backup creates a verified non-overwriting snapshot that survives re
 
   try {
     source.repositories.accounts.create(account("owner-1"));
+    source.runInTransaction((repositories) => recordAuditEvent(repositories, {
+      action: "auth.login",
+      outcome: "succeeded",
+      actorKind: "account",
+      actorAccountId: "owner-1",
+      targetId: "owner-1",
+      reason: null,
+      occurredAt: NOW,
+    }));
     source.repositories.invitations.create({
       id: "invite-1",
       tokenDigest: "a".repeat(64),
@@ -91,7 +101,7 @@ test("online backup creates a verified non-overwriting snapshot that survives re
       backupPath,
     );
 
-    assert.equal(created.schemaVersion, 8);
+    assert.equal(created.schemaVersion, 9);
     assert.deepEqual(created.counts, { accounts: 1, folders: 0, files: 1, sessions: 0, invitations: 1, announcements: 1 });
     assert.match(created.sha256, /^[a-f0-9]{64}$/);
     assert.ok(created.bytes > 0);
@@ -114,6 +124,7 @@ test("online backup creates a verified non-overwriting snapshot that survives re
       assert.equal(recovered?.objectKey, stored.objectKey);
       assert.equal(restored.repositories.files.findById("owner-1", "file-2"), null);
       assert.equal(restored.repositories.announcements.findById("announcement-1")?.title, "Archive hours");
+      assert.equal(restored.repositories.audit.listBefore(null, 10)[0]?.action, "auth.login");
       assert.equal(restored.isReady(), true);
     } finally {
       restored.close();

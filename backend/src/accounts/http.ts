@@ -62,11 +62,12 @@ function writeAudit(
   );
 }
 
-function requireOwnerRequest(request: FastifyRequest, reply: FastifyReply): boolean {
+function requireOwnerRequest(request: FastifyRequest, reply: FastifyReply, onDenied?: () => void): boolean {
   try {
     requireOwner(request.authAccount);
     return true;
   } catch {
+    onDenied?.();
     writeAudit(request, "accounts.owner_guard", "denied", { reason: "forbidden" });
     void reply.code(403).send({ error: "forbidden" });
     return false;
@@ -96,6 +97,7 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
           max: options.registrationRateLimitMax ?? 5,
           timeWindow: "1 minute",
           onExceeded: (request: FastifyRequest) => {
+            options.service.recordRegistrationBusy("rate_limit_exceeded");
             writeAudit(request, "accounts.register", "denied", { reason: "rate_limit_exceeded" });
           },
         },
@@ -132,6 +134,7 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
           return reply.code(409).send({ error: "login_unavailable" });
         }
         if (error instanceof PasswordKdfOverloadedError) {
+          options.service.recordRegistrationBusy("kdf_overloaded");
           writeAudit(request, "accounts.register", "busy", { reason: "kdf_overloaded" });
           return reply.header("retry-after", "1").code(429).send({ error: "authentication_busy" });
         }
@@ -144,7 +147,9 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
     "/api/accounts/invitations",
     { preHandler: app.authenticate },
     async (request, reply) => {
-      if (!requireOwnerRequest(request, reply)) return;
+      if (!requireOwnerRequest(request, reply, () => options.service.recordAuditAttempt(
+        request.authAccount!, "accounts.invitation_create", new AuthorizationDeniedError(),
+      ))) return;
       try {
         const created = options.service.createInvitation(request.authAccount!);
         writeAudit(request, "accounts.invitation_create", "succeeded", { actorAccountId: request.authAccount!.id });
@@ -153,6 +158,7 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
           rawToken: created.rawToken,
         });
       } catch (error: unknown) {
+        options.service.recordAuditAttempt(request.authAccount!, "accounts.invitation_create", error);
         return mapAdministrationError(error, reply);
       }
     },
@@ -178,12 +184,15 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
       schema: { params: { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "string", minLength: 1, maxLength: 128 } } } },
     },
     async (request, reply) => {
-      if (!requireOwnerRequest(request, reply)) return;
+      if (!requireOwnerRequest(request, reply, () => options.service.recordAuditAttempt(
+        request.authAccount!, "accounts.invitation_revoke", new AuthorizationDeniedError(),
+      ))) return;
       try {
         const invitation = options.service.revokeInvitation(request.authAccount!, request.params.id);
         writeAudit(request, "accounts.invitation_revoke", "succeeded", { actorAccountId: request.authAccount!.id });
         return { invitation: invitationDto(invitation) };
       } catch (error: unknown) {
+        options.service.recordAuditAttempt(request.authAccount!, "accounts.invitation_revoke", error);
         return mapAdministrationError(error, reply);
       }
     },
@@ -212,7 +221,9 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
       },
     },
     async (request, reply) => {
-      if (!requireOwnerRequest(request, reply)) return;
+      if (!requireOwnerRequest(request, reply, () => options.service.recordAuditAttempt(
+        request.authAccount!, "accounts.member_state_change", new AuthorizationDeniedError(),
+      ))) return;
       try {
         const account = options.service.setMemberState(request.authAccount!, request.params.id, request.body.state);
         writeAudit(request, "accounts.member_state", "succeeded", {
@@ -221,6 +232,7 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
         });
         return { account: accountDto(account) };
       } catch (error: unknown) {
+        options.service.recordAuditAttempt(request.authAccount!, "accounts.member_state_change", error);
         return mapAdministrationError(error, reply);
       }
     },

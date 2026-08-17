@@ -4,6 +4,8 @@ import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import type { Announcement, AnnouncementContent, AnnouncementSeverity } from "./announcement.js";
+import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
+import type { AuditEventKind, AuditOutcome, AuditReasonCode } from "../audit/audit-event.js";
 
 const TITLE_MAX_LENGTH = 200;
 const BODY_MAX_LENGTH = 4_000;
@@ -125,13 +127,34 @@ export class AnnouncementService {
     this.#createId = options.createId ?? randomUUID;
   }
 
+  recordAuditAttempt(
+    actor: AuthenticatedAccount,
+    action: Extract<AuditEventKind, "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish">,
+    error: unknown,
+  ): boolean {
+    let reason: AuditReasonCode = "storage_unavailable";
+    if (error instanceof AuthorizationDeniedError) reason = "authorization_denied";
+    else if (error instanceof AnnouncementValidationError) reason = "invalid_input";
+    else if (error instanceof AnnouncementAdministrationError) reason = error.code;
+    const outcome: AuditOutcome = reason === "storage_unavailable" ? "failed" : "denied";
+    return tryRecordAuditAttempt(this.#persistence, {
+      action,
+      actorKind: "account",
+      actorAccountId: actor.id,
+      targetId: null,
+      outcome,
+      reason,
+      occurredAt: this.#now(),
+    });
+  }
+
   create(actor: AuthenticatedAccount, input: AnnouncementInput): Announcement {
     requireOwner(actor);
     const now = this.#now();
     const content = validateInput(input, now);
     return this.#persistence.runInTransaction((repositories) => {
       this.#assertCurrentOwner(actor, repositories);
-      return repositories.announcements.create({
+      const announcement = repositories.announcements.create({
         id: this.#createId(),
         ...content,
         isActive: false,
@@ -140,6 +163,16 @@ export class AnnouncementService {
         createdAt: now,
         updatedAt: now,
       });
+      recordAuditEvent(repositories, {
+        action: "announcements.create",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: announcement.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+      return announcement;
     });
   }
 
@@ -154,6 +187,15 @@ export class AnnouncementService {
       if (!repositories.announcements.updateContent(current.id, content, now)) {
         throw new AnnouncementAdministrationError("not_found");
       }
+      recordAuditEvent(repositories, {
+        action: "announcements.edit",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: current.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
       return repositories.announcements.findById(current.id)!;
     });
   }
@@ -172,6 +214,15 @@ export class AnnouncementService {
       if (!repositories.announcements.publish(current.id, now)) {
         throw new AnnouncementAdministrationError("not_found");
       }
+      recordAuditEvent(repositories, {
+        action: "announcements.publish",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: current.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
       return repositories.announcements.findById(current.id)!;
     });
   }
@@ -187,6 +238,15 @@ export class AnnouncementService {
       if (!repositories.announcements.unpublish(current.id, now)) {
         throw new AnnouncementAdministrationError("not_found");
       }
+      recordAuditEvent(repositories, {
+        action: "announcements.unpublish",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: current.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
       return repositories.announcements.findById(current.id)!;
     });
   }

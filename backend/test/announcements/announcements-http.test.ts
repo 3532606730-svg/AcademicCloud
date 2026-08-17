@@ -126,7 +126,7 @@ test("Owner creates, edits, publishes, and unpublishes safe announcement DTOs", 
 });
 
 test("unauthenticated reads fail and Members are denied on every administration route", async (context) => {
-  const { app, memberCookie } = await fixture(context);
+  const { app, memberCookie, persistence } = await fixture(context);
   assert.deepEqual(
     { status: (await app.inject({ method: "GET", url: "/api/announcements" })).statusCode },
     { status: 401 },
@@ -144,6 +144,18 @@ test("unauthenticated reads fail and Members are denied on every administration 
     });
     assert.equal(response.statusCode, 403, `${request.method} ${request.url}`);
   }
+  assert.deepEqual(
+    persistence.repositories.audit.listBefore(null, 20)
+      .filter((event) => event.outcome === "denied" && event.action.startsWith("announcements."))
+      .map((event) => ({ action: event.action, actor: event.actorAccountId, target: event.targetId, reason: event.reason }))
+      .sort((left, right) => left.action.localeCompare(right.action)),
+    [
+      { action: "announcements.create", actor: "member-1", target: null, reason: "authorization_denied" },
+      { action: "announcements.edit", actor: "member-1", target: null, reason: "authorization_denied" },
+      { action: "announcements.publish", actor: "member-1", target: null, reason: "authorization_denied" },
+      { action: "announcements.unpublish", actor: "member-1", target: null, reason: "authorization_denied" },
+    ],
+  );
 });
 
 test("announcement inputs cannot override authority/timestamps and unsafe links are rejected", async (context) => {

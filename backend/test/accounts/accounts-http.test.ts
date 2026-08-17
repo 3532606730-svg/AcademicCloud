@@ -104,7 +104,7 @@ test("Owner invitation HTTP flow returns raw capability once and safe lists omit
 });
 
 test("Member direct calls to every Owner surface are denied and no role/delete route exists", async (context) => {
-  const { app, memberCookie } = await fixture(context);
+  const { app, memberCookie, persistence } = await fixture(context);
   for (const request of [
     { method: "POST", url: "/api/accounts/invitations" },
     { method: "GET", url: "/api/accounts/invitations" },
@@ -120,6 +120,17 @@ test("Member direct calls to every Owner surface are denied and no role/delete r
   }
   assert.equal((await app.inject({ method: "DELETE", url: "/api/accounts/member-1", headers: { origin: ORIGIN, cookie: memberCookie } })).statusCode, 404);
   assert.equal((await app.inject({ method: "PATCH", url: "/api/accounts/member-1/role", headers: { origin: ORIGIN, cookie: memberCookie }, payload: { role: "owner" } })).statusCode, 404);
+  assert.deepEqual(
+    persistence.repositories.audit.listBefore(null, 20)
+      .filter((event) => event.outcome === "denied" && event.action.startsWith("accounts."))
+      .map((event) => ({ action: event.action, actor: event.actorAccountId, target: event.targetId, reason: event.reason }))
+      .sort((left, right) => left.action.localeCompare(right.action)),
+    [
+      { action: "accounts.invitation_create", actor: "member-1", target: null, reason: "authorization_denied" },
+      { action: "accounts.invitation_revoke", actor: "member-1", target: null, reason: "authorization_denied" },
+      { action: "accounts.member_state_change", actor: "member-1", target: null, reason: "authorization_denied" },
+    ],
+  );
 });
 
 test("invite-only registration creates a server-authoritative Member and rejects capability reuse", async (context) => {

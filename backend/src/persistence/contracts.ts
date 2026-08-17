@@ -5,6 +5,7 @@ import type { AnnouncementRepository } from "../announcements/announcement-repos
 import type { FolderRepository, StoredFileRepository } from "../drive/repositories.js";
 import type { RecycleRepository } from "../drive/recycle-repository.js";
 import type { FavoriteRepository } from "../favorites/favorite-repository.js";
+import type { AuditRepository } from "../audit/audit-repository.js";
 
 export interface RepositorySet {
   accounts: AccountRepository;
@@ -15,6 +16,7 @@ export interface RepositorySet {
   files: StoredFileRepository;
   recycle: RecycleRepository;
   favorites: FavoriteRepository;
+  audit: AuditRepository;
 }
 
 export interface Persistence {

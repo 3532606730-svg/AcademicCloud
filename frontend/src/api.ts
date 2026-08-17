@@ -44,6 +44,38 @@ export interface AnnouncementInput {
   expiresAt: string | null;
 }
 
+export type AuditEventKind =
+  | "auth.login" | "auth.logout" | "auth.password_change"
+  | "accounts.owner_bootstrap" | "accounts.register" | "accounts.invitation_create"
+  | "accounts.invitation_revoke" | "accounts.member_state_change"
+  | "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish"
+  | "drive.upload_activate" | "drive.folder_recycle" | "drive.folder_restore"
+  | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete";
+export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
+export type AuditActorKind = "account" | "system" | "anonymous";
+export type AuditTargetType = "account" | "invitation" | "announcement" | "file" | "folder";
+export type AuditReasonCode =
+  | "invalid_credentials" | "invalid_current_password" | "password_change_conflict" | "password_unchanged"
+  | "invalid_invitation" | "login_unavailable" | "authorization_denied" | "not_found" | "invalid_target"
+  | "invalid_state" | "invalid_input" | "rate_limit_exceeded" | "kdf_overloaded" | "storage_unavailable"
+  | "upload_incomplete" | "upload_metadata_mismatch" | "name_conflict" | "concurrent_change";
+export interface AuditEvent {
+  id: number;
+  occurredAt: string;
+  action: AuditEventKind;
+  outcome: AuditOutcome;
+  actorKind: AuditActorKind;
+  actorAccountId: string | null;
+  targetKind: AuditTargetType | null;
+  targetId: string | null;
+  reason: AuditReasonCode | null;
+}
+export interface AuditPage {
+  events: AuditEvent[];
+  nextBeforeId: number | null;
+  retentionPolicy: "latest_20000_events";
+}
+
 export type FolderState = "active" | "deleted";
 export type FileState = "pending_upload" | "active" | "deleted" | "purging" | "purged";
 
@@ -140,6 +172,7 @@ export interface AcademicCloudApi {
   updateAnnouncement(announcementId: string, input: AnnouncementInput): Promise<Announcement>;
   publishAnnouncement(announcementId: string): Promise<Announcement>;
   unpublishAnnouncement(announcementId: string): Promise<Announcement>;
+  listAuditEvents(beforeId?: number, limit?: number, signal?: AbortSignal): Promise<AuditPage>;
   listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse>;
   listPending(folderId: string | null, signal?: AbortSignal): Promise<FileEntry[]>;
   listRecycle(signal?: AbortSignal): Promise<RecycleResponse>;
@@ -320,6 +353,14 @@ export class ApiClient implements AcademicCloudApi {
       `/api/announcements/${encodeURIComponent(announcementId)}/unpublish`,
       "POST",
     ).then((response) => response.announcement);
+  }
+
+  listAuditEvents(beforeId?: number, limit?: number, signal?: AbortSignal): Promise<AuditPage> {
+    const query = new URLSearchParams();
+    if (beforeId !== undefined) query.set("beforeId", String(beforeId));
+    if (limit !== undefined) query.set("limit", String(limit));
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    return this.#request<AuditPage>(`/api/audit/events${suffix}`, signal ? { signal } : {});
   }
 
   async listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse> {

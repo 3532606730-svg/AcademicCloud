@@ -7,6 +7,8 @@ import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js
 import type { PasswordHasher } from "../auth/password-hasher.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import type { Invitation } from "./invitation.js";
+import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
+import type { AuditEventKind, AuditOutcome, AuditReasonCode } from "../audit/audit-event.js";
 
 const INVITATION_TOKEN_BYTES = 32;
 export const INVITATION_DURATION_MILLISECONDS = 7 * 24 * 60 * 60 * 1_000;
@@ -128,22 +130,54 @@ export class AccountAdministrationService {
     this.#createId = options.createId ?? randomUUID;
   }
 
-  createInvitation(actor: AuthenticatedAccount): CreatedInvitation {
-    this.#assertCurrentOwner(actor, this.#persistence.repositories);
-    const now = this.#now();
-    const rawToken = this.#createInvitationToken();
-    if (!RAW_INVITATION_TOKEN.test(rawToken)) throw new Error("invitation token generator returned an invalid token");
-    const invitation = this.#persistence.repositories.invitations.create({
-      id: this.#createId(),
-      tokenDigest: digestInvitationToken(rawToken),
-      createdByAccountId: actor.id,
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + INVITATION_DURATION_MILLISECONDS),
-      consumedAt: null,
-      consumedByAccountId: null,
-      revokedAt: null,
+  recordAuditAttempt(
+    actor: AuthenticatedAccount,
+    action: Extract<AuditEventKind, "accounts.invitation_create" | "accounts.invitation_revoke" | "accounts.member_state_change">,
+    error: unknown,
+  ): boolean {
+    let reason: AuditReasonCode = "storage_unavailable";
+    if (error instanceof AuthorizationDeniedError) reason = "authorization_denied";
+    else if (error instanceof AccountAdministrationError) reason = error.code;
+    else if (error instanceof TypeError || error instanceof RangeError) reason = "invalid_input";
+    const outcome: AuditOutcome = reason === "storage_unavailable" ? "failed" : "denied";
+    return tryRecordAuditAttempt(this.#persistence, {
+      action,
+      actorKind: "account",
+      actorAccountId: actor.id,
+      targetId: null,
+      outcome,
+      reason,
+      occurredAt: this.#now(),
     });
-    return { invitation: safeInvitation(invitation, now), rawToken };
+  }
+
+  createInvitation(actor: AuthenticatedAccount): CreatedInvitation {
+    return this.#persistence.runInTransaction((repositories) => {
+      this.#assertCurrentOwner(actor, repositories);
+      const now = this.#now();
+      const rawToken = this.#createInvitationToken();
+      if (!RAW_INVITATION_TOKEN.test(rawToken)) throw new Error("invitation token generator returned an invalid token");
+      const invitation = repositories.invitations.create({
+        id: this.#createId(),
+        tokenDigest: digestInvitationToken(rawToken),
+        createdByAccountId: actor.id,
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + INVITATION_DURATION_MILLISECONDS),
+        consumedAt: null,
+        consumedByAccountId: null,
+        revokedAt: null,
+      });
+      recordAuditEvent(repositories, {
+        action: "accounts.invitation_create",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: invitation.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+      return { invitation: safeInvitation(invitation, now), rawToken };
+    });
   }
 
   listInvitations(actor: AuthenticatedAccount): SafeInvitation[] {
@@ -165,22 +199,31 @@ export class AccountAdministrationService {
       if (!repositories.invitations.revokeUnused(invitation.id, now)) {
         throw new AccountAdministrationError("invalid_state");
       }
+      recordAuditEvent(repositories, {
+        action: "accounts.invitation_revoke",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: invitation.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
       return safeInvitation(repositories.invitations.findById(invitation.id)!, now);
     });
   }
 
   async registerMember(rawToken: string, loginNameValue: string, password: string): Promise<SafeAccount> {
-    if (!RAW_INVITATION_TOKEN.test(rawToken)) throw new InvalidInvitationError();
-    const tokenDigest = digestInvitationToken(rawToken);
-    if (!invitationIsAvailable(this.#persistence.repositories.invitations.findByTokenDigest(tokenDigest), this.#now())) {
-      throw new InvalidInvitationError();
-    }
-    const loginName = validateLoginName(loginNameValue);
-    validatePassword(password);
-    if (this.#persistence.repositories.accounts.findByLoginName(loginName)) throw new AccountConflictError();
-    const passwordHash = await this.#passwordHasher.hash(password);
-
     try {
+      if (!RAW_INVITATION_TOKEN.test(rawToken)) throw new InvalidInvitationError();
+      const tokenDigest = digestInvitationToken(rawToken);
+      if (!invitationIsAvailable(this.#persistence.repositories.invitations.findByTokenDigest(tokenDigest), this.#now())) {
+        throw new InvalidInvitationError();
+      }
+      const loginName = validateLoginName(loginNameValue);
+      validatePassword(password);
+      if (this.#persistence.repositories.accounts.findByLoginName(loginName)) throw new AccountConflictError();
+      const passwordHash = await this.#passwordHasher.hash(password);
+
       return this.#persistence.runInTransaction((repositories) => {
         const now = this.#now();
         const invitation = repositories.invitations.findByTokenDigest(tokenDigest);
@@ -198,11 +241,42 @@ export class AccountAdministrationService {
         if (!repositories.invitations.consume(invitation.id, tokenDigest, account.id, now)) {
           throw new InvalidInvitationError();
         }
+        recordAuditEvent(repositories, {
+          action: "accounts.register",
+          actorKind: "anonymous",
+          actorAccountId: null,
+          targetId: account.id,
+          outcome: "succeeded",
+          reason: null,
+          occurredAt: now,
+        });
         return safeAccount(account);
       });
     } catch (error: unknown) {
-      if (error instanceof InvalidInvitationError || error instanceof AccountConflictError) throw error;
-      if (isUniqueConstraint(error)) throw new AccountConflictError();
+      if (error instanceof InvalidInvitationError || error instanceof AccountConflictError) {
+        tryRecordAuditAttempt(this.#persistence, {
+          action: "accounts.register",
+          actorKind: "anonymous",
+          actorAccountId: null,
+          targetId: null,
+          outcome: "denied",
+          reason: error instanceof InvalidInvitationError ? "invalid_invitation" : "login_unavailable",
+          occurredAt: this.#now(),
+        });
+        throw error;
+      }
+      if (isUniqueConstraint(error)) {
+        tryRecordAuditAttempt(this.#persistence, {
+          action: "accounts.register",
+          actorKind: "anonymous",
+          actorAccountId: null,
+          targetId: null,
+          outcome: "denied",
+          reason: "login_unavailable",
+          occurredAt: this.#now(),
+        });
+        throw new AccountConflictError();
+      }
       throw error;
     }
   }
@@ -227,6 +301,15 @@ export class AccountAdministrationService {
         throw new AccountAdministrationError("invalid_state");
       }
       if (state === "disabled") repositories.sessions.revokeAllByAccountId(target.id, now);
+      recordAuditEvent(repositories, {
+        action: "accounts.member_state_change",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: target.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
       return safeAccount(repositories.accounts.findById(target.id)!);
     });
   }
@@ -237,5 +320,17 @@ export class AccountAdministrationService {
     if (!current || current.state !== "active" || current.role !== "owner") {
       throw new AuthorizationDeniedError();
     }
+  }
+
+  recordRegistrationBusy(reason: "rate_limit_exceeded" | "kdf_overloaded"): boolean {
+    return tryRecordAuditAttempt(this.#persistence, {
+      action: "accounts.register",
+      actorKind: "anonymous",
+      actorAccountId: null,
+      targetId: null,
+      outcome: "busy",
+      reason,
+      occurredAt: this.#now(),
+    });
   }
 }

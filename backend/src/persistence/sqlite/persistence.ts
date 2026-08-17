@@ -9,6 +9,7 @@ import { SqliteFolderRepository } from "./folder-repository.js";
 import { SqliteRecycleRepository } from "./recycle-repository.js";
 import { SqliteSessionRepository } from "./session-repository.js";
 import { SqliteStoredFileRepository } from "./stored-file-repository.js";
+import { SqliteAuditRepository } from "./audit-repository.js";
 
 export class SqlitePersistence implements Persistence {
   readonly repositories: RepositorySet;
@@ -25,6 +26,7 @@ export class SqlitePersistence implements Persistence {
       files: new SqliteStoredFileRepository(database),
       recycle: new SqliteRecycleRepository(database),
       favorites: new SqliteFavoriteRepository(database),
+      audit: new SqliteAuditRepository(database),
     };
   }
 

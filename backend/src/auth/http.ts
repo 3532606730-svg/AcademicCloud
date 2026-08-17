@@ -147,6 +147,7 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
           max: options.loginRateLimitMax ?? 5,
           timeWindow: "1 minute",
           onExceeded: (request: FastifyRequest) => {
+            options.authService.recordLoginBusy("rate_limit_exceeded");
             writeAuthAudit(request, "auth.login", "denied", { reason: "rate_limit_exceeded" });
           },
         },
@@ -193,6 +194,7 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
         }
 
         if (error instanceof PasswordKdfOverloadedError) {
+          options.authService.recordLoginBusy("kdf_overloaded");
           writeAuthAudit(request, "auth.login", "busy", { reason: "kdf_overloaded" });
           return reply.header("retry-after", "1").code(429).send({ error: "authentication_busy" });
         }
@@ -229,6 +231,9 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
           max: options.passwordChangeRateLimitMax ?? 5,
           timeWindow: "1 minute",
           onExceeded: (request: FastifyRequest) => {
+            const secret = request.cookies[cookiePolicy.name];
+            const account = secret ? options.authService.resolveSession(secret) : null;
+            if (account) options.authService.recordPasswordChangeBusy(account, "rate_limit_exceeded");
             writeAuthAudit(request, "auth.password_change", "denied", { reason: "rate_limit_exceeded" });
           },
         },
@@ -272,6 +277,7 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
             .send({ error: error.code });
         }
         if (error instanceof PasswordKdfOverloadedError) {
+          options.authService.recordPasswordChangeBusy(request.authAccount!);
           writeAuthAudit(request, "auth.password_change", "busy", {
             accountId: request.authAccount!.id,
             reason: "kdf_overloaded",

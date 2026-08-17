@@ -120,7 +120,7 @@ export class ReliabilityMaintenance {
     if (!apply) return "would_activate";
 
     try {
-      await this.#driveService.completeUpload(file.ownerId, file.id);
+      await this.#driveService.completeUpload(file.ownerId, file.id, "system");
       return "activated";
     } catch (error: unknown) {
       return maintenanceErrorOutcome(error);
@@ -138,7 +138,7 @@ export class ReliabilityMaintenance {
     if (!apply) return "would_finish_purge";
 
     try {
-      await this.#driveService.permanentlyDeleteFile(file.ownerId, file.id);
+      await this.#driveService.permanentlyDeleteFile(file.ownerId, file.id, "system");
       return "purged";
     } catch (error: unknown) {
       return maintenanceErrorOutcome(error);

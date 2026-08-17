@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, and RF-PLAN01 is complete and independently green. The Owner-authorized Pre-OCR Research Foundation has a concrete 25-Epic queue; `RF-AUDIT01` is the next Ready task.**
+**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, and RF-AUDIT01 is complete and independently green. The Owner-authorized Pre-OCR Research Foundation continues with `RF-OWNERSHIP01` as the next Ready task.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains repository-only unless a separate Owner production gate is opened.
 
@@ -18,7 +18,7 @@ Current development line:
 - Announcements checkpoint: `9b64ed7c945f687eef2b80ea3c509c1849e70807`;
 - Password Change checkpoint: `6ef6fb612d2bdac808e3682eb5bcae6bdb3a0de3`;
 - OPS01A code-bearing independent-review checkpoint: `34a2eada158dcf08783dc9538d853f9361425e8a`;
-- latest repository migration: `008_global_announcements.sql`;
+- latest repository migration: `009_governance_audit.sql`;
 - dependency delta for OPS01A: zero;
 - migration delta for OPS01A: zero.
 
@@ -115,14 +115,22 @@ Critical rules:
 
 Planning verification: documentation/task-state only; 0 product-code/migration/dependency/runtime-configuration delta; 0 high-confidence secret-like hits; whitespace/structural/reference checks PASS.
 
+### RF-AUDIT01 — Governance Security Audit Foundation
+
+**Complete; independent adversarial review PASS.** Migration 009 adds immutable fixed-column governance events plus append-only event/target/reason registries. Successful security/governance mutations are transaction-coupled; denied/busy/failed attempts are target-free; permanent purge records request before provider deletion and completion only with the final metadata transaction. Retention is capped at the newest 20,000 rows with Owner-only ID-keyset pagination and no search/export/target lookup.
+
+The Owner UI is an account-menu dialog rather than a fifth primary destination. It exposes fixed localized labels and bounded loading/empty/error/load-older states without resolving filenames or private research content. No Personal Research Overlay, search, reading/page, annotation, citation, evidence, question, or AI activity is audited.
+
+Final local evidence: backend `196/196` PASS; frontend `142/142` PASS; workspace typecheck/build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with migration count 9, backup/isolated restore, and zero redeploy migrations; dependency audits 0 vulnerabilities; `git diff --check` PASS; independent read-only Reviewer PASS with no remaining blocker/medium finding.
+
 ## Approved Continuous Objective
 
 The previous objective through OPS01A is complete.
 
 The new objective begins with:
 
-1. `RF-PLAN01` — complete and independently reviewed;
-2. autonomously execute the recorded Pre-OCR queue one independently green Epic at a time, beginning with `RF-AUDIT01`;
+1. `RF-PLAN01` and `RF-AUDIT01` — complete and independently reviewed;
+2. autonomously execute the remaining Pre-OCR queue one independently green Epic at a time, beginning with `RF-OWNERSHIP01`;
 3. after terminal `RF-DERIVED01`, STOP before OCR/text-extraction execution, full-text indexing, embeddings, retrieval, or RAG.
 
 ## Safety Boundaries
@@ -141,4 +149,4 @@ The current program still does **not** authorize:
 
 ## Next Action
 
-Create/recover from the RF-PLAN01 checkpoint, select `tasks/ready/RF-AUDIT01.md`, and execute the bounded governance security-audit foundation without recording private research activity.
+Create/recover from the RF-AUDIT01 checkpoint, select `tasks/ready/RF-OWNERSHIP01.md`, and implement the bounded account ownership-domain substrate without pulling forward Library behavior.

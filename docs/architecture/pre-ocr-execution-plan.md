@@ -2,7 +2,7 @@
 
 **Status:** Independently reviewed execution plan; `RF-PLAN01` complete
 **Baseline:** `775f9eabba363ca0d7f4bf06493c6f677268cbd7`
-**Current schema head:** append-only migration 008
+**Current schema head:** append-only migration 009 (`RF-AUDIT01`)
 
 This plan compiles `ROADMAP.md` and ADR-014 into the executable task queue. It does not add product behavior, authorize production rollout, or authorize OCR/text extraction, embeddings, retrieval, or RAG.
 
@@ -13,7 +13,7 @@ This plan compiles `ROADMAP.md` and ADR-014 into the executable task queue. It d
 3. Extend the current Drive through explicit scholarly identities rather than renaming a file or folder into a Scholarly Record or Collection. An accepted future Library artifact must be owned by its Library domain, not remain lifecycle-dependent on its contributor account.
 4. Establish private Scholarly Record and Personal Research Overlay semantics before creating any Shared Library domain rows or membership.
 5. Keep canonical metadata, personal interpretation, collaborative catalog state, governance evidence, and future derived data in separate authority planes.
-6. Allocate every schema change as a new migration after the then-current head. Historical migrations 001–008 are immutable.
+6. Allocate every schema change as a new migration after the then-current head. Historical migrations 001–009 are immutable.
 7. Treat every API as server-authoritative. Client-supplied account, role, owner-domain, Library membership, provenance authority, or visibility claims are never trusted.
 8. End the program at tested identity, integrity, adapter, storage, and authorization contracts. Do not execute OCR or create real extracted text, indexes, embeddings, retrieval, or RAG state.
 
@@ -95,7 +95,7 @@ Each approved capability has exactly one primary implementation task. Later task
 Every implementation card in this queue must:
 
 - start from a clean checkpoint and move only its own card from Ready to Doing;
-- preserve migrations 001–008 and every migration added by earlier cards; production startup remains migration fail-closed;
+- preserve migrations 001–009 and every migration added by earlier cards; production startup remains migration fail-closed;
 - test Owner and Member behavior, same-account success, cross-account denial, disabled-account/session behavior where applicable, and authority-field rejection;
 - use database transactions/CAS or explicit idempotency where concurrent writes could overwrite, duplicate, revive, or misattribute state;
 - preserve rollback at the transaction boundary and never auto-delete or rewrite original academic bytes;

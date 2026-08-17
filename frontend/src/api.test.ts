@@ -259,6 +259,19 @@ describe("ApiClient", () => {
     assertBodylessRequestInit(fetcher.mock.calls[5]?.[1], "POST");
   });
 
+  it("uses bounded keyset pagination for the Owner audit contract", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
+      events: [], nextBeforeId: 19, retentionPolicy: "latest_20000_events",
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const api = new ApiClient({ fetcher });
+    const controller = new AbortController();
+    await api.listAuditEvents(42, 25, controller.signal);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/audit/events?beforeId=42&limit=25",
+      expect.objectContaining({ credentials: "same-origin", signal: controller.signal }),
+    );
+  });
+
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {
     const responses = [
       new Response(null, { status: 204 }), // setFileFavorite(true)

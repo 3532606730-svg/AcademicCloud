@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { validateLoginName, validatePassword } from "../auth/account-validation.js";
 import type { PasswordHasher } from "../auth/password-hasher.js";
 import type { Persistence } from "../persistence/contracts.js";
+import { recordAuditEvent } from "../audit/audit-service.js";
 
 export { validateLoginName } from "../auth/account-validation.js";
 
@@ -21,7 +22,7 @@ export async function provisionAccount(
   const timestamp = now();
   const account = persistence.runInTransaction((repositories) => {
     if (repositories.accounts.count() !== 0) throw new Error("first Owner already exists");
-    return repositories.accounts.create({
+    const account = repositories.accounts.create({
       id: randomUUID(),
       loginName,
       passwordHash,
@@ -30,6 +31,16 @@ export async function provisionAccount(
       createdAt: timestamp,
       updatedAt: timestamp,
     });
+    recordAuditEvent(repositories, {
+      action: "accounts.owner_bootstrap",
+      outcome: "succeeded",
+      actorKind: "system",
+      actorAccountId: null,
+      targetId: account.id,
+      reason: null,
+      occurredAt: timestamp,
+    });
+    return account;
   });
 
   return { id: account.id, loginName: account.loginName };

@@ -121,6 +121,16 @@ function sendDriveError(reply: FastifyReply, error: unknown) {
   return reply.code(status).send({ error: error.code });
 }
 
+function recordDriveAttempt(
+  request: FastifyRequest,
+  service: DriveService,
+  action: Parameters<DriveService["recordAuditAttempt"]>[1],
+  error: unknown,
+): void {
+  const actor = request.authAccount?.id;
+  if (actor) service.recordAuditAttempt(actor, action, error);
+}
+
 export async function registerDriveHttp(app: FastifyInstance, driveService: DriveService): Promise<void> {
   app.addHook("onResponse", async (request, reply) => {
     const route = request.routeOptions.url;
@@ -251,6 +261,7 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
         driveService.deleteFolder(requireOwnerId(request.authAccount), request.params.folderId);
         return reply.code(204).send();
       } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.folder_recycle", error);
         return sendDriveError(reply, error);
       }
     },
@@ -263,6 +274,7 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
       try {
         return { folder: folderDto(driveService.restoreFolder(requireOwnerId(request.authAccount), request.params.folderId)) };
       } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.folder_restore", error);
         return sendDriveError(reply, error);
       }
     },
@@ -354,6 +366,7 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
       try {
         return { file: fileDto(await driveService.completeUpload(requireOwnerId(request.authAccount), request.params.fileId)) };
       } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.upload_activate", error);
         return sendDriveError(reply, error);
       }
     },
@@ -419,6 +432,7 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
         driveService.deleteFile(requireOwnerId(request.authAccount), request.params.fileId);
         return reply.code(204).send();
       } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.file_recycle", error);
         return sendDriveError(reply, error);
       }
     },
@@ -431,6 +445,7 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
       try {
         return { file: fileDto(await driveService.restoreFile(requireOwnerId(request.authAccount), request.params.fileId)) };
       } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.file_restore", error);
         return sendDriveError(reply, error);
       }
     },
@@ -453,6 +468,10 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
         await driveService.permanentlyDeleteFile(requireOwnerId(request.authAccount), request.params.fileId);
         return reply.code(204).send();
       } catch (error: unknown) {
+        const action = error instanceof DriveError && ["storage_unavailable", "upload_metadata_mismatch"].includes(error.code)
+          ? "drive.file_purge_complete"
+          : "drive.file_purge_request";
+        recordDriveAttempt(request, driveService, action, error);
         return sendDriveError(reply, error);
       }
     },

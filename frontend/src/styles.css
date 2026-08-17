@@ -551,6 +551,24 @@ input:hover { border-color: #a7b2a8; }
 .announcement-administration-row span { color: var(--muted); font-size: 0.78rem; }
 .announcement-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
 
+.audit-modal { width: min(72rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
+.audit-modal[open] { display: grid; }
+.audit-modal > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--line); }
+.audit-modal h2 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-size: 1.15rem; }
+.audit-body { display: grid; align-content: start; gap: 1rem; min-height: 0; overflow-y: auto; padding: 1.2rem; }
+.audit-table-wrap { min-width: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 0.6rem; }
+.audit-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.audit-table th, .audit-table td { padding: 0.65rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; white-space: nowrap; }
+.audit-table th { color: var(--muted); background: var(--forest-soft); font-size: 0.72rem; font-weight: 700; }
+.audit-table tbody tr:last-child td { border-bottom: 0; }
+.audit-table td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; }
+.audit-outcome { font-weight: 700; }
+.audit-outcome--succeeded { color: var(--forest-deep); }
+.audit-outcome--denied, .audit-outcome--failed { color: #8b2c27; }
+.audit-outcome--busy { color: #815012; }
+.audit-state { margin: 0; padding: 2rem 1rem; color: var(--muted); text-align: center; }
+.audit-load-older { justify-self: center; }
+
 @keyframes shimmer { to { background-position: -220% 0; } }
 
 @media (max-width: 64rem) {
@@ -786,7 +804,14 @@ input:hover { border-color: #a7b2a8; }
   .announcement-form-grid { grid-template-columns: 1fr; }
   .announcement-administration-row { grid-template-columns: 1fr; align-items: start; }
   .announcement-row-actions { justify-content: flex-start; }
-  .announcement-row-actions .button, .announcement-form .button { min-height: 2.75rem; }
+.announcement-row-actions .button, .announcement-form .button { min-height: 2.75rem; }
+
+  .audit-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  .audit-modal > header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }
+  .audit-body { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
+  .audit-table-wrap { margin-inline: -1rem; padding-inline: 1rem; }
+  .audit-table { min-width: 46rem; }
+  .audit-load-older { min-height: 2.75rem; }
 
   /* Approximately 44px touch floor for the remaining compact controls:
      login submit, the account-menu sign out, and the bilingual switch. */

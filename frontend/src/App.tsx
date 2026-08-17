@@ -15,6 +15,7 @@ import {
 } from "./api.ts";
 import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
 import { AnnouncementAdministrationDialog, AnnouncementFeed } from "./announcements.tsx";
+import { AuditDialog } from "./audit.tsx";
 import { describeError, formatCount, formatDate } from "./i18n.ts";
 import { LanguageProvider, LanguageSwitch, useLanguage, type Translator } from "./i18n-react.tsx";
 import {
@@ -402,6 +403,7 @@ function DriveView({
   const [favoriteFolderIds, setFavoriteFolderIds] = useState<ReadonlySet<string>>(new Set());
   const [accountAdministrationOpen, setAccountAdministrationOpen] = useState(false);
   const [announcementAdministrationOpen, setAnnouncementAdministrationOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
   const [announcementRevision, setAnnouncementRevision] = useState(0);
   const dragDepthRef = useRef(0);
@@ -933,7 +935,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen || announcementAdministrationOpen || passwordChangeOpen}>
+    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen || announcementAdministrationOpen || passwordChangeOpen || auditOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -945,6 +947,7 @@ function DriveView({
             busy={busyId === "logout"}
             onManageAccounts={() => setAccountAdministrationOpen(true)}
             onManageAnnouncements={() => setAnnouncementAdministrationOpen(true)}
+            onManageAudit={() => setAuditOpen(true)}
             onChangePassword={() => setPasswordChangeOpen(true)}
             onSignOut={() => void signOut()}
           />
@@ -957,6 +960,9 @@ function DriveView({
               </button>
               <button className="button button--quiet account-action-button" type="button" onClick={() => setAnnouncementAdministrationOpen(true)}>
                 {t("announcements.manage")}
+              </button>
+              <button className="button button--quiet account-action-button" type="button" onClick={() => setAuditOpen(true)}>
+                {t("audit.manage")}
               </button>
             </>
           )}
@@ -1268,6 +1274,7 @@ function DriveView({
           onChanged={() => setAnnouncementRevision((value) => value + 1)}
         />
       )}
+      {auditOpen && <AuditDialog api={api} onClose={() => setAuditOpen(false)} />}
       {passwordChangeOpen && (
         <PasswordChangeDialog
           api={api}
@@ -1872,6 +1879,7 @@ function AccountMenu({
   busy,
   onManageAccounts,
   onManageAnnouncements,
+  onManageAudit,
   onChangePassword,
   onSignOut,
 }: {
@@ -1880,6 +1888,7 @@ function AccountMenu({
   busy: boolean;
   onManageAccounts: () => void;
   onManageAnnouncements: () => void;
+  onManageAudit: () => void;
   onChangePassword: () => void;
   onSignOut: () => void;
 }) {
@@ -1998,6 +2007,17 @@ function AccountMenu({
                   }}
                 >
                   {t("announcements.manage")}
+                </button>
+                <button
+                  className="account-popover-signout"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    close(false);
+                    onManageAudit();
+                  }}
+                >
+                  {t("audit.manage")}
                 </button>
               </>
             )}

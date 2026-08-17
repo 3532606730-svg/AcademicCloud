@@ -17,6 +17,8 @@ import { registerDriveHttp } from "../drive/http.js";
 import { registerFavoritesHttp } from "../favorites/http.js";
 import type { FavoriteService } from "../favorites/favorite-service.js";
 import type { AppConfig } from "./config.js";
+import type { AuditService } from "../audit/audit-service.js";
+import { registerAuditHttp } from "../audit/http.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -111,6 +113,7 @@ export interface CreateAppOptions {
   announcements?: { service: AnnouncementService };
   drive?: { service: DriveService };
   favorites?: { service: FavoriteService };
+  audit?: { service: AuditService };
   readinessCheck?: () => boolean;
 }
 
@@ -239,6 +242,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
     }
 
     await registerFavoritesHttp(app, options.favorites.service);
+  }
+
+  if (options.audit) {
+    if (!options.auth) throw new Error("audit routes require authentication composition");
+    await registerAuditHttp(app, options.audit.service);
   }
 
   return app;
