@@ -34,7 +34,9 @@ This objective does not authorize production access/mutation, deployment, produc
 
 None.
 
-## Ready
+`tasks/doing/` is intentionally empty at this checkpoint. Historical completed cards belong under `tasks/done/`; parked production work must not remain in `tasks/doing/` because repository recovery treats that directory as active work.
+
+## Ready — Current Repository/Local Objective
 
 ### 1. RF-PLAN01 — Pre-OCR Execution Decomposition
 
@@ -109,6 +111,18 @@ The following areas are authorized but are not one task. `RF-PLAN01` must decomp
 - OCR adapter and extracted-text storage contracts only;
 - future indexing/RAG authorization boundary.
 
+## Separate Owner-Gated Production Track
+
+### PROD-03C2 — Remaining First-Usable Production Gates
+
+**Task card:** `tasks/ready/PROD-03C2.md`
+
+**Status:** parked, not executable under the current Pre-OCR continuous objective. It may resume only after an explicit Owner instruction opens a production operations window.
+
+The remaining bounded decisions are the exact disposable-object permanent-delete confirmation and the reboot/autostart policy. Historical authenticated/live disposable-object acceptance and the accepted UX01 production generation are already recorded and must not be replayed merely because this card exists.
+
+Any later deployment of post-UX01 repository code is a separate Owner-gated production rollout, not silently part of RF-PLAN01 or the Pre-OCR queue.
+
 ## Future / Non-Blocking Backlog
 
 These are preserved but must not block Pre-OCR completion:
@@ -167,7 +181,7 @@ It is not silently pulled into the Pre-OCR program merely because other sharing 
 - L2-PASSWORD01 + independent review PASS;
 - OPS01A repository/local operations preparation + independent final review and exact-head Linux artifact CI PASS.
 
-Historical details remain in Git, completed task cards, ADRs, tests, and runbooks rather than being duplicated here.
+Historical completed task cards are archived under `tasks/done/`; they no longer remain in `tasks/doing/`.
 
 ## Stop / Escalation Boundaries
 
