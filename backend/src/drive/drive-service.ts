@@ -633,6 +633,17 @@ export class DriveService {
       throw new DriveError("not_found");
     }
 
+    return this.createDownloadForAuthorizedFile(file, disposition);
+  }
+
+  async createDownloadForAuthorizedFile(
+    file: StoredFile,
+    disposition: "attachment" | "inline" = "attachment",
+  ): Promise<BrowserDownloadAuthorization> {
+    if (file.state !== "active" || file.storageProvider !== this.storage.provider) {
+      throw new DriveError("not_found");
+    }
+
     // Inline Preview requires a dedicated browser GET domain; the native
     // bucket domain forces downloads, so failing safely here is the contract.
     if (disposition === "inline" && !this.storage.browserPreviewAvailable) {

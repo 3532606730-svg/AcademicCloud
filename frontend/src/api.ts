@@ -49,11 +49,12 @@ export type AuditEventKind =
   | "accounts.owner_bootstrap" | "accounts.register" | "accounts.invitation_create"
   | "accounts.invitation_revoke" | "accounts.member_state_change"
   | "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish" | "announcements.delete"
+  | "libraries.create" | "libraries.membership_add" | "libraries.membership_change" | "libraries.membership_remove"
   | "drive.upload_activate" | "drive.folder_recycle" | "drive.folder_restore"
   | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
 export type AuditActorKind = "account" | "system" | "anonymous";
-export type AuditTargetType = "account" | "invitation" | "announcement" | "file" | "folder";
+export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "file" | "folder";
 export type AuditReasonCode =
   | "invalid_credentials" | "invalid_current_password" | "password_change_conflict" | "password_unchanged"
   | "invalid_invitation" | "login_unavailable" | "authorization_denied" | "not_found" | "invalid_target"
@@ -168,6 +169,37 @@ export interface ScholarlyArtifact {
   } | null;
 }
 
+export type LibraryRole = "manager" | "member";
+
+export interface LibrarySummary {
+  id: string;
+  name: string;
+  role: LibraryRole;
+  createdAt: string;
+}
+
+export interface LibraryMember {
+  accountId: string;
+  loginName: string | null;
+  role: LibraryRole;
+  state: "active" | "disabled" | "archived" | "missing";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryHolding {
+  recordId: string;
+  recordLabel: string;
+  artifactId: string;
+  versionId: string;
+  file: {
+    id: string;
+    displayName: string;
+    mediaType: string | null;
+    sizeBytes: number;
+  };
+}
+
 export interface UploadAuthorization {
   method: "POST";
   url: string;
@@ -247,6 +279,14 @@ export interface AcademicCloudApi {
   createScholarlyRecord(label: string): Promise<ScholarlyRecord>;
   attachFileToScholarlyRecord(recordId: string, fileId: string): Promise<ScholarlyRecord>;
   detachScholarlyArtifact(recordId: string, artifactId: string): Promise<ScholarlyRecord>;
+  listLibraries(signal?: AbortSignal): Promise<LibrarySummary[]>;
+  createLibrary(name: string): Promise<LibrarySummary>;
+  listLibraryMembers(libraryId: string): Promise<LibraryMember[]>;
+  addLibraryMember(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember>;
+  changeLibraryMemberRole(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember>;
+  removeLibraryMember(libraryId: string, accountId: string): Promise<void>;
+  listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]>;
+  createLibraryDownload(libraryId: string, fileId: string, disposition?: "attachment" | "inline"): Promise<DownloadAuthorization>;
   setFileFavorite(fileId: string, favorite: boolean): Promise<void>;
   setFolderFavorite(folderId: string, favorite: boolean): Promise<void>;
   createFolder(name: string, parentId: string | null): Promise<FolderEntry>;
@@ -514,6 +554,61 @@ export class ApiClient implements AcademicCloudApi {
       { method: "DELETE" },
     );
     return response.record;
+  }
+
+  async listLibraries(signal?: AbortSignal): Promise<LibrarySummary[]> {
+    return (await this.#request<{ libraries: LibrarySummary[] }>("/api/libraries", signal ? { signal } : {})).libraries;
+  }
+
+  async createLibrary(name: string): Promise<LibrarySummary> {
+    return (await this.#jsonBody<{ library: LibrarySummary }>("/api/libraries", "POST", { name })).library;
+  }
+
+  async listLibraryMembers(libraryId: string): Promise<LibraryMember[]> {
+    return (await this.#request<{ members: LibraryMember[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/members`,
+    )).members;
+  }
+
+  async addLibraryMember(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember> {
+    return (await this.#jsonBody<{ member: LibraryMember }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/members`,
+      "POST",
+      { accountId, role },
+    )).member;
+  }
+
+  async changeLibraryMemberRole(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember> {
+    return (await this.#jsonBody<{ member: LibraryMember }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/members/${encodeURIComponent(accountId)}`,
+      "PATCH",
+      { role },
+    )).member;
+  }
+
+  removeLibraryMember(libraryId: string, accountId: string): Promise<void> {
+    return this.#request<void>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/members/${encodeURIComponent(accountId)}`,
+      { method: "DELETE" },
+    );
+  }
+
+  async listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]> {
+    return (await this.#request<{ holdings: LibraryHolding[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings`,
+      signal ? { signal } : {},
+    )).holdings;
+  }
+
+  async createLibraryDownload(
+    libraryId: string,
+    fileId: string,
+    disposition: "attachment" | "inline" = "attachment",
+  ): Promise<DownloadAuthorization> {
+    const query = new URLSearchParams({ disposition });
+    return (await this.#request<{ download: DownloadAuthorization }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/download?${query.toString()}`,
+    )).download;
   }
 
   setFileFavorite(fileId: string, favorite: boolean): Promise<void> {

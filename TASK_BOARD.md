@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. All three first-use polish cards are complete and green; the accelerated queue continues at `RF-LIBRARY01`.**
+**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, and RF-LIBRARY01 is complete and green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. The accelerated queue continues at `RF-LIBRARY02`; the combined Library/review boundary remains the final approved stop.**
 
 Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Repository HEAD remains newer and does not automatically select another production target.
 
@@ -31,13 +31,13 @@ This repository objective does not authorize production access/mutation, deploym
 
 ## Doing
 
-None between checkpoints. Select `RF-LIBRARY01` after the L2-ADMINPOLISH01 checkpoint.
+None between checkpoints. Select `RF-LIBRARY02` after the RF-LIBRARY01 checkpoint.
 
 ## Ready — Accelerated First-Use Queue
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 4 | `RF-LIBRARY01` | `tasks/ready/RF-LIBRARY01.md` | real Library domain, membership, permissions, holdings read surface |
+| 5 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Member submit → reviewer approve/reject/withdraw → Library ownership |
 | 5 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Member submit → reviewer approve/reject/withdraw → Library ownership |
 
 The first three cards are small first-use polish and should not trigger broad architecture or production-level verification. The two Library cards are authorization/ownership work and require focused privacy/ownership tests plus one focused independent review, but not repeated unrelated audit campaigns once relevant evidence is green.
@@ -110,6 +110,12 @@ It is not silently pulled into the accelerated Shared Library program.
 **Task card:** `tasks/done/L2-ADMINPOLISH01.md`
 
 **Status:** complete; focused review and verification green. Append-only migration 013 registers immutable `announcements.delete` audit; Owner-confirmed deletion removes effective/admin rows transactionally, while invitation records remain durable and are presented as prominent usable entries plus a counted collapsed history. Announcement service `6/6`, HTTP `4/4`, migration `1/1`, frontend `116/116`, workspace typecheck/build, and `git diff --check` PASS.
+
+### RF-LIBRARY01 — Library Domains, Membership, and Permissions
+
+**Task card:** `tasks/done/RF-LIBRARY01.md`
+
+**Status:** complete; focused privacy/authorization review and verification green. ADR-020 and append-only migration 014 add explicit Library entities on `library:<id>` ownership domains, durable manager/member memberships, active-account and last-effective-manager guards, credential/content-free Library audit vocabulary, and no-backfill semantics. `LibraryService` and HTTP routes provide server-derived membership, non-disclosing Library reads, and Library-owned holdings list/preview/download authorization; the responsive Shared Library panel preserves private Drive/Personal Research Overlay boundaries. Library service `3/3`, migration `2/2`, HTTP `1/1`, frontend `159/159`, workspace typecheck/build, and `git diff --check` PASS. RF-LIBRARY02 remains the next approved task; no production action occurred.
 
 ### L2-ACCOUNTARCHIVE01 — Member Account Archival
 

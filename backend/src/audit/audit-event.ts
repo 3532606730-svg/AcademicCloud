@@ -12,6 +12,10 @@ export const AUDIT_EVENT_KINDS = [
   "announcements.publish",
   "announcements.unpublish",
   "announcements.delete",
+  "libraries.create",
+  "libraries.membership_add",
+  "libraries.membership_change",
+  "libraries.membership_remove",
   "drive.upload_activate",
   "drive.folder_recycle",
   "drive.folder_restore",
@@ -45,7 +49,7 @@ export const AUDIT_REASON_CODES = [
 export type AuditEventKind = (typeof AUDIT_EVENT_KINDS)[number];
 export type AuditReasonCode = (typeof AUDIT_REASON_CODES)[number];
 export type AuditActorKind = "account" | "system" | "anonymous";
-export type AuditTargetType = "account" | "invitation" | "announcement" | "file" | "folder";
+export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "file" | "folder";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
 
 export interface AuditEvent {

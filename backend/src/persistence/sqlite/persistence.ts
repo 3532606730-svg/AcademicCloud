@@ -11,6 +11,7 @@ import { SqliteSessionRepository } from "./session-repository.js";
 import { SqliteStoredFileRepository } from "./stored-file-repository.js";
 import { SqliteAuditRepository } from "./audit-repository.js";
 import { SqliteScholarlyRepository } from "./scholarly-repository.js";
+import { SqliteLibraryRepository } from "./library-repository.js";
 
 export class SqlitePersistence implements Persistence {
   readonly repositories: RepositorySet;
@@ -29,6 +30,7 @@ export class SqlitePersistence implements Persistence {
       favorites: new SqliteFavoriteRepository(database),
       audit: new SqliteAuditRepository(database),
       research: new SqliteScholarlyRepository(database),
+      libraries: new SqliteLibraryRepository(database),
     };
   }
 

@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local line through `RF-DOMAIN01` is complete and independently green, PROD-04A has deployed/accepted the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8, and all three first-use polish cards are complete with focused verification green. The approved repository-development objective continues at `RF-LIBRARY01`.**
+**The repository-local line through `RF-DOMAIN01` and `RF-LIBRARY01` is complete and green, PROD-04A has deployed/accepted the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8, and all three first-use polish cards are complete with focused verification green. The approved repository-development objective continues at `RF-LIBRARY02`.**
 
 Production remains live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8. Repository development is newer and remains repository-only until a separate Owner deployment gate selects an exact candidate.
 
@@ -17,14 +17,14 @@ Current development lineage before this planning reconciliation:
 - RF-OWNERSHIP01 checkpoint: `636a19e6f55aba8d84855e266954a08b3b415065`;
 - RF-BULK01 checkpoint: `fc30aed2eeb4536ec3747869bb5b99b22fbf94e8`;
 - RF-DOMAIN01 checkpoint: `ddcc19eb41428bbdbececd8868a11a09dae97e98`;
-- latest repository migration: `013_announcement_delete_audit.sql`.
+- latest repository migration: `014_shared_libraries.sql`.
 
 Current execution branch:
 - `codex/project-memory-reconcile-20260817`;
 - accelerated-queue planning checkpoint before implementation: `e915825fd546a122ff8606e699a9fd678c020001`;
 - contains repository development only; no production mutation.
 
-Historical migrations 001–013 must not be modified or renumbered. New persistent work must use append-only versions after the actual development schema head.
+Historical migrations 001–014 must not be modified or renumbered. New persistent work must use append-only versions after the actual development schema head.
 
 ## Production State
 
@@ -55,6 +55,7 @@ Recorded operational boundary remains:
 - `RF-OWNERSHIP01`: explicit `account | library` ownership-domain substrate and durable contributor/uploader provenance separation.
 - `RF-BULK01`: bounded account-private bulk Drive/Favorites actions.
 - `RF-DOMAIN01`: stable Scholarly Record / Artifact / Artifact Version identity with account-private server authority and stable file linkage.
+- `RF-LIBRARY01`: explicit Library domains, durable manager/member membership, last-manager/disabled-account guards, non-disclosing Library holdings, and scoped preview/download.
 
 These completed foundations are why the minimum Library slice can be accelerated safely without first consuming `RF-META01` through `RF-EXPORT01`.
 
@@ -74,7 +75,7 @@ RF-LIBRARY02
 STOP
 ```
 
-Current progress: `L1-UX04`, `L2-ACCOUNTARCHIVE01`, and `L2-ADMINPOLISH01` are complete. Next is `RF-LIBRARY01`, followed by `RF-LIBRARY02`.
+Current progress: `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01`, and `RF-LIBRARY01` are complete. Next is `RF-LIBRARY02`, followed by STOP.
 
 ### L1-UX04
 - clear localized feedback when a same-folder active/pending file name already exists;
@@ -108,6 +109,8 @@ Current progress: `L1-UX04`, `L2-ACCOUNTARCHIVE01`, and `L2-ADMINPOLISH01` are c
 - disabled accounts lose effective Library access;
 - global Owner does not receive arbitrary Member-private content access;
 - Personal Research Overlay remains private.
+
+**Complete.** ADR-020 and migration 014 add a real Library entity on `library:<id>` ownership domains, transactional manager/member membership, active-account and last-effective-manager guards, credential/content-free Library audit events, and no-backfill semantics. Scoped service/HTTP/UI surfaces provide non-disclosing Library list/member/holding reads and reuse the storage adapter's existing preview/download policy. Library service `3/3`, migration `2/2`, HTTP `1/1`, frontend `159/159`, workspace typecheck/build, and `git diff --check` are green. No production access or mutation occurred.
 
 ### RF-LIBRARY02 — Accelerated Contribution Review
 - Member explicitly submits an eligible private resource;
@@ -159,4 +162,4 @@ This repository objective does **not** authorize:
 
 ## Next Action
 
-Create/push the green `L2-ADMINPOLISH01` checkpoint, then execute `RF-LIBRARY01` with focused ownership/authorization/privacy verification. Continue only through `RF-LIBRARY02` and STOP before any production rollout.
+Create/push the green `RF-LIBRARY01` checkpoint, then execute `RF-LIBRARY02` with focused contribution/ownership/privacy verification. Continue only through that checkpoint and STOP before any production rollout.

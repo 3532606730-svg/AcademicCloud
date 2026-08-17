@@ -304,8 +304,16 @@ export class AccountAdministrationService {
         || (target.state === "archived" && state === "disabled");
       if (!allowed) throw new AccountAdministrationError("invalid_state");
       const now = this.#now();
-      if (!repositories.accounts.updateState(target.id, target.state, state, now)) {
-        throw new AccountAdministrationError("invalid_state");
+      try {
+        if (!repositories.accounts.updateState(target.id, target.state, state, now)) {
+          throw new AccountAdministrationError("invalid_state");
+        }
+      } catch (error: unknown) {
+        if (error instanceof AccountAdministrationError) throw error;
+        if (error instanceof Error && /last effective library manager|library manager/i.test(error.message)) {
+          throw new AccountAdministrationError("invalid_state");
+        }
+        throw error;
       }
       if (state !== "active") repositories.sessions.revokeAllByAccountId(target.id, now);
       recordAuditEvent(repositories, {

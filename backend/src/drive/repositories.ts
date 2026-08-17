@@ -12,6 +12,7 @@ export interface FolderRepository {
 export interface StoredFileRepository {
   create(file: NewStoredFile): StoredFile;
   findById(ownerId: string, id: string): StoredFile | null;
+  findByDomainId(ownerDomainId: string, id: string): StoredFile | null;
   listByFolder(ownerId: string, folderId: string | null, state: StoredFile["state"]): StoredFile[];
   listDeleted(ownerId: string): StoredFile[];
   listStale(state: "pending_upload" | "purging", updatedBefore: Date, limit: number): StoredFile[];

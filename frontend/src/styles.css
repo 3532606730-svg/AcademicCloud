@@ -158,6 +158,7 @@ input:hover { border-color: #a7b2a8; }
 .account-menu { display: flex; align-items: center; gap: 0.65rem; }
 .avatar { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: 50%; color: #fcfcf9; background: var(--forest); font-size: 0.78rem; font-weight: 700; }
 .account-name { font-size: 0.84rem; font-weight: 620; color: var(--ink); }
+.shared-library-launch { white-space: nowrap; }
 
 /* Compact account access: a small anchored popover with the account name,
    language switch, and sign out. Mobile-only via CSS; the popover renders
@@ -247,6 +248,23 @@ input:hover { border-color: #a7b2a8; }
 }
 
 .workspace { position: relative; min-width: 0; padding: clamp(1.75rem, 2.5vw, 2.25rem); overflow-x: hidden; }
+
+.shared-library-panel { margin-top: 1.25rem; }
+.shared-library-layout { display: grid; grid-template-columns: minmax(13rem, 0.32fr) minmax(0, 1fr); gap: 1.25rem; }
+.shared-library-list, .shared-library-content { min-width: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 0.7rem; background: var(--paper); }
+.shared-library-list .section-heading, .shared-library-content .section-heading { align-items: flex-start; }
+.shared-library-list h2, .shared-library-content h3 { margin: 0; }
+.shared-library-library-buttons, .shared-library-holdings, .shared-library-member-list { display: grid; gap: 0.55rem; }
+.shared-library-library { display: grid; gap: 0.25rem; width: 100%; padding: 0.75rem; color: var(--ink); text-align: left; border: 1px solid var(--line); border-radius: 0.55rem; background: transparent; cursor: pointer; }
+.shared-library-library span, .shared-library-holding span, .shared-library-member small { color: var(--muted); font-size: 0.78rem; }
+.shared-library-library.is-active { border-color: var(--forest); background: var(--forest-soft); }
+.shared-library-holding, .shared-library-member { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: 0.55rem; }
+.shared-library-holding > div:first-child, .shared-library-member > span { display: grid; min-width: 0; gap: 0.2rem; }
+.shared-library-holding strong, .shared-library-member strong { overflow-wrap: anywhere; }
+.shared-library-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.shared-library-members { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.shared-library-member select { min-height: 2.1rem; padding: 0.25rem 0.45rem; border: 1px solid var(--line); border-radius: 0.45rem; background: var(--paper); }
+.shared-library-empty { color: var(--muted); }
 .workspace-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.4rem; }
 .workspace-title { min-width: 0; }
 .workspace h1 {
@@ -738,6 +756,11 @@ input:hover { border-color: #a7b2a8; }
   .breadcrumbs { display: none; }
   .command-bar { width: 100%; }
   .command-bar .button { flex: 1; min-height: 2.75rem; }
+  .shared-library-launch { min-height: 2.75rem; }
+  .shared-library-layout { grid-template-columns: 1fr; }
+  .shared-library-holding, .shared-library-member { align-items: stretch; flex-direction: column; }
+  .shared-library-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shared-library-actions .button, .shared-library-member .button, .shared-library-member select { min-height: 2.75rem; }
 
   /* Dedicated mobile catalogue: clean rows + separators, filename first,
      star and more always visible, no squeezed desktop columns. */

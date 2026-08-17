@@ -7,6 +7,7 @@ import type { RecycleRepository } from "../drive/recycle-repository.js";
 import type { FavoriteRepository } from "../favorites/favorite-repository.js";
 import type { AuditRepository } from "../audit/audit-repository.js";
 import type { ScholarlyRepository } from "../research/repositories.js";
+import type { LibraryRepository } from "../library/repositories.js";
 
 export interface RepositorySet {
   accounts: AccountRepository;
@@ -19,6 +20,7 @@ export interface RepositorySet {
   favorites: FavoriteRepository;
   audit: AuditRepository;
   research?: ScholarlyRepository;
+  libraries: LibraryRepository;
 }
 
 export interface Persistence {

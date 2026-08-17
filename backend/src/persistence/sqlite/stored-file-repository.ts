@@ -70,6 +70,7 @@ function toStoredFile(row: StoredFileRow): StoredFile {
 export class SqliteStoredFileRepository implements StoredFileRepository {
   readonly #insert;
   readonly #findById;
+  readonly #findByDomainId;
   readonly #listRootByState;
   readonly #listFolderByState;
   readonly #listDeleted;
@@ -93,7 +94,7 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
     `);
     this.#findById = database.prepare<[string, string], StoredFileRow>(`
       SELECT
-        files.id, ownership_domains.account_id AS owner_id, files.folder_id,
+        files.id, COALESCE(ownership_domains.account_id, ownership_domains.id) AS owner_id, files.folder_id,
         files.display_name, files.storage_provider, files.object_key,
         files.media_type, files.size_bytes, files.checksum_algorithm, files.checksum,
         files.state, files.revision, files.created_at, files.updated_at,
@@ -102,6 +103,17 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
       JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
       WHERE ownership_domains.kind = 'account'
         AND ownership_domains.account_id = ? AND files.id = ?
+    `);
+    this.#findByDomainId = database.prepare<[string, string], StoredFileRow>(`
+      SELECT
+        files.id, COALESCE(ownership_domains.account_id, ownership_domains.id) AS owner_id, files.folder_id,
+        files.display_name, files.storage_provider, files.object_key,
+        files.media_type, files.size_bytes, files.checksum_algorithm, files.checksum,
+        files.state, files.revision, files.created_at, files.updated_at,
+        files.activated_at, files.deleted_at, files.purged_at
+      FROM files
+      JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
+      WHERE files.owner_domain_id = ? AND files.id = ?
     `);
     const columns = `
       files.id, ownership_domains.account_id AS owner_id, files.folder_id,
@@ -197,6 +209,11 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
 
   findById(ownerId: string, id: string): StoredFile | null {
     const row = this.#findById.get(ownerId, id);
+    return row ? toStoredFile(row) : null;
+  }
+
+  findByDomainId(ownerDomainId: string, id: string): StoredFile | null {
+    const row = this.#findByDomainId.get(ownerDomainId, id);
     return row ? toStoredFile(row) : null;
   }
 

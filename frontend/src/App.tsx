@@ -20,6 +20,7 @@ import {
 import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
 import { AnnouncementAdministrationDialog, AnnouncementFeed } from "./announcements.tsx";
 import { AuditDialog } from "./audit.tsx";
+import { SharedLibraryPanel } from "./shared-library.tsx";
 import { describeError, formatCount, formatDate } from "./i18n.ts";
 import { LanguageProvider, LanguageSwitch, useLanguage, type Translator } from "./i18n-react.tsx";
 import {
@@ -274,7 +275,7 @@ function LoginView({
   );
 }
 
-type DriveViewName = "library" | "pending" | "recycle" | "favorites";
+type DriveViewName = "library" | "pending" | "recycle" | "favorites" | "shared";
 type UploadPhase = "queued" | "checksum" | "reserving" | "uploading" | "verifying" | "complete" | "error" | "cancelled";
 
 const ACTIVE_UPLOAD_PHASES: ReadonlySet<UploadPhase> = new Set(["checksum", "reserving", "uploading", "verifying"]);
@@ -1013,8 +1014,10 @@ function DriveView({
     : view === "pending"
       ? t("nav.pending")
       : view === "recycle"
-        ? t("nav.recycle")
-        : t("nav.favorites");
+      ? t("nav.recycle")
+      : view === "favorites"
+        ? t("nav.favorites")
+        : t("nav.sharedLibrary");
 
   return (
     <>
@@ -1024,6 +1027,9 @@ function DriveView({
         <div className="brand"><span>AC</span> AcademicCloud</div>
         <div className="account-menu">
           <LanguageSwitch />
+          <button className="button button--quiet shared-library-launch" type="button" onClick={() => goToView("shared")}>
+            {t("nav.sharedLibrary")}
+          </button>
           <AccountMenu
             accountName={account.loginName}
             owner={account.role === "owner"}
@@ -1156,6 +1162,8 @@ function DriveView({
 
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
         {notice && <div className="alert alert--success" role="status">{notice}</div>}
+
+        {view === "shared" && <SharedLibraryPanel api={api} />}
 
         {view === "library" && path.length === 0 && (
           <AnnouncementFeed api={api} revision={announcementRevision} />

@@ -21,6 +21,8 @@ import type { AuditService } from "../audit/audit-service.js";
 import { registerAuditHttp } from "../audit/http.js";
 import type { ScholarlyRecordService } from "../research/service.js";
 import { registerResearchHttp } from "../research/http.js";
+import type { LibraryService } from "../library/library-service.js";
+import { registerLibraryHttp } from "../library/http.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -117,6 +119,7 @@ export interface CreateAppOptions {
   favorites?: { service: FavoriteService };
   audit?: { service: AuditService };
   research?: { service: ScholarlyRecordService };
+  libraries?: { service: LibraryService };
   readinessCheck?: () => boolean;
 }
 
@@ -255,6 +258,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   if (options.research) {
     if (!options.auth) throw new Error("research routes require authentication composition");
     await registerResearchHttp(app, options.research.service);
+  }
+
+  if (options.libraries) {
+    if (!options.auth) throw new Error("library routes require authentication composition");
+    await registerLibraryHttp(app, options.libraries.service);
   }
 
   return app;
