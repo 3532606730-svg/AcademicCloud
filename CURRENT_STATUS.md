@@ -57,6 +57,8 @@ Recorded operational boundary remains:
 - `RF-DOMAIN01`: stable Scholarly Record / Artifact / Artifact Version identity with account-private server authority and stable file linkage.
 - `RF-LIBRARY01`: explicit Library domains, durable manager/member membership, last-manager/disabled-account guards, non-disclosing Library holdings, and scoped preview/download.
 
+RF-LIBRARY01 checkpoint: `901d13d081c6c4994416184dc5b98709bf5f43a6` (pushed; local HEAD matched origin at record time).
+
 These completed foundations are why the minimum Library slice can be accelerated safely without first consuming `RF-META01` through `RF-EXPORT01`.
 
 ## New Owner-Approved Priority — First-Use Polish + Sharing
