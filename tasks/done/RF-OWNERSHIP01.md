@@ -39,23 +39,27 @@ Record an ADR and implement an additive, deterministic migration that introduces
 - all Drive/Favorites/recycle/migration/backup/compiled acceptance tests
 
 ## Current State
-Blocked only by `RF-AUDIT01`. Current `folders.owner_id`, `files.owner_id`, and `recycle_groups.owner_id` are account foreign keys; this cannot safely represent a Library-owned resource independent of its uploader.
+Complete; independently reviewed and green. Migration 010 replaces account foreign keys on folders, files, and recycle groups with one concrete ownership-domain parent while the account-private application façade remains behaviorally unchanged.
 
 ## Completed
 - ADR-014 and PROJECT_SPEC distinguish resource ownership from uploader/contributor identity.
 - RF-PLAN01 identified the account-only substrate as a prerequisite that must be migrated before Scholarly Record and Library work.
+- recovered the clean `87aef22` RF-AUDIT01 durable checkpoint and activated this card.
+- Added ADR-016 with one `account | library` ownership-domain authority parent, deterministic account-domain creation, server-only account-domain resolution, immutable creator/uploader provenance, and explicit production rollback consequences.
+- Added append-only migration 010 with exact account-domain backfill, atomic recycle/folder/file table rebuilds, transaction-local Favorite preservation, domain-scoped composite foreign keys, cycle/recycle guards, and no object-provider operation.
+- Migrated folder creator, file uploader, and recycle initiator identity separately from ownership authority; disabled contributor state does not invalidate a differently owned resource.
+- Kept all current Drive/Favorites repository and HTTP behavior account-private; client authority fields are rejected and internal domain/provenance fields remain absent from DTOs.
+- Added deterministic 0/1/>1-account, mixed lifecycle, exact identity, rollback, cross-domain, disabled-contributor, HTTP non-exposure, backup/restore, restart, and compiled acceptance evidence.
+- Received independent read-only adversarial Reviewer PASS with no blocker or medium-severity finding.
 
 ## Remaining
-- write and accept the exact ownership-domain/migration ADR;
-- implement deterministic schema/repository migration with no behavior change;
-- verify every lifecycle/history/concurrency/backup path and exact data identity;
-- independently review and checkpoint.
+None.
 
 ## Blockers
-Any design that needs destructive production migration, changes object keys/bytes, uses a sentinel account, cannot preserve recycle/Favorite history, or silently grants Library/account access must stop for architecture/data-integrity review.
+None. Production migration/deployment remains separately Owner-gated.
 
 ## Last Verification
-2026-08-17 schema inspection: migration 001 makes folder/file owner an account FK and migration 006 makes recycle provenance account-scoped. There is no owner-domain parent or distinct uploader field.
+2026-08-17 final Writer verification: backend `201/201` PASS; frontend `142/142` PASS; workspace typecheck and production build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with `firstMigrationCount: 10`, health/readiness, restart/session/password behavior, maintenance dry-run, verified backup receipt, operations and isolated restore drills, restored state, and `redeployMigrationCount: 0`; full and production dependency audits report 0 vulnerabilities; `git diff --check` PASS; package/lockfile delta none. Focused migration fixtures cover 0/1/>1 accounts, exact mixed-lifecycle identity, Favorites, foreign-key/integrity checks, and atomic rollback. Independent read-only Reviewer PASS with no blocker or medium finding.
 
 ## Next Action
-After `RF-AUDIT01`, recover all account-keyed schema/triggers/repositories, write the ownership-domain ADR and deterministic migration fixtures, then implement the behavior-preserving substrate change.
+Create the RF-OWNERSHIP01 Git checkpoint, push it through the established SSH origin, then recover `tasks/ready/RF-BULK01.md` as the next authorized Epic.

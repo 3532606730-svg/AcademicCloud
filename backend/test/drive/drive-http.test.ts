@@ -92,7 +92,13 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
     method: "POST",
     url: "/api/drive/folders",
     headers: { cookie: ownerCookie, origin: ORIGIN },
-    payload: { name: "Sources", ownerId: "member-2" },
+    payload: {
+      name: "Sources",
+      ownerId: "member-2",
+      ownerDomainId: "account:member-2",
+      createdByAccountId: "member-2",
+      role: "owner",
+    },
   });
   assert.equal(rejectedOwner.statusCode, 400);
   assert.deepEqual(rejectedOwner.json(), { error: "invalid_request" });
@@ -104,7 +110,29 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
     payload: { name: "Sources" },
   });
   assert.equal(folderResponse.statusCode, 201);
-  const folderId = folderResponse.json<{ folder: { id: string } }>().folder.id;
+  const folderPayload = folderResponse.json<{
+    folder: { id: string; ownerDomainId?: string; createdByAccountId?: string };
+  }>().folder;
+  const folderId = folderPayload.id;
+  assert.equal(folderPayload.ownerDomainId, undefined);
+  assert.equal(folderPayload.createdByAccountId, undefined);
+
+  const rejectedUploader = await app.inject({
+    method: "POST",
+    url: "/api/drive/uploads",
+    headers: { cookie: ownerCookie, origin: ORIGIN },
+    payload: {
+      folderId,
+      displayName: "spoofed.pdf",
+      mediaType: "application/pdf",
+      sizeBytes: 7,
+      checksum: { algorithm: "md5", value: MD5 },
+      ownerDomainId: "account:member-2",
+      uploaderAccountId: "member-2",
+    },
+  });
+  assert.equal(rejectedUploader.statusCode, 400);
+  assert.deepEqual(rejectedUploader.json(), { error: "invalid_request" });
 
   const uploadResponse = await app.inject({
     method: "POST",
@@ -120,10 +148,20 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
   });
   assert.equal(uploadResponse.statusCode, 201);
   const upload = uploadResponse.json<{
-    file: { id: string; ownerId?: string; objectKey?: string; storageProvider?: string; revision?: number };
+    file: {
+      id: string;
+      ownerId?: string;
+      ownerDomainId?: string;
+      uploaderAccountId?: string;
+      objectKey?: string;
+      storageProvider?: string;
+      revision?: number;
+    };
     upload: { fields: Record<string, string> };
   }>();
   assert.equal(upload.file.ownerId, undefined);
+  assert.equal(upload.file.ownerDomainId, undefined);
+  assert.equal(upload.file.uploaderAccountId, undefined);
   assert.equal(upload.file.objectKey, undefined);
   assert.equal(upload.file.storageProvider, undefined);
   assert.equal(upload.file.revision, undefined);

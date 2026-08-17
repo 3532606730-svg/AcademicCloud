@@ -49,36 +49,54 @@ export class SqliteFolderRepository implements FolderRepository {
   constructor(database: SqliteDatabase) {
     this.#insert = database.prepare<FolderParameters>(`
       INSERT INTO folders (
-        id, owner_id, parent_id, name, state, created_at, updated_at, deleted_at
-      ) VALUES (
-        @id, @ownerId, @parentId, @name, @state, @createdAt, @updatedAt, @deletedAt
+        id, owner_domain_id, created_by_account_id, parent_id, name, state,
+        created_at, updated_at, deleted_at
       )
+      SELECT
+        @id, ownership_domains.id, @ownerId, @parentId, @name, @state,
+        @createdAt, @updatedAt, @deletedAt
+      FROM ownership_domains
+      WHERE kind = 'account' AND account_id = @ownerId
     `);
     this.#findById = database.prepare<[string, string], FolderRow>(`
-      SELECT id, owner_id, parent_id, name, state, created_at, updated_at, deleted_at
+      SELECT
+        folders.id, ownership_domains.account_id AS owner_id, folders.parent_id,
+        folders.name, folders.state, folders.created_at, folders.updated_at, folders.deleted_at
       FROM folders
-      WHERE owner_id = ? AND id = ?
+      JOIN ownership_domains ON ownership_domains.id = folders.owner_domain_id
+      WHERE ownership_domains.kind = 'account'
+        AND ownership_domains.account_id = ? AND folders.id = ?
     `);
     this.#listRootByState = database.prepare<[string, FolderState], FolderRow>(`
-      SELECT id, owner_id, parent_id, name, state, created_at, updated_at, deleted_at
+      SELECT
+        folders.id, ownership_domains.account_id AS owner_id, folders.parent_id,
+        folders.name, folders.state, folders.created_at, folders.updated_at, folders.deleted_at
       FROM folders
-      WHERE owner_id = ? AND parent_id IS NULL AND state = ?
-      ORDER BY name COLLATE NOCASE, id
+      JOIN ownership_domains ON ownership_domains.id = folders.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND folders.parent_id IS NULL AND folders.state = ?
+      ORDER BY folders.name COLLATE NOCASE, folders.id
     `);
     this.#listChildByState = database.prepare<[string, string, FolderState], FolderRow>(`
-      SELECT id, owner_id, parent_id, name, state, created_at, updated_at, deleted_at
+      SELECT
+        folders.id, ownership_domains.account_id AS owner_id, folders.parent_id,
+        folders.name, folders.state, folders.created_at, folders.updated_at, folders.deleted_at
       FROM folders
-      WHERE owner_id = ? AND parent_id = ? AND state = ?
-      ORDER BY name COLLATE NOCASE, id
+      JOIN ownership_domains ON ownership_domains.id = folders.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND folders.parent_id = ? AND folders.state = ?
+      ORDER BY folders.name COLLATE NOCASE, folders.id
     `);
     this.#listDeleted = database.prepare<[string], FolderRow>(`
       SELECT
-        folders.id, folders.owner_id, folders.parent_id, folders.name,
+        folders.id, ownership_domains.account_id AS owner_id, folders.parent_id, folders.name,
         folders.state, folders.created_at, folders.updated_at, folders.deleted_at
       FROM folders
+      JOIN ownership_domains ON ownership_domains.id = folders.owner_domain_id
       JOIN recycle_groups ON recycle_groups.id = folders.recycle_group_id
-      WHERE folders.owner_id = ? AND folders.state = 'deleted'
-        AND recycle_groups.owner_id = folders.owner_id
+        AND recycle_groups.owner_domain_id = folders.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND folders.state = 'deleted'
         AND recycle_groups.root_kind = 'folder'
         AND recycle_groups.root_id = folders.id
       ORDER BY folders.deleted_at DESC, folders.id
@@ -87,7 +105,9 @@ export class SqliteFolderRepository implements FolderRepository {
       UPDATE folders
       SET parent_id = @parentId, name = @name, state = @state,
           updated_at = @updatedAt, deleted_at = @deletedAt
-      WHERE owner_id = @ownerId AND id = @id
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = @ownerId
+      ) AND id = @id
     `);
   }
 

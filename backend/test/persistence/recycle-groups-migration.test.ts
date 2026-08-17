@@ -94,7 +94,7 @@ test("migration 006 upgrades legacy recycle rows as independent roots without ch
     assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
     assert.equal(database.prepare<[], { integrity_check: string }>("PRAGMA integrity_check").get()?.integrity_check, "ok");
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [7, 8, 9], currentVersion: 9 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [7, 8, 9, 10], currentVersion: 10 });
     const persistence = new SqlitePersistence(database);
     assert.deepEqual(persistence.repositories.folders.listDeleted("owner-1").map((folder) => folder.id), ["deleted-folder"]);
     assert.deepEqual(persistence.repositories.files.listDeleted("owner-1").map((file) => file.id).sort(), ["deleted-file", "purging-file"]);
@@ -116,17 +116,23 @@ test("migration 006 constraints reject deleted lifecycle rows without same-owner
       `).run(owner, owner, owner === "owner-1" ? "owner" : "member", NOW, NOW);
     }
     database.prepare(`
-      INSERT INTO recycle_groups (id, owner_id, root_kind, root_id, folder_count, file_count, created_at)
-      VALUES ('group-1', 'owner-1', 'folder', 'folder-1', 1, 0, ?)
+      INSERT INTO recycle_groups (
+        id, owner_domain_id, created_by_account_id, root_kind, root_id,
+        folder_count, file_count, created_at
+      ) VALUES ('group-1', 'account:owner-1', 'owner-1', 'folder', 'folder-1', 1, 0, ?)
     `).run(NOW);
 
     assert.throws(() => database.prepare(`
-      INSERT INTO folders (id, owner_id, parent_id, name, state, created_at, updated_at, deleted_at, recycle_group_id)
-      VALUES ('folder-1', 'owner-1', NULL, 'Broken', 'deleted', ?, ?, ?, NULL)
+      INSERT INTO folders (
+        id, owner_domain_id, created_by_account_id, parent_id, name, state,
+        created_at, updated_at, deleted_at, recycle_group_id
+      ) VALUES ('folder-1', 'account:owner-1', 'owner-1', NULL, 'Broken', 'deleted', ?, ?, ?, NULL)
     `).run(NOW, NOW, NOW), /invalid folder recycle provenance/);
     assert.throws(() => database.prepare(`
-      INSERT INTO folders (id, owner_id, parent_id, name, state, created_at, updated_at, deleted_at, recycle_group_id)
-      VALUES ('folder-2', 'owner-2', NULL, 'Foreign', 'deleted', ?, ?, ?, 'group-1')
+      INSERT INTO folders (
+        id, owner_domain_id, created_by_account_id, parent_id, name, state,
+        created_at, updated_at, deleted_at, recycle_group_id
+      ) VALUES ('folder-2', 'account:owner-2', 'owner-2', NULL, 'Foreign', 'deleted', ?, ?, ?, 'group-1')
     `).run(NOW, NOW, NOW), /invalid folder recycle provenance/);
   } finally {
     database.close();

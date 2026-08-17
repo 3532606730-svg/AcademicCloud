@@ -50,74 +50,105 @@ export class SqliteRecycleRepository implements RecycleRepository {
 
   constructor(database: SqliteDatabase) {
     const groupColumns = `
-      id, owner_id, root_kind, root_id, folder_count, file_count, created_at
+      recycle_groups.id, ownership_domains.account_id AS owner_id,
+      recycle_groups.root_kind, recycle_groups.root_id,
+      recycle_groups.folder_count, recycle_groups.file_count, recycle_groups.created_at
     `;
     this.#insertGroup = database.prepare<RecycleGroupParameters>(`
       INSERT INTO recycle_groups (
-        id, owner_id, root_kind, root_id, folder_count, file_count, created_at
-      ) VALUES (
-        @id, @ownerId, @rootKind, @rootId, @folderCount, @fileCount, @createdAt
+        id, owner_domain_id, created_by_account_id, root_kind, root_id,
+        folder_count, file_count, created_at
       )
+      SELECT
+        @id, ownership_domains.id, @ownerId, @rootKind, @rootId,
+        @folderCount, @fileCount, @createdAt
+      FROM ownership_domains
+      WHERE kind = 'account' AND account_id = @ownerId
     `);
     this.#findGroupById = database.prepare<[string, string], RecycleGroupRow>(`
       SELECT ${groupColumns}
       FROM recycle_groups
-      WHERE owner_id = ? AND id = ?
+      JOIN ownership_domains ON ownership_domains.id = recycle_groups.owner_domain_id
+      WHERE ownership_domains.kind = 'account'
+        AND ownership_domains.account_id = ? AND recycle_groups.id = ?
     `);
     this.#findGroupByRoot = database.prepare<[string, RecycleRootKind, string], RecycleGroupRow>(`
       SELECT ${groupColumns}
       FROM recycle_groups
-      WHERE owner_id = ? AND root_kind = ? AND root_id = ?
+      JOIN ownership_domains ON ownership_domains.id = recycle_groups.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND recycle_groups.root_kind = ? AND recycle_groups.root_id = ?
     `);
     this.#listFolderIds = database.prepare<[string, string, string], { id: string }>(`
       SELECT folders.id
       FROM folders
       JOIN recycle_groups ON recycle_groups.id = folders.recycle_group_id
-      WHERE folders.owner_id = ? AND recycle_groups.owner_id = ?
-        AND folders.recycle_group_id = ?
+        AND recycle_groups.owner_domain_id = folders.owner_domain_id
+      JOIN ownership_domains ON ownership_domains.id = folders.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND recycle_groups.owner_domain_id = (
+          SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+        ) AND folders.recycle_group_id = ?
       ORDER BY folders.id
     `);
     this.#listFileIds = database.prepare<[string, string, string], { id: string }>(`
       SELECT files.id
       FROM files
       JOIN recycle_groups ON recycle_groups.id = files.recycle_group_id
-      WHERE files.owner_id = ? AND recycle_groups.owner_id = ?
-        AND files.recycle_group_id = ?
+        AND recycle_groups.owner_domain_id = files.owner_domain_id
+      JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND recycle_groups.owner_domain_id = (
+          SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+        ) AND files.recycle_group_id = ?
       ORDER BY files.id
     `);
     this.#recycleFolder = database.prepare<[string, string, string, string, string]>(`
       UPDATE folders
       SET state = 'deleted', updated_at = ?, deleted_at = ?, recycle_group_id = ?
-      WHERE owner_id = ? AND id = ? AND state = 'active' AND recycle_group_id IS NULL
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+      ) AND id = ? AND state = 'active' AND recycle_group_id IS NULL
     `);
     this.#recycleFile = database.prepare<[string, string, string, string, string, number]>(`
       UPDATE files
       SET state = 'deleted', revision = revision + 1,
           updated_at = ?, deleted_at = ?, recycle_group_id = ?
-      WHERE owner_id = ? AND id = ? AND state = 'active'
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+      ) AND id = ? AND state = 'active'
         AND revision = ? AND recycle_group_id IS NULL
     `);
     this.#restoreFolder = database.prepare<[string, string, string, string]>(`
       UPDATE folders
       SET state = 'active', updated_at = ?, deleted_at = NULL, recycle_group_id = NULL
-      WHERE owner_id = ? AND id = ? AND state = 'deleted' AND recycle_group_id = ?
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+      ) AND id = ? AND state = 'deleted' AND recycle_group_id = ?
     `);
     this.#restoreFile = database.prepare<[string, string, string, number, string]>(`
       UPDATE files
       SET state = 'active', revision = revision + 1,
           updated_at = ?, deleted_at = NULL, recycle_group_id = NULL
-      WHERE owner_id = ? AND id = ? AND state = 'deleted'
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+      ) AND id = ? AND state = 'deleted'
         AND revision = ? AND recycle_group_id = ?
     `);
     this.#markFilePurged = database.prepare<[string, string, string, string, number, string]>(`
       UPDATE files
       SET state = 'purged', revision = revision + 1,
           updated_at = ?, purged_at = ?, recycle_group_id = NULL
-      WHERE owner_id = ? AND id = ? AND state = 'purging'
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+      ) AND id = ? AND state = 'purging'
         AND revision = ? AND recycle_group_id = ?
     `);
     this.#deleteGroup = database.prepare<[string, string]>(`
-      DELETE FROM recycle_groups WHERE owner_id = ? AND id = ?
+      DELETE FROM recycle_groups
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+      ) AND id = ?
     `);
   }
 

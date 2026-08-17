@@ -193,7 +193,7 @@ try {
     ),
     redeployMigrationCount: redeployMigration.appliedVersions.length,
   };
-  assert.equal(result.firstMigrationCount, 9);
+  assert.equal(result.firstMigrationCount, 10);
   assert.equal(result.provisionedLogin, "CompiledAcceptance");
   assert.equal(result.health, "ok");
   assert.equal(result.readiness, "ready");

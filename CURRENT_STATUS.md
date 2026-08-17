@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, and RF-AUDIT01 is complete and independently green. The Owner-authorized Pre-OCR Research Foundation continues with `RF-OWNERSHIP01` as the next Ready task.**
+**The repository-local objective through Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, and RF-OWNERSHIP01 is complete and independently green. The Owner-authorized Pre-OCR Research Foundation continues with `RF-BULK01` as the next Ready task.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains repository-only unless a separate Owner production gate is opened.
 
@@ -19,7 +19,7 @@ Current development line:
 - Password Change checkpoint: `6ef6fb612d2bdac808e3682eb5bcae6bdb3a0de3`;
 - OPS01A code-bearing independent-review checkpoint: `34a2eada158dcf08783dc9538d853f9361425e8a`;
 - RF-AUDIT01 checkpoint: `cb25ce01a5e25c89ae4de3db1110433b71bb45fa`;
-- latest repository migration: `009_governance_audit.sql`;
+- latest repository migration: `010_resource_ownership_domains.sql`;
 - dependency delta for OPS01A: zero;
 - migration delta for OPS01A: zero.
 
@@ -124,14 +124,22 @@ The Owner UI is an account-menu dialog rather than a fifth primary destination. 
 
 Final local evidence: backend `196/196` PASS; frontend `142/142` PASS; workspace typecheck/build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with migration count 9, backup/isolated restore, and zero redeploy migrations; dependency audits 0 vulnerabilities; `git diff --check` PASS; independent read-only Reviewer PASS with no remaining blocker/medium finding.
 
+### RF-OWNERSHIP01 — Explicit Resource Ownership Domains
+
+**Complete; independent adversarial review PASS.** ADR-016 and migration 010 introduce one concrete `account | library` ownership-domain authority parent, backfill exactly one immutable account domain per account, and rebuild folder/file/recycle ownership around domain IDs. Folder creator, file uploader, and recycle initiator remain separate account provenance; a contributor's disabled state cannot invalidate a differently owned resource. Current account-private repositories resolve the account domain server-side, while HTTP rejects authority injection and returns no domain/provenance fields.
+
+The migration preserves exact IDs, object keys, hierarchy, lifecycle state, revisions, timestamps, recycle groups, Favorites, pending/active/deleted/purging/purged rows, cycle constraints, and independently recycled descendants without any object-provider byte operation. Deterministic 0/1/>1-account fixtures verify exact identity, composite foreign keys, transaction rollback, disabled-contributor behavior, integrity, restart, backup/isolated restore, and zero redeploy migrations.
+
+Final local evidence: backend `201/201` PASS; frontend `142/142` PASS; workspace typecheck/build PASS; acceptance tools `25/25` PASS; compiled acceptance PASS with migration count 10, backup/operations/isolated restore, and zero redeploy migrations; dependency audits 0 vulnerabilities; `git diff --check` PASS; independent read-only Reviewer PASS with no blocker/medium finding.
+
 ## Approved Continuous Objective
 
 The previous objective through OPS01A is complete.
 
 The new objective begins with:
 
-1. `RF-PLAN01` and `RF-AUDIT01` — complete and independently reviewed;
-2. autonomously execute the remaining Pre-OCR queue one independently green Epic at a time, beginning with `RF-OWNERSHIP01`;
+1. `RF-PLAN01`, `RF-AUDIT01`, and `RF-OWNERSHIP01` — complete and independently reviewed;
+2. autonomously execute the remaining Pre-OCR queue one independently green Epic at a time, beginning with `RF-BULK01`;
 3. after terminal `RF-DERIVED01`, STOP before OCR/text-extraction execution, full-text indexing, embeddings, retrieval, or RAG.
 
 ## Safety Boundaries
@@ -150,4 +158,4 @@ The current program still does **not** authorize:
 
 ## Next Action
 
-Create/recover from the RF-AUDIT01 checkpoint, select `tasks/ready/RF-OWNERSHIP01.md`, and implement the bounded account ownership-domain substrate without pulling forward Library behavior.
+Create/recover from the RF-OWNERSHIP01 checkpoint, select `tasks/ready/RF-BULK01.md`, and implement bounded account-authorized bulk operations over the existing Drive/Favorites lifecycle without pulling forward Scholarly Record or Library behavior.

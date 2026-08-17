@@ -80,30 +80,38 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
   constructor(database: SqliteDatabase) {
     this.#insert = database.prepare<StoredFileParameters>(`
       INSERT INTO files (
-        id, owner_id, folder_id, display_name, storage_provider, object_key,
+        id, owner_domain_id, uploaded_by_account_id, folder_id, display_name, storage_provider, object_key,
         media_type, size_bytes, checksum_algorithm, checksum, state, revision,
         created_at, updated_at, activated_at, deleted_at, purged_at
-      ) VALUES (
-        @id, @ownerId, @folderId, @displayName, @storageProvider, @objectKey,
+      )
+      SELECT
+        @id, ownership_domains.id, @ownerId, @folderId, @displayName, @storageProvider, @objectKey,
         @mediaType, @sizeBytes, @checksumAlgorithm, @checksum, @state, @revision,
         @createdAt, @updatedAt, @activatedAt, @deletedAt, @purgedAt
-      )
+      FROM ownership_domains
+      WHERE kind = 'account' AND account_id = @ownerId
     `);
     this.#findById = database.prepare<[string, string], StoredFileRow>(`
       SELECT
-        id, owner_id, folder_id, display_name, storage_provider, object_key,
-        media_type, size_bytes, checksum_algorithm, checksum, state, revision,
-        created_at, updated_at, activated_at, deleted_at, purged_at
+        files.id, ownership_domains.account_id AS owner_id, files.folder_id,
+        files.display_name, files.storage_provider, files.object_key,
+        files.media_type, files.size_bytes, files.checksum_algorithm, files.checksum,
+        files.state, files.revision, files.created_at, files.updated_at,
+        files.activated_at, files.deleted_at, files.purged_at
       FROM files
-      WHERE owner_id = ? AND id = ?
+      JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
+      WHERE ownership_domains.kind = 'account'
+        AND ownership_domains.account_id = ? AND files.id = ?
     `);
     const columns = `
-      id, owner_id, folder_id, display_name, storage_provider, object_key,
-      media_type, size_bytes, checksum_algorithm, checksum, state, revision,
-      created_at, updated_at, activated_at, deleted_at, purged_at
+      files.id, ownership_domains.account_id AS owner_id, files.folder_id,
+      files.display_name, files.storage_provider, files.object_key,
+      files.media_type, files.size_bytes, files.checksum_algorithm, files.checksum,
+      files.state, files.revision, files.created_at, files.updated_at,
+      files.activated_at, files.deleted_at, files.purged_at
     `;
     const qualifiedColumns = `
-      files.id, files.owner_id, files.folder_id, files.display_name,
+      files.id, ownership_domains.account_id AS owner_id, files.folder_id, files.display_name,
       files.storage_provider, files.object_key, files.media_type,
       files.size_bytes, files.checksum_algorithm, files.checksum,
       files.state, files.revision, files.created_at, files.updated_at,
@@ -111,20 +119,26 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
     `;
     this.#listRootByState = database.prepare<[string, StoredFileState], StoredFileRow>(`
       SELECT ${columns} FROM files
-      WHERE owner_id = ? AND folder_id IS NULL AND state = ?
-      ORDER BY display_name COLLATE NOCASE, id
+      JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND files.folder_id IS NULL AND files.state = ?
+      ORDER BY files.display_name COLLATE NOCASE, files.id
     `);
     this.#listFolderByState = database.prepare<[string, string, StoredFileState], StoredFileRow>(`
       SELECT ${columns} FROM files
-      WHERE owner_id = ? AND folder_id = ? AND state = ?
-      ORDER BY display_name COLLATE NOCASE, id
+      JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND files.folder_id = ? AND files.state = ?
+      ORDER BY files.display_name COLLATE NOCASE, files.id
     `);
     this.#listDeleted = database.prepare<[string], StoredFileRow>(`
       SELECT ${qualifiedColumns}
       FROM files
+      JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
       JOIN recycle_groups ON recycle_groups.id = files.recycle_group_id
-      WHERE files.owner_id = ? AND files.state IN ('deleted', 'purging')
-        AND recycle_groups.owner_id = files.owner_id
+        AND recycle_groups.owner_domain_id = files.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = ?
+        AND files.state IN ('deleted', 'purging')
         AND recycle_groups.root_kind = 'file'
         AND recycle_groups.root_id = files.id
       ORDER BY files.deleted_at DESC, files.id
@@ -137,17 +151,22 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
         state = @state, revision = revision + 1,
         updated_at = @updatedAt, activated_at = @activatedAt,
         deleted_at = @deletedAt, purged_at = @purgedAt
-      WHERE owner_id = @ownerId AND id = @id
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = @ownerId
+      ) AND id = @id
         AND state = @expectedState AND revision = @expectedRevision
     `);
     this.#deletePending = database.prepare<[string, string, number]>(`
       DELETE FROM files
-      WHERE owner_id = ? AND id = ? AND state = 'pending_upload' AND revision = ?
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+      ) AND id = ? AND state = 'pending_upload' AND revision = ?
     `);
     this.#listStale = database.prepare<[StoredFileState, string, number], StoredFileRow>(`
       SELECT ${columns} FROM files
-      WHERE state = ? AND updated_at <= ?
-      ORDER BY updated_at, owner_id, id
+      JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
+      WHERE ownership_domains.kind = 'account' AND files.state = ? AND files.updated_at <= ?
+      ORDER BY files.updated_at, files.owner_domain_id, files.id
       LIMIT ?
     `);
   }

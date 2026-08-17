@@ -14,7 +14,7 @@ The repository and Git are durable project memory. Chat is planning context only
 
 **Development:** Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, and repository/local OPS01A are independently green on the current development line. This newer repository generation is not deployed.
 
-**Next:** the independently reviewed `RF-PLAN01` decomposition and `RF-AUDIT01` governance-audit foundation are complete. The Owner-authorized **Pre-OCR Research Foundation** continues with `RF-OWNERSHIP01` as the next Ready implementation card.
+**Next:** the independently reviewed `RF-PLAN01`, `RF-AUDIT01`, and `RF-OWNERSHIP01` checkpoints are complete. The Owner-authorized **Pre-OCR Research Foundation** continues with `RF-BULK01` as the next Ready implementation card.
 
 Read:
 - `AGENTS.md` — mandatory repository policy and current product/privacy boundaries;
