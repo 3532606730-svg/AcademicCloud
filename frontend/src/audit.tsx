@@ -23,6 +23,7 @@ const ACTION_LABELS: Record<AuditEventKind, [string, string]> = {
   "announcements.edit": ["Announcement edited", "编辑公告"],
   "announcements.publish": ["Announcement published", "发布公告"],
   "announcements.unpublish": ["Announcement unpublished", "取消发布公告"],
+  "announcements.delete": ["Announcement deleted", "删除公告"],
   "drive.upload_activate": ["Upload activated", "激活上传"],
   "drive.folder_recycle": ["Folder recycled", "回收文件夹"],
   "drive.folder_restore": ["Folder restored", "恢复文件夹"],

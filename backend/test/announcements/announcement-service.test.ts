@@ -9,6 +9,7 @@ import {
 } from "../../src/announcements/announcement-service.js";
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { AuthorizationDeniedError } from "../../src/auth/authorization.js";
+import type { Persistence, RepositorySet } from "../../src/persistence/contracts.js";
 import { createTestPersistence } from "../persistence/helpers.js";
 
 const START = new Date("2026-08-17T10:00:00.000Z");
@@ -51,6 +52,26 @@ function row(overrides: Partial<NewAnnouncement> & Pick<NewAnnouncement, "id">):
     createdByAccountId: overrides.createdByAccountId ?? OWNER.id,
     createdAt: overrides.createdAt ?? new Date("2026-08-17T08:00:00.000Z"),
     updatedAt: overrides.updatedAt ?? new Date("2026-08-17T09:00:00.000Z"),
+  };
+}
+
+function failingAuditPersistence(base: Persistence): Persistence {
+  return {
+    repositories: base.repositories,
+    runInTransaction<T>(work: (repositories: RepositorySet) => T): T {
+      return base.runInTransaction((repositories) => work({
+        ...repositories,
+        audit: new Proxy(repositories.audit, {
+          get(target, property) {
+            if (property === "create") return () => { throw new Error("injected audit failure"); };
+            const value = Reflect.get(target, property);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+        }),
+      }));
+    },
+    isReady: () => base.isReady(),
+    close: () => undefined,
   };
 }
 
@@ -118,11 +139,50 @@ test("Member and stale/disabled identities cannot administer announcements", (co
   assert.throws(() => service.edit(MEMBER, created.id, input), AuthorizationDeniedError);
   assert.throws(() => service.publish(MEMBER, created.id), AuthorizationDeniedError);
   assert.throws(() => service.unpublish(MEMBER, created.id), AuthorizationDeniedError);
+  assert.throws(() => service.delete(MEMBER, created.id), AuthorizationDeniedError);
 
   persistence.repositories.accounts.updateState(MEMBER.id, "active", "disabled", START);
   assert.throws(() => service.listEffective(MEMBER), AuthorizationDeniedError);
   persistence.repositories.accounts.updateState(OWNER.id, "active", "disabled", START);
   assert.throws(() => service.listAll(OWNER), AuthorizationDeniedError);
+});
+
+test("Owner deletion removes effective/admin reads and commits immutable audit evidence", (context) => {
+  const { service, persistence } = fixture(context);
+  const created = service.create(OWNER, { title: "Delete me", body: "Body", severity: "info", linkUrl: null, expiresAt: null });
+  service.publish(OWNER, created.id);
+  assert.equal(service.listEffective(MEMBER)[0]?.id, created.id);
+
+  service.delete(OWNER, created.id);
+  assert.equal(persistence.repositories.announcements.findById(created.id), null);
+  assert.deepEqual(service.listAll(OWNER), []);
+  assert.deepEqual(service.listEffective(MEMBER), []);
+  assert.deepEqual(
+    persistence.repositories.audit.listBefore(null, 10)
+      .filter((event) => event.action === "announcements.delete")
+      .map((event) => ({ actor: event.actorAccountId, target: event.targetId, outcome: event.outcome })),
+    [{ actor: OWNER.id, target: created.id, outcome: "succeeded" }],
+  );
+  assert.throws(
+    () => service.delete(OWNER, created.id),
+    (error) => error instanceof AnnouncementAdministrationError && error.code === "not_found",
+  );
+});
+
+test("announcement deletion rolls back when immutable audit insertion fails", (context) => {
+  const { service, persistence } = fixture(context);
+  const created = service.create(OWNER, { title: "Retain me", body: "Body", severity: "info", linkUrl: null, expiresAt: null });
+  const failingService = new AnnouncementService({
+    persistence: failingAuditPersistence(persistence),
+    now: () => START,
+  });
+
+  assert.throws(() => failingService.delete(OWNER, created.id), /injected audit failure/);
+  assert.equal(persistence.repositories.announcements.findById(created.id)?.title, "Retain me");
+  assert.equal(
+    persistence.repositories.audit.listBefore(null, 10).some((event) => event.action === "announcements.delete"),
+    false,
+  );
 });
 
 test("effective reads enforce exact publication/expiry boundaries and deterministic ordering", (context) => {

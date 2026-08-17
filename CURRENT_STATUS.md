@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local line through `RF-DOMAIN01` is complete and independently green, PROD-04A has deployed/accepted the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8, and both `L1-UX04` and `L2-ACCOUNTARCHIVE01` are complete with focused verification green. The approved repository-development objective continues at `L2-ADMINPOLISH01`.**
+**The repository-local line through `RF-DOMAIN01` is complete and independently green, PROD-04A has deployed/accepted the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8, and all three first-use polish cards are complete with focused verification green. The approved repository-development objective continues at `RF-LIBRARY01`.**
 
 Production remains live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8. Repository development is newer and remains repository-only until a separate Owner deployment gate selects an exact candidate.
 
@@ -17,14 +17,14 @@ Current development lineage before this planning reconciliation:
 - RF-OWNERSHIP01 checkpoint: `636a19e6f55aba8d84855e266954a08b3b415065`;
 - RF-BULK01 checkpoint: `fc30aed2eeb4536ec3747869bb5b99b22fbf94e8`;
 - RF-DOMAIN01 checkpoint: `ddcc19eb41428bbdbececd8868a11a09dae97e98`;
-- latest repository migration: `012_member_account_archival.sql`.
+- latest repository migration: `013_announcement_delete_audit.sql`.
 
 Current execution branch:
 - `codex/project-memory-reconcile-20260817`;
 - accelerated-queue planning checkpoint before implementation: `e915825fd546a122ff8606e699a9fd678c020001`;
 - contains repository development only; no production mutation.
 
-Historical migrations 001–012 must not be modified or renumbered. New persistent work must use append-only versions after the actual development schema head.
+Historical migrations 001–013 must not be modified or renumbered. New persistent work must use append-only versions after the actual development schema head.
 
 ## Production State
 
@@ -33,7 +33,7 @@ Production is the accepted routine multi-user release `34a2eada158dcf08783dc9538
 Production database state:
 - schema v8 with exact append-only history 1–8;
 - only migrations 005–008 were added by PROD-04A;
-- repository migrations 009–012 remain undeployed.
+- repository migrations 009–013 remain undeployed.
 
 Accepted production behavior includes Owner/Member invitations and login, cross-account Drive isolation, password/session revocation, disable/re-enable, announcements, Favorites, recycle/restore, upload/download/Preview, and final integrity/resource checks.
 
@@ -74,7 +74,7 @@ RF-LIBRARY02
 STOP
 ```
 
-Current progress: `L1-UX04` and `L2-ACCOUNTARCHIVE01` are complete. Next is `L2-ADMINPOLISH01`, followed by `RF-LIBRARY01` and `RF-LIBRARY02`.
+Current progress: `L1-UX04`, `L2-ACCOUNTARCHIVE01`, and `L2-ADMINPOLISH01` are complete. Next is `RF-LIBRARY01`, followed by `RF-LIBRARY02`.
 
 ### L1-UX04
 - clear localized feedback when a same-folder active/pending file name already exists;
@@ -98,6 +98,8 @@ Current progress: `L1-UX04` and `L2-ACCOUNTARCHIVE01` are complete. Next is `L2-
 - keep invitation history durable but collapse consumed/revoked/expired invitations under `历史邀请 / Invitation history`;
 - usable invitations remain prominent and alone expose Revoke;
 - invitation token/security semantics remain unchanged.
+
+**Complete.** Owner-only, target-confirmed announcement deletion now removes effective/admin rows and commits immutable `announcements.delete` audit in the same transaction. Available invitations remain prominent; consumed/revoked/expired records remain stored under a counted collapsed history section with no deletion/token-semantic change. Focused backend/migration/frontend verification and workspace typecheck/build are green.
 
 ### RF-LIBRARY01 — Accelerated Minimum Shared Library
 - real Library entity and ownership domain, never a shared-folder convention;
@@ -157,4 +159,4 @@ This repository objective does **not** authorize:
 
 ## Next Action
 
-Create/push the green `L2-ACCOUNTARCHIVE01` checkpoint, then execute `L2-ADMINPOLISH01` with proportionate focused verification. Continue only through the approved queue and STOP after `RF-LIBRARY02` before any production rollout.
+Create/push the green `L2-ADMINPOLISH01` checkpoint, then execute `RF-LIBRARY01` with focused ownership/authorization/privacy verification. Continue only through `RF-LIBRARY02` and STOP before any production rollout.

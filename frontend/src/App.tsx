@@ -1839,6 +1839,9 @@ function AccountAdministrationDialog({
     }
   }
 
+  const availableInvitations = invitations.filter((invitation) => invitation.status === "available");
+  const historicalInvitations = invitations.filter((invitation) => invitation.status !== "available");
+
   return (
     <dialog ref={dialogRef} className="account-administration-modal" aria-labelledby="account-administration-title">
       <header>
@@ -1896,19 +1899,36 @@ function AccountAdministrationDialog({
                 </div>
               )}
               {invitations.length === 0 ? <p className="account-administration-empty">{t("accounts.noInvitations")}</p> : (
-                <div className="account-administration-list">
-                  {invitations.map((invitation) => (
-                    <article className="account-administration-row" key={invitation.id}>
-                      <div>
-                        <strong>{t(invitationStatusKey(invitation.status))}</strong>
-                        <span>{t("accounts.expires", { date: formatDate(invitation.expiresAt, language) })}</span>
+                <>
+                  {availableInvitations.length === 0 ? <p className="account-administration-empty">{t("accounts.noAvailableInvitations")}</p> : (
+                    <div className="account-administration-list">
+                      {availableInvitations.map((invitation) => (
+                        <article className="account-administration-row" key={invitation.id}>
+                          <div>
+                            <strong>{t(invitationStatusKey(invitation.status))}</strong>
+                            <span>{t("accounts.expires", { date: formatDate(invitation.expiresAt, language) })}</span>
+                          </div>
+                          <button className="button button--small button--danger" type="button" disabled={busyId !== null} onClick={() => void revokeInvitation(invitation.id)}>{t("accounts.revoke")}</button>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                  {historicalInvitations.length > 0 && (
+                    <details className="invitation-history">
+                      <summary>{t("accounts.invitationHistory", { count: historicalInvitations.length })}</summary>
+                      <div className="account-administration-list">
+                        {historicalInvitations.map((invitation) => (
+                          <article className="account-administration-row" key={invitation.id}>
+                            <div>
+                              <strong>{t(invitationStatusKey(invitation.status))}</strong>
+                              <span>{t("accounts.expires", { date: formatDate(invitation.expiresAt, language) })}</span>
+                            </div>
+                          </article>
+                        ))}
                       </div>
-                      {invitation.status === "available" && (
-                        <button className="button button--small button--danger" type="button" disabled={busyId !== null} onClick={() => void revokeInvitation(invitation.id)}>{t("accounts.revoke")}</button>
-                      )}
-                    </article>
-                  ))}
-                </div>
+                    </details>
+                  )}
+                </>
               )}
             </section>
           </>

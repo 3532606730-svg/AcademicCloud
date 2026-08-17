@@ -552,6 +552,9 @@ input:hover { border-color: #a7b2a8; }
 .invitation-link label { color: var(--forest-deep); font-size: 0.8rem; font-weight: 650; }
 .invitation-link input { width: 100%; }
 .invitation-link .button { justify-self: end; }
+.invitation-history { display: grid; gap: 0.65rem; }
+.invitation-history summary { color: var(--muted); cursor: pointer; font-size: 0.84rem; font-weight: 650; }
+.invitation-history[open] summary { color: var(--ink); }
 
 .password-change-modal { width: min(28rem, calc(100% - 2.5rem)); padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
 .password-change-modal[open] { display: block; }

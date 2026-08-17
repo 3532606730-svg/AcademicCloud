@@ -11,6 +11,7 @@ export const AUDIT_EVENT_KINDS = [
   "announcements.edit",
   "announcements.publish",
   "announcements.unpublish",
+  "announcements.delete",
   "drive.upload_activate",
   "drive.folder_recycle",
   "drive.folder_restore",

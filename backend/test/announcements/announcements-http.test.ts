@@ -137,6 +137,7 @@ test("unauthenticated reads fail and Members are denied on every administration 
     { method: "PATCH", url: "/api/announcements/any", payload: validBody },
     { method: "POST", url: "/api/announcements/any/publish" },
     { method: "POST", url: "/api/announcements/any/unpublish" },
+    { method: "DELETE", url: "/api/announcements/any" },
   ] as const) {
     const response = await app.inject({
       ...request,
@@ -151,10 +152,33 @@ test("unauthenticated reads fail and Members are denied on every administration 
       .sort((left, right) => left.action.localeCompare(right.action)),
     [
       { action: "announcements.create", actor: "member-1", target: null, reason: "authorization_denied" },
+      { action: "announcements.delete", actor: "member-1", target: null, reason: "authorization_denied" },
       { action: "announcements.edit", actor: "member-1", target: null, reason: "authorization_denied" },
       { action: "announcements.publish", actor: "member-1", target: null, reason: "authorization_denied" },
       { action: "announcements.unpublish", actor: "member-1", target: null, reason: "authorization_denied" },
     ],
+  );
+});
+
+test("Owner deletion immediately removes an effective announcement from feed and administration", async (context) => {
+  const { app, ownerCookie, memberCookie } = await fixture(context);
+  assert.equal((await app.inject({
+    method: "POST", url: "/api/announcements", headers: { origin: ORIGIN, cookie: ownerCookie }, payload: validBody,
+  })).statusCode, 201);
+  assert.equal((await app.inject({
+    method: "POST", url: "/api/announcements/announcement-1/publish", headers: { origin: ORIGIN, cookie: ownerCookie },
+  })).statusCode, 200);
+  assert.equal((await app.inject({ method: "GET", url: "/api/announcements", headers: { cookie: memberCookie } })).json().announcements.length, 1);
+
+  const deleted = await app.inject({
+    method: "DELETE", url: "/api/announcements/announcement-1", headers: { origin: ORIGIN, cookie: ownerCookie },
+  });
+  assert.equal(deleted.statusCode, 204);
+  assert.deepEqual((await app.inject({ method: "GET", url: "/api/announcements", headers: { cookie: memberCookie } })).json(), { announcements: [] });
+  assert.deepEqual((await app.inject({ method: "GET", url: "/api/announcements/admin", headers: { cookie: ownerCookie } })).json(), { announcements: [] });
+  assert.deepEqual(
+    (await app.inject({ method: "DELETE", url: "/api/announcements/announcement-1", headers: { origin: ORIGIN, cookie: ownerCookie } })).json(),
+    { error: "not_found" },
   );
 });
 

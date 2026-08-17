@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. `L1-UX04` and `L2-ACCOUNTARCHIVE01` are complete and green; the accelerated queue continues at `L2-ADMINPOLISH01`.**
+**The repository-local objective through OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 is complete and independently green. PROD-04A deployed and accepted exact checkpoint `34a2eada…`. All three first-use polish cards are complete and green; the accelerated queue continues at `RF-LIBRARY01`.**
 
 Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Repository HEAD remains newer and does not automatically select another production target.
 
@@ -31,13 +31,12 @@ This repository objective does not authorize production access/mutation, deploym
 
 ## Doing
 
-None between checkpoints. Select `L2-ADMINPOLISH01` after the L2-ACCOUNTARCHIVE01 checkpoint.
+None between checkpoints. Select `RF-LIBRARY01` after the L2-ADMINPOLISH01 checkpoint.
 
 ## Ready — Accelerated First-Use Queue
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 3 | `L2-ADMINPOLISH01` | `tasks/ready/L2-ADMINPOLISH01.md` | announcement delete + collapsed invitation history |
 | 4 | `RF-LIBRARY01` | `tasks/ready/RF-LIBRARY01.md` | real Library domain, membership, permissions, holdings read surface |
 | 5 | `RF-LIBRARY02` | `tasks/ready/RF-LIBRARY02.md` | Member submit → reviewer approve/reject/withdraw → Library ownership |
 
@@ -105,6 +104,12 @@ One-Time External Sharing remains a separately scoped capability:
 It is not silently pulled into the accelerated Shared Library program.
 
 ## Completed
+
+### L2-ADMINPOLISH01 — Announcement and Invitation Administration Polish
+
+**Task card:** `tasks/done/L2-ADMINPOLISH01.md`
+
+**Status:** complete; focused review and verification green. Append-only migration 013 registers immutable `announcements.delete` audit; Owner-confirmed deletion removes effective/admin rows transactionally, while invitation records remain durable and are presented as prominent usable entries plus a counted collapsed history. Announcement service `6/6`, HTTP `4/4`, migration `1/1`, frontend `116/116`, workspace typecheck/build, and `git diff --check` PASS.
 
 ### L2-ACCOUNTARCHIVE01 — Member Account Archival
 

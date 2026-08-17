@@ -188,4 +188,25 @@ export async function registerAnnouncementsHttp(app: FastifyInstance, service: A
       },
     );
   }
+
+  app.delete<{ Params: IdParameters }>(
+    "/api/announcements/:id",
+    { preHandler: app.authenticate, schema: { params: idParametersSchema } },
+    async (request, reply) => {
+      if (!requireOwnerRequest(request, reply, () => service.recordAuditAttempt(
+        request.authAccount!, "announcements.delete", new AuthorizationDeniedError(),
+      ))) return;
+      try {
+        service.delete(request.authAccount!, request.params.id);
+        writeAudit(request, "announcements.delete", "succeeded", {
+          actorAccountId: request.authAccount!.id,
+          announcementId: request.params.id,
+        });
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        service.recordAuditAttempt(request.authAccount!, "announcements.delete", error);
+        return mapError(error, reply);
+      }
+    },
+  );
 }

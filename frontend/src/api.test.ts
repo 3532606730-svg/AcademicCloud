@@ -256,6 +256,7 @@ describe("ApiClient", () => {
       new Response(JSON.stringify({ announcement }), { status: 200, headers: { "content-type": "application/json" } }),
       new Response(JSON.stringify({ announcement: { ...announcement, isActive: true } }), { status: 200, headers: { "content-type": "application/json" } }),
       new Response(JSON.stringify({ announcement }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(null, { status: 204 }),
     ];
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
     const api = new ApiClient({ fetcher });
@@ -266,6 +267,7 @@ describe("ApiClient", () => {
     await api.updateAnnouncement(announcement.id, input);
     await api.publishAnnouncement(announcement.id);
     await api.unpublishAnnouncement(announcement.id);
+    await api.deleteAnnouncement(announcement.id);
 
     expect(fetcher.mock.calls[0]?.[0]).toBe("/api/announcements");
     expect(fetcher.mock.calls[1]?.[0]).toBe("/api/announcements/admin");
@@ -277,6 +279,8 @@ describe("ApiClient", () => {
     assertBodylessRequestInit(fetcher.mock.calls[4]?.[1], "POST");
     expect(fetcher.mock.calls[5]?.[0]).toBe("/api/announcements/announcement%20%2F%20one/unpublish");
     assertBodylessRequestInit(fetcher.mock.calls[5]?.[1], "POST");
+    expect(fetcher.mock.calls[6]?.[0]).toBe("/api/announcements/announcement%20%2F%20one");
+    assertBodylessRequestInit(fetcher.mock.calls[6]?.[1], "DELETE");
   });
 
   it("uses bounded keyset pagination for the Owner audit contract", async () => {

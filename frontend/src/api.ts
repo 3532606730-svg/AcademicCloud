@@ -48,7 +48,7 @@ export type AuditEventKind =
   | "auth.login" | "auth.logout" | "auth.password_change"
   | "accounts.owner_bootstrap" | "accounts.register" | "accounts.invitation_create"
   | "accounts.invitation_revoke" | "accounts.member_state_change"
-  | "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish"
+  | "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish" | "announcements.delete"
   | "drive.upload_activate" | "drive.folder_recycle" | "drive.folder_restore"
   | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
@@ -235,6 +235,7 @@ export interface AcademicCloudApi {
   updateAnnouncement(announcementId: string, input: AnnouncementInput): Promise<Announcement>;
   publishAnnouncement(announcementId: string): Promise<Announcement>;
   unpublishAnnouncement(announcementId: string): Promise<Announcement>;
+  deleteAnnouncement(announcementId: string): Promise<void>;
   listAuditEvents(beforeId?: number, limit?: number, signal?: AbortSignal): Promise<AuditPage>;
   listEntries(folderId: string | null, signal?: AbortSignal): Promise<EntriesResponse>;
   listPending(folderId: string | null, signal?: AbortSignal): Promise<FileEntry[]>;
@@ -423,6 +424,10 @@ export class ApiClient implements AcademicCloudApi {
       `/api/announcements/${encodeURIComponent(announcementId)}/unpublish`,
       "POST",
     ).then((response) => response.announcement);
+  }
+
+  deleteAnnouncement(announcementId: string): Promise<void> {
+    return this.#action<void>(`/api/announcements/${encodeURIComponent(announcementId)}`, "DELETE");
   }
 
   listAuditEvents(beforeId?: number, limit?: number, signal?: AbortSignal): Promise<AuditPage> {

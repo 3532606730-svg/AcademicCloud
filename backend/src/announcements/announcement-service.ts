@@ -129,7 +129,7 @@ export class AnnouncementService {
 
   recordAuditAttempt(
     actor: AuthenticatedAccount,
-    action: Extract<AuditEventKind, "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish">,
+    action: Extract<AuditEventKind, "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish" | "announcements.delete">,
     error: unknown,
   ): boolean {
     let reason: AuditReasonCode = "storage_unavailable";
@@ -248,6 +248,27 @@ export class AnnouncementService {
         occurredAt: now,
       });
       return repositories.announcements.findById(current.id)!;
+    });
+  }
+
+  delete(actor: AuthenticatedAccount, announcementId: string): void {
+    requireOwner(actor);
+    const now = this.#now();
+    this.#persistence.runInTransaction((repositories) => {
+      this.#assertCurrentOwner(actor, repositories);
+      const current = repositories.announcements.findById(announcementId);
+      if (!current || !repositories.announcements.delete(current.id)) {
+        throw new AnnouncementAdministrationError("not_found");
+      }
+      recordAuditEvent(repositories, {
+        action: "announcements.delete",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: current.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
     });
   }
 

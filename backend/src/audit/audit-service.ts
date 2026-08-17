@@ -28,6 +28,7 @@ const TARGET_BY_ACTION: Readonly<Record<AuditEventKind, string | null>> = {
   "announcements.edit": "announcement",
   "announcements.publish": "announcement",
   "announcements.unpublish": "announcement",
+  "announcements.delete": "announcement",
   "drive.upload_activate": "file",
   "drive.folder_recycle": "folder",
   "drive.folder_restore": "folder",
@@ -116,6 +117,7 @@ function assertAuditShape(input: AuditRecordInput): void {
     case "announcements.edit":
     case "announcements.publish":
     case "announcements.unpublish":
+    case "announcements.delete":
     case "drive.folder_recycle":
     case "drive.folder_restore":
     case "drive.file_recycle":

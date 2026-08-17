@@ -10,6 +10,7 @@ import {
   type EntriesResponse,
   type FileEntry,
   type FolderEntry,
+  type Invitation,
   type ScholarlyRecord,
 } from "./api.ts";
 import type { UploadProgressMetrics } from "./direct-upload.ts";
@@ -69,6 +70,7 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     updateAnnouncement: vi.fn(),
     publishAnnouncement: vi.fn(),
     unpublishAnnouncement: vi.fn(),
+    deleteAnnouncement: vi.fn().mockResolvedValue(undefined),
     listAuditEvents: vi.fn().mockResolvedValue({ events: [], nextBeforeId: null, retentionPolicy: "latest_20000_events" as const }),
     listEntries: vi.fn().mockResolvedValue(EMPTY_ENTRIES),
     listPending: vi.fn().mockResolvedValue([]),
@@ -265,6 +267,44 @@ describe("App", () => {
     expect(menu.getByRole("menuitem", { name: "Change password" })).toBeInTheDocument();
   });
 
+  it("keeps usable invitations prominent and collapses durable invitation history with a count", async () => {
+    const user = userEvent.setup();
+    const baseInvitation = {
+      createdByAccountId: ACCOUNT.id,
+      createdAt: "2026-08-17T00:00:00.000Z",
+      expiresAt: "2026-08-24T00:00:00.000Z",
+      consumedAt: null,
+      consumedByAccountId: null,
+      revokedAt: null,
+    };
+    const invitations: Invitation[] = [
+      { ...baseInvitation, id: "available", status: "available" },
+      { ...baseInvitation, id: "used", status: "consumed", consumedAt: "2026-08-18T00:00:00.000Z", consumedByAccountId: "member-1" },
+      { ...baseInvitation, id: "revoked", status: "revoked", revokedAt: "2026-08-18T00:00:00.000Z" },
+      { ...baseInvitation, id: "expired", status: "expired" },
+    ];
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listInvitations: vi.fn().mockResolvedValue(invitations),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "Manage accounts" }));
+    const dialog = await screen.findByRole("dialog", { name: "Account administration" });
+
+    expect(await within(dialog).findByText("Available")).toBeInTheDocument();
+    expect(within(dialog).getAllByRole("button", { name: "Revoke" })).toHaveLength(1);
+    const summary = within(dialog).getByText("Invitation history (3)");
+    const history = summary.closest("details") as HTMLDetailsElement;
+    expect(history.open).toBe(false);
+    await user.click(summary);
+    expect(history.open).toBe(true);
+    expect(within(history).getByText("Used")).toBeInTheDocument();
+    expect(within(history).getByText("Revoked")).toBeInTheDocument();
+    expect(within(history).getByText("Expired")).toBeInTheDocument();
+    expect(within(history).queryByRole("button", { name: "Revoke" })).not.toBeInTheDocument();
+  });
+
   it("hides archived Members by default and makes archive/unarchive a disabled-only Owner workflow", async () => {
     const user = userEvent.setup();
     const owner = { ...ACCOUNT, state: "active" as const, createdAt: "2026-08-17T00:00:00.000Z" };
@@ -417,8 +457,9 @@ describe("App", () => {
     expect(document.querySelector(".announcement-feed")).toBeNull();
   });
 
-  it("lets the Owner create, edit, publish, and unpublish announcements without a fifth navigation item", async () => {
+  it("lets the Owner create, edit, publish, unpublish, and explicitly delete announcements without a fifth navigation item", async () => {
     const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const base = {
       id: "announcement-1",
       title: "Archive hours",
@@ -453,6 +494,7 @@ describe("App", () => {
       publishedAt: "2026-08-17T10:02:00.000Z",
       updatedAt: "2026-08-17T10:03:00.000Z",
     });
+    const deleteAnnouncement = vi.fn().mockResolvedValue(undefined);
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listAllAnnouncements: vi.fn().mockResolvedValue([]),
@@ -460,6 +502,7 @@ describe("App", () => {
       updateAnnouncement,
       publishAnnouncement,
       unpublishAnnouncement,
+      deleteAnnouncement,
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
@@ -490,6 +533,10 @@ describe("App", () => {
     await waitFor(() => expect(publishAnnouncement).toHaveBeenCalledWith("announcement-1"));
     await user.click(within(dialog).getByRole("button", { name: "Unpublish" }));
     await waitFor(() => expect(unpublishAnnouncement).toHaveBeenCalledWith("announcement-1"));
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    expect(confirm).toHaveBeenCalledWith("Delete announcement “Archive schedule”? This removes it immediately.");
+    await waitFor(() => expect(deleteAnnouncement).toHaveBeenCalledWith("announcement-1"));
+    await waitFor(() => expect(within(dialog).queryByText("Archive schedule")).not.toBeInTheDocument());
   });
 
   it("does not expose announcement administration to Members", async () => {

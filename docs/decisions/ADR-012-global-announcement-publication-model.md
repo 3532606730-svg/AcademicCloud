@@ -41,10 +41,17 @@ An optional link must be an absolute normalized `https:` URL with a hostname and
 
 Announcements use the existing Fastify process, persistence transaction boundary, SQLite backup/restore path, authentication guard, exact-origin policy, React application, and responsive shell. There is no mail/push delivery, read receipt, acknowledgement, per-user dismissal, polling worker, queue, new resident service, attachment, or OSS object.
 
+### 5. Owner deletion is explicit, immediate, and audited
+
+L2-ADMINPOLISH01 permits a currently active Owner to delete an announcement after a target-identifying confirmation. Deletion removes the announcement from both effective reads and the Owner administration list; there is no announcement archive or tombstone state. The database deletion and immutable `announcements.delete` governance event commit in the same transaction, so audit failure rolls the deletion back. Members cannot call the deletion route.
+
+This bounded deletion applies only to announcement content. Invitation records and their creator/consumer relationships remain durable and have no deletion API.
+
 ## Consequences
 
 - Global announcement reads are intentionally identical for Owner and Member accounts while drive data remains account-scoped.
 - Naturally expired records may remain stored for Owner administration; display correctness does not depend on deletion.
+- An Owner may explicitly delete an announcement, but expiry never deletes one automatically.
 - Re-publishing an inactive record establishes a new server publication time. Repeating publish while already active or unpublish while already inactive is idempotent.
 - Links are deliberately narrower than arbitrary web URLs. Supporting another scheme or rich content requires a new security review.
 - Schema 008 must be migrated through the existing backup, explicit migration, startup fail-closed, and rollback gates before any future deployment.

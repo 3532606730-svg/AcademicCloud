@@ -8,4 +8,5 @@ export interface AnnouncementRepository {
   updateContent(id: string, content: AnnouncementContent, updatedAt: Date): boolean;
   publish(id: string, publishedAt: Date): boolean;
   unpublish(id: string, updatedAt: Date): boolean;
+  delete(id: string): boolean;
 }

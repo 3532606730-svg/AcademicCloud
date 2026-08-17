@@ -41,6 +41,7 @@ export class SqliteAnnouncementRepository implements AnnouncementRepository {
   readonly #updateContent;
   readonly #publish;
   readonly #unpublish;
+  readonly #delete;
 
   constructor(database: SqliteDatabase) {
     const columns = `
@@ -80,6 +81,7 @@ export class SqliteAnnouncementRepository implements AnnouncementRepository {
     this.#unpublish = database.prepare<[string, string]>(`
       UPDATE announcements SET is_active = 0, updated_at = ? WHERE id = ?
     `);
+    this.#delete = database.prepare<[string]>("DELETE FROM announcements WHERE id = ?");
   }
 
   create(announcement: NewAnnouncement): Announcement {
@@ -132,5 +134,9 @@ export class SqliteAnnouncementRepository implements AnnouncementRepository {
 
   unpublish(id: string, updatedAt: Date): boolean {
     return this.#unpublish.run(toDatabaseTimestamp(updatedAt)!, id).changes === 1;
+  }
+
+  delete(id: string): boolean {
+    return this.#delete.run(id).changes === 1;
   }
 }

@@ -225,6 +225,22 @@ export function AnnouncementAdministrationDialog({
     }
   }
 
+  async function remove(announcement: Announcement) {
+    if (!window.confirm(t("announcements.deleteConfirm", { title: announcement.title }))) return;
+    setBusyId(`delete-${announcement.id}`);
+    setError(null);
+    try {
+      await api.deleteAnnouncement(announcement.id);
+      setAnnouncements((current) => current.filter((item) => item.id !== announcement.id));
+      if (editingId === announcement.id) startCreate();
+      onChanged();
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <dialog ref={dialogRef} className="announcement-administration-modal" aria-labelledby="announcement-administration-title">
       <header>
@@ -280,6 +296,7 @@ export function AnnouncementAdministrationDialog({
                     <button className={announcement.isActive ? "button button--small button--danger" : "button button--small"} type="button" disabled={busyId !== null} onClick={() => void changePublication(announcement)}>
                       {announcement.isActive ? t("announcements.unpublish") : t("announcements.publish")}
                     </button>
+                    <button className="button button--small button--danger" type="button" disabled={busyId !== null} onClick={() => void remove(announcement)}>{t("announcements.delete")}</button>
                   </div>
                 </article>
               ))}
