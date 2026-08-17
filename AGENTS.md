@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, and PROD-04A are complete and independently green. Exact OPS01A checkpoint `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted production generation at schema v8. No task or feature Epic is active. The remaining **Pre-OCR Research Foundation** queue begins with RF-META01 but is parked Ready/backlog by Owner direction.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, and PROD-04A are complete and independently green. Exact OPS01A checkpoint `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted production generation at schema v8. The Owner has now opened one bounded repository-development objective for first-use polish followed by minimum Shared Library and Member contribution review.
 
-**Approved continuous objective:** interrupted by Owner after the independently green RF-DOMAIN01 checkpoint. PROD-04A deployed and accepted the externally selected earlier OPS01A checkpoint and is complete. Stop. Do not select or execute RF-META01 or any later feature task until new Owner direction. Repository HEAD remains newer and is not production HEAD. Any further production SSH/deployment/migration/mutation, main merge, real credentials/cost, and destructive real-data work remain separately Owner-gated.
+**Approved continuous objective:** execute only `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01`, `RF-LIBRARY01`, then `RF-LIBRARY02`, and STOP. The three polish cards may be completed in the most efficient order; `RF-LIBRARY01` must precede `RF-LIBRARY02`. `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, and every unrelated later Pre-OCR task remain parked. Repository HEAD remains newer than production HEAD. Any production SSH/deployment/migration/mutation, main merge, real credentials/cost, destructive real-data work, `PROD-03C2`, or OCR/RAG remains separately Owner-gated.
 
 ## Engineering Workflow
 
@@ -23,9 +23,11 @@ Ordinary AcademicCloud engineering follows `.agents/skills/academiccloud-workflo
 7. **External services stay abstracted.** File bytes remain behind storage adapters; compute-heavy OCR/RAG/AI stays isolated from Core Drive.
 8. **Server authority is mandatory.** Never trust client-provided owner, role, membership, privacy, or authorization claims.
 9. **Production is a separate gate.** Repository implementation never authorizes SSH, live migration, DNS/TLS/OSS mutation, deployment, destructive production tests, or main merge.
-10. **Every Epic ends at an evidence-backed checkpoint.** Tests, adversarial review, task-state reconciliation, and Git checkpoint precede autonomous progression.
+10. **Every Epic ends at an evidence-backed checkpoint.** Applicable tests, risk-appropriate review, task-state reconciliation, and Git checkpoint precede autonomous progression.
 11. **Shared resource does not imply shared research activity.** ADR-014 governs future research data boundaries.
 12. **AI authority never exceeds the requesting user's effective authority.** There is no AI super-admin research view.
+13. **Verification must be proportionate, not performative.** Run the checks that materially cover changed risk, then stop when relevant evidence is green. Do not repeatedly rerun historical full acceptance, production artifact builds, backup/restore drills, benchmarks, or unrelated audits merely to increase ceremony. Escalate verification only when a concrete failure, migration/data-integrity risk, authorization/security change, production boundary, or other material evidence justifies it.
+14. **Re-verify before changing a technical judgment.** Owner urgency or preference may change product priority, but it does not by itself invalidate an engineering/security/data-safety conclusion. Material reversals require a changed fact, constraint, or corrected reasoning that should be recorded when durable.
 
 ## Durable Data / Privacy Model
 
@@ -62,11 +64,11 @@ Additional invariants:
 
 ### Layer 1 — Core Drive
 
-**Repository-development foundation complete.** Authentication, account isolation, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, and deployment/recovery foundation are green. Pre-OCR work may add bounded Core Research UX such as metadata/name Search, private Recent, Bulk Operations, governance Audit, and storage/quota statistics.
+**Repository-development foundation complete.** Authentication, account isolation, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, and deployment/recovery foundation are green. The approved `L1-UX04` first-use polish only improves same-folder duplicate-name feedback and persistent desktop sidebar behavior; it does not change storage identity/deduplication semantics.
 
 ### Layer 2 — Accounts & Governance
 
-**Foundation complete.** Exact `owner | member`, invite-only registration, Owner administration, disable/enable/session revocation, Global Homepage Announcements, and Authenticated Password Change are green. One-Time External Sharing remains a separate later Layer 2 capability unless explicitly queued.
+**Foundation complete.** Exact `owner | member`, invite-only registration, Owner administration, disable/enable/session revocation, Global Homepage Announcements, and Authenticated Password Change are green. The approved first-use polish adds non-destructive Member archival, Owner-only announcement deletion, and collapsed invitation history while preserving durable identity/history/security semantics. One-Time External Sharing remains a separate later Layer 2 capability unless explicitly queued.
 
 ### Layer 3 — Personal Scholarly Workspace & Scholarly Model
 
@@ -80,23 +82,21 @@ Owner-approved Pre-OCR direction includes:
 - Research Inbox/intake;
 - sidecar annotations, citations, page-level evidence, Evidence Bundles, Research Questions, structured export foundations.
 
+These remain parked during the current accelerated first-use sharing objective unless explicitly named in the queue.
+
 ### Layer 4 — Shared Academic Library
 
-Owner-approved within the Pre-OCR program after prerequisite private/resource models are green:
-- Library as real ownership/domain boundary;
-- membership/permissions;
-- Library-scoped contributor roles/Trusted Contributor where appropriate;
-- contribution review;
-- Library Tags;
-- shared catalog/canonical records/naming;
-- provenance/source confidence;
-- duplicate/version grouping.
+The minimum Shared Library slice is now accelerated by Owner direction ahead of the parked metadata/overlay/export queue:
+- `RF-LIBRARY01`: Library as a real ownership/domain boundary, minimal membership/manager-member authority, and authorized holdings list/preview/download;
+- `RF-LIBRARY02`: explicit Member submission plus reviewer approve/reject/withdraw, with approval promoting the resource into Library ownership while preserving stable IDs/object bytes/contributor provenance.
 
-Shared Library resources never implicitly expose members' Personal Research Overlays.
+Reviewer authority applies only to explicitly submitted resources. Global Owner does not gain arbitrary browse-all access to Member-private Drive or Personal Research Overlay state.
+
+Still-later parked Layer 4 direction includes Trusted Contributor expansion where justified, Library Tags, shared catalog/canonical records/naming, provenance/source confidence, and duplicate/version grouping.
 
 ### Layer 5 — Research Infrastructure & Pre-OCR Hardening
 
-Owner-approved final pre-OCR foundation:
+Owner-approved final pre-OCR foundation remains parked:
 - integrity monitoring;
 - metadata snapshot/recovery foundations where justified;
 - permission-matrix verification;
@@ -127,7 +127,7 @@ Storage Adapter
 Provider
 ```
 
-File bytes belong in object storage. Application/database state stores logical metadata and relationships. Moving, organizing, recursively recycling, or adding research overlays should primarily mutate metadata/relations rather than copy/delete object bytes unless a task explicitly requires a new artifact.
+File bytes belong in object storage. Application/database state stores logical metadata and relationships. Moving, organizing, recursively recycling, sharing through Library ownership, or adding research overlays should primarily mutate metadata/relations rather than copy/delete object bytes unless a task explicitly requires a new artifact.
 
 Do not use user-facing filenames as trusted physical storage keys.
 
@@ -154,12 +154,14 @@ Before changing code:
 4. Preserve unrelated work and bounded blast radius.
 
 After implementation:
-1. Run applicable real checks.
+1. Run applicable real checks that cover the changed risk.
 2. Repair task-caused failures.
-3. Perform risk-appropriate adversarial review.
+3. Perform risk-appropriate review; do not repeat it without a concrete reason.
 4. Update task card, `CURRENT_STATUS.md`, `TASK_BOARD.md`, and durable decisions when needed.
 5. Review diff and create task-level Git checkpoint.
 6. Continue only to the next task inside the approved continuous objective; otherwise stop.
+
+When relevant checks are green and no material finding remains, record/commit instead of continuing to search for hypothetical issues.
 
 ## Documentation and Git
 
