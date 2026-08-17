@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**Layer 1 Core Drive, Layer 2 Accounts I, and the global homepage announcements MVP are green in repository development; the conditional password-change gate is next.**
+**Layer 1 Core Drive, Layer 2 Accounts I, Global Homepage Announcements, and Authenticated Password Change are green in repository development; OPS01A is the remaining conditional task in the approved local objective.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains local/repository-only unless a separate Owner production gate is opened.
 
@@ -30,7 +30,7 @@ Verified/recorded production facts:
 - private Alibaba OSS remains the file-byte store
 - `files.ajtlab.top` is the browser-facing OSS custom domain from the UX01 production window
 - production UX01 browser Product Verification passed
-- no UX02, FAV01, UX03, FOLDER01, Accounts I, announcements, or OPS01A code has been deployed
+- no UX02, FAV01, UX03, FOLDER01, Accounts I, announcements, Password Change, or OPS01A code has been deployed
 - systemd autostart/permanent-delete/certificate-lifecycle hardening remain separately Owner-gated according to the production runbooks
 
 Do not infer production rollout from repository completion.
@@ -139,6 +139,23 @@ Verification on 2026-08-17:
 - `git diff --check` PASS, targeted secret scan clear, dependency delta 0;
 - independent read-only Reviewer: PASS after the mobile-topbar repair, no remaining blocker or medium finding.
 
+### L2-PASSWORD01
+
+**Repository-development complete; independent adversarial review PASS.** Authenticated Owners and Members can change only their own password through an exact-origin, strict-shape API. Current-password verification and new-password hashing reuse the application-wide bounded Argon2id executor outside the write transaction without changing the accepted `m=65536`, `t=3`, `p=1` profile.
+
+The write boundary re-reads the active account, password hash, role, and durable authentication revision inside `BEGIN IMMEDIATE`, then uses an expected-hash plus expected-revision compare-and-swap before revoking all sessions in the same transaction. This prevents concurrent last-write-wins, disable→enable ABA revival, and publication of a pending old-password login; injected partial revocation rolls back the password, revision, and session state together.
+
+The account-surface dialog is available to both roles, keeps confirmation memory-only, clears authenticated frontend state and aborts active upload jobs after success, and returns to Login. It preserves the four-item mobile navigation and the 44px mobile touch floor. ADR-013 records the model; no migration or dependency was added.
+
+Verification on 2026-08-17:
+- backend `178/178` PASS;
+- frontend `136/136` PASS;
+- workspace typecheck and production build PASS;
+- acceptance tools `25/25` PASS;
+- compiled acceptance PASS with migration count 8, permanent old-session rejection, fresh new-password login, restart, backup/isolated restore, restored-session validity, announcement persistence, and zero redeploy migrations;
+- `git diff --check` PASS, 23 present changed-file high-confidence secret scan clear, dependency delta 0, migration delta 0;
+- independent read-only Reviewer: PASS after the mobile Close touch-target repair, no remaining blocker or medium finding.
+
 ### L1-UX03
 
 Implementation exists at `dd42cab…`; zero-descriptive-copy and the dedicated responsive mobile architecture were verified in the independent GitHub review. The three required repair findings are now repaired and independently re-reviewed **PASS** (APPROVE-WITH-NITS, non-blocking NITs only):
@@ -177,7 +194,7 @@ After this planning reconciliation, the executable sequence is:
 3. ~~L1-FOLDER01 — transactional recursive folder recycle/restore~~ — **DONE** (migration 006, full gates, independent review PASS);
 4. ~~L2-ACCOUNTS01 — Owner/Member foundation, invite-only registration, invite management, minimal Owner user administration, Member disable/enable, session revocation~~ — **DONE** (migration 007, full gates, independent security/race review PASS);
 5. ~~L2-ANNOUNCE01 — Owner-administered, database/API-backed global homepage announcements for authenticated users~~ — **DONE** (migration 008, full gates, independent review PASS);
-6. L2-PASSWORD01 — conditional/optional after Accounts I and announcements are fully green;
+6. ~~L2-PASSWORD01 — authenticated self-password change with concurrency-safe mutation and atomic session revocation~~ — **DONE** (no migration/dependency, full gates, independent review PASS);
 7. OPS01A — conditional repository/local operations preparation only;
 8. stop.
 
@@ -226,4 +243,4 @@ Current continuous objective does **not** authorize:
 
 ## Next Action
 
-Create the local L2-ANNOUNCE01 checkpoint, then recover `L2-PASSWORD01` from its Ready card and evaluate its existing conditional gate. Continue only if that gate remains satisfied; otherwise record the skip and evaluate OPS01A. Keep all work repository/local and do not contact production, push, or merge main.
+Create the local `L2-PASSWORD01` checkpoint, then recover and evaluate the existing conditional gate for `OPS01A`. Keep all work repository/local and do not contact production, push, or merge main.

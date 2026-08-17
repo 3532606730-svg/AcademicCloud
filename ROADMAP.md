@@ -67,10 +67,13 @@ Delivered:
 - database/API-backed; never hard-coded frontend configuration
 - completed with migration 008, backup/restore/runtime coverage, and independent adversarial review PASS
 
-### Conditional follow-up — L2-PASSWORD01
+### Completed follow-up — L2-PASSWORD01
 - authenticated current-password verification
-- concurrency-safe password update
-- revoke all sessions including current session after success
+- expected-hash plus authentication-revision compare-and-swap
+- atomic revocation of all sessions including the current session after success
+- shared bounded Argon2id executor with unchanged accepted parameters
+- self-only exact-origin API and Owner/Member account-surface UI
+- no migration or dependency; independent adversarial review PASS
 
 ### Later Layer 2 backlog
 - One-Time External Sharing

@@ -7,4 +7,11 @@ export interface AccountRepository {
   count(): number;
   list(): Account[];
   updateState(id: string, expectedState: AccountState, state: AccountState, updatedAt: Date): boolean;
+  updatePassword(
+    id: string,
+    expectedPasswordHash: string,
+    expectedAuthRevision: number,
+    passwordHash: string,
+    updatedAt: Date,
+  ): boolean;
 }

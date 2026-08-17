@@ -4,9 +4,9 @@
 
 **AcademicCloud** is a long-term academic digital infrastructure project.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, and Global Homepage Announcements are complete in repository development while the accepted UX01 production release remains live. The conditional Password Change gate is next. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, and Authenticated Password Change are complete in repository development while the accepted UX01 production release remains live. Conditional OPS01A is the remaining approved local task. Shared Library, Research Infrastructure, and Intelligence remain future boundaries unless separately authorized.
 
-**Approved continuous objective (repository/local only):** UX03, PERF01, FOLDER01, Accounts I, and Global Homepage Announcements are complete. PASSWORD01 is optional only if its existing conditional gate remains satisfied; OPS01A is a later conditional cross-cutting operations-preparation task. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
+**Approved continuous objective (repository/local only):** UX03, PERF01, FOLDER01, Accounts I, Global Homepage Announcements, and PASSWORD01 are complete. OPS01A remains a conditional cross-cutting operations-preparation task, after which this objective stops. Production deployment, production migration, main merge, External Sharing, Shared Library, OCR, and RAG are not authorized by this continuous objective.
 
 ## Engineering Workflow
 
@@ -61,7 +61,7 @@ Completed second Epic: **Global Homepage Announcements**
 - database/API-backed plain-text announcements with severity and effective/expiry windows
 - no notification delivery, read receipts, acknowledgement workflow, or new global role
 
-Optional follow-up after Accounts I and announcements: password change. One-Time External Sharing is a later Layer 2 task and is not part of the current continuous objective.
+Authenticated Password Change is complete after Accounts I and announcements. One-Time External Sharing is a later Layer 2 task and is not part of the current continuous objective.
 
 ### Layer 3 — Shared Academic Library
 

@@ -143,3 +143,11 @@ Accounts use exactly `owner | member`; ambiguous multi-account legacy databases 
 **Full record:** `docs/decisions/ADR-012-global-announcement-publication-model.md`
 
 Global announcements reuse the exact Owner authority from Accounts I and give all active authenticated accounts the same effective read set without changing private-drive isolation. Schema 008 uses server-authoritative publication/expiry boundaries and deterministic ordering; no cleanup worker is required for visibility correctness. Content remains plain text, optional links are normalized credential-free HTTPS URLs, and explicit idempotent publish/unpublish actions cannot be supplied through general content inputs.
+
+## ADR-013 — Authenticated Password Change Model
+
+**Date:** 2026-08-17
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-013-authenticated-password-change-model.md`
+
+Password change is self-only for authenticated Owner and Member accounts. Current-password verification and replacement hashing reuse the single bounded Argon2id executor outside the SQLite write transaction. The captured password hash plus durable authentication revision form a conditional update token; the successful password update and revoke-all-sessions commit atomically, so concurrent changes, disable/enable races, pending logins, and revocation failures cannot overwrite or revive old authentication state. No migration or dependency is added.

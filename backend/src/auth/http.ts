@@ -7,6 +7,7 @@ import {
   type AuthenticatedAccount,
   AuthService,
   InvalidCredentialsError,
+  PasswordChangeError,
   SESSION_DURATION_MILLISECONDS,
 } from "./auth-service.js";
 import { PasswordKdfOverloadedError } from "./password-hasher.js";
@@ -29,11 +30,17 @@ export interface AuthHttpOptions {
   appOrigin: string;
   environment: AppEnvironment;
   loginRateLimitMax?: number;
+  passwordChangeRateLimitMax?: number;
 }
 
 interface LoginBody {
   loginName: string;
   password: string;
+}
+
+interface ChangePasswordBody {
+  currentPassword: string;
+  newPassword: string;
 }
 
 interface SessionCookiePolicy {
@@ -50,7 +57,8 @@ type AuthAuditEvent =
   | "auth.origin_check"
   | "auth.session_check"
   | "auth.login"
-  | "auth.logout";
+  | "auth.logout"
+  | "auth.password_change";
 
 type AuthAuditOutcome = "succeeded" | "denied" | "busy" | "noop";
 
@@ -211,6 +219,69 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
     reply.clearCookie(cookiePolicy.name, cookiePolicy.options);
     return reply.code(204).send();
   });
+
+  app.post<{ Body: ChangePasswordBody }>(
+    "/api/auth/password",
+    {
+      preHandler: app.authenticate,
+      config: {
+        rateLimit: {
+          max: options.passwordChangeRateLimitMax ?? 5,
+          timeWindow: "1 minute",
+          onExceeded: (request: FastifyRequest) => {
+            writeAuthAudit(request, "auth.password_change", "denied", { reason: "rate_limit_exceeded" });
+          },
+        },
+      },
+      schema: {
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["currentPassword", "newPassword"],
+          properties: {
+            currentPassword: { type: "string", minLength: 1, maxLength: 1_024 },
+            newPassword: { type: "string", minLength: 12, maxLength: 1_024 },
+          },
+        },
+      },
+      preValidation: async (request, reply) => {
+        const contentType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase();
+        if (contentType !== "application/json") {
+          await reply.code(415).send({ error: "unsupported_media_type" });
+        }
+      },
+    },
+    async (request, reply) => {
+      try {
+        await options.authService.changePassword(
+          request.authAccount!,
+          request.body.currentPassword,
+          request.body.newPassword,
+        );
+        writeAuthAudit(request, "auth.password_change", "succeeded", { accountId: request.authAccount!.id });
+        reply.clearCookie(cookiePolicy.name, cookiePolicy.options);
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        if (error instanceof PasswordChangeError) {
+          writeAuthAudit(request, "auth.password_change", "denied", {
+            accountId: request.authAccount!.id,
+            reason: error.code,
+          });
+          return reply
+            .code(error.code === "password_change_conflict" ? 409 : 400)
+            .send({ error: error.code });
+        }
+        if (error instanceof PasswordKdfOverloadedError) {
+          writeAuthAudit(request, "auth.password_change", "busy", {
+            accountId: request.authAccount!.id,
+            reason: "kdf_overloaded",
+          });
+          return reply.header("retry-after", "1").code(429).send({ error: "password_change_busy" });
+        }
+        throw error;
+      }
+    },
+  );
 
   app.get(
     "/api/auth/session",

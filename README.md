@@ -12,7 +12,7 @@ The repository and Git are the durable project memory. Chat is planning context 
 
 **Production:** the accepted UX01 generation remains live at `https://cloud.ajtlab.top`. Production is a separate Owner-gated track.
 
-**Development:** Core Drive repository closure, Accounts I, and Global Homepage Announcements are green on `codex/project-memory-reconcile-20260817`; the conditional Password Change gate is next. This newer repository generation is not deployed.
+**Development:** Core Drive repository closure, Accounts I, Global Homepage Announcements, and Authenticated Password Change are green on `codex/project-memory-reconcile-20260817`; conditional OPS01A is next. This newer repository generation is not deployed.
 
 **Accepted local/repository checkpoints:**
 - Layer 1 foundation L1-E01–L1-E08
@@ -24,9 +24,10 @@ The repository and Git are the durable project memory. Chat is planning context 
 - PERF01 evidence checkpoint
 - FOLDER01 transactional recursive recycle/restore independently reviewed and checkpointed
 - Accounts I Owner/Member, invitation, administration, and isolation foundation independently reviewed and checkpointed
-- Global Homepage Announcements database/API, Owner administration, responsive homepage, and effective-window model independently reviewed and checkpoint-ready
+- Global Homepage Announcements database/API, Owner administration, responsive homepage, and effective-window model independently reviewed and checkpointed
+- Authenticated self-password change with concurrency-safe mutation and atomic all-session invalidation independently reviewed and checkpoint-ready
 
-**Approved remaining sequence:** Password Change only if its conditional gate remains satisfied → OPS01A only if its gate remains satisfied → stop. External Sharing, Shared Library, OCR, RAG, production rollout, and main merge are not part of the current continuous objective.
+**Approved remaining sequence:** OPS01A only if its Ready-card gate remains satisfied → stop. External Sharing, Shared Library, OCR, RAG, production rollout, and main merge are not part of the current continuous objective.
 
 Read:
 - `AGENTS.md` — mandatory repository policy
@@ -59,7 +60,7 @@ Approved Accounts I scope:
 - Member disable/enable
 - revoke all sessions on disable
 
-Global Homepage Announcements is complete in repository development. Password Change is optional only after its conditional gate is revalidated. One-Time External Sharing is later Layer 2 work.
+Global Homepage Announcements and Authenticated Password Change are complete in repository development. One-Time External Sharing is later Layer 2 work.
 
 ### Layer 3 — Shared Academic Library
 

@@ -90,6 +90,24 @@ try {
   const announcements = await fetchJson(`http://127.0.0.1:${port}/api/announcements`, {
     headers: { cookie },
   });
+  const newPassword = "compiled-new-password-456";
+  const passwordChange = await fetch(`http://127.0.0.1:${port}/api/auth/password`, {
+    method: "POST",
+    headers: { cookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
+    body: JSON.stringify({ currentPassword: password, newPassword }),
+  });
+  if (passwordChange.status !== 204 || !passwordChange.headers.get("set-cookie")?.includes("Max-Age=0")) {
+    throw new Error("compiled password change failed");
+  }
+  const revokedSession = await fetch(`http://127.0.0.1:${port}/api/auth/session`, { headers: { cookie } });
+  const newLoginResponse = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: environment.APP_ORIGIN },
+    body: JSON.stringify({ loginName: "CompiledAcceptance", password: newPassword }),
+  });
+  if (newLoginResponse.status !== 200) throw new Error("compiled post-password-change login failed");
+  const newCookie = newLoginResponse.headers.get("set-cookie")?.split(";", 1)[0];
+  if (!newCookie?.startsWith("__Host-ac_session=")) throw new Error("compiled replacement session cookie missing");
   await stopApplication(application);
   application = undefined;
 
@@ -111,10 +129,10 @@ try {
   application = startApplication(restoredEnvironment);
   const restoredReadiness = await waitForJson(`http://127.0.0.1:${port}/api/ready`);
   const restoredSession = await fetchJson(`http://127.0.0.1:${port}/api/auth/session`, {
-    headers: { cookie },
+    headers: { cookie: newCookie },
   });
   const restoredAnnouncements = await fetchJson(`http://127.0.0.1:${port}/api/announcements`, {
-    headers: { cookie },
+    headers: { cookie: newCookie },
   });
   await stopApplication(application);
   application = undefined;
@@ -131,6 +149,8 @@ try {
     announcementSurvivedRestart: announcements.announcements.some(
       (announcement) => announcement.id === createdAnnouncement.announcement.id,
     ),
+    passwordChangeRevokedOldSession: revokedSession.status === 401,
+    freshLoginAfterPasswordChange: newLoginResponse.status === 200,
     maintenanceDryRun: maintenance.mode === "dry_run",
     backupVerified: createdBackup.sha256 === verifiedBackup.sha256,
     isolatedRestoreVerified: verifiedRestore.sha256 === verifiedBackup.sha256,
@@ -147,6 +167,8 @@ try {
   assert.equal(result.readiness, "ready");
   assert.equal(result.sessionSurvivedRestart, true);
   assert.equal(result.announcementSurvivedRestart, true);
+  assert.equal(result.passwordChangeRevokedOldSession, true);
+  assert.equal(result.freshLoginAfterPasswordChange, true);
   assert.equal(result.maintenanceDryRun, true);
   assert.equal(result.backupVerified, true);
   assert.equal(result.isolatedRestoreVerified, true);

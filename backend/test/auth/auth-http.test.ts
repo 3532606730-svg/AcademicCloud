@@ -49,6 +49,7 @@ async function createFixture(
     disabled?: boolean;
     production?: boolean;
     rateLimitMax?: number;
+    passwordChangeRateLimitMax?: number;
     logger?: FastifyServerOptions["logger"];
   } = {},
 ) {
@@ -77,6 +78,9 @@ async function createFixture(
       appOrigin: production ? "https://cloud.example" : ORIGIN,
       environment: production ? "production" : "test",
       ...(options.rateLimitMax === undefined ? {} : { loginRateLimitMax: options.rateLimitMax }),
+      ...(options.passwordChangeRateLimitMax === undefined
+        ? {}
+        : { passwordChangeRateLimitMax: options.passwordChangeRateLimitMax }),
     },
   });
   context.after(() => app.close());
@@ -240,6 +244,169 @@ test("reauthentication rotates and revokes the previously presented session", as
   assert.equal(currentSession.statusCode, 200);
 });
 
+test("password change revokes current and other sessions, clears the cookie, and requires the new password", async (context) => {
+  const { app } = await createFixture(context);
+  const login = async () => cookieHeader(getSetCookie(await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "Scholar", password: "valid-password" },
+  })));
+  const currentCookie = await login();
+  const otherCookie = await login();
+
+  const changed = await app.inject({
+    method: "POST",
+    url: "/api/auth/password",
+    headers: { origin: ORIGIN, cookie: currentCookie },
+    payload: { currentPassword: "valid-password", newPassword: "new-password-456" },
+  });
+
+  assert.equal(changed.statusCode, 204);
+  assert.match(getSetCookie(changed), /Max-Age=0/);
+  for (const cookie of [currentCookie, otherCookie]) {
+    assert.equal((await app.inject({ method: "GET", url: "/api/auth/session", headers: { cookie } })).statusCode, 401);
+  }
+  assert.equal((await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "Scholar", password: "valid-password" },
+  })).statusCode, 401);
+  assert.equal((await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "Scholar", password: "new-password-456" },
+  })).statusCode, 200);
+});
+
+test("password change is authenticated, exact-origin, self-only, and rejects authority fields", async (context) => {
+  const { app } = await createFixture(context);
+  const loggedIn = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "Scholar", password: "valid-password" },
+  });
+  const cookie = cookieHeader(getSetCookie(loggedIn));
+  const payload = { currentPassword: "valid-password", newPassword: "new-password-456" };
+
+  assert.equal((await app.inject({ method: "POST", url: "/api/auth/password", headers: { origin: ORIGIN }, payload })).statusCode, 401);
+  assert.equal((await app.inject({ method: "POST", url: "/api/auth/password", headers: { cookie }, payload })).statusCode, 403);
+  assert.equal((await app.inject({
+    method: "POST",
+    url: "/api/auth/password",
+    headers: { origin: "https://evil.example", cookie },
+    payload,
+  })).statusCode, 403);
+  assert.equal((await app.inject({
+    method: "POST",
+    url: "/api/auth/password",
+    headers: { origin: ORIGIN, cookie },
+    payload: { ...payload, accountId: "another-account", role: "owner" },
+  })).statusCode, 400);
+  assert.equal((await app.inject({ method: "GET", url: "/api/auth/session", headers: { cookie } })).statusCode, 200);
+});
+
+test("password change failures preserve the account and use stable errors", async (context) => {
+  const { app, database } = await createFixture(context);
+  const loggedIn = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "Scholar", password: "valid-password" },
+  });
+  const cookie = cookieHeader(getSetCookie(loggedIn));
+  const request = (currentPassword: string, newPassword: string) => app.inject({
+    method: "POST",
+    url: "/api/auth/password",
+    headers: { origin: ORIGIN, cookie },
+    payload: { currentPassword, newPassword },
+  });
+
+  const wrong = await request("wrong-password", "new-password-456");
+  assert.equal(wrong.statusCode, 400);
+  assert.deepEqual(wrong.json(), { error: "invalid_current_password" });
+  const same = await request("valid-password", "valid-password");
+  assert.equal(same.statusCode, 400);
+  assert.deepEqual(same.json(), { error: "password_unchanged" });
+  assert.deepEqual(database.prepare<[], { password_hash: string; auth_revision: number }>(
+    "SELECT password_hash, auth_revision FROM accounts WHERE id = 'account-1'",
+  ).get(), { password_hash: "test:valid-password", auth_revision: 0 });
+  assert.equal((await app.inject({ method: "GET", url: "/api/auth/session", headers: { cookie } })).statusCode, 200);
+
+});
+
+test("password change rate limiting is independent and retryable", async (context) => {
+  const { app } = await createFixture(context, { passwordChangeRateLimitMax: 1 });
+  const loggedIn = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    headers: { origin: ORIGIN },
+    payload: { loginName: "Scholar", password: "valid-password" },
+  });
+  const cookie = cookieHeader(getSetCookie(loggedIn));
+  const request = () => app.inject({
+    method: "POST",
+    url: "/api/auth/password",
+    headers: { origin: ORIGIN, cookie },
+    payload: { currentPassword: "wrong-password", newPassword: "another-password-789" },
+  });
+
+  assert.equal((await request()).statusCode, 400);
+  const limited = await request();
+  assert.equal(limited.statusCode, 429);
+  assert.deepEqual(limited.json(), { error: "rate_limit_exceeded" });
+});
+
+test("password change KDF overload returns a retryable password-specific error without mutation", async (context) => {
+  const { persistence } = createTestPersistence(context);
+  persistence.repositories.accounts.create({
+    id: "busy-change-account",
+    loginName: "BusyChange",
+    passwordHash: "test:valid-password",
+    role: "member",
+    state: "active",
+    createdAt: START,
+    updatedAt: START,
+  });
+  const sessionSecret = "busy-change-session-secret";
+  persistence.repositories.sessions.create({
+    tokenDigest: digestSessionSecret(sessionSecret),
+    accountId: "busy-change-account",
+    createdAt: START,
+    expiresAt: new Date(START.getTime() + 60_000),
+    revokedAt: null,
+  });
+  const busyHasher: PasswordHasher = {
+    hash: () => Promise.reject(new PasswordKdfOverloadedError()),
+    verify: () => Promise.reject(new PasswordKdfOverloadedError()),
+  };
+  const app = await createApp({
+    logger: false,
+    auth: {
+      service: new AuthService({ persistence, passwordHasher: busyHasher, now: () => START }),
+      appOrigin: ORIGIN,
+      environment: "test",
+    },
+  });
+  context.after(() => app.close());
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/auth/password",
+    headers: { origin: ORIGIN, cookie: `ac_session=${sessionSecret}` },
+    payload: { currentPassword: "valid-password", newPassword: "new-password-456" },
+  });
+
+  assert.equal(response.statusCode, 429);
+  assert.equal(response.headers["retry-after"], "1");
+  assert.deepEqual(response.json(), { error: "password_change_busy" });
+  assert.equal(persistence.repositories.accounts.findById("busy-change-account")?.passwordHash, "test:valid-password");
+  assert.equal(persistence.repositories.sessions.findByTokenDigest(digestSessionSecret(sessionSecret))?.revokedAt, null);
+});
+
 test("unsafe API requests require the exact configured origin", async (context) => {
   const { app } = await createFixture(context);
   const payload = { loginName: "Scholar", password: "wrong" };
@@ -301,6 +468,17 @@ test("authentication and origin outcomes emit stable secret-free audit events", 
   assert.equal(login.statusCode, 200);
   const cookie = cookieHeader(getSetCookie(login));
 
+  const passwordChange = await app.inject({
+    method: "POST",
+    url: "/api/auth/password",
+    headers: { origin: ORIGIN, cookie },
+    payload: {
+      currentPassword: "wrong-current-password-secret",
+      newPassword: "new-password-secret-456",
+    },
+  });
+  assert.equal(passwordChange.statusCode, 400);
+
   const logout = await app.inject({
     method: "POST",
     url: "/api/auth/logout",
@@ -313,6 +491,8 @@ test("authentication and origin outcomes emit stable secret-free audit events", 
     "origin-password-secret",
     "invalid-password-secret",
     "valid-password",
+    "wrong-current-password-secret",
+    "new-password-secret-456",
     "MissingUser",
     "https://evil.example",
     cookie.slice("ac_session=".length),
@@ -355,6 +535,12 @@ test("authentication and origin outcomes emit stable secret-free audit events", 
         event: "auth.login",
         outcome: "succeeded",
         reason: undefined,
+        accountId: "account-1",
+      },
+      {
+        event: "auth.password_change",
+        outcome: "denied",
+        reason: "invalid_current_password",
         accountId: "account-1",
       },
       {

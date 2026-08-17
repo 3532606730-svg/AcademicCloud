@@ -99,7 +99,14 @@ describe("mobile presentation stylesheet", () => {
 
   it("keeps Owner administration actions in the compact account popover instead of the mobile topbar", () => {
     const block = mobileBlock();
-    expect(ruleHas(block, ".account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-admin-button {", /display:\s*none/)).toBe(true);
+    expect(ruleHas(block, ".account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-action-button {", /display:\s*none/)).toBe(true);
+  });
+
+  it("presents password change as a fullscreen mobile dialog with touch-sized actions", () => {
+    const block = mobileBlock();
+    expect(ruleHas(block, ".password-change-modal {", /height:\s*100dvh/)).toBe(true);
+    expect(ruleHas(block, ".password-change-modal header .button {", /min-width:\s*2\.75rem;\s*min-height:\s*2\.75rem/)).toBe(true);
+    expect(ruleHas(block, ".password-change-actions .button {", /min-height:\s*2\.75rem/)).toBe(true);
   });
 
   it("lays the preview Open/Download actions out side by side at the 44px floor", () => {

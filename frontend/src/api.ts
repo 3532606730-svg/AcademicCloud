@@ -127,6 +127,7 @@ export interface AcademicCloudApi {
   getSession(signal?: AbortSignal): Promise<Account>;
   login(loginName: string, password: string): Promise<Account>;
   registerMember(inviteToken: string, loginName: string, password: string): Promise<ManagedAccount>;
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
   logout(): Promise<void>;
   createInvitation(): Promise<{ invitation: Invitation; rawToken: string }>;
   listInvitations(): Promise<Invitation[]>;
@@ -243,6 +244,10 @@ export class ApiClient implements AcademicCloudApi {
       password,
     });
     return response.account;
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return this.#jsonBody<void>("/api/auth/password", "POST", { currentPassword, newPassword });
   }
 
   logout(): Promise<void> {

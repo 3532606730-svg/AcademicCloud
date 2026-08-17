@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**Repository-driven Accounts & Sharing I: Accounts foundation and global announcements green; conditional password gate next.**
+**Repository-driven Accounts & Sharing I: Accounts, announcements, and authenticated Password Change green; OPS01A remains conditional.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
@@ -17,7 +17,7 @@ The Agent may autonomously progress through the following sequence, one independ
 3. `L1-FOLDER01` — complete;
 4. `L2-ACCOUNTS01` — complete;
 5. `L2-ANNOUNCE01` — complete;
-6. `L2-PASSWORD01` only if its existing conditional gate remains satisfied;
+6. `L2-PASSWORD01` — complete;
 7. `OPS01A` only if its Ready-card preconditions are satisfied;
 8. STOP.
 
@@ -25,19 +25,13 @@ This objective is repository/local only. It does not authorize production contac
 
 ## Doing
 
-None while the L2-ANNOUNCE01 local checkpoint is being synchronized.
+None while the L2-PASSWORD01 local checkpoint is being synchronized. The next task may begin only after that checkpoint exists and the OPS01A conditional gate is recovered from its Ready card.
 
 ## Ready
 
 None. Conditional tasks below are not active.
 
 ## Conditional Ready
-
-### L2-PASSWORD01 — Password Change
-
-**Task card:** `tasks/ready/L2-PASSWORD01.md`
-
-Begin only after L2-ACCOUNTS01 and L2-ANNOUNCE01 are fully green and independently checkpointed. May be deferred without failing the continuous objective.
 
 ### OPS01A — Operations Observability & Recovery Preparation
 
@@ -46,6 +40,12 @@ Begin only after L2-ACCOUNTS01 and L2-ANNOUNCE01 are fully green and independent
 Begin only after Core Drive + Accounts I + ANNOUNCE01 are green and enough safe capacity remains for implementation, adversarial review, and final gates. Repository/local preparation only; no production activation.
 
 ## Completed
+
+### L2-PASSWORD01 — Authenticated Password Change
+
+**Task card:** `tasks/done/L2-PASSWORD01.md`
+
+**Status:** complete in repository development. Both roles can change only their own password through an exact-origin API; the accepted shared Argon2id executor, expected-hash plus authentication-revision compare-and-swap, and atomic revoke-all transaction prevent concurrent overwrite and old-session revival. Backend `178/178`, frontend `136/136`, compiled migration count 8, dependency/migration delta 0, ADR-013, and independent adversarial review are green. No production access, push, or main merge occurred.
 
 ### L2-ANNOUNCE01 — Global Homepage Announcements
 
@@ -120,6 +120,7 @@ Heavy compute must remain isolated from the core drive service.
 - L1-FOLDER01 — migration 006 + recursive recycle/restore; backend 135/135, frontend 121/121, canonical gates and independent review PASS
 - L2-ACCOUNTS01 — migration 007 + exact `owner | member` roles, digest-only invitations, race-safe Member registration, Owner Member administration, atomic disable/session revocation, zero-copy frontend integration, cross-account isolation matrix, ADR-011, backend 156/156, frontend 125/125, canonical gates and independent review PASS
 - L2-ANNOUNCE01 — migration 008 + Owner-authorized global announcements, exact effective-window/order semantics, safe plain-text/HTTPS-link boundary, API-backed responsive homepage, backup/restore/runtime coverage, ADR-012, backend 165/165, frontend 131/131, canonical gates and independent review PASS
+- L2-PASSWORD01 — shared bounded Argon2id, expected-hash/revision CAS, atomic revoke-all sessions, self-only API/account UI, ADR-013, backend 178/178, frontend 136/136, canonical gates and independent review PASS
 
 Historical detail remains in Git, completed task cards, production runbooks, and existing task records rather than being duplicated here.
 

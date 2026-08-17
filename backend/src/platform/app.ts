@@ -36,6 +36,12 @@ export const LOGGER_REDACT_PATHS = [
   "body.password",
   "password",
   "*.password",
+  "body.currentPassword",
+  "currentPassword",
+  "*.currentPassword",
+  "body.newPassword",
+  "newPassword",
+  "*.newPassword",
   "body.inviteToken",
   "inviteToken",
   "*.inviteToken",
@@ -99,6 +105,7 @@ export interface CreateAppOptions {
     appOrigin: string;
     environment: AppConfig["environment"];
     loginRateLimitMax?: number;
+    passwordChangeRateLimitMax?: number;
   };
   accounts?: { service: AccountAdministrationService; registrationRateLimitMax?: number };
   announcements?: { service: AnnouncementService };
@@ -197,6 +204,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
       ...(options.auth.loginRateLimitMax === undefined
         ? {}
         : { loginRateLimitMax: options.auth.loginRateLimitMax }),
+      ...(options.auth.passwordChangeRateLimitMax === undefined
+        ? {}
+        : { passwordChangeRateLimitMax: options.auth.passwordChangeRateLimitMax }),
     });
   }
 

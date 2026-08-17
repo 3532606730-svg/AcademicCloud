@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import type { Account } from "./account.js";
+import { validatePassword } from "./account-validation.js";
 import type { PasswordHasher } from "./password-hasher.js";
 import type { Persistence } from "../persistence/contracts.js";
 
@@ -15,6 +16,13 @@ export class InvalidCredentialsError extends Error {
   constructor() {
     super("Invalid login credentials");
     this.name = "InvalidCredentialsError";
+  }
+}
+
+export class PasswordChangeError extends Error {
+  constructor(readonly code: "invalid_current_password" | "password_change_conflict" | "password_unchanged") {
+    super(code);
+    this.name = "PasswordChangeError";
   }
 }
 
@@ -115,5 +123,56 @@ export class AuthService {
 
   logout(sessionSecret: string): void {
     this.#persistence.repositories.sessions.revokeByTokenDigest(digestSessionSecret(sessionSecret), this.#now());
+  }
+
+  async changePassword(
+    actor: AuthenticatedAccount,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    validatePassword(newPassword);
+    if (currentPassword === newPassword) throw new PasswordChangeError("password_unchanged");
+
+    const snapshot = this.#persistence.repositories.accounts.findById(actor.id);
+    if (!snapshot || snapshot.state !== "active" || snapshot.role !== actor.role) {
+      throw new PasswordChangeError("password_change_conflict");
+    }
+
+    if (!await this.#passwordHasher.verify(snapshot.passwordHash, currentPassword)) {
+      throw new PasswordChangeError("invalid_current_password");
+    }
+
+    // Both expensive KDF operations stay outside the write transaction. The
+    // hash + authentication revision captured above form the durable CAS
+    // token that rejects password, disable/enable, and login-state races.
+    const newPasswordHash = await this.#passwordHasher.hash(newPassword);
+
+    this.#persistence.runInTransaction((repositories) => {
+      const current = repositories.accounts.findById(snapshot.id);
+      if (
+        !current ||
+        current.state !== "active" ||
+        current.role !== actor.role ||
+        current.passwordHash !== snapshot.passwordHash ||
+        current.authRevision !== snapshot.authRevision
+      ) {
+        throw new PasswordChangeError("password_change_conflict");
+      }
+
+      const now = this.#now();
+      if (!repositories.accounts.updatePassword(
+        current.id,
+        snapshot.passwordHash,
+        snapshot.authRevision,
+        newPasswordHash,
+        now,
+      )) {
+        throw new PasswordChangeError("password_change_conflict");
+      }
+
+      // Password mutation and every session revocation commit or roll back as
+      // one unit. No transaction-external logout carries this invariant.
+      repositories.sessions.revokeAllByAccountId(current.id, now);
+    });
   }
 }

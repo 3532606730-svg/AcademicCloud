@@ -428,7 +428,7 @@ input:hover { border-color: #a7b2a8; }
 @keyframes drop-overlay-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* Dialogs */
-.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
+.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop, .password-change-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
 .move-modal { width: min(38rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto auto minmax(10rem, 1fr) auto; overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
 .move-modal[open] { display: grid; }
 .move-modal > header, .move-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; }
@@ -507,6 +507,15 @@ input:hover { border-color: #a7b2a8; }
 .invitation-link input { width: 100%; }
 .invitation-link .button { justify-self: end; }
 
+.password-change-modal { width: min(28rem, calc(100% - 2.5rem)); padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
+.password-change-modal[open] { display: block; }
+.password-change-modal > form { display: grid; }
+.password-change-modal header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--line); }
+.password-change-modal h2 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-size: 1.15rem; }
+.password-change-body { display: grid; gap: 0.45rem; padding: 1.2rem; }
+.password-change-body label { color: var(--muted); font-size: 0.8rem; font-weight: 650; }
+.password-change-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.6rem; }
+
 .announcement-feed { display: grid; gap: 0.65rem; margin-bottom: 1.2rem; }
 .announcement { display: grid; gap: 0.5rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-left: 0.3rem solid #547a69; border-radius: 0.55rem; background: var(--paper); }
 .announcement--warning { border-left-color: #a36b1f; background: #fffaf0; }
@@ -571,7 +580,7 @@ input:hover { border-color: #a7b2a8; }
 
   /* Compact account access replaces the always-visible row. */
   .account-menu { gap: 0.35rem; }
-  .account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-admin-button { display: none; }
+  .account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-action-button { display: none; }
   .account-trigger-root { display: block; }
 
   /* The desktop sidebar becomes the mobile bottom navigation: same four
@@ -763,6 +772,12 @@ input:hover { border-color: #a7b2a8; }
   .account-administration-body { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
   .account-administration-row { align-items: flex-start; }
   .account-administration-row .button, .account-administration-section-heading .button { min-height: 2.75rem; }
+
+  .password-change-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  .password-change-modal header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }
+  .password-change-body { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
+  .password-change-modal header .button { min-width: 2.75rem; min-height: 2.75rem; }
+  .password-change-actions .button { min-height: 2.75rem; }
 
   .announcement-heading { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
   .announcement-administration-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border-radius: 0; }
