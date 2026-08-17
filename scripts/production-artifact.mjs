@@ -33,6 +33,7 @@ const requiredRuntimePaths = [
   "backend/dist/persistence/sqlite/migrate.js",
   "backend/dist/operations/account-main.js",
   "backend/dist/operations/backup-main.js",
+  "backend/dist/operations/recovery-main.js",
   "backend/dist/maintenance/main.js",
   "backend/scripts/compiled-acceptance.mjs",
   "frontend/dist/index.html",
@@ -42,9 +43,12 @@ const requiredRuntimePaths = [
   "deployment/nginx/academiccloud-security-headers.conf",
   "deployment/systemd/academiccloud.service",
   "deployment/logrotate/academiccloud-nginx",
+  "deployment/journald/90-academiccloud-retention.conf",
   "node_modules/argon2",
   "node_modules/better-sqlite3",
   "scripts/production-artifact.mjs",
+  "scripts/production-readiness-audit.mjs",
+  "scripts/lib/production-readiness",
 ];
 const forbiddenProductionModules = [
   "@testing-library",
@@ -126,7 +130,10 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     "deployment/nginx",
     "deployment/systemd",
     "deployment/logrotate",
+    "deployment/journald",
     "scripts/production-artifact.mjs",
+    "scripts/production-readiness-audit.mjs",
+    "scripts/lib/production-readiness",
   ]) {
     copyRequired(source, releaseDirectory);
   }

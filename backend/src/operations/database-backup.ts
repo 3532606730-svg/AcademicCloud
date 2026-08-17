@@ -1,13 +1,19 @@
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  constants,
+  copyFileSync,
   createReadStream,
   existsSync,
   linkSync,
+  lstatSync,
+  mkdtempSync,
+  realpathSync,
   rmSync,
   statSync,
 } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
 
 import type { SqliteDatabase } from "../persistence/sqlite/database.js";
 import { openSqliteDatabaseReadOnly } from "../persistence/sqlite/database.js";
@@ -42,6 +48,10 @@ export async function createDatabaseBackup(
   if (!existsSync(sourcePath)) {
     throw new Error("source database does not exist");
   }
+  const sourceStat = lstatSync(sourcePath);
+  if (!sourceStat.isFile() || sourceStat.isSymbolicLink()) {
+    throw new Error("source database must be a regular non-symlink file");
+  }
 
   if (!existsSync(dirname(destinationPath))) {
     throw new Error("backup output directory does not exist");
@@ -73,9 +83,27 @@ export async function verifyDatabaseBackup(
   migrationsDirectory: string,
 ): Promise<DatabaseBackupSummary> {
   const resolvedPath = resolveDatabaseFile(databasePath, "backup database");
-  const database = openSqliteDatabaseReadOnly(resolvedPath);
+  if (!existsSync(resolvedPath)) throw new Error("backup database does not exist");
+  const backupStat = lstatSync(resolvedPath);
+  if (!backupStat.isFile() || backupStat.isSymbolicLink()) {
+    throw new Error("backup database must be a regular non-symlink file");
+  }
+
+  // SQLite may create `-wal`/`-shm` companions even for a read-only handle
+  // when the database header records WAL mode. Verify an exclusive 0600 copy
+  // inside a random task-owned 0700 OS-temporary directory. The backup store
+  // itself therefore needs no write permission and cannot retain a sensitive
+  // verifier copy after interruption.
+  const verificationStage = mkdtempSync(join(tmpdir(), "academiccloud-backup-verify-"));
+  const verificationPath = join(verificationStage, "verify.sqlite");
+  let database: SqliteDatabase | null = null;
 
   try {
+    chmodSync(verificationStage, 0o700);
+    assertVerificationStage(verificationStage);
+    copyFileSync(resolvedPath, verificationPath, constants.COPYFILE_EXCL);
+    chmodSync(verificationPath, 0o600);
+    database = openSqliteDatabaseReadOnly(verificationPath);
     const schemaVersion = assertDatabaseHealthy(database, migrationsDirectory);
     return {
       bytes: statSync(resolvedPath).size,
@@ -91,7 +119,27 @@ export async function verifyDatabaseBackup(
       },
     };
   } finally {
-    database.close();
+    database?.close();
+    if (existsSync(verificationStage)) {
+      assertVerificationStage(verificationStage);
+      rmSync(verificationStage, { recursive: true, force: false });
+      if (existsSync(verificationStage)) throw new Error("backup verification cleanup failed");
+    }
+  }
+}
+
+function assertVerificationStage(path: string): void {
+  const resolved = realpathSync(path);
+  const parent = realpathSync(dirname(resolved));
+  const expectedParent = realpathSync(tmpdir());
+  const stat = lstatSync(resolved);
+  if (
+    !samePath(parent, expectedParent)
+    || !/^academiccloud-backup-verify-[A-Za-z0-9_-]{6,}$/.test(basename(resolved))
+    || !stat.isDirectory()
+    || stat.isSymbolicLink()
+  ) {
+    throw new Error("backup verification stage ownership check failed");
   }
 }
 

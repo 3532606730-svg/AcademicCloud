@@ -35,6 +35,8 @@ test("Nginx terminates HTTPS, serves the SPA, and overwrites trusted proxy heade
   assert.equal(config.match(/^\s*access_log \/var\/log\/academiccloud\/nginx-access\.log academiccloud_safe;/gm)?.length, 4);
   assert.match(logrotate, /rotate 14/);
   assert.match(logrotate, /maxsize 10M/);
+  assert.match(logrotate, /daily/);
+  assert.match(logrotate, /compress/);
 });
 
 test("systemd keeps one loopback API process inside a restrictive writable boundary", () => {
@@ -55,12 +57,28 @@ test("systemd keeps one loopback API process inside a restrictive writable bound
     "ReadWritePaths=/var/lib/academiccloud",
     "MemoryHigh=320M",
     "MemoryMax=384M",
+    "Restart=on-failure",
+    "RestartSec=5s",
+    "StartLimitIntervalSec=300s",
+    "StartLimitBurst=5",
   ]) {
     assert.ok(unit.includes(directive), `missing ${directive}`);
   }
 
   assert.doesNotMatch(unit, /MemoryDenyWriteExecute/);
   assert.doesNotMatch(unit, /ExecStart=.*tsx|npm run dev/);
+});
+
+test("future journald retention template is bounded and remains a repository artifact", () => {
+  const journald = read("deployment/journald/90-academiccloud-retention.conf");
+  assert.match(journald, /^\[Journal\]$/m);
+  assert.match(journald, /^SystemMaxUse=512M$/m);
+  assert.match(journald, /^SystemKeepFree=2G$/m);
+  assert.match(journald, /^MaxRetentionSec=14day$/m);
+  assert.match(journald, /^MaxFileSec=1day$/m);
+  assert.match(journald, /^Compress=yes$/m);
+  assert.match(journald, /separate Owner-approved production operations window/);
+  assert.doesNotMatch(journald, /ForwardToRemote=yes|Storage=volatile/);
 });
 
 test("production environment example binds Fastify to loopback and contains no real secret", () => {

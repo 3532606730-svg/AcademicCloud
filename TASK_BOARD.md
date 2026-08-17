@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**Repository-driven Accounts & Sharing I: Accounts, announcements, and authenticated Password Change green; OPS01A remains conditional.**
+**Repository-driven objective: product checkpoints are green; repository/local OPS01A preparation is active as the final conditional task.**
 
 Production remains on the accepted UX01 release and is a separate Owner-gated track.
 
@@ -25,7 +25,11 @@ This objective is repository/local only. It does not authorize production contac
 
 ## Doing
 
-None while the L2-PASSWORD01 local checkpoint is being synchronized. The next task may begin only after that checkpoint exists and the OPS01A conditional gate is recovered from its Ready card.
+### OPS01A — Operations Observability & Recovery Preparation
+
+**Task card:** `tasks/doing/OPS01A.md`
+
+**Status:** in progress after the L2-PASSWORD01 checkpoint completed and the Conditional Ready gate was recovered as satisfied. Repository/local read, verify, dry-run, isolated-rehearsal, and inactive-template preparation only; no production contact or mutation.
 
 ## Ready
 
@@ -33,11 +37,7 @@ None. Conditional tasks below are not active.
 
 ## Conditional Ready
 
-### OPS01A — Operations Observability & Recovery Preparation
-
-**Task card:** `tasks/ready/OPS01A.md`
-
-Begin only after Core Drive + Accounts I + ANNOUNCE01 are green and enough safe capacity remains for implementation, adversarial review, and final gates. Repository/local preparation only; no production activation.
+None. OPS01A is active; later product and production boundaries remain unauthorized.
 
 ## Completed
 

@@ -136,10 +136,12 @@ If corruption is detected, correct behavior is alert/fail closed—not automatic
 - new operations scripts/tests only where they fit existing repository boundaries
 
 ## Current State
-Conditional Ready, not started. AcademicCloud already has substantial operational primitives (backup/restore verification, immutable production artifacts, Nginx/systemd templates, logrotate, health/readiness, production runbooks), but routine health/freshness/expiry/rehearsal checks are not yet unified into a lightweight autonomous operations-preparation layer.
+Active after the independently green repository checkpoints through L2-PASSWORD01 commit `6ef6fb612d2bdac808e3682eb5bcae6bdb3a0de3`. The conditional gate is satisfied: Core Drive, Accounts I, announcements, and Password Change are checkpointed, the worktree is clean, dependency delta remains zero, and sufficient local-only implementation/review capacity remains. AcademicCloud already has substantial operational primitives, but routine health/freshness/expiry/rehearsal checks are not yet unified into a lightweight autonomous operations-preparation layer.
 
 ## Completed
-None for OPS01A.
+- Recovered the task from the durable Conditional Ready queue after all prerequisite repository checkpoints completed with independent review PASS.
+- Recovered ADR-007/ADR-010, the existing backup/restore and compiled-acceptance tooling, health/readiness implementation, deployment templates, logrotate policy, and production runbooks.
+- Reconfirmed the task is repository/local only: no production contact, network dependency, service/timer activation, real backup pruning/restore, certificate mutation, deployment, push, or main merge is authorized.
 
 ## Remaining
 - recover existing operational tooling/runbooks;
@@ -153,7 +155,7 @@ None for OPS01A.
 Do not begin until Core Drive, L2-ACCOUNTS01, and the preceding L2-ANNOUNCE01 queue item are green and checkpointed. If safe execution/review capacity is insufficient, defer this task. Any live production mutation, credential requirement, new paid service, destructive retention, or production restore is a mandatory stop/gate rather than part of OPS01A.
 
 ## Last Verification
-2026-08-17 planning reconciliation: OPS01A approved as a conditional cross-cutting repository/local task. No OPS01A implementation or production activation has occurred.
+2026-08-17 activation recovery: clean branch `codex/project-memory-reconcile-20260817` at L2-PASSWORD01 checkpoint `6ef6fb612d2bdac808e3682eb5bcae6bdb3a0de3`; task prerequisites and conditional capacity gate satisfied; existing operations primitives present; dependency delta 0. No OPS01A implementation or production activation has occurred.
 
 ## Next Action
-If selected after Accounts I and ANNOUNCE01, move to `tasks/doing/`, recover the existing deployment/backup/recovery tools first, and implement only missing lightweight read/verify/rehearsal capabilities. Stop before production activation.
+Design the smallest repository-owned operations status contract and deterministic local fixtures around the existing backup/restore, health/readiness, deployment-template, certificate, resource, and log-growth boundaries. Implement only missing read/verify/dry-run/rehearsal capabilities and stop before production activation.

@@ -31,6 +31,19 @@ the wrong database.
 
 The output reports byte length, SHA-256, schema version, and counts only. Record these separately. Store the database and configuration/secrets in separate encrypted off-host systems; never bundle the environment file into an ordinary database archive. Limit local staging and retained generations so the 20 GB disk cannot fill.
 
+OPS01A adds `ops:recovery backup-create`, a combined creation boundary that
+publishes a versioned, no-clobber non-secret receipt only after its newly
+created online backup passes verification. It binds the backup basename,
+bytes, SHA-256, schema version, safe aggregate counts, generation/publication
+UTC times, and optional source commit; `receipt-verify` re-runs the complete
+verification and applies the 24-hour healthy / 48-hour critical policy to the
+bound generation time. It is intentionally impossible to attach a newly dated
+receipt to an existing legacy snapshot; such a snapshot has unknown freshness.
+Verification uses a 0600 copy in a task-owned 0700 system-temporary directory,
+so the selected backup directory needs no write access and does not acquire
+SQLite `-wal`/`-shm` companions. See
+[`OPS01A-operations-preparation.md`](../operations/OPS01A-operations-preparation.md).
+
 ## Restore rehearsal
 
 Rehearse in an isolated directory and never point a rehearsal at production OSS credentials:
@@ -43,6 +56,14 @@ Rehearse in an isolated directory and never point a rehearsal at production OSS 
 6. Destroy the isolated working copy securely according to the backup handling policy; retain only the approved backup/evidence.
 
 A recovery plan is not accepted until this rehearsal succeeds on a schedule defined by the operator.
+
+The repository-owned `ops:recovery restore-drill` command automates this
+boundary for a verified backup+receipt. It rejects the configured live database
+as its source, creates and cleans only its own system-temporary fixed-prefix
+copy, uses production schema fail-closed composition with memory storage,
+injects health/readiness without opening a listener, runs maintenance dry-run,
+and proves the source hash unchanged. It is rehearsal tooling, never a
+production restore command.
 
 ## Production metadata restore
 

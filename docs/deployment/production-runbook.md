@@ -219,3 +219,11 @@ PROD-03B completed secret-safe activation at phase `loopback-ready`, and PROD-03
 ## Deferred live acceptance
 
 Secret-safe configuration, the first account, real TLS/DNS, Nginx/systemd loopback behavior, firewall/listener state, exact OSS CORS and metadata behavior, anonymous-access denial, off-host encrypted backup, isolated production restore, the fresh live disposable-object E2E (PASS, `VERDICT=true`), and the reviewed production deployment (`e5217e8…`) now all have recorded evidence. The remaining First Usable Production gates are: the L1-UX01 production gate (`files.ajtlab.top` infrastructure + UX01 artifact build + deployment + Owner browser Product Verification — see `l1-ux01-production-gate.md`), the exact disposable-object permanent-delete Owner confirmation, the reboot/autostart decision, and the PROD-03C3 operational hardening cluster (backup cadence, certificate renewal automation with a hard deadline before 2026-11-13, HSTS after renewal and rollback are proven, destructive restore drill, second account/isolation check, journal retention) — see `TASK_BOARD.md`. Any failure keeps those gates open.
+
+OPS01A later added repository/local preparation only: the zero-network-default
+readiness auditor, verified backup receipt/freshness logic, deterministic
+retention dry-run, isolated compiled restore drill, explicit restart-storm
+limits, and an inactive journald retention template. None of these repository
+artifacts installs a timer/drop-in, runs public/live probes, uploads or prunes a
+backup, renews a certificate, restores production, or closes the Owner-gated
+PROD-03C3 operations cluster.

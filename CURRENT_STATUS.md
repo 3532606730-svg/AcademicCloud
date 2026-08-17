@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**Layer 1 Core Drive, Layer 2 Accounts I, Global Homepage Announcements, and Authenticated Password Change are green in repository development; OPS01A is the remaining conditional task in the approved local objective.**
+**Layer 1 Core Drive, Layer 2 Accounts I, Global Homepage Announcements, and Authenticated Password Change are green in repository development; OPS01A is active as the final repository/local task in the approved objective.**
 
 The accepted production site remains live on the previously accepted UX01 release. Current repository work is newer than production and remains local/repository-only unless a separate Owner production gate is opened.
 
@@ -243,4 +243,4 @@ Current continuous objective does **not** authorize:
 
 ## Next Action
 
-Create the local `L2-PASSWORD01` checkpoint, then recover and evaluate the existing conditional gate for `OPS01A`. Keep all work repository/local and do not contact production, push, or merge main.
+Implement `OPS01A` from its active card as lightweight repository-owned read/verify/dry-run/isolated-rehearsal tooling. Keep all work repository/local; do not contact production, enable services/timers, prune backups, restore production, push, or merge main.

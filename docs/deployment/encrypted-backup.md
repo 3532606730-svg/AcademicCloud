@@ -68,6 +68,12 @@ to `AcademicCloud-Backups`; retain one staging generation on the host.
    `age -d -i key.txt -o restored.sqlite database.age`) and compare SHA-256 with the manifest.
 3. Decrypt `configuration.age` and compare each member SHA-256 with the manifest.
 
+The OPS01A local backup receipt deliberately records `offHostStatus: unknown`.
+The public age recipient, a local `.age` filename, or a generic timer/cron entry
+does not prove that an encrypted generation reached this private destination.
+A later activated pipeline must bind the uploaded ciphertext hashes to an
+explicit non-secret destination receipt before off-host status can be healthy.
+
 ## Isolated restore rehearsal
 
 Mirror the production systemd unit (same hardening, `EnvironmentFile` pointing at a

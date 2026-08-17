@@ -18,6 +18,8 @@
     "maintenance:prod": "node dist/maintenance/main.js",
     "backup": "tsx --env-file-if-exists=.env src/operations/backup-main.ts",
     "backup:prod": "node dist/operations/backup-main.js",
+    "ops:recovery": "tsx --env-file-if-exists=.env src/operations/recovery-main.ts",
+    "ops:recovery:prod": "node dist/operations/recovery-main.js",
     "account:provision": "tsx --env-file-if-exists=.env src/operations/account-main.ts",
     "account:provision:prod": "node dist/operations/account-main.js",
     "acceptance:compiled": "node scripts/compiled-acceptance.mjs",

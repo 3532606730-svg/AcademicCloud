@@ -15,6 +15,7 @@ const migrationsDirectory = join(repositoryDirectory, "database", "migrations");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-e08-"));
 const databasePath = join(temporaryDirectory, "academiccloud.sqlite");
 const backupPath = join(temporaryDirectory, "academiccloud.backup.sqlite");
+const backupReceiptPath = join(temporaryDirectory, "academiccloud.backup.receipt.json");
 const restoredPath = join(temporaryDirectory, "academiccloud.restored.sqlite");
 const password = randomBytes(24).toString("base64url");
 const port = await reservePort();
@@ -113,12 +114,33 @@ try {
 
   const maintenance = runJson(join(distDirectory, "maintenance", "main.js"));
   const createdBackup = runJson(
-    join(distDirectory, "operations", "backup-main.js"),
-    ["create", `--output=${backupPath}`],
+    join(distDirectory, "operations", "recovery-main.js"),
+    [
+      "backup-create",
+      `--backup=${backupPath}`,
+      `--receipt=${backupReceiptPath}`,
+      `--source-commit=${"a".repeat(40)}`,
+    ],
   );
   const verifiedBackup = runJson(
     join(distDirectory, "operations", "backup-main.js"),
     ["verify", `--input=${backupPath}`],
+  );
+  const verifiedReceipt = runJson(
+    join(distDirectory, "operations", "recovery-main.js"),
+    [
+      "receipt-verify",
+      `--backup=${backupPath}`,
+      `--receipt=${backupReceiptPath}`,
+    ],
+  );
+  const operationsRestoreDrill = runJson(
+    join(distDirectory, "operations", "recovery-main.js"),
+    [
+      "restore-drill",
+      `--backup=${backupPath}`,
+      `--receipt=${backupReceiptPath}`,
+    ],
   );
   copyFileSync(backupPath, restoredPath, constants.COPYFILE_EXCL);
   const verifiedRestore = runJson(
@@ -152,7 +174,17 @@ try {
     passwordChangeRevokedOldSession: revokedSession.status === 401,
     freshLoginAfterPasswordChange: newLoginResponse.status === 200,
     maintenanceDryRun: maintenance.mode === "dry_run",
-    backupVerified: createdBackup.sha256 === verifiedBackup.sha256,
+    backupVerified: createdBackup.summary.sha256 === verifiedBackup.sha256,
+    backupReceiptVerified:
+      createdBackup.receipt.sha256 === verifiedBackup.sha256
+      && verifiedReceipt.summary.sha256 === verifiedBackup.sha256,
+    operationsRestoreDrillVerified:
+      operationsRestoreDrill.status === "ok"
+      && operationsRestoreDrill.sourceUnchanged === true
+      && operationsRestoreDrill.restoredCopyUnchanged === true
+      && operationsRestoreDrill.cleanupCompleted === true
+      && operationsRestoreDrill.networkListenerOpened === false
+      && operationsRestoreDrill.storageProvider === "memory",
     isolatedRestoreVerified: verifiedRestore.sha256 === verifiedBackup.sha256,
     restoredReadiness: restoredReadiness.status,
     restoredSessionValid: restoredSession.account.loginName === "CompiledAcceptance",
@@ -171,6 +203,8 @@ try {
   assert.equal(result.freshLoginAfterPasswordChange, true);
   assert.equal(result.maintenanceDryRun, true);
   assert.equal(result.backupVerified, true);
+  assert.equal(result.backupReceiptVerified, true);
+  assert.equal(result.operationsRestoreDrillVerified, true);
   assert.equal(result.isolatedRestoreVerified, true);
   assert.equal(result.restoredReadiness, "ready");
   assert.equal(result.restoredSessionValid, true);
