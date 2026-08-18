@@ -206,3 +206,25 @@ Redemption reuses the bounded Argon2id executor and atomically updates the exact
 Only the authenticated global `owner` may permanently delete eligible recycled account resources or Library holdings; Library role and contributor/uploader/creator identity are insufficient. Account and Library targets retain separate lifecycle routing.
 
 Library deletion must prove exact object/reference/lineage exclusivity and repeat that proof inside the destructive transaction immediately before `deleted → purging`. A changed or shared path fails with conflict/concurrent change while storage and lineage remain untouched. Storage cleanup and final `purged` state reuse the established purge state machine/audit ordering, and sequential cross-domain UI coordination reports partial irreversible completion truthfully. Repository support never authorizes a real production purge.
+
+## ADR-029 — Provider-Backed Multipart Transfer and Browser-Native Range Resume
+
+**Date:** 2026-08-19
+**Status:** Accepted through RF-TRANSFER01 development checkpoint
+**Full record:** `docs/decisions/ADR-029-provider-backed-multipart-transfer-and-browser-native-range-resume.md`
+
+RF-TRANSFER01 makes provider-backed multipart transfer a durable provider-neutral
+architecture. New uploads use a bounded 8 MiB/640-part contract with
+server-authoritative migration-021 session state, CAS lifecycle transitions,
+exact identity/MD5 checks, completed-part reuse, missing-part-only resume,
+exact abandonment, and bounded stale cleanup. Browsers send short-lived signed
+parts directly to object storage; the backend never buffers large file bytes.
+
+Completion reconciles provider state and activates the logical file exactly
+once, including lost completion responses and concurrent tabs. Legacy pending
+uploads remain explicitly non-resumable. Authorized downloads keep stable size,
+ETag, `Accept-Ranges: bytes`, and browser-native Range/206/If-Range behavior
+without whole-file JavaScript Blob buffering. Account/Library authority and
+private research-overlay boundaries are unchanged. A post-migration rollback
+requires the paired pre-migration database backup; this ADR authorizes no
+production contact or provider/infrastructure policy change.

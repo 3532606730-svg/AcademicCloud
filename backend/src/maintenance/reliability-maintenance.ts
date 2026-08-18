@@ -6,6 +6,7 @@ import {
   storageMetadataMatches,
 } from "../drive/drive-service.js";
 import type { StoredFile } from "../drive/file.js";
+import { multipartUploadVersion } from "../transfer/multipart-transfer.js";
 
 const MIN_PENDING_AGE_MILLISECONDS = 60 * 60 * 1_000;
 const MIN_PURGING_AGE_MILLISECONDS = 60 * 1_000;
@@ -22,6 +23,9 @@ export type ReliabilityMaintenanceOutcome =
   | "activated"
   | "would_remove_missing_pending"
   | "removed_missing_pending"
+  | "multipart_resumable"
+  | "would_abort_stale_multipart"
+  | "aborted_stale_multipart"
   | "would_finish_purge"
   | "purged"
   | "ambiguous_metadata"
@@ -73,8 +77,33 @@ export class ReliabilityMaintenance {
       limit,
     );
     const files: ReliabilityMaintenanceResult["files"] = [];
+    const staleMultipart = this.persistence.repositories.multipartUploads?.listStale(now, limit) ?? [];
 
     for (const file of pending) {
+      const transfer = this.persistence.repositories.multipartUploads?.findByFileId(file.ownerId, file.id) ?? null;
+      if (transfer) {
+        const isStale = staleMultipart.some((item) => item.fileId === transfer.fileId && item.ownerId === transfer.ownerId);
+        if (!isStale) {
+          files.push({ fileId: file.id, state: "pending_upload", outcome: "multipart_resumable" });
+          continue;
+        }
+        if (!apply) {
+          files.push({ fileId: file.id, state: "pending_upload", outcome: "would_abort_stale_multipart" });
+          continue;
+        }
+        try {
+          await this.#driveService.abandonUpload(
+            file.ownerId,
+            file.id,
+            multipartUploadVersion(transfer),
+            "system",
+          );
+          files.push({ fileId: file.id, state: "pending_upload", outcome: "aborted_stale_multipart" });
+        } catch (error: unknown) {
+          files.push({ fileId: file.id, state: "pending_upload", outcome: maintenanceErrorOutcome(error) });
+        }
+        continue;
+      }
       files.push({
         fileId: file.id,
         state: "pending_upload",

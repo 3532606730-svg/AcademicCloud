@@ -28,6 +28,7 @@ export const AUDIT_EVENT_KINDS = [
   "libraries.authority_create",
   "libraries.authority_update",
   "drive.upload_activate",
+  "drive.upload_abandon",
   "drive.folder_recycle",
   "drive.folder_restore",
   "drive.file_recycle",

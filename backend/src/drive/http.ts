@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js";
 
-import { DriveError, type DriveService } from "./drive-service.js";
+import { DriveError, type DriveService, type UploadStatus } from "./drive-service.js";
 import type { StoredFile } from "./file.js";
 import type { Folder } from "./folder.js";
 import {
@@ -53,6 +53,9 @@ interface UploadBody {
   checksum: { algorithm: "md5"; value: string };
 }
 
+interface MultipartVersionBody { version: string; }
+interface MultipartPartBody extends MultipartVersionBody { sizeBytes: number; contentMd5: string; }
+
 interface IdParams {
   folderId: string;
 }
@@ -60,6 +63,8 @@ interface IdParams {
 interface FileIdParams {
   fileId: string;
 }
+
+interface MultipartPartParams extends FileIdParams { partNumber: number; }
 
 interface EntriesQuery {
   folderId?: string;
@@ -127,6 +132,23 @@ export function fileDto(file: StoredFile) {
   };
 }
 
+function uploadStatusDto(status: UploadStatus) {
+  if (status.kind === "legacy" || status.kind === "complete") {
+    return { kind: status.kind, file: fileDto(status.file) };
+  }
+  return {
+    kind: "multipart" as const,
+    file: fileDto(status.file),
+    state: status.state,
+    version: status.version,
+    partSizeBytes: status.partSizeBytes,
+    totalParts: status.totalParts,
+    completedParts: status.completedParts,
+    completedBytes: status.completedBytes,
+    expiresAt: status.expiresAt.toISOString(),
+  };
+}
+
 function sendDriveError(reply: FastifyReply, error: unknown) {
   if (error instanceof TypeError || error instanceof RangeError) {
     return reply.code(400).send({ error: "invalid_request" });
@@ -165,6 +187,10 @@ export async function registerDriveHttp(
   driveService: DriveService,
   completeUpload: (actor: AuthenticatedAccount, fileId: string) => Promise<StoredFile> =
     (actor, fileId) => driveService.completeUpload(actor.id, fileId),
+  completeMultipartUpload: (actor: AuthenticatedAccount, fileId: string, version: string) => Promise<StoredFile> =
+    (actor, fileId, version) => driveService.completeMultipartUpload(actor.id, fileId, version),
+  getUploadStatus: (actor: AuthenticatedAccount, fileId: string) => Promise<UploadStatus> =
+    (actor, fileId) => driveService.getUploadStatus(actor.id, fileId),
 ): Promise<void> {
   app.addHook("onResponse", async (request, reply) => {
     const route = request.routeOptions.url;
@@ -345,12 +371,175 @@ export async function registerDriveHttp(
     },
     async (request, reply) => {
       try {
-        const result = await driveService.createUpload(requireOwnerId(request.authAccount), {
+        const result = await driveService.createMultipartUpload(requireOwnerId(request.authAccount), {
           ...request.body,
           folderId: request.body.folderId ?? null,
         });
-        return reply.code(201).send({ file: fileDto(result.file), upload: result.upload });
+        return reply.code(201).send({ file: fileDto(result.file), transfer: uploadStatusDto(result.transfer) });
       } catch (error: unknown) {
+        return sendDriveError(reply, error);
+      }
+    },
+  );
+
+  app.get<{ Params: FileIdParams }>(
+    "/api/drive/uploads/:fileId/status",
+    {
+      preHandler: app.authenticate,
+      schema: { params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } } },
+    },
+    async (request, reply) => {
+      try {
+        return { transfer: uploadStatusDto(await getUploadStatus(requireActor(request.authAccount), request.params.fileId)) };
+      } catch (error: unknown) {
+        return sendDriveError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: MultipartPartParams; Body: MultipartPartBody }>(
+    "/api/drive/uploads/:fileId/parts/:partNumber/authorization",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 8 * 1024,
+      schema: {
+        params: {
+          type: "object",
+          required: ["fileId", "partNumber"],
+          properties: {
+            fileId: idSchema,
+            partNumber: { type: "integer", minimum: 1, maximum: 640 },
+          },
+        },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version", "sizeBytes", "contentMd5"],
+          properties: {
+            version: versionSchema,
+            sizeBytes: { type: "integer", minimum: 1, maximum: 8 * 1024 * 1024 },
+            contentMd5: { type: "string", pattern: "^[A-Za-z0-9+/]{22}==$" },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return {
+          authorization: await driveService.createMultipartPartAuthorization(
+            requireOwnerId(request.authAccount),
+            request.params.fileId,
+            { ...request.body, partNumber: request.params.partNumber },
+          ),
+        };
+      } catch (error: unknown) {
+        return sendDriveError(reply, error);
+      }
+    },
+  );
+
+  for (const action of ["pause", "resume"] as const) {
+    app.post<{ Params: FileIdParams; Body: MultipartVersionBody }>(
+      `/api/drive/uploads/:fileId/${action}`,
+      {
+        preHandler: app.authenticate,
+        preValidation: requireJson,
+        bodyLimit: 8 * 1024,
+        schema: {
+          params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } },
+          body: {
+            type: "object",
+            additionalProperties: false,
+            required: ["version"],
+            properties: { version: versionSchema },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const transfer = action === "pause"
+            ? driveService.pauseMultipartUpload(requireOwnerId(request.authAccount), request.params.fileId, request.body.version)
+            : driveService.resumeMultipartUpload(requireOwnerId(request.authAccount), request.params.fileId, request.body.version);
+          return { transfer: uploadStatusDto(transfer) };
+        } catch (error: unknown) {
+          return sendDriveError(reply, error);
+        }
+      },
+    );
+  }
+
+  app.post<{ Params: FileIdParams; Body: MultipartVersionBody }>(
+    "/api/drive/uploads/:fileId/multipart/complete",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 8 * 1024,
+      schema: {
+        params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version"],
+          properties: { version: versionSchema },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return {
+          file: fileDto(await completeMultipartUpload(
+            requireActor(request.authAccount),
+            request.params.fileId,
+            request.body.version,
+          )),
+        };
+      } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.upload_activate", error);
+        return sendDriveError(reply, error);
+      }
+    },
+  );
+
+  app.delete<{ Params: FileIdParams; Body: MultipartVersionBody }>(
+    "/api/drive/uploads/:fileId/multipart",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 8 * 1024,
+      schema: {
+        params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version"],
+          properties: { version: versionSchema },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        await driveService.abandonUpload(requireOwnerId(request.authAccount), request.params.fileId, request.body.version);
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.upload_abandon", error);
+        return sendDriveError(reply, error);
+      }
+    },
+  );
+
+  app.delete<{ Params: FileIdParams }>(
+    "/api/drive/uploads/:fileId/legacy",
+    {
+      preHandler: app.authenticate,
+      schema: { params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } } },
+    },
+    async (request, reply) => {
+      try {
+        await driveService.abandonUpload(requireOwnerId(request.authAccount), request.params.fileId);
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.upload_abandon", error);
         return sendDriveError(reply, error);
       }
     },
@@ -382,10 +571,11 @@ export async function registerDriveHttp(
     },
     async (request, reply) => {
       try {
+        const ownerId = requireOwnerId(request.authAccount);
         return {
           files: driveService
-            .listPendingUploads(requireOwnerId(request.authAccount), request.query.folderId ?? null)
-            .map(fileDto),
+            .listPendingUploads(ownerId, request.query.folderId ?? null)
+            .map((file) => ({ ...fileDto(file), uploadKind: driveService.pendingUploadKind(ownerId, file.id) })),
         };
       } catch (error: unknown) {
         return sendDriveError(reply, error);

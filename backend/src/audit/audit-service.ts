@@ -45,6 +45,7 @@ const TARGET_BY_ACTION: Readonly<Record<AuditEventKind, string | null>> = {
   "libraries.authority_create": "authority",
   "libraries.authority_update": "authority",
   "drive.upload_activate": "file",
+  "drive.upload_abandon": "file",
   "drive.folder_recycle": "folder",
   "drive.folder_restore": "folder",
   "drive.file_recycle": "file",

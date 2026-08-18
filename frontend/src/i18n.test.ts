@@ -85,8 +85,8 @@ describe("translate", () => {
     expect(translate("zh-CN", "nav.recycle")).toBe("回收站");
     expect(translate("en", "preview.open")).toBe("Open");
     expect(translate("zh-CN", "preview.open")).toBe("打开");
-    expect(translate("en", "upload.retry")).toBe("Retry");
-    expect(translate("zh-CN", "upload.retry")).toBe("重试");
+    expect(translate("en", "upload.continue")).toBe("Continue upload");
+    expect(translate("zh-CN", "upload.continue")).toBe("继续上传");
   });
 });
 

@@ -12,6 +12,7 @@ import {
   type FolderEntry,
   type Invitation,
   type LibraryHolding,
+  type MultipartTransfer,
   type ScholarlyRecord,
 } from "./api.ts";
 import type { UploadProgressMetrics } from "./direct-upload.ts";
@@ -60,6 +61,33 @@ const FILE: FileEntry = {
   purgedAt: null,
   version: "g".repeat(43),
 };
+
+const PENDING_MULTIPART_FILE: FileEntry = {
+  ...FILE,
+  id: "multipart-file-1",
+  displayName: "resumable.pdf",
+  state: "pending_upload",
+  activatedAt: null,
+  uploadKind: "multipart",
+};
+
+function multipartTransfer(
+  overrides: Partial<MultipartTransfer> = {},
+  file: FileEntry = PENDING_MULTIPART_FILE,
+): MultipartTransfer {
+  return {
+    kind: "multipart",
+    file,
+    state: "uploading",
+    version: "m".repeat(43),
+    partSizeBytes: 3,
+    totalParts: 2,
+    completedParts: [],
+    completedBytes: 0,
+    expiresAt: "2026-08-26T00:00:00.000Z",
+    ...overrides,
+  };
+}
 
 const LIBRARY_HOLDINGS: LibraryHolding[] = ([
   ["book.pdf", "application/pdf"],
@@ -833,7 +861,7 @@ describe("App", () => {
     await user.click(await screen.findByRole("button", { name: "Pending" }));
     // The reserved upload reports a different MIME than the browser now
     // infers: the same name/size/checksum must still renew successfully.
-    const chooseInput = await screen.findByLabelText("Choose same file for paper.pdf");
+    const chooseInput = await screen.findByLabelText("Choose the original file and continue paper.pdf");
     await user.upload(chooseInput, new File(["source"], "paper.pdf", { type: "application/x-pdf" }));
 
     await waitFor(() => expect(renewUpload).toHaveBeenCalledWith("file-1"));
@@ -1159,12 +1187,340 @@ describe("App", () => {
     render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directUpload={directUpload} />);
 
     await user.upload(await screen.findByLabelText("Upload files"), new File(["source"], "paper.pdf", { type: "application/pdf" }));
-    const retry = await screen.findByRole("button", { name: "Verify stored copy or retry paper.pdf" });
+    const retry = await screen.findByRole("button", { name: "Continue paper.pdf upload" });
     await user.click(retry);
 
     await waitFor(() => expect(completeUpload).toHaveBeenCalledWith("file-1"));
     expect(renewUpload).not.toHaveBeenCalled();
     expect(directUpload).toHaveBeenCalledOnce();
+  });
+
+  it("reuses completed multipart part 1 and schedules only missing part 2", async () => {
+    const user = userEvent.setup();
+    const selected = new File(["abcdef"], "resumable.pdf", { type: "application/pdf" });
+    const initial = multipartTransfer({
+      completedParts: [{ partNumber: 1, sizeBytes: 3, etag: "etag-1" }],
+      completedBytes: 3,
+    });
+    const reconciled = multipartTransfer({
+      completedParts: [
+        { partNumber: 1, sizeBytes: 3, etag: "etag-1" },
+        { partNumber: 2, sizeBytes: 3, etag: "etag-2" },
+      ],
+      completedBytes: 6,
+    });
+    const authorizeUploadPart = vi.fn().mockResolvedValue({
+      method: "PUT",
+      url: "https://storage.invalid/part-2",
+      headers: { "Content-Length": "3", "Content-MD5": FILE.checksum },
+      expiresAt: "2026-08-13T00:05:00.000Z",
+    });
+    const directPartUpload = vi.fn().mockResolvedValue(undefined);
+    const completeMultipartUpload = vi.fn().mockResolvedValue(FILE);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({ file: PENDING_MULTIPART_FILE, transfer: initial }),
+      getUploadStatus: vi.fn().mockResolvedValue(reconciled),
+      authorizeUploadPart,
+      resumeUpload: vi.fn(),
+      completeMultipartUpload,
+    });
+    render(<App
+      api={api}
+      checksumFile={vi.fn().mockResolvedValue(FILE.checksum)}
+      directPartUpload={directPartUpload}
+    />);
+
+    await user.upload(await screen.findByLabelText("Upload files"), selected);
+    await waitFor(() => expect(completeMultipartUpload).toHaveBeenCalledWith(PENDING_MULTIPART_FILE.id, reconciled.version));
+    expect(authorizeUploadPart).toHaveBeenCalledTimes(1);
+    expect(authorizeUploadPart).toHaveBeenCalledWith(PENDING_MULTIPART_FILE.id, 2, {
+      version: initial.version,
+      sizeBytes: 3,
+      contentMd5: FILE.checksum,
+    });
+    expect(directPartUpload).toHaveBeenCalledTimes(1);
+    expect((directPartUpload.mock.calls[0]![1] as Blob).size).toBe(3);
+  });
+
+  it("offers same-session multipart continuation as a button rather than a file picker", async () => {
+    const user = userEvent.setup();
+    const selected = new File(["abcdef"], "same-session.pdf", { type: "application/pdf" });
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: selected.name };
+    const initial = multipartTransfer({ partSizeBytes: 6, totalParts: 1 }, pending);
+    const directPartUpload = vi.fn().mockRejectedValue(new DirectUploadError("upload_unreachable", "unreachable"));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({ file: pending, transfer: initial }),
+      getUploadStatus: vi.fn(),
+      authorizeUploadPart: vi.fn().mockResolvedValue({ method: "PUT", url: "https://storage.invalid/part", headers: {}, expiresAt: "2026-08-13T00:05:00.000Z" }),
+      resumeUpload: vi.fn(),
+      completeMultipartUpload: vi.fn(),
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directPartUpload={directPartUpload} />);
+
+    await user.upload(await screen.findByLabelText("Upload files"), selected);
+    await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
+    const continueButton = await screen.findByRole("button", { name: "Continue same-session.pdf upload" });
+    expect(continueButton.tagName).toBe("BUTTON");
+    expect(screen.queryByLabelText("Choose the original file and continue same-session.pdf")).not.toBeInTheDocument();
+    expect(directPartUpload).toHaveBeenCalledTimes(3);
+  });
+
+  it("pauses multipart work by aborting the in-flight PUT and retaining server state", async () => {
+    const user = userEvent.setup();
+    const selected = new File(["abcdef"], "pause-part.pdf", { type: "application/pdf" });
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: selected.name };
+    const initial = multipartTransfer({ partSizeBytes: 6, totalParts: 1 }, pending);
+    const paused = multipartTransfer({ state: "paused", version: "p".repeat(43), partSizeBytes: 6, totalParts: 1 }, pending);
+    let activeSignal: AbortSignal | undefined;
+    const directPartUpload = vi.fn((_authorization: unknown, _bytes: Blob, options?: { signal?: AbortSignal }) => {
+      activeSignal = options?.signal;
+      return new Promise<void>((_resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => reject(new DOMException("paused", "AbortError")), { once: true });
+      });
+    });
+    const pauseUpload = vi.fn().mockResolvedValue(paused);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({ file: pending, transfer: initial }),
+      getUploadStatus: vi.fn(),
+      authorizeUploadPart: vi.fn().mockResolvedValue({ method: "PUT", url: "https://storage.invalid/part", headers: {}, expiresAt: "2026-08-13T00:05:00.000Z" }),
+      pauseUpload,
+      resumeUpload: vi.fn(),
+      completeMultipartUpload: vi.fn(),
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directPartUpload={directPartUpload} />);
+
+    await user.upload(await screen.findByLabelText("Upload files"), selected);
+    await waitFor(() => expect(directPartUpload).toHaveBeenCalledOnce());
+    await user.click(screen.getByRole("button", { name: "Pause pause-part.pdf upload" }));
+
+    await waitFor(() => expect(pauseUpload).toHaveBeenCalledWith(pending.id, initial.version));
+    expect(activeSignal?.aborted).toBe(true);
+    expect(await screen.findByRole("button", { name: "Continue pause-part.pdf upload" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abandon pause-part.pdf upload" })).toBeInTheDocument();
+  });
+
+  it("refresh reselect verifies identity and resumes existing multipart parts", async () => {
+    const user = userEvent.setup();
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: "refresh.pdf" };
+    const selected = new File(["abcdef"], pending.displayName, { type: "application/x-pdf" });
+    const status = multipartTransfer({
+      file: pending,
+      state: "paused",
+      completedParts: [{ partNumber: 1, sizeBytes: 3, etag: "etag-1" }],
+      completedBytes: 3,
+    }, pending);
+    const resumed = multipartTransfer({ file: pending, version: "r".repeat(43) }, pending);
+    const authorizeUploadPart = vi.fn().mockResolvedValue({ method: "PUT", url: "https://storage.invalid/part-2", headers: {}, expiresAt: "2026-08-13T00:05:00.000Z" });
+    const resumeUpload = vi.fn().mockResolvedValue(resumed);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listPending: vi.fn().mockResolvedValue([pending]),
+      getUploadStatus: vi.fn()
+        .mockResolvedValueOnce(status)
+        .mockResolvedValueOnce({ kind: "complete", file: FILE }),
+      authorizeUploadPart,
+      resumeUpload,
+      completeMultipartUpload: vi.fn(),
+    });
+    render(<App
+      api={api}
+      checksumFile={vi.fn().mockResolvedValue(FILE.checksum)}
+      directPartUpload={vi.fn().mockResolvedValue(undefined)}
+    />);
+
+    await user.click(await screen.findByRole("button", { name: "Pending" }));
+    await user.upload(await screen.findByLabelText("Choose the original file and continue refresh.pdf"), selected);
+
+    await waitFor(() => expect(authorizeUploadPart).toHaveBeenCalledTimes(1));
+    expect(authorizeUploadPart.mock.calls[0]?.[1]).toBe(2);
+    expect(authorizeUploadPart.mock.calls[0]?.[2]).toEqual(expect.objectContaining({ version: resumed.version }));
+    expect(resumeUpload).toHaveBeenCalledWith(pending.id, status.version);
+    expect(api.createUpload).not.toHaveBeenCalled();
+    expect(api.renewUpload).not.toHaveBeenCalled();
+  });
+
+  it("rejects a same-name different-content reselect before status or part authorization", async () => {
+    const user = userEvent.setup();
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: "same-name.pdf" };
+    const getUploadStatus = vi.fn();
+    const authorizeUploadPart = vi.fn();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listPending: vi.fn().mockResolvedValue([pending]),
+      getUploadStatus,
+      authorizeUploadPart,
+      resumeUpload: vi.fn(),
+      completeMultipartUpload: vi.fn(),
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue("different-checksum==")} />);
+
+    await user.click(await screen.findByRole("button", { name: "Pending" }));
+    await user.upload(
+      await screen.findByLabelText("Choose the original file and continue same-name.pdf"),
+      new File(["abcdef"], "same-name.pdf", { type: "application/pdf" }),
+    );
+
+    expect(await screen.findByText("Choose the same file originally reserved for this pending upload.")).toBeInTheDocument();
+    expect(getUploadStatus).not.toHaveBeenCalled();
+    expect(authorizeUploadPart).not.toHaveBeenCalled();
+  });
+
+  it("bounds multipart scheduling to three concurrent parts", async () => {
+    const user = userEvent.setup();
+    const selected = new File(["abcdefghij"], "concurrency.pdf", { type: "application/pdf" });
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: selected.name, sizeBytes: selected.size };
+    const initial = multipartTransfer({ partSizeBytes: 2, totalParts: 5 }, pending);
+    const resolvers: Array<() => void> = [];
+    let active = 0;
+    let maximum = 0;
+    const directPartUpload = vi.fn(() => new Promise<void>((resolve) => {
+      active += 1;
+      maximum = Math.max(maximum, active);
+      resolvers.push(() => {
+        active -= 1;
+        resolve();
+      });
+    }));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({ file: pending, transfer: initial }),
+      getUploadStatus: vi.fn().mockResolvedValue({ kind: "complete", file: FILE }),
+      authorizeUploadPart: vi.fn().mockResolvedValue({ method: "PUT", url: "https://storage.invalid/part", headers: {}, expiresAt: "2026-08-13T00:05:00.000Z" }),
+      resumeUpload: vi.fn(),
+      completeMultipartUpload: vi.fn(),
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directPartUpload={directPartUpload} />);
+
+    await user.upload(await screen.findByLabelText("Upload files"), selected);
+    await waitFor(() => expect(directPartUpload).toHaveBeenCalledTimes(3));
+    expect(maximum).toBe(3);
+    resolvers.shift()!();
+    await waitFor(() => expect(directPartUpload).toHaveBeenCalledTimes(4));
+    resolvers.shift()!();
+    await waitFor(() => expect(directPartUpload).toHaveBeenCalledTimes(5));
+    for (const resolve of resolvers.splice(0)) resolve();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Uploaded"));
+    expect(maximum).toBeLessThanOrEqual(3);
+  });
+
+  it("bounds a repeatedly failing part to three authorization and PUT attempts", async () => {
+    const user = userEvent.setup();
+    const selected = new File(["abcdef"], "retry-part.pdf", { type: "application/pdf" });
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: selected.name };
+    const authorizeUploadPart = vi.fn().mockResolvedValue({ method: "PUT", url: "https://storage.invalid/part", headers: {}, expiresAt: "2026-08-13T00:05:00.000Z" });
+    const directPartUpload = vi.fn().mockRejectedValue(new DirectUploadError("upload_unreachable", "unreachable"));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({
+        file: pending,
+        transfer: multipartTransfer({ partSizeBytes: 6, totalParts: 1 }, pending),
+      }),
+      getUploadStatus: vi.fn(),
+      authorizeUploadPart,
+      resumeUpload: vi.fn(),
+      completeMultipartUpload: vi.fn(),
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directPartUpload={directPartUpload} />);
+
+    await user.upload(await screen.findByLabelText("Upload files"), selected);
+    await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument(), { timeout: 3000 });
+    expect(directPartUpload).toHaveBeenCalledTimes(3);
+    expect(authorizeUploadPart).toHaveBeenCalledTimes(3);
+  });
+
+  it("automatically reconciles a lost multipart completion response", async () => {
+    const user = userEvent.setup();
+    const selected = new File(["abcdef"], "lost-complete.pdf", { type: "application/pdf" });
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: selected.name };
+    const full = multipartTransfer({
+      file: pending,
+      completedParts: [
+        { partNumber: 1, sizeBytes: 3, etag: "etag-1" },
+        { partNumber: 2, sizeBytes: 3, etag: "etag-2" },
+      ],
+      completedBytes: 6,
+    }, pending);
+    const getUploadStatus = vi.fn()
+      .mockResolvedValueOnce(full)
+      .mockResolvedValueOnce({ kind: "complete", file: FILE });
+    const completeMultipartUpload = vi.fn().mockRejectedValue(new ApiError(503, "storage_unavailable"));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({ file: pending, transfer: multipartTransfer({}, pending) }),
+      getUploadStatus,
+      authorizeUploadPart: vi.fn().mockResolvedValue({ method: "PUT", url: "https://storage.invalid/part", headers: {}, expiresAt: "2026-08-13T00:05:00.000Z" }),
+      resumeUpload: vi.fn(),
+      completeMultipartUpload,
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directPartUpload={vi.fn().mockResolvedValue(undefined)} />);
+
+    await user.upload(await screen.findByLabelText("Upload files"), selected);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Uploaded"));
+    expect(completeMultipartUpload).toHaveBeenCalledOnce();
+    expect(getUploadStatus).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("button", { name: "Continue lost-complete.pdf upload" })).not.toBeInTheDocument();
+  });
+
+  it("explicitly abandons only the current multipart session", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const selected = new File(["abcdef"], "abandon.pdf", { type: "application/pdf" });
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: selected.name };
+    const initial = multipartTransfer({}, pending);
+    const abandonMultipartUpload = vi.fn().mockResolvedValue(undefined);
+    const directPartUpload = vi.fn((_authorization: unknown, _bytes: Blob, options?: { signal?: AbortSignal }) => new Promise<void>((_resolve, reject) => {
+      options?.signal?.addEventListener("abort", () => reject(new DOMException("paused", "AbortError")), { once: true });
+    }));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({ file: pending, transfer: initial }),
+      getUploadStatus: vi.fn(),
+      authorizeUploadPart: vi.fn().mockResolvedValue({ method: "PUT", url: "https://storage.invalid/part", headers: {}, expiresAt: "2026-08-13T00:05:00.000Z" }),
+      pauseUpload: vi.fn(),
+      resumeUpload: vi.fn(),
+      completeMultipartUpload: vi.fn(),
+      abandonMultipartUpload,
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directPartUpload={directPartUpload} />);
+
+    await user.upload(await screen.findByLabelText("Upload files"), selected);
+    await waitFor(() => expect(directPartUpload).toHaveBeenCalled());
+    await user.click(screen.getByRole("button", { name: "Abandon abandon.pdf upload" }));
+    await waitFor(() => expect(abandonMultipartUpload).toHaveBeenCalledWith(pending.id, initial.version));
+    expect(screen.queryByText("abandon.pdf")).not.toBeInTheDocument();
+  });
+
+  it("opens authorized downloads through a native anchor without fetch or Blob buffering", async () => {
+    const user = userEvent.setup();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const createDownload = vi.fn().mockResolvedValue({
+      method: "GET",
+      url: "https://storage.invalid/download?signature=short-lived",
+      expiresAt: "2026-08-13T00:05:00.000Z",
+      sizeBytes: FILE.sizeBytes,
+      etag: "stable-etag",
+      acceptRanges: "bytes" as const,
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+      createDownload,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const menu = await openRowMenu("paper.pdf");
+    await user.click(within(menu).getByRole("menuitem", { name: "Download" }));
+    await waitFor(() => expect(createDownload).toHaveBeenCalledWith(FILE.id));
+    expect(click).toHaveBeenCalledOnce();
+    const anchor = click.mock.instances[0] as HTMLAnchorElement;
+    expect(anchor.href).toBe("https://storage.invalid/download?signature=short-lived");
+    expect(anchor.download).toBe(FILE.displayName);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("restores and permanently deletes recycle items through labeled controls", async () => {
@@ -1743,7 +2099,7 @@ describe("App", () => {
     );
   });
 
-  it("cancelling a running upload releases its slot for the next queued file", async () => {
+  it("pausing a running upload releases its slot for the next queued file", async () => {
     const user = userEvent.setup();
     const checksumResolvers: Array<(value: string) => void> = [];
     const checksumFile = vi.fn((_file: Blob, options?: { signal?: AbortSignal }) =>
@@ -1759,10 +2115,10 @@ describe("App", () => {
     await user.upload(await screen.findByLabelText("Upload files"), files);
 
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
-    await user.click(screen.getByRole("button", { name: "Cancel c.pdf upload" }));
+    await user.click(screen.getByRole("button", { name: "Pause c.pdf upload" }));
 
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
-    expect(screen.getByRole("button", { name: "Dismiss c.pdf upload status" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue c.pdf upload" })).toBeInTheDocument();
   });
 
   it("queues retries behind the concurrency bound and starts them when a slot frees", async () => {
@@ -1803,7 +2159,7 @@ describe("App", () => {
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
     await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: "Verify stored copy or retry c.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Continue c.pdf upload" }));
     expect(screen.getAllByText("Queued")).toHaveLength(1);
     expect(completeUpload).not.toHaveBeenCalled();
     expect(renewUpload).not.toHaveBeenCalled();
@@ -1859,7 +2215,7 @@ describe("App", () => {
     checksumResolvers[0]!(FILE.checksum);
     await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: "Verify stored copy or retry a.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Continue a.pdf upload" }));
     await waitFor(() => expect(directUpload).toHaveBeenCalledTimes(2));
 
     expect(await screen.findByText(/3 B \/ 6 B/)).toBeInTheDocument();
@@ -1901,7 +2257,7 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
     expect(completeUpload).toHaveBeenCalledTimes(1);
 
-    await user.click(screen.getByRole("button", { name: "Verify stored copy or retry a.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Continue a.pdf upload" }));
     await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(2));
 
     expect(screen.queryByText("Queued")).not.toBeInTheDocument();
@@ -2609,7 +2965,8 @@ describe("mobile presentation structure", () => {
     expect(job).not.toBeNull();
     expect(job.querySelector("progress")).not.toBeNull();
     expect(job.querySelector(".upload-percent")).not.toBeNull();
-    expect(within(job).getByRole("button", { name: "Cancel a.pdf upload" })).toBeInTheDocument();
+    expect(within(job).getByRole("button", { name: "Pause a.pdf upload" })).toBeInTheDocument();
+    expect(within(job).getByRole("button", { name: "Abandon a.pdf upload" })).toBeInTheDocument();
   });
 });
 

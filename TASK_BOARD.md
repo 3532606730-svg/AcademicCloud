@@ -4,11 +4,13 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development and the narrow workflow proportionality clarification are complete and green at schema v20/history 001–020. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019. RF-TRANSFER01 is next; production remains untouched until the final combined artifact gate passes.**
+**RF-FRONTMATTEROCR01 development, the narrow workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019 and remains untouched until the final combined artifact gate passes.**
 
 ## Doing
 
-None.
+| Task | Task card | State |
+|---|---|---|
+| None | — | RF-TRANSFER01 checkpointed; final artifact gate is the next authorized boundary |
 
 ## Done
 
@@ -21,6 +23,7 @@ None.
 | L1-UX07 | `tasks/done/L1-UX07.md` | v19 forward-port plus scope-aware selection, capability actions, coherent Favorites/Recycle, exact fixture suppression, and future acceptance-residue prevention; deployed by PROD-08R |
 | PROD-08R | `tasks/done/PROD-08R.md` | Repaired the PDF.js Linux artifact runtime, independently verified the immutable package, deployed v19/001–019 with fresh off-host rollback protection, and completed changed-risk acceptance |
 | RF-FRONTMATTEROCR01 | `tasks/done/RF-FRONTMATTEROCR01.md` | Exact first-15/last-5 native-text-first local OCR fallback with migration-020 provenance, bounded Tesseract adapter, review-only metadata evidence, and preserved PROD-08R runtime repair |
+| RF-TRANSFER01 | `tasks/done/RF-TRANSFER01.md` | Provider-backed 8 MiB/640-part multipart resume with server CAS state, completed-part reuse, exact abandonment, legacy compatibility, and browser-native Range download resume; development schema v21/history 001–021 |
 
 Current execution boundary:
 
@@ -33,7 +36,7 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 → PROD-08R PASS / CLOSED
 → RF-FRONTMATTEROCR01 PASS / CLOSED in development; production unchanged
 → workflow proportionality clarification PASS
-→ RF-TRANSFER01
+→ RF-TRANSFER01 PASS / CLOSED in development
 → exact combined artifact gate
 → bounded final deployment and reconciliation
 → STOP
@@ -43,15 +46,14 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | RF-TRANSFER01 | Authorized next; true multipart upload and standards-based Range download resume |
-| 2 | Final combined artifact/deployment | Authorized only after OCR and transfer development checkpoints are closed and the exact artifact jobs are green |
-| 3 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
-| 4 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
-| 5 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
-| 6 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
-| 7 | STOP | Required after final production reconciliation |
+| 1 | Final combined artifact/deployment | Authorized only after OCR and transfer development checkpoints are closed and the exact artifact jobs are green |
+| 2 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
+| 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
+| 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
+| 5 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
+| 6 | STOP | Required after final production reconciliation |
 
-RF-FRONTMATTEROCR01 authorizes only the completed bounded local/offline fallback. RF-SEARCH01, the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
+RF-FRONTMATTEROCR01 authorizes only the completed bounded local/offline fallback. RF-TRANSFER01 is closed in development and adds no production authority. RF-SEARCH01, the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
 
 ## Product Model — Authoritative Short Form
 
@@ -107,7 +109,7 @@ L1_UX07_DEPLOYED=true
 ROLLBACK_USED=true
 ```
 
-Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, public assets match the immutable release, and migration 020/OCR/search/RAG residue is absent. This remains the durable starting production truth; development migration 020 has not been applied. Synthetic destructive acceptance was skipped safely because no uniquely owned run-created target existed; no task-owned synthetic residue exists.
+Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, public assets match the immutable release, and migration 020/OCR/search/RAG residue is absent. This remains the durable starting production truth; development migrations 020–021 have not been applied. Synthetic destructive acceptance was skipped safely because no uniquely owned run-created target existed; no task-owned synthetic residue exists.
 
 The rollback pair is exact prior application `bc5788633e0295744905b4ae2dcdfcc5d97635bf` plus schema-v18 backup `academiccloud-pre-prod08r-20260818T184801Z.sqlite` (SHA-256 `338d245d0e0aeb7fec063df069e0750bf3830aceedf32a0f4aad716fb868453b`), encrypted off-host in private commit `a7369933f31af7839bc833d3d24d30688504276d`. Application rollback without the paired database restore is prohibited.
 
@@ -115,4 +117,4 @@ The rollback pair is exact prior application `bc5788633e0295744905b4ae2dcdfcc5d9
 
 ## Next Action
 
-Create and activate RF-TRANSFER01 — True Resumable Upload and Download. Do not contact production.
+Build and independently verify the exact combined Linux x64 / Node 24 artifact from the RF-TRANSFER01 checkpoint, including the Tesseract packaging gate. Do not contact production until both artifact jobs are green.

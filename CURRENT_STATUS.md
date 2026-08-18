@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development and the narrow workflow proportionality clarification are complete and green at schema v20/history 001–020. Production remains unchanged at the closed PROD-08R v19 checkpoint. RF-TRANSFER01 is the next authorized development task before any final artifact or production gate.**
+**RF-FRONTMATTEROCR01 development, the narrow workflow proportionality clarification, and RF-TRANSFER01 — True Resumable Upload and Download are complete and green at development schema v21/history 001–021. Production remains unchanged at the closed PROD-08R v19 checkpoint. The next gate is the exact combined Linux x64 / Node 24 artifact, including the Tesseract packaging proof, before any production contact.**
 
 The governing product rule remains ADR-022:
 
@@ -56,12 +56,13 @@ Never select `bc578863…` against the live v19 database; restore the paired v18
 
 - `codex/project-memory-reconcile-20260817` remains the single authoritative non-main line;
 - RF-FRONTMATTEROCR01 checkpoint `bcd8211c0b0a091ec8ff3b8f674eaf2c9be72427` was integrated non-destructively after exact PROD-08R evidence checkpoint `497f55a648a7d819e5e01909920781e66506c731`;
-- development schema is v20/history 001–020; migrations 001–019 remain byte-identical and migration 020 adds only immutable suggestion evidence provenance;
+- development schema is v21/history 001–021; migrations 001–020 remain byte-identical, migration 020 adds only immutable suggestion evidence provenance, and migration 021 adds only server-authoritative multipart transfer state;
 - bounded local/offline OCR preserves native-text preference, the exact deduplicated first-15/last-5 window, manager review and RF-META CAS acceptance, Library-domain non-disclosure, and no raw OCR/page-image persistence;
-- full backend 322/322, full frontend 193/193, focused OCR/artifact 30/30, focused frontend 33/33, both typechecks/builds, and compiled acceptance are green;
+- RF-TRANSFER01 preserves the provider-neutral storage boundary, uses an 8 MiB/640-part bounded multipart contract with CAS lifecycle, completed-part reuse, missing-part-only resume, exact abandonment, legacy compatibility, and browser-native Range downloads without backend large-file buffering;
+- full backend 335/335, full frontend 211/211, both typechecks/builds, and compiled acceptance are green; migration, transfer, OCR, storage, HTTP, contribution, and byte-path focused suites are green;
 - the PROD-08R exact PDF.js/canvas native runtime allowlist and ELF64 x86-64 verification boundary remain intact;
 - the workflow now distinguishes structural deployment invariants from ordinary mutable business-state drift, while preserving migration, authorization, corruption, destructive-data, and backup/rollback gates;
-- `tasks/done/PROD-08R.md` and `tasks/done/RF-FRONTMATTEROCR01.md` preserve bounded evidence; no task is currently Doing.
+- `tasks/done/PROD-08R.md`, `tasks/done/RF-FRONTMATTEROCR01.md`, and `tasks/done/RF-TRANSFER01.md` preserve bounded evidence; no task is currently Doing.
 
 ## Safety Boundaries
 
@@ -69,4 +70,4 @@ No production contact or mutation is authorized during the remaining development
 
 ## Next Action
 
-Create and activate RF-TRANSFER01 — True Resumable Upload and Download. Do not contact production.
+Build and independently verify the exact combined Linux x64 / Node 24 artifact from the RF-TRANSFER01 checkpoint, including deterministic archive/manifest identity, production-only dependency/native-runtime audits, and the exact release-local Tesseract 5.5.3/tessdata_fast 4.1.0 chi_sim/chi_tra/eng packaging proof. Do not contact production until both artifact jobs are green.

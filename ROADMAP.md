@@ -68,12 +68,12 @@ L1-UX06
 → PROD-08R v19 Artifact Repair and Production Release
 → RF-FRONTMATTEROCR01 bounded local OCR development
 → workflow proportionality clarification
-→ RF-TRANSFER01 true resumable transfer development
+→ RF-TRANSFER01 true resumable transfer development — complete
 → exact combined artifact and bounded final production deployment
 → STOP
 ```
 
-L1-UX07, PROD-08R, and RF-FRONTMATTEROCR01 development are complete. Development is schema v20/history 001–020; production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019, with RF-METASUGGEST01/L1-UX07 deployed and PROD-07B behavior preserved. The previous release remains `bc5788633e0295744905b4ae2dcdfcc5d97635bf`; rollback was used during fail-closed PROD-08R attempts before final success. RF-TRANSFER01 is the next authorized feature task after the workflow clarification. RF-SEARCH01 and the later Pre-OCR cards remain parked.
+L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, and RF-TRANSFER01 development are complete. Development is schema v21/history 001–021; production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019, with RF-METASUGGEST01/L1-UX07 deployed and PROD-07B behavior preserved. The previous release remains `bc5788633e0295744905b4ae2dcdfcc5d97635bf`; rollback was used during fail-closed PROD-08R attempts before final success. The next authorized boundary is the exact combined Linux x64 / Node 24 artifact and Tesseract packaging gate. RF-SEARCH01 and the later Pre-OCR cards remain parked.
 
 ### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
 
@@ -193,7 +193,7 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 ## Layer 1 — Core Resource Handling
 
-**Status:** Foundation, L1-UX06, RF-META01, RF-METASUGGEST01, L1-UX07, and RF-FRONTMATTEROCR01 development are complete. The authorized continuous objective now proceeds through RF-TRANSFER01 and the bounded combined release gate.
+**Status:** Foundation, L1-UX06, RF-META01, RF-METASUGGEST01, L1-UX07, RF-FRONTMATTEROCR01 development, and RF-TRANSFER01 are complete. The authorized continuous objective now proceeds through the bounded combined release gate.
 
 Completed foundations include SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, Favorites, bulk operations, recursive recycle/restore, duplicate-name UX, upload recovery, mobile/fullscreen Preview, sticky navigation, shared-corpus authority and first-use shell repair.
 
@@ -316,10 +316,10 @@ In order:
 PROD-08R truth preserved
 → RF-FRONTMATTEROCR01 development complete
 → workflow proportionality clarification
-→ RF-TRANSFER01 development
+→ RF-TRANSFER01 development complete
 → exact Linux x64 / Node 24 combined artifact
 → bounded final production deployment and reconciliation
 → STOP
 ```
 
-RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, and the narrow workflow proportionality clarification are complete. RF-METASUGGEST01 and L1-UX07 remain deployed in exact production release `f62766c…`; bounded OCR and development migration 020 remain undeployed. RF-TRANSFER01 is the next authorized feature task. Production contact is deferred to the final exact-artifact gate. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, infrastructure-policy repair, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited.
+RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, the narrow workflow proportionality clarification, and RF-TRANSFER01 development are complete. RF-METASUGGEST01 and L1-UX07 remain deployed in exact production release `f62766c…`; bounded OCR and development migrations 020–021 remain undeployed. The next authorized boundary is the exact combined Linux x64 / Node 24 artifact and Tesseract packaging gate, followed only after green artifact jobs by the bounded final production deployment. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, infrastructure-policy repair, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited.

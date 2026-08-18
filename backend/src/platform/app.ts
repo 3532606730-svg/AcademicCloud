@@ -74,6 +74,8 @@ export const LOGGER_REDACT_PATHS = [
   "download.url",
   "upload.url",
   "upload.fields",
+  "authorization.url",
+  "authorization.headers",
   "fields.policy",
   "fields.Signature",
   "fields.signature",
@@ -126,6 +128,8 @@ export interface CreateAppOptions {
   drive?: {
     service: DriveService;
     completeUpload?: LibraryService["completeDefaultUpload"];
+    completeMultipartUpload?: LibraryService["completeDefaultMultipartUpload"];
+    getUploadStatus?: LibraryService["getDefaultUploadStatus"];
   };
   favorites?: { service: FavoriteService };
   audit?: { service: AuditService };
@@ -240,7 +244,13 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
       throw new Error("drive routes require authentication composition");
     }
 
-    await registerDriveHttp(app, options.drive.service, options.drive.completeUpload);
+    await registerDriveHttp(
+      app,
+      options.drive.service,
+      options.drive.completeUpload,
+      options.drive.completeMultipartUpload,
+      options.drive.getUploadStatus,
+    );
   }
 
   if (options.accounts) {

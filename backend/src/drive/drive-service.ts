@@ -4,11 +4,24 @@ import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import { assertBase64Md5, assertContentLength, assertMediaType } from "../storage/authorization.js";
 import { createObjectKey } from "../storage/object-key.js";
 import type {
+  BrowserMultipartPartAuthorization,
   BrowserDownloadAuthorization,
   BrowserUploadAuthorization,
+  ListMultipartPartsResult,
   StorageAdapter,
+  StorageMultipartPart,
   StorageObjectMetadata,
 } from "../storage/storage-adapter.js";
+import {
+  expectedMultipartPartSize,
+  MULTIPART_LIST_PAGE_SIZE,
+  MULTIPART_MAX_PARTS,
+  MULTIPART_PART_SIZE_BYTES,
+  MULTIPART_SESSION_TTL_MILLISECONDS,
+  multipartUploadVersion,
+  type MultipartUpload,
+  type MultipartUploadRepository,
+} from "../transfer/multipart-transfer.js";
 import type { StoredFile } from "./file.js";
 import type { Folder } from "./folder.js";
 import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
@@ -31,6 +44,7 @@ export type DriveErrorCode =
   | "concurrent_change"
   | "upload_incomplete"
   | "upload_metadata_mismatch"
+  | "upload_identity_mismatch"
   | "preview_unavailable"
   | "preview_too_large"
   | "storage_unavailable";
@@ -65,6 +79,36 @@ export interface CreateUploadInput {
   mediaType: string;
   sizeBytes: number;
   checksum: { algorithm: "md5"; value: string };
+}
+
+export interface MultipartUploadStatus {
+  kind: "multipart";
+  file: StoredFile;
+  state: "uploading" | "paused" | "completing";
+  version: string;
+  partSizeBytes: number;
+  totalParts: number;
+  completedParts: Array<{ partNumber: number; sizeBytes: number; etag: string }>;
+  completedBytes: number;
+  expiresAt: Date;
+}
+
+export interface LegacyUploadStatus {
+  kind: "legacy";
+  file: StoredFile;
+}
+
+export interface CompleteUploadStatus {
+  kind: "complete";
+  file: StoredFile;
+}
+
+export type UploadStatus = MultipartUploadStatus | LegacyUploadStatus | CompleteUploadStatus;
+
+export interface ResumableDownloadAuthorization extends BrowserDownloadAuthorization {
+  sizeBytes: number;
+  etag: string;
+  acceptRanges: "bytes";
 }
 
 export interface DriveEntries {
@@ -298,6 +342,7 @@ export function storageMetadataMatches(file: StoredFile, metadata: StorageObject
 
 export class DriveService {
   private readonly purgeOperations = new Map<string, Promise<void>>();
+  private readonly multipartCompletionOperations = new Map<string, Promise<StoredFile>>();
 
   constructor(
     private readonly persistence: Persistence,
@@ -307,7 +352,7 @@ export class DriveService {
 
   recordAuditAttempt(
     ownerId: string,
-    action: Extract<AuditEventKind, "drive.upload_activate" | "drive.folder_recycle" | "drive.folder_restore" | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete">,
+    action: Extract<AuditEventKind, "drive.upload_activate" | "drive.upload_abandon" | "drive.folder_recycle" | "drive.folder_restore" | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete">,
     error: unknown,
     actorKind: StorageAuditActor = "account",
   ): boolean {
@@ -501,49 +546,7 @@ export class DriveService {
     ownerId: string,
     input: CreateUploadInput,
   ): Promise<{ file: StoredFile; upload: BrowserUploadAuthorization }> {
-    const displayName = normalizeName(input.displayName);
-    const mediaType = input.mediaType.toLowerCase();
-    assertMediaType(mediaType);
-    assertContentLength(input.sizeBytes);
-
-    if (input.checksum.algorithm !== "md5") {
-      throw new TypeError("checksum algorithm must be md5");
-    }
-
-    if (input.sizeBytes > 5 * 1024 * 1024 * 1024) {
-      throw new RangeError("sizeBytes exceeds the 5 GiB POST upload limit");
-    }
-
-    assertBase64Md5(input.checksum.value);
-    const now = this.now();
-    let file: StoredFile;
-
-    try {
-      file = this.persistence.runInTransaction((repositories) => {
-        requireActiveFolder(repositories, ownerId, input.folderId);
-        return repositories.files.create({
-          id: randomUUID(),
-          ownerId,
-          folderId: input.folderId,
-          displayName,
-          storageProvider: this.storage.provider,
-          objectKey: createObjectKey(),
-          mediaType,
-          sizeBytes: input.sizeBytes,
-          checksumAlgorithm: "md5",
-          checksum: input.checksum.value,
-          state: "pending_upload",
-          revision: 0,
-          createdAt: now,
-          updatedAt: now,
-          activatedAt: null,
-          deletedAt: null,
-          purgedAt: null,
-        });
-      });
-    } catch (error: unknown) {
-      mapConstraint(error);
-    }
+    const file = this.reservePendingFile(ownerId, input);
 
     try {
       const upload = await this.authorizePendingFile(file);
@@ -554,11 +557,218 @@ export class DriveService {
     }
   }
 
+  async createMultipartUpload(
+    ownerId: string,
+    input: CreateUploadInput,
+  ): Promise<{ file: StoredFile; transfer: MultipartUploadStatus }> {
+    const storage = this.requireMultipartStorage();
+    const file = this.reservePendingFile(ownerId, input);
+    let uploadId: string | null = null;
+    try {
+      const handle = await storage.initiateMultipartUpload({
+        objectKey: file.objectKey,
+        mediaType: file.mediaType!,
+        expectedChecksum: { algorithm: "md5", value: file.checksum! },
+      });
+      uploadId = handle.uploadId;
+      const now = this.now();
+      const totalParts = Math.ceil(file.sizeBytes! / MULTIPART_PART_SIZE_BYTES);
+      if (totalParts < 1 || totalParts > MULTIPART_MAX_PARTS) throw new DriveError("invalid_state");
+      const upload = this.multipartRepository().create({
+        fileId: file.id,
+        ownerId,
+        storageProvider: file.storageProvider,
+        providerUploadId: uploadId,
+        partSizeBytes: MULTIPART_PART_SIZE_BYTES,
+        totalParts,
+        state: "uploading",
+        revision: 0,
+        createdAt: now,
+        updatedAt: now,
+        expiresAt: new Date(now.getTime() + MULTIPART_SESSION_TTL_MILLISECONDS),
+      });
+      return { file, transfer: this.toMultipartStatus(file, upload, []) };
+    } catch (error: unknown) {
+      if (uploadId !== null) {
+        try {
+          await storage.abortMultipartUpload({ objectKey: file.objectKey, uploadId });
+        } catch {
+          // The reservation is still removed; provider lifecycle rules remain
+          // the final fail-safe for an init that could not be durably recorded.
+        }
+      }
+      this.persistence.repositories.files.deletePending(ownerId, file.id, file.revision);
+      if (error instanceof DriveError || error instanceof TypeError || error instanceof RangeError) throw error;
+      throw new DriveError("storage_unavailable", { cause: error });
+    }
+  }
+
+  async getUploadStatus(
+    ownerId: string,
+    fileId: string,
+    auditActor: StorageAuditActor = "account",
+    afterActivation?: UploadActivationWork,
+  ): Promise<UploadStatus> {
+    const file = this.persistence.repositories.files.findById(ownerId, fileId);
+    if (!file) throw new DriveError("not_found");
+    if (file.state === "active") return { kind: "complete", file };
+    if (file.state !== "pending_upload") throw new DriveError("not_found");
+    const upload = this.multipartRepository().findByFileId(ownerId, fileId);
+    if (!upload) return { kind: "legacy", file };
+    this.assertMultipartIdentity(file, upload);
+    if (upload.state === "abandoning") throw new DriveError("concurrent_change");
+
+    const metadata = await this.safeStat(file);
+    if (metadata && storageMetadataMatches(file, metadata)) {
+      return {
+        kind: "complete",
+        file: await this.finalizeMultipartLogicalUpload(file, upload, auditActor, afterActivation),
+      };
+    }
+    if (metadata) throw new DriveError("upload_metadata_mismatch");
+    this.assertMultipartNotExpired(upload);
+
+    const parts = await this.listAllMultipartParts(file, upload);
+    return this.toMultipartStatus(file, upload, parts);
+  }
+
+  async createMultipartPartAuthorization(
+    ownerId: string,
+    fileId: string,
+    input: { version: string; partNumber: number; sizeBytes: number; contentMd5: string },
+  ): Promise<BrowserMultipartPartAuthorization> {
+    assertBase64Md5(input.contentMd5);
+    const { file, upload } = this.requireMultipartUpload(ownerId, fileId, input.version);
+    if (upload.state !== "uploading") throw new DriveError("invalid_state");
+    const expectedSize = expectedMultipartPartSize(file.sizeBytes!, upload.partSizeBytes, upload.totalParts, input.partNumber);
+    if (input.sizeBytes !== expectedSize) throw new DriveError("upload_identity_mismatch");
+    try {
+      return await this.requireMultipartStorage().createMultipartPartAuthorization({
+        objectKey: file.objectKey,
+        uploadId: upload.providerUploadId,
+        partNumber: input.partNumber,
+        contentLength: input.sizeBytes,
+        contentMd5: input.contentMd5,
+      });
+    } catch (error: unknown) {
+      if (error instanceof DriveError || error instanceof TypeError || error instanceof RangeError) throw error;
+      throw new DriveError("storage_unavailable", { cause: error });
+    }
+  }
+
+  pauseMultipartUpload(ownerId: string, fileId: string, version: string): MultipartUploadStatus {
+    const { file, upload } = this.requireMultipartUpload(ownerId, fileId, version);
+    if (upload.state === "paused") return this.toMultipartStatus(file, upload, []);
+    if (upload.state !== "uploading") throw new DriveError("invalid_state");
+    const now = this.now();
+    const paused = this.multipartRepository().update(
+      { ...upload, state: "paused", updatedAt: now, expiresAt: new Date(now.getTime() + MULTIPART_SESSION_TTL_MILLISECONDS) },
+      "uploading",
+      upload.revision,
+    );
+    if (!paused) throw new DriveError("concurrent_change");
+    return this.toMultipartStatus(file, paused, []);
+  }
+
+  resumeMultipartUpload(ownerId: string, fileId: string, version: string): MultipartUploadStatus {
+    const { file, upload } = this.requireMultipartUpload(ownerId, fileId, version);
+    if (upload.state === "uploading") return this.toMultipartStatus(file, upload, []);
+    if (upload.state !== "paused") throw new DriveError("invalid_state");
+    const now = this.now();
+    const resumed = this.multipartRepository().update(
+      { ...upload, state: "uploading", updatedAt: now, expiresAt: new Date(now.getTime() + MULTIPART_SESSION_TTL_MILLISECONDS) },
+      "paused",
+      upload.revision,
+    );
+    if (!resumed) throw new DriveError("concurrent_change");
+    return this.toMultipartStatus(file, resumed, []);
+  }
+
+  async completeMultipartUpload(
+    ownerId: string,
+    fileId: string,
+    version: string,
+    auditActor: StorageAuditActor = "account",
+    afterActivation?: UploadActivationWork,
+  ): Promise<StoredFile> {
+    const key = `${ownerId}\0${fileId}\0${version}`;
+    const existing = this.multipartCompletionOperations.get(key);
+    if (existing) return existing;
+    const operation = this.performMultipartCompletion(
+      ownerId,
+      fileId,
+      version,
+      auditActor,
+      afterActivation,
+    ).finally(() => {
+      if (this.multipartCompletionOperations.get(key) === operation) this.multipartCompletionOperations.delete(key);
+    });
+    this.multipartCompletionOperations.set(key, operation);
+    return operation;
+  }
+
+  async abandonUpload(
+    ownerId: string,
+    fileId: string,
+    version?: string,
+    auditActor: StorageAuditActor = "account",
+  ): Promise<void> {
+    const file = this.persistence.repositories.files.findById(ownerId, fileId);
+    if (!file || file.state !== "pending_upload") throw new DriveError("not_found");
+    let upload = this.multipartRepository().findByFileId(ownerId, fileId);
+    if (!upload && version !== undefined) throw new DriveError("invalid_state");
+    if (upload) {
+      if (version === undefined || multipartUploadVersion(upload) !== version) throw new DriveError("concurrent_change");
+      this.assertMultipartIdentity(file, upload);
+      const originalState = upload.state;
+      const locked = originalState === "abandoning"
+        ? upload
+        : this.multipartRepository().update(
+            { ...upload, state: "abandoning", updatedAt: this.now() },
+            originalState,
+            upload.revision,
+          );
+      if (!locked) throw new DriveError("concurrent_change");
+      try {
+        await this.requireMultipartStorage().abortMultipartUpload({
+          objectKey: file.objectKey,
+          uploadId: locked.providerUploadId,
+        });
+      } catch (error: unknown) {
+        if (originalState !== "abandoning") {
+          this.multipartRepository().update(
+            { ...locked, state: originalState, updatedAt: this.now() },
+            "abandoning",
+            locked.revision,
+          );
+        }
+        throw new DriveError("storage_unavailable", { cause: error });
+      }
+      upload = locked;
+    }
+    this.persistence.runInTransaction((repositories) => {
+      const current = repositories.files.findById(ownerId, fileId);
+      const currentUpload = repositories.multipartUploads?.findByFileId(ownerId, fileId) ?? null;
+      if (!current || current.state !== "pending_upload" || current.revision !== file.revision) {
+        throw new DriveError("concurrent_change");
+      }
+      if (upload && (!currentUpload || currentUpload.revision !== upload.revision
+        || !repositories.multipartUploads!.delete(ownerId, fileId, currentUpload.revision))) {
+        throw new DriveError("concurrent_change");
+      }
+      if (!repositories.files.deletePending(ownerId, fileId, current.revision)) throw new DriveError("concurrent_change");
+      recordDriveAudit(repositories, "drive.upload_abandon", auditActor, ownerId, fileId, this.now());
+    });
+  }
+
   async renewUploadAuthorization(ownerId: string, fileId: string): Promise<BrowserUploadAuthorization> {
     const file = this.persistence.repositories.files.findById(ownerId, fileId);
 
     if (!file || file.state !== "pending_upload") {
       throw new DriveError("not_found");
+    }
+    if (this.persistence.repositories.multipartUploads?.findByFileId(ownerId, fileId)) {
+      throw new DriveError("invalid_state");
     }
 
     const touched = this.persistence.repositories.files.update(
@@ -581,6 +791,14 @@ export class DriveService {
   listPendingUploads(ownerId: string, folderId: string | null): StoredFile[] {
     requireActiveFolder(this.persistence.repositories, ownerId, folderId);
     return this.persistence.repositories.files.listByFolder(ownerId, folderId, "pending_upload");
+  }
+
+  pendingUploadKind(ownerId: string, fileId: string): "multipart" | "legacy" {
+    const file = this.persistence.repositories.files.findById(ownerId, fileId);
+    if (!file || file.state !== "pending_upload") throw new DriveError("not_found");
+    return this.persistence.repositories.multipartUploads?.findByFileId(ownerId, fileId)
+      ? "multipart"
+      : "legacy";
   }
 
   async completeUpload(
@@ -650,7 +868,7 @@ export class DriveService {
     ownerId: string,
     fileId: string,
     disposition: "attachment" | "inline" = "attachment",
-  ): Promise<BrowserDownloadAuthorization> {
+  ): Promise<ResumableDownloadAuthorization> {
     const file = this.persistence.repositories.files.findById(ownerId, fileId);
 
     if (!file || file.state !== "active" || file.storageProvider !== this.storage.provider) {
@@ -663,7 +881,7 @@ export class DriveService {
   async createDownloadForAuthorizedFile(
     file: StoredFile,
     disposition: "attachment" | "inline" = "attachment",
-  ): Promise<BrowserDownloadAuthorization> {
+  ): Promise<ResumableDownloadAuthorization> {
     if (file.state !== "active" || file.storageProvider !== this.storage.provider) {
       throw new DriveError("not_found");
     }
@@ -689,12 +907,23 @@ export class DriveService {
     }
 
     try {
-      return await this.storage.createDownloadAuthorization({
+      const metadata = await this.storage.statObject(file.objectKey);
+      if (!metadata || !storageMetadataMatches(file, metadata) || !metadata.etag) {
+        throw new DriveError(metadata ? "upload_metadata_mismatch" : "not_found");
+      }
+      const authorization = await this.storage.createDownloadAuthorization({
         objectKey: file.objectKey,
         downloadFilename: file.displayName,
         disposition,
       });
+      return {
+        ...authorization,
+        sizeBytes: metadata.sizeBytes,
+        etag: metadata.etag,
+        acceptRanges: "bytes",
+      };
     } catch (error: unknown) {
+      if (error instanceof DriveError) throw error;
       throw new DriveError("storage_unavailable", { cause: error });
     }
   }
@@ -1636,6 +1865,264 @@ export class DriveService {
         fileId,
         now,
       );
+    });
+  }
+
+  private reservePendingFile(ownerId: string, input: CreateUploadInput): StoredFile {
+    const displayName = normalizeName(input.displayName);
+    const mediaType = input.mediaType.toLowerCase();
+    assertMediaType(mediaType);
+    assertContentLength(input.sizeBytes);
+    if (input.checksum.algorithm !== "md5") throw new TypeError("checksum algorithm must be md5");
+    if (input.sizeBytes > 5 * 1024 * 1024 * 1024) {
+      throw new RangeError("sizeBytes exceeds the 5 GiB upload limit");
+    }
+    assertBase64Md5(input.checksum.value);
+    const now = this.now();
+    try {
+      return this.persistence.runInTransaction((repositories) => {
+        requireActiveFolder(repositories, ownerId, input.folderId);
+        return repositories.files.create({
+          id: randomUUID(),
+          ownerId,
+          folderId: input.folderId,
+          displayName,
+          storageProvider: this.storage.provider,
+          objectKey: createObjectKey(),
+          mediaType,
+          sizeBytes: input.sizeBytes,
+          checksumAlgorithm: "md5",
+          checksum: input.checksum.value,
+          state: "pending_upload",
+          revision: 0,
+          createdAt: now,
+          updatedAt: now,
+          activatedAt: null,
+          deletedAt: null,
+          purgedAt: null,
+        });
+      });
+    } catch (error: unknown) {
+      mapConstraint(error);
+    }
+  }
+
+  private multipartRepository(): MultipartUploadRepository {
+    const repository = this.persistence.repositories.multipartUploads;
+    if (!repository) throw new DriveError("storage_unavailable");
+    return repository;
+  }
+
+  private requireMultipartStorage(): Required<Pick<
+    StorageAdapter,
+    "initiateMultipartUpload" | "createMultipartPartAuthorization" | "listMultipartParts"
+      | "completeMultipartUpload" | "abortMultipartUpload"
+  >> {
+    const storage = this.storage;
+    if (!storage.initiateMultipartUpload || !storage.createMultipartPartAuthorization
+      || !storage.listMultipartParts || !storage.completeMultipartUpload || !storage.abortMultipartUpload) {
+      throw new DriveError("storage_unavailable");
+    }
+    return {
+      initiateMultipartUpload: storage.initiateMultipartUpload.bind(storage),
+      createMultipartPartAuthorization: storage.createMultipartPartAuthorization.bind(storage),
+      listMultipartParts: storage.listMultipartParts.bind(storage),
+      completeMultipartUpload: storage.completeMultipartUpload.bind(storage),
+      abortMultipartUpload: storage.abortMultipartUpload.bind(storage),
+    };
+  }
+
+  private assertMultipartIdentity(file: StoredFile, upload: MultipartUpload): void {
+    if (file.state !== "pending_upload" || file.storageProvider !== this.storage.provider
+      || upload.fileId !== file.id || upload.ownerId !== file.ownerId
+      || upload.storageProvider !== file.storageProvider || file.sizeBytes === null
+      || file.mediaType === null || file.checksumAlgorithm !== "md5" || file.checksum === null
+      || upload.partSizeBytes !== MULTIPART_PART_SIZE_BYTES
+      || upload.totalParts !== Math.ceil(file.sizeBytes / upload.partSizeBytes)
+      || upload.totalParts < 1 || upload.totalParts > MULTIPART_MAX_PARTS) {
+      throw new DriveError("invalid_state");
+    }
+  }
+
+  private requireMultipartUpload(
+    ownerId: string,
+    fileId: string,
+    version: string,
+  ): { file: StoredFile; upload: MultipartUpload } {
+    const file = this.persistence.repositories.files.findById(ownerId, fileId);
+    const upload = this.multipartRepository().findByFileId(ownerId, fileId);
+    if (!file || !upload) throw new DriveError("not_found");
+    this.assertMultipartIdentity(file, upload);
+    if (multipartUploadVersion(upload) !== version) throw new DriveError("concurrent_change");
+    this.assertMultipartNotExpired(upload);
+    return { file, upload };
+  }
+
+  private assertMultipartNotExpired(upload: MultipartUpload): void {
+    if (upload.expiresAt.getTime() <= this.now().getTime()) {
+      throw new DriveError("invalid_state");
+    }
+  }
+
+  private async safeStat(file: StoredFile): Promise<StorageObjectMetadata | null> {
+    this.assertCurrentStorageProvider(file);
+    try {
+      return await this.storage.statObject(file.objectKey);
+    } catch (error: unknown) {
+      throw new DriveError("storage_unavailable", { cause: error });
+    }
+  }
+
+  private async listAllMultipartParts(file: StoredFile, upload: MultipartUpload): Promise<StorageMultipartPart[]> {
+    const storage = this.requireMultipartStorage();
+    let result: ListMultipartPartsResult;
+    try {
+      result = await storage.listMultipartParts({
+        objectKey: file.objectKey,
+        uploadId: upload.providerUploadId,
+        partNumberMarker: 0,
+        limit: MULTIPART_LIST_PAGE_SIZE,
+      });
+    } catch (error: unknown) {
+      throw new DriveError("storage_unavailable", { cause: error });
+    }
+    const parts = [...result.parts];
+    if (result.nextPartNumberMarker !== null || parts.length > upload.totalParts
+      || parts.length > MULTIPART_LIST_PAGE_SIZE) throw new DriveError("upload_metadata_mismatch");
+    if (new Set(parts.map((part) => part.partNumber)).size !== parts.length) {
+      throw new DriveError("upload_metadata_mismatch");
+    }
+    return parts.sort((left, right) => left.partNumber - right.partNumber);
+  }
+
+  private toMultipartStatus(
+    file: StoredFile,
+    upload: MultipartUpload,
+    parts: readonly StorageMultipartPart[],
+  ): MultipartUploadStatus {
+    this.assertMultipartIdentity(file, upload);
+    if (upload.state === "abandoning") throw new DriveError("concurrent_change");
+    let completedBytes = 0;
+    const completedParts = parts.map((part) => {
+      if (!Number.isSafeInteger(part.partNumber) || part.partNumber < 1 || part.partNumber > upload.totalParts) {
+        throw new DriveError("upload_metadata_mismatch");
+      }
+      const expectedSize = expectedMultipartPartSize(
+        file.sizeBytes!,
+        upload.partSizeBytes,
+        upload.totalParts,
+        part.partNumber,
+      );
+      if (part.sizeBytes !== expectedSize || !part.etag) throw new DriveError("upload_metadata_mismatch");
+      completedBytes += part.sizeBytes;
+      return { partNumber: part.partNumber, sizeBytes: part.sizeBytes, etag: part.etag };
+    });
+    return {
+      kind: "multipart",
+      file,
+      state: upload.state,
+      version: multipartUploadVersion(upload),
+      partSizeBytes: upload.partSizeBytes,
+      totalParts: upload.totalParts,
+      completedParts,
+      completedBytes,
+      expiresAt: upload.expiresAt,
+    };
+  }
+
+  private async performMultipartCompletion(
+    ownerId: string,
+    fileId: string,
+    version: string,
+    auditActor: StorageAuditActor,
+    afterActivation?: UploadActivationWork,
+  ): Promise<StoredFile> {
+    const file = this.persistence.repositories.files.findById(ownerId, fileId);
+    if (file?.state === "active") return file;
+    const required = this.requireMultipartUpload(ownerId, fileId, version);
+    let upload = required.upload;
+    if (upload.state === "abandoning") throw new DriveError("concurrent_change");
+    const metadata = await this.safeStat(required.file);
+    if (metadata) {
+      if (!storageMetadataMatches(required.file, metadata)) throw new DriveError("upload_metadata_mismatch");
+      return this.finalizeMultipartLogicalUpload(required.file, upload, auditActor, afterActivation);
+    }
+
+    if (upload.state !== "completing") {
+      const completing = this.multipartRepository().update(
+        { ...upload, state: "completing", updatedAt: this.now() },
+        upload.state,
+        upload.revision,
+      );
+      if (!completing) throw new DriveError("concurrent_change");
+      upload = completing;
+    }
+
+    const parts = await this.listAllMultipartParts(required.file, upload);
+    let exact = false;
+    try {
+      const status = this.toMultipartStatus(required.file, upload, parts);
+      exact = status.completedParts.length === upload.totalParts
+        && status.completedParts.every((part, index) => part.partNumber === index + 1)
+        && status.completedBytes === required.file.sizeBytes;
+    } catch (error: unknown) {
+      if (error instanceof DriveError) throw error;
+      throw new DriveError("upload_metadata_mismatch", { cause: error });
+    }
+    if (!exact) {
+      const restored = this.multipartRepository().update(
+        { ...upload, state: "uploading", updatedAt: this.now() },
+        "completing",
+        upload.revision,
+      );
+      if (!restored) throw new DriveError("concurrent_change");
+      throw new DriveError("upload_incomplete");
+    }
+
+    try {
+      await this.requireMultipartStorage().completeMultipartUpload({
+        objectKey: required.file.objectKey,
+        uploadId: upload.providerUploadId,
+        parts: parts.map((part) => ({ partNumber: part.partNumber, etag: part.etag })),
+      });
+    } catch (error: unknown) {
+      const afterFailure = await this.safeStat(required.file);
+      if (!afterFailure || !storageMetadataMatches(required.file, afterFailure)) {
+        throw new DriveError("storage_unavailable", { cause: error });
+      }
+    }
+
+    const completedMetadata = await this.safeStat(required.file);
+    if (!completedMetadata) throw new DriveError("upload_incomplete");
+    if (!storageMetadataMatches(required.file, completedMetadata)) throw new DriveError("upload_metadata_mismatch");
+    return this.finalizeMultipartLogicalUpload(required.file, upload, auditActor, afterActivation);
+  }
+
+  private async finalizeMultipartLogicalUpload(
+    file: StoredFile,
+    upload: MultipartUpload,
+    auditActor: StorageAuditActor,
+    afterActivation?: UploadActivationWork,
+  ): Promise<StoredFile> {
+    return this.persistence.runInTransaction((repositories) => {
+      const current = repositories.files.findById(file.ownerId, file.id);
+      const currentUpload = repositories.multipartUploads?.findByFileId(file.ownerId, file.id) ?? null;
+      if (!current || current.state !== "pending_upload" || current.revision !== file.revision
+        || !currentUpload || currentUpload.revision !== upload.revision) {
+        throw new DriveError("concurrent_change");
+      }
+      const now = this.now();
+      const activated = repositories.files.update(
+        { ...current, state: "active", activatedAt: now, updatedAt: now },
+        "pending_upload",
+        current.revision,
+      );
+      if (!activated || !repositories.multipartUploads!.delete(file.ownerId, file.id, currentUpload.revision)) {
+        throw new DriveError("concurrent_change");
+      }
+      recordDriveAudit(repositories, "drive.upload_activate", auditActor, file.ownerId, file.id, now);
+      afterActivation?.(repositories, activated, now);
+      return repositories.files.findById(file.ownerId, file.id) ?? activated;
     });
   }
 

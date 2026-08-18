@@ -13,6 +13,7 @@ import {
   type LibraryRecycleFile,
   type LibrarySummary,
   type ManagedAccount,
+  type MultipartTransfer,
   type EntriesResponse,
   type FileEntry,
   type FolderEntry,
@@ -21,7 +22,7 @@ import {
   type ScholarlyRecord,
   type ScholarlyRecordSummary,
 } from "./api.ts";
-import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
+import { uploadDirectly, uploadPartDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
 import { AnnouncementAdministrationPanel, AnnouncementFeed } from "./announcements.tsx";
 import { AuditPanel } from "./audit.tsx";
 import { ContributionReviewPanel, SharedLibraryPanel } from "./shared-library.tsx";
@@ -69,12 +70,18 @@ export interface AppProps {
   api?: AcademicCloudApi;
   checksumFile?: typeof calculateFileMd5;
   directUpload?: typeof uploadDirectly;
+  directPartUpload?: typeof uploadPartDirectly;
 }
 
-export function App({ api: injectedApi, checksumFile = calculateFileMd5, directUpload = uploadDirectly }: AppProps) {
+export function App({
+  api: injectedApi,
+  checksumFile = calculateFileMd5,
+  directUpload = uploadDirectly,
+  directPartUpload = uploadPartDirectly,
+}: AppProps) {
   return (
     <LanguageProvider>
-      <AppContent api={injectedApi} checksumFile={checksumFile} directUpload={directUpload} />
+      <AppContent api={injectedApi} checksumFile={checksumFile} directUpload={directUpload} directPartUpload={directPartUpload} />
     </LanguageProvider>
   );
 }
@@ -83,10 +90,12 @@ function AppContent({
   api: injectedApi,
   checksumFile,
   directUpload,
+  directPartUpload,
 }: {
   api: AcademicCloudApi | undefined;
   checksumFile: typeof calculateFileMd5;
   directUpload: typeof uploadDirectly;
+  directPartUpload: typeof uploadPartDirectly;
 }) {
   const [auth, setAuth] = useState<AuthState>({ phase: "checking" });
   const [invitationToken, setInvitationToken] = useState<string | null>(takeInvitationTokenFromLocation);
@@ -166,6 +175,7 @@ function AppContent({
       api={api}
       checksumFile={checksumFile}
       directUpload={directUpload}
+      directPartUpload={directPartUpload}
       onSignedOut={(message) => setAuth({ phase: "anonymous", ...(message ? { message } : {}) })}
     />
   );
@@ -367,10 +377,12 @@ function LoginView({
 }
 
 type DriveViewName = "library" | "pending" | "recycle" | "favorites";
-type UploadPhase = "queued" | "checksum" | "reserving" | "uploading" | "verifying" | "complete" | "error" | "cancelled";
+type UploadPhase = "queued" | "checksum" | "reserving" | "uploading" | "paused" | "resumable" | "completing" | "verifying" | "complete" | "error" | "abandoned";
 
-const ACTIVE_UPLOAD_PHASES: ReadonlySet<UploadPhase> = new Set(["checksum", "reserving", "uploading", "verifying"]);
+const ACTIVE_UPLOAD_PHASES: ReadonlySet<UploadPhase> = new Set(["checksum", "reserving", "uploading", "completing", "verifying"]);
 const MAX_CONCURRENT_UPLOADS = 2;
+const MAX_CONCURRENT_PARTS = 3;
+const MAX_PART_RETRIES = 3;
 const UPLOAD_METRICS_UPDATE_INTERVAL_MS = 500;
 
 interface UploadJob {
@@ -387,6 +399,7 @@ interface UploadJob {
   phase: UploadPhase;
   progress: number;
   uploaded: boolean;
+  transfer: MultipartTransfer | null;
   error: string | null;
   controller: AbortController;
   bytesUploaded: number;
@@ -582,12 +595,14 @@ function DriveView({
   api,
   checksumFile,
   directUpload,
+  directPartUpload,
   onSignedOut,
 }: {
   account: Account;
   api: AcademicCloudApi;
   checksumFile: typeof calculateFileMd5;
   directUpload: typeof uploadDirectly;
+  directPartUpload: typeof uploadPartDirectly;
   onSignedOut: (message?: string) => void;
 }) {
   const { language, t } = useLanguage();
@@ -837,6 +852,136 @@ function DriveView({
     };
   }
 
+  async function delayForPartRetry(milliseconds: number, signal: AbortSignal): Promise<void> {
+    if (signal.aborted) throw new DOMException("The upload was paused.", "AbortError");
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(resolve, milliseconds);
+      signal.addEventListener("abort", () => {
+        window.clearTimeout(timer);
+        reject(new DOMException("The upload was paused.", "AbortError"));
+      }, { once: true });
+    });
+  }
+
+  async function runMultipartWorkflow(
+    job: UploadJob,
+    file: File,
+    initialTransfer: MultipartTransfer,
+    controller: AbortController,
+  ): Promise<void> {
+    if (!api.getUploadStatus || !api.authorizeUploadPart || !api.resumeUpload || !api.completeMultipartUpload) {
+      throw new Error("Multipart upload API is unavailable");
+    }
+    let transfer: MultipartTransfer;
+    if (initialTransfer.state === "paused") {
+      const resumed = await api.resumeUpload(initialTransfer.file.id, initialTransfer.version);
+      // Pause/resume advances the server CAS token; the provider-authoritative
+      // completed-part snapshot was reconciled immediately before this call.
+      // Preserve it so a version transition never turns valid remote parts
+      // back into "missing" work.
+      transfer = {
+        ...resumed,
+        completedParts: initialTransfer.completedParts,
+        completedBytes: initialTransfer.completedBytes,
+      };
+    } else {
+      transfer = initialTransfer;
+    }
+    patchJob(job.id, {
+      fileId: transfer.file.id,
+      transfer,
+      phase: transfer.state === "completing" ? "completing" : "uploading",
+      uploaded: false,
+      totalBytes: file.size,
+      bytesUploaded: transfer.completedBytes,
+      progress: file.size > 0 ? Math.min(0.97, transfer.completedBytes / file.size) : 0,
+    });
+
+    if (transfer.state !== "completing") {
+      const completed = new Set(transfer.completedParts.map((part) => part.partNumber));
+      const missing = Array.from({ length: transfer.totalParts }, (_, index) => index + 1)
+        .filter((partNumber) => !completed.has(partNumber));
+      let nextIndex = 0;
+      let completedBytes = transfer.completedBytes;
+      const inFlight = new Map<number, number>();
+      const reportProgress = () => {
+        const loaded = completedBytes + [...inFlight.values()].reduce((sum, value) => sum + value, 0);
+        patchJob(job.id, {
+          bytesUploaded: Math.min(file.size, loaded),
+          progress: file.size > 0 ? Math.min(0.97, loaded / file.size) : 0,
+        });
+      };
+      const uploadOne = async (partNumber: number) => {
+        const start = (partNumber - 1) * transfer.partSizeBytes;
+        const end = Math.min(file.size, start + transfer.partSizeBytes);
+        const blob = file.slice(start, end);
+        const contentMd5 = await checksumFile(blob, { signal: controller.signal });
+        let lastError: unknown;
+        for (let attempt = 0; attempt < MAX_PART_RETRIES; attempt += 1) {
+          try {
+            const authorization = await api.authorizeUploadPart!(transfer.file.id, partNumber, {
+              version: transfer.version,
+              sizeBytes: blob.size,
+              contentMd5,
+            });
+            await directPartUpload(authorization, blob, {
+              signal: controller.signal,
+              onMetrics: ({ loaded }) => {
+                inFlight.set(partNumber, loaded);
+                reportProgress();
+              },
+            });
+            inFlight.delete(partNumber);
+            completedBytes += blob.size;
+            reportProgress();
+            return;
+          } catch (caught: unknown) {
+            inFlight.delete(partNumber);
+            lastError = caught;
+            if (caught instanceof DOMException && caught.name === "AbortError") throw caught;
+            if (attempt + 1 < MAX_PART_RETRIES) {
+              await delayForPartRetry(250 * (2 ** attempt), controller.signal);
+            }
+          }
+        }
+        throw lastError;
+      };
+      const worker = async () => {
+        while (nextIndex < missing.length) {
+          const partNumber = missing[nextIndex++]!;
+          await uploadOne(partNumber);
+        }
+      };
+      await Promise.all(Array.from(
+        { length: Math.min(MAX_CONCURRENT_PARTS, Math.max(1, missing.length)) },
+        () => worker(),
+      ));
+      const reconciled = await api.getUploadStatus(transfer.file.id);
+      if (reconciled.kind === "complete") {
+        patchJob(job.id, { phase: "complete", progress: 1, uploaded: true, bytesUploaded: file.size });
+        setNotice(t("upload.uploaded", { name: file.name }));
+        refresh();
+        return;
+      }
+      if (reconciled.kind !== "multipart") throw new Error(t("upload.sameFileMismatch"));
+      transfer = reconciled;
+      patchJob(job.id, { transfer, phase: "completing", progress: 0.98, bytesUploaded: file.size });
+    }
+
+    try {
+      await api.completeMultipartUpload(transfer.file.id, transfer.version);
+    } catch (caught: unknown) {
+      // The provider may have committed every byte while the final HTTP
+      // response was lost. Reconcile once before surfacing a recoverable
+      // error so the normal path never asks the user to "verify again".
+      const recovered = await api.getUploadStatus(transfer.file.id);
+      if (recovered.kind !== "complete") throw caught;
+    }
+    patchJob(job.id, { phase: "complete", progress: 1, uploaded: true, bytesUploaded: file.size });
+    setNotice(t("upload.uploaded", { name: file.name }));
+    refresh();
+  }
+
   async function runUploadWorkflow(job: UploadJob) {
     const controller = new AbortController();
     patchJob(job.id, { controller });
@@ -860,6 +1005,19 @@ function DriveView({
         throw new Error(t("upload.sameFileMismatch"));
       }
 
+      if (existing?.uploadKind === "multipart") {
+        if (!api.getUploadStatus) throw new Error("Multipart upload API is unavailable");
+        const status = await api.getUploadStatus(existing.id);
+        if (status.kind === "complete") {
+          patchJob(job.id, { phase: "complete", uploaded: true, progress: 1 });
+          refresh();
+          return;
+        }
+        if (status.kind !== "multipart") throw new Error(t("upload.sameFileMismatch"));
+        await runMultipartWorkflow(job, file, status, controller);
+        return;
+      }
+
       patchJob(job.id, { phase: "reserving", progress: 0.15 });
       const reserved = existing
         ? { file: existing, upload: await api.renewUpload(existing.id) }
@@ -872,6 +1030,10 @@ function DriveView({
             sizeBytes: file.size,
             checksum: { algorithm: "md5", value: checksum },
           });
+      if ("transfer" in reserved) {
+        await runMultipartWorkflow(job, file, reserved.transfer, controller);
+        return;
+      }
       patchJob(job.id, { fileId: reserved.file.id, phase: "uploading", totalBytes: file.size });
       await directUpload(reserved.upload, file, {
         signal: controller.signal,
@@ -884,7 +1046,7 @@ function DriveView({
       refresh();
     } catch (caught: unknown) {
       if (caught instanceof DOMException && caught.name === "AbortError") {
-        patchJob(job.id, { phase: "cancelled" });
+        patchJob(job.id, { phase: "paused" });
       } else {
         const message = caught instanceof ApiError && caught.code === "name_conflict"
           ? t("upload.nameConflict", { name: job.file.name })
@@ -897,6 +1059,18 @@ function DriveView({
   async function runRetryWorkflow(job: UploadJob, controller: AbortController) {
     const fileId = job.fileId!;
     try {
+      if (job.transfer !== null) {
+        if (!api.getUploadStatus) throw new Error("Multipart upload API is unavailable");
+        const status = await api.getUploadStatus(fileId);
+        if (status.kind === "complete") {
+          patchJob(job.id, { phase: "complete", uploaded: true, progress: 1 });
+          refresh();
+          return;
+        }
+        if (status.kind !== "multipart") throw new Error(t("upload.sameFileMismatch"));
+        await runMultipartWorkflow(job, job.file, status, controller);
+        return;
+      }
       // Scheduler invariant: a selected job claims an ACTIVE phase BEFORE any
       // async workflow I/O can remain pending. Without this, an uploaded=true
       // retry would still read as "queued" while completeUpload is in flight
@@ -927,7 +1101,7 @@ function DriveView({
       refresh();
     } catch (caught: unknown) {
       if (caught instanceof DOMException && caught.name === "AbortError") {
-        patchJob(job.id, { phase: "cancelled" });
+        patchJob(job.id, { phase: "paused" });
       } else {
         patchJob(job.id, { phase: "error", error: describeError(caught, language) });
       }
@@ -973,6 +1147,7 @@ function DriveView({
       phase: "queued",
       progress: 0,
       uploaded: false,
+      transfer: null,
       error: null,
       controller: new AbortController(),
       bytesUploaded: 0,
@@ -984,13 +1159,37 @@ function DriveView({
     setError(null);
   }
 
-  function cancelJob(jobId: string) {
+  function pauseJob(jobId: string) {
     const job = jobs.find((candidate) => candidate.id === jobId);
     if (!job) return;
     if (job.phase === "queued") {
-      patchJob(jobId, { phase: "cancelled" });
+      patchJob(jobId, { phase: "paused" });
     } else {
+      patchJob(jobId, { phase: "paused" });
       job.controller.abort();
+      if (job.fileId && job.transfer && api.pauseUpload) {
+        void api.pauseUpload(job.fileId, job.transfer.version).then(
+          (transfer) => patchJob(jobId, { transfer, phase: "paused" }),
+          (caught: unknown) => patchJob(jobId, { phase: "error", error: describeError(caught, language) }),
+        );
+      }
+    }
+  }
+
+  async function abandonJob(job: UploadJob) {
+    if (!window.confirm(t("upload.abandonConfirm", { name: job.file.name }))) return;
+    job.controller.abort();
+    try {
+      if (job.fileId && job.transfer && api.abandonMultipartUpload) {
+        await api.abandonMultipartUpload(job.fileId, job.transfer.version);
+      } else if (job.fileId && api.abandonLegacyUpload) {
+        await api.abandonLegacyUpload(job.fileId);
+      }
+      patchJob(job.id, { phase: "abandoned" });
+      setJobs((current) => current.filter((item) => item.id !== job.id));
+      refresh();
+    } catch (caught: unknown) {
+      patchJob(job.id, { phase: "error", error: describeError(caught, language) });
     }
   }
 
@@ -1002,7 +1201,7 @@ function DriveView({
       phase: "queued",
       mode: job.fileId ? "retry" : "upload",
       error: null,
-      progress: 0,
+      progress: job.transfer ? job.progress : 0,
       speedBytesPerSecond: null,
       etaSeconds: null,
       controller: new AbortController(),
@@ -1765,16 +1964,18 @@ function DriveView({
                     )}
                   </span>
                 )}
-                {job.phase === "error" || job.phase === "cancelled" ? (
+                {job.phase === "error" || job.phase === "paused" || job.phase === "resumable" ? (
                   <div className="job-error">
                     {job.phase === "error" && <span role="alert">{job.error}</span>}
-                    {job.phase === "error" && (
-                      <button className="button button--small" type="button" aria-label={t("upload.verifyRetryAria", { name: job.file.name })} onClick={() => void retryJob(job)}>{t("upload.retry")}</button>
-                    )}
+                    <button className="button button--small" type="button" aria-label={t("upload.continueAria", { name: job.file.name })} onClick={() => void retryJob(job)}>{t("upload.continue")}</button>
+                    <button className="button button--small button--danger" type="button" aria-label={t("upload.abandonAria", { name: job.file.name })} onClick={() => void abandonJob(job)}>{t("upload.abandon")}</button>
                     <button className="button button--small button--quiet" type="button" aria-label={t("upload.dismissAria", { name: job.file.name })} onClick={() => setJobs((current) => current.filter((item) => item.id !== job.id))}>{t("alert.dismiss")}</button>
                   </div>
                 ) : (
-                  <button className="button button--small button--quiet" type="button" aria-label={t("upload.cancelAria", { name: job.file.name })} onClick={() => cancelJob(job.id)}>{t("upload.cancel")}</button>
+                  <div className="job-actions">
+                    <button className="button button--small button--quiet" type="button" aria-label={t("upload.pauseAria", { name: job.file.name })} onClick={() => pauseJob(job.id)}>{t("upload.pause")}</button>
+                    <button className="button button--small button--danger" type="button" aria-label={t("upload.abandonAria", { name: job.file.name })} onClick={() => void abandonJob(job)}>{t("upload.abandon")}</button>
+                  </div>
                 )}
               </div>
             ))}
@@ -1837,18 +2038,28 @@ function DriveView({
                 {pending.map((file) => (
                   <article className="pending-card" key={file.id}>
                     <FileBadge file={file} />
-                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t("pending.reservedAt", { date: formatDate(file.createdAt, language) })}</span></div>
-                    <label className="button button--small" aria-label={t("pending.chooseSameAria", { name: file.displayName })}>
-                      {t("pending.chooseSame")}
+                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t(file.uploadKind === "multipart" ? "pending.multipartState" : "pending.legacyState")}</span></div>
+                    <label className="button button--small" aria-label={t("pending.chooseOriginalAria", { name: file.displayName })}>
+                      {t(file.uploadKind === "multipart" ? "pending.chooseOriginal" : "pending.chooseLegacy")}
                       <input className="visually-hidden" type="file" onChange={(event) => {
                         const selected = event.target.files?.[0];
                         if (selected) enqueueFile(selected, file);
                         event.target.value = "";
                       }} />
                     </label>
-                    <button className="button button--small button--quiet" type="button" aria-label={t("pending.verifyAgainAria", { name: file.displayName })} onClick={() => void runAction(file.id, t("pending.verifyRetried"), () => api.completeUpload(file.id))}>
-                      {t("pending.verifyAgain")}
-                    </button>
+                    <button className="button button--small button--danger" type="button" aria-label={t("upload.abandonAria", { name: file.displayName })} onClick={() => {
+                      if (!window.confirm(t("upload.abandonConfirm", { name: file.displayName }))) return;
+                      void runAction(file.id, t("upload.abandoned"), async () => {
+                        if (file.uploadKind === "multipart") {
+                          const status = await api.getUploadStatus?.(file.id);
+                          if (!status || status.kind !== "multipart" || !api.abandonMultipartUpload) throw new Error("Multipart upload API is unavailable");
+                          await api.abandonMultipartUpload(file.id, status.version);
+                        } else {
+                          if (!api.abandonLegacyUpload) throw new Error("Legacy upload abandonment is unavailable");
+                          await api.abandonLegacyUpload(file.id);
+                        }
+                      });
+                    }}>{t("upload.abandon")}</button>
                   </article>
                 ))}
               </div>
@@ -2113,10 +2324,13 @@ function uploadPhaseKey(phase: UploadPhase) {
     case "checksum": return "phase.checksum" as const;
     case "reserving": return "phase.reserving" as const;
     case "uploading": return "phase.uploading" as const;
+    case "paused": return "phase.paused" as const;
+    case "resumable": return "phase.resumable" as const;
+    case "completing": return "phase.completing" as const;
     case "verifying": return "phase.verifying" as const;
     case "complete": return "phase.complete" as const;
     case "error": return "phase.error" as const;
-    case "cancelled": return "phase.cancelled" as const;
+    case "abandoned": return "phase.abandoned" as const;
   }
 }
 

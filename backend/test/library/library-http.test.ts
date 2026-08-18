@@ -141,20 +141,26 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
       },
     });
     assert.equal(reserved.statusCode, 201);
-    const reservation = reserved.json() as { file: { id: string }; upload: { fields: { key: string } } };
-    storage.putObject({
-      objectKey: reservation.upload.fields.key,
-      sizeBytes: 12,
-      etag: "etag",
-      checksumAlgorithm: "md5",
-      checksum: "1B2M2Y8AsgTpgAmY7PhCfg==",
-      mediaType: "application/pdf",
-      modifiedAt: new Date("2026-08-18T12:00:00.000Z"),
+    const reservation = reserved.json() as { file: { id: string }; transfer: { version: string } };
+    const partAuthorization = await app.inject({
+      method: "POST",
+      url: `/api/drive/uploads/${reservation.file.id}/parts/1/authorization`,
+      headers: { ...headers(memberCookie), "content-type": "application/json" },
+      payload: {
+        version: reservation.transfer.version,
+        sizeBytes: 12,
+        contentMd5: "1B2M2Y8AsgTpgAmY7PhCfg==",
+      },
     });
+    assert.equal(partAuthorization.statusCode, 200);
+    const partUrl = new URL((partAuthorization.json() as { authorization: { url: string } }).authorization.url);
+    const providerUploadId = decodeURIComponent(partUrl.pathname.split("/")[1]!);
+    storage.putMultipartPart(providerUploadId, 1, 12, "etag-1");
     const completed = await app.inject({
       method: "POST",
-      url: `/api/drive/uploads/${reservation.file.id}/complete`,
-      headers: headers(memberCookie),
+      url: `/api/drive/uploads/${reservation.file.id}/multipart/complete`,
+      headers: { ...headers(memberCookie), "content-type": "application/json" },
+      payload: { version: reservation.transfer.version },
     });
     assert.equal(completed.statusCode, 200);
     const defaultPending = await app.inject({

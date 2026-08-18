@@ -268,6 +268,9 @@ test("inline authorization is restricted to passive preview media types", async 
     "active",
     active.revision,
   );
+  const storedMetadata = await storage.statObject(uploaded.objectKey);
+  assert.ok(storedMetadata);
+  storage.putObject({ ...storedMetadata, mediaType: "image/svg+xml" });
 
   await assert.rejects(
     service.createDownload("owner-1", uploaded.file.id, "inline"),

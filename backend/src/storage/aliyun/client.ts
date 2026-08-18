@@ -22,16 +22,46 @@ export interface AliyunGetResult {
 }
 
 export interface AliyunDownloadSignRequest {
+  headers?: Record<string, string | number>;
   queries?: Record<string, string>;
+}
+
+export interface AliyunMultipartInitResult { uploadId: string; }
+export interface AliyunMultipartPartRow {
+  PartNumber: number;
+  ETag: string;
+  Size?: number;
+  size?: number;
+  LastModified?: string | Date;
+}
+export interface AliyunMultipartListResult {
+  parts: AliyunMultipartPartRow[];
+  isTruncated: boolean;
+  nextPartNumberMarker: number;
 }
 
 export interface AliyunOssClientPort {
   signatureUrlV4(
-    method: "GET",
+    method: "GET" | "PUT",
     expires: number,
     request: AliyunDownloadSignRequest,
     objectKey: string,
+    additionalHeaders?: string[],
   ): Promise<string>;
+  initMultipartUpload?(objectKey: string, options?: object): Promise<AliyunMultipartInitResult>;
+  listParts?(
+    objectKey: string,
+    uploadId: string,
+    query?: Record<string, number | string>,
+    options?: object,
+  ): Promise<AliyunMultipartListResult>;
+  completeMultipartUpload?(
+    objectKey: string,
+    uploadId: string,
+    parts: Array<{ number: number; etag: string }>,
+    options?: object,
+  ): Promise<unknown>;
+  abortMultipartUpload?(objectKey: string, uploadId: string, options?: object): Promise<unknown>;
   head(objectKey: string): Promise<AliyunHeadResult>;
   get(objectKey: string, file?: unknown, options?: AliyunGetObjectOptions): Promise<AliyunGetResult>;
   delete(objectKey: string): Promise<unknown>;
@@ -56,7 +86,7 @@ export function createAliyunOssClient(config: AliyunOssConfig): AliyunOssClientP
     ...baseOptions(config),
     endpoint: config.endpoint,
     secure: new URL(config.endpoint).protocol === "https:",
-  });
+  }) as unknown as AliyunOssClientPort;
 }
 
 // Browser GET signing client: a dedicated OSS custom domain mapped to the
@@ -73,5 +103,5 @@ export function createAliyunBrowserClient(
     endpoint: browserEndpoint,
     cname: true,
     secure: new URL(browserEndpoint).protocol === "https:",
-  });
+  }) as unknown as AliyunOssClientPort;
 }

@@ -6,6 +6,7 @@ import { AliyunOssStorageAdapter } from "../../src/storage/aliyun/aliyun-oss-ada
 import {
   createAliyunBrowserClient,
   createAliyunOssClient,
+  type AliyunMultipartListResult,
   type AliyunOssClientPort,
 } from "../../src/storage/aliyun/client.js";
 import type { AliyunOssConfig } from "../../src/storage/aliyun/config.js";
@@ -42,12 +43,25 @@ class FakeAliyunClient implements AliyunOssClientPort {
   };
   getError: unknown;
   deleteError: unknown;
+  abortError: unknown;
+  multipartInitResult = { uploadId: "provider-upload-1" };
+  multipartListResult: AliyunMultipartListResult = { parts: [], isTruncated: false, nextPartNumberMarker: 0 };
   readonly signatureCalls: Array<{
-    method: "GET";
+    method: "GET" | "PUT";
     expires: number;
-    request: { queries: Record<string, string> };
+    request: { headers?: Record<string, string | number>; queries: Record<string, string> };
     objectKey: string;
+    additionalHeaders?: string[];
   }> = [];
+  readonly multipartInitCalls: Array<{ objectKey: string; options?: object }> = [];
+  readonly multipartListCalls: Array<{ objectKey: string; uploadId: string; query?: Record<string, number | string> }> = [];
+  readonly multipartCompleteCalls: Array<{
+    objectKey: string;
+    uploadId: string;
+    parts: Array<{ number: number; etag: string }>;
+    options?: object;
+  }> = [];
+  readonly multipartAbortCalls: Array<{ objectKey: string; uploadId: string }> = [];
   readonly headCalls: string[] = [];
   readonly getCalls: Array<{
     objectKey: string;
@@ -56,13 +70,49 @@ class FakeAliyunClient implements AliyunOssClientPort {
   readonly deleteCalls: string[] = [];
 
   async signatureUrlV4(
-    method: "GET",
+    method: "GET" | "PUT",
     expires: number,
-    request: { queries: Record<string, string> },
+    request: { headers?: Record<string, string | number>; queries: Record<string, string> },
     objectKey: string,
+    additionalHeaders?: string[],
   ): Promise<string> {
-    this.signatureCalls.push({ method, expires, request, objectKey });
+    this.signatureCalls.push({
+      method,
+      expires,
+      request,
+      objectKey,
+      ...(additionalHeaders === undefined ? {} : { additionalHeaders }),
+    });
     return `https://signed.invalid/${objectKey}`;
+  }
+
+  async initMultipartUpload(objectKey: string, options?: object) {
+    this.multipartInitCalls.push({ objectKey, ...(options === undefined ? {} : { options }) });
+    return this.multipartInitResult;
+  }
+
+  async listParts(objectKey: string, uploadId: string, query?: Record<string, number | string>) {
+    this.multipartListCalls.push({ objectKey, uploadId, ...(query === undefined ? {} : { query }) });
+    return this.multipartListResult;
+  }
+
+  async completeMultipartUpload(
+    objectKey: string,
+    uploadId: string,
+    parts: Array<{ number: number; etag: string }>,
+    options?: object,
+  ) {
+    this.multipartCompleteCalls.push({
+      objectKey,
+      uploadId,
+      parts,
+      ...(options === undefined ? {} : { options }),
+    });
+  }
+
+  async abortMultipartUpload(objectKey: string, uploadId: string) {
+    this.multipartAbortCalls.push({ objectKey, uploadId });
+    if (this.abortError) throw this.abortError;
   }
 
   async head(objectKey: string): Promise<Awaited<ReturnType<AliyunOssClientPort["head"]>>> {
@@ -159,6 +209,123 @@ test("temporary credentials are bound into the POST policy and fields", async ()
     "$x-oss-security-token",
     "temporary-token",
   ]);
+});
+
+test("multipart adapter binds exact init metadata, signed part scope, ListParts, ordered complete, and exact abort", async () => {
+  const client = new FakeAliyunClient();
+  client.multipartListResult = {
+    parts: [
+      { PartNumber: 1, ETag: '"etag-1"', Size: 8_388_608, LastModified: "2026-08-12T08:01:00.000Z" },
+      { PartNumber: 2, ETag: '"etag-2"', size: 5 },
+    ],
+    isTruncated: false,
+    nextPartNumberMarker: 0,
+  };
+  const adapter = new AliyunOssStorageAdapter(config, client, null, () => new Date("2026-08-12T08:00:00Z"));
+  const objectKey = createObjectKey();
+
+  assert.deepEqual(await adapter.initiateMultipartUpload({
+    objectKey,
+    mediaType: "application/pdf",
+    expectedChecksum: { algorithm: "md5", value: MD5 },
+  }), { uploadId: "provider-upload-1" });
+  assert.deepEqual(client.multipartInitCalls, [{
+    objectKey,
+    options: {
+      mime: "application/pdf",
+      meta: { "ac-checksum-md5": MD5 },
+      headers: { "x-oss-forbid-overwrite": "true" },
+    },
+  }]);
+
+  const authorization = await adapter.createMultipartPartAuthorization({
+    objectKey,
+    uploadId: "provider-upload-1",
+    partNumber: 2,
+    contentLength: 5,
+    contentMd5: MD5,
+  });
+  assert.deepEqual(authorization, {
+    method: "PUT",
+    url: `https://signed.invalid/${objectKey}`,
+    headers: { "Content-Length": "5", "Content-MD5": MD5 },
+    expiresAt: new Date("2026-08-12T08:05:00.000Z"),
+  });
+  assert.deepEqual(client.signatureCalls, [{
+    method: "PUT",
+    expires: 300,
+    request: {
+      headers: { "Content-Length": 5, "Content-MD5": MD5 },
+      queries: { partNumber: "2", uploadId: "provider-upload-1" },
+    },
+    objectKey,
+    additionalHeaders: ["Content-Length"],
+  }]);
+
+  assert.deepEqual(await adapter.listMultipartParts({
+    objectKey,
+    uploadId: "provider-upload-1",
+    partNumberMarker: 0,
+    limit: 1_000,
+  }), {
+    parts: [
+      { partNumber: 1, sizeBytes: 8_388_608, etag: '"etag-1"', modifiedAt: new Date("2026-08-12T08:01:00.000Z") },
+      { partNumber: 2, sizeBytes: 5, etag: '"etag-2"', modifiedAt: null },
+    ],
+    nextPartNumberMarker: null,
+  });
+  assert.deepEqual(client.multipartListCalls, [{
+    objectKey,
+    uploadId: "provider-upload-1",
+    query: { "part-number-marker": 0, "max-parts": 1_000 },
+  }]);
+
+  await adapter.completeMultipartUpload({
+    objectKey,
+    uploadId: "provider-upload-1",
+    parts: [{ partNumber: 2, etag: '"etag-2"' }, { partNumber: 1, etag: '"etag-1"' }],
+  });
+  assert.deepEqual(client.multipartCompleteCalls, [{
+    objectKey,
+    uploadId: "provider-upload-1",
+    parts: [{ number: 1, etag: '"etag-1"' }, { number: 2, etag: '"etag-2"' }],
+    options: { headers: { "x-oss-forbid-overwrite": "true" } },
+  }]);
+
+  await adapter.abortMultipartUpload({ objectKey, uploadId: "provider-upload-1" });
+  client.abortError = { code: "NoSuchUpload" };
+  await adapter.abortMultipartUpload({ objectKey, uploadId: "provider-upload-1" });
+  client.abortError = new Error("provider unavailable");
+  await assert.rejects(
+    adapter.abortMultipartUpload({ objectKey, uploadId: "provider-upload-1" }),
+    /provider unavailable/,
+  );
+  assert.deepEqual(client.multipartAbortCalls, [
+    { objectKey, uploadId: "provider-upload-1" },
+    { objectKey, uploadId: "provider-upload-1" },
+    { objectKey, uploadId: "provider-upload-1" },
+  ]);
+});
+
+test("real SDK V4 multipart URL binds PUT, exact upload and part, Content-Length, and Content-MD5", async () => {
+  const objectKey = createObjectKey();
+  const adapter = new AliyunOssStorageAdapter(config, createAliyunOssClient(config));
+  const authorization = await adapter.createMultipartPartAuthorization({
+    objectKey,
+    uploadId: "provider-upload-1",
+    partNumber: 7,
+    contentLength: 102_400,
+    contentMd5: MD5,
+  });
+  const signedUrl = new URL(authorization.url);
+
+  assert.equal(authorization.method, "PUT");
+  assert.deepEqual(authorization.headers, { "Content-Length": "102400", "Content-MD5": MD5 });
+  assert.equal(signedUrl.pathname, `/${objectKey}`);
+  assert.equal(signedUrl.searchParams.get("uploadId"), "provider-upload-1");
+  assert.equal(signedUrl.searchParams.get("partNumber"), "7");
+  assert.equal(signedUrl.searchParams.get("x-oss-additional-headers"), "content-length");
+  assert.equal(signedUrl.searchParams.get("x-oss-signature-version"), "OSS4-HMAC-SHA256");
 });
 
 test("download authorization delegates only the exact key and a safe filename", async () => {

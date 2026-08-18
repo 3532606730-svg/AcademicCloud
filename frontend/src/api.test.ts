@@ -156,6 +156,81 @@ describe("ApiClient", () => {
     assertBodylessRequestInit(calls[4]?.init, "POST");
   });
 
+  it("uses exact multipart status, part, CAS transition, completion, and abandonment contracts", async () => {
+    const pendingFile = { ...FILE, state: "pending_upload", activatedAt: null };
+    const transfer = {
+      kind: "multipart",
+      file: pendingFile,
+      state: "uploading",
+      version: "m".repeat(43),
+      partSizeBytes: 8 * 1024 * 1024,
+      totalParts: 1,
+      completedParts: [],
+      completedBytes: 0,
+      expiresAt: "2026-08-26T00:00:00.000Z",
+    };
+    const partAuthorization = {
+      method: "PUT",
+      url: "https://storage.invalid/object?uploadId=opaque&partNumber=1",
+      headers: { "Content-Length": "4096", "Content-MD5": FILE.checksum },
+      expiresAt: "2026-08-15T00:05:00.000Z",
+    };
+    const responses = [
+      new Response(JSON.stringify({ file: pendingFile, transfer }), { status: 201, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ transfer }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ authorization: partAuthorization }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ transfer: { ...transfer, state: "paused" } }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ transfer }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ file: FILE }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(null, { status: 204 }),
+      new Response(null, { status: 204 }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+    const uploadInput = {
+      folderId: null,
+      displayName: FILE.displayName,
+      mediaType: FILE.mediaType,
+      sizeBytes: FILE.sizeBytes,
+      checksum: { algorithm: "md5" as const, value: FILE.checksum },
+    };
+
+    await api.createUpload(uploadInput);
+    await api.getUploadStatus("file / one");
+    await api.authorizeUploadPart("file / one", 1, {
+      version: transfer.version,
+      sizeBytes: FILE.sizeBytes,
+      contentMd5: FILE.checksum,
+    });
+    await api.pauseUpload("file / one", transfer.version);
+    await api.resumeUpload("file / one", transfer.version);
+    await api.completeMultipartUpload("file / one", transfer.version);
+    await api.abandonMultipartUpload("file / one", transfer.version);
+    await api.abandonLegacyUpload("legacy / one");
+
+    expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
+      "/api/drive/uploads",
+      "/api/drive/uploads/file%20%2F%20one/status",
+      "/api/drive/uploads/file%20%2F%20one/parts/1/authorization",
+      "/api/drive/uploads/file%20%2F%20one/pause",
+      "/api/drive/uploads/file%20%2F%20one/resume",
+      "/api/drive/uploads/file%20%2F%20one/multipart/complete",
+      "/api/drive/uploads/file%20%2F%20one/multipart",
+      "/api/drive/uploads/legacy%20%2F%20one/legacy",
+    ]);
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(uploadInput));
+    expect(fetcher.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({
+      version: transfer.version,
+      sizeBytes: FILE.sizeBytes,
+      contentMd5: FILE.checksum,
+    }));
+    for (const index of [3, 4, 5, 6]) {
+      expect(fetcher.mock.calls[index]?.[1]?.body).toBe(JSON.stringify({ version: transfer.version }));
+      expect(new Headers(fetcher.mock.calls[index]?.[1]?.headers).get("Content-Type")).toBe("application/json");
+    }
+    assertBodylessRequestInit(fetcher.mock.calls[7]?.[1], "DELETE");
+  });
+
   it("sends credential redemption only in a same-origin JSON body", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
     const api = new ApiClient({ fetcher });

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { UploadAuthorization } from "./api.ts";
-import { createUploadForm, uploadDirectly } from "./direct-upload.ts";
+import type { MultipartPartAuthorization, UploadAuthorization } from "./api.ts";
+import { createUploadForm, uploadDirectly, uploadPartDirectly } from "./direct-upload.ts";
 
 const AUTHORIZATION: UploadAuthorization = {
   method: "POST",
@@ -14,11 +14,22 @@ const AUTHORIZATION: UploadAuthorization = {
   expiresAt: "2026-08-13T00:00:00.000Z",
 };
 
+const PART_AUTHORIZATION: MultipartPartAuthorization = {
+  method: "PUT",
+  url: "https://storage.invalid/object?uploadId=opaque&partNumber=2",
+  headers: {
+    "Content-Length": "6",
+    "Content-MD5": "K7Il8LqaWJMHV6ho7VfZow==",
+  },
+  expiresAt: "2026-08-13T00:00:00.000Z",
+};
+
 class FakeXhr extends EventTarget {
   readonly upload = new EventTarget();
   status = 0;
   timeout = 0;
   readonly open = vi.fn();
+  readonly setRequestHeader = vi.fn();
   readonly send = vi.fn();
   readonly abort = vi.fn(() => this.dispatchEvent(new Event("abort")));
 }
@@ -223,5 +234,95 @@ describe("createUploadForm", () => {
     errored.dispatchEvent(new Event("error"));
     await expect(errorPromise).rejects.toThrow("reach object storage");
     await vi.advanceTimersByTimeAsync(600_000);
+  });
+});
+
+describe("uploadPartDirectly", () => {
+  it.each([200, 201, 204])("uses exact PUT headers and accepts provider status %s", async (status) => {
+    const xhr = new FakeXhr();
+    const bytes = new Blob(["source"]);
+    const onProgress = vi.fn();
+    const onMetrics = vi.fn();
+    const promise = uploadPartDirectly(PART_AUTHORIZATION, bytes, {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+      onProgress,
+      onMetrics,
+      timeoutMs: 4321,
+    });
+
+    xhr.upload.dispatchEvent(progress(3, 6));
+    xhr.status = status;
+    xhr.dispatchEvent(new Event("load"));
+
+    await expect(promise).resolves.toBeUndefined();
+    expect(xhr.open).toHaveBeenCalledWith("PUT", PART_AUTHORIZATION.url, true);
+    expect(xhr.setRequestHeader.mock.calls).toEqual([
+      ["Content-MD5", "K7Il8LqaWJMHV6ho7VfZow=="],
+    ]);
+    expect(xhr.timeout).toBe(4321);
+    expect(xhr.send).toHaveBeenCalledWith(bytes);
+    expect(onMetrics).toHaveBeenCalledWith({ loaded: 3, total: 6 });
+    expect(onProgress).toHaveBeenNthCalledWith(1, 0.5);
+    expect(onProgress).toHaveBeenLastCalledWith(1);
+  });
+
+  it("aborts the active PUT without converting pause into abandonment", async () => {
+    const xhr = new FakeXhr();
+    const controller = new AbortController();
+    const promise = uploadPartDirectly(PART_AUTHORIZATION, new Blob(["source"]), {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+      signal: controller.signal,
+    });
+
+    controller.abort();
+    await expect(promise).rejects.toMatchObject({ name: "AbortError" });
+    expect(xhr.abort).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a Blob whose browser-derived Content-Length would not match the signature", async () => {
+    const xhr = new FakeXhr();
+    await expect(uploadPartDirectly(PART_AUTHORIZATION, new Blob(["short"]), {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+    })).rejects.toThrow("does not match");
+    expect(xhr.open).not.toHaveBeenCalled();
+    expect(xhr.send).not.toHaveBeenCalled();
+  });
+
+  it("rejects provider, network, and fixed-timeout failures", async () => {
+    const rejected = new FakeXhr();
+    const rejectedPromise = uploadPartDirectly(PART_AUTHORIZATION, new Blob(["source"]), {
+      xhrFactory: () => rejected as unknown as XMLHttpRequest,
+    });
+    rejected.status = 403;
+    rejected.dispatchEvent(new Event("load"));
+    await expect(rejectedPromise).rejects.toMatchObject({ code: "upload_rejected" });
+
+    const unreachable = new FakeXhr();
+    const unreachablePromise = uploadPartDirectly(PART_AUTHORIZATION, new Blob(["source"]), {
+      xhrFactory: () => unreachable as unknown as XMLHttpRequest,
+    });
+    unreachable.dispatchEvent(new Event("error"));
+    await expect(unreachablePromise).rejects.toMatchObject({ code: "upload_unreachable" });
+
+    const timedOut = new FakeXhr();
+    const timeoutPromise = uploadPartDirectly(PART_AUTHORIZATION, new Blob(["source"]), {
+      xhrFactory: () => timedOut as unknown as XMLHttpRequest,
+    });
+    timedOut.dispatchEvent(new Event("timeout"));
+    await expect(timeoutPromise).rejects.toMatchObject({ code: "upload_timed_out" });
+  });
+
+  it("fails a stalled part after the bounded inactivity window", async () => {
+    vi.useFakeTimers();
+    const xhr = new FakeXhr();
+    const promise = uploadPartDirectly(PART_AUTHORIZATION, new Blob(["source"]), {
+      xhrFactory: () => xhr as unknown as XMLHttpRequest,
+      inactivityTimeoutMs: 1000,
+    });
+    const expectation = expect(promise).rejects.toMatchObject({ code: "upload_stalled" });
+
+    await vi.advanceTimersByTimeAsync(1001);
+    await expectation;
+    expect(xhr.abort).toHaveBeenCalledOnce();
   });
 });

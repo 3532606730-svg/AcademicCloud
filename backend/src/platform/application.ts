@@ -68,6 +68,9 @@ export async function createApplication(
       drive: {
         service: driveService,
         completeUpload: (actor, fileId) => libraryService.completeDefaultUpload(actor, fileId),
+        completeMultipartUpload: (actor, fileId, version) =>
+          libraryService.completeDefaultMultipartUpload(actor, fileId, version),
+        getUploadStatus: (actor, fileId) => libraryService.getDefaultUploadStatus(actor, fileId),
       },
       favorites: { service: favoriteService },
       audit: { service: auditService },

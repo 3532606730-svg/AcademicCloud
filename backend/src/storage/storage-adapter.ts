@@ -26,6 +26,62 @@ export interface BrowserDownloadAuthorization {
   expiresAt: Date;
 }
 
+export interface InitiateMultipartUploadInput {
+  objectKey: string;
+  mediaType: string;
+  expectedChecksum: { algorithm: "md5"; value: string };
+}
+
+export interface MultipartUploadHandle {
+  uploadId: string;
+}
+
+export interface CreateMultipartPartAuthorizationInput {
+  objectKey: string;
+  uploadId: string;
+  partNumber: number;
+  contentLength: number;
+  contentMd5: string;
+  expiresInSeconds?: number;
+}
+
+export interface BrowserMultipartPartAuthorization {
+  method: "PUT";
+  url: string;
+  headers: Readonly<Record<string, string>>;
+  expiresAt: Date;
+}
+
+export interface StorageMultipartPart {
+  partNumber: number;
+  sizeBytes: number;
+  etag: string;
+  modifiedAt: Date | null;
+}
+
+export interface ListMultipartPartsInput {
+  objectKey: string;
+  uploadId: string;
+  partNumberMarker: number;
+  limit: number;
+}
+
+export interface ListMultipartPartsResult {
+  parts: readonly StorageMultipartPart[];
+  nextPartNumberMarker: number | null;
+}
+
+export interface CompleteMultipartUploadInput {
+  objectKey: string;
+  uploadId: string;
+  parts: ReadonlyArray<{ partNumber: number; etag: string }>;
+}
+
+export interface AbortMultipartUploadInput {
+  objectKey: string;
+  uploadId: string;
+}
+
 export interface StorageObjectMetadata {
   objectKey: string;
   sizeBytes: number;
@@ -88,6 +144,18 @@ export interface StorageAdapter {
   createDownloadAuthorization(
     input: CreateDownloadAuthorizationInput,
   ): Promise<BrowserDownloadAuthorization>;
+
+  initiateMultipartUpload?(input: InitiateMultipartUploadInput): Promise<MultipartUploadHandle>;
+
+  createMultipartPartAuthorization?(
+    input: CreateMultipartPartAuthorizationInput,
+  ): Promise<BrowserMultipartPartAuthorization>;
+
+  listMultipartParts?(input: ListMultipartPartsInput): Promise<ListMultipartPartsResult>;
+
+  completeMultipartUpload?(input: CompleteMultipartUploadInput): Promise<void>;
+
+  abortMultipartUpload?(input: AbortMultipartUploadInput): Promise<void>;
 
   statObject(objectKey: string): Promise<StorageObjectMetadata | null>;
 

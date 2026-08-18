@@ -267,24 +267,17 @@ test("canonical Member upload enters pending review automatically and preserves 
   assert.ok(canonical);
   assert.equal(libraries.listLibraries(OUTSIDER.id).find((library) => library.isDefault)?.id, canonical.id);
 
-  const reserved = await drive.createUpload(MEMBER.id, {
+  const reserved = await drive.createMultipartUpload(MEMBER.id, {
     folderId: null,
     displayName: "member-source.pdf",
     mediaType: "application/pdf",
     sizeBytes: 12,
     checksum: { algorithm: "md5", value: MD5 },
   });
-  storage.putObject({
-    objectKey: reserved.file.objectKey,
-    sizeBytes: 12,
-    etag: "etag",
-    checksumAlgorithm: "md5",
-    checksum: MD5,
-    mediaType: "application/pdf",
-    modifiedAt: NOW,
-  });
+  const memberTransfer = persistence.repositories.multipartUploads!.findByFileId(MEMBER.id, reserved.file.id)!;
+  storage.putMultipartPart(memberTransfer.providerUploadId, 1, 12, "etag-1");
 
-  const completed = await libraries.completeDefaultUpload(MEMBER, reserved.file.id);
+  const completed = await libraries.completeDefaultMultipartUpload(MEMBER, reserved.file.id, reserved.transfer.version);
   assert.equal(completed.state, "active");
   favorites.setFileFavorite(MEMBER.id, completed.id, true);
   assert.equal(libraries.listHoldings(OUTSIDER.id, canonical.id).length, 0);
@@ -293,7 +286,7 @@ test("canonical Member upload enters pending review automatically and preserves 
   assert.equal(pending[0]?.file.id, completed.id);
   assert.equal(pending[0]?.submitterLoginName, MEMBER.loginName);
   assert.equal(libraries.listMyContributions(MEMBER, canonical.id)[0]?.state, "submitted");
-  assert.equal((await libraries.completeDefaultUpload(MEMBER, completed.id)).id, completed.id);
+  assert.equal((await libraries.completeDefaultMultipartUpload(MEMBER, completed.id, reserved.transfer.version)).id, completed.id);
   assert.equal(libraries.listContributions(OWNER, canonical.id).length, 1);
 
   libraries.reviewContribution(OWNER, canonical.id, pending[0]!.id, "approve");
@@ -303,34 +296,27 @@ test("canonical Member upload enters pending review automatically and preserves 
   assert.equal(database.prepare<[string], { uploaded_by_account_id: string; object_key: string }>(
     "SELECT uploaded_by_account_id, object_key FROM files WHERE id = ?",
   ).get(completed.id)?.uploaded_by_account_id, MEMBER.id);
-  assert.equal((await libraries.completeDefaultUpload(MEMBER, completed.id)).id, completed.id);
+  assert.equal((await libraries.completeDefaultMultipartUpload(MEMBER, completed.id, reserved.transfer.version)).id, completed.id);
 
   assert.equal(persistence.repositories.accounts.updateState(OUTSIDER.id, "active", "disabled", NOW), true);
   assert.throws(() => libraries.listHoldings(OUTSIDER.id, canonical.id), (error) => error instanceof LibraryError && error.code === "not_found");
 });
 
-test("canonical Owner upload is admitted in the completion transaction without a pending self-review", async (context) => {
-  const { database, storage, drive, libraries } = fixture(context);
+test("canonical Owner multipart upload is admitted in the completion transaction without a pending self-review", async (context) => {
+  const { database, persistence, storage, drive, libraries } = fixture(context);
   const canonical = libraries.listLibraries(OWNER.id).find((library) => library.isDefault);
   assert.ok(canonical);
-  const reserved = await drive.createUpload(OWNER.id, {
+  const reserved = await drive.createMultipartUpload(OWNER.id, {
     folderId: null,
     displayName: "owner-source.pdf",
     mediaType: "application/pdf",
     sizeBytes: 12,
     checksum: { algorithm: "md5", value: MD5 },
   });
-  storage.putObject({
-    objectKey: reserved.file.objectKey,
-    sizeBytes: 12,
-    etag: "etag",
-    checksumAlgorithm: "md5",
-    checksum: MD5,
-    mediaType: "application/pdf",
-    modifiedAt: NOW,
-  });
+  const ownerTransfer = persistence.repositories.multipartUploads!.findByFileId(OWNER.id, reserved.file.id)!;
+  storage.putMultipartPart(ownerTransfer.providerUploadId, 1, 12, "etag-1");
 
-  const completed = await libraries.completeDefaultUpload(OWNER, reserved.file.id);
+  const completed = await libraries.completeDefaultMultipartUpload(OWNER, reserved.file.id, reserved.transfer.version);
   assert.equal(libraries.listContributions(OWNER, canonical.id).length, 0);
   assert.equal(libraries.listHoldings(MEMBER.id, canonical.id)[0]?.file.id, completed.id);
   assert.equal(database.prepare<[string], { state: string }>(
@@ -339,7 +325,7 @@ test("canonical Owner upload is admitted in the completion transaction without a
   assert.equal(database.prepare<[string], { count: number }>(
     "SELECT count(*) AS count FROM governance_audit_events WHERE action = 'libraries.resource_admit' AND actor_account_id = ?",
   ).get(OWNER.id)?.count, 1);
-  assert.equal((await libraries.completeDefaultUpload(OWNER, completed.id)).id, completed.id);
+  assert.equal((await libraries.completeDefaultMultipartUpload(OWNER, completed.id, reserved.transfer.version)).id, completed.id);
 });
 
 test("canonical intake persistence failure rolls upload activation and generated identities back together", async (context) => {

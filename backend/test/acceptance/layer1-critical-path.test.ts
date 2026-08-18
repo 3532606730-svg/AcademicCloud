@@ -131,7 +131,7 @@ test("representative file types preserve exact metadata and safe preview policy"
     storage.putObject({
       objectKey: pending.file.objectKey,
       sizeBytes: item.sizeBytes,
-      etag: null,
+      etag: `etag-${item.name}`,
       checksumAlgorithm: "md5",
       checksum: MD5,
       mediaType: item.mediaType,

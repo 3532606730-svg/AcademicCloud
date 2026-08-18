@@ -12,6 +12,7 @@ import type { ContributionRepository } from "../library/contribution-repositorie
 import type { CredentialResetRepository } from "../auth/credential-reset-repository.js";
 import type { CanonicalMetadataRepository } from "../metadata/repositories.js";
 import type { SuggestionRepository } from "../suggestions/repositories.js";
+import type { MultipartUploadRepository } from "../transfer/multipart-transfer.js";
 
 export interface RepositorySet {
   accounts: AccountRepository;
@@ -29,6 +30,7 @@ export interface RepositorySet {
   credentialResets: CredentialResetRepository;
   metadata: CanonicalMetadataRepository;
   suggestions: SuggestionRepository;
+  multipartUploads?: MultipartUploadRepository;
 }
 
 export interface Persistence {

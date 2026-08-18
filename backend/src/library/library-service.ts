@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js";
-import { DriveError, type DriveService } from "../drive/drive-service.js";
+import { DriveError, type DriveService, type UploadStatus } from "../drive/drive-service.js";
 import { driveEntryVersion } from "../drive/bulk.js";
 import type { StoredFile } from "../drive/file.js";
 import type { DomainRecycleGroup } from "../drive/recycle-repository.js";
@@ -335,6 +335,61 @@ export class LibraryService {
       if (this.#isConstraint(error)) throw new DriveError("invalid_state", { cause: error });
       throw error;
     }
+  }
+
+  async getDefaultUploadStatus(actor: AuthenticatedAccount, fileId: string): Promise<UploadStatus> {
+    const canonical = this.#requireDefaultUploadActor(actor, fileId);
+    const existing = this.#completedDefaultUpload(actor, canonical, fileId);
+    if (existing) return { kind: "complete", file: existing };
+    return this.#drive.getUploadStatus(actor.id, fileId, "account", (transaction, activated, now) => {
+      this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
+    });
+  }
+
+  async completeDefaultMultipartUpload(
+    actor: AuthenticatedAccount,
+    fileId: string,
+    version: string,
+  ): Promise<StoredFile> {
+    const canonical = this.#requireDefaultUploadActor(actor, fileId);
+    const existing = this.#completedDefaultUpload(actor, canonical, fileId);
+    if (existing) return existing;
+    try {
+      return await this.#drive.completeMultipartUpload(
+        actor.id,
+        fileId,
+        version,
+        "account",
+        (transaction, activated, now) => {
+          this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
+        },
+      );
+    } catch (error: unknown) {
+      if (error instanceof DriveError) throw error;
+      if (error instanceof LibraryError) {
+        throw new DriveError(error.code === "not_found" || error.code === "authorization_denied" ? "not_found" : "invalid_state", { cause: error });
+      }
+      if (this.#isConstraint(error)) throw new DriveError("invalid_state", { cause: error });
+      throw error;
+    }
+  }
+
+  #requireDefaultUploadActor(actor: AuthenticatedAccount, fileId: string): Library {
+    const repositories = this.#persistence.repositories;
+    const canonical = repositories.libraries.findDefault();
+    const current = repositories.accounts.findById(actor.id);
+    if (!canonical || !current || current.state !== "active" || current.role !== actor.role) {
+      throw new DriveError("not_found");
+    }
+    return canonical;
+  }
+
+  #completedDefaultUpload(actor: AuthenticatedAccount, canonical: Library, fileId: string): StoredFile | null {
+    const repositories = this.#persistence.repositories;
+    const existingHolding = repositories.libraries.findHoldingByFile(canonical.id, fileId);
+    if (existingHolding?.file.uploadedByAccountId !== actor.id) return null;
+    const shared = repositories.files.findByDomainId(canonical.ownerDomainId, fileId);
+    return shared?.state === "active" ? shared : null;
   }
 
   listMembers(actor: AuthenticatedAccount, libraryId: string): LibraryMemberView[] {

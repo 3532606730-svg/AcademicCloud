@@ -8,6 +8,7 @@ import { DriveService } from "../../src/drive/drive-service.js";
 import { driveEntryVersion } from "../../src/drive/bulk.js";
 import { createApp, type CreateAppOptions } from "../../src/platform/app.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
+import { MULTIPART_PART_SIZE_BYTES } from "../../src/transfer/multipart-transfer.js";
 import { createTestPersistence } from "../persistence/helpers.js";
 
 const ORIGIN = "http://127.0.0.1:5173";
@@ -74,7 +75,7 @@ async function fixture(
 }
 
 test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hides storage internals", async (context) => {
-  const { app, storage, login } = await fixture(context);
+  const { app, persistence, storage, login } = await fixture(context);
   const ownerCookie = await login("owner-1");
   const otherCookie = await login("member-2");
 
@@ -158,7 +159,8 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
       storageProvider?: string;
       revision?: number;
     };
-    upload: { fields: Record<string, string> };
+    transfer: { kind: string; version: string; totalParts: number };
+    upload?: unknown;
   }>();
   assert.equal(upload.file.ownerId, undefined);
   assert.equal(upload.file.ownerDomainId, undefined);
@@ -166,30 +168,27 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
   assert.equal(upload.file.objectKey, undefined);
   assert.equal(upload.file.storageProvider, undefined);
   assert.equal(upload.file.revision, undefined);
-  assert.equal(upload.upload.fields["x-oss-forbid-overwrite"], "true");
-  assert.equal(upload.upload.fields["Content-MD5"], MD5);
-  const objectKey = upload.upload.fields.key!;
-  storage.putObject({
-    objectKey,
-    sizeBytes: 7,
-    etag: "etag",
-    checksumAlgorithm: "md5",
-    checksum: MD5,
-    mediaType: "application/pdf",
-    modifiedAt: NOW,
-  });
+  assert.equal(upload.upload, undefined);
+  assert.equal(upload.transfer.kind, "multipart");
+  assert.equal(upload.transfer.totalParts, 1);
+  assert.equal("providerUploadId" in upload.transfer, false);
+  assert.equal("objectKey" in upload.transfer, false);
+  const persistedUpload = persistence.repositories.multipartUploads!.findByFileId("owner-1", upload.file.id)!;
+  storage.putMultipartPart(persistedUpload.providerUploadId, 1, 7, "etag-1");
 
   const foreignComplete = await app.inject({
     method: "POST",
-    url: `/api/drive/uploads/${upload.file.id}/complete`,
+    url: `/api/drive/uploads/${upload.file.id}/multipart/complete`,
     headers: { cookie: otherCookie, origin: ORIGIN },
+    payload: { version: upload.transfer.version },
   });
   assert.equal(foreignComplete.statusCode, 404);
 
   const completed = await app.inject({
     method: "POST",
-    url: `/api/drive/uploads/${upload.file.id}/complete`,
+    url: `/api/drive/uploads/${upload.file.id}/multipart/complete`,
     headers: { cookie: ownerCookie, origin: ORIGIN },
+    payload: { version: upload.transfer.version },
   });
   assert.equal(completed.statusCode, 200);
   assert.equal(completed.json<{ file: { state: string } }>().file.state, "active");
@@ -200,7 +199,11 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
     headers: { cookie: ownerCookie },
   });
   assert.equal(inlinePreview.statusCode, 200);
-  assert.match(decodeURIComponent(inlinePreview.json<{ download: { url: string } }>().download.url), /disposition=inline/);
+  const previewDownload = inlinePreview.json<{ download: { url: string; sizeBytes: number; etag: string; acceptRanges: string } }>().download;
+  assert.match(decodeURIComponent(previewDownload.url), /disposition=inline/);
+  assert.equal(previewDownload.sizeBytes, 7);
+  assert.equal(previewDownload.etag, `multipart-${persistedUpload.providerUploadId}`);
+  assert.equal(previewDownload.acceptRanges, "bytes");
 
   const invalidDisposition = await app.inject({
     method: "GET",
@@ -222,20 +225,14 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
       checksum: { algorithm: "md5", value: MD5 },
     },
   });
-  const unsafeUpload = unsafeUploadResponse.json<{ file: { id: string }; upload: { fields: Record<string, string> } }>();
-  storage.putObject({
-    objectKey: unsafeUpload.upload.fields.key!,
-    sizeBytes: 7,
-    etag: "etag-svg",
-    checksumAlgorithm: "md5",
-    checksum: MD5,
-    mediaType: "image/svg+xml",
-    modifiedAt: NOW,
-  });
+  const unsafeUpload = unsafeUploadResponse.json<{ file: { id: string }; transfer: { version: string } }>();
+  const unsafeMultipart = persistence.repositories.multipartUploads!.findByFileId("owner-1", unsafeUpload.file.id)!;
+  storage.putMultipartPart(unsafeMultipart.providerUploadId, 1, 7, "etag-svg");
   assert.equal((await app.inject({
     method: "POST",
-    url: `/api/drive/uploads/${unsafeUpload.file.id}/complete`,
+    url: `/api/drive/uploads/${unsafeUpload.file.id}/multipart/complete`,
     headers: { cookie: ownerCookie, origin: ORIGIN },
+    payload: { version: unsafeUpload.transfer.version },
   })).statusCode, 200);
   const unsafeInline = await app.inject({
     method: "GET",
@@ -259,6 +256,185 @@ test("drive HTTP flow is authenticated, origin-protected, owner-scoped, and hide
     headers: { cookie: otherCookie },
   });
   assert.equal(foreignEntries.statusCode, 404);
+});
+
+test("multipart HTTP lifecycle is owner-scoped, CAS-bound, resumable, and distinct from legacy compatibility", async (context) => {
+  const { app, persistence, storage, driveService, login } = await fixture(context);
+  const ownerCookie = await login("owner-1");
+  const memberCookie = await login("member-2");
+  const headers = { cookie: ownerCookie, origin: ORIGIN };
+
+  const createdResponse = await app.inject({
+    method: "POST",
+    url: "/api/drive/uploads",
+    headers,
+    payload: {
+      folderId: null,
+      displayName: "resumable.pdf",
+      mediaType: "application/pdf",
+      sizeBytes: MULTIPART_PART_SIZE_BYTES + 5,
+      checksum: { algorithm: "md5", value: MD5 },
+    },
+  });
+  assert.equal(createdResponse.statusCode, 201);
+  const created = createdResponse.json<{
+    file: { id: string };
+    transfer: {
+      kind: "multipart";
+      state: string;
+      version: string;
+      totalParts: number;
+      completedParts: Array<{ partNumber: number }>;
+    };
+    upload?: unknown;
+  }>();
+  assert.equal(created.upload, undefined);
+  assert.equal(created.transfer.kind, "multipart");
+  assert.equal(created.transfer.totalParts, 2);
+
+  const foreignStatus = await app.inject({
+    method: "GET",
+    url: `/api/drive/uploads/${created.file.id}/status`,
+    headers: { cookie: memberCookie },
+  });
+  assert.equal(foreignStatus.statusCode, 404);
+  assert.equal((await app.inject({
+    method: "GET",
+    url: "/api/drive/uploads/guessed-upload/status",
+    headers: { cookie: ownerCookie },
+  })).statusCode, 404);
+
+  const partAuthorization = await app.inject({
+    method: "POST",
+    url: `/api/drive/uploads/${created.file.id}/parts/1/authorization`,
+    headers,
+    payload: {
+      version: created.transfer.version,
+      sizeBytes: MULTIPART_PART_SIZE_BYTES,
+      contentMd5: MD5,
+    },
+  });
+  assert.equal(partAuthorization.statusCode, 200);
+  const part = partAuthorization.json<{ authorization: { method: string; headers: Record<string, string>; uploadId?: string } }>().authorization;
+  assert.equal(part.method, "PUT");
+  assert.equal(part.headers["Content-Length"], String(MULTIPART_PART_SIZE_BYTES));
+  assert.equal(part.headers["Content-MD5"], MD5);
+  assert.equal(part.uploadId, undefined);
+
+  const pausedResponse = await app.inject({
+    method: "POST",
+    url: `/api/drive/uploads/${created.file.id}/pause`,
+    headers,
+    payload: { version: created.transfer.version },
+  });
+  assert.equal(pausedResponse.statusCode, 200);
+  const paused = pausedResponse.json<{ transfer: { state: string; version: string } }>().transfer;
+  assert.equal(paused.state, "paused");
+  assert.equal((await app.inject({
+    method: "POST",
+    url: `/api/drive/uploads/${created.file.id}/resume`,
+    headers,
+    payload: { version: created.transfer.version },
+  })).statusCode, 409);
+
+  const resumedResponse = await app.inject({
+    method: "POST",
+    url: `/api/drive/uploads/${created.file.id}/resume`,
+    headers,
+    payload: { version: paused.version },
+  });
+  assert.equal(resumedResponse.statusCode, 200);
+  const resumed = resumedResponse.json<{ transfer: { state: string; version: string } }>().transfer;
+  assert.equal(resumed.state, "uploading");
+
+  const provider = persistence.repositories.multipartUploads!.findByFileId("owner-1", created.file.id)!;
+  storage.putMultipartPart(provider.providerUploadId, 1, MULTIPART_PART_SIZE_BYTES, "etag-1");
+  const statusResponse = await app.inject({
+    method: "GET",
+    url: `/api/drive/uploads/${created.file.id}/status`,
+    headers: { cookie: ownerCookie },
+  });
+  const status = statusResponse.json<{ transfer: { version: string; completedParts: Array<{ partNumber: number }> } }>().transfer;
+  assert.deepEqual(status.completedParts.map((item) => item.partNumber), [1]);
+  storage.putMultipartPart(provider.providerUploadId, 2, 5, "etag-2");
+  const completed = await app.inject({
+    method: "POST",
+    url: `/api/drive/uploads/${created.file.id}/multipart/complete`,
+    headers,
+    payload: { version: status.version },
+  });
+  assert.equal(completed.statusCode, 200);
+  assert.equal(completed.json<{ file: { state: string } }>().file.state, "active");
+
+  const abandonedResponse = await app.inject({
+    method: "POST",
+    url: "/api/drive/uploads",
+    headers,
+    payload: {
+      folderId: null,
+      displayName: "abandon.pdf",
+      mediaType: "application/pdf",
+      sizeBytes: 3,
+      checksum: { algorithm: "md5", value: MD5 },
+    },
+  });
+  const abandoned = abandonedResponse.json<{ file: { id: string }; transfer: { version: string } }>();
+  const abandonedProvider = persistence.repositories.multipartUploads!.findByFileId("owner-1", abandoned.file.id)!;
+  assert.equal((await app.inject({
+    method: "DELETE",
+    url: `/api/drive/uploads/${abandoned.file.id}/multipart`,
+    headers,
+    payload: { version: abandoned.transfer.version },
+  })).statusCode, 204);
+  assert.equal(storage.hasMultipartUpload(abandonedProvider.providerUploadId), false);
+  assert.equal(persistence.repositories.files.findById("owner-1", abandoned.file.id), null);
+
+  const legacy = await driveService.createUpload("owner-1", {
+    folderId: null,
+    displayName: "legacy.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 3,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  const legacyStatus = await app.inject({
+    method: "GET",
+    url: `/api/drive/uploads/${legacy.file.id}/status`,
+    headers: { cookie: ownerCookie },
+  });
+  assert.equal(legacyStatus.json<{ transfer: { kind: string } }>().transfer.kind, "legacy");
+  const legacyAuthorization = await app.inject({
+    method: "POST",
+    url: `/api/drive/uploads/${legacy.file.id}/authorization`,
+    headers,
+  });
+  assert.equal(legacyAuthorization.statusCode, 200);
+  assert.equal(legacyAuthorization.json<{ upload: { method: string } }>().upload.method, "POST");
+  assert.equal((await app.inject({
+    method: "DELETE",
+    url: `/api/drive/uploads/${legacy.file.id}/multipart`,
+    headers,
+    payload: { version: resumed.version },
+  })).statusCode, 409);
+  assert.notEqual(persistence.repositories.files.findById("owner-1", legacy.file.id), null);
+  assert.equal((await app.inject({
+    method: "DELETE",
+    url: `/api/drive/uploads/${legacy.file.id}/legacy`,
+    headers,
+  })).statusCode, 204);
+
+  const disabledTarget = await driveService.createMultipartUpload("owner-1", {
+    folderId: null,
+    displayName: "disabled.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 3,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  assert.equal(persistence.repositories.accounts.updateState("owner-1", "active", "disabled", NOW), true);
+  assert.equal((await app.inject({
+    method: "GET",
+    url: `/api/drive/uploads/${disabledTarget.file.id}/status`,
+    headers: { cookie: ownerCookie },
+  })).statusCode, 401);
 });
 
 test("every drive route enforces authentication and every unsafe route enforces origin", async (context) => {
@@ -557,7 +733,7 @@ test("inline preview without a browser endpoint returns 503 preview_unavailable"
 });
 
 test("oversized inline preview returns 503 preview_too_large while download stays available", async (context) => {
-  const { app, storage, driveService, login } = await fixture(context);
+  const { app, persistence, storage, driveService, login } = await fixture(context);
   const ownerCookie = await login("owner-1");
   const oversized = 512 * 1024 * 1024 + 1;
 
@@ -574,9 +750,11 @@ test("oversized inline preview returns 503 preview_too_large while download stay
     },
   });
   assert.equal(uploadResponse.statusCode, 201);
-  const upload = uploadResponse.json<{ file: { id: string }; upload: { fields: Record<string, string> } }>();
+  const upload = uploadResponse.json<{ file: { id: string }; transfer: { kind: string } }>();
+  assert.equal(upload.transfer.kind, "multipart");
+  const stored = persistence.repositories.files.findById("owner-1", upload.file.id)!;
   storage.putObject({
-    objectKey: upload.upload.fields.key!,
+    objectKey: stored.objectKey,
     sizeBytes: oversized,
     etag: "etag",
     checksumAlgorithm: "md5",
@@ -584,7 +762,7 @@ test("oversized inline preview returns 503 preview_too_large while download stay
     mediaType: "application/pdf",
     modifiedAt: NOW,
   });
-  await driveService.completeUpload("owner-1", upload.file.id);
+  assert.equal((await driveService.getUploadStatus("owner-1", upload.file.id)).kind, "complete");
 
   const inline = await app.inject({
     method: "GET",

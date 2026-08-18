@@ -119,6 +119,7 @@ export interface FileEntry {
   deletedAt: string | null;
   purgedAt: string | null;
   version: string;
+  uploadKind?: "multipart" | "legacy";
 }
 
 export type BulkAction = "move" | "recycle" | "restore" | "favorite_add" | "favorite_remove";
@@ -411,10 +412,36 @@ export interface UploadAuthorization {
   expiresAt: string;
 }
 
+export interface MultipartPartAuthorization {
+  method: "PUT";
+  url: string;
+  headers: Readonly<Record<string, string>>;
+  expiresAt: string;
+}
+
+export interface MultipartTransfer {
+  kind: "multipart";
+  file: FileEntry;
+  state: "uploading" | "paused" | "completing";
+  version: string;
+  partSizeBytes: number;
+  totalParts: number;
+  completedParts: Array<{ partNumber: number; sizeBytes: number; etag: string }>;
+  completedBytes: number;
+  expiresAt: string;
+}
+
+export type UploadTransfer = MultipartTransfer
+  | { kind: "legacy"; file: FileEntry }
+  | { kind: "complete"; file: FileEntry };
+
 export interface DownloadAuthorization {
   method: "GET";
   url: string;
   expiresAt: string;
+  sizeBytes?: number;
+  etag?: string;
+  acceptRanges?: "bytes";
 }
 
 export interface EntriesResponse {
@@ -533,9 +560,20 @@ export interface AcademicCloudApi {
     mediaType: string;
     sizeBytes: number;
     checksum: { algorithm: "md5"; value: string };
-  }): Promise<{ file: FileEntry; upload: UploadAuthorization }>;
+  }): Promise<{ file: FileEntry; transfer: MultipartTransfer } | { file: FileEntry; upload: UploadAuthorization }>;
   renewUpload(fileId: string): Promise<UploadAuthorization>;
   completeUpload(fileId: string): Promise<FileEntry>;
+  getUploadStatus?(fileId: string): Promise<UploadTransfer>;
+  authorizeUploadPart?(
+    fileId: string,
+    partNumber: number,
+    input: { version: string; sizeBytes: number; contentMd5: string },
+  ): Promise<MultipartPartAuthorization>;
+  pauseUpload?(fileId: string, version: string): Promise<MultipartTransfer>;
+  resumeUpload?(fileId: string, version: string): Promise<MultipartTransfer>;
+  completeMultipartUpload?(fileId: string, version: string): Promise<FileEntry>;
+  abandonMultipartUpload?(fileId: string, version: string): Promise<void>;
+  abandonLegacyUpload?(fileId: string): Promise<void>;
   createDownload(fileId: string, disposition?: "attachment" | "inline"): Promise<DownloadAuthorization>;
   updateFile(fileId: string, update: { displayName?: string; folderId?: string | null }): Promise<FileEntry>;
   deleteFile(fileId: string): Promise<void>;
@@ -1048,7 +1086,7 @@ export class ApiClient implements AcademicCloudApi {
     mediaType: string;
     sizeBytes: number;
     checksum: { algorithm: "md5"; value: string };
-  }): Promise<{ file: FileEntry; upload: UploadAuthorization }> {
+  }): Promise<{ file: FileEntry; transfer: MultipartTransfer }> {
     return this.#jsonBody("/api/drive/uploads", "POST", input);
   }
 
@@ -1064,6 +1102,60 @@ export class ApiClient implements AcademicCloudApi {
       `/api/drive/uploads/${encodeURIComponent(fileId)}/complete`,
       "POST",
     ).then((response) => response.file);
+  }
+
+  getUploadStatus(fileId: string): Promise<UploadTransfer> {
+    return this.#request<{ transfer: UploadTransfer }>(
+      `/api/drive/uploads/${encodeURIComponent(fileId)}/status`,
+    ).then((response) => response.transfer);
+  }
+
+  authorizeUploadPart(
+    fileId: string,
+    partNumber: number,
+    input: { version: string; sizeBytes: number; contentMd5: string },
+  ): Promise<MultipartPartAuthorization> {
+    return this.#jsonBody<{ authorization: MultipartPartAuthorization }>(
+      `/api/drive/uploads/${encodeURIComponent(fileId)}/parts/${partNumber}/authorization`,
+      "POST",
+      input,
+    ).then((response) => response.authorization);
+  }
+
+  pauseUpload(fileId: string, version: string): Promise<MultipartTransfer> {
+    return this.#jsonBody<{ transfer: MultipartTransfer }>(
+      `/api/drive/uploads/${encodeURIComponent(fileId)}/pause`,
+      "POST",
+      { version },
+    ).then((response) => response.transfer);
+  }
+
+  resumeUpload(fileId: string, version: string): Promise<MultipartTransfer> {
+    return this.#jsonBody<{ transfer: MultipartTransfer }>(
+      `/api/drive/uploads/${encodeURIComponent(fileId)}/resume`,
+      "POST",
+      { version },
+    ).then((response) => response.transfer);
+  }
+
+  completeMultipartUpload(fileId: string, version: string): Promise<FileEntry> {
+    return this.#jsonBody<{ file: FileEntry }>(
+      `/api/drive/uploads/${encodeURIComponent(fileId)}/multipart/complete`,
+      "POST",
+      { version },
+    ).then((response) => response.file);
+  }
+
+  abandonMultipartUpload(fileId: string, version: string): Promise<void> {
+    return this.#request<void>(`/api/drive/uploads/${encodeURIComponent(fileId)}/multipart`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version }),
+    });
+  }
+
+  abandonLegacyUpload(fileId: string): Promise<void> {
+    return this.#request<void>(`/api/drive/uploads/${encodeURIComponent(fileId)}/legacy`, { method: "DELETE" });
   }
 
   async createDownload(fileId: string, disposition: "attachment" | "inline" = "attachment"): Promise<DownloadAuthorization> {

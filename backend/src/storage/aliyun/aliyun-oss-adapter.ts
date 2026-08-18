@@ -14,10 +14,18 @@ import {
   StorageObjectReadLimitError,
 } from "../storage-adapter.js";
 import type {
+  AbortMultipartUploadInput,
+  BrowserMultipartPartAuthorization,
   BrowserDownloadAuthorization,
   BrowserUploadAuthorization,
+  CompleteMultipartUploadInput,
+  CreateMultipartPartAuthorizationInput,
   CreateDownloadAuthorizationInput,
   CreateUploadAuthorizationInput,
+  InitiateMultipartUploadInput,
+  ListMultipartPartsInput,
+  ListMultipartPartsResult,
+  MultipartUploadHandle,
   StorageAdapter,
   StorageObjectMetadata,
 } from "../storage-adapter.js";
@@ -83,6 +91,18 @@ function isNotFound(error: unknown): boolean {
     candidate.code === "NoSuchKey" ||
     candidate.code === "NoSuchObject"
   );
+}
+
+function isNoSuchUpload(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as { status?: unknown; statusCode?: unknown; code?: unknown };
+  return candidate.status === 404 || candidate.statusCode === 404 || candidate.code === "NoSuchUpload";
+}
+
+function assertMultipartUploadId(uploadId: string): void {
+  if (!uploadId || uploadId.length > 512 || uploadId !== uploadId.trim() || uploadId.includes("\0")) {
+    throw new TypeError("invalid OSS multipart upload ID");
+  }
 }
 
 function toUint8Array(content: unknown): Uint8Array | null {
@@ -217,13 +237,138 @@ export class AliyunOssStorageAdapter implements StorageAdapter {
     };
   }
 
+  async initiateMultipartUpload(input: InitiateMultipartUploadInput): Promise<MultipartUploadHandle> {
+    assertValidObjectKey(input.objectKey);
+    assertMediaType(input.mediaType);
+    assertBase64Md5(input.expectedChecksum.value);
+    if (!this.client.initMultipartUpload) throw new Error("OSS multipart initialization is unavailable");
+    const result = await this.client.initMultipartUpload(input.objectKey, {
+      mime: input.mediaType,
+      meta: { "ac-checksum-md5": input.expectedChecksum.value },
+      headers: { "x-oss-forbid-overwrite": "true" },
+    });
+    try {
+      assertMultipartUploadId(result.uploadId);
+    } catch (error: unknown) {
+      throw new Error("OSS returned an invalid multipart upload ID", { cause: error });
+    }
+    return { uploadId: result.uploadId };
+  }
+
+  async createMultipartPartAuthorization(
+    input: CreateMultipartPartAuthorizationInput,
+  ): Promise<BrowserMultipartPartAuthorization> {
+    assertValidObjectKey(input.objectKey);
+    assertMultipartUploadId(input.uploadId);
+    assertContentLength(input.contentLength);
+    assertBase64Md5(input.contentMd5);
+    if (!Number.isSafeInteger(input.partNumber) || input.partNumber < 1 || input.partNumber > 10_000) {
+      throw new RangeError("invalid OSS multipart part number");
+    }
+    const expiresInSeconds = input.expiresInSeconds ?? this.config.uploadAuthorizationSeconds;
+    assertAuthorizationDuration(expiresInSeconds);
+    const headers = {
+      "Content-Length": String(input.contentLength),
+      "Content-MD5": input.contentMd5,
+    };
+    const url = await this.client.signatureUrlV4(
+      "PUT",
+      expiresInSeconds,
+      {
+        headers: { "Content-Length": input.contentLength, "Content-MD5": input.contentMd5 },
+        queries: { partNumber: String(input.partNumber), uploadId: input.uploadId },
+      },
+      input.objectKey,
+      ["Content-Length"],
+    );
+    return {
+      method: "PUT",
+      url,
+      headers,
+      expiresAt: new Date(this.now().getTime() + expiresInSeconds * 1_000),
+    };
+  }
+
+  async listMultipartParts(input: ListMultipartPartsInput): Promise<ListMultipartPartsResult> {
+    assertValidObjectKey(input.objectKey);
+    assertMultipartUploadId(input.uploadId);
+    if (!Number.isSafeInteger(input.partNumberMarker) || input.partNumberMarker < 0 || input.partNumberMarker > 10_000) {
+      throw new RangeError("invalid OSS multipart part marker");
+    }
+    if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 1_000) {
+      throw new RangeError("invalid OSS multipart page size");
+    }
+    if (!this.client.listParts) throw new Error("OSS ListParts is unavailable");
+    const result = await this.client.listParts(input.objectKey, input.uploadId, {
+      "part-number-marker": input.partNumberMarker,
+      "max-parts": input.limit,
+    });
+    const parts = (result.parts ?? []).map((part) => {
+      const size = part.Size ?? part.size;
+      if (!Number.isSafeInteger(part.PartNumber) || part.PartNumber < 1 || part.PartNumber > 10_000
+        || !Number.isSafeInteger(size) || size! < 1 || typeof part.ETag !== "string" || !part.ETag) {
+        throw new Error("OSS returned invalid multipart part metadata");
+      }
+      const modified = part.LastModified === undefined ? null : new Date(part.LastModified);
+      return {
+        partNumber: part.PartNumber,
+        sizeBytes: size!,
+        etag: part.ETag,
+        modifiedAt: modified && !Number.isNaN(modified.getTime()) ? modified : null,
+      };
+    });
+    if (parts.length > input.limit || new Set(parts.map((part) => part.partNumber)).size !== parts.length) {
+      throw new Error("OSS returned invalid multipart part metadata");
+    }
+    const nextPartNumberMarker = result.isTruncated ? result.nextPartNumberMarker : null;
+    if (nextPartNumberMarker !== null
+      && (!Number.isSafeInteger(nextPartNumberMarker) || nextPartNumberMarker <= input.partNumberMarker
+        || nextPartNumberMarker > 10_000)) {
+      throw new Error("OSS returned an invalid multipart part marker");
+    }
+    return {
+      parts,
+      nextPartNumberMarker,
+    };
+  }
+
+  async completeMultipartUpload(input: CompleteMultipartUploadInput): Promise<void> {
+    assertValidObjectKey(input.objectKey);
+    assertMultipartUploadId(input.uploadId);
+    const parts = [...input.parts].sort((left, right) => left.partNumber - right.partNumber);
+    if (parts.length < 1 || parts.length > 10_000
+      || parts.some((part) => !Number.isSafeInteger(part.partNumber) || part.partNumber < 1
+        || part.partNumber > 10_000 || !part.etag)
+      || new Set(parts.map((part) => part.partNumber)).size !== parts.length) {
+      throw new TypeError("invalid OSS multipart completion parts");
+    }
+    if (!this.client.completeMultipartUpload) throw new Error("OSS multipart completion is unavailable");
+    await this.client.completeMultipartUpload(
+      input.objectKey,
+      input.uploadId,
+      parts.map((part) => ({ number: part.partNumber, etag: part.etag })),
+      { headers: { "x-oss-forbid-overwrite": "true" } },
+    );
+  }
+
+  async abortMultipartUpload(input: AbortMultipartUploadInput): Promise<void> {
+    assertValidObjectKey(input.objectKey);
+    assertMultipartUploadId(input.uploadId);
+    if (!this.client.abortMultipartUpload) throw new Error("OSS multipart abort is unavailable");
+    try {
+      await this.client.abortMultipartUpload(input.objectKey, input.uploadId);
+    } catch (error: unknown) {
+      if (!isNoSuchUpload(error)) throw error;
+    }
+  }
+
   async statObject(objectKey: string): Promise<StorageObjectMetadata | null> {
     assertValidObjectKey(objectKey);
 
     try {
       const result = await this.client.head(objectKey);
       const headers = asHeaderMap(result.res.headers);
-      const md5 = readHeader(headers, "content-md5");
+      const md5 = readHeader(headers, "x-oss-meta-ac-checksum-md5") ?? readHeader(headers, "content-md5");
       const crc64 = readHeader(headers, "x-oss-hash-crc64ecma");
 
       return {
