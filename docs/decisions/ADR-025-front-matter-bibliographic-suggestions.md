@@ -1,7 +1,7 @@
 # ADR-025 — Front-Matter Bibliographic Suggestions and OCR Boundary
 
 **Date:** 2026-08-18  
-**Status:** Accepted by Owner
+**Status:** Accepted by Owner; bounded local OCR amendment completed by RF-FRONTMATTEROCR01
 
 ## Context
 
@@ -25,12 +25,11 @@ L1-UX06
 → STOP for Owner/ChatGPT review
 ```
 
-The subsequent Owner checkpoint authorizes **RF-METASUGGEST01 only** for the
-current repository run. The implementation checkpoint stops immediately after
-that Epic; RF-SEARCH01 is preserved in `tasks/ready/` but is not authorized or
-started. ADR-027 records the bounded implementation and this superseding
-current-run boundary. A later Owner decision is required before any search,
-OCR, or other parked work begins.
+The subsequent Owner checkpoint authorized **RF-METASUGGEST01 only** for that
+historical repository run and stopped after the Epic. On 2026-08-19 the Owner
+separately authorized RF-FRONTMATTEROCR01; ADR-027 records its bounded local
+fallback, provenance, and resource limits. RF-SEARCH01 remains parked and is
+not implied by the OCR authorization.
 
 The remaining Pre-OCR cards stay parked until a later explicit Owner restart.
 
@@ -113,18 +112,24 @@ Every suggested canonical field records:
 
 Accepting a cleaner title or metadata proposal does not rename the OSS object key, rewrite bytes, change checksum, erase uploader/contributor provenance, or discard the original filename. The original filename remains retrievable as provenance/detail data.
 
-### 7. OCR remains separately gated
+### 7. OCR remains bounded and separately gated from whole-document intelligence
 
-RF-METASUGGEST01 does **not** execute OCR. If a PDF is image-only and has no usable text layer, the current round returns a bounded `OCR deferred` state and allows manual metadata entry.
+The historical RF-METASUGGEST01 checkpoint did **not** execute OCR. Completed
+RF-FRONTMATTEROCR01 now permits only local/offline OCR fallback for unusable
+pages inside the same exact first-15/last-5 window. Usable native text still
+bypasses OCR, and all results remain reviewable evidence rather than canonical
+metadata writes.
 
-The implementation defines a stable page-text adapter so a later Owner-authorized OCR task could feed OCR text from selected front/back-matter pages into the same classifier/evidence contract without redesigning the bibliographic model.
+The stable provider-neutral page-text/OCR adapter feeds only selected
+front/back-matter evidence into the existing classifier and manager-review
+contract without redesigning the bibliographic model.
 
 No whole-book OCR is implied by metadata discovery. A later OCR design should prefer bounded candidate pages rather than processing hundreds of pages merely to find title/copyright information.
 
 ## Non-goals
 
 This decision does not authorize:
-- OCR execution;
+- OCR outside the completed bounded local front-matter fallback;
 - full-text indexing/search;
 - LLM/AI metadata extraction;
 - external catalogue/ISBN/network lookup;
@@ -144,6 +149,6 @@ This decision does not authorize:
   the current RF-METASUGGEST01 checkpoint; if later opened, it may search
   authorized names/canonical metadata only, while OCR/full-text search remains
   separately gated.
-- The project remains STOP-before-OCR after the currently authorized
-  RF-METASUGGEST01 checkpoint unless the Owner explicitly authorizes further
-  work.
+- RF-FRONTMATTEROCR01 completed the later explicit bounded OCR authorization;
+  RF-SEARCH01, whole-document extraction, indexing, retrieval, and RAG remain
+  separately gated.

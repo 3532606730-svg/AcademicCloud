@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive and Accounts foundations, the canonical shared Library, first-use polish through L1-UX07, RF-META01, RF-METASUGGEST01, PROD-07A, PROD-07B, and PROD-08R are complete and independently green. Production runs exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`, previous release `bc5788633e0295744905b4ae2dcdfcc5d97635bf`, at schema v19/history 001–019. RF-METASUGGEST01 and L1-UX07 are deployed; PROD-07B lifecycle behavior is preserved; rollback was used during fail-closed cutover attempts before final success. PROD-08R is PASS/CLOSED. Stop; no further task or production work is authorized.
+**Current execution phase:** Core Drive and Accounts foundations, the canonical shared Library, first-use polish through L1-UX07, RF-META01, RF-METASUGGEST01, PROD-07A, PROD-07B, PROD-08R, and RF-FRONTMATTEROCR01 development are complete and independently green. Development is at schema v20/history 001–020. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`, previous release `bc5788633e0295744905b4ae2dcdfcc5d97635bf`, at schema v19/history 001–019; RF-FRONTMATTEROCR01 is not yet deployed. The current authorized sequence is the narrow workflow proportionality reconciliation, RF-TRANSFER01 development, the exact combined Linux x64 / Node 24 artifact gate, and only then the bounded final production deployment and evidence reconciliation.
 
-**Approved continuous objective:** complete and close exactly `PROD-08R`, publish its reconciled evidence/state checkpoint on `codex/project-memory-reconcile-20260817`, then STOP. The objective is complete. `RF-FRONTMATTEROCR01`, `RF-SEARCH01`, the remaining Pre-OCR queue, any further production contact/mutation/deployment, incident-database inspection, a real production permanent delete or `PROD-03C2` confirmation, reboot/autostart, main merge, infrastructure-policy repair, credentials, paid infrastructure, unrelated OSS mutation, OCR, whole-document text extraction, full-text indexing/search, semantic retrieval, RAG, external catalogue/ISBN lookup, web search, AI extraction, and migration 020 remain parked or prohibited without new explicit Owner authorization.
+**Approved continuous objective:** on `codex/project-memory-reconcile-20260817`, preserve the closed PROD-08R truth; integrate and close exactly bounded local/offline `RF-FRONTMATTEROCR01`; reconcile one narrow workflow proportionality clarification; implement and close `RF-TRANSFER01` true multipart upload and standards-based resumable download; produce an independently verified immutable Linux x64 / Node 24 combined artifact; perform the Owner-authorized bounded final deployment only after every development/artifact gate is green; reconcile exact production/project truth; then STOP. No production contact is authorized during development. `RF-SEARCH01`, remaining Pre-OCR work, whole-document extraction, indexing/search, semantic retrieval, RAG, desktop/native sync, incident-database inspection, real permanent deletion/`PROD-03C2`, reboot/autostart, main merge, infrastructure-policy changes, credentials, paid infrastructure, unrelated OSS mutation, external catalogue/ISBN/web lookup, AI extraction, and unrelated cleanup remain parked or prohibited.
 
 ## Engineering Workflow
 
@@ -87,7 +87,7 @@ Owner-approved Pre-OCR direction includes:
 - Research Inbox/intake;
 - sidecar annotations, citations, page-level evidence, Evidence Bundles, Research Questions, structured export foundations.
 
-`RF-META01` is complete: canonical information is surfaced through normal `资料详情`, not a standalone `学术记录` browser. `RF-METASUGGEST01` is complete: it inspects only local existing text-layer evidence in the fixed first-15/last-5 window, records reviewable bilingual proposals, and may never silently write canonical metadata. `RF-SEARCH01` and the remaining Pre-OCR queue remain parked.
+`RF-META01` is complete: canonical information is surfaced through normal `资料详情`, not a standalone `学术记录` browser. `RF-METASUGGEST01` is complete, and RF-FRONTMATTEROCR01 now adds only local/offline fallback for unusable pages inside the same exact first-15/last-5 window. Usable native text remains preferred; provenance-rich proposals remain reviewable and may never silently write canonical metadata. No raw OCR page text or rendered page image is persisted. `RF-SEARCH01` and the remaining Pre-OCR queue remain parked.
 
 ### Layer 4 — Shared Academic Library
 
@@ -112,7 +112,7 @@ Owner-approved final pre-OCR foundation remains parked:
 
 ### Layer 6 — Intelligence
 
-**Future / not authorized by the current program:** OCR/text extraction execution, full-text indexing/search, embeddings/retrieval, RAG, evidence-grounded assistance.
+**Future / not authorized by the current program:** whole-document OCR/text extraction, full-text indexing/search, embeddings/retrieval, RAG, evidence-grounded assistance. The completed bounded local front-matter OCR fallback does not authorize any of those capabilities.
 
 ### Operations Track
 

@@ -1,7 +1,7 @@
 # ADR-027 — Bounded Bibliographic Suggestion Implementation
 
 **Date:** 2026-08-18
-**Status:** Accepted through the RF-METASUGGEST01 Owner checkpoint; amended for the authorized RF-FRONTMATTEROCR01 development checkpoint
+**Status:** Accepted through RF-METASUGGEST01; bounded local OCR amendment completed by RF-FRONTMATTEROCR01
 
 ## Context
 

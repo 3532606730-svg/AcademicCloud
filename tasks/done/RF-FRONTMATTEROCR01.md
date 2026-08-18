@@ -50,7 +50,7 @@ Extend RF-METASUGGEST01 so scanned or image-only PDF front matter can produce th
 - `frontend/src/api.ts`, `frontend/src/resource-details.tsx`, and i18n
 
 ## Current State
-Implementation complete and independently green in isolated worktree `D:\Projects\AcademicCloud-ocr` on branch `codex/rf-frontmatterocr01-20260819`, based exactly on development commit `35d03dd350d874cb43e85e4fc4cd3b22ee5abd89`. Development schema is v20/history 001–020; migration 020 and RF-FRONTMATTEROCR01 remain development-only and undeployed. The separate production session and normal Owner checkout are untouched. Authoritative development/current-state reconciliation remains intentionally pending until that separate deployment session has published and stopped.
+Complete. Implementation checkpoint `bcd8211c0b0a091ec8ff3b8f674eaf2c9be72427` from isolated branch `codex/rf-frontmatterocr01-20260819` was integrated non-destructively onto authoritative PROD-08R evidence checkpoint `497f55a648a7d819e5e01909920781e66506c731` as `469b5982bec8a3dbc0b0dc75b38f4dc7d8b00440`. Development is schema v20/history 001–020 while production remains unchanged at exact release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`, schema v19/history 001–019.
 
 ## Completed
 - Proved the isolated branch/worktree begins exactly at the authorized base and is clean.
@@ -63,24 +63,55 @@ Implementation complete and independently green in isolated worktree `D:\Project
 - Propagated native/OCR/embedded/filename provenance through the existing classifier/extractor, persistence/API serialization, and ordinary `资料详情`; OCR confidence below 55 or unsupported script is unusable, and otherwise-high OCR candidates are capped at medium bibliographic confidence.
 - Preserved manager-only generation/acceptance, Member read-only access, exact Library-domain non-disclosure, post-inspection authority/source revalidation, RF-META01 CAS acceptance, original bytes/identity/provenance/private overlays, and L1-UX07 account/Library lifecycle behavior.
 - Added deterministic synthetic PDF/render/adapter/provenance/migration/UI tests for native bypass, image-only and mixed fallback, exact page windows, malformed/oversized input, pixel allocation guards, engine/language/timeout/output/cancellation/capacity failures, Chinese/English evidence, unsupported scripts, confidence, immutable retention, stale sources, authorization changes, and no raw page-text/image persistence.
+- Preserved the PROD-08R PDF.js runtime repair: `pdfjs-dist@6.2.108`, `@napi-rs/canvas@1.0.7`, and only `node_modules/@napi-rs/canvas-linux-x64-gnu/skia.linux-x64-gnu.node` as the additional PDF.js native file inside the exact ELF64 x86-64 allowlist.
+- Reconciled ADR-025/ADR-027 and the authoritative project-state files without authorizing whole-document OCR, search/indexing, external lookup, AI extraction, or premature production contact.
 
 ## Remaining
-- Commit and push the isolated task branch.
-- Reconcile authoritative current-state files only after the separate deployment session has completed and published durable truth; otherwise stop at the isolated pushed checkpoint.
+None for RF-FRONTMATTEROCR01 development. The pinned Tesseract/tessdata production packaging proof remains a gate of the later authorized final combined artifact/deployment, not unfinished development behavior in this task.
 
 ## Blockers
-None for isolated implementation. Authoritative integration/current-state reconciliation remains conditional on completion of the separate production deployment session.
+None.
 
 ## Last Verification
 - Isolation: task branch initial HEAD, merge-base, and authorized base were all `35d03dd350d874cb43e85e4fc4cd3b22ee5abd89`; requested worktree/branch were absent before creation.
-- Full backend suite: 318/318 passing, including suggestions, metadata/CAS, authorization/non-disclosure, migrations, storage, account/Library lifecycle, Favorites, Recycle, permanent-delete safety, and exact synthetic-fixture suppression.
+- Integration ancestry: authoritative base/HEAD/upstream/remote matched `497f55a648a7d819e5e01909920781e66506c731`; OCR source branch matched `96084d1fb942ec88977d21fb79e550c67ecdb7d6`; implementation checkpoint matched `bcd8211c0b0a091ec8ff3b8f674eaf2c9be72427`; only the implementation checkpoint was cherry-picked because the source tip contained an obsolete wait-state note.
+- Full backend suite: 322/322 passing, including OCR, suggestions, metadata/CAS, authorization/non-disclosure, migrations, storage, account/Library lifecycle, Favorites, Recycle, permanent-delete safety, exact synthetic-fixture suppression, and PROD-08R artifact-runtime checks.
 - Full frontend suite: 193/193 passing; final focused suggestion/API/details rerun: 33/33 passing.
-- Focused OCR/suggestion/metadata/storage/migration verification: 60/60 passing before the final full-suite pass; the final OCR/suggestion/provenance rerun after bounded text streaming was 43/43 passing.
+- Focused integrated OCR/PDF/suggestion/provenance/artifact verification: 30/30 backend passing; focused suggestion/API/details verification: 33/33 frontend passing.
 - Backend and frontend typechecks passing.
 - Backend and frontend production builds passing.
 - Compiled acceptance passing with `firstMigrationCount: 20`, restart/readiness, backup/restore, canonical metadata, and `redeployMigrationCount: 0` green.
-- `git diff --check` clean. Static review found no OCR network/cloud call, upload/approval/background hook, whole-document traversal, search/index/embedding/RAG path, raw OCR/page-image persistence, migration beyond 020, production contact, or current-state/deployment evidence edit.
+- Migrations 001–019 are byte-unchanged; migration 020 is the only appended migration. `git diff --check` is clean. Static review found no OCR network/cloud call, upload/approval/background hook, whole-document traversal, search/index/embedding/RAG path, raw OCR/page-image persistence, migration beyond 020, or production contact.
 - No production endpoint, credential, database, OSS object, release, backup, deployment artifact, or real academic document was contacted, inspected, or changed.
 
+```text
+TASK=RF-FRONTMATTEROCR01
+VERDICT=PASS/CLOSED
+AUTHORITATIVE_BASE=497f55a648a7d819e5e01909920781e66506c731
+OCR_SOURCE_BRANCH=codex/rf-frontmatterocr01-20260819
+OCR_SOURCE_CHECKPOINT=bcd8211c0b0a091ec8ff3b8f674eaf2c9be72427
+INTEGRATED_HEAD=469b5982bec8a3dbc0b0dc75b38f4dc7d8b00440
+SCHEMA=v20
+MIGRATIONS=001-020; 001-019 byte-identical; 020 appended
+OCR_LOCAL_ONLY=true
+NATIVE_TEXT_PREFERRED=true
+OCR_FALLBACK_ONLY=true
+PAGE_WINDOW=exact deduplicated first-15/last-5
+PROVENANCE_MIGRATION=020_suggestion_evidence_provenance.sql
+TESSERACT_VERSION=5.5.3 pinned adapter contract
+TESSDATA_VERSION=tessdata_fast 4.1.0 pinned deployment contract
+OCR_LANGUAGES=chi_sim,chi_tra,eng
+PDFJS_CANVAS_RUNTIME_PRESERVED=true
+TESTS=backend 322/322; frontend 193/193; focused backend 30/30; focused frontend 33/33
+TYPECHECK=backend PASS; frontend PASS
+BUILDS=backend production PASS; frontend production PASS
+COMPILED_ACCEPTANCE=PASS; firstMigrationCount=20; redeployMigrationCount=0
+ARTIFACT_RUNTIME=PROD-08R exact PDF.js/canvas allowlist and ELF boundary preserved; Linux workflow verification pending closure publication
+PRODUCTION_TOUCHED=false
+REMOTE_SYNCHRONIZED=pending closure publication
+LOCAL_SYNCHRONIZED=pending closure publication
+NEXT=durable workflow proportionality clarification, then RF-TRANSFER01
+```
+
 ## Next Action
-Commit and push the green isolated implementation branch. If the separate deployment session is still active or its durable reconciliation is unpublished, stop without merging or finalizing `CURRENT_STATUS.md`, `TASK_BOARD.md`, or `ROADMAP.md`.
+Publish and verify the authoritative closure checkpoint, then apply the separately authorized narrow workflow proportionality clarification before activating RF-TRANSFER01. Do not contact production.

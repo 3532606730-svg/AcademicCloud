@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**PROD-08R — v19 Production Artifact Runtime Repair and Release Resume is complete and closed. Production acceptance is green, durable evidence is reconciled, and execution is stopped.**
+**RF-FRONTMATTEROCR01 development is complete and green at schema v20/history 001–020. Production remains unchanged at the closed PROD-08R v19 checkpoint. The continuous objective proceeds next through one narrow workflow clarification and RF-TRANSFER01 development before any final artifact or production gate.**
 
 The governing product rule remains ADR-022:
 
@@ -55,14 +55,17 @@ Never select `bc578863…` against the live v19 database; restore the paired v18
 ## Development Truth
 
 - `codex/project-memory-reconcile-20260817` remains the single authoritative non-main line;
-- development and deployed application schema head are v19 / migrations 001–019; no migration 020 exists;
-- RF-META01, RF-METASUGGEST01, PROD-07B, and L1-UX07 remain complete with their historical task evidence preserved;
-- `tasks/done/PROD-08R.md` is the bounded deployment evidence card; no task remains Doing.
+- RF-FRONTMATTEROCR01 checkpoint `bcd8211c0b0a091ec8ff3b8f674eaf2c9be72427` was integrated non-destructively after exact PROD-08R evidence checkpoint `497f55a648a7d819e5e01909920781e66506c731`;
+- development schema is v20/history 001–020; migrations 001–019 remain byte-identical and migration 020 adds only immutable suggestion evidence provenance;
+- bounded local/offline OCR preserves native-text preference, the exact deduplicated first-15/last-5 window, manager review and RF-META CAS acceptance, Library-domain non-disclosure, and no raw OCR/page-image persistence;
+- full backend 322/322, full frontend 193/193, focused OCR/artifact 30/30, focused frontend 33/33, both typechecks/builds, and compiled acceptance are green;
+- the PROD-08R exact PDF.js/canvas native runtime allowlist and ELF64 x86-64 verification boundary remain intact;
+- `tasks/done/PROD-08R.md` and `tasks/done/RF-FRONTMATTEROCR01.md` preserve bounded evidence; no task is currently Doing.
 
 ## Safety Boundaries
 
-This completed checkpoint does not authorize further production contact/mutation, incident-database inspection, real permanent deletion, `PROD-03C2`, reboot/autostart or infrastructure-policy repair, credentials, paid infrastructure, main merge, OCR, RF-FRONTMATTEROCR01, RF-SEARCH01, whole-document extraction, full-text search, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, migration 020, or unrelated work.
+No production contact or mutation is authorized during the remaining development checkpoints. The later final production gate is bounded to the exact green combined artifact, exact pending migrations, fresh verified rollback backup, cutover, and changed-risk acceptance. Incident-database inspection, real permanent deletion, `PROD-03C2`, reboot/autostart, infrastructure-policy changes, credentials, paid infrastructure, main merge, RF-SEARCH01, whole-document extraction, full-text search, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, and unrelated work remain prohibited.
 
 ## Next Action
 
-STOP. A new Owner authorization is required for any later repository or production task.
+Publish and verify the RF-FRONTMATTEROCR01 closure checkpoint, reconcile the narrow workflow proportionality clarification, then activate RF-TRANSFER01. Do not contact production.

@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**PROD-08R is complete and closed. Exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` is deployed at schema v19/history 001–019. RF-METASUGGEST01 and L1-UX07 are deployed, PROD-07B behavior is preserved, rollback was used, and execution is stopped.**
+**RF-FRONTMATTEROCR01 development is complete and green at schema v20/history 001–020. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019. The next authorized steps are one narrow workflow clarification and RF-TRANSFER01 development; production remains untouched until the final combined artifact gate passes.**
 
 ## Doing
 
@@ -20,6 +20,7 @@ None.
 | PROD-07B | `tasks/done/PROD-07B.md` | Bounded production hotfix for row alignment, folder recycle, and global-Owner-only account/Library permanent-delete lifecycle |
 | L1-UX07 | `tasks/done/L1-UX07.md` | v19 forward-port plus scope-aware selection, capability actions, coherent Favorites/Recycle, exact fixture suppression, and future acceptance-residue prevention; deployed by PROD-08R |
 | PROD-08R | `tasks/done/PROD-08R.md` | Repaired the PDF.js Linux artifact runtime, independently verified the immutable package, deployed v19/001–019 with fresh off-host rollback protection, and completed changed-risk acceptance |
+| RF-FRONTMATTEROCR01 | `tasks/done/RF-FRONTMATTEROCR01.md` | Exact first-15/last-5 native-text-first local OCR fallback with migration-020 provenance, bounded Tesseract adapter, review-only metadata evidence, and preserved PROD-08R runtime repair |
 
 Current execution boundary:
 
@@ -30,24 +31,28 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 → fresh v18 rollback backup and off-host publication
 → final app + database cutover to f62766c… / v19 / 001–019
 → PROD-08R PASS / CLOSED
+→ RF-FRONTMATTEROCR01 PASS / CLOSED in development; production unchanged
+→ workflow proportionality clarification
+→ RF-TRANSFER01
+→ exact combined artifact gate
+→ bounded final deployment and reconciliation
 → STOP
 ```
 
-## Ready / Parked — Preserved, Not Authorized
+## Authorized Next / Parked
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | RF-FRONTMATTEROCR01 | Future bounded front-matter OCR only; not started or authorized |
-| 2 | RF-SEARCH01 | Preserved metadata/name search card; not started or authorized |
-| 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
-| 4 | Whole-document extraction | Future; prohibited in this checkpoint |
-| 5 | Full-text search | Future; prohibited in this checkpoint |
-| 6 | Semantic retrieval | Future; prohibited in this checkpoint |
-| 7 | RAG | Future; prohibited in this checkpoint |
-| 8 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
-| 9 | STOP | Required after PROD-08R |
+| 1 | Workflow proportionality clarification | Authorized next; workflow-only, no product/schema change |
+| 2 | RF-TRANSFER01 | Authorized after the workflow clarification; true multipart upload and standards-based Range download resume |
+| 3 | Final combined artifact/deployment | Authorized only after OCR and transfer development checkpoints are closed and the exact artifact jobs are green |
+| 4 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
+| 5 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
+| 6 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
+| 7 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
+| 8 | STOP | Required after final production reconciliation |
 
-RF-SEARCH01 and the later Pre-OCR queue remain durable future scope. RF-METASUGGEST01 did not authorize OCR, external lookup, or AI extraction, and PROD-08R did not broaden that boundary.
+RF-FRONTMATTEROCR01 authorizes only the completed bounded local/offline fallback. RF-SEARCH01, the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
 
 ## Product Model — Authoritative Short Form
 
@@ -103,12 +108,12 @@ L1_UX07_DEPLOYED=true
 ROLLBACK_USED=true
 ```
 
-Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, public assets match the immutable release, and migration 020/OCR/search/RAG residue is absent. Synthetic destructive acceptance was skipped safely because no uniquely owned run-created target existed; no task-owned synthetic residue exists.
+Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, public assets match the immutable release, and migration 020/OCR/search/RAG residue is absent. This remains the durable starting production truth; development migration 020 has not been applied. Synthetic destructive acceptance was skipped safely because no uniquely owned run-created target existed; no task-owned synthetic residue exists.
 
 The rollback pair is exact prior application `bc5788633e0295744905b4ae2dcdfcc5d97635bf` plus schema-v18 backup `academiccloud-pre-prod08r-20260818T184801Z.sqlite` (SHA-256 `338d245d0e0aeb7fec063df069e0750bf3830aceedf32a0f4aad716fb868453b`), encrypted off-host in private commit `a7369933f31af7839bc833d3d24d30688504276d`. Application rollback without the paired database restore is prohibited.
 
-`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. No authority exists for more production contact or mutation, destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, migration 020, OCR, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup.
+`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. No production contact is authorized during development. The later bounded final deployment may apply only the exact combined release and repository-authorized pending migrations after all artifact gates pass; it does not authorize destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup.
 
 ## Next Action
 
-STOP. Do not select another task without new explicit Owner authorization.
+Publish and verify the RF-FRONTMATTEROCR01 closure checkpoint, reconcile the narrow workflow proportionality clarification, then create/activate RF-TRANSFER01. Do not contact production.

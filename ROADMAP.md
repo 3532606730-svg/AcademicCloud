@@ -54,7 +54,7 @@ Completed outcomes include:
 
 Actual use after PROD-06A confirmed the authority/data model but exposed a narrower usability problem: root `资料库` visually stacked canonical holdings above a legacy Owner table, misplaced Name/Size/Updated headers, dropped established file-type icons, repeated filename-derived labels, left redundant descriptive copy, and lacked an authority-correct recoverable lifecycle action for Library-owned holdings. L1-UX06 repaired the presentation and recycle transition; subsequent Owner review found the Library-domain item could not be listed/restored through the account-scoped Recycle product, and the bounded closure repair completed that lifecycle without merging authority domains.
 
-Owner review established that cleaner scholarly titles and eventual basic catalogue search are near-term usability needs. RF-META01 and the bounded RF-METASUGGEST01 layer completed that local metadata round; RF-SEARCH01 remains parked. PROD-07B then supplied the production recycle/permanent-delete hotfix, and L1-UX07 reconciled those product changes into the v19 development line while fixing the catalogue interaction model. ADR-025/027 keep OCR separately gated; ADR-028 governs permanent-delete authority, exclusivity, and destructive-boundary revalidation.
+Owner review established that cleaner scholarly titles and eventual basic catalogue search are near-term usability needs. RF-META01 and RF-METASUGGEST01 completed the canonical/reviewable metadata layer, and RF-FRONTMATTEROCR01 later added only bounded local/offline fallback for unusable pages in the same exact first-15/last-5 window. RF-SEARCH01 remains parked. PROD-07B supplied the production recycle/permanent-delete hotfix, and L1-UX07 reconciled those product changes into the v19 line while fixing the catalogue interaction model. ADR-025/027 govern the bounded OCR boundary; ADR-028 governs permanent-delete authority, exclusivity, and destructive-boundary revalidation.
 
 The durable completed sequence is:
 
@@ -66,11 +66,14 @@ L1-UX06
 → PROD-07B
 → L1-UX07 Catalogue Interaction Consistency
 → PROD-08R v19 Artifact Repair and Production Release
-→ production checkpoint / STOP
-→ later bibliographic OCR/search work only after a new Owner authorization
+→ RF-FRONTMATTEROCR01 bounded local OCR development
+→ workflow proportionality clarification
+→ RF-TRANSFER01 true resumable transfer development
+→ exact combined artifact and bounded final production deployment
+→ STOP
 ```
 
-L1-UX07 and PROD-08R are complete. Production runs exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019; RF-METASUGGEST01 and L1-UX07 are deployed and the PROD-07B product lifecycle is preserved. The previous release is `bc5788633e0295744905b4ae2dcdfcc5d97635bf`; rollback was used during fail-closed cutover attempts before final success. RF-FRONTMATTEROCR01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized.
+L1-UX07, PROD-08R, and RF-FRONTMATTEROCR01 development are complete. Development is schema v20/history 001–020; production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019, with RF-METASUGGEST01/L1-UX07 deployed and PROD-07B behavior preserved. The previous release remains `bc5788633e0295744905b4ae2dcdfcc5d97635bf`; rollback was used during fail-closed PROD-08R attempts before final success. RF-TRANSFER01 is the next authorized feature task after the workflow clarification. RF-SEARCH01 and the later Pre-OCR cards remain parked.
 
 ### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
 
@@ -155,7 +158,7 @@ Chinese and English/Latin-script bibliographic cues are first-class. Older books
 
 Every proposal records source type, source page, page class, ruleset version and confidence. Suggestions require explicit authorized confirmation before becoming canonical. Original filename, OSS object key, bytes/checksum and provenance remain unchanged.
 
-Pure image-only/scanned PDFs must not guess. They return an `OCR deferred` state. This completed round defines a future page-text/OCR adapter boundary but did **not** execute OCR, AI/LLM extraction, external catalogue/ISBN lookup, web lookup or fuzzy merge.
+Pure image-only/scanned PDFs must not guess. Completed RF-FRONTMATTEROCR01 may render and locally OCR only unusable selected pages inside the exact deduplicated first-15/last-5 window, after preferring native text. It persists only bounded proposal provenance, never raw OCR page text/images or canonical metadata writes, and does not authorize whole-document OCR, AI/LLM extraction, external catalogue/ISBN lookup, web lookup, or fuzzy merge.
 
 ### RF-SEARCH01 — Authority-Scoped Catalogue Search
 
@@ -190,7 +193,7 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 ## Layer 1 — Core Resource Handling
 
-**Status:** Foundation, L1-UX06, RF-META01, RF-METASUGGEST01, and L1-UX07 are complete; STOP is in force after the L1-UX07 usability checkpoint.
+**Status:** Foundation, L1-UX06, RF-META01, RF-METASUGGEST01, L1-UX07, and RF-FRONTMATTEROCR01 development are complete. The authorized continuous objective now proceeds through RF-TRANSFER01 and the bounded combined release gate.
 
 Completed foundations include SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, Favorites, bulk operations, recursive recycle/restore, duplicate-name UX, upload recovery, mobile/fullscreen Preview, sticky navigation, shared-corpus authority and first-use shell repair.
 
@@ -249,7 +252,7 @@ Later foundations include integrity monitoring, no-clobber metadata recovery, co
 
 Future sequence may include OCR/text extraction, full-text indexing/search, embeddings/retrieval, RAG and source/page-grounded assistance. Derived authority must never exceed effective authority over the underlying shared resource and any private overlay used in the request.
 
-## Parked Pre-OCR Order After Current STOP
+## Parked Pre-OCR Order
 
 When and only when the Owner starts another round after this checkpoint, the preserved later sequence is:
 
@@ -291,7 +294,7 @@ Current rollback pair:
 - schema-v18 backup `academiccloud-pre-prod08r-20260818T184801Z.sqlite`, SHA-256 `338d245d0e0aeb7fec063df069e0750bf3830aceedf32a0f4aad716fb868453b`;
 - encrypted off-host evidence in private backup commit `a7369933f31af7839bc833d3d24d30688504276d`.
 
-Because production schema advanced to v19, rollback is an inseparable application-plus-database operation: never select `bc578863…` while leaving the v19 database in place. The consumed PROD-08R window leaves no continuing authority for production mutation. Any later release remains separately Owner-gated.
+Because production schema advanced to v19, the existing rollback is an inseparable application-plus-database operation: never select `bc578863…` while leaving the v19 database in place. The new continuous objective authorizes one later bounded combined deployment only after OCR/transfer development and exact artifact gates are green; development work does not itself authorize production contact.
 
 PROD-07B consumed the product authority/implementation decision for global-Owner-only account/Library permanent deletion. `PROD-03C2` remains separately parked only for any future real production disposable-object confirmation and the other explicit operations gates.
 
@@ -307,10 +310,16 @@ Preserved but non-blocking:
 
 ## Current Repository Objective
 
-Only:
+In order:
 
 ```text
-PROD-08R complete and closed, then STOP
+PROD-08R truth preserved
+→ RF-FRONTMATTEROCR01 development complete
+→ workflow proportionality clarification
+→ RF-TRANSFER01 development
+→ exact Linux x64 / Node 24 combined artifact
+→ bounded final production deployment and reconciliation
+→ STOP
 ```
 
-RF-META01, RF-METASUGGEST01, L1-UX07, and PROD-08R are complete and no Epic is currently authorized. RF-METASUGGEST01 and L1-UX07 are deployed in exact production release `f62766c…`. Later cards require new Owner continuation. No authority exists for further production contact/mutation/deployment, incident-database inspection, main merge, a real production permanent delete, real-data cleanup, infrastructure-policy repair, OCR execution, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, or migration 020.
+RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, and RF-FRONTMATTEROCR01 development are complete. RF-METASUGGEST01 and L1-UX07 remain deployed in exact production release `f62766c…`; bounded OCR and development migration 020 remain undeployed. RF-TRANSFER01 is the next authorized feature task after the narrow workflow clarification. Production contact is deferred to the final exact-artifact gate. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, infrastructure-policy repair, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited.
