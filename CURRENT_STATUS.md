@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**L1-UX07 — Catalogue Interaction Consistency and State Reconciliation is complete and independently green on the authoritative development branch. Development remains schema v19/history 001–019 with RF-METASUGGEST01 complete but undeployed and the PROD-07B product changes forward-ported. Production remains exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018; rollback was not used. No repository Epic is active; the boundary is STOP for independent Owner/ChatGPT review.**
+**PROD-08R — v19 Production Artifact Runtime Repair and Release Resume is active. The first v19 artifact workflow failed closed after deterministic archive creation because the extracted compiled API did not become healthy; the archive was never uploaded, independent verification was skipped, and production was not mutated. Repair is limited to proving and correcting the extracted Linux x64 / Node 24 runtime boundary. Production must not be contacted until the exact repaired artifact passes both production workflow jobs.**
 
 The governing product rule remains ADR-022:
 
@@ -33,10 +33,11 @@ Completed result:
 ## Current Execution Boundary
 
 ```text
-PROD-07B   ← PRODUCTION COMPLETE
-→ L1-UX07 Catalogue Interaction Consistency   ← DEVELOPMENT COMPLETE
-→ usability checkpoint / STOP
-→ later bibliographic OCR/search work only after a new Owner authorization
+Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
+→ PROD-08R bounded diagnostics and exact Linux runtime repair   ← ACTIVE
+→ complete two-job immutable artifact verification
+→ only then revalidate and resume the already-authorized v19 production deployment
+→ STOP
 ```
 
 RF-META01 and RF-METASUGGEST01 remain complete. RF-METASUGGEST01 remains undeployed. RF-FRONTMATTEROCR01, RF-SEARCH01, whole-document extraction, full-text search, semantic retrieval, RAG, and the remaining Pre-OCR queue remain parked.
@@ -56,7 +57,7 @@ Production remains:
 
 The current rollback pair is exact prior release `2322169bc33415734d025010c465900c7fbc6bd9` plus fresh schema-v18 backup `academiccloud-pre-hotfix-20260818T161319Z.sqlite` (SHA-256 `5233f0866384ef774f5def211721c6f114c4aef0b3acef96731ee30581a11963`). Its age ciphertext SHA-256 is `2a5c0decfab2133db708c027416e5f558dfc08ed25e5c7fe11a9b5d29eb0f7ec`, verified in private off-host backup commit `49e72e5`.
 
-Production remains on `bc578863…` until a separately authorized deployment. L1-UX07 is development-only.
+Production remains on the last confirmed `bc578863…` until PROD-08R produces a completely green immutable artifact and a fresh live preflight proves production truth unchanged. L1-UX07 is development-only until that gated deployment succeeds.
 
 ## Development Truth
 
@@ -87,4 +88,4 @@ L1-UX07 changed-risk evidence consists of the full backend and frontend suites, 
 
 ## Next Action
 
-STOP for independent Owner/ChatGPT review. Do not start OCR/search/RAG, infrastructure repair, another production task, or another repository Epic without a new explicit authorization.
+Make the extracted startup failure safely observable, reproduce it in the exact Linux x64 / Node 24 artifact workflow, implement only the proven minimum runtime repair, and require both artifact workflow jobs green before any production contact. Do not start OCR/search/RAG, migration 020, infrastructure repair, main merge, or unrelated work.

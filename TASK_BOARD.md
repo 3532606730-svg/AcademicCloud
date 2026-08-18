@@ -4,13 +4,15 @@
 
 ## Current Phase
 
-**L1-UX07 is complete and independently green. Development remains schema v19/history 001–019 with RF-METASUGGEST01 complete but undeployed and the PROD-07B product lifecycle forward-ported. Production remains exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018. No task is Doing; STOP is in force for independent Owner/ChatGPT review.**
+**PROD-08R is active to diagnose and minimally repair the failed extracted Linux x64 / Node 24 v19 artifact. Failed run `32168164654` stopped before artifact upload or production mutation. Production must not be contacted until the exact repaired commit passes both the build/runtime-verification job and independent fresh-runner artifact-download verification.**
 
 The catalogue now preserves account versus Library resource scope through selection, capabilities, Favorites, Recycle, restore, and permanent-delete routing. ADR-028 preserves global-Owner-only permanent-delete authority, Library exclusivity revalidation at the destructive transaction boundary, and fail-closed protection for shared objects and unrelated lineage. No production contact or mutation occurred in L1-UX07.
 
 ## Doing
 
-No task is currently Doing. The approved L1-UX07 objective is complete.
+| Task | Task card | Bounded result |
+|---|---|---|
+| PROD-08R | `tasks/doing/PROD-08R.md` | Active: bounded diagnostics, exact Linux runtime reproduction, minimum artifact repair, complete immutable verification, then gated v19 deployment resume |
 
 ## Done
 
@@ -25,10 +27,11 @@ No task is currently Doing. The approved L1-UX07 objective is complete.
 Current execution boundary:
 
 ```text
-PROD-07B   ← DONE IN PRODUCTION
-→ L1-UX07 Catalogue Interaction Consistency   ← DONE IN DEVELOPMENT
-→ usability checkpoint / STOP
-→ later bibliographic OCR/search work only after a new Owner authorization
+Failed run 32168164654   ← STOPPED BEFORE UPLOAD / PRODUCTION
+→ PROD-08R artifact runtime repair   ← ACTIVE
+→ both production artifact workflow jobs green
+→ revalidate live v18 truth and resume only the authorized v19 deployment
+→ STOP
 ```
 
 ## Ready / Parked — Preserved, Not Authorized
@@ -96,8 +99,8 @@ Production is exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf`, previous
 
 The PROD-07B product decision and implementation now own the global-Owner-only permanent-delete rule. `PROD-03C2` remains parked only as a possible future real production confirmation/operations window: no real disposable-object purge, production cleanup, autostart/reboot decision, or infrastructure-policy repair is authorized by repository implementation.
 
-No continuing authority exists for production contact/mutation/deployment, main merge, real permanent deletion, infrastructure changes, OCR/text extraction, full-text indexing/search, embeddings, semantic retrieval, RAG, external metadata services, ISBN APIs, web lookup, or AI extraction.
+PROD-08R authorizes production contact/deployment only after a completely green immutable artifact. Before that gate, no production contact or mutation is allowed. No authority exists for main merge, destructive use of pre-existing production resources, infrastructure-policy changes, migration 020, OCR work, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, semantic retrieval, RAG, external metadata services, ISBN APIs, web lookup, or AI extraction.
 
 ## Next Action
 
-STOP for independent Owner/ChatGPT review.
+Implement bounded startup diagnostics, reproduce and prove the exact extracted runtime failure, make only the evidence-backed minimum artifact repair, and require both artifact workflow jobs green before any production contact.

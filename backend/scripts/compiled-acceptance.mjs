@@ -7,6 +7,10 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import Database from "better-sqlite3";
+import {
+  createBoundedStartupDiagnostics,
+  describeStartupExit,
+} from "../dist/deployment/compiled-startup-diagnostics.js";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const backendDirectory = resolve(scriptDirectory, "..");
@@ -42,6 +46,7 @@ const environment = {
 };
 
 let application;
+const applicationDiagnostics = new WeakMap();
 
 try {
   const firstMigration = runJson(join(distDirectory, "persistence", "sqlite", "migrate.js"));
@@ -56,7 +61,7 @@ try {
   const compiledHolding = seedCompiledLibraryHolding(databasePath, account.account.id);
 
   application = startApplication();
-  const health = await waitForJson(`http://127.0.0.1:${port}/api/health`);
+  const health = await waitForJson(`http://127.0.0.1:${port}/api/health`, application);
   const readiness = await fetchJson(`http://127.0.0.1:${port}/api/ready`);
   const loginResponse = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
     method: "POST",
@@ -167,7 +172,7 @@ try {
   application = undefined;
 
   application = startApplication();
-  await waitForJson(`http://127.0.0.1:${port}/api/health`);
+  await waitForJson(`http://127.0.0.1:${port}/api/health`, application);
   const session = await fetchJson(`http://127.0.0.1:${port}/api/auth/session`, {
     headers: { cookie },
   });
@@ -255,7 +260,7 @@ try {
   );
   const restoredEnvironment = { ...environment, DATABASE_PATH: restoredPath };
   application = startApplication(restoredEnvironment);
-  const restoredReadiness = await waitForJson(`http://127.0.0.1:${port}/api/ready`);
+  const restoredReadiness = await waitForJson(`http://127.0.0.1:${port}/api/ready`, application);
   const restoredSession = await fetchJson(`http://127.0.0.1:${port}/api/auth/session`, {
     headers: { cookie },
   });
@@ -498,12 +503,18 @@ function runJson(entrypoint, arguments_ = [], childEnvironment = environment, in
 }
 
 function startApplication(childEnvironment = environment) {
-  return spawn(process.execPath, [join(distDirectory, "main.js")], {
+  const child = spawn(process.execPath, [join(distDirectory, "main.js")], {
     cwd: repositoryDirectory,
     env: childEnvironment,
-    stdio: "ignore",
+    stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
+  const diagnostics = createBoundedStartupDiagnostics(childEnvironment);
+  child.stdout.on("data", (chunk) => diagnostics.append("stdout", chunk));
+  child.stderr.on("data", (chunk) => diagnostics.append("stderr", chunk));
+  const closed = new Promise((resolveClose) => child.once("close", resolveClose));
+  applicationDiagnostics.set(child, { diagnostics, closed });
+  return child;
 }
 
 async function stopApplication(child) {
@@ -534,10 +545,23 @@ async function reservePort() {
   return address.port;
 }
 
-async function waitForJson(url) {
+async function waitForJson(url, child) {
   const deadline = Date.now() + 10_000;
 
   while (Date.now() < deadline) {
+    const exitDescription = describeStartupExit(child);
+    if (exitDescription) {
+      const state = applicationDiagnostics.get(child);
+      if (state) {
+        await Promise.race([
+          state.closed,
+          new Promise((resolveWait) => setTimeout(resolveWait, 250)),
+        ]);
+        throw new Error(state.diagnostics.format(exitDescription));
+      }
+      throw new Error(exitDescription);
+    }
+
     try {
       return await fetchJson(url);
     } catch {
@@ -545,7 +569,9 @@ async function waitForJson(url) {
     }
   }
 
-  throw new Error("compiled API did not become healthy");
+  const state = applicationDiagnostics.get(child);
+  throw new Error(state?.diagnostics.format("compiled API did not become healthy")
+    ?? "compiled API did not become healthy");
 }
 
 async function fetchJson(url, init) {
