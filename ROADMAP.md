@@ -65,11 +65,12 @@ L1-UX06
 → PROD-07A
 → PROD-07B
 → L1-UX07 Catalogue Interaction Consistency
-→ usability checkpoint / STOP
+→ PROD-08R v19 Artifact Repair and Production Release
+→ production checkpoint / STOP
 → later bibliographic OCR/search work only after a new Owner authorization
 ```
 
-L1-UX07 is complete. Development remains schema v19/history 001–019 with RF-METASUGGEST01 undeployed and the PROD-07B product lifecycle forward-ported. Production remains exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018. RF-FRONTMATTEROCR01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized.
+L1-UX07 and PROD-08R are complete. Production runs exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019; RF-METASUGGEST01 and L1-UX07 are deployed and the PROD-07B product lifecycle is preserved. The previous release is `bc5788633e0295744905b4ae2dcdfcc5d97635bf`; rollback was used during fail-closed cutover attempts before final success. RF-FRONTMATTEROCR01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized.
 
 ### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
 
@@ -283,14 +284,14 @@ Verification is proportionate, not performative. Run checks that materially cove
 
 ## Production Track
 
-Production runs exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018 from completed PROD-07A and PROD-07B. The previous release is `2322169bc33415734d025010c465900c7fbc6bd9`; rollback was not used.
+PROD-08R repaired the Linux x64 / Node 24 PDF.js runtime artifact boundary and deployed exact release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019. The previous release is `bc5788633e0295744905b4ae2dcdfcc5d97635bf`. RF-METASUGGEST01 and L1-UX07 are deployed, and PROD-07B destructive-lifecycle behavior remains preserved. Rollback was used during two fail-closed post-migration verification attempts; the final app-plus-database cutover and changed-risk acceptance passed.
 
 Current rollback pair:
-- previous release `2322169bc33415734d025010c465900c7fbc6bd9`;
-- schema-v18 backup `academiccloud-pre-hotfix-20260818T161319Z.sqlite`, SHA-256 `5233f0866384ef774f5def211721c6f114c4aef0b3acef96731ee30581a11963`;
-- encrypted off-host evidence in private backup commit `49e72e5`.
+- previous application `bc5788633e0295744905b4ae2dcdfcc5d97635bf`;
+- schema-v18 backup `academiccloud-pre-prod08r-20260818T184801Z.sqlite`, SHA-256 `338d245d0e0aeb7fec063df069e0750bf3830aceedf32a0f4aad716fb868453b`;
+- encrypted off-host evidence in private backup commit `a7369933f31af7839bc833d3d24d30688504276d`.
 
-The consumed PROD-06A window leaves no continuing authority for production mutation. Any later release remains separately Owner-gated.
+Because production schema advanced to v19, rollback is an inseparable application-plus-database operation: never select `bc578863…` while leaving the v19 database in place. The consumed PROD-08R window leaves no continuing authority for production mutation. Any later release remains separately Owner-gated.
 
 PROD-07B consumed the product authority/implementation decision for global-Owner-only account/Library permanent deletion. `PROD-03C2` remains separately parked only for any future real production disposable-object confirmation and the other explicit operations gates.
 
@@ -309,7 +310,7 @@ Preserved but non-blocking:
 Only:
 
 ```text
-L1-UX07 complete, then STOP for Owner/ChatGPT review
+PROD-08R complete and closed, then STOP
 ```
 
-RF-META01, RF-METASUGGEST01, and L1-UX07 are complete and no Epic is currently authorized. RF-METASUGGEST01 and L1-UX07 remain undeployed. Later cards require new Owner continuation. No authority exists for production contact/mutation/deployment, main merge, a real production permanent delete, real-data cleanup, infrastructure-policy repair, OCR execution, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, or AI extraction.
+RF-META01, RF-METASUGGEST01, L1-UX07, and PROD-08R are complete and no Epic is currently authorized. RF-METASUGGEST01 and L1-UX07 are deployed in exact production release `f62766c…`. Later cards require new Owner continuation. No authority exists for further production contact/mutation/deployment, incident-database inspection, main merge, a real production permanent delete, real-data cleanup, infrastructure-policy repair, OCR execution, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, or migration 020.

@@ -4,88 +4,65 @@
 
 ## Current Phase
 
-**PROD-08R — v19 Production Artifact Runtime Repair and Release Resume is active. The first v19 artifact workflow failed closed after deterministic archive creation because the extracted compiled API did not become healthy; the archive was never uploaded, independent verification was skipped, and production was not mutated. Repair is limited to proving and correcting the extracted Linux x64 / Node 24 runtime boundary. Production must not be contacted until the exact repaired artifact passes both production workflow jobs.**
+**PROD-08R — v19 Production Artifact Runtime Repair and Release Resume is complete and closed. Production acceptance is green, durable evidence is reconciled, and execution is stopped.**
 
 The governing product rule remains ADR-022:
 
 > **Academic resources are shared by default after Owner admission; personal research activity is private by default.**
 
-ADR-028 records the permanent-delete authority and data-safety boundary: only the authenticated global `owner` may permanently delete eligible recycled account or Library resources; account and Library lifecycles remain domain-specific; Library object/reference/lineage exclusivity is proved again inside the destructive transaction immediately before lifecycle mutation; any changed/shared state fails closed with storage and lineage untouched. Repository support does not authorize a real production purge.
-
-## Latest Completed Epic
-
-`tasks/done/L1-UX07.md`
-
-Completed result:
-
-- semantically forward-ported the PROD-07B account and Library purge lifecycles into v19 while preserving migration 019, RF-METASUGGEST01, and the newer metadata/suggestion behavior;
-- replaced scope-insensitive catalogue selection with explicit `account_folder`, `account_file`, `library_holding`, and `library_recycle_holding` resources whose selection keys and lifecycle routing cannot collide;
-- added real Library catalogue/Recycle checkboxes and capability-derived toolbar actions without granting Library holdings account move/rename/recycle authority;
-- made Favorites contextual and account-private: Members retain Favorite capability, Add/Remove are mutually exclusive, writes touch only missing/present relations, and Library Favorites retain canonical title plus Library Preview/Download routes;
-- preserved `canonicalTitle` with original/display filename fallback across catalogue, Favorites, Preview, and Library Recycle;
-- routed one selected account folder through the established direct folder recycle lifecycle and made mixed-domain restore/permanent-delete routing domain-correct;
-- made sequential irreversible deletion reporting truthful about partial completion and surviving selections;
-- suppressed only `production-e2e:e73af1945d52:root-folder` (`prod03c2-e2e-e73af1945d52`) from ordinary product projections;
-- changed future production acceptance so its exact run-owned root is recycled, permanently deleted through the public versioned account-folder API, and verified absent only after all acceptance gates pass;
-- corrected the historical PROD-07B manifest SHA transcription while preserving deployed artifact/release identity;
-- did not contact, deploy to, or mutate production.
-
-## Current Execution Boundary
-
-```text
-Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
-→ PROD-08R bounded diagnostics and exact Linux runtime repair   ← ACTIVE
-→ complete two-job immutable artifact verification
-→ only then revalidate and resume the already-authorized v19 production deployment
-→ STOP
-```
-
-RF-META01 and RF-METASUGGEST01 remain complete. RF-METASUGGEST01 remains undeployed. RF-FRONTMATTEROCR01, RF-SEARCH01, whole-document extraction, full-text search, semantic retrieval, RAG, and the remaining Pre-OCR queue remain parked.
+ADR-028 remains authoritative for permanent deletion: only the authenticated global `owner` may permanently delete eligible recycled account or Library resources; Library exclusivity is revalidated at the destructive transaction boundary; concurrent/shared state fails closed with storage and unrelated lineage untouched. PROD-08R preserved this PROD-07B behavior.
 
 ## Production Truth
 
-Production remains:
+```text
+PRODUCTION=f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7
+PREVIOUS_RELEASE=bc5788633e0295744905b4ae2dcdfcc5d97635bf
+PRODUCTION_SCHEMA=v19 / migrations 001–019
+RF_METASUGGEST_DEPLOYED=true
+L1_UX07_DEPLOYED=true
+ROLLBACK_USED=true
+```
 
-- exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf`;
-- previous release `2322169bc33415734d025010c465900c7fbc6bd9`;
-- schema/history v18 / migrations 001–018 with exact checksums;
-- PROD-07A migration 018 complete and PROD-07B bounded hotfix complete;
-- rollback not used;
-- integrity `ok`, foreign-key violations zero, health/readiness green, and API loopback-only at the PROD-07B checkpoint;
-- service autostart disabled and the recorded files-domain CSP, historical-OOM-log, and start-limit policy findings unchanged;
-- no migration 019, RF-METASUGGEST01, or L1-UX07 deployment.
+- migration history and repository checksums are exact 001–019; migration 019 was the sole pending migration and was applied exactly once in the final successful cutover; migration 020 is absent;
+- SQLite integrity is `ok` and foreign-key violations are zero;
+- the service is active with autostart disabled, `NRestarts=0`, and exactly one API listener at `127.0.0.1:3000`;
+- loopback/public health is `ok` and readiness is `ready`;
+- the running process is rooted in exact immutable release `f62766c…`, and public index/JavaScript/stylesheet hashes match that release;
+- RF-METASUGGEST01 and L1-UX07 are deployed; PROD-07B account/Library destructive-lifecycle behavior is preserved;
+- no migration 020, OCR, RF-SEARCH01, whole-document extraction, indexing, embeddings, retrieval, or RAG residue exists;
+- no systemd, Nginx, DNS, TLS, firewall, autostart, CSP, certificate, credential, or other infrastructure policy was changed.
 
-The current rollback pair is exact prior release `2322169bc33415734d025010c465900c7fbc6bd9` plus fresh schema-v18 backup `academiccloud-pre-hotfix-20260818T161319Z.sqlite` (SHA-256 `5233f0866384ef774f5def211721c6f114c4aef0b3acef96731ee30581a11963`). Its age ciphertext SHA-256 is `2a5c0decfab2133db708c027416e5f558dfc08ed25e5c7fe11a9b5d29eb0f7ec`, verified in private off-host backup commit `49e72e5`.
+Two earlier post-migration verification attempts failed closed on optional SQL-probe quoting, restored the exact fresh schema-v18 backup with `bc578863…`, and reverified integrity/FK/schema/history/health/readiness before retry. This consumed rollback, so `ROLLBACK_USED=true`. The final app-plus-database cutover succeeded.
 
-Production remains on the last confirmed `bc578863…` until PROD-08R produces a completely green immutable artifact and a fresh live preflight proves production truth unchanged. L1-UX07 is development-only until that gated deployment succeeds.
+The current rollback pair is inseparable:
+
+- application `bc5788633e0295744905b4ae2dcdfcc5d97635bf`;
+- fresh schema-v18 backup `academiccloud-pre-prod08r-20260818T184801Z.sqlite`, SHA-256 `338d245d0e0aeb7fec063df069e0750bf3830aceedf32a0f4aad716fb868453b`;
+- encrypted off-host backup verified in private commit `a7369933f31af7839bc833d3d24d30688504276d`.
+
+Never select `bc578863…` against the live v19 database; restore the paired v18 backup as part of any authorized rollback.
+
+## Artifact and Acceptance Evidence
+
+- failed workflow `32168164654` never uploaded or deployed its artifact;
+- diagnostic workflow `32170306350` proved that native pruning removed the pinned Linux x64 glibc `@napi-rs/canvas` binding required by PDF.js import-time `DOMMatrix` initialization;
+- repair commit `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` retained only that exact canvas native file through the existing allowlist/ELF boundary;
+- artifact workflow `32171340265`, build job `95822977886`, and independent job `95823802592` passed completely;
+- archive SHA-256 is `6438e5235ce1290d450f1beae28bed19c342a5258717f9fd321bc339f06aee32`; manifest SHA-256 is `488c445a9f4677787803c9dbcc9737347d95793ac17cd83e9582b6500fe8bb23`;
+- synthetic destructive acceptance was skipped for safety because the deployment created no uniquely owned run target; no task-owned synthetic residue exists and no pre-existing production resource was used;
+- the Owner confirmed the observed folder-count delta resulted from intentional Owner deletions, so it is not an incident and requires no comparison, audit investigation, restore, cleanup, or mutation.
 
 ## Development Truth
 
-- branch `codex/project-memory-reconcile-20260817` is the single authoritative development line;
-- schema/history remains v19 / migrations 001–019; no migration 020 exists;
-- RF-META01 and RF-METASUGGEST01 are complete and independently green;
-- RF-METASUGGEST01 and migration 019 are not deployed;
-- PROD-07B product behavior is forward-ported without importing deployment-only artifact mechanics;
-- L1-UX07 is the current development checkpoint and no task remains Doing.
+- `codex/project-memory-reconcile-20260817` remains the single authoritative non-main line;
+- development and deployed application schema head are v19 / migrations 001–019; no migration 020 exists;
+- RF-META01, RF-METASUGGEST01, PROD-07B, and L1-UX07 remain complete with their historical task evidence preserved;
+- `tasks/done/PROD-08R.md` is the bounded deployment evidence card; no task remains Doing.
 
 ## Safety Boundaries
 
-This checkpoint does not authorize:
-
-- production contact, mutation, deployment, cleanup, or real permanent deletion / `PROD-03C2` confirmation;
-- direct production SQLite or OSS mutation;
-- main merge;
-- reboot/autostart, DNS/TLS/Nginx/systemd/firewall/certificate or infrastructure-policy repair;
-- credentials or paid infrastructure changes;
-- RF-FRONTMATTEROCR01, RF-SEARCH01, OCR execution, whole-document extraction, full-text indexing/search, embeddings, semantic retrieval, or RAG;
-- external metadata/catalogue services, ISBN APIs, web search, or AI/LLM extraction.
-
-Any later production release or destructive confirmation remains a separate Owner gate.
-
-## Verification Policy
-
-L1-UX07 changed-risk evidence consists of the full backend and frontend suites, focused account/Library lifecycle and projection tests within those suites, acceptance-tool tests, backend/frontend typechecks, production builds, final diff review, and `git diff --check`. Do not replay broad historical production acceptance or contact production.
+This completed checkpoint does not authorize further production contact/mutation, incident-database inspection, real permanent deletion, `PROD-03C2`, reboot/autostart or infrastructure-policy repair, credentials, paid infrastructure, main merge, OCR, RF-FRONTMATTEROCR01, RF-SEARCH01, whole-document extraction, full-text search, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, migration 020, or unrelated work.
 
 ## Next Action
 
-Make the extracted startup failure safely observable, reproduce it in the exact Linux x64 / Node 24 artifact workflow, implement only the proven minimum runtime repair, and require both artifact workflow jobs green before any production contact. Do not start OCR/search/RAG, migration 020, infrastructure repair, main merge, or unrelated work.
+STOP. A new Owner authorization is required for any later repository or production task.
