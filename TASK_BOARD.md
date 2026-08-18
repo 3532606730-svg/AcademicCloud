@@ -4,233 +4,115 @@
 
 ## Current Phase
 
-**`PROD-05A` is complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the executable queue is at STOP.**
+**`PROD-05A` is complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. A new Owner-approved repository-only first-use correction queue is now open; production remains closed.**
 
-The requested product/runtime baseline is `ec6a79aedb201bd6164a7c68f859c1aa492c218a`; exact artifact evidence required verification-only schema-head repairs, producing release `25cdab1…` with no runtime, migration, dependency, or infrastructure delta. `PROD-05A` applied exactly migrations 009–015. Later work remains parked pending new Owner direction.
+First-use review corrected a material product-model misunderstanding: AcademicCloud is not “private Drive + optional Shared Library”. It is one Owner-curated shared academic corpus. Approved academic resources are shared to all active authorized members; Member uploads enter Owner review before admission; each member's research activity around those resources remains private.
 
-## Approved Continuous Objective
+ADR-022 is the governing product correction.
 
-The new Owner-approved execution sequence is:
+## Approved Continuous Objective — Shared Corpus + First-Use UX Repair
 
-1. `L1-UX04` — duplicate-name UX + persistent desktop sidebar;
-2. `L2-ACCOUNTARCHIVE01` — non-destructive Member archival;
-3. `L2-ADMINPOLISH01` — announcement deletion + invitation-history cleanup;
-4. `RF-LIBRARY01` — minimum real Shared Library foundation;
-5. `RF-LIBRARY02` — Member contribution review;
-6. STOP.
+Execute only the following queue:
 
-All six repository-development steps and the bounded `PROD-05A` production rollout are complete. No unrelated Pre-OCR work is authorized; STOP.
+1. `RF-SHAREDDEFAULT01` — make one canonical shared Library the default corpus; Member upload → pending Owner review → approve/reject; preserve private overlays and stable identities.
+2. `L2-CREDENTIALRESET01` — remove authenticated self-service password change and replace it with Owner-authorized one-time credential reset, with no email/SMS infrastructure.
+3. `L1-UX05` — correct information architecture and visual hierarchy; hide engineering entities/admin actions from the global shell; move audit to `操作记录`; fix stale-state folder recycle/delete UX without weakening CAS.
+4. STOP for Owner first-use review.
 
-This is an explicit Owner reprioritization based on first-use need. `RF-META01` and every unrelated later Pre-OCR card remain parked. `RF-LIBRARY03` and `RF-LIBRARY04` also remain parked; catalog, Library Tags, provenance governance, and duplicate/version grouping are not part of this accelerated slice.
+`L2-CREDENTIALRESET01` is technically independent after recovery, but the final shell must not retain the self-service password-change surface. `L1-UX05` should consume the shared-corpus semantics from `RF-SHAREDDEFAULT01` rather than implementing another UI-only sharing fiction.
 
-Verification is intentionally proportionate: focused changed-component tests, one typecheck/build pass as applicable, and one focused independent review for the Shared Library + review boundary are sufficient when green. Do not repeatedly run historical full acceptance, production artifact builds, restore drills, backup campaigns, benchmarks, or unrelated audits unless a concrete failure or material risk justifies them.
-
-Every product Epic remains independently reviewable/checkpointed. Large workstreams must be split in planning rather than implemented as giant diffs.
-
-The consumed `PROD-05A` window authorized only its read-only preflight, verified rollback backup/off-host copy, isolated rehearsal, exact deployment/migrations, and minimal synthetic/read-only acceptance. It did not authorize main merge, paid infrastructure, destructive real-data operations, `PROD-03C2`, permanent delete, reboot/autostart, infrastructure-policy changes, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary. No future action may inherit that expired gate.
+Verification must remain proportionate: focused changed-risk tests, one typecheck/build pass as applicable, and focused independent review where authorization/authentication/data migration boundaries justify it. Do not replay PROD-05A or broad historical production acceptance.
 
 ## Doing
 
-None. STOP.
+None at planning checkpoint. Codex should select `RF-SHAREDDEFAULT01` first after repository recovery.
 
-## Ready — Accelerated First-Use Queue
+## Ready — Owner-Approved First-Use Correction
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| — | None | — | Accelerated queue exhausted; STOP |
-
-The first three cards are small first-use polish and should not trigger broad architecture or production-level verification. The two Library cards are authorization/ownership work and require focused privacy/ownership tests plus one focused independent review, but not repeated unrelated audit campaigns once relevant evidence is green.
-
-## Ready / Backlog — Parked Pre-OCR Queue
-
-The remaining independently reviewed queue stays durably specified in `docs/architecture/pre-ocr-execution-plan.md`, but it is parked during the accelerated first-use queue. Do not consume it without new Owner direction.
-
-| Original order | Task | Task card | Bounded result |
-|---:|---|---|---|
-| 5 | `RF-META01` | `tasks/ready/RF-META01.md` | bounded canonical metadata/templates/minimal authorities |
-| 6 | `RF-PROV01` | `tasks/ready/RF-PROV01.md` | canonical provenance, fingerprint, leak-safe duplicate contract |
-| 7 | `RF-LINEAGE01` | `tasks/ready/RF-LINEAGE01.md` | artifact/version/derived relationship lineage |
-| 8 | `RF-STATS01` | `tasks/ready/RF-STATS01.md` | storage statistics and quota-policy foundation |
-| 9 | `RF-OVERLAY01` | `tasks/ready/RF-OVERLAY01.md` | private reading state/progress/flags/Recent/note |
-| 10 | `RF-ORGANIZE01` | `tasks/ready/RF-ORGANIZE01.md` | Personal Tags, Collections, Favorites integration |
-| 11 | `RF-SEARCH01` | `tasks/ready/RF-SEARCH01.md` | authority-scoped metadata/name search, no OCR full text |
-| 12 | `RF-VIEWS01` | `tasks/ready/RF-VIEWS01.md` | private Saved Research Views |
-| 13 | `RF-INTAKE01` | `tasks/ready/RF-INTAKE01.md` | Research Inbox, safe triage, deterministic suggestion/intake API |
-| 14 | `RF-ANNOTATE01` | `tasks/ready/RF-ANNOTATE01.md` | stable Page anchors and private sidecar annotations |
-| 15 | `RF-CITE01` | `tasks/ready/RF-CITE01.md` | private Citation Workspace and page Evidence |
-| 16 | `RF-EVIDENCE01` | `tasks/ready/RF-EVIDENCE01.md` | Evidence Bundles, Research Questions, explicit links |
-| 17 | `RF-EXPORT01` | `tasks/ready/RF-EXPORT01.md` | structured authorized scholarly export contracts |
-| 20 | `RF-LIBRARY03` | `tasks/ready/RF-LIBRARY03.md` | shared catalog, Library Tags, canonical/original naming |
-| 21 | `RF-LIBRARY04` | `tasks/ready/RF-LIBRARY04.md` | shared provenance confidence and duplicate/version grouping |
-| 22 | `RF-INTEGRITY01` | `tasks/ready/RF-INTEGRITY01.md` | read-only integrity monitor |
-| 23 | `RF-RECOVERY01` | `tasks/ready/RF-RECOVERY01.md` | no-clobber metadata snapshot and isolated recovery rehearsal |
-| 24 | `RF-AUTHMATRIX01` | `tasks/ready/RF-AUTHMATRIX01.md` | complete cross-plane authorization/non-disclosure matrix |
-| 25 | `RF-DERIVED01` | `tasks/ready/RF-DERIVED01.md` | production-disabled OCR/text/index authorization contracts only |
-
-`RF-DERIVED01` remains terminal. The accelerated Library slice does not authorize OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, or production rollout.
-
-## Separate Owner-Gated Production Track
-
-### PROD-05A — First-Use Polish and Shared Library Release
-
-**Task card:** `tasks/done/PROD-05A.md`
-
-**Status:** complete. Exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` (requested product/runtime baseline `ec6a79a…` plus verification-only schema-head repairs) was built and independently verified by GitHub Actions run `32098001755`, backed by fresh schema-v8 rollback generation SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17` and private off-host backup commit `b0238baa8bb5e5f44c5ceaf1d37ca3a80e0f9420`, rehearsed once, and deployed with exactly migrations 009–015. Production is schema v15/history 1–15 with matching checksums, integrity `ok`, zero foreign-key violations, preserved preexisting aggregates, health/readiness/public assets green, zero restarts/errors/OOM findings, unchanged infrastructure policy, and zero live Library/test rows. Full mutation acceptance used only an isolated backup copy with in-memory storage; no real Member or private data was inspected or used. STOP.
-
-### PROD-03C2 — Remaining First-Usable Production Gates
-
-**Task card:** `tasks/ready/PROD-03C2.md`
-
-**Status:** parked and not executable under the repository-development queue. It may resume only after an explicit Owner instruction opens a production operations window.
-
-The remaining bounded decisions are the exact disposable-object permanent-delete confirmation and the reboot/autostart policy. Historical authenticated/live disposable-object acceptance, the accepted UX01 generation, and the accepted PROD-04A multi-user release are already recorded and must not be replayed merely because this card exists.
-
-Any later deployment is a separate Owner-gated production rollout. PROD-04A did not consume or authorize PROD-03C2's permanent-delete or reboot/autostart decisions.
-
-## Future / Non-Blocking Backlog
-
-These are preserved but must not block the current objective:
-- Private Vault / client-side encryption;
-- External Deposit Link;
-- polished browser extension after the intake API;
-- mature Authority/RDF/semantic-web system;
-- full Time Machine/Rewind;
-- unrelated expansion of One-Time External Sharing.
-
-### Layer 2 separate backlog — L2-SHARE01
-
-One-Time External Sharing remains a separately scoped capability:
-- no-login external capability;
-- digest-only/single-use or bounded short-lived redemption semantics;
-- short signed download;
-- revoke/expiry;
-- no public bucket exposure.
-
-It is not silently pulled into the accelerated Shared Library program.
-
-## Completed
-
-### L2-ADMINPOLISH01 — Announcement and Invitation Administration Polish
-
-**Task card:** `tasks/done/L2-ADMINPOLISH01.md`
-
-**Status:** complete; focused review and verification green. Append-only migration 013 registers immutable `announcements.delete` audit; Owner-confirmed deletion removes effective/admin rows transactionally, while invitation records remain durable and are presented as prominent usable entries plus a counted collapsed history. Announcement service `6/6`, HTTP `4/4`, migration `1/1`, frontend `116/116`, workspace typecheck/build, and `git diff --check` PASS.
-
-### RF-LIBRARY01 — Library Domains, Membership, and Permissions
-
-**Task card:** `tasks/done/RF-LIBRARY01.md`
-
-**Status:** complete; focused privacy/authorization review and verification green. ADR-020 and append-only migration 014 add explicit Library entities on `library:<id>` ownership domains, durable manager/member memberships, active-account and last-effective-manager guards, credential/content-free Library audit vocabulary, and no-backfill semantics. `LibraryService` and HTTP routes provide server-derived membership, non-disclosing Library reads, and Library-owned holdings list/preview/download authorization; the responsive Shared Library panel preserves private Drive/Personal Research Overlay boundaries. Library service `3/3`, migration `2/2`, HTTP `1/1`, frontend `159/159`, workspace typecheck/build, and `git diff --check` PASS. Checkpoint `901d13d081c6c4994416184dc5b98709bf5f43a6` is pushed and synchronized; no production action occurred.
-
-### RF-LIBRARY02 — Contribution Review and Ownership Promotion
-
-**Task card:** `tasks/done/RF-LIBRARY02.md`
-
-**Status:** complete; final independent read-only review PASS. ADR-021 and append-only migration 015 implement explicit contribution review and guarded terminal promotion of a single-Artifact Record into Library ownership. State-aware ownership candidates prevent stale cross-Library enumeration/download; database insert/update guards prevent fabricated terminal state or approval outside a matching promotion intent and complete Library ownership chain; private overlays and stable file/resource identity remain intact. Final repair-focused contribution/migration `10/10`, frontend `165/165`, backend/frontend typecheck/build, and `git diff --check` PASS. Checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a` is pushed and synchronized. The accelerated queue is exhausted. No production infrastructure or production data was contacted; the only network mutation was the authorized GitHub branch push.
-
-### L2-ACCOUNTARCHIVE01 — Member Account Archival
-
-**Task card:** `tasks/done/L2-ACCOUNTARCHIVE01.md`
-
-**Status:** complete; focused review and verification green. ADR-019 and append-only migration 012 add a disabled-only, non-destructive archived Member lifecycle without rebuilding `accounts`; unarchive returns to disabled, sessions remain invalid, identity/login/data/provenance/history are retained, default lists hide archived Members, and explicit Owner reveal is available. Account service `12/12`, account HTTP `7/7`, migration `1/1`, frontend `115/115`, workspace typecheck/build, and `git diff --check` PASS.
-
-### L1-UX04 — First-Use Core Drive UX Polish
-
-**Task card:** `tasks/done/L1-UX04.md`
-
-**Status:** complete; focused review and verification green. Upload conflicts now give explicit bilingual same-folder duplicate feedback without changing authoritative uniqueness or auto-renaming behavior. Desktop navigation stays sticky below the top bar on the document scrollbar, while mobile bottom navigation is unchanged. Focused frontend `115/115`, Drive service `12/12`, frontend typecheck/build, and `git diff --check` PASS.
-
-### PROD-04A — Routine Multi-User Release 34a2eada
-
-**Task card:** `tasks/done/PROD-04A.md`
-
-**Status:** complete; independent read-only review PASS. Exact GitHub Actions Linux x64 / Node 24 artifact `34a2eada…` was verified, backed up, rehearsed, and deployed with only migrations 005–008. Production is schema v8/history 1–8; browser/runtime acceptance covers invitations, isolation, password/session revocation, disable/re-enable, announcements, Favorites, recycle/restore, upload/download/Preview, and final resource/integrity checks. Final aggregate is one active Owner, one active Owner-confirmed real Member, two disabled acceptance Members, an unpublished acceptance announcement, and an active recoverable synthetic TXT. No permanent deletion, later migration, feature work, infrastructure mutation, build on Alibaba, or unconsumed Owner gate entered the window.
-
-### RF-DOMAIN01 — Scholarly Resource and Artifact Identity Foundation
-
-**Task card:** `tasks/done/RF-DOMAIN01.md`
-
-**Status:** complete; independent read-only review PASS. ADR-018 and append-only migration 011 establish zero-backfill ownership-domain-owned Record/Artifact/Version identities, immutable one-file Version linkage, retained tombstones, account-private server authority, strict bounded keyset pages, metadata-only attach/detach, same-Record stable reattach, lifecycle availability, and service/transaction/trigger attached-purge defense. Backend `227/227`, frontend `154/154`, workspace typecheck/build, acceptance tools, dependency audits, and compiled production-runtime migration/restart/backup/isolated-restore identity acceptance are green with zero redeploy migrations and no dependency/provider/production action.
-
-### RF-OWNERSHIP01 — Explicit Resource Ownership Domains
-
-**Task card:** `tasks/done/RF-OWNERSHIP01.md`
-
-**Status:** complete; independent adversarial review PASS. ADR-016 and migration 010 add one concrete account/future-Library ownership-domain parent, exact account-domain backfill, separate creator/uploader/initiator provenance, atomic Favorite-preserving table rebuilds, domain-scoped hierarchy/recycle constraints, and server-only account-domain resolution with no API behavior change. Backend `201/201`, frontend `142/142`, build/typecheck, compiled migration/restart/backup/restore acceptance, dependency audits, and acceptance tools are green.
-
-### RF-BULK01 — Safe Bulk Drive Operations
-
-**Task card:** `tasks/done/RF-BULK01.md`
-
-**Status:** complete; independent read-only review PASS. ADR-017 defines bounded, atomic account-private move/recycle/restore/Favorite actions with opaque version concurrency tokens, FOLDER01-compatible provenance, exact restore metadata preflight, no object-byte mutation, strict 1–100 request bounds, 10,000 expanded-subtree bound, rollback-safe audit behavior, and conservative replay semantics. Backend `214/214`, frontend `149/149`, workspace typecheck/build, compiled acceptance (migration 10, redeploy 0), acceptance tools, dependency audits, and `git diff --check` are green with zero migration/dependency delta.
-
-### RF-AUDIT01 — Governance Security Audit Foundation
-
-**Task card:** `tasks/done/RF-AUDIT01.md`
-
-**Status:** complete; independent adversarial review PASS. Migration 009 provides immutable fixed-column events and append-only registries, transaction-coupled successful governance mutations, target-free denied/busy/failed attempts, two-phase permanent-purge evidence, newest-20,000 retention, and Owner-only bounded keyset review without private research surveillance. Backend `196/196`, frontend `142/142`, build/typecheck, compiled migration/restart/backup/restore acceptance, dependency audits, and acceptance tools are green.
-
-### RF-PLAN01 — Pre-OCR Execution Decomposition
-
-**Task card:** `tasks/done/RF-PLAN01.md`
-
-**Status:** complete; independent read-only planning review PASS. The complete approved Pre-OCR inventory is assigned exactly once across 25 bounded Ready cards with explicit dependencies, privacy/ownership planes, append-only migration and rollback/concurrency rules, frontend/backend/persistence acceptance, adversarial review focus, production gates, and terminal STOP before OCR execution. The Owner's later first-use priority override changes execution order for the bounded Library slice but does not invalidate the preserved full queue.
-
-### OPS01A — Operations Observability & Recovery Preparation
-
-**Task card:** `tasks/done/OPS01A.md`
-
-**Status:** complete in repository development. The exact code-bearing checkpoint `34a2eada158dcf08783dc9538d853f9361425e8a` received independent final review and exact-head Linux CI validation. The workflow passed full tests, typechecks, production build, compiled acceptance, dependency audits, Argon2 benchmark, production artifact creation/runtime verification, and a fresh-runner independent artifact download/runtime verification. Repository-owned backup receipt/freshness, dry-run retention, isolated restore drill, readiness audit, restart policy, and inactive journald preparation remain non-production tooling. No migration/dependency or production activation was added.
-
-### L2-PASSWORD01 — Authenticated Password Change
-
-**Task card:** `tasks/done/L2-PASSWORD01.md`
-
-**Status:** complete in repository development. Self-only password change uses the shared bounded Argon2id executor, expected-hash/auth-revision CAS, and atomic revoke-all sessions. Independent adversarial review PASS.
-
-### L2-ANNOUNCE01 — Global Homepage Announcements
-
-**Task card:** `tasks/done/L2-ANNOUNCE01.md`
-
-**Status:** complete in repository development. Migration 008, Owner-authorized administration, server-time effective windows, safe plain-text/HTTPS-link boundaries, responsive homepage integration, backup/restore/runtime evidence, and independent adversarial review are green.
-
-## Completed / Accepted Checkpoints
-
-- Layer 0 project setup and repository-backed workflow;
-- L1-E01 through L1-E08 foundation;
-- accepted 1 GiB-class production runtime baseline;
-- public HTTPS production foundation and UX01 production acceptance;
-- PROD-04A exact `34a2eada…` multi-user production release at schema v8 + independent review PASS;
-- PROD-05A exact `25cdab1…` first-use polish + Shared Library production release at schema v15 with only migrations 009–015;
-- L1-UX02 implementation foundation;
-- L1-BUGAUDIT01 + independent review PASS;
-- L1-FAV01 + independent review PASS;
-- L1-UX03 repairs + independent re-review PASS;
-- L1-PERF01 evidence closure;
-- L1-FOLDER01 migration 006 recursive recycle/restore + independent review PASS;
-- L2-ACCOUNTS01 migration 007 Owner/Member/invitations/isolation + independent review PASS;
-- L2-ANNOUNCE01 migration 008 + independent review PASS;
-- L2-PASSWORD01 + independent review PASS;
-- OPS01A repository/local operations preparation + independent final review and exact-head Linux artifact CI PASS;
-- RF-AUDIT01 migration 009 governance/security audit + independent adversarial review PASS;
-- RF-OWNERSHIP01 migration 010 explicit resource ownership domains + independent adversarial review PASS;
-- RF-BULK01 bounded atomic Drive/Favorites operations + independent read-only review PASS;
-- RF-DOMAIN01 migration 011 scholarly Record/Artifact/Version identity + independent read-only review PASS.
-
-Historical completed task cards are archived under `tasks/done/`; they no longer remain in `tasks/doing/`.
-
-## Stop / Escalation Boundaries
-
-Autonomous progression stops for:
-- completion of `RF-LIBRARY02` under the current queue;
-- real cost or infrastructure purchase/upgrade;
-- production SSH/credentials/security-policy changes;
-- destructive or irreversible real-data risk;
-- production DB/OSS/DNS/TLS/Nginx/systemd mutation;
-- production deployment or main merge;
-- `PROD-03C2` permanent-delete testing;
-- OCR/text-extraction execution, embeddings, retrieval, or RAG;
-- severe unexplained corruption/security anomaly;
-- a new product boundary not represented by the approved roadmap/queue.
-
-Ordinary reversible repository implementation, local append-only migrations inside an approved data model, focused tests, bounded refactors, and task/project-state reconciliation should be resolved autonomously. Once relevant verification is green and the required focused review has no material finding, record/commit rather than continuing to search for hypothetical issues.
+| 1 | `RF-SHAREDDEFAULT01` | `tasks/ready/RF-SHAREDDEFAULT01.md` | canonical shared Library + automatic Member contribution intake + preserved private overlays |
+| 2 | `L2-CREDENTIALRESET01` | `tasks/ready/L2-CREDENTIALRESET01.md` | Owner-assisted single-use password reset; remove self-service change |
+| 3 | `L1-UX05` | `tasks/ready/L1-UX05.md` | premium/quiet information architecture + admin consolidation + stale-state delete repair |
+| 4 | STOP | — | Owner inspects real first-use behavior before resuming the research queue |
+
+## Product Model — Authoritative Short Form
+
+```text
+Member upload
+  → 待审核
+  → Owner approve
+      → shared 资料库
+      → all active authorized members can browse / preview / download
+
+Shared resource
+  + User A private Favorites / reading / tags / notes / annotations / citations
+  + User B private Favorites / reading / tags / notes / annotations / citations
+```
+
+Owner upload may be admitted directly because the Owner already holds review authority. Ordinary Members do not gain shared folder/canonical-metadata/destructive corpus authority merely because they can contribute.
+
+`Scholarly Record`, `Artifact`, `Artifact Version`, ownership domains, and audit event tables remain internal implementation/domain concepts. They must not become primary UI navigation labels.
+
+## Parked Pre-OCR Queue
+
+The original independently reviewed Pre-OCR program remains valid. Early completion of `RF-LIBRARY01` and `RF-LIBRARY02` still counts as done; do not redo them. Resume only after the new first-use correction reaches STOP and the Owner reopens the queue.
+
+Remaining sequence:
+
+```text
+RF-META01
+→ RF-PROV01
+→ RF-LINEAGE01
+→ RF-STATS01
+→ RF-OVERLAY01
+→ RF-ORGANIZE01
+→ RF-SEARCH01
+→ RF-VIEWS01
+→ RF-INTAKE01
+→ RF-ANNOTATE01
+→ RF-CITE01
+→ RF-EVIDENCE01
+→ RF-EXPORT01
+→ RF-LIBRARY03
+→ RF-LIBRARY04
+→ RF-INTEGRITY01
+→ RF-RECOVERY01
+→ RF-AUTHMATRIX01
+→ RF-DERIVED01
+→ STOP BEFORE OCR
+```
+
+`RF-META01` is explicitly gated on `RF-SHAREDDEFAULT01` so canonical metadata is built on the corrected shared-resource authority and appears through normal `资料详情`, not a standalone `学术记录` browser.
+
+## Production State and Gate
+
+Production is exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. `PROD-05A` is closed and must not be rerun merely because repository development resumes.
+
+Current rollback pair:
+- release `34a2eada158dcf08783dc9538d853f9361425e8a`;
+- schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite`, SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`.
+
+The new correction queue does **not** authorize:
+- production SSH, migration, deployment, live-data backfill, or OSS mutation;
+- cleanup/permanent deletion of the visible test folders/files;
+- `PROD-03C2`;
+- reboot/autostart/infrastructure policy changes;
+- main merge;
+- OCR/text extraction, full-text indexing, embeddings, retrieval, or RAG.
+
+Any future production transition from account-owned corpus data to the canonical shared Library requires a separate Owner-gated deployment after repository implementation/review is green.
+
+## Completed Milestones Relevant to This Queue
+
+- `RF-AUDIT01` — bounded governance/security audit without research surveillance.
+- `RF-OWNERSHIP01` — explicit `account | library` ownership domains and separate uploader/contributor provenance.
+- `RF-DOMAIN01` — stable Scholarly Record / Artifact / Artifact Version identities.
+- `RF-LIBRARY01` — Library ownership/membership/holdings foundation.
+- `RF-LIBRARY02` — guarded contribution review and ownership promotion.
+- `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01` — first-use polish already complete.
+- `PROD-05A` — exact release `25cdab1…`, schema v15, production verification green.
+
+## Separate Parked Production Work
+
+`PROD-03C2` permanent-delete confirmation remains a separate Owner gate. The visible synthetic/test residue should be removable through the normal safe recycle/delete lifecycle once the stale-state bug is repaired; do not bypass product lifecycle with direct database edits.
