@@ -19,6 +19,7 @@ const backupPath = join(temporaryDirectory, "academiccloud.backup.sqlite");
 const backupReceiptPath = join(temporaryDirectory, "academiccloud.backup.receipt.json");
 const restoredPath = join(temporaryDirectory, "academiccloud.restored.sqlite");
 const password = randomBytes(24).toString("base64url");
+const memberPassword = randomBytes(24).toString("base64url");
 const port = await reservePort();
 const environment = {
   ...process.env,
@@ -68,6 +69,27 @@ try {
   if (loginResponse.status !== 200) throw new Error("compiled login failed");
   const cookie = loginResponse.headers.get("set-cookie")?.split(";", 1)[0];
   if (!cookie?.startsWith("__Host-ac_session=")) throw new Error("compiled session cookie missing");
+  const invitation = await fetchJson(`http://127.0.0.1:${port}/api/accounts/invitations`, {
+    method: "POST",
+    headers: { cookie, origin: environment.APP_ORIGIN },
+  });
+  const registeredMember = await fetchJson(`http://127.0.0.1:${port}/api/auth/register`, {
+    method: "POST",
+    headers: { origin: environment.APP_ORIGIN, "content-type": "application/json" },
+    body: JSON.stringify({
+      inviteToken: invitation.rawToken,
+      loginName: "CompiledMember",
+      password: memberPassword,
+    }),
+  });
+  const memberLoginResponse = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: environment.APP_ORIGIN },
+    body: JSON.stringify({ loginName: "CompiledMember", password: memberPassword }),
+  });
+  if (memberLoginResponse.status !== 200) throw new Error("compiled Member login failed");
+  const memberCookie = memberLoginResponse.headers.get("set-cookie")?.split(";", 1)[0];
+  if (!memberCookie?.startsWith("__Host-ac_session=")) throw new Error("compiled Member session cookie missing");
   const createdAnnouncement = await fetchJson(`http://127.0.0.1:${port}/api/announcements`, {
     method: "POST",
     headers: { cookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
@@ -128,24 +150,36 @@ try {
     `http://127.0.0.1:${port}/api/research/records/${createdRecord.record.id}`,
     { headers: { cookie } },
   );
-  const newPassword = "compiled-new-password-456";
-  const passwordChange = await fetch(`http://127.0.0.1:${port}/api/auth/password`, {
+  const retiredPasswordChange = await fetch(`http://127.0.0.1:${port}/api/auth/password`, {
     method: "POST",
     headers: { cookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
-    body: JSON.stringify({ currentPassword: password, newPassword }),
+    body: JSON.stringify({ currentPassword: password, newPassword: "retired-password-change-456" }),
   });
-  if (passwordChange.status !== 204 || !passwordChange.headers.get("set-cookie")?.includes("Max-Age=0")) {
-    throw new Error("compiled password change failed");
+  if (retiredPasswordChange.status !== 404) {
+    throw new Error("compiled self-service password route was not retired");
   }
-  const revokedSession = await fetch(`http://127.0.0.1:${port}/api/auth/session`, { headers: { cookie } });
-  const newLoginResponse = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
+  const issuedReset = await fetchJson(
+    `http://127.0.0.1:${port}/api/accounts/${registeredMember.account.id}/credential-reset`,
+    { method: "POST", headers: { cookie, origin: environment.APP_ORIGIN } },
+  );
+  const newMemberPassword = "compiled-member-reset-password-456";
+  const credentialReset = await fetch(`http://127.0.0.1:${port}/api/auth/credential-reset`, {
+    method: "POST",
+    headers: { origin: environment.APP_ORIGIN, "content-type": "application/json" },
+    body: JSON.stringify({ token: issuedReset.rawToken, newPassword: newMemberPassword }),
+  });
+  if (credentialReset.status !== 204) throw new Error("compiled credential reset failed");
+  const revokedMemberSession = await fetch(`http://127.0.0.1:${port}/api/auth/session`, {
+    headers: { cookie: memberCookie },
+  });
+  const newMemberLoginResponse = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: environment.APP_ORIGIN },
-    body: JSON.stringify({ loginName: "CompiledAcceptance", password: newPassword }),
+    body: JSON.stringify({ loginName: "CompiledMember", password: newMemberPassword }),
   });
-  if (newLoginResponse.status !== 200) throw new Error("compiled post-password-change login failed");
-  const newCookie = newLoginResponse.headers.get("set-cookie")?.split(";", 1)[0];
-  if (!newCookie?.startsWith("__Host-ac_session=")) throw new Error("compiled replacement session cookie missing");
+  if (newMemberLoginResponse.status !== 200) throw new Error("compiled post-reset Member login failed");
+  const newMemberCookie = newMemberLoginResponse.headers.get("set-cookie")?.split(";", 1)[0];
+  if (!newMemberCookie?.startsWith("__Host-ac_session=")) throw new Error("compiled replacement Member session cookie missing");
   await stopApplication(application);
   application = undefined;
 
@@ -188,17 +222,20 @@ try {
   application = startApplication(restoredEnvironment);
   const restoredReadiness = await waitForJson(`http://127.0.0.1:${port}/api/ready`);
   const restoredSession = await fetchJson(`http://127.0.0.1:${port}/api/auth/session`, {
-    headers: { cookie: newCookie },
+    headers: { cookie },
+  });
+  const restoredMemberSession = await fetchJson(`http://127.0.0.1:${port}/api/auth/session`, {
+    headers: { cookie: newMemberCookie },
   });
   const restoredAnnouncements = await fetchJson(`http://127.0.0.1:${port}/api/announcements`, {
-    headers: { cookie: newCookie },
+    headers: { cookie },
   });
   const restoredScholarlyRecords = await fetchJson(`http://127.0.0.1:${port}/api/research/records`, {
-    headers: { cookie: newCookie },
+    headers: { cookie },
   });
   const restoredScholarlyRecord = await fetchJson(
     `http://127.0.0.1:${port}/api/research/records/${createdRecord.record.id}`,
-    { headers: { cookie: newCookie } },
+    { headers: { cookie } },
   );
   await stopApplication(application);
   application = undefined;
@@ -230,8 +267,9 @@ try {
       attachedArtifact.version.id,
       compiledFileId,
     ),
-    passwordChangeRevokedOldSession: revokedSession.status === 401,
-    freshLoginAfterPasswordChange: newLoginResponse.status === 200,
+    selfServicePasswordRouteRetired: retiredPasswordChange.status === 404,
+    credentialResetRevokedOldMemberSession: revokedMemberSession.status === 401,
+    freshMemberLoginAfterCredentialReset: newMemberLoginResponse.status === 200,
     maintenanceDryRun: maintenance.mode === "dry_run",
     backupVerified: createdBackup.summary.sha256 === verifiedBackup.sha256,
     backupReceiptVerified:
@@ -247,6 +285,7 @@ try {
     isolatedRestoreVerified: verifiedRestore.sha256 === verifiedBackup.sha256,
     restoredReadiness: restoredReadiness.status,
     restoredSessionValid: restoredSession.account.loginName === "CompiledAcceptance",
+    restoredCredentialResetSessionValid: restoredMemberSession.account.loginName === "CompiledMember",
     restoredAnnouncementValid: restoredAnnouncements.announcements.some(
       (announcement) => announcement.id === createdAnnouncement.announcement.id,
     ),
@@ -262,7 +301,7 @@ try {
     ),
     redeployMigrationCount: redeployMigration.appliedVersions.length,
   };
-  assert.equal(result.firstMigrationCount, 15);
+  assert.equal(result.firstMigrationCount, 17);
   assert.equal(result.provisionedLogin, "CompiledAcceptance");
   assert.equal(result.health, "ok");
   assert.equal(result.readiness, "ready");
@@ -271,8 +310,9 @@ try {
   assert.equal(result.scholarlyRecordSurvivedRestart, true);
   assert.equal(result.scholarlyDetachReattachStable, true);
   assert.equal(result.scholarlyIdentitySurvivedRestart, true);
-  assert.equal(result.passwordChangeRevokedOldSession, true);
-  assert.equal(result.freshLoginAfterPasswordChange, true);
+  assert.equal(result.selfServicePasswordRouteRetired, true);
+  assert.equal(result.credentialResetRevokedOldMemberSession, true);
+  assert.equal(result.freshMemberLoginAfterCredentialReset, true);
   assert.equal(result.maintenanceDryRun, true);
   assert.equal(result.backupVerified, true);
   assert.equal(result.backupReceiptVerified, true);
@@ -280,6 +320,7 @@ try {
   assert.equal(result.isolatedRestoreVerified, true);
   assert.equal(result.restoredReadiness, "ready");
   assert.equal(result.restoredSessionValid, true);
+  assert.equal(result.restoredCredentialResetSessionValid, true);
   assert.equal(result.restoredAnnouncementValid, true);
   assert.equal(result.restoredScholarlyRecordValid, true);
   assert.equal(result.restoredScholarlyIdentityValid, true);
