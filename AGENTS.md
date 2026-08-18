@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, PROD-04A, L1-UX04, L2-ACCOUNTARCHIVE01, L2-ADMINPOLISH01, RF-LIBRARY01, and RF-LIBRARY02 are complete and green. Exact OPS01A checkpoint `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted production generation at schema v8. Repository schema head is migration 015; the approved bounded repository objective is exhausted and development is stopped pending Owner direction.
+**Current execution phase:** `PROD-05A` is active under an explicit Owner production gate. Repository work through first-use polish, RF-LIBRARY01, and RF-LIBRARY02 is complete and green at exact code checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a`; production remains exact `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8 pending live preflight and may transition only to schema v15 with migrations 009–015.
 
-**Approved continuous objective:** complete. The three polish cards, RF-LIBRARY01, and RF-LIBRARY02 are independently green; STOP. `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, and every unrelated later Pre-OCR task remain parked and must not be selected without new Owner direction. Repository HEAD remains newer than production HEAD. Any production SSH/deployment/migration/mutation, main merge, real credentials/cost, destructive real-data work, `PROD-03C2`, or OCR/RAG remains separately Owner-gated.
+**Approved continuous objective:** complete bounded `PROD-05A` only: one exact-head Linux artifact, read-only preflight, fresh verified rollback backup with off-host evidence, one isolated v8→v15 rehearsal, exact deployment, health/integrity/FK plus minimal synthetic release acceptance, durable reconciliation/push, then STOP. `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, and OCR/RAG remain parked or separately gated.
 
 ## Engineering Workflow
 

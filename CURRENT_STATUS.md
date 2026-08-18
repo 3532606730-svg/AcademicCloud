@@ -4,9 +4,9 @@
 
 ## Current Phase
 
-**The repository-local line through `RF-LIBRARY02` is complete and independently green. PROD-04A continues to run the earlier exact OPS01A checkpoint `34a2eada…` at production schema v8. The approved accelerated repository-development queue is exhausted and development is stopped pending Owner direction.**
+**`PROD-05A` is active under an explicit Owner-gated production window. The bounded target is exact code checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a`, with production expected to move from `34a2eada…` / schema v8 to `ec6a79a…` / schema v15 using exactly migrations 009–015.**
 
-Production remains live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8. Repository development is newer and remains repository-only until a separate Owner deployment gate selects an exact candidate.
+Production remains live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8 pending live read-only preflight. Repository evidence selects `ec6a79a…` rather than newer documentation-only HEAD; no production mutation is allowed until exact artifact, fresh rollback backup/off-host evidence, and one isolated v8→v15 rehearsal are green.
 
 ## Source-of-Truth Development Baseline
 

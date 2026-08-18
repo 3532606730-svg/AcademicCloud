@@ -4,9 +4,9 @@
 
 ## Current Phase
 
-**The repository-local objective through RF-LIBRARY02 is complete and independently green. PROD-04A continues to run exact checkpoint `34a2eada…`. The accelerated queue is exhausted and repository development is stopped pending Owner direction.**
+**`PROD-05A` is active under an explicit Owner-gated deployment window. The selected smallest code-bearing release is `ec6a79a…`; production remains `34a2eada…` / schema v8 until the exact artifact, rollback, rehearsal, integrity, and authorization gates pass.**
 
-Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8. Repository HEAD remains newer and does not automatically select another production target.
+Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8 pending read-only confirmation. `PROD-05A` may deploy only exact code checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a` and apply exactly migrations 009–015; newer documentation-only HEAD is not the release target.
 
 ## Approved Continuous Objective
 
@@ -19,7 +19,7 @@ The new Owner-approved execution sequence is:
 5. `RF-LIBRARY02` — Member contribution review;
 6. STOP.
 
-All six steps are complete. The required STOP after `RF-LIBRARY02` is now active; no production rollout or unrelated Pre-OCR work is authorized.
+All six repository-development steps are complete. The prior STOP has been superseded only by the bounded `PROD-05A` production rollout; no unrelated Pre-OCR work is authorized.
 
 This is an explicit Owner reprioritization based on first-use need. `RF-META01` and every unrelated later Pre-OCR card remain parked. `RF-LIBRARY03` and `RF-LIBRARY04` also remain parked; catalog, Library Tags, provenance governance, and duplicate/version grouping are not part of this accelerated slice.
 
@@ -27,11 +27,15 @@ Verification is intentionally proportionate: focused changed-component tests, on
 
 Every product Epic remains independently reviewable/checkpointed. Large workstreams must be split in planning rather than implemented as giant diffs.
 
-This repository objective does not authorize production access/mutation, deployment, migration, main merge, real credentials, paid infrastructure, destructive real-data operations, `PROD-03C2`, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary.
+This production objective authorizes only the `PROD-05A` read-only preflight, verified rollback backup/off-host copy, isolated rehearsal, exact deployment/migrations, and minimal synthetic acceptance. It does not authorize main merge, paid infrastructure, destructive real-data operations, `PROD-03C2`, permanent delete, reboot/autostart, infrastructure-policy changes, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary.
 
 ## Doing
 
-None. Await explicit Owner direction.
+### PROD-05A — First-Use Polish and Shared Library Release
+
+**Task card:** `tasks/doing/PROD-05A.md`
+
+**Status:** active. Exact candidate `ec6a79a…`; expected schema transition v8→v15 with only migrations 009–015. STOP before unsafe mutation on any material artifact, rollback, migration, integrity, or authorization problem.
 
 ## Ready — Accelerated First-Use Queue
 

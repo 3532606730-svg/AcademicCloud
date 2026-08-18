@@ -12,9 +12,9 @@ The repository and Git are durable project memory. Chat is planning context only
 
 **Production:** exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted multi-user generation at `https://cloud.ajtlab.top`, with schema v8/migrations 1–8. Production remains a separate Owner-gated track.
 
-**Development:** Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, repository/local OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, and RF-DOMAIN01 are independently green on the current development line. Schema head is append-only migration 011. This newer repository generation is not deployed.
+**Development:** Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, repository/local OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, and RF-LIBRARY02 are independently green. Schema head is append-only migration 015.
 
-**Active:** none. PROD-04A is complete and independently reviewed. `RF-META01` and the remaining Pre-OCR queue stay Ready/backlog and must not be consumed without new Owner direction. Development HEAD remains newer than production and does not select production HEAD.
+**Active:** `PROD-05A`, a bounded Owner-gated deployment of exact code checkpoint `ec6a79a…` with only migrations 009–015. Newer documentation-only HEAD is not the release target. `RF-META01`, `PROD-03C2`, and the remaining Pre-OCR queue stay parked.
 
 Read:
 - `AGENTS.md` — mandatory repository policy and current product/privacy boundaries;
