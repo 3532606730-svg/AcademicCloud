@@ -374,7 +374,16 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
       url: `/api/libraries/${libraryId}/recycle/${recycleEntry.file.id}/permanent`,
       headers: headers(ownerCookie),
     });
-    assert.equal(libraryPermanentDelete.statusCode, 404);
+    assert.equal(libraryPermanentDelete.statusCode, 415);
+
+    const memberPermanentDelete = await app.inject({
+      method: "DELETE",
+      url: `/api/libraries/${libraryId}/recycle/${recycleEntry.file.id}/permanent`,
+      headers: { ...headers(memberCookie), "content-type": "application/json" },
+      payload: { version: recycleEntry.version },
+    });
+    assert.equal(memberPermanentDelete.statusCode, 404);
+    assert.deepEqual(memberPermanentDelete.json(), { error: "not_found" });
 
     const ownerRestore = await app.inject({
       method: "POST",

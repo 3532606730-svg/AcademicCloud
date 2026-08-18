@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-08-18
+**Last reconciled:** 2026-08-19
 
 The roadmap records durable product sequencing and approved boundaries. `TASK_BOARD.md` is the executable queue; task cards define bounded implementation contracts. A roadmap item never bypasses an Owner production/cost/destructive-data gate.
 
@@ -30,7 +30,7 @@ Personal Research Overlay remains private per account: Favorites, Recent, readin
 
 `Scholarly Record`, `Artifact`, `Artifact Version`, ownership domains, audit rows and equivalent implementation entities remain internal concepts. Normal UI uses `资料` / `资料详情`.
 
-## Completed First-Use Correction
+## Historical First-Use Correction
 
 The previous bounded correction and production release are complete:
 
@@ -48,26 +48,40 @@ Completed outcomes include:
 - preserved stable IDs, object keys/bytes, checksums, provenance, lineage and private Favorites/overlay state;
 - Owner-assisted digest-only one-time credential reset and retired self-service password route/UI;
 - canonical shell/admin hierarchy and stale-state recycle safety;
-- production release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017.
+- production release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 at that checkpoint; PROD-07A and PROD-07B later advanced production to the current release recorded below.
 
 ## Catalogue and Bibliographic Usability Round
 
 Actual use after PROD-06A confirmed the authority/data model but exposed a narrower usability problem: root `资料库` visually stacked canonical holdings above a legacy Owner table, misplaced Name/Size/Updated headers, dropped established file-type icons, repeated filename-derived labels, left redundant descriptive copy, and lacked an authority-correct recoverable lifecycle action for Library-owned holdings. L1-UX06 repaired the presentation and recycle transition; subsequent Owner review found the Library-domain item could not be listed/restored through the account-scoped Recycle product, and the bounded closure repair completed that lifecycle without merging authority domains.
 
-Owner review established that cleaner scholarly titles and eventual basic catalogue search are near-term usability needs. The current Owner continuation authorized only the bounded suggestion Epic; RF-SEARCH01 remains parked. ADR-025/027 record the bilingual front-matter evidence model and keep OCR separately gated.
+Owner review established that cleaner scholarly titles and eventual basic catalogue search are near-term usability needs. RF-META01 and the bounded RF-METASUGGEST01 layer completed that local metadata round; RF-SEARCH01 remains parked. PROD-07B then supplied the production recycle/permanent-delete hotfix, and L1-UX07 reconciled those product changes into the v19 development line while fixing the catalogue interaction model. ADR-025/027 keep OCR separately gated; ADR-028 governs permanent-delete authority, exclusivity, and destructive-boundary revalidation.
 
-The durable round sequence for the current Owner continuation is:
+The durable completed sequence is:
 
 ```text
-L1-UX06   ← COMPLETE
-→ RF-META01   ← COMPLETE
-→ RF-METASUGGEST01   ← COMPLETE
-→ STOP for Owner/ChatGPT review
-
-Preserved later card: RF-SEARCH01
+L1-UX06
+→ RF-META01
+→ RF-METASUGGEST01
+→ PROD-07A
+→ PROD-07B
+→ L1-UX07 Catalogue Interaction Consistency
+→ usability checkpoint / STOP
+→ later bibliographic OCR/search work only after a new Owner authorization
 ```
 
-The Owner-authorized RF-METASUGGEST01 continuation is complete. Development schema is v19/history 001–019; production remains v17/history 001–017. RF-SEARCH01 and the later Pre-OCR cards remain preserved but unauthorized.
+L1-UX07 is complete. Development remains schema v19/history 001–019 with RF-METASUGGEST01 undeployed and the PROD-07B product lifecycle forward-ported. Production remains exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018. RF-FRONTMATTEROCR01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized.
+
+### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
+
+Completed outcome:
+
+- resource-scope-aware catalogue and Recycle selection across account folders/files and Library holdings;
+- capability-aware actions that preserve domain-specific authority and lifecycle routing;
+- coherent contextual Favorites, including Member-private Favorites and Library Preview/Download identity;
+- coherent account/Library Recycle selection, restore, and truthful sequential permanent-delete reporting;
+- exact suppression of the one historical `production-e2e:e73af1945d52:root-folder` fixture from normal projections;
+- future production acceptance cleanup of only its exact run-owned root after all gates pass, preventing persistent catalogue residue;
+- no migration 020, production contact, deployment, or real destructive operation.
 
 ### L1-UX06 — Canonical Catalogue Presentation Repair — Complete
 
@@ -175,7 +189,7 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 ## Layer 1 — Core Resource Handling
 
-**Status:** Foundation, L1-UX06, RF-META01, and RF-METASUGGEST01 are complete; STOP is in force after the RF-METASUGGEST01 checkpoint.
+**Status:** Foundation, L1-UX06, RF-META01, RF-METASUGGEST01, and L1-UX07 are complete; STOP is in force after the L1-UX07 usability checkpoint.
 
 Completed foundations include SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, Favorites, bulk operations, recursive recycle/restore, duplicate-name UX, upload recovery, mobile/fullscreen Preview, sticky navigation, shared-corpus authority and first-use shell repair.
 
@@ -194,7 +208,7 @@ Later optional backlog includes one-time external sharing if separately reopened
 
 ## Layer 3 — Scholarly Workspace and Model
 
-**Status:** L1-UX06, canonical metadata RF-META01, and bounded suggestions RF-METASUGGEST01 are complete. Search and the remaining personal-workspace cards are preserved but not active.
+**Status:** L1-UX06, canonical metadata RF-META01, bounded suggestions RF-METASUGGEST01, and L1-UX07 catalogue consistency are complete. Search and the remaining personal-workspace cards are preserved but not active.
 
 Stable Scholarly Record / Artifact / Artifact Version identities already exist.
 
@@ -224,7 +238,7 @@ Later approved cards remain `RF-LIBRARY03` shared catalog/tags/canonical-origina
 
 ## Layer 5 — Pre-OCR Hardening
 
-**Status:** Approved but parked after the completed RF-METASUGGEST01 checkpoint.
+**Status:** Approved but parked after the completed L1-UX07 checkpoint.
 
 Later foundations include integrity monitoring, no-clobber metadata recovery, complete authorization/non-disclosure matrix, structured export, stable page/derived-artifact authorization contracts, and production-disabled OCR/text/index adapter contracts.
 
@@ -269,16 +283,16 @@ Verification is proportionate, not performative. Run checks that materially cove
 
 ## Production Track
 
-Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 from completed `PROD-06A`.
+Production runs exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018 from completed PROD-07A and PROD-07B. The previous release is `2322169bc33415734d025010c465900c7fbc6bd9`; rollback was not used.
 
 Current rollback pair:
-- previous release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e`;
-- schema-v15 backup `academiccloud-pre-prod06a-20260818T073533Z.sqlite`, SHA-256 `cdc2aec14888d04172bce4555dd6d17f10b5fb7c45efa9c7133070ce4f5bf7c4`;
-- encrypted off-host evidence in private backup commit `9c8f4503e48e55ea7b65aebe35dd242e878c95e8`.
+- previous release `2322169bc33415734d025010c465900c7fbc6bd9`;
+- schema-v18 backup `academiccloud-pre-hotfix-20260818T161319Z.sqlite`, SHA-256 `5233f0866384ef774f5def211721c6f114c4aef0b3acef96731ee30581a11963`;
+- encrypted off-host evidence in private backup commit `49e72e5`.
 
 The consumed PROD-06A window leaves no continuing authority for production mutation. Any later release remains separately Owner-gated.
 
-`PROD-03C2` permanent-delete confirmation remains separately parked.
+PROD-07B consumed the product authority/implementation decision for global-Owner-only account/Library permanent deletion. `PROD-03C2` remains separately parked only for any future real production disposable-object confirmation and the other explicit operations gates.
 
 ## Non-Blocking Future Backlog
 
@@ -295,7 +309,7 @@ Preserved but non-blocking:
 Only:
 
 ```text
-RF-METASUGGEST01 only, then STOP for Owner/ChatGPT review
+L1-UX07 complete, then STOP for Owner/ChatGPT review
 ```
 
-RF-META01 and RF-METASUGGEST01 are complete and no Epic is currently authorized. Later cards require new Owner continuation. No authority exists for production contact/mutation, main merge, permanent deletion, real-data cleanup, OCR execution, whole-document extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN/web lookup, web search or AI extraction.
+RF-META01, RF-METASUGGEST01, and L1-UX07 are complete and no Epic is currently authorized. RF-METASUGGEST01 and L1-UX07 remain undeployed. Later cards require new Owner continuation. No authority exists for production contact/mutation/deployment, main merge, a real production permanent delete, real-data cleanup, infrastructure-policy repair, OCR execution, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, or AI extraction.

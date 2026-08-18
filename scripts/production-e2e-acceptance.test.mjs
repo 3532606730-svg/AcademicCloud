@@ -7,7 +7,7 @@
 // three dependency factories (body timeouts fail closed — never an apparent
 // 200/201 success), empty-204 handling, verdict completeness,
 // partial-evidence retention, fail-fast behavior, error-message redaction,
-// and the absence of any permanent-delete path.
+// and exact synthetic-fixture cleanup through the public versioned lifecycle.
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -29,6 +29,7 @@ import {
   md5Base64,
   nestedFolderCreateBody,
   requestInit,
+  runAcceptanceCleanup,
   runFolderLifecycle,
   runOneFile,
   sha256,
@@ -172,6 +173,16 @@ function validResults() {
       folderRecycledListed: true,
       folderRestore: { status: CONTRACT.folderRestore, active: true, parentRelation: true },
     },
+    cleanup: {
+      rootDelete: CONTRACT.folderDelete,
+      recycleList: { status: CONTRACT.recycleList },
+      rootRecycledListed: true,
+      permanentDelete: CONTRACT.folderPermanent,
+      entriesList: { status: CONTRACT.entriesList },
+      catalogueAbsent: true,
+      recycleAfter: { status: CONTRACT.recycleList },
+      recycleAbsent: true,
+    },
     logout: CONTRACT.logout,
   };
 }
@@ -201,6 +212,7 @@ test("status-code contract matches the backend drive/auth routes", () => {
   assert.equal(CONTRACT.folderCreate, 201);
   assert.equal(CONTRACT.folderDelete, 204);
   assert.equal(CONTRACT.folderRestore, 200);
+  assert.equal(CONTRACT.folderPermanent, 204);
   assert.equal(CONTRACT.uploadReserve, 201);
   assert.equal(CONTRACT.uploadRenew, 200);
   assert.equal(CONTRACT.uploadComplete, 200);
@@ -244,9 +256,11 @@ test("request semantics split: JSON body requests vs bodyless actions", () => {
   assert.ok(!readFileSync(scriptPath, "utf8").includes("jsonTypeOnly"));
 });
 
-test("the tool never references the permanent-delete endpoint", () => {
+test("the tool limits permanent cleanup to the exact synthetic root folder", () => {
   const scriptPath = fileURLToPath(import.meta.url).replace(/\.test\.mjs$/, ".mjs");
-  assert.ok(!readFileSync(scriptPath, "utf8").includes("/permanent"));
+  const source = readFileSync(scriptPath, "utf8");
+  assert.ok(source.includes("/api/drive/folders/${encodeURIComponent(ctx.rootFolderId)}/permanent"));
+  assert.equal(source.match(/\/permanent/g)?.length, 1);
 });
 
 test("timeout policy values are bounded and distinct", () => {
@@ -437,6 +451,31 @@ test("runFolderLifecycle: bodyless folder restore with parent verification and p
   assert.ok(!("body" in restoreInit));
 });
 
+test("runAcceptanceCleanup purges only the exact versioned synthetic root and verifies absence", async () => {
+  const calls = [];
+  const version = "v".repeat(43);
+  let recycleReads = 0;
+  const api = async (method, path, options) => {
+    calls.push({ method, path, options });
+    if (method === "DELETE" && path === `/api/drive/folders/${ROOT_FOLDER_ID}`) return jsonBody(204, {});
+    if (path === "/api/drive/recycle") {
+      recycleReads += 1;
+      return recycleReads === 1
+        ? jsonBody(200, { folders: [{ id: ROOT_FOLDER_ID, name: TEST_CTX.folderName, state: "deleted", version }], files: [] })
+        : jsonBody(200, { folders: [], files: [] });
+    }
+    if (method === "DELETE" && path === `/api/drive/folders/${ROOT_FOLDER_ID}/permanent`) return jsonBody(204, {});
+    if (method === "GET" && path === "/api/drive/entries") return jsonBody(200, { folder: null, folders: [], files: [] });
+    throw new Error(`unexpected fake call: ${method} ${path}`);
+  };
+  const result = await runAcceptanceCleanup(TEST_CTX, { api });
+  assert.equal(result.permanentDelete, CONTRACT.folderPermanent);
+  assert.equal(result.catalogueAbsent, true);
+  assert.equal(result.recycleAbsent, true);
+  const permanent = calls.find((call) => call.path.endsWith("/permanent"));
+  assert.deepEqual(permanent.options.json, { version });
+});
+
 test("partial evidence: a failure after reservation leaves the registered fileResult with FILE_ID", async () => {
   const fakes = makeFakes(PAYLOAD_SPECS[2], TEST_CTX, {
     api: (method, path) => {
@@ -584,6 +623,14 @@ test("computeVerdict rejects when ANY single network step or semantic check fail
     ["folder restore status", (r) => { r.folderLifecycle.folderRestore.status = 400; }],
     ["folder restored active", (r) => { r.folderLifecycle.folderRestore.active = false; }],
     ["folder restored parent", (r) => { r.folderLifecycle.folderRestore.parentRelation = false; }],
+    ["cleanup root recycle status", (r) => { r.cleanup.rootDelete = 500; }],
+    ["cleanup recycle lookup status", (r) => { r.cleanup.recycleList.status = 500; }],
+    ["cleanup root recycle semantic", (r) => { r.cleanup.rootRecycledListed = false; }],
+    ["cleanup permanent status", (r) => { r.cleanup.permanentDelete = 500; }],
+    ["cleanup catalogue status", (r) => { r.cleanup.entriesList.status = 500; }],
+    ["cleanup catalogue absence", (r) => { r.cleanup.catalogueAbsent = false; }],
+    ["cleanup recycle-after status", (r) => { r.cleanup.recycleAfter.status = 500; }],
+    ["cleanup recycle absence", (r) => { r.cleanup.recycleAbsent = false; }],
     ["logout status", (r) => { r.logout = 500; }],
     ["file count mismatch", (r) => { r.files = [validFileResult()]; }],
   ];

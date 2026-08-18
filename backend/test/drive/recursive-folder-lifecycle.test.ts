@@ -3,6 +3,7 @@ import { test, type TestContext } from "node:test";
 
 import type { NewAccount } from "../../src/auth/account.js";
 import { DriveError, DriveService } from "../../src/drive/drive-service.js";
+import { driveEntryVersion } from "../../src/drive/bulk.js";
 import type { RecycleRepository } from "../../src/drive/recycle-repository.js";
 import { FavoriteService } from "../../src/favorites/favorite-service.js";
 import type { Persistence, RepositorySet } from "../../src/persistence/contracts.js";
@@ -146,6 +147,33 @@ test("deep recursive recycle restores only same-group active members and never d
   assert.deepEqual(storage.deleteCalls, []);
   assert.equal(database.prepare("SELECT 1 FROM recycle_groups WHERE id = ?").get(folderGroup.id), undefined);
   assert.ok(database.prepare("SELECT 1 FROM recycle_groups WHERE id = ?").get(oldGroup.id));
+});
+
+test("recursive folder permanent delete preserves the existing purge ordering and opaque root CAS", async (context) => {
+  const { drive, storage, favorites, persistence } = fixture(context);
+  const root = drive.createFolder("owner-1", "Purge root", null);
+  const child = drive.createFolder("owner-1", "Purge child", root.id);
+  const rootFile = await activeFile(drive, storage, "root.pdf", root.id);
+  const childFile = await activeFile(drive, storage, "child.pdf", child.id);
+  favorites.setFileFavorite("owner-1", childFile.id, true);
+  drive.deleteFolder("owner-1", root.id);
+  const deletedRoot = persistence.repositories.folders.findById("owner-1", root.id)!;
+
+  await assert.rejects(
+    drive.permanentlyDeleteFolder("owner-1", root.id, "x".repeat(43)),
+    (error: unknown) => error instanceof DriveError && error.code === "concurrent_change",
+  );
+  assert.deepEqual(storage.deleteCalls, []);
+  assert.equal(persistence.repositories.files.findById("owner-1", childFile.id)?.state, "deleted");
+
+  await drive.permanentlyDeleteFolder("owner-1", root.id, driveEntryVersion(deletedRoot));
+  assert.equal(persistence.repositories.folders.findById("owner-1", root.id), null);
+  assert.equal(persistence.repositories.folders.findById("owner-1", child.id), null);
+  assert.equal(persistence.repositories.files.findById("owner-1", rootFile.id)?.state, "purged");
+  assert.equal(persistence.repositories.files.findById("owner-1", childFile.id)?.state, "purged");
+  assert.deepEqual(new Set(storage.deleteCalls), new Set([rootFile.objectKey, childFile.objectKey]));
+  assert.deepEqual(favorites.listFavorites("owner-1").files, []);
+  assert.equal(persistence.repositories.recycle.findGroupByRoot("owner-1", "folder", root.id), null);
 });
 
 test("an independently recycled nested folder and favorite remain outside the parent group", async (context) => {

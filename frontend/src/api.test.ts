@@ -557,6 +557,30 @@ describe("ApiClient", () => {
     expect(restoreHeaders.get("Content-Type")).toBe("application/json");
   });
 
+  it("sends version-pinned account folder/file and Library permanent-delete requests to their own domains", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+    const api = new ApiClient({ fetcher });
+    const folderVersion = "f".repeat(43);
+    const fileVersion = "g".repeat(43);
+    const libraryVersion = "h".repeat(43);
+
+    await api.permanentlyDeleteFolder("folder / one", folderVersion);
+    await api.permanentlyDeleteFile("file / one", fileVersion);
+    await api.permanentlyDeleteLibraryHolding("library / one", "file / two", libraryVersion);
+
+    expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
+      "/api/drive/folders/folder%20%2F%20one/permanent",
+      "/api/drive/files/file%20%2F%20one/permanent",
+      "/api/libraries/library%20%2F%20one/recycle/file%20%2F%20two/permanent",
+    ]);
+    for (const [index, version] of [folderVersion, fileVersion, libraryVersion].entries()) {
+      const init = fetcher.mock.calls[index]?.[1];
+      expect(init?.method).toBe("DELETE");
+      expect(new Headers(init?.headers).get("Content-Type")).toBe("application/json");
+      expect(init?.body).toBe(JSON.stringify({ version }));
+    }
+  });
+
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {
     const responses = [
       new Response(null, { status: 204 }), // setFileFavorite(true)

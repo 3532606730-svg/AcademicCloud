@@ -51,6 +51,8 @@ export interface LibraryHolding {
 export interface LibraryRecycledHolding {
   libraryId: string;
   recordId: string;
+  recordLabel: string;
+  canonicalTitle: string | null;
   artifactId: string;
   versionId: string;
   file: {

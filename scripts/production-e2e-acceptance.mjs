@@ -10,7 +10,9 @@
 //   (none)   full run (see PROD-03C2 task card for the exact flow)
 //
 // Prints ONLY non-secret statuses, checksums, and opaque identifiers.
-// Never touches existing production material and NEVER permanently deletes.
+// Never touches existing production material. A fully successful run removes
+// only its own exact, version-pinned synthetic root through the normal purge
+// lifecycle so acceptance does not leave visible catalogue residue.
 // Every external operation — including response-body consumption — is bounded
 // by an explicit timeout owned until the body has been fully read.
 
@@ -30,6 +32,7 @@ export const CONTRACT = Object.freeze({
   folderCreate: 201,
   folderDelete: 204,
   folderRestore: 200,
+  folderPermanent: 204,
   uploadReserve: 201,
   uploadRenew: 200,
   uploadComplete: 200,
@@ -253,6 +256,14 @@ export function computeVerdict(results, specCount) {
     results.folderLifecycle?.folderRestore?.status === CONTRACT.folderRestore &&
     results.folderLifecycle?.folderRestore?.active === true &&
     results.folderLifecycle?.folderRestore?.parentRelation === true &&
+    results.cleanup?.rootDelete === CONTRACT.folderDelete &&
+    results.cleanup?.recycleList?.status === CONTRACT.recycleList &&
+    results.cleanup?.rootRecycledListed === true &&
+    results.cleanup?.permanentDelete === CONTRACT.folderPermanent &&
+    results.cleanup?.entriesList?.status === CONTRACT.entriesList &&
+    results.cleanup?.catalogueAbsent === true &&
+    results.cleanup?.recycleAfter?.status === CONTRACT.recycleList &&
+    results.cleanup?.recycleAbsent === true &&
     results.logout === CONTRACT.logout;
 }
 
@@ -476,6 +487,67 @@ export async function runFolderLifecycle(ctx, deps) {
   return result;
 }
 
+// Successful acceptance owns this exact synthetic hierarchy. Remove it only
+// after every read/write/download/restore gate passed, using the public
+// recursive folder purge endpoint and the opaque version returned by Recycle.
+// Existing or unrelated production resources are never cleanup candidates.
+export async function runAcceptanceCleanup(ctx, deps) {
+  const result = {
+    rootDelete: null,
+    recycleList: { status: null },
+    rootRecycledListed: null,
+    permanentDelete: null,
+    entriesList: { status: null },
+    catalogueAbsent: null,
+    recycleAfter: { status: null },
+    recycleAbsent: null,
+  };
+
+  const deleteResponse = await guard("acceptance root recycle", deps.api(
+    "DELETE",
+    `/api/drive/folders/${encodeURIComponent(ctx.rootFolderId)}`,
+    { cookie: ctx.cookie },
+  ));
+  result.rootDelete = deleteResponse.status;
+  if (result.rootDelete !== CONTRACT.folderDelete) throw new Error("acceptance root recycle failed");
+
+  const recycleResponse = await guard("acceptance cleanup recycle lookup", deps.api("GET", "/api/drive/recycle", { cookie: ctx.cookie }));
+  const recycledRoot = (recycleResponse.body?.folders ?? []).find((entry) => (
+    entry.id === ctx.rootFolderId
+    && entry.name === ctx.folderName
+    && entry.state === "deleted"
+    && typeof entry.version === "string"
+  ));
+  result.recycleList = { status: recycleResponse.status };
+  result.rootRecycledListed = Boolean(recycledRoot);
+  if (recycleResponse.status !== CONTRACT.recycleList || !recycledRoot) {
+    throw new Error("acceptance root missing from cleanup recycle lookup");
+  }
+
+  const permanentResponse = await guard("acceptance root permanent cleanup", deps.api(
+    "DELETE",
+    `/api/drive/folders/${encodeURIComponent(ctx.rootFolderId)}/permanent`,
+    { cookie: ctx.cookie, json: { version: recycledRoot.version } },
+  ));
+  result.permanentDelete = permanentResponse.status;
+  if (result.permanentDelete !== CONTRACT.folderPermanent) throw new Error("acceptance root permanent cleanup failed");
+
+  const entriesResponse = await guard("acceptance cleanup catalogue verification", deps.api("GET", "/api/drive/entries", { cookie: ctx.cookie }));
+  result.entriesList = { status: entriesResponse.status };
+  result.catalogueAbsent = !(entriesResponse.body?.folders ?? []).some((entry) => entry.id === ctx.rootFolderId);
+  if (entriesResponse.status !== CONTRACT.entriesList || result.catalogueAbsent !== true) {
+    throw new Error("acceptance root remained in catalogue after cleanup");
+  }
+
+  const recycleAfter = await guard("acceptance cleanup recycle verification", deps.api("GET", "/api/drive/recycle", { cookie: ctx.cookie }));
+  result.recycleAfter = { status: recycleAfter.status };
+  result.recycleAbsent = !(recycleAfter.body?.folders ?? []).some((entry) => entry.id === ctx.rootFolderId);
+  if (recycleAfter.status !== CONTRACT.recycleList || result.recycleAbsent !== true) {
+    throw new Error("acceptance root remained in recycle after cleanup");
+  }
+  return result;
+}
+
 async function run() {
   const loginName = await promptVisible("AcademicCloud login name: ");
   const password = await promptSecret("AcademicCloud password (hidden): ");
@@ -483,7 +555,7 @@ async function run() {
   const folderName = `prod03c2-e2e-${runId}`;
   const results = {
     login: null, session: null, rootFolder: null, nestedFolder: null,
-    files: [], folderLifecycle: null, logout: null,
+    files: [], folderLifecycle: null, cleanup: null, logout: null,
   };
   let cookie = "";
 
@@ -543,6 +615,7 @@ async function run() {
     }
 
     results.folderLifecycle = await runFolderLifecycle(ctx, deps);
+    results.cleanup = await runAcceptanceCleanup(ctx, deps);
   } finally {
     if (cookie) {
       try {
@@ -590,6 +663,7 @@ async function run() {
       ].join(" "));
     }
     console.log(`folderLifecycle: childEntriesList=${results.folderLifecycle?.childEntriesList?.status ?? "n/a"} childEmpty=${results.folderLifecycle?.childEmpty ?? false} folderDelete=${results.folderLifecycle?.folderDelete ?? "n/a"} folderRecycleList=${results.folderLifecycle?.folderRecycleList?.status ?? "n/a"} folderRecycledListed=${results.folderLifecycle?.folderRecycledListed ?? false} folderRestore=${results.folderLifecycle?.folderRestore?.status ?? "n/a"} restoredActive=${results.folderLifecycle?.folderRestore?.active ?? false} restoredParent=${results.folderLifecycle?.folderRestore?.parentRelation ?? false}`);
+    console.log(`cleanup: rootDelete=${results.cleanup?.rootDelete ?? "n/a"} recycleList=${results.cleanup?.recycleList?.status ?? "n/a"} rootRecycledListed=${results.cleanup?.rootRecycledListed ?? false} permanentDelete=${results.cleanup?.permanentDelete ?? "n/a"} entriesList=${results.cleanup?.entriesList?.status ?? "n/a"} catalogueAbsent=${results.cleanup?.catalogueAbsent ?? false} recycleAfter=${results.cleanup?.recycleAfter?.status ?? "n/a"} recycleAbsent=${results.cleanup?.recycleAbsent ?? false}`);
     console.log(`logout_status=${results.logout ?? "n/a"}`);
     console.log(`VERDICT=${computeVerdict(results, PAYLOAD_SPECS.length)}`);
   }

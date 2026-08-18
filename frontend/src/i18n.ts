@@ -380,6 +380,8 @@ const EN = {
   "file.downloadOpened": "Download started.",
   "file.permanentDeleted": "File permanently deleted.",
   "file.permanentConfirm": "Permanently delete “{name}”? This removes the stored object and cannot be undone.",
+  "folder.permanentDeleted": "Folder permanently deleted.",
+  "folder.permanentConfirm": "Permanently delete “{name}” and all of its recycled contents? This removes stored objects and cannot be undone.",
   // entry table
   "table.aria": "Catalogue",
   "table.name": "Name",
@@ -448,6 +450,11 @@ const EN = {
   "bulk.recycleConfirm": "Move {count} selected items to the recycle bin? Active contents of selected folders are included.",
   "bulk.completed": "Updated {count} selected items.",
   "bulk.failedAtomic": "No selected item was changed.",
+  "bulk.partialCompleted": "Completed {completed} of {total} selected items. Remaining items were refreshed.",
+  "bulk.permanentDelete": "Delete forever",
+  "bulk.permanentConfirm": "Permanently delete {count} selected recycled resources? Each resource uses its own protected lifecycle; this cannot be undone.",
+  "bulk.permanentCompleted": "Permanently deleted {count} selected items.",
+  "bulk.permanentPartial": "Permanently deleted {completed} of {total} selected resources. Surviving resources were refreshed and remain selected.",
   // shared
   "shared.loadingItems": "Loading items…",
 } as const;
@@ -813,6 +820,8 @@ const ZH_CN: Record<MessageKey, string> = {
   "file.downloadOpened": "已开始下载。",
   "file.permanentDeleted": "文件已永久删除。",
   "file.permanentConfirm": "永久删除“{name}”？这将移除已存储的对象，且无法撤销。",
+  "folder.permanentDeleted": "文件夹已永久删除。",
+  "folder.permanentConfirm": "永久删除“{name}”及其全部已回收内容？这将移除已存储的对象，且无法撤销。",
   "table.aria": "目录",
   "table.name": "名称",
   "table.size": "大小",
@@ -875,6 +884,11 @@ const ZH_CN: Record<MessageKey, string> = {
   "bulk.recycleConfirm": "将所选 {count} 项移入回收站？所选文件夹中的有效内容也会一并移入。",
   "bulk.completed": "已更新所选 {count} 项。",
   "bulk.failedAtomic": "所选项目均未发生更改。",
+  "bulk.partialCompleted": "所选 {total} 项中已完成 {completed} 项；其余项目已按服务器状态刷新。",
+  "bulk.permanentDelete": "永久删除",
+  "bulk.permanentConfirm": "永久删除所选 {count} 个回收资源？每个资源将按其所属域的受保护生命周期处理，且无法撤销。",
+  "bulk.permanentCompleted": "所选 {count} 项已永久删除。",
+  "bulk.permanentPartial": "所选 {total} 项中已永久删除 {completed} 项；其余资源已刷新并保持选中。",
   "shared.loadingItems": "正在加载项目…",
 };
 

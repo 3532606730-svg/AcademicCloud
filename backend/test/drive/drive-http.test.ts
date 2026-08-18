@@ -5,6 +5,7 @@ import { test, type TestContext } from "node:test";
 import { AuthService } from "../../src/auth/auth-service.js";
 import type { PasswordHasher } from "../../src/auth/password-hasher.js";
 import { DriveService } from "../../src/drive/drive-service.js";
+import { driveEntryVersion } from "../../src/drive/bulk.js";
 import { createApp, type CreateAppOptions } from "../../src/platform/app.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createTestPersistence } from "../persistence/helpers.js";
@@ -273,6 +274,7 @@ test("every drive route enforces authentication and every unsafe route enforces 
     { method: "GET", url: "/api/drive/entries" },
     { method: "PATCH", url: "/api/drive/folders/folder", payload: { name: "Renamed" }, unsafe: true },
     { method: "DELETE", url: "/api/drive/folders/folder", unsafe: true },
+    { method: "DELETE", url: "/api/drive/folders/folder/permanent", payload: { version: "v".repeat(43) }, unsafe: true },
     { method: "POST", url: "/api/drive/folders/folder/restore", unsafe: true },
     { method: "POST", url: "/api/drive/uploads", payload: validUpload, unsafe: true },
     { method: "GET", url: "/api/drive/uploads" },
@@ -283,7 +285,7 @@ test("every drive route enforces authentication and every unsafe route enforces 
     { method: "DELETE", url: "/api/drive/files/file", unsafe: true },
     { method: "POST", url: "/api/drive/files/file/restore", unsafe: true },
     { method: "GET", url: "/api/drive/recycle" },
-    { method: "DELETE", url: "/api/drive/files/file/permanent", unsafe: true },
+    { method: "DELETE", url: "/api/drive/files/file/permanent", payload: { version: "v".repeat(43) }, unsafe: true },
   ];
 
   for (const route of routes) {
@@ -352,6 +354,7 @@ test("owner-scoped routes uniformly hide another account's resources from a Memb
     { method: "PATCH", url: `/api/drive/folders/${nestedFolder.id}`, payload: { parentId: null } },
     { method: "DELETE", url: `/api/drive/folders/${activeFolder.id}` },
     { method: "POST", url: `/api/drive/folders/${deletedFolder.id}/restore` },
+    { method: "DELETE", url: `/api/drive/folders/${deletedFolder.id}/permanent`, payload: { version: "v".repeat(43) } },
     { method: "GET", url: `/api/drive/uploads?folderId=${activeFolder.id}` },
     { method: "POST", url: `/api/drive/uploads/${pending.file.id}/authorization` },
     { method: "POST", url: `/api/drive/uploads/${pending.file.id}/complete` },
@@ -361,7 +364,7 @@ test("owner-scoped routes uniformly hide another account's resources from a Memb
     { method: "PATCH", url: `/api/drive/files/${nested.id}`, payload: { folderId: null } },
     { method: "DELETE", url: `/api/drive/files/${active.id}` },
     { method: "POST", url: `/api/drive/files/${deleted.id}/restore` },
-    { method: "DELETE", url: `/api/drive/files/${deleted.id}/permanent` },
+    { method: "DELETE", url: `/api/drive/files/${deleted.id}/permanent`, payload: { version: driveEntryVersion(deleted) } },
   ];
 
   for (const attempt of attempts) {
@@ -396,6 +399,7 @@ test("owner-scoped routes uniformly hide another account's resources from a Memb
       .map((event) => ({ action: event.action, target: event.targetId, reason: event.reason }))
       .sort((left, right) => left.action.localeCompare(right.action)),
     [
+      { action: "drive.file_purge_request", target: null, reason: "not_found" },
       { action: "drive.file_purge_request", target: null, reason: "not_found" },
       { action: "drive.file_recycle", target: null, reason: "not_found" },
       { action: "drive.file_restore", target: null, reason: "not_found" },
@@ -433,6 +437,41 @@ test("drive authorization and destructive outcomes emit stable account-scoped au
   assert.doesNotMatch(logs, new RegExp(folder.id));
 });
 
+test("a global Member cannot permanently delete even their own recycled account file", async (context) => {
+  const { app, storage, driveService, login } = await fixture(context);
+  const memberCookie = await login("member-2");
+  const upload = await driveService.createUpload("member-2", {
+    folderId: null,
+    displayName: "member-disposable.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 7,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  storage.putObject({
+    objectKey: upload.file.objectKey,
+    sizeBytes: 7,
+    etag: null,
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+  await driveService.completeUpload("member-2", upload.file.id);
+  driveService.deleteFile("member-2", upload.file.id);
+  const recycled = driveService.listRecycle("member-2").files[0]!;
+
+  const response = await app.inject({
+    method: "DELETE",
+    url: `/api/drive/files/${recycled.id}/permanent`,
+    headers: { cookie: memberCookie, origin: ORIGIN, "content-type": "application/json" },
+    payload: { version: driveEntryVersion(recycled) },
+  });
+  assert.equal(response.statusCode, 404);
+  assert.deepEqual(response.json(), { error: "not_found" });
+  assert.equal(driveService.listRecycle("member-2").files[0]?.state, "deleted");
+  assert.notEqual(await storage.statObject(upload.file.objectKey), null);
+});
+
 test("permanent-delete provider failure records a target-free failed completion attempt", async (context) => {
   const { app, persistence, storage, driveService, login } = await fixture(context);
   const ownerCookie = await login("owner-1");
@@ -461,7 +500,8 @@ test("permanent-delete provider failure records a target-free failed completion 
   const response = await app.inject({
     method: "DELETE",
     url: `/api/drive/files/${upload.file.id}/permanent`,
-    headers: { cookie: ownerCookie, origin: ORIGIN },
+    headers: { cookie: ownerCookie, origin: ORIGIN, "content-type": "application/json" },
+    payload: { version: driveEntryVersion(driveService.listRecycle("owner-1").files[0]!) },
   });
   assert.equal(response.statusCode, 503);
   assert.equal(persistence.repositories.files.findById("owner-1", upload.file.id)?.state, "purging");

@@ -81,6 +81,7 @@ export class SqliteRecycleRepository implements RecycleRepository {
   readonly #restoreFolder;
   readonly #restoreFile;
   readonly #markFilePurged;
+  readonly #markFilePurgedForDomain;
   readonly #deleteGroup;
 
   constructor(database: SqliteDatabase) {
@@ -245,6 +246,13 @@ export class SqliteRecycleRepository implements RecycleRepository {
       ) AND id = ? AND state = 'purging'
         AND revision = ? AND recycle_group_id = ?
     `);
+    this.#markFilePurgedForDomain = database.prepare<[string, string, string, string, number, string]>(`
+      UPDATE files
+      SET state = 'purged', revision = revision + 1,
+          updated_at = ?, purged_at = ?, recycle_group_id = NULL
+      WHERE owner_domain_id = ? AND id = ? AND state = 'purging'
+        AND revision = ? AND recycle_group_id = ?
+    `);
     this.#deleteGroup = database.prepare<[string, string]>(`
       DELETE FROM recycle_groups
       WHERE owner_domain_id = (
@@ -400,6 +408,24 @@ export class SqliteRecycleRepository implements RecycleRepository {
       timestamp,
       timestamp,
       ownerId,
+      fileId,
+      expectedRevision,
+      groupId,
+    ).changes === 1;
+  }
+
+  markFilePurgedForDomain(
+    ownerDomainId: string,
+    fileId: string,
+    groupId: string,
+    expectedRevision: number,
+    purgedAt: Date,
+  ): boolean {
+    const timestamp = toDatabaseTimestamp(purgedAt)!;
+    return this.#markFilePurgedForDomain.run(
+      timestamp,
+      timestamp,
+      ownerDomainId,
       fileId,
       expectedRevision,
       groupId,

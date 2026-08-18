@@ -17,6 +17,7 @@ export function SharedLibraryPanel({
   api,
   revision = 0,
   renderCatalogue,
+  onCatalogueChange,
 }: {
   api: AcademicCloudApi;
   revision?: number;
@@ -25,6 +26,7 @@ export function SharedLibraryPanel({
     holdings: LibraryHolding[];
     loading: boolean;
   }) => ReactNode;
+  onCatalogueChange?: (state: { library: LibrarySummary | null; holdings: LibraryHolding[] }) => void;
 }) {
   const { language, t } = useLanguage();
   const [library, setLibrary] = useState<LibrarySummary | null>(null);
@@ -33,6 +35,10 @@ export function SharedLibraryPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    onCatalogueChange?.({ library, holdings });
+  }, [holdings, library, onCatalogueChange]);
 
   useEffect(() => {
     let cancelled = false;

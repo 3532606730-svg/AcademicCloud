@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
+import { AuthorizationDeniedError } from "../auth/authorization.js";
 import { DriveError } from "../drive/drive-service.js";
 import { LIBRARY_ROLES, type LibraryRole } from "./library.js";
 import { LibraryError, type LibraryService } from "./library-service.js";
@@ -26,6 +27,9 @@ function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccoun
 }
 
 function sendLibraryError(reply: FastifyReply, error: unknown) {
+  if (error instanceof AuthorizationDeniedError) {
+    return reply.code(404).send({ error: "not_found" });
+  }
   if (error instanceof LibraryError) {
     const status = error.code === "invalid_input"
       ? 400
@@ -257,6 +261,44 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
         return reply.code(204).send();
       } catch (error: unknown) {
         service.recordHoldingRecycleAuditAttempt(actor, error);
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.delete<{ Params: HoldingParams; Body: HoldingVersionBody }>(
+    "/api/libraries/:libraryId/recycle/:fileId/permanent",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 8 * 1024,
+      schema: {
+        params: {
+          type: "object",
+          required: ["libraryId", "fileId"],
+          properties: { libraryId: idSchema, fileId: idSchema },
+        },
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version"],
+          properties: { version: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = requireActor(request.authAccount);
+      try {
+        await service.permanentlyDeleteHolding(
+          actor,
+          request.params.libraryId,
+          request.params.fileId,
+          request.body.version,
+        );
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        service.recordHoldingPurgeAuditAttempt(actor, error);
         return sendLibraryError(reply, error);
       }
     },

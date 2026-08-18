@@ -4,11 +4,11 @@
 PROD-03C2 — Remaining First-Usable Production Gates
 
 ## Goal
-Preserve the remaining Owner-gated production decisions from the original First-Usable Production track without allowing them to masquerade as an active repository-development task.
+Preserve the remaining Owner-gated real production confirmations and operations decisions from the original First-Usable Production track without allowing them to masquerade as an active repository-development task or as ownership of the already-implemented product lifecycle.
 
 ## Scope
 Only when the Owner explicitly opens a production operations window:
-- decide and verify the exact disposable-object permanent-delete gate using only a pre-registered non-academic test object;
+- confirm the existing global-Owner-only permanent-delete lifecycle against one exact pre-registered non-academic disposable object, if the Owner separately authorizes that real destructive production action;
 - decide and verify the production reboot/autostart policy, or explicitly retain an accepted manual-start policy;
 - reconcile the associated production runbook/evidence after those decisions.
 
@@ -35,6 +35,7 @@ If and only if the Owner explicitly activates this production task:
 ## Relevant ADRs
 - `docs/decisions/ADR-007-layer-1-technical-architecture.md`
 - `docs/decisions/ADR-009-authentication-security-baseline.md`
+- `docs/decisions/ADR-028-permanent-delete-authority-and-domain-safety.md`
 - production deployment/recovery runbooks.
 
 ## Relevant Modules / Files
@@ -45,14 +46,15 @@ If and only if the Owner explicitly activates this production task:
 - `TASK_BOARD.md`.
 
 ## Current State
-**Parked / Owner-gated, not active.** Production is live on exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17 after accepted PROD-06A. Historical live authenticated/disposable-object and multi-user evidence plus isolated Shared Library/contribution and First-Use Correction acceptance is recorded. The remaining policy gates are the exact disposable permanent-delete confirmation and the reboot/autostart decision; neither was authorized or consumed by PROD-04A, PROD-05A, or PROD-06A.
+**Parked / Owner-gated, not active.** Production is live on exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018 after completed PROD-07A/PROD-07B; rollback was not used. PROD-07B consumed the product-authority and implementation decision for global-Owner-only account/Library permanent deletion, including Library exclusivity proof and destructive-boundary revalidation, but deliberately performed no real resource purge. This card therefore owns only any later separately authorized real disposable-object confirmation plus the reboot/autostart decision; it does not reopen or supersede ADR-028.
 
 ## Completed
 - historical production preflight/authentication/disposable-object acceptance plus UX01, PROD-04A, and PROD-05A production acceptance are preserved in Git/runbooks;
+- PROD-07B implemented and deployed the product lifecycle without executing a real purge; L1-UX07 forward-ported that behavior into the v19 development line;
 - this card has been removed from `tasks/doing/` so repository recovery cannot mistake a parked production boundary for the active development task.
 
 ## Remaining
-- exact Owner-gated disposable permanent-delete decision/verification;
+- exact Owner-gated real disposable-object permanent-delete confirmation/verification, only if explicitly reopened;
 - exact Owner-gated reboot/autostart decision/verification;
 - final production-record reconciliation if/when those gates are opened.
 
@@ -60,7 +62,7 @@ If and only if the Owner explicitly activates this production task:
 Explicit Owner authorization for a production operations window is mandatory. Without it, this card must remain parked and must not be selected by autonomous repository development.
 
 ## Last Verification
-2026-08-18 PROD-06A reconciliation: production is exact `855b63c…`, schema v17/history 001–017, with health/integrity/authorization/privacy and rollback evidence green; parked Pre-OCR work remains stopped; permanent-delete and autostart/reboot remain separately Owner-gated and unexecuted.
+2026-08-19 L1-UX07 reconciliation: production remains exact `bc578863…`, schema v18/history 001–018 after PROD-07B, rollback unused; the product permanent-delete lifecycle is implemented, while a real disposable-object confirmation, autostart/reboot, infrastructure-policy repair, and all other production mutations remain separately Owner-gated and unexecuted. Development is v19/history 001–019 with RF-METASUGGEST01 undeployed.
 
 ## Next Action
 None under the current continuous objective. Resume only after an explicit Owner instruction that opens this production task and defines the permitted production window.

@@ -2,6 +2,7 @@ import type { Folder } from "../drive/folder.js";
 import type { StoredFile } from "../drive/file.js";
 import type { Persistence } from "../persistence/contracts.js";
 import { FavoriteError, type FavoriteFolderWithAncestors, type FavoritesSnapshot } from "./favorite.js";
+import { isLegacyProd03c2FixtureFolder } from "../drive/synthetic-fixtures.js";
 
 // Bound on the ancestor walk: the database enforces acyclicity, this cap is a
 // defensive guard against any pathological hierarchy.
@@ -21,44 +22,57 @@ export class FavoriteService {
     const fileIds = favorites.listFileIds(accountId);
     const folderIds = favorites.listFolderIds(accountId);
 
-    const favoriteFiles = fileIds
-      .map((id) => this.#findAccessibleFile(accountId, id))
-      .filter((file): file is NonNullable<typeof file> => file !== null && file.state === "active");
+    const favoriteFiles: StoredFile[] = [];
+    const libraryHoldings: FavoritesSnapshot["libraryHoldings"] = [];
+    for (const id of fileIds) {
+      const scoped = this.#findAccessibleFile(accountId, id);
+      if (!scoped || scoped.file.state !== "active") continue;
+      if (scoped.libraryHolding) libraryHoldings.push(scoped.libraryHolding);
+      else favoriteFiles.push(scoped.file);
+    }
 
     const favoriteFolders: FavoriteFolderWithAncestors[] = [];
     for (const id of folderIds) {
       const folder = folders.findById(accountId, id);
-      if (!folder || folder.state !== "active") continue;
+      if (!folder || folder.state !== "active" || isLegacyProd03c2FixtureFolder(folder)) continue;
       favoriteFolders.push({ folder, ancestors: this.#ancestorsOf(accountId, folder) });
     }
 
-    return { files: favoriteFiles, folders: favoriteFolders };
+    return { files: favoriteFiles, libraryHoldings, folders: favoriteFolders };
   }
 
   setFileFavorite(accountId: string, fileId: string, favorite: boolean): void {
-    const file = this.#findAccessibleFile(accountId, fileId);
+    const scoped = this.#findAccessibleFile(accountId, fileId);
     // A guessed inaccessible ID remains indistinguishable from a missing one.
     // The favorite relation stays account-private even for a shared holding.
-    if (!file || file.state !== "active") throw new FavoriteError("not_found");
+    if (!scoped || scoped.file.state !== "active") throw new FavoriteError("not_found");
     if (favorite) this.#persistence.repositories.favorites.addFile(accountId, fileId, this.#now());
     else this.#persistence.repositories.favorites.removeFile(accountId, fileId);
   }
 
-  #findAccessibleFile(accountId: string, fileId: string): StoredFile | null {
+  #findAccessibleFile(accountId: string, fileId: string): {
+    file: StoredFile;
+    libraryHolding: FavoritesSnapshot["libraryHoldings"][number] | null;
+  } | null {
     const repositories = this.#persistence.repositories;
     const account = repositories.accounts.findById(accountId);
     if (!account || account.state !== "active") return null;
     const privateFile = repositories.files.findById(accountId, fileId);
-    if (privateFile) return privateFile;
+    if (privateFile) return { file: privateFile, libraryHolding: null };
     const library = repositories.libraries.findDefault();
-    if (!library || !repositories.libraries.findMembership(library.id, accountId)) return null;
-    if (!repositories.libraries.findHoldingByFile(library.id, fileId)) return null;
-    return repositories.files.findByDomainId(library.ownerDomainId, fileId);
+    const membership = library ? repositories.libraries.findMembership(library.id, accountId) : null;
+    if (!library || !membership) return null;
+    const holding = repositories.libraries.findHoldingByFile(library.id, fileId);
+    if (!holding) return null;
+    const file = repositories.files.findByDomainId(library.ownerDomainId, fileId);
+    return file ? { file, libraryHolding: { library, role: membership.role, holding } } : null;
   }
 
   setFolderFavorite(accountId: string, folderId: string, favorite: boolean): void {
     const folder = this.#persistence.repositories.folders.findById(accountId, folderId);
-    if (!folder || folder.state !== "active") throw new FavoriteError("not_found");
+    if (!folder || folder.state !== "active" || isLegacyProd03c2FixtureFolder(folder)) {
+      throw new FavoriteError("not_found");
+    }
     if (favorite) this.#persistence.repositories.favorites.addFolder(accountId, folderId, this.#now());
     else this.#persistence.repositories.favorites.removeFolder(accountId, folderId);
   }

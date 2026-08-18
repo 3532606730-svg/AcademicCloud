@@ -20,6 +20,7 @@ import {
   type BulkOperationInput,
   type BulkOperationResult,
 } from "./bulk.js";
+import { isLegacyProd03c2FixtureFolder } from "./synthetic-fixtures.js";
 
 export type DriveErrorCode =
   | "not_found"
@@ -115,7 +116,7 @@ function requireActiveFolder(
 
   const folder = repositories.folders.findById(ownerId, folderId);
 
-  if (!folder || folder.state !== "active") {
+  if (!folder || folder.state !== "active" || isLegacyProd03c2FixtureFolder(folder)) {
     throw new DriveError("not_found");
   }
 
@@ -123,6 +124,12 @@ function requireActiveFolder(
 }
 
 type StorageAuditActor = "account" | "system";
+
+export type PermanentDeletePreparation = (
+  repositories: RepositorySet,
+  file: StoredFile,
+  now: Date,
+) => void;
 
 type ResolvedBulkItem =
   | { input: BulkItemInput; kind: "folder"; resource: Folder }
@@ -151,11 +158,12 @@ function recordDriveAudit(
   ownerId: string,
   targetId: string,
   createdAt: Date,
+  actorAccountId: string | null = actorKind === "account" ? ownerId : null,
 ): void {
   recordAuditEvent(repositories, {
     action: eventKind,
     actorKind,
-    actorAccountId: actorKind === "account" ? ownerId : null,
+    actorAccountId,
     targetId,
     outcome: "succeeded",
     reason: null,
@@ -344,7 +352,9 @@ export class DriveService {
 
     return {
       folder,
-      folders: this.persistence.repositories.folders.listByParent(ownerId, folderId, "active"),
+      folders: this.persistence.repositories.folders
+        .listByParent(ownerId, folderId, "active")
+        .filter((entry) => !isLegacyProd03c2FixtureFolder(entry)),
       files: this.persistence.repositories.files.listByFolder(ownerId, folderId, "active"),
     };
   }
@@ -357,7 +367,7 @@ export class DriveService {
     return this.persistence.runInTransaction((repositories) => {
       const folder = repositories.folders.findById(ownerId, folderId);
 
-      if (!folder || folder.state !== "active") {
+      if (!folder || folder.state !== "active" || isLegacyProd03c2FixtureFolder(folder)) {
         throw new DriveError("not_found");
       }
 
@@ -386,7 +396,7 @@ export class DriveService {
     this.persistence.runInTransaction((repositories) => {
       const folder = repositories.folders.findById(ownerId, folderId);
 
-      if (!folder || folder.state !== "active") {
+      if (!folder || folder.state !== "active" || isLegacyProd03c2FixtureFolder(folder)) {
         throw new DriveError("not_found");
       }
 
@@ -1181,9 +1191,186 @@ export class DriveService {
 
   listRecycle(ownerId: string): { folders: Folder[]; files: StoredFile[] } {
     return {
-      folders: this.persistence.repositories.folders.listDeleted(ownerId),
+      folders: this.persistence.repositories.folders
+        .listDeleted(ownerId)
+        .filter((folder) => !isLegacyProd03c2FixtureFolder(folder)),
       files: this.persistence.repositories.files.listDeleted(ownerId),
     };
+  }
+
+  async permanentlyDeleteFolder(
+    ownerId: string,
+    folderId: string,
+    expectedVersion?: string,
+    auditActor: StorageAuditActor = "account",
+  ): Promise<void> {
+    const root = this.persistence.repositories.folders.findById(ownerId, folderId);
+    const group = this.persistence.repositories.recycle.findGroupByRoot(ownerId, "folder", folderId);
+    if (!root || root.state !== "deleted" || !group || group.rootKind !== "folder") {
+      throw new DriveError("not_found");
+    }
+    if (expectedVersion !== undefined && driveEntryVersion(root) !== expectedVersion) {
+      throw new DriveError("concurrent_change");
+    }
+
+    const folderIds = this.persistence.repositories.recycle.listFolderIds(ownerId, group.id);
+    const fileIds = this.persistence.repositories.recycle.listFileIds(ownerId, group.id);
+    if (
+      folderIds.length !== group.folderCount
+      || fileIds.length !== group.fileCount
+      || !folderIds.includes(folderId)
+    ) {
+      throw new DriveError("invalid_state");
+    }
+
+    const folders = folderIds.map((id) => this.persistence.repositories.folders.findById(ownerId, id));
+    const files = fileIds.map((id) => this.persistence.repositories.files.findById(ownerId, id));
+    if (
+      folders.some((folder) => !folder || folder.state !== "deleted")
+      || files.some((file) => !file || (file.state !== "deleted" && file.state !== "purging"))
+    ) {
+      throw new DriveError("invalid_state");
+    }
+
+    for (const file of files as StoredFile[]) {
+      if (this.persistence.repositories.research?.isFileAttached(ownerId, file.id)) {
+        throw new DriveError("invalid_state");
+      }
+      this.assertCurrentStorageProvider(file);
+    }
+
+    // Preserve the existing per-file purge state machine while the folder
+    // recycle group remains the authoritative recursive deletion boundary.
+    const purgingFiles = this.persistence.runInTransaction((repositories) => {
+      const latestRoot = repositories.folders.findById(ownerId, folderId);
+      const latestGroup = repositories.recycle.findGroupByRoot(ownerId, "folder", folderId);
+      if (
+        !latestRoot
+        || latestRoot.state !== "deleted"
+        || !latestGroup
+        || latestGroup.id !== group.id
+        || (expectedVersion !== undefined && driveEntryVersion(latestRoot) !== expectedVersion)
+      ) {
+        throw new DriveError("concurrent_change");
+      }
+      const prepared: StoredFile[] = [];
+      for (const fileId of fileIds) {
+        const latest = repositories.files.findById(ownerId, fileId);
+        if (!latest || (latest.state !== "deleted" && latest.state !== "purging")) {
+          throw new DriveError("concurrent_change");
+        }
+        if (latest.state === "purging") {
+          prepared.push(latest);
+          continue;
+        }
+        if (repositories.research?.isFileAttached(ownerId, fileId)) {
+          throw new DriveError("invalid_state");
+        }
+        const now = this.now();
+        const updated = repositories.files.update(
+          { ...latest, state: "purging", updatedAt: now },
+          "deleted",
+          latest.revision,
+        );
+        if (!updated) throw new DriveError("concurrent_change");
+        recordDriveAudit(repositories, "drive.file_purge_request", auditActor, ownerId, fileId, now);
+        prepared.push(updated);
+      }
+      if (fileIds.length === 0) {
+        recordDriveAudit(repositories, "drive.file_purge_request", auditActor, ownerId, folderId, this.now());
+      }
+      return prepared;
+    });
+
+    for (const file of purgingFiles) {
+      let metadata: StorageObjectMetadata | null;
+      try {
+        metadata = await this.storage.statObject(file.objectKey);
+      } catch (error: unknown) {
+        throw new DriveError("storage_unavailable", { cause: error });
+      }
+      if (metadata && !storageMetadataMatches(file, metadata)) {
+        throw new DriveError("upload_metadata_mismatch");
+      }
+      if (metadata) {
+        try {
+          await this.storage.deleteObject(file.objectKey);
+        } catch (error: unknown) {
+          throw new DriveError("storage_unavailable", { cause: error });
+        }
+      }
+    }
+
+    this.persistence.runInTransaction((repositories) => {
+      const latestRoot = repositories.folders.findById(ownerId, folderId);
+      const latestGroup = repositories.recycle.findGroupByRoot(ownerId, "folder", folderId);
+      const latestFolderIds = latestGroup ? repositories.recycle.listFolderIds(ownerId, latestGroup.id) : [];
+      const latestFileIds = latestGroup ? repositories.recycle.listFileIds(ownerId, latestGroup.id) : [];
+      if (
+        !latestRoot
+        || latestRoot.state !== "deleted"
+        || !latestGroup
+        || latestGroup.id !== group.id
+        || (expectedVersion !== undefined && driveEntryVersion(latestRoot) !== expectedVersion)
+        || latestFolderIds.length !== folderIds.length
+        || latestFileIds.length !== fileIds.length
+        || latestFolderIds.some((id) => !folderIds.includes(id))
+        || latestFileIds.some((id) => !fileIds.includes(id))
+      ) {
+        throw new DriveError("concurrent_change");
+      }
+
+      const now = this.now();
+      for (const fileId of fileIds) {
+        const current = repositories.files.findById(ownerId, fileId);
+        if (
+          !current
+          || current.state !== "purging"
+          || !repositories.recycle.markFilePurged(ownerId, fileId, group.id, current.revision, now)
+        ) {
+          throw new DriveError("concurrent_change");
+        }
+        const purged = repositories.files.findById(ownerId, fileId);
+        if (!purged || purged.state !== "purged") throw new DriveError("invalid_state");
+        if (purged.folderId !== null && !repositories.files.update(
+          { ...purged, folderId: null, updatedAt: now },
+          "purged",
+          purged.revision,
+        )) {
+          throw new DriveError("concurrent_change");
+        }
+      }
+
+      const folderById = new Map(
+        folderIds.map((id) => [id, repositories.folders.findById(ownerId, id)] as const),
+      );
+      const depth = (folder: Folder): number => {
+        let currentId = folder.parentId;
+        let result = 0;
+        while (currentId !== null && folderById.has(currentId)) {
+          result += 1;
+          currentId = folderById.get(currentId)?.parentId ?? null;
+        }
+        return result;
+      };
+      const deletionOrder = folders
+        .map((folder) => folder!)
+        .sort((left, right) => depth(right) - depth(left) || right.id.localeCompare(left.id));
+      for (const folder of deletionOrder) {
+        if (!repositories.folders.deleteDeleted(ownerId, folder.id, group.id)) {
+          throw new DriveError("concurrent_change");
+        }
+      }
+      if (!repositories.recycle.deleteGroup(ownerId, group.id)) {
+        throw new DriveError("invalid_state");
+      }
+      for (const fileId of fileIds) {
+        recordDriveAudit(repositories, "drive.file_purge_complete", auditActor, ownerId, fileId, now);
+      }
+      if (fileIds.length === 0) {
+        recordDriveAudit(repositories, "drive.file_purge_complete", auditActor, ownerId, folderId, now);
+      }
+    });
   }
 
   async permanentlyDeleteFile(
@@ -1206,6 +1393,155 @@ export class DriveService {
     this.purgeOperations.set(operationKey, operation);
 
     return operation;
+  }
+
+  async permanentlyDeleteFileForDomain(
+    ownerDomainId: string,
+    fileId: string,
+    expectedVersion: string,
+    auditActorAccountId: string,
+    beforePurge?: PermanentDeletePreparation,
+  ): Promise<void> {
+    const operationKey = `${ownerDomainId}\0${fileId}`;
+    const currentOperation = this.purgeOperations.get(operationKey);
+    if (currentOperation) return currentOperation;
+
+    const operation = this.performPermanentDeleteForDomain(
+      ownerDomainId,
+      fileId,
+      expectedVersion,
+      auditActorAccountId,
+      beforePurge,
+    ).finally(() => {
+      if (this.purgeOperations.get(operationKey) === operation) this.purgeOperations.delete(operationKey);
+    });
+    this.purgeOperations.set(operationKey, operation);
+    return operation;
+  }
+
+  private async performPermanentDeleteForDomain(
+    ownerDomainId: string,
+    fileId: string,
+    expectedVersion: string,
+    auditActorAccountId: string,
+    beforePurge?: PermanentDeletePreparation,
+  ): Promise<void> {
+    const current = this.persistence.repositories.files.findByDomainId(ownerDomainId, fileId);
+    const group = this.persistence.repositories.recycle.findGroupByRootForDomain(ownerDomainId, "file", fileId);
+    if (
+      !current
+      || current.state !== "deleted"
+      || !group
+      || group.rootKind !== "file"
+      || group.folderCount !== 0
+      || group.fileCount !== 1
+      || this.persistence.repositories.recycle.listFolderIdsForDomain(ownerDomainId, group.id).length !== 0
+      || this.persistence.repositories.recycle.listFileIdsForDomain(ownerDomainId, group.id).join() !== fileId
+      || driveEntryVersion(current) !== expectedVersion
+    ) {
+      throw new DriveError(!current || !group ? "not_found" : "concurrent_change");
+    }
+    this.assertCurrentStorageProvider(current);
+
+    const purging = this.persistence.runInTransaction((repositories) => {
+      const latest = repositories.files.findByDomainId(ownerDomainId, fileId);
+      const latestGroup = repositories.recycle.findGroupByRootForDomain(ownerDomainId, "file", fileId);
+      if (
+        !latest
+        || latest.state !== "deleted"
+        || !latestGroup
+        || latestGroup.id !== group.id
+        || latestGroup.folderCount !== 0
+        || latestGroup.fileCount !== 1
+        || repositories.recycle.listFolderIdsForDomain(ownerDomainId, latestGroup.id).length !== 0
+        || repositories.recycle.listFileIdsForDomain(ownerDomainId, latestGroup.id).join() !== fileId
+        || driveEntryVersion(latest) !== expectedVersion
+      ) {
+        throw new DriveError("concurrent_change");
+      }
+      const now = this.now();
+      beforePurge?.(repositories, latest, now);
+      const updated = repositories.files.updateForDomain(
+        { ...latest, state: "purging", updatedAt: now },
+        "deleted",
+        latest.revision,
+      );
+      if (!updated) throw new DriveError("concurrent_change");
+      recordDriveAudit(
+        repositories,
+        "drive.file_purge_request",
+        "account",
+        ownerDomainId,
+        fileId,
+        now,
+        auditActorAccountId,
+      );
+      return updated;
+    });
+
+    let metadata: StorageObjectMetadata | null;
+    try {
+      metadata = await this.storage.statObject(purging.objectKey);
+    } catch (error: unknown) {
+      throw new DriveError("storage_unavailable", { cause: error });
+    }
+    if (metadata && !storageMetadataMatches(purging, metadata)) {
+      throw new DriveError("upload_metadata_mismatch");
+    }
+    if (metadata) {
+      try {
+        await this.storage.deleteObject(purging.objectKey);
+      } catch (error: unknown) {
+        throw new DriveError("storage_unavailable", { cause: error });
+      }
+    }
+
+    this.persistence.runInTransaction((repositories) => {
+      const latest = repositories.files.findByDomainId(ownerDomainId, fileId);
+      const latestGroup = repositories.recycle.findGroupByRootForDomain(ownerDomainId, "file", fileId);
+      if (
+        !latest
+        || latest.state !== "purging"
+        || !latestGroup
+        || latestGroup.id !== group.id
+        || latestGroup.folderCount !== 0
+        || latestGroup.fileCount !== 1
+        || repositories.recycle.listFolderIdsForDomain(ownerDomainId, latestGroup.id).length !== 0
+        || repositories.recycle.listFileIdsForDomain(ownerDomainId, latestGroup.id).join() !== fileId
+        || latest.revision !== purging.revision
+        || latest.storageProvider !== purging.storageProvider
+        || latest.objectKey !== purging.objectKey
+        || latest.sizeBytes !== purging.sizeBytes
+        || latest.mediaType !== purging.mediaType
+        || latest.checksumAlgorithm !== purging.checksumAlgorithm
+        || latest.checksum !== purging.checksum
+      ) {
+        throw new DriveError("concurrent_change");
+      }
+      const now = this.now();
+      beforePurge?.(repositories, latest, now);
+      if (!repositories.recycle.markFilePurgedForDomain(
+        ownerDomainId,
+        fileId,
+        group.id,
+        latest.revision,
+        now,
+      )) {
+        throw new DriveError("concurrent_change");
+      }
+      if (!repositories.recycle.deleteGroupForDomain(ownerDomainId, group.id)) {
+        throw new DriveError("invalid_state");
+      }
+      recordDriveAudit(
+        repositories,
+        "drive.file_purge_complete",
+        "account",
+        ownerDomainId,
+        fileId,
+        now,
+        auditActorAccountId,
+      );
+    });
   }
 
   private async performPermanentDelete(

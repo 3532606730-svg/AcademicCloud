@@ -298,7 +298,7 @@ test("canonical Member upload enters pending review automatically and preserves 
 
   libraries.reviewContribution(OWNER, canonical.id, pending[0]!.id, "approve");
   assert.equal(libraries.listHoldings(OUTSIDER.id, canonical.id)[0]?.file.id, completed.id);
-  assert.equal(favorites.listFavorites(MEMBER.id).files[0]?.id, completed.id);
+  assert.equal(favorites.listFavorites(MEMBER.id).libraryHoldings[0]?.holding.file.id, completed.id);
   assert.equal(favorites.listFavorites(OWNER.id).files.length, 0);
   assert.equal(database.prepare<[string], { uploaded_by_account_id: string; object_key: string }>(
     "SELECT uploaded_by_account_id, object_key FROM files WHERE id = ?",

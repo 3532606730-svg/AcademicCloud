@@ -408,21 +408,110 @@ interface ResourceDetailsRequest {
   returnFocus: HTMLElement | null;
 }
 
+type ResourceScope = "account_folder" | "account_file" | "library_holding" | "library_recycle_holding";
+
+type AccountSelectableEntry =
+  | { scope: "account_folder"; item: FolderEntry }
+  | { scope: "account_file"; item: FileEntry };
+
+type SelectableEntry =
+  | AccountSelectableEntry
+  | { scope: "library_holding"; library: LibrarySummary; item: LibraryHolding }
+  | { scope: "library_recycle_holding"; library: LibrarySummary; item: LibraryRecycleFile };
+
 type MoveRequest =
   | { kind: "folder"; item: FolderEntry; returnFocus: HTMLElement | null }
   | { kind: "file"; item: FileEntry; returnFocus: HTMLElement | null }
-  | { kind: "bulk"; items: SelectableEntry[]; returnFocus: HTMLElement | null };
+  | { kind: "bulk"; items: AccountSelectableEntry[]; returnFocus: HTMLElement | null };
 
-type SelectableEntry =
-  | { kind: "folder"; item: FolderEntry }
-  | { kind: "file"; item: FileEntry };
-
-function selectionKey(kind: SelectableEntry["kind"], id: string): string {
-  return `${kind}:${id}`;
+function selectionKey(scope: ResourceScope, id: string, libraryId?: string): string {
+  return libraryId ? `${scope}:${libraryId}:${id}` : `${scope}:${id}`;
 }
 
-function toBulkItem(entry: SelectableEntry): BulkItem {
-  return { kind: entry.kind, id: entry.item.id, version: entry.item.version };
+function keyForEntry(entry: SelectableEntry): string {
+  switch (entry.scope) {
+    case "account_folder": return selectionKey(entry.scope, entry.item.id);
+    case "account_file": return selectionKey(entry.scope, entry.item.id);
+    case "library_holding": return selectionKey(entry.scope, entry.item.file.id, entry.library.id);
+    case "library_recycle_holding": return selectionKey(entry.scope, entry.item.file.id, entry.library.id);
+  }
+}
+
+function isAccountEntry(entry: SelectableEntry): entry is AccountSelectableEntry {
+  return entry.scope === "account_folder" || entry.scope === "account_file";
+}
+
+function toBulkItem(entry: AccountSelectableEntry): BulkItem {
+  return entry.scope === "account_folder"
+    ? { kind: "folder", id: entry.item.id, version: entry.item.version }
+    : { kind: "file", id: entry.item.id, version: entry.item.version };
+}
+
+interface SelectionCapabilities {
+  favoriteAdd: boolean;
+  favoriteRemove: boolean;
+  move: boolean;
+  recycle: boolean;
+  restore: boolean;
+  permanentDelete: boolean;
+  preview: boolean;
+  download: boolean;
+  rename: boolean;
+}
+
+function deriveSelectionCapabilities(
+  entries: readonly SelectableEntry[],
+  actorRole: Account["role"],
+  favoriteFileIds: ReadonlySet<string>,
+  favoriteFolderIds: ReadonlySet<string>,
+): SelectionCapabilities {
+  const none: SelectionCapabilities = {
+    favoriteAdd: false,
+    favoriteRemove: false,
+    move: false,
+    recycle: false,
+    restore: false,
+    permanentDelete: false,
+    preview: false,
+    download: false,
+    rename: false,
+  };
+  if (entries.length === 0) return none;
+
+  const favoriteState = entries.map((entry): boolean | null => {
+    switch (entry.scope) {
+      case "account_folder": return entry.item.state === "active" ? favoriteFolderIds.has(entry.item.id) : null;
+      case "account_file": return entry.item.state === "active" ? favoriteFileIds.has(entry.item.id) : null;
+      case "library_holding": return favoriteFileIds.has(entry.item.file.id);
+      case "library_recycle_holding": return null;
+    }
+  });
+  const allFavoriteEligible = favoriteState.every((state) => state !== null);
+  const allAccountActive = entries.every((entry) => isAccountEntry(entry) && entry.item.state === "active");
+  const allAccountRecycle = entries.every((entry) => isAccountEntry(entry) && entry.item.state === "deleted");
+  const allLibraryActive = entries.every((entry) => entry.scope === "library_holding");
+  const allLibraryRecycle = entries.every((entry) => entry.scope === "library_recycle_holding");
+
+  return {
+    favoriteAdd: allFavoriteEligible && favoriteState.some((state) => state === false),
+    favoriteRemove: allFavoriteEligible && favoriteState.every((state) => state === true),
+    move: actorRole === "owner" && allAccountActive,
+    recycle: actorRole === "owner" && (
+      allAccountActive
+      || (allLibraryActive && entries.every((entry) => entry.scope === "library_holding" && entry.library.role === "manager"))
+    ),
+    restore: allAccountRecycle || allLibraryRecycle || entries.every((entry) => (
+      (isAccountEntry(entry) && entry.item.state === "deleted")
+      || entry.scope === "library_recycle_holding"
+    )),
+    permanentDelete: actorRole === "owner" && entries.every((entry) => (
+      (isAccountEntry(entry) && entry.item.state === "deleted")
+      || entry.scope === "library_recycle_holding"
+    )),
+    preview: entries.every((entry) => entry.scope === "account_file" || entry.scope === "library_holding"),
+    download: entries.every((entry) => entry.scope === "account_file" || entry.scope === "library_holding"),
+    rename: actorRole === "owner" && allAccountActive,
+  };
 }
 
 interface DropOverlayState {
@@ -510,6 +599,10 @@ function DriveView({
   const [libraryRecycle, setLibraryRecycle] = useState(EMPTY_LIBRARY_RECYCLE);
   const [libraryRecycleLoading, setLibraryRecycleLoading] = useState(false);
   const [libraryRecycleError, setLibraryRecycleError] = useState<unknown>(null);
+  const [libraryCatalogue, setLibraryCatalogue] = useState<{
+    library: LibrarySummary | null;
+    holdings: LibraryHolding[];
+  }>({ library: null, holdings: [] });
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState<unknown>(null);
@@ -530,33 +623,69 @@ function DriveView({
   const [accountAdministrationReturnFocus, setAccountAdministrationReturnFocus] = useState<HTMLElement | null>(null);
   const [announcementRevision, setAnnouncementRevision] = useState(0);
   const dragDepthRef = useRef(0);
+  const preservedSelectionRef = useRef<ReadonlySet<string> | null>(null);
   const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
+  const favoriteLibraryHoldings = favorites?.libraryHoldings ?? [];
   const visibleSelectableEntries: SelectableEntry[] = view === "library"
     ? [
-        ...entries.folders.map((item): SelectableEntry => ({ kind: "folder", item })),
-        ...entries.files.map((item): SelectableEntry => ({ kind: "file", item })),
+        ...entries.folders.map((item): SelectableEntry => ({ scope: "account_folder", item })),
+        ...entries.files.map((item): SelectableEntry => ({ scope: "account_file", item })),
+        ...(path.length === 0 && libraryCatalogue.library
+          ? libraryCatalogue.holdings.map((item): SelectableEntry => ({
+              scope: "library_holding",
+              library: libraryCatalogue.library!,
+              item,
+            }))
+          : []),
       ]
     : view === "favorites" && favorites !== null
       ? [
-          ...favorites.folders.map((item): SelectableEntry => ({ kind: "folder", item })),
-          ...favorites.files.map((item): SelectableEntry => ({ kind: "file", item })),
+          ...favorites.folders.map((item): SelectableEntry => ({ scope: "account_folder", item })),
+          ...favorites.files.map((item): SelectableEntry => ({ scope: "account_file", item })),
+          ...favoriteLibraryHoldings.map(({ library, holding }): SelectableEntry => ({
+            scope: "library_holding",
+            library,
+            item: holding,
+          })),
         ]
       : view === "recycle"
         ? [
-            ...recycle.folders.map((item): SelectableEntry => ({ kind: "folder", item })),
-            ...recycle.files.map((item): SelectableEntry => ({ kind: "file", item })),
+            ...recycle.folders.map((item): SelectableEntry => ({ scope: "account_folder", item })),
+            ...recycle.files.map((item): SelectableEntry => ({ scope: "account_file", item })),
+            ...(libraryRecycle.library
+              ? libraryRecycle.files.map((item): SelectableEntry => ({
+                  scope: "library_recycle_holding",
+                  library: libraryRecycle.library!,
+                  item,
+                }))
+              : []),
           ]
         : [];
   const selectedEntries = visibleSelectableEntries.filter((entry) =>
-    selectedKeys.has(selectionKey(entry.kind, entry.item.id)));
+    selectedKeys.has(keyForEntry(entry)));
+  const selectionCapabilities = deriveSelectionCapabilities(
+    selectedEntries,
+    account.role,
+    favoriteFileIds,
+    favoriteFolderIds,
+  );
 
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
+  const reconcileLibraryCatalogue = useCallback((state: {
+    library: LibrarySummary | null;
+    holdings: LibraryHolding[];
+  }) => setLibraryCatalogue(state), []);
 
   useEffect(() => {
-    setSelectedKeys(new Set());
+    if (preservedSelectionRef.current) {
+      setSelectedKeys(preservedSelectionRef.current);
+      preservedSelectionRef.current = null;
+    } else {
+      setSelectedKeys(new Set());
+    }
   }, [currentFolderId, revision, view]);
 
   // Server-backed favorites: the API response is the single source of truth
@@ -575,7 +704,10 @@ function DriveView({
     api.listFavorites(controller.signal).then(
       (response) => {
         setFavorites(response);
-        setFavoriteFileIds(new Set(response.files.map((file) => file.id)));
+        setFavoriteFileIds(new Set([
+          ...response.files.map((file) => file.id),
+          ...(response.libraryHoldings ?? []).map(({ holding }) => holding.file.id),
+        ]));
         setFavoriteFolderIds(new Set(response.folders.map((folder) => folder.id)));
       },
       (caught: unknown) => {
@@ -908,7 +1040,7 @@ function DriveView({
   }
 
   function toggleSelection(entry: SelectableEntry): void {
-    const key = selectionKey(entry.kind, entry.item.id);
+    const key = keyForEntry(entry);
     setSelectedKeys((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
@@ -919,13 +1051,15 @@ function DriveView({
 
   async function runBulk(action: BulkAction, destinationFolderId?: string | null): Promise<void> {
     if (selectedEntries.length === 0) return;
+    const accountEntries = selectedEntries.filter(isAccountEntry);
+    if (accountEntries.length !== selectedEntries.length) throw new Error("account bulk received a Library resource");
     setBusyId("bulk");
     setError(null);
     setNotice("");
     try {
       await api.bulkOperation({
         action,
-        items: selectedEntries.map(toBulkItem),
+        items: accountEntries.map(toBulkItem),
         ...(action === "move" ? { destinationFolderId: destinationFolderId ?? null } : {}),
       });
       setSelectedKeys(new Set());
@@ -937,6 +1071,138 @@ function DriveView({
       setError(caught);
       setNotice(t("bulk.failedAtomic"));
       throw caught;
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function refreshPreservingSelection(keys: ReadonlySet<string>): void {
+    preservedSelectionRef.current = keys;
+    refresh();
+  }
+
+  async function runFavoriteSelection(favorite: boolean): Promise<void> {
+    if (selectedEntries.length === 0) return;
+    setBusyId("bulk");
+    setError(null);
+    setNotice("");
+    try {
+      for (const entry of selectedEntries) {
+        if (entry.scope === "account_folder") {
+          const active = favoriteFolderIds.has(entry.item.id);
+          if (active !== favorite) await api.setFolderFavorite(entry.item.id, favorite);
+        } else if (entry.scope === "account_file") {
+          const active = favoriteFileIds.has(entry.item.id);
+          if (active !== favorite) await api.setFileFavorite(entry.item.id, favorite);
+        } else if (entry.scope === "library_holding") {
+          const active = favoriteFileIds.has(entry.item.file.id);
+          if (active !== favorite) await api.setFileFavorite(entry.item.file.id, favorite);
+        }
+      }
+      setSelectedKeys(new Set());
+      setNotice(t("bulk.completed", { count: selectedEntries.length }));
+      refresh();
+    } catch (caught: unknown) {
+      setError(caught);
+      refreshPreservingSelection(new Set(selectedEntries.map(keyForEntry)));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function recycleSelected(): Promise<void> {
+    if (!selectionCapabilities.recycle || selectedEntries.length === 0) return;
+    if (!window.confirm(t("bulk.recycleConfirm", { count: selectedEntries.length }))) return;
+    const accountEntries = selectedEntries.filter(isAccountEntry);
+    if (accountEntries.length === selectedEntries.length) {
+      if (accountEntries.length === 1 && accountEntries[0]?.scope === "account_folder") {
+        await runAction(accountEntries[0].item.id, t("folder.moved"), () => api.deleteFolder(accountEntries[0]!.item.id));
+        return;
+      }
+      await runBulk("recycle");
+      return;
+    }
+
+    setBusyId("bulk");
+    setError(null);
+    setNotice("");
+    const completed = new Set<string>();
+    try {
+      for (const entry of selectedEntries) {
+        if (entry.scope !== "library_holding") throw new Error("mixed recycle selection is not supported");
+        await api.recycleLibraryHolding(entry.library.id, entry.item.file.id, entry.item.version);
+        completed.add(keyForEntry(entry));
+      }
+      setSelectedKeys(new Set());
+      setNotice(t("bulk.completed", { count: completed.size }));
+      refresh();
+    } catch (caught: unknown) {
+      setError(caught);
+      setNotice(t("bulk.partialCompleted", { completed: completed.size, total: selectedEntries.length }));
+      refreshPreservingSelection(new Set(selectedEntries.map(keyForEntry).filter((key) => !completed.has(key))));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function restoreSelectedRecycle(): Promise<void> {
+    if (!selectionCapabilities.restore || selectedEntries.length === 0) return;
+    if (selectedEntries.every(isAccountEntry)) {
+      await runBulk("restore");
+      return;
+    }
+    setBusyId("bulk");
+    setError(null);
+    setNotice("");
+    const completed = new Set<string>();
+    try {
+      for (const entry of selectedEntries) {
+        if (entry.scope === "account_folder") await api.restoreFolder(entry.item.id);
+        else if (entry.scope === "account_file") await api.restoreFile(entry.item.id);
+        else if (entry.scope === "library_recycle_holding") {
+          await api.restoreLibraryHolding(entry.library.id, entry.item.file.id, entry.item.version);
+        }
+        completed.add(keyForEntry(entry));
+      }
+      setSelectedKeys(new Set());
+      setNotice(t("bulk.completed", { count: completed.size }));
+      refresh();
+    } catch (caught: unknown) {
+      setError(caught);
+      setNotice(t("bulk.partialCompleted", { completed: completed.size, total: selectedEntries.length }));
+      refreshPreservingSelection(new Set(selectedEntries.map(keyForEntry).filter((key) => !completed.has(key))));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function permanentlyDeleteSelectedRecycle(): Promise<void> {
+    if (!selectionCapabilities.permanentDelete || selectedEntries.length === 0) return;
+    if (!window.confirm(t("bulk.permanentConfirm", { count: selectedEntries.length }))) return;
+    setBusyId("bulk");
+    setError(null);
+    setNotice("");
+    const completed = new Set<string>();
+    try {
+      for (const entry of selectedEntries) {
+        if (entry.scope === "account_folder") {
+          await api.permanentlyDeleteFolder(entry.item.id, entry.item.version);
+        } else if (entry.scope === "account_file") {
+          await api.permanentlyDeleteFile(entry.item.id, entry.item.version);
+        } else if (entry.scope === "library_recycle_holding") {
+          await api.permanentlyDeleteLibraryHolding(entry.library.id, entry.item.file.id, entry.item.version);
+        } else {
+          throw new Error("active Library holding cannot be permanently deleted");
+        }
+        completed.add(keyForEntry(entry));
+      }
+      setSelectedKeys(new Set());
+      setNotice(t("bulk.permanentCompleted", { count: completed.size }));
+      refresh();
+    } catch (caught: unknown) {
+      setError(caught);
+      setNotice(t("bulk.permanentPartial", { completed: completed.size, total: selectedEntries.length }));
+      refreshPreservingSelection(new Set(selectedEntries.map(keyForEntry).filter((key) => !completed.has(key))));
     } finally {
       setBusyId(null);
     }
@@ -1036,7 +1302,10 @@ function DriveView({
     if (view === "favorites") {
       const response = await api.listFavorites();
       setFavorites(response);
-      setFavoriteFileIds(new Set(response.files.map((file) => file.id)));
+      setFavoriteFileIds(new Set([
+        ...response.files.map((file) => file.id),
+        ...(response.libraryHoldings ?? []).map(({ holding }) => holding.file.id),
+      ]));
       setFavoriteFolderIds(new Set(response.folders.map((folder) => folder.id)));
       return;
     }
@@ -1051,10 +1320,7 @@ function DriveView({
       setError(null);
       setNotice("");
       try {
-        await api.bulkOperation({
-          action: "recycle",
-          items: [toBulkItem({ kind: "folder", item: folder })],
-        });
+        await api.deleteFolder(folder.id);
         setNotice(t("folder.moved"));
         refresh();
       } catch (caught: unknown) {
@@ -1152,7 +1418,7 @@ function DriveView({
       const authorization = await api.createLibraryDownload(library.id, holding.file.id, "inline");
       setPreview({
         file: {
-          displayName: holding.file.displayName,
+          displayName: holding.canonicalTitle?.trim() || holding.file.displayName,
           mediaType: holding.file.mediaType ?? "application/octet-stream",
         },
         url: authorization.url,
@@ -1175,7 +1441,8 @@ function DriveView({
   }
 
   function recycleLibraryHolding(library: LibrarySummary, holding: LibraryHolding) {
-    if (!window.confirm(t("file.recycleConfirm", { name: holding.file.displayName }))) return;
+    const displayTitle = holding.canonicalTitle?.trim() || holding.file.displayName;
+    if (!window.confirm(t("file.recycleConfirm", { name: displayTitle }))) return;
     void (async () => {
       setBusyId(holding.file.id);
       setError(null);
@@ -1370,7 +1637,7 @@ function DriveView({
             {view === "favorites" && favorites !== null && (
               <p className="workspace-summary">
                 {t("workspace.itemSummary", {
-                  files: formatCount(language, favorites.files.length),
+                  files: formatCount(language, favorites.files.length + favoriteLibraryHoldings.length),
                   folders: formatCount(language, favorites.folders.length),
                 })}
               </p>
@@ -1407,6 +1674,7 @@ function DriveView({
             <SharedLibraryPanel
               api={api}
               revision={revision}
+              onCatalogueChange={reconcileLibraryCatalogue}
               renderCatalogue={({ library, holdings, loading: holdingsLoading }) => {
                 const rootFolders = account.role === "owner" ? entries.folders : [];
                 const rootFiles = account.role === "owner" ? entries.files : [];
@@ -1415,20 +1683,20 @@ function DriveView({
                 return (
                   <section aria-labelledby="contents-title">
                     <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
-                    {account.role === "owner" && selectedEntries.length > 0 && (
+                    {selectedEntries.length > 0 && (
                       <BulkToolbar
                         mode="library"
                         selectedCount={selectedEntries.length}
                         busy={busyId === "bulk"}
                         onClear={() => setSelectedKeys(new Set())}
-                        onMove={(trigger) => setMoveRequest({ kind: "bulk", items: selectedEntries, returnFocus: trigger })}
-                        onRecycle={() => {
-                          if (window.confirm(t("bulk.recycleConfirm", { count: selectedEntries.length }))) {
-                            void runBulk("recycle").catch(() => undefined);
-                          }
-                        }}
-                        onFavoriteAdd={() => void runBulk("favorite_add").catch(() => undefined)}
-                        onFavoriteRemove={() => void runBulk("favorite_remove").catch(() => undefined)}
+                        {...(selectionCapabilities.move ? { onMove: (trigger: HTMLElement) => setMoveRequest({
+                          kind: "bulk",
+                          items: selectedEntries.filter(isAccountEntry),
+                          returnFocus: trigger,
+                        }) } : {})}
+                        {...(selectionCapabilities.recycle ? { onRecycle: () => void recycleSelected().catch(() => undefined) } : {})}
+                        {...(selectionCapabilities.favoriteAdd ? { onFavoriteAdd: () => void runFavoriteSelection(true) } : {})}
+                        {...(selectionCapabilities.favoriteRemove ? { onFavoriteRemove: () => void runFavoriteSelection(false) } : {})}
                       />
                     )}
                     {catalogueLoading ? <LoadingRows /> : !library ? (
@@ -1439,8 +1707,7 @@ function DriveView({
                       <EntryTable
                         folders={rootFolders}
                         files={rootFiles}
-                        holdings={holdings}
-                        library={library}
+                        libraryHoldings={holdings.map((holding) => ({ library, holding }))}
                         busyId={busyId}
                         onEnterFolder={enterFolder}
                         onRenameFolder={renameFolder}
@@ -1451,10 +1718,12 @@ function DriveView({
                         onRenameFile={renameFile}
                         onMoveFile={moveFile}
                         onDeleteFile={deleteFile}
-                        onPreviewHolding={(holding, trigger) => void openLibraryPreview(library, holding, trigger)}
-                        onOpenHoldingDetails={(holding, trigger) => openResourceDetails(library, holding, trigger)}
-                        onDownloadHolding={(holding) => void downloadLibraryHolding(library, holding)}
-                        onRecycleHolding={(holding) => recycleLibraryHolding(library, holding)}
+                        onPreviewHolding={(holdingLibrary, holding, trigger) => void openLibraryPreview(holdingLibrary, holding, trigger)}
+                        onOpenHoldingDetails={(holdingLibrary, holding, trigger) => openResourceDetails(holdingLibrary, holding, trigger)}
+                        onDownloadHolding={(holdingLibrary, holding) => void downloadLibraryHolding(holdingLibrary, holding)}
+                        {...(account.role === "owner" ? {
+                          onRecycleHolding: (holdingLibrary: LibrarySummary, holding: LibraryHolding) => recycleLibraryHolding(holdingLibrary, holding),
+                        } : {})}
                         starFileIds={favoriteFileIds}
                         starFolderIds={favoriteFolderIds}
                         onToggleFileFavorite={(file) => void toggleFileFavorite(file)}
@@ -1521,14 +1790,10 @@ function DriveView({
                 selectedCount={selectedEntries.length}
                 busy={busyId === "bulk"}
                 onClear={() => setSelectedKeys(new Set())}
-                onMove={(trigger) => setMoveRequest({ kind: "bulk", items: selectedEntries, returnFocus: trigger })}
-                onRecycle={() => {
-                  if (window.confirm(t("bulk.recycleConfirm", { count: selectedEntries.length }))) {
-                    void runBulk("recycle").catch(() => undefined);
-                  }
-                }}
-                onFavoriteAdd={() => void runBulk("favorite_add").catch(() => undefined)}
-                onFavoriteRemove={() => void runBulk("favorite_remove").catch(() => undefined)}
+                {...(selectionCapabilities.move ? { onMove: (trigger: HTMLElement) => setMoveRequest({ kind: "bulk", items: selectedEntries.filter(isAccountEntry), returnFocus: trigger }) } : {})}
+                {...(selectionCapabilities.recycle ? { onRecycle: () => void recycleSelected().catch(() => undefined) } : {})}
+                {...(selectionCapabilities.favoriteAdd ? { onFavoriteAdd: () => void runFavoriteSelection(true) } : {})}
+                {...(selectionCapabilities.favoriteRemove ? { onFavoriteRemove: () => void runFavoriteSelection(false) } : {})}
               />
             )}
             {loading ? <LoadingRows /> : isLibraryEmpty ? (
@@ -1600,13 +1865,10 @@ function DriveView({
                 selectedCount={selectedEntries.length}
                 busy={busyId === "bulk"}
                 onClear={() => setSelectedKeys(new Set())}
-                onMove={(trigger) => setMoveRequest({ kind: "bulk", items: selectedEntries, returnFocus: trigger })}
-                onRecycle={() => {
-                  if (window.confirm(t("bulk.recycleConfirm", { count: selectedEntries.length }))) {
-                    void runBulk("recycle").catch(() => undefined);
-                  }
-                }}
-                onFavoriteRemove={() => void runBulk("favorite_remove").catch(() => undefined)}
+                {...(selectionCapabilities.move ? { onMove: (trigger: HTMLElement) => setMoveRequest({ kind: "bulk", items: selectedEntries.filter(isAccountEntry), returnFocus: trigger }) } : {})}
+                {...(selectionCapabilities.recycle ? { onRecycle: () => void recycleSelected().catch(() => undefined) } : {})}
+                {...(selectionCapabilities.favoriteAdd ? { onFavoriteAdd: () => void runFavoriteSelection(true) } : {})}
+                {...(selectionCapabilities.favoriteRemove ? { onFavoriteRemove: () => void runFavoriteSelection(false) } : {})}
               />
             )}
             {favoritesError !== null ? (
@@ -1614,12 +1876,13 @@ function DriveView({
                 {describeError(favoritesError, language)}
                 <button type="button" onClick={refresh}>{t("pending.refresh")}</button>
               </div>
-            ) : favorites === null ? <LoadingRows /> : favorites.files.length + favorites.folders.length === 0 ? (
+            ) : favorites === null ? <LoadingRows /> : favorites.files.length + favorites.folders.length + favoriteLibraryHoldings.length === 0 ? (
               <EmptyState title={t("favorites.emptyTitle")} />
             ) : (
               <EntryTable
                 folders={favorites.folders}
                 files={favorites.files}
+                libraryHoldings={favoriteLibraryHoldings}
                 busyId={busyId}
                 onEnterFolder={enterFavoriteFolder}
                 onRenameFolder={renameFolder}
@@ -1630,6 +1893,9 @@ function DriveView({
                 onRenameFile={renameFile}
                 onMoveFile={moveFile}
                 onDeleteFile={deleteFile}
+                onPreviewHolding={(library, holding, trigger) => void openLibraryPreview(library, holding, trigger)}
+                onOpenHoldingDetails={(library, holding, trigger) => openResourceDetails(library, holding, trigger)}
+                onDownloadHolding={(library, holding) => void downloadLibraryHolding(library, holding)}
                 starFileIds={favoriteFileIds}
                 starFolderIds={favoriteFolderIds}
                 onToggleFileFavorite={(file) => void toggleFileFavorite(file)}
@@ -1652,7 +1918,8 @@ function DriveView({
                 selectedCount={selectedEntries.length}
                 busy={busyId === "bulk"}
                 onClear={() => setSelectedKeys(new Set())}
-                onRestore={() => void runBulk("restore").catch(() => undefined)}
+                {...(selectionCapabilities.restore ? { onRestore: () => void restoreSelectedRecycle().catch(() => undefined) } : {})}
+                {...(selectionCapabilities.permanentDelete ? { onPermanentDelete: () => void permanentlyDeleteSelectedRecycle() } : {})}
               />
             )}
             {recycleLoading ? <LoadingRows /> : recycleCount === 0 && libraryRecycleError === null ? (
@@ -1660,64 +1927,100 @@ function DriveView({
             ) : recycleCount > 0 ? (
               <div className="card-list">
                 {recycle.folders.map((folder) => (
-                  <article className="recycle-card" key={folder.id}>
+                  <article className={selectedKeys.has(selectionKey("account_folder", folder.id)) ? "recycle-card is-selected" : "recycle-card"} key={folder.id}>
                     <label className="entry-select-control">
                       <input
                         className="entry-select"
                         type="checkbox"
                         aria-label={t("bulk.selectAria", { name: folder.name })}
-                        checked={selectedKeys.has(selectionKey("folder", folder.id))}
-                        disabled={busyId === "bulk" || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("folder", folder.id)))}
-                        onChange={() => toggleSelection({ kind: "folder", item: folder })}
+                        checked={selectedKeys.has(selectionKey("account_folder", folder.id))}
+                        disabled={busyId === "bulk" || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("account_folder", folder.id)))}
+                        onChange={() => toggleSelection({ scope: "account_folder", item: folder })}
                       />
                       <span className="entry-select-box" aria-hidden="true" />
                     </label>
                     <FolderBadge />
                     <div className="entry-primary"><strong>{folder.name}</strong><span>{t("recycle.folderDeleted", { date: formatDate(folder.deletedAt, language) })}</span></div>
                     <button className="button button--small" type="button" aria-label={t("recycle.restoreFolderAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => void runAction(folder.id, t("recycle.folderRestored"), () => api.restoreFolder(folder.id))}>{t("recycle.restore")}</button>
+                    {account.role === "owner" && <button className="button button--small button--danger" type="button" aria-label={t("recycle.deleteForeverAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => {
+                      if (window.confirm(t("folder.permanentConfirm", { name: folder.name }))) {
+                        void runAction(folder.id, t("folder.permanentDeleted"), () => api.permanentlyDeleteFolder(folder.id, folder.version));
+                      }
+                    }}>{t("recycle.deleteForever")}</button>}
                   </article>
                 ))}
                 {recycle.files.map((file) => (
-                  <article className="recycle-card" key={file.id}>
+                  <article className={selectedKeys.has(selectionKey("account_file", file.id)) ? "recycle-card is-selected" : "recycle-card"} key={file.id}>
                     <label className="entry-select-control">
                       <input
                         className="entry-select"
                         type="checkbox"
                         aria-label={t("bulk.selectAria", { name: file.displayName })}
-                        checked={selectedKeys.has(selectionKey("file", file.id))}
-                        disabled={busyId === "bulk" || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("file", file.id)))}
-                        onChange={() => toggleSelection({ kind: "file", item: file })}
+                        checked={selectedKeys.has(selectionKey("account_file", file.id))}
+                        disabled={busyId === "bulk" || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("account_file", file.id)))}
+                        onChange={() => toggleSelection({ scope: "account_file", item: file })}
                       />
                       <span className="entry-select-box" aria-hidden="true" />
                     </label>
                     <FileBadge file={file} />
                     <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t("recycle.fileDeleted", { date: formatDate(file.deletedAt, language) })}</span></div>
                     <button className="button button--small" type="button" aria-label={t("recycle.restoreFileAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => void runAction(file.id, t("file.restored"), () => api.restoreFile(file.id))}>{t("recycle.restore")}</button>
-                    <button className="button button--small button--danger" type="button" aria-label={t("recycle.deleteForeverAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => {
+                    {account.role === "owner" && <button className="button button--small button--danger" type="button" aria-label={t("recycle.deleteForeverAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => {
                       if (window.confirm(t("file.permanentConfirm", { name: file.displayName }))) {
-                        void runAction(file.id, t("file.permanentDeleted"), () => api.permanentlyDeleteFile(file.id));
+                        void runAction(file.id, t("file.permanentDeleted"), () => api.permanentlyDeleteFile(file.id, file.version));
                       }
-                    }}>{t("recycle.deleteForever")}</button>
+                    }}>{t("recycle.deleteForever")}</button>}
                   </article>
                 ))}
                 {recycleLibrary && libraryRecycle.files.map((entry) => {
-                  const actionId = `library-restore:${entry.file.id}`;
+                  const restoreActionId = `library-restore:${entry.file.id}`;
+                  const deleteActionId = `library-delete:${entry.file.id}`;
+                  const key = selectionKey("library_recycle_holding", entry.file.id, recycleLibrary.id);
+                  const displayTitle = entry.canonicalTitle?.trim() || entry.file.displayName;
                   return (
                     <article
-                      className="recycle-card"
+                      className={selectedKeys.has(key) ? "recycle-card is-selected" : "recycle-card"}
                       data-entry-kind="library-recycle-holding"
                       key={`${recycleLibrary.id}:${entry.file.id}`}
                     >
-                      <span className="entry-select-spacer" aria-hidden="true" />
+                      <label className="entry-select-control">
+                        <input
+                          className="entry-select"
+                          type="checkbox"
+                          aria-label={t("bulk.selectAria", { name: displayTitle })}
+                          checked={selectedKeys.has(key)}
+                          disabled={busyId === "bulk" || (selectedKeys.size >= 100 && !selectedKeys.has(key))}
+                          onChange={() => toggleSelection({
+                            scope: "library_recycle_holding",
+                            library: recycleLibrary,
+                            item: entry,
+                          })}
+                        />
+                        <span className="entry-select-box" aria-hidden="true" />
+                      </label>
                       <FileBadge file={entry.file} />
-                      <div className="entry-primary"><strong>{entry.file.displayName}</strong><span>{formatBytes(entry.file.sizeBytes)} · {t("recycle.fileDeleted", { date: formatDate(entry.file.deletedAt, language) })}</span></div>
+                      <div className="entry-primary"><strong>{displayTitle}</strong><span>{formatBytes(entry.file.sizeBytes)} · {t("recycle.fileDeleted", { date: formatDate(entry.file.deletedAt, language) })}</span></div>
                       <button
                         className="button button--small"
                         type="button"
-                        aria-label={t("recycle.restoreFileAria", { name: entry.file.displayName })}
-                        disabled={busyId === actionId}
+                        aria-label={t("recycle.restoreFileAria", { name: displayTitle })}
+                        disabled={busyId === restoreActionId || busyId === deleteActionId}
                         onClick={() => restoreRecycledLibraryHolding(recycleLibrary, entry)}
                       >{t("recycle.restore")}</button>
+                      {account.role === "owner" && <button
+                        className="button button--small button--danger"
+                        type="button"
+                        aria-label={t("recycle.deleteForeverAria", { name: displayTitle })}
+                        disabled={busyId === restoreActionId || busyId === deleteActionId}
+                        onClick={() => {
+                          if (!window.confirm(t("file.permanentConfirm", { name: displayTitle }))) return;
+                          void runAction(
+                            deleteActionId,
+                            t("file.permanentDeleted"),
+                            () => api.permanentlyDeleteLibraryHolding(recycleLibrary.id, entry.file.id, entry.version),
+                          );
+                        }}
+                      >{t("recycle.deleteForever")}</button>}
                     </article>
                   );
                 })}
@@ -2597,6 +2900,7 @@ function BulkToolbar({
   onMove,
   onRecycle,
   onRestore,
+  onPermanentDelete,
   onFavoriteAdd,
   onFavoriteRemove,
 }: {
@@ -2607,6 +2911,7 @@ function BulkToolbar({
   onMove?: (trigger: HTMLElement) => void;
   onRecycle?: () => void;
   onRestore?: () => void;
+  onPermanentDelete?: () => void;
   onFavoriteAdd?: () => void;
   onFavoriteRemove?: () => void;
 }) {
@@ -2623,6 +2928,7 @@ function BulkToolbar({
         {onFavoriteAdd && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteAdd}>{t("bulk.favoriteAdd")}</button>}
         {onFavoriteRemove && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteRemove}>{t("bulk.favoriteRemove")}</button>}
         {onRestore && <button className="button button--small" type="button" disabled={busy} onClick={onRestore}>{t("bulk.restore")}</button>}
+        {onPermanentDelete && <button className="button button--small button--danger" type="button" disabled={busy} onClick={onPermanentDelete}>{t("bulk.permanentDelete")}</button>}
         {onRecycle && <button className="button button--small button--danger" type="button" disabled={busy} onClick={onRecycle}>{t("bulk.recycle")}</button>}
         <button className="button button--small button--quiet" type="button" disabled={busy} onClick={onClear}>{t("bulk.clear")}</button>
       </div>
@@ -2633,8 +2939,7 @@ function BulkToolbar({
 function EntryTable({
   folders,
   files,
-  holdings = [],
-  library,
+  libraryHoldings = [],
   busyId,
   onEnterFolder,
   onRenameFolder,
@@ -2659,8 +2964,7 @@ function EntryTable({
 }: {
   folders: FolderEntry[];
   files: FileEntry[];
-  holdings?: LibraryHolding[];
-  library?: LibrarySummary;
+  libraryHoldings?: Array<{ library: LibrarySummary; holding: LibraryHolding }>;
   busyId: string | null;
   onEnterFolder: (folder: FolderEntry) => void;
   onRenameFolder: (folder: FolderEntry) => void;
@@ -2671,10 +2975,10 @@ function EntryTable({
   onRenameFile: (file: FileEntry) => void;
   onMoveFile: (file: FileEntry, trigger?: HTMLElement) => void;
   onDeleteFile: (file: FileEntry) => void;
-  onOpenHoldingDetails?: (holding: LibraryHolding, trigger?: HTMLElement) => void;
-  onPreviewHolding?: (holding: LibraryHolding, trigger?: HTMLElement) => void;
-  onDownloadHolding?: (holding: LibraryHolding) => void;
-  onRecycleHolding?: (holding: LibraryHolding) => void;
+  onOpenHoldingDetails?: (library: LibrarySummary, holding: LibraryHolding, trigger?: HTMLElement) => void;
+  onPreviewHolding?: (library: LibrarySummary, holding: LibraryHolding, trigger?: HTMLElement) => void;
+  onDownloadHolding?: (library: LibrarySummary, holding: LibraryHolding) => void;
+  onRecycleHolding?: (library: LibrarySummary, holding: LibraryHolding) => void;
   starFileIds?: ReadonlySet<string>;
   starFolderIds?: ReadonlySet<string>;
   onToggleFileFavorite?: (file: Pick<FileEntry, "id">) => void;
@@ -2693,16 +2997,16 @@ function EntryTable({
         <span role="columnheader" className="entry-actions-head"><span className="visually-hidden">{t("table.actions")}</span></span>
       </div>
       {folders.map((folder) => (
-        <div className={selectedKeys.has(selectionKey("folder", folder.id)) ? "entry-row is-selected" : "entry-row"} role="row" key={folder.id}>
+        <div className={selectedKeys.has(selectionKey("account_folder", folder.id)) ? "entry-row is-selected" : "entry-row"} role="row" key={folder.id}>
           <div className="entry-name" role="cell">
             <label className="entry-select-control">
               <input
                 className="entry-select"
                 type="checkbox"
                 aria-label={t("bulk.selectAria", { name: folder.name })}
-                checked={selectedKeys.has(selectionKey("folder", folder.id))}
-                disabled={selectionDisabled || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("folder", folder.id)))}
-                onChange={() => onToggleSelected({ kind: "folder", item: folder })}
+                checked={selectedKeys.has(selectionKey("account_folder", folder.id))}
+                disabled={selectionDisabled || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("account_folder", folder.id)))}
+                onChange={() => onToggleSelected({ scope: "account_folder", item: folder })}
               />
               <span className="entry-select-box" aria-hidden="true" />
             </label>
@@ -2735,16 +3039,27 @@ function EntryTable({
           </div>
         </div>
       ))}
-      {holdings.map((holding) => {
+      {libraryHoldings.map(({ library, holding }) => {
         const displayTitle = holding.canonicalTitle?.trim() || holding.file.displayName;
+        const key = selectionKey("library_holding", holding.file.id, library.id);
         return (
-        <div className="entry-row" role="row" key={holding.artifactId} data-entry-kind="library-holding">
+        <div className={selectedKeys.has(key) ? "entry-row is-selected" : "entry-row"} role="row" key={`${library.id}:${holding.artifactId}`} data-entry-kind="library-holding">
           <div className="entry-name" role="cell">
-            <span className="entry-select-spacer" aria-hidden="true" />
+            <label className="entry-select-control">
+              <input
+                className="entry-select"
+                type="checkbox"
+                aria-label={t("bulk.selectAria", { name: displayTitle })}
+                checked={selectedKeys.has(key)}
+                disabled={selectionDisabled || (selectedKeys.size >= 100 && !selectedKeys.has(key))}
+                onChange={() => onToggleSelected({ scope: "library_holding", library, item: holding })}
+              />
+              <span className="entry-select-box" aria-hidden="true" />
+            </label>
             <FileBadge file={holding.file} />
             <div className="entry-name-body">
               {onOpenHoldingDetails ? (
-                <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onOpenHoldingDetails(holding, event.currentTarget)}>{displayTitle}</button>
+                <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onOpenHoldingDetails(library, holding, event.currentTarget)}>{displayTitle}</button>
               ) : <strong className="entry-filename" title={displayTitle}>{displayTitle}</strong>}
               <span className="entry-mobile-meta">{fileKindLabel(holding.file, t)} · {formatBytes(holding.file.sizeBytes)}</span>
             </div>
@@ -2759,7 +3074,7 @@ function EntryTable({
                 onToggle={() => onToggleFileFavorite(holding.file)}
               />
             )}
-            {library && onDownloadHolding && (
+            {onDownloadHolding && (
               <RowMenu
                 triggerLabel={t("menu.openAria", { name: displayTitle })}
                 menuLabel={t("menu.aria", { name: displayTitle })}
@@ -2768,13 +3083,13 @@ function EntryTable({
                     key: "preview",
                     label: t("menu.preview"),
                     disabled: busyId === `preview-${holding.file.id}`,
-                    onSelect: (trigger: HTMLElement) => onPreviewHolding(holding, trigger),
+                    onSelect: (trigger: HTMLElement) => onPreviewHolding(library, holding, trigger),
                   }] : []),
                   {
                     key: "download",
                     label: t("menu.download"),
                     disabled: busyId === `download-${holding.file.id}`,
-                    onSelect: () => onDownloadHolding(holding),
+                    onSelect: () => onDownloadHolding(library, holding),
                   },
                   ...(library.role === "manager" && onRecycleHolding ? [
                     { key: "separator", separator: true as const },
@@ -2783,7 +3098,7 @@ function EntryTable({
                       label: t("menu.trash"),
                       danger: true,
                       disabled: busyId === holding.file.id,
-                      onSelect: () => onRecycleHolding(holding),
+                      onSelect: () => onRecycleHolding(library, holding),
                     },
                   ] : []),
                 ]}
@@ -2794,16 +3109,16 @@ function EntryTable({
         );
       })}
       {files.map((file) => (
-        <div className={selectedKeys.has(selectionKey("file", file.id)) ? "entry-row is-selected" : "entry-row"} role="row" key={file.id}>
+        <div className={selectedKeys.has(selectionKey("account_file", file.id)) ? "entry-row is-selected" : "entry-row"} role="row" key={file.id}>
           <div className="entry-name" role="cell">
             <label className="entry-select-control">
               <input
                 className="entry-select"
                 type="checkbox"
                 aria-label={t("bulk.selectAria", { name: file.displayName })}
-                checked={selectedKeys.has(selectionKey("file", file.id))}
-                disabled={selectionDisabled || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("file", file.id)))}
-                onChange={() => onToggleSelected({ kind: "file", item: file })}
+                checked={selectedKeys.has(selectionKey("account_file", file.id))}
+                disabled={selectionDisabled || (selectedKeys.size >= 100 && !selectedKeys.has(selectionKey("account_file", file.id)))}
+                onChange={() => onToggleSelected({ scope: "account_file", item: file })}
               />
               <span className="entry-select-box" aria-hidden="true" />
             </label>
@@ -3063,11 +3378,11 @@ function MoveDialog({
   const dialogRef = useModalDialog(onClose, moving, request.returnFocus);
   const destinationId = path.at(-1)?.id ?? null;
   const currentParentIds = request.kind === "bulk"
-    ? new Set(request.items.map((entry) => entry.kind === "folder" ? entry.item.parentId : entry.item.folderId))
+    ? new Set(request.items.map((entry) => entry.scope === "account_folder" ? entry.item.parentId : entry.item.folderId))
     : new Set([request.kind === "folder" ? request.item.parentId : request.item.folderId]);
   const selectedFolderIds = new Set(
     request.kind === "bulk"
-      ? request.items.filter((entry) => entry.kind === "folder").map((entry) => entry.item.id)
+      ? request.items.filter((entry) => entry.scope === "account_folder").map((entry) => entry.item.id)
       : request.kind === "folder" ? [request.item.id] : [],
   );
 

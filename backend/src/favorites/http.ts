@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { fileDto, folderDto } from "../drive/http.js";
+import { driveEntryVersion } from "../drive/bulk.js";
 import { FavoriteError } from "./favorite.js";
 import type { FavoriteService } from "./favorite-service.js";
 
@@ -29,6 +30,30 @@ export async function registerFavoritesHttp(app: FastifyInstance, favoriteServic
     const snapshot = favoriteService.listFavorites(requireAccountId(request.authAccount));
     return {
       files: snapshot.files.map(fileDto),
+      libraryHoldings: snapshot.libraryHoldings.map(({ library, role, holding }) => ({
+        library: {
+          id: library.id,
+          name: library.name,
+          role,
+          isDefault: library.isDefault,
+          createdAt: library.createdAt.toISOString(),
+        },
+        holding: {
+          recordId: holding.recordId,
+          recordLabel: holding.recordLabel,
+          canonicalTitle: holding.canonicalTitle,
+          artifactId: holding.artifactId,
+          versionId: holding.versionId,
+          version: driveEntryVersion(holding.file),
+          file: {
+            id: holding.file.id,
+            displayName: holding.file.displayName,
+            mediaType: holding.file.mediaType,
+            sizeBytes: holding.file.sizeBytes,
+            updatedAt: holding.file.updatedAt.toISOString(),
+          },
+        },
+      })),
       folders: snapshot.folders.map((entry) => ({
         ...folderDto(entry.folder),
         ancestors: entry.ancestors.map(folderDto),

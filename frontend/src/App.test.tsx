@@ -142,6 +142,7 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     createFolder: vi.fn(),
     updateFolder: vi.fn(),
     deleteFolder: vi.fn(),
+    permanentlyDeleteFolder: vi.fn().mockResolvedValue(undefined),
     restoreFolder: vi.fn(),
     createUpload: vi.fn(),
     renewUpload: vi.fn(),
@@ -151,6 +152,7 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     deleteFile: vi.fn(),
     restoreFile: vi.fn(),
     permanentlyDeleteFile: vi.fn(),
+    permanentlyDeleteLibraryHolding: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -875,6 +877,7 @@ describe("App", () => {
   it("keeps the row action menu compact and exposes folder/file actions inside it", async () => {
     const user = userEvent.setup();
     const deleteFile = vi.fn().mockResolvedValue(undefined);
+    const deleteFolder = vi.fn().mockResolvedValue(undefined);
     const bulkOperation = vi.fn().mockImplementation(async (input: BulkOperationInput) => ({
       action: input.action,
       atomic: true as const,
@@ -884,6 +887,7 @@ describe("App", () => {
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
       deleteFile,
+      deleteFolder,
       bulkOperation,
     });
     vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -907,10 +911,7 @@ describe("App", () => {
     expect(within(folderMenu).getByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
     expect(within(folderMenu).getByRole("menuitem", { name: "Move" })).toBeInTheDocument();
     await user.click(within(folderMenu).getByRole("menuitem", { name: "Move to trash" }));
-    await waitFor(() => expect(bulkOperation).toHaveBeenCalledWith({
-      action: "recycle",
-      items: [{ kind: "folder", id: FOLDER.id, version: FOLDER.version }],
-    }));
+    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(FOLDER.id));
     expect(window.confirm).toHaveBeenCalledWith("Move “Sources” and its active contents to the recycle bin?");
   });
 
@@ -920,33 +921,23 @@ describe("App", () => {
     const listEntries = vi.fn()
       .mockResolvedValueOnce({ folder: null, folders: [FOLDER], files: [] })
       .mockResolvedValue({ folder: null, folders: [freshFolder], files: [] });
-    const bulkOperation = vi.fn()
+    const deleteFolder = vi.fn()
       .mockRejectedValueOnce(new ApiError(409, "invalid_state"))
-      .mockImplementation(async (input: BulkOperationInput) => ({
-        action: input.action,
-        atomic: true as const,
-        items: input.items.map((selected) => ({ ...selected, outcome: "succeeded" as const })),
-      }));
+      .mockResolvedValueOnce(undefined);
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listEntries, bulkOperation });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listEntries, deleteFolder });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
     let menu = await openRowMenu("Sources");
     await user.click(within(menu).getByRole("menuitem", { name: "Move to trash" }));
-    await waitFor(() => expect(bulkOperation).toHaveBeenLastCalledWith({
-      action: "recycle",
-      items: [{ kind: "folder", id: FOLDER.id, version: FOLDER.version }],
-    }));
+    await waitFor(() => expect(deleteFolder).toHaveBeenNthCalledWith(1, FOLDER.id));
     expect(await screen.findByRole("status")).toHaveTextContent("this view was refreshed");
     expect(listEntries).toHaveBeenCalledTimes(2);
 
     menu = await openRowMenu("Sources");
     await user.click(within(menu).getByRole("menuitem", { name: "Move to trash" }));
-    await waitFor(() => expect(bulkOperation).toHaveBeenLastCalledWith({
-      action: "recycle",
-      items: [{ kind: "folder", id: FOLDER.id, version: freshFolder.version }],
-    }));
+    await waitFor(() => expect(deleteFolder).toHaveBeenNthCalledWith(2, FOLDER.id));
     expect(await screen.findByRole("status")).toHaveTextContent("Folder moved to the recycle bin");
   });
 
@@ -1194,7 +1185,7 @@ describe("App", () => {
     await user.click(await screen.findByRole("button", { name: "Restore file paper.pdf" }));
     await waitFor(() => expect(restoreFile).toHaveBeenCalledWith("file-1"));
     await user.click(screen.getByRole("button", { name: "Delete paper.pdf forever" }));
-    await waitFor(() => expect(permanentlyDeleteFile).toHaveBeenCalledWith("file-1"));
+    await waitFor(() => expect(permanentlyDeleteFile).toHaveBeenCalledWith("file-1", deleted.version));
   });
 
   it("combines manager-visible Library recycle rows without widening account restore or purge authority", async () => {
@@ -1205,6 +1196,7 @@ describe("App", () => {
     const currentVersion = "q".repeat(43);
     const libraryDeleted = {
       version: staleVersion,
+      canonicalTitle: null,
       file: {
         id: "library-recycled-file",
         displayName: "shared-source.pdf",
@@ -1238,8 +1230,8 @@ describe("App", () => {
     expect(libraryRow).toBeInstanceOf(HTMLElement);
     const libraryRowElement = libraryRow as HTMLElement;
     expect(libraryRowElement.querySelector(".file-badge--pdf")).not.toBeNull();
-    expect(within(libraryRowElement).queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(within(libraryRowElement).queryByRole("button", { name: /forever/i })).not.toBeInTheDocument();
+    expect(within(libraryRowElement).getByRole("checkbox", { name: "Select shared-source.pdf" })).toBeInTheDocument();
+    expect(within(libraryRowElement).getByRole("button", { name: /forever/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete paper.pdf forever" })).toBeInTheDocument();
 
     await user.click(within(libraryRowElement).getByRole("button", { name: "Restore file shared-source.pdf" }));
@@ -1266,7 +1258,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Restore file paper.pdf" }));
     await waitFor(() => expect(restoreFile).toHaveBeenCalledWith(accountDeleted.id));
     await user.click(screen.getByRole("button", { name: "Delete paper.pdf forever" }));
-    await waitFor(() => expect(permanentlyDeleteFile).toHaveBeenCalledWith(accountDeleted.id));
+    await waitFor(() => expect(permanentlyDeleteFile).toHaveBeenCalledWith(accountDeleted.id, accountDeleted.version));
   });
 
   it("does not request or expose Library governance recycle entries for a Member", async () => {
@@ -1928,8 +1920,189 @@ describe("App", () => {
   });
 });
 
+describe("resource-scope catalogue interactions", () => {
+  it("selects a real Library checkbox and limits a mixed account/Library toolbar to shared capabilities", async () => {
+    const user = userEvent.setup();
+    const holding = { ...LIBRARY_HOLDINGS[0], canonicalTitle: "Canonical book" };
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [] }),
+      listLibraryHoldings: vi.fn().mockResolvedValue([holding]),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    const libraryCheckbox = await screen.findByRole("checkbox", { name: "Select Canonical book" });
+    await user.click(libraryCheckbox);
+    expect(libraryCheckbox).toBeChecked();
+    let toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
+    expect(within(toolbar).getByRole("button", { name: "Add favorites" })).toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: "Move" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: "Select Sources" }));
+    toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
+    expect(within(toolbar).getByText("2 selected")).toBeInTheDocument();
+    expect(within(toolbar).getByRole("button", { name: "Add favorites" })).toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: "Move" })).not.toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
+  });
+
+  it("shows exactly one contextual Favorite action and updates it from authoritative state", async () => {
+    const user = userEvent.setup();
+    const listFavorites = vi.fn()
+      .mockResolvedValueOnce({ files: [FILE], folders: [] })
+      .mockResolvedValue({ files: [FILE], folders: [{ ...FOLDER, ancestors: [] }] });
+    const setFolderFavorite = vi.fn().mockResolvedValue(undefined);
+    const setFileFavorite = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
+      listFavorites,
+      setFolderFavorite,
+      setFileFavorite,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(await screen.findByRole("checkbox", { name: "Select Sources" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select paper.pdf" }));
+    let toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
+    expect(within(toolbar).getByRole("button", { name: "Add favorites" })).toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: "Remove favorites" })).not.toBeInTheDocument();
+    await user.click(within(toolbar).getByRole("button", { name: "Add favorites" }));
+    await waitFor(() => expect(setFolderFavorite).toHaveBeenCalledWith(FOLDER.id, true));
+    expect(setFileFavorite).not.toHaveBeenCalled();
+    await waitFor(() => expect(listFavorites).toHaveBeenCalledTimes(2));
+
+    await user.click(screen.getByRole("checkbox", { name: "Select Sources" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select paper.pdf" }));
+    toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
+    expect(within(toolbar).getByRole("button", { name: "Remove favorites" })).toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: "Add favorites" })).not.toBeInTheDocument();
+  });
+
+  it("preserves Member Favorite capability without exposing destructive Library actions", async () => {
+    const user = userEvent.setup();
+    const member = { id: "member-1", loginName: "Reader", role: "member" as const };
+    const memberLibrary = { ...DEFAULT_LIBRARY, role: "member" as const };
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(member),
+      listLibraries: vi.fn().mockResolvedValue([memberLibrary]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]]),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(await screen.findByRole("checkbox", { name: "Select book.pdf" }));
+    const toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
+    expect(within(toolbar).getByRole("button", { name: "Add favorites" })).toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: "Move" })).not.toBeInTheDocument();
+  });
+
+  it("keeps Library Favorites on canonical title and Library Preview/Download routes", async () => {
+    const user = userEvent.setup();
+    const holding = { ...LIBRARY_HOLDINGS[0]!, canonicalTitle: "Canonical favorite title" };
+    const createLibraryDownload = vi.fn().mockResolvedValue({
+      method: "GET", url: "https://storage.invalid/library", expiresAt: "2026-08-19T00:00:00.000Z",
+    });
+    const createDownload = vi.fn();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listFavorites: vi.fn().mockResolvedValue({
+        files: [], folders: [], libraryHoldings: [{ library: DEFAULT_LIBRARY, holding }],
+      }),
+      createLibraryDownload,
+      createDownload,
+    });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Favorites" }));
+    expect(await screen.findByText("Canonical favorite title")).toBeInTheDocument();
+    expect(screen.queryByText("book.pdf")).not.toBeInTheDocument();
+    let menu = await openRowMenu("Canonical favorite title");
+    await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
+    await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id, "inline"));
+    expect(createDownload).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: "Close preview" }));
+    menu = await openRowMenu("Canonical favorite title");
+    await user.click(within(menu).getByRole("menuitem", { name: "Download" }));
+    await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id));
+    expect(createDownload).not.toHaveBeenCalled();
+  });
+
+  it("selects account and Library Recycle rows and restores through each domain lifecycle", async () => {
+    const user = userEvent.setup();
+    const accountDeleted = { ...FILE, state: "deleted" as const, deletedAt: "2026-08-18T00:00:00.000Z" };
+    const libraryDeleted = {
+      version: "r".repeat(43), canonicalTitle: "Canonical recycled title",
+      file: { id: "library-deleted", displayName: "acquired.pdf", mediaType: "application/pdf", sizeBytes: 8, deletedAt: "2026-08-18T00:00:00.000Z" },
+    };
+    const restoreFile = vi.fn().mockResolvedValue(FILE);
+    const restoreLibraryHolding = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [accountDeleted] }),
+      listLibraryRecycle: vi.fn().mockResolvedValue([libraryDeleted]),
+      restoreFile,
+      restoreLibraryHolding,
+    });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Recycle" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select paper.pdf" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select Canonical recycled title" }));
+    const toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
+    expect(within(toolbar).getByRole("button", { name: "Restore" })).toBeInTheDocument();
+    expect(within(toolbar).getByRole("button", { name: "Delete forever" })).toBeInTheDocument();
+    await user.click(within(toolbar).getByRole("button", { name: "Restore" }));
+    await waitFor(() => expect(restoreFile).toHaveBeenCalledWith(accountDeleted.id));
+    expect(restoreLibraryHolding).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, libraryDeleted.file.id, libraryDeleted.version);
+  });
+
+  it("uses direct folder recycle from the top toolbar and reports partial permanent deletion truthfully", async () => {
+    const user = userEvent.setup();
+    const deleteFolder = vi.fn().mockResolvedValue(undefined);
+    const bulkOperation = vi.fn();
+    const rootApi = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [] }),
+      deleteFolder,
+      bulkOperation,
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const first = render(<App api={rootApi} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(await screen.findByRole("checkbox", { name: "Select Sources" }));
+    await user.click(screen.getByRole("button", { name: "Move to trash" }));
+    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(FOLDER.id));
+    expect(bulkOperation).not.toHaveBeenCalled();
+    first.unmount();
+
+    const accountDeleted = { ...FILE, state: "deleted" as const, deletedAt: "2026-08-18T00:00:00.000Z" };
+    const libraryDeleted = {
+      version: "r".repeat(43), canonicalTitle: null,
+      file: { id: "library-deleted", displayName: "library.pdf", mediaType: "application/pdf", sizeBytes: 8, deletedAt: "2026-08-18T00:00:00.000Z" },
+    };
+    const permanentlyDeleteFile = vi.fn().mockResolvedValue(undefined);
+    const permanentlyDeleteLibraryHolding = vi.fn().mockRejectedValue(new ApiError(409, "concurrent_change"));
+    const recycleApi = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [accountDeleted] }),
+      listLibraryRecycle: vi.fn().mockResolvedValue([libraryDeleted]),
+      permanentlyDeleteFile,
+      permanentlyDeleteLibraryHolding,
+    });
+    render(<App api={recycleApi} />);
+    await user.click(await screen.findByRole("button", { name: "Recycle" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select paper.pdf" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select library.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Delete forever" }));
+    await waitFor(() => expect(permanentlyDeleteFile).toHaveBeenCalledWith(accountDeleted.id, accountDeleted.version));
+    expect(permanentlyDeleteLibraryHolding).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, libraryDeleted.file.id, libraryDeleted.version);
+    expect(await screen.findByRole("status")).toHaveTextContent("Permanently deleted 1 of 2");
+    expect(screen.getByRole("checkbox", { name: "Select library.pdf" })).toBeChecked();
+  });
+});
+
 describe("bounded atomic bulk operations", () => {
-  it("selects mixed rows, sends one Favorite batch with opaque versions, and clears on success", async () => {
+  it("selects mixed rows, applies contextual Favorites only where missing, and clears on success", async () => {
     const user = userEvent.setup();
     const bulkOperation = vi.fn().mockImplementation(async (input: BulkOperationInput) => ({
       action: input.action,
@@ -1940,6 +2113,8 @@ describe("bounded atomic bulk operations", () => {
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
       bulkOperation,
+      setFolderFavorite: vi.fn().mockResolvedValue(undefined),
+      setFileFavorite: vi.fn().mockResolvedValue(undefined),
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
@@ -1950,13 +2125,9 @@ describe("bounded atomic bulk operations", () => {
     expect(within(toolbar).getByText("2 selected")).toBeInTheDocument();
     await user.click(within(toolbar).getByRole("button", { name: "Add favorites" }));
 
-    await waitFor(() => expect(bulkOperation).toHaveBeenCalledWith({
-      action: "favorite_add",
-      items: [
-        { kind: "folder", id: FOLDER.id, version: FOLDER.version },
-        { kind: "file", id: FILE.id, version: FILE.version },
-      ],
-    }));
+    await waitFor(() => expect(api.setFolderFavorite).toHaveBeenCalledWith(FOLDER.id, true));
+    expect(api.setFileFavorite).toHaveBeenCalledWith(FILE.id, true);
+    expect(bulkOperation).not.toHaveBeenCalled();
     expect(screen.queryByRole("toolbar", { name: "Selected item actions" })).not.toBeInTheDocument();
     expect(await screen.findByRole("status")).toHaveTextContent("Updated 2 selected items");
   });

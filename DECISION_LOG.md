@@ -196,3 +196,13 @@ If the current agent can update GitHub but cannot access the Owner's actual loca
 Only the active Owner may issue a 30-minute, 256-bit one-time reset capability for an active or disabled Member. Persistence keeps only the capability digest and immutable lifecycle evidence; reissue atomically supersedes every prior outstanding capability for the same Member. The Member chooses the final password on a dedicated same-origin surface, and the Owner never receives it.
 
 Redemption reuses the bounded Argon2id executor and atomically updates the exact password/authentication revision, consumes the capability, revokes every old session, and records audit evidence. Exactly one concurrent redemption wins, a pending old-password login cannot publish, disabled Members stay disabled, and archived accounts are ineligible. The authenticated self-service password HTTP/UI path is retired; no email/SMS/OAuth/public recovery service is introduced.
+
+## ADR-028 — Permanent-Delete Authority and Domain Safety
+
+**Date:** 2026-08-19
+**Status:** Accepted through PROD-07B and reconciled by L1-UX07
+**Full record:** `docs/decisions/ADR-028-permanent-delete-authority-and-domain-safety.md`
+
+Only the authenticated global `owner` may permanently delete eligible recycled account resources or Library holdings; Library role and contributor/uploader/creator identity are insufficient. Account and Library targets retain separate lifecycle routing.
+
+Library deletion must prove exact object/reference/lineage exclusivity and repeat that proof inside the destructive transaction immediately before `deleted → purging`. A changed or shared path fails with conflict/concurrent change while storage and lineage remain untouched. Storage cleanup and final `purged` state reuse the established purge state machine/audit ordering, and sequential cross-domain UI coordination reports partial irreversible completion truthfully. Repository support never authorizes a real production purge.

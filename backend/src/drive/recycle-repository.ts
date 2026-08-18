@@ -65,5 +65,12 @@ export interface RecycleRepository {
     expectedRevision: number,
     purgedAt: Date,
   ): boolean;
+  markFilePurgedForDomain(
+    ownerDomainId: string,
+    fileId: string,
+    groupId: string,
+    expectedRevision: number,
+    purgedAt: Date,
+  ): boolean;
   deleteGroup(ownerId: string, groupId: string): boolean;
 }

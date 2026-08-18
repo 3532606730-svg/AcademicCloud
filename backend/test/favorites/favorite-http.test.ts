@@ -27,7 +27,7 @@ function cookieFrom(headers: OutgoingHttpHeaders): string {
 }
 
 async function fixture(context: TestContext) {
-  const { persistence } = createTestPersistence(context);
+  const { database, persistence } = createTestPersistence(context);
   for (const id of ["owner-1", "member-2"]) {
     persistence.repositories.accounts.create({
       id,
@@ -89,7 +89,7 @@ async function fixture(context: TestContext) {
     return { fileId: upload.file.id, folderId: folder.id };
   }
 
-  return { app, persistence, driveService, favoriteService, login, activeFile };
+  return { app, database, persistence, driveService, favoriteService, login, activeFile };
 }
 
 test("favorites API enforces authentication, origin, exact status codes, and idempotency", async (context) => {
@@ -214,4 +214,81 @@ test("favorites listing hides soft-deleted resources and includes folder ancesto
   driveService.restoreFile("owner-1", fileId);
   const restored = await app.inject({ method: "GET", url: "/api/favorites", headers: { cookie: ownerCookie } });
   assert.deepEqual(restored.json<{ files: Array<{ id: string }> }>().files.map((f) => f.id), [fileId]);
+});
+
+test("favorites listing preserves Library scope and holding identity instead of projecting a shared file as account Drive", async (context) => {
+  const { app, database, persistence, login } = await fixture(context);
+  const memberCookie = await login("member-2");
+  const library = persistence.repositories.libraries.findDefault();
+  assert.ok(library);
+  const timestamp = NOW.toISOString();
+  const fileId = "favorite-library-file";
+  const recordId = "favorite-library-record";
+  const artifactId = "favorite-library-artifact";
+  const versionId = "favorite-library-version";
+  database.prepare(`
+    INSERT INTO files (
+      id, owner_domain_id, uploaded_by_account_id, folder_id, display_name,
+      storage_provider, object_key, media_type, size_bytes, checksum_algorithm,
+      checksum, state, revision, created_at, updated_at, activated_at,
+      deleted_at, purged_at, recycle_group_id
+    ) VALUES (?, ?, 'owner-1', NULL, 'acquired.pdf', 'memory', ?, 'application/pdf', 8,
+      'md5', ?, 'active', 0, ?, ?, ?, NULL, NULL, NULL)
+  `).run(fileId, library.ownerDomainId, `objects/fa/${"a".repeat(62)}`, MD5, timestamp, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_records (id, owner_domain_id, created_by_account_id, label, created_at, updated_at)
+    VALUES (?, ?, 'owner-1', 'Canonical favorite record', ?, ?)
+  `).run(recordId, library.ownerDomainId, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_artifacts (id, owner_domain_id, record_id, attachment_state, created_at, updated_at)
+    VALUES (?, ?, ?, 'detached', ?, ?)
+  `).run(artifactId, library.ownerDomainId, recordId, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_artifact_versions (id, owner_domain_id, artifact_id, stored_file_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(versionId, library.ownerDomainId, artifactId, fileId, timestamp, timestamp);
+  database.prepare("UPDATE scholarly_artifacts SET attachment_state = 'attached' WHERE id = ?").run(artifactId);
+
+  const add = await app.inject({
+    method: "PUT",
+    url: `/api/favorites/files/${fileId}`,
+    headers: { cookie: memberCookie, origin: ORIGIN },
+  });
+  assert.equal(add.statusCode, 204);
+  const response = await app.inject({ method: "GET", url: "/api/favorites", headers: { cookie: memberCookie } });
+  assert.equal(response.statusCode, 200);
+  const body = response.json<{
+    files: unknown[];
+    libraryHoldings: Array<{
+      library: { id: string; role: string };
+      holding: {
+        recordId: string;
+        recordLabel: string;
+        canonicalTitle: string | null;
+        artifactId: string;
+        versionId: string;
+        version: string;
+        file: { id: string; displayName: string; mediaType: string; sizeBytes: number; updatedAt: string };
+      };
+    }>;
+  }>();
+  assert.deepEqual(body.files, []);
+  assert.equal(body.libraryHoldings.length, 1);
+  assert.equal(body.libraryHoldings[0]?.library.id, library.id);
+  assert.equal(body.libraryHoldings[0]?.library.role, "member");
+  assert.deepEqual(body.libraryHoldings[0]?.holding, {
+    recordId,
+    recordLabel: "Canonical favorite record",
+    canonicalTitle: null,
+    artifactId,
+    versionId,
+    version: body.libraryHoldings[0]?.holding.version,
+    file: {
+      id: fileId,
+      displayName: "acquired.pdf",
+      mediaType: "application/pdf",
+      sizeBytes: 8,
+      updatedAt: timestamp,
+    },
+  });
 });

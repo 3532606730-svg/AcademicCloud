@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
-import { AuthorizationDeniedError } from "../auth/authorization.js";
+import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js";
 import { DriveError, type DriveService } from "../drive/drive-service.js";
 import { driveEntryVersion } from "../drive/bulk.js";
 import type { StoredFile } from "../drive/file.js";
@@ -68,6 +68,7 @@ export interface LibraryHoldingView {
 
 export interface LibraryRecycleFileView {
   version: string;
+  canonicalTitle: string | null;
   file: {
     id: string;
     displayName: string;
@@ -126,6 +127,7 @@ function mapHolding(holding: LibraryHolding): LibraryHoldingView {
 function mapRecycleFile(holding: LibraryRecycledHolding, file: StoredFile): LibraryRecycleFileView {
   return {
     version: driveEntryVersion(file),
+    canonicalTitle: holding.canonicalTitle,
     file: {
       id: holding.file.id,
       displayName: holding.file.displayName,
@@ -237,6 +239,19 @@ export class LibraryService {
     const reason = reasonFor(error);
     return tryRecordAuditAttempt(this.#persistence, {
       action: "drive.file_restore",
+      actorKind: "account",
+      actorAccountId: actor.id,
+      targetId: null,
+      outcome: reason === "storage_unavailable" ? "failed" : "denied",
+      reason,
+      occurredAt: this.#now(),
+    });
+  }
+
+  recordHoldingPurgeAuditAttempt(actor: AuthenticatedAccount, error: unknown): boolean {
+    const reason = reasonFor(error);
+    return tryRecordAuditAttempt(this.#persistence, {
+      action: "drive.file_purge_request",
       actorKind: "account",
       actorAccountId: actor.id,
       targetId: null,
@@ -535,6 +550,127 @@ export class LibraryService {
         occurredAt: now,
       });
     });
+  }
+
+  async permanentlyDeleteHolding(
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    fileId: string,
+    expectedVersion: string,
+  ): Promise<void> {
+    const owner = requireOwner(actor);
+    assertOpaqueVersion(expectedVersion);
+    const repositories = this.#persistence.repositories;
+    const currentAccount = repositories.accounts.findById(owner.id);
+    const library = repositories.libraries.findById(libraryId);
+    if (!currentAccount || currentAccount.state !== "active" || currentAccount.role !== "owner" || !library) {
+      throw new LibraryError("authorization_denied");
+    }
+
+    const holding = repositories.libraries.findRecycledHoldingByFile(library.id, fileId);
+    const file = repositories.files.findByDomainId(library.ownerDomainId, fileId);
+    if (!holding || !file || file.state !== "deleted") throw new LibraryError("not_found");
+    if (driveEntryVersion(file) !== expectedVersion) throw new LibraryError("concurrent_change");
+    const group = this.#requireSingleFileRecycleGroup(repositories, library.ownerDomainId, file.id);
+    const research = repositories.research;
+    if (!research || !repositories.libraries.verifyRecycledHoldingExclusive(
+      library.id,
+      group.id,
+      holding.recordId,
+      holding.artifactId,
+      holding.versionId,
+      file.id,
+      "deleted",
+      "attached",
+    )) {
+      throw new LibraryError("conflict");
+    }
+
+    try {
+      await this.#drive.permanentlyDeleteFileForDomain(
+        library.ownerDomainId,
+        file.id,
+        expectedVersion,
+        owner.id,
+        (transaction, current, now) => {
+          const currentLibrary = transaction.libraries.findById(libraryId);
+          if (!currentLibrary) throw new LibraryError("concurrent_change");
+          const currentGroup = this.#requireSingleFileRecycleGroup(
+            transaction,
+            currentLibrary.ownerDomainId,
+            file.id,
+          );
+          if (currentGroup.id !== group.id) throw new LibraryError("concurrent_change");
+
+          if (current.state === "deleted") {
+            if (
+              driveEntryVersion(current) !== expectedVersion
+              || !transaction.libraries.verifyRecycledHoldingExclusive(
+                currentLibrary.id,
+                currentGroup.id,
+                holding.recordId,
+                holding.artifactId,
+                holding.versionId,
+                current.id,
+                "deleted",
+                "attached",
+              )
+            ) {
+              throw new LibraryError("concurrent_change");
+            }
+            const artifact = transaction.research?.findArtifactByStoredFileForDomain(
+              currentLibrary.ownerDomainId,
+              current.id,
+            );
+            const version = transaction.research?.findVersionForDomain(
+              currentLibrary.ownerDomainId,
+              holding.artifactId,
+            );
+            if (
+              !artifact
+              || artifact.id !== holding.artifactId
+              || artifact.recordId !== holding.recordId
+              || artifact.attachmentState !== "attached"
+              || !version
+              || version.id !== holding.versionId
+              || version.storedFileId !== current.id
+              || !transaction.research?.updateArtifactStateForDomain(
+                currentLibrary.ownerDomainId,
+                holding.recordId,
+                holding.artifactId,
+                "attached",
+                "detached",
+                now,
+              )
+            ) {
+              throw new LibraryError("concurrent_change");
+            }
+          } else if (
+            current.state !== "purging"
+            || !transaction.libraries.verifyRecycledHoldingExclusive(
+              currentLibrary.id,
+              currentGroup.id,
+              holding.recordId,
+              holding.artifactId,
+              holding.versionId,
+              current.id,
+              "purging",
+              "detached",
+            )
+          ) {
+            throw new LibraryError("concurrent_change");
+          }
+        },
+      );
+    } catch (error: unknown) {
+      if (error instanceof DriveError) {
+        throw error;
+      }
+      if (error instanceof LibraryError) {
+        throw error;
+      }
+      throw new LibraryError("invalid_state", { cause: error });
+    }
   }
 
   async createDownload(

@@ -120,8 +120,20 @@ const artifactColumns = `
   scholarly_artifacts.created_at, scholarly_artifacts.updated_at
 `;
 
+const domainArtifactColumns = `
+  scholarly_artifacts.id, scholarly_artifacts.owner_domain_id AS owner_id,
+  scholarly_artifacts.record_id, scholarly_artifacts.attachment_state,
+  scholarly_artifacts.created_at, scholarly_artifacts.updated_at
+`;
+
 const versionColumns = `
   scholarly_artifact_versions.id, ownership_domains.account_id AS owner_id,
+  scholarly_artifact_versions.artifact_id, scholarly_artifact_versions.stored_file_id,
+  scholarly_artifact_versions.created_at, scholarly_artifact_versions.updated_at
+`;
+
+const domainVersionColumns = `
+  scholarly_artifact_versions.id, scholarly_artifact_versions.owner_domain_id AS owner_id,
   scholarly_artifact_versions.artifact_id, scholarly_artifact_versions.stored_file_id,
   scholarly_artifact_versions.created_at, scholarly_artifact_versions.updated_at
 `;
@@ -133,12 +145,17 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
   readonly #countArtifacts;
   readonly #createArtifact;
   readonly #findArtifact;
+  readonly #findArtifactForDomain;
   readonly #findArtifactByStoredFile;
+  readonly #findArtifactByStoredFileForDomain;
   readonly #listArtifacts;
   readonly #updateArtifactState;
+  readonly #updateArtifactStateForDomain;
   readonly #createVersion;
   readonly #findVersion;
+  readonly #findVersionForDomain;
   readonly #isFileAttached;
+  readonly #isFileAttachedForDomain;
 
   constructor(database: SqliteDatabase) {
     this.#createRecord = database.prepare<RecordParameters>(`
@@ -211,6 +228,11 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
         AND scholarly_artifacts.record_id = ?
         AND scholarly_artifacts.id = ?
     `);
+    this.#findArtifactForDomain = database.prepare<[string, string, string], ArtifactRow>(`
+      SELECT ${domainArtifactColumns}
+      FROM scholarly_artifacts
+      WHERE owner_domain_id = ? AND record_id = ? AND id = ?
+    `);
     this.#findArtifactByStoredFile = database.prepare<[string, string], ArtifactRow>(`
       SELECT ${artifactColumns}
       FROM scholarly_artifacts
@@ -220,6 +242,15 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
        AND scholarly_artifact_versions.owner_domain_id = scholarly_artifacts.owner_domain_id
       WHERE ownership_domains.kind = 'account'
         AND ownership_domains.account_id = ?
+        AND scholarly_artifact_versions.stored_file_id = ?
+    `);
+    this.#findArtifactByStoredFileForDomain = database.prepare<[string, string], ArtifactRow>(`
+      SELECT ${domainArtifactColumns}
+      FROM scholarly_artifacts
+      JOIN scholarly_artifact_versions
+        ON scholarly_artifact_versions.artifact_id = scholarly_artifacts.id
+       AND scholarly_artifact_versions.owner_domain_id = scholarly_artifacts.owner_domain_id
+      WHERE scholarly_artifacts.owner_domain_id = ?
         AND scholarly_artifact_versions.stored_file_id = ?
     `);
     this.#listArtifacts = database.prepare<ArtifactListParameters, ArtifactRow>(`
@@ -269,6 +300,21 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
         AND id = @artifactId
         AND attachment_state = @expectedState
     `);
+    this.#updateArtifactStateForDomain = database.prepare<{
+      ownerDomainId: string;
+      recordId: string;
+      artifactId: string;
+      expectedState: ScholarlyAttachmentState;
+      state: ScholarlyAttachmentState;
+      updatedAt: string;
+    }>(`
+      UPDATE scholarly_artifacts
+      SET attachment_state = @state, updated_at = @updatedAt
+      WHERE owner_domain_id = @ownerDomainId
+        AND record_id = @recordId
+        AND id = @artifactId
+        AND attachment_state = @expectedState
+    `);
     this.#createVersion = database.prepare<VersionParameters>(`
       INSERT INTO scholarly_artifact_versions (
         id, owner_domain_id, artifact_id, stored_file_id, created_at, updated_at
@@ -285,6 +331,11 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
         AND ownership_domains.account_id = ?
         AND scholarly_artifact_versions.artifact_id = ?
     `);
+    this.#findVersionForDomain = database.prepare<[string, string], VersionRow>(`
+      SELECT ${domainVersionColumns}
+      FROM scholarly_artifact_versions
+      WHERE owner_domain_id = ? AND artifact_id = ?
+    `);
     this.#isFileAttached = database.prepare<[string, string], { attached: number }>(`
       SELECT 1 AS attached
       FROM scholarly_artifact_versions
@@ -294,6 +345,17 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
       JOIN ownership_domains ON ownership_domains.id = scholarly_artifact_versions.owner_domain_id
       WHERE ownership_domains.kind = 'account'
         AND ownership_domains.account_id = ?
+        AND scholarly_artifact_versions.stored_file_id = ?
+        AND scholarly_artifacts.attachment_state = 'attached'
+      LIMIT 1
+    `);
+    this.#isFileAttachedForDomain = database.prepare<[string, string], { attached: number }>(`
+      SELECT 1 AS attached
+      FROM scholarly_artifact_versions
+      JOIN scholarly_artifacts
+        ON scholarly_artifacts.id = scholarly_artifact_versions.artifact_id
+       AND scholarly_artifacts.owner_domain_id = scholarly_artifact_versions.owner_domain_id
+      WHERE scholarly_artifact_versions.owner_domain_id = ?
         AND scholarly_artifact_versions.stored_file_id = ?
         AND scholarly_artifacts.attachment_state = 'attached'
       LIMIT 1
@@ -349,6 +411,11 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
     return row ? toArtifact(row) : null;
   }
 
+  findArtifactByStoredFileForDomain(ownerDomainId: string, storedFileId: string): ScholarlyArtifact | null {
+    const row = this.#findArtifactByStoredFileForDomain.get(ownerDomainId, storedFileId);
+    return row ? toArtifact(row) : null;
+  }
+
   listArtifacts(ownerId: string, recordId: string, beforeId: string | null, limit: number): ScholarlyArtifact[] {
     return this.#listArtifacts.all({ ownerId, recordId, beforeId, limit }).map(toArtifact);
   }
@@ -373,6 +440,27 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
     return this.findArtifact(ownerId, recordId, artifactId);
   }
 
+  updateArtifactStateForDomain(
+    ownerDomainId: string,
+    recordId: string,
+    artifactId: string,
+    expectedState: ScholarlyAttachmentState,
+    state: ScholarlyAttachmentState,
+    updatedAt: Date,
+  ): ScholarlyArtifact | null {
+    const result = this.#updateArtifactStateForDomain.run({
+      ownerDomainId,
+      recordId,
+      artifactId,
+      expectedState,
+      state,
+      updatedAt: toDatabaseTimestamp(updatedAt)!,
+    });
+    if (result.changes !== 1) return null;
+    const artifact = this.#findArtifactForDomain.get(ownerDomainId, recordId, artifactId);
+    return artifact ? toArtifact(artifact) : null;
+  }
+
   createVersion(version: NewScholarlyArtifactVersion): ScholarlyArtifactVersion {
     this.#createVersion.run({
       id: version.id,
@@ -390,7 +478,16 @@ export class SqliteScholarlyRepository implements ScholarlyRepository {
     return row ? toVersion(row) : null;
   }
 
+  findVersionForDomain(ownerDomainId: string, artifactId: string): ScholarlyArtifactVersion | null {
+    const row = this.#findVersionForDomain.get(ownerDomainId, artifactId);
+    return row ? toVersion(row) : null;
+  }
+
   isFileAttached(ownerId: string, storedFileId: string): boolean {
     return this.#isFileAttached.get(ownerId, storedFileId) !== undefined;
+  }
+
+  isFileAttachedForDomain(ownerDomainId: string, storedFileId: string): boolean {
+    return Boolean(this.#isFileAttachedForDomain.get(ownerDomainId, storedFileId));
   }
 }

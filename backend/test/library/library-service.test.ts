@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
+import { AuthorizationDeniedError } from "../../src/auth/authorization.js";
 import { DriveService } from "../../src/drive/drive-service.js";
 import { LibraryError, LibraryService } from "../../src/library/library-service.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
@@ -421,4 +422,66 @@ test("Library restore fails closed when the stored object is missing", async (co
     database.prepare<[string], { count: number }>("SELECT count(*) AS count FROM recycle_groups WHERE id = ?").get(groupId)?.count,
     1,
   );
+});
+
+test("Library permanent delete is global-Owner-only and revalidates exclusivity at the destructive transaction boundary", async (context) => {
+  const { database, persistence, storage, drive, libraries } = fixture(context);
+  const canonical = persistence.repositories.libraries.findDefault();
+  assert.ok(canonical);
+
+  const upload = await drive.createUpload(OWNER.id, {
+    folderId: null,
+    displayName: "exclusive.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 12,
+    checksum: { algorithm: "md5", value: "1B2M2Y8AsgTpgAmY7PhCfg==" },
+  });
+  storage.putObject({
+    objectKey: upload.upload.fields.key!,
+    sizeBytes: 12,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: "1B2M2Y8AsgTpgAmY7PhCfg==",
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+  await libraries.completeDefaultUpload(OWNER, upload.file.id);
+  const holding = libraries.listHoldings(OWNER.id, canonical.id)[0]!;
+  libraries.recycleHolding(OWNER, canonical.id, holding.file.id, holding.version);
+  const recycled = libraries.listRecycle(OWNER, canonical.id)[0]!;
+
+  await assert.rejects(
+    libraries.permanentlyDeleteHolding(MEMBER, canonical.id, holding.file.id, recycled.version),
+    (error: unknown) => error instanceof AuthorizationDeniedError,
+  );
+
+  const repository = persistence.repositories.libraries;
+  const originalProof = repository.verifyRecycledHoldingExclusive.bind(repository);
+  let proofCalls = 0;
+  repository.verifyRecycledHoldingExclusive = (...args) => {
+    proofCalls += 1;
+    return proofCalls === 1 ? originalProof(...args) : false;
+  };
+
+  await assert.rejects(
+    libraries.permanentlyDeleteHolding(OWNER, canonical.id, holding.file.id, recycled.version),
+    (error: unknown) => error instanceof LibraryError && error.code === "concurrent_change",
+  );
+  assert.equal(proofCalls, 2, "preflight proof must be repeated inside the mutation transaction");
+  assert.equal(persistence.repositories.files.findByDomainId(canonical.ownerDomainId, holding.file.id)?.state, "deleted");
+  assert.equal(database.prepare<[string], { attachment_state: string }>(
+    "SELECT attachment_state FROM scholarly_artifacts WHERE id = ?",
+  ).get(holding.artifactId)?.attachment_state, "attached");
+  assert.notEqual(await storage.statObject(upload.upload.fields.key!), null);
+
+  repository.verifyRecycledHoldingExclusive = originalProof;
+  await libraries.permanentlyDeleteHolding(OWNER, canonical.id, holding.file.id, recycled.version);
+  assert.equal(persistence.repositories.files.findByDomainId(canonical.ownerDomainId, holding.file.id)?.state, "purged");
+  assert.equal(database.prepare<[string], { attachment_state: string }>(
+    "SELECT attachment_state FROM scholarly_artifacts WHERE id = ?",
+  ).get(holding.artifactId)?.attachment_state, "detached");
+  assert.equal(database.prepare<[string, string], { count: number }>(
+    "SELECT count(*) AS count FROM scholarly_artifact_versions WHERE id = ? AND stored_file_id = ?",
+  ).get(holding.versionId, holding.file.id)?.count, 1, "retained lineage remains attributed to the purged file");
+  assert.equal(await storage.statObject(upload.upload.fields.key!), null);
 });
