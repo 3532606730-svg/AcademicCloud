@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, and `PROD-05A` are complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; its product/runtime baseline is requested checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a`, plus verification-only schema-head repairs required by the exact artifact workflow.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, and `PROD-05A` are complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. Repository development is reopened only for the Owner-approved first-use correction defined by ADR-022.
 
-**Approved continuous objective:** complete; STOP. The rollback pair for the schema-v15 generation is prior release `34a2eada158dcf08783dc9538d853f9361425e8a` plus schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite` (SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`), with age-encrypted off-host evidence in private `AcademicCloud-Backups` commit `b0238baa8bb5e5f44c5ceaf1d37ca3a80e0f9420`. `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, and OCR/RAG remain parked or separately gated.
+**Approved continuous objective:** execute only `RF-SHAREDDEFAULT01 → L2-CREDENTIALRESET01 → L1-UX05 → STOP for Owner review`. Production remains closed. The remaining Pre-OCR queue, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, and OCR/RAG remain parked or separately gated. The rollback pair for the schema-v15 production generation is prior release `34a2eada158dcf08783dc9538d853f9361425e8a` plus schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite` (SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`), with age-encrypted off-host evidence in private `AcademicCloud-Backups` commit `b0238baa8bb5e5f44c5ceaf1d37ca3a80e0f9420`.
 
 ## Engineering Workflow
 
@@ -24,57 +24,62 @@ Ordinary AcademicCloud engineering follows `.agents/skills/academiccloud-workflo
 8. **Server authority is mandatory.** Never trust client-provided owner, role, membership, privacy, or authorization claims.
 9. **Production is a separate gate.** Repository implementation never authorizes SSH, live migration, DNS/TLS/OSS mutation, deployment, destructive production tests, or main merge.
 10. **Every Epic ends at an evidence-backed checkpoint.** Applicable tests, risk-appropriate review, task-state reconciliation, and Git checkpoint precede autonomous progression.
-11. **Shared resource does not imply shared research activity.** ADR-014 governs future research data boundaries.
+11. **Shared resource does not imply shared research activity.** ADR-014 governs private research-state boundaries; ADR-022 defines the canonical shared-corpus default.
 12. **AI authority never exceeds the requesting user's effective authority.** There is no AI super-admin research view.
 13. **Verification must be proportionate, not performative.** Run the checks that materially cover changed risk, then stop when relevant evidence is green. Do not repeatedly rerun historical full acceptance, production artifact builds, backup/restore drills, benchmarks, or unrelated audits merely to increase ceremony. Escalate verification only when a concrete failure, migration/data-integrity risk, authorization/security change, production boundary, or other material evidence justifies it.
 14. **Re-verify before changing a technical judgment.** Owner urgency or preference may change product priority, but it does not by itself invalidate an engineering/security/data-safety conclusion. Material reversals require a changed fact, constraint, or corrected reasoning that should be recorded when durable.
+15. **Durable decisions must be reconciled and synchronized.** Per ADR-023, accepted durable product/architecture/security/workflow/roadmap/task-boundary decisions must be written into the smallest complete authoritative repository set rather than left in chat. After authorized remote publication, synchronize the accessible active local checkout non-destructively and verify local HEAD equals the intended remote HEAD; never discard unknown local work to force equality, and never claim local synchronization without actual local evidence.
 
 ## Durable Data / Privacy Model
 
-Follow `docs/decisions/ADR-014-privacy-ownership-and-research-activity-boundaries.md`.
+Follow `docs/decisions/ADR-014-privacy-ownership-and-research-activity-boundaries.md` and ADR-022.
 
 ### Physical Artifact
 Stored bytes/file representation, object identity, checksum, media/lifecycle metadata. Visibility follows the owning resource/Library authorization.
 
 ### Scholarly Resource / Scholarly Record
-Logical academic object and canonical scholarly facts. One Record may relate to several artifacts/versions/editions/scans/translations/derived artifacts.
+Logical academic object and canonical scholarly facts. One Record may relate to several artifacts/versions/editions/scans/translations/derived artifacts. These are internal domain concepts, not primary navigation labels.
 
 ### Personal Research Overlay
 Private per-account research state, including when implemented: Reading State/progress, Important/To Cite, Favorites/Recent, Personal Tags, Collections, Saved Research Views, private research/acquisition notes, annotations, citation/evidence organization, Evidence Bundles, Research Questions, and private search/history state.
 
 **Owner/Admin has no implicit product/API read authority over another account's Personal Research Overlay.** Infrastructure operator access is a separate production-security matter, not a product permission.
 
-### Collaborative Overlay
-Explicit Library/shared state such as Library Tags, contribution review, shared catalog/canonical records, shared provenance, or future explicitly shared research objects. A Personal Overlay never crosses into this plane implicitly.
+### Collaborative / Library Plane
+The canonical shared academic corpus, contribution review, Library Tags, shared catalog/canonical records, shared provenance, and future explicitly shared research objects. A Personal Overlay never crosses into this plane implicitly.
 
 ### Governance / Operations
-Accounts, invitations, account status, permissions, announcements, quota/statistics, security audit, integrity/recovery evidence. Administrative audit must not become default research surveillance.
+Accounts, invitations, account status, permissions, announcements, quota/statistics, security audit, integrity/recovery evidence. Administrative audit must not become default research surveillance and appears to users only under Owner administration as `操作记录`.
 
 ### Derived Intelligence
 OCR/extracted text/index/embeddings/retrieval/RAG-derived state. Authorization must inherit source-resource and applicable private-overlay authority.
 
 Additional invariants:
+- AcademicCloud presents one canonical `资料库`; approved academic resources are shared to active authorized members after Owner admission.
+- For a normal Member, upload is contribution intake/review, not creation of a permanent private Drive corpus.
+- Owner-originated uploads may be admitted directly because the Owner already holds admission authority.
+- Shared resource does not expose another member's Personal Research Overlay.
 - Folder = storage hierarchy; Collection = research-semantic organization.
 - Personal Tags and Library Tags are distinct.
 - canonical metadata and private interpretation/notes are distinct.
 - original acquired artifacts remain preservable evidence; derived artifacts have explicit lineage.
-- duplicate/fingerprint results must not reveal inaccessible resources across accounts.
+- duplicate/fingerprint results must not reveal inaccessible resources.
 
 ## Product Layers
 
-### Layer 1 — Core Drive
+### Layer 1 — Core Drive / Resource Handling
 
-**Repository-development foundation complete.** Authentication, account isolation, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, and deployment/recovery foundation are green. The approved `L1-UX04` first-use polish only improves same-folder duplicate-name feedback and persistent desktop sidebar behavior; it does not change storage identity/deduplication semantics.
+**Foundation complete; product semantics/UI are under the current bounded correction.** Authentication, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, and deployment/recovery foundation are green. ADR-022 supersedes the old final-product framing of an account-private Drive. `RF-SHAREDDEFAULT01` and `L1-UX05` adapt the proven substrate to one canonical shared `资料库` and the quieter first-use shell.
 
 ### Layer 2 — Accounts & Governance
 
-**Foundation complete.** Exact `owner | member`, invite-only registration, Owner administration, disable/enable/session revocation, Global Homepage Announcements, and Authenticated Password Change are green. The approved first-use polish adds non-destructive Member archival, Owner-only announcement deletion, and collapsed invitation history while preserving durable identity/history/security semantics. One-Time External Sharing remains a separate later Layer 2 capability unless explicitly queued.
+**Foundation complete; credential recovery is being simplified.** Exact `owner | member`, invite-only registration, Owner administration, disable/enable/archive/session revocation, Global Homepage Announcements, and the historical authenticated password-change implementation are green. ADR-022 supersedes routine self-service password change as a desired product surface. `L2-CREDENTIALRESET01` replaces it with Owner-authorized one-time reset where the Member chooses the final password. One-Time External Sharing remains a separate later Layer 2 capability unless explicitly queued.
 
 ### Layer 3 — Personal Scholarly Workspace & Scholarly Model
 
 Owner-approved Pre-OCR direction includes:
 - Personal Research Overlay (Reading State/progress/flags, Personal Tags, Collections, Saved Views, private research notes);
-- Scholarly Records separate from physical Artifacts;
+- Scholarly Records separate from physical Artifacts, while keeping those implementation entities out of primary navigation;
 - metadata templates, canonical metadata, provenance/acquisition records;
 - fingerprints/safe duplicate detection;
 - artifact/version/edition/scan/translation/transcription relationships and derived lineage;
@@ -82,17 +87,17 @@ Owner-approved Pre-OCR direction includes:
 - Research Inbox/intake;
 - sidecar annotations, citations, page-level evidence, Evidence Bundles, Research Questions, structured export foundations.
 
-These remain parked during the current accelerated first-use sharing objective unless explicitly named in the queue.
+These remain parked until the current first-use correction reaches STOP and the Owner explicitly reopens the Pre-OCR queue. `RF-META01` must surface canonical information through normal `资料详情`, not a standalone `学术记录` browser.
 
 ### Layer 4 — Shared Academic Library
 
-The minimum Shared Library slice is now accelerated by Owner direction ahead of the parked metadata/overlay/export queue:
-- `RF-LIBRARY01`: Library as a real ownership/domain boundary, minimal membership/manager-member authority, and authorized holdings list/preview/download;
-- `RF-LIBRARY02`: explicit Member submission plus reviewer approve/reject/withdraw, with approval promoting the resource into Library ownership while preserving stable IDs/object bytes/contributor provenance.
+`RF-LIBRARY01` and `RF-LIBRARY02` are complete and remain valid implementation substrate:
+- `RF-LIBRARY01`: Library ownership/domain boundary, membership/manager authority, authorized holdings list/preview/download;
+- `RF-LIBRARY02`: explicit submitted/approved/rejected/withdrawn contribution review with guarded ownership promotion preserving stable identities/object bytes/contributor provenance/private overlays.
 
-Reviewer authority applies only to explicitly submitted resources. Global Owner does not gain arbitrary browse-all access to Member-private Drive or Personal Research Overlay state.
+ADR-022 supersedes their earlier optional-Shared-Library product framing. The ordinary product is one Owner-curated shared academic corpus. `RF-SHAREDDEFAULT01` is the current bounded correction that makes that canonical Library the default authority/data flow and defines/tests the append-only transition path for existing account-owned corpus data without authorizing production migration.
 
-Still-later parked Layer 4 direction includes Trusted Contributor expansion where justified, Library Tags, shared catalog/canonical records/naming, provenance/source confidence, and duplicate/version grouping.
+Later parked Layer 4 direction includes Library Tags, shared catalog/canonical records/naming, provenance/source confidence, and duplicate/version grouping.
 
 ### Layer 5 — Research Infrastructure & Pre-OCR Hardening
 
@@ -153,13 +158,15 @@ Before changing code:
 3. Inspect relevant code/tests/task acceptance/ADRs.
 4. Preserve unrelated work and bounded blast radius.
 
-After implementation:
-1. Run applicable real checks that cover the changed risk.
+After implementation or an Owner-approved durable planning decision:
+1. Run applicable real checks that cover the changed risk when code/configuration changed.
 2. Repair task-caused failures.
 3. Perform risk-appropriate review; do not repeat it without a concrete reason.
-4. Update task card, `CURRENT_STATUS.md`, `TASK_BOARD.md`, and durable decisions when needed.
-5. Review diff and create task-level Git checkpoint.
-6. Continue only to the next task inside the approved continuous objective; otherwise stop.
+4. Reconcile the smallest complete authoritative repository set: task card, `CURRENT_STATUS.md`, `TASK_BOARD.md`, `ROADMAP.md`, ADR/`DECISION_LOG.md`, `AGENTS.md`, or workflow skill as appropriate to the decision.
+5. Review diff and create a task/decision-level Git checkpoint.
+6. Push only to the authorized non-main branch when publication is within scope.
+7. If the active local checkout is accessible, synchronize it non-destructively to the intended remote branch and verify local HEAD == remote HEAD. If local access is unavailable, report synchronization as outstanding rather than guessing.
+8. Continue only to the next task inside the approved continuous objective; otherwise stop.
 
 When relevant checks are green and no material finding remains, record/commit instead of continuing to search for hypothetical issues.
 
@@ -168,9 +175,12 @@ When relevant checks are green and no material finding remains, record/commit in
 Project files, tests, task cards, ADRs, and Git history are persistent memory. Chat is temporary planning context.
 
 - `ROADMAP.md` defines durable product sequencing/inventory.
+- `CURRENT_STATUS.md` defines concise project-level truth.
 - `TASK_BOARD.md` defines the executable queue.
 - `tasks/ready/` stores approved future Epic specs.
 - `tasks/doing/` stores the active Epic.
 - `tasks/done/` stores completed Epic records.
+- accepted durable workflow/product/architecture/security decisions must be reconciled into their authoritative files per ADR-023.
+- after an authorized push, remote publication and local synchronization are separate states; verify the accessible local checkout instead of assuming it followed the remote.
 
 Do not create parallel handoff/status/memory systems.
