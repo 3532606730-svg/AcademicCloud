@@ -92,3 +92,25 @@ test("production environment example binds Fastify to loopback and contains no r
   assert.match(environment, /^OSS_ACCESS_KEY_SECRET=replace-through-secret-installation$/m);
   assert.doesNotMatch(environment, /BEGIN PRIVATE KEY|ac_session=/);
 });
+
+test("production artifact pins and verifies the exact PDF.js Linux native runtime boundary", () => {
+  const artifact = read("scripts/production-artifact.mjs");
+
+  for (const runtimePath of [
+    "node_modules/pdfjs-dist",
+    "node_modules/@napi-rs/canvas",
+    "node_modules/@napi-rs/canvas-linux-x64-gnu",
+    "node_modules/@napi-rs/canvas-linux-x64-gnu/skia.linux-x64-gnu.node",
+  ]) {
+    assert.ok(artifact.includes(runtimePath), `missing artifact runtime policy for ${runtimePath}`);
+  }
+  assert.match(artifact, /entrypoint: "pdfjs-dist\/legacy\/build\/pdf\.mjs"/u);
+  assert.match(artifact, /version: "6\.2\.108"/u);
+  assert.match(artifact, /canvasVersion: "1\.0\.7"/u);
+  assert.match(artifact, /verifyPdfJsRuntime\(releaseDirectory, "pre-prune"\)/u);
+  assert.match(artifact, /verifyPdfJsRuntime\(releaseDirectory, "post-prune"\)/u);
+  assert.match(artifact, /verifyPdfJsRuntime\(releaseDirectory, "extracted"\)/u);
+  assert.match(artifact, /verifyElfX64\(join\(releaseDirectory, \.\.\.pdfJsRuntimePolicy\.canvasNativeModulePath/u);
+  assert.match(artifact, /typeof pdfjs\.getDocument !== 'function'/u);
+  assert.match(artifact, /typeof canvas\.DOMMatrix !== 'function'/u);
+});

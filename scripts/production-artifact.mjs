@@ -25,6 +25,14 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryDirectory = resolve(scriptDirectory, "..");
 const repositoryOutputDirectory = join(repositoryDirectory, "output");
 const manifestName = "ARTIFACT-MANIFEST.json";
+const pdfJsRuntimePolicy = Object.freeze({
+  entrypoint: "pdfjs-dist/legacy/build/pdf.mjs",
+  version: "6.2.108",
+  canvasPackage: "@napi-rs/canvas",
+  canvasVersion: "1.0.7",
+  canvasNativePackage: "@napi-rs/canvas-linux-x64-gnu",
+  canvasNativeModulePath: "node_modules/@napi-rs/canvas-linux-x64-gnu/skia.linux-x64-gnu.node",
+});
 const requiredRuntimePaths = [
   "package.json",
   "package-lock.json",
@@ -46,6 +54,9 @@ const requiredRuntimePaths = [
   "deployment/journald/90-academiccloud-retention.conf",
   "node_modules/argon2",
   "node_modules/better-sqlite3",
+  "node_modules/pdfjs-dist",
+  "node_modules/@napi-rs/canvas",
+  "node_modules/@napi-rs/canvas-linux-x64-gnu",
   "scripts/production-artifact.mjs",
   "scripts/production-readiness-audit.mjs",
   "scripts/lib/production-readiness",
@@ -62,6 +73,7 @@ const forbiddenProductionModules = [
   "vitest",
 ];
 const expectedNativeModulePaths = [
+  pdfJsRuntimePolicy.canvasNativeModulePath,
   "node_modules/argon2/prebuilds/linux-x64/argon2.glibc.node",
   "node_modules/better-sqlite3/prebuilds/linux-x64.node",
 ];
@@ -138,9 +150,11 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     copyRequired(source, releaseDirectory);
   }
 
+  const prePrunePdfJsRuntime = verifyPdfJsRuntime(releaseDirectory, "pre-prune");
   pruneNonRuntimePackageFiles(releaseDirectory);
   pruneNonTargetNativeModules(releaseDirectory);
   validateReleasePolicy(releaseDirectory);
+  const postPrunePdfJsRuntime = verifyPdfJsRuntime(releaseDirectory, "post-prune");
   const files = collectManifestEntries(releaseDirectory);
   const manifest = {
     schemaVersion: 1,
@@ -163,6 +177,11 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     sourceCommit: commit,
     fileCount: files.length,
     totalBytes: files.reduce((sum, file) => sum + (file.size ?? 0), 0),
+    pdfJsRuntime: {
+      prePrune: prePrunePdfJsRuntime.status,
+      postPrune: postPrunePdfJsRuntime.status,
+      nativeModulePath: postPrunePdfJsRuntime.nativeModulePath,
+    },
     manifestPath,
   })}\n`);
 }
@@ -283,6 +302,7 @@ async function verifyRuntime(releaseDirectory) {
   const nativeModules = collectNativeModulePaths(releaseDirectory);
   assert.deepEqual(nativeModules, expectedNativeModulePaths, "unexpected production native module set");
   for (const nativeModule of nativeModules) verifyElfX64(join(releaseDirectory, ...nativeModule.split("/")));
+  const pdfJsRuntime = verifyPdfJsRuntime(releaseDirectory, "extracted");
 
   const acceptance = spawnSync(
     process.execPath,
@@ -305,7 +325,66 @@ async function verifyRuntime(releaseDirectory) {
     betterSqlite3: { status: "ok", sqliteVersion },
     argon2id: { status: "ok", parameters: "m=65536,t=3,p=1", verified: true },
     nativeModules: { status: "ok", format: "ELF64 x86-64", paths: nativeModules },
+    pdfJsRuntime,
     compiledAcceptance,
+  };
+}
+
+function verifyPdfJsRuntime(releaseDirectory, stage) {
+  assert.ok(["pre-prune", "post-prune", "extracted"].includes(stage), "invalid PDF.js runtime stage");
+  const pdfJsPackage = JSON.parse(readFileSync(join(releaseDirectory, "node_modules", "pdfjs-dist", "package.json"), "utf8"));
+  const canvasPackage = JSON.parse(readFileSync(join(releaseDirectory, "node_modules", "@napi-rs", "canvas", "package.json"), "utf8"));
+  const canvasNativePackage = JSON.parse(readFileSync(
+    join(releaseDirectory, "node_modules", "@napi-rs", "canvas-linux-x64-gnu", "package.json"),
+    "utf8",
+  ));
+  assert.equal(pdfJsPackage.name, "pdfjs-dist");
+  assert.equal(pdfJsPackage.version, pdfJsRuntimePolicy.version);
+  assert.equal(pdfJsPackage.optionalDependencies?.[pdfJsRuntimePolicy.canvasPackage], "^1.0.0");
+  assert.equal(canvasPackage.name, pdfJsRuntimePolicy.canvasPackage);
+  assert.equal(canvasPackage.version, pdfJsRuntimePolicy.canvasVersion);
+  assert.equal(canvasPackage.optionalDependencies?.[pdfJsRuntimePolicy.canvasNativePackage], pdfJsRuntimePolicy.canvasVersion);
+  assert.equal(canvasNativePackage.name, pdfJsRuntimePolicy.canvasNativePackage);
+  assert.equal(canvasNativePackage.version, pdfJsRuntimePolicy.canvasVersion);
+  assert.deepEqual(canvasNativePackage.os, ["linux"]);
+  assert.deepEqual(canvasNativePackage.cpu, ["x64"]);
+  assert.deepEqual(canvasNativePackage.libc, ["glibc"]);
+  verifyElfX64(join(releaseDirectory, ...pdfJsRuntimePolicy.canvasNativeModulePath.split("/")));
+
+  const probe = spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "--eval",
+      [
+        "import { createRequire } from 'node:module';",
+        "const require = createRequire(import.meta.url);",
+        `const canvas = require(${JSON.stringify(pdfJsRuntimePolicy.canvasPackage)});`,
+        "if (typeof canvas.DOMMatrix !== 'function') throw new Error('PDF.js DOMMatrix provider is unavailable');",
+        `const pdfjs = await import(${JSON.stringify(pdfJsRuntimePolicy.entrypoint)});`,
+        "if (typeof pdfjs.getDocument !== 'function') throw new Error('PDF.js getDocument export is unavailable');",
+      ].join(" "),
+    ],
+    {
+      cwd: releaseDirectory,
+      encoding: "utf8",
+      env: { ...process.env, NODE_ENV: "production" },
+      timeout: 30_000,
+      windowsHide: true,
+    },
+  );
+  assert.equal(probe.signal, null, `PDF.js ${stage} runtime probe was terminated`);
+  assert.equal(probe.status, 0, `PDF.js ${stage} runtime probe failed`);
+
+  return {
+    status: "ok",
+    stage,
+    entrypoint: pdfJsRuntimePolicy.entrypoint,
+    version: pdfJsRuntimePolicy.version,
+    getDocument: true,
+    domMatrixProvider: `${pdfJsRuntimePolicy.canvasPackage}@${pdfJsRuntimePolicy.canvasVersion}`,
+    nativePackage: `${pdfJsRuntimePolicy.canvasNativePackage}@${pdfJsRuntimePolicy.canvasVersion}`,
+    nativeModulePath: pdfJsRuntimePolicy.canvasNativeModulePath,
   };
 }
 

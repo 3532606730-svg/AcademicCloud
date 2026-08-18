@@ -26,8 +26,8 @@ Prove and repair the exact extracted Linux x64 / Node 24 artifact startup failur
 
 ## Acceptance Criteria
 
-- [ ] Compiled acceptance captures child stdout/stderr in bounded memory, remains quiet on success, detects early exit, and emits only bounded sanitized startup diagnostics on failure/timeout.
-- [ ] Focused diagnostic behavior is tested without exposing environment values, credentials, cookies, signed URLs, request bodies, database content, PDF content, or scholarly content.
+- [x] Compiled acceptance captures child stdout/stderr in bounded memory, remains quiet on success, detects early exit, and emits only bounded sanitized startup diagnostics on failure/timeout.
+- [x] Focused diagnostic behavior is tested without exposing environment values, credentials, cookies, signed URLs, request bodies, database content, PDF content, or scholarly content.
 - [ ] The exact extracted-artifact startup exception is captured under Linux x64 / Node 24, and the first failing stage among pre-prune, post-prune, and extracted runtime is recorded.
 - [ ] Any native allowlist change is limited to the exact required pinned Linux x64 glibc file(s); all other `.node` files remain pruned and every retained native binary passes ELF64 x86-64 verification.
 - [ ] The extracted artifact explicitly loads the pinned PDF.js runtime and passes health, readiness, migrations 001–019 presence, and compiled application acceptance.
@@ -63,6 +63,9 @@ Active. The prior artifact workflow failed closed after archive creation and bef
 - Confirmed failed run `32168164654` passed tests, typechecks, builds, audits, production dependency install, finalization, manifest, and deterministic packing, then failed only when the extracted compiled API did not become healthy.
 - Added bounded per-stream startup capture, quiet-success behavior, early child-exit detection, fixed diagnostic reason text, and allowlisted module/runtime exception lines with environment/credential/URL redaction.
 - Added focused tests proving the diagnostic byte bound, secret/content suppression, useful missing-native-module evidence, quiet ordinary output, and exit-code/signal detection.
+- Published diagnostic checkpoint `75b6a70861006ece30ac9abb6fe1a5704a2dc144` and reproduced the exact failure in Linux workflow run `32170306350`, job `95819599032`: after finalization/extraction PDF.js could not load `@napi-rs/canvas`, could not polyfill `DOMMatrix`, and terminated backend startup with `ReferenceError: DOMMatrix is not defined`.
+- Confirmed the pinned dependency chain `pdfjs-dist@6.2.108` → `@napi-rs/canvas@1.0.7` → Linux glibc `@napi-rs/canvas-linux-x64-gnu@1.0.7`; the platform package contains exactly `package.json`, `README.md`, and the single 33,978,880-byte `skia.linux-x64-gnu.node` native binary, with no ICU sidecar.
+- Confirmed the PDF.js official Node metadata/text example uses `pdfjs-dist/legacy/build/pdf.mjs`; no supported text-only Node entry point bypasses this import-time DOM polyfill/runtime requirement.
 
 ## Remaining
 
@@ -78,8 +81,8 @@ None. Production contact is intentionally gated on complete artifact verificatio
 
 ## Last Verification
 
-2026-08-19: focused compiled-startup diagnostic tests 3/3; backend tests 308/308; backend typecheck; backend production build; compiled application acceptance with schema 001–019, health, readiness, restart, backup/restore, metadata, and credential-reset checks; `git diff --check`. No production contact or mutation in this repair phase.
+2026-08-19: repair candidate local checks green—backend 309/309 and frontend 193/193 tests, both workspace typechecks, both production builds, compiled acceptance with schema 001–019/health/readiness/restart/backup/restore/metadata/credential-reset checks, artifact-policy syntax, focused PDF.js runtime-policy tests, and `git diff --check`. Diagnostic Linux workflow `32170306350` previously reproduced the post-finalization/extraction exception at exact `75b6a70861006ece30ac9abb6fe1a5704a2dc144`; upload and independent verification skipped. No production contact or mutation in this repair phase.
 
 ## Next Action
 
-Implement bounded compiled-acceptance startup diagnostics, verify them locally, checkpoint/publish the diagnostic-only change, and reproduce the exact extracted Linux x64 / Node 24 startup exception through the production artifact workflow.
+Verify the one-file Linux canvas allowlist repair and pre-prune/post-prune/extracted PDF.js runtime probes, publish the exact repaired release candidate, and require both production artifact workflow jobs completely green before any production contact.
