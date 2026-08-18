@@ -7,6 +7,7 @@ interface LibraryRow {
   id: string;
   owner_domain_id: string;
   name: string;
+  is_default: number;
   created_by_account_id: string;
   created_at: string;
   updated_at: string;
@@ -37,6 +38,7 @@ interface HoldingRow {
   version_id: string;
   version_created_at: string;
   file_id: string;
+  uploaded_by_account_id: string;
   display_name: string;
   media_type: string | null;
   size_bytes: number;
@@ -48,6 +50,7 @@ function toLibrary(row: LibraryRow): Library {
     id: row.id,
     ownerDomainId: row.owner_domain_id,
     name: row.name,
+    isDefault: row.is_default === 1,
     createdByAccountId: row.created_by_account_id,
     createdAt: fromDatabaseTimestamp(row.created_at)!,
     updatedAt: fromDatabaseTimestamp(row.updated_at)!,
@@ -75,6 +78,7 @@ function toHolding(row: HoldingRow): LibraryHolding {
     versionCreatedAt: fromDatabaseTimestamp(row.version_created_at)!,
     file: {
       id: row.file_id,
+      uploadedByAccountId: row.uploaded_by_account_id,
       displayName: row.display_name,
       mediaType: row.media_type,
       sizeBytes: row.size_bytes,
@@ -85,6 +89,7 @@ function toHolding(row: HoldingRow): LibraryHolding {
 
 const libraryColumns = `
   libraries.id, libraries.owner_domain_id, libraries.name,
+  libraries.is_default,
   libraries.created_by_account_id, libraries.created_at, libraries.updated_at
 `;
 
@@ -110,6 +115,7 @@ const holdingColumns = `
   scholarly_artifact_versions.id AS version_id,
   scholarly_artifact_versions.created_at AS version_created_at,
   files.id AS file_id,
+  files.uploaded_by_account_id,
   files.display_name,
   files.media_type,
   files.size_bytes,
@@ -120,6 +126,7 @@ export class SqliteLibraryRepository implements LibraryRepository {
   readonly #createDomain;
   readonly #create;
   readonly #findById;
+  readonly #findDefault;
   readonly #listForAccount;
   readonly #createMembership;
   readonly #findMembership;
@@ -138,15 +145,19 @@ export class SqliteLibraryRepository implements LibraryRepository {
       id: string;
       domainId: string;
       name: string;
+      isDefault: number;
       createdByAccountId: string;
       createdAt: string;
       updatedAt: string;
     }>(`
-      INSERT INTO libraries (id, owner_domain_id, name, created_by_account_id, created_at, updated_at)
-      VALUES (@id, @domainId, @name, @createdByAccountId, @createdAt, @updatedAt)
+      INSERT INTO libraries (id, owner_domain_id, name, created_by_account_id, created_at, updated_at, is_default)
+      VALUES (@id, @domainId, @name, @createdByAccountId, @createdAt, @updatedAt, @isDefault)
     `);
     this.#findById = database.prepare<[string], LibraryRow>(`
       SELECT ${libraryColumns} FROM libraries WHERE libraries.id = ?
+    `);
+    this.#findDefault = database.prepare<[], LibraryRow>(`
+      SELECT ${libraryColumns} FROM libraries WHERE libraries.is_default = 1
     `);
     this.#listForAccount = database.prepare<[string], LibraryWithMembershipRow>(`
       SELECT ${libraryColumns}, ${membershipColumnsWithAliases}
@@ -236,6 +247,7 @@ export class SqliteLibraryRepository implements LibraryRepository {
       id: library.id,
       domainId: library.ownerDomainId,
       name: library.name,
+      isDefault: library.isDefault ? 1 : 0,
       createdByAccountId: library.createdByAccountId,
       createdAt: toDatabaseTimestamp(library.createdAt)!,
       updatedAt: toDatabaseTimestamp(library.updatedAt)!,
@@ -245,6 +257,11 @@ export class SqliteLibraryRepository implements LibraryRepository {
 
   findById(id: string): Library | null {
     const row = this.#findById.get(id);
+    return row ? toLibrary(row) : null;
+  }
+
+  findDefault(): Library | null {
+    const row = this.#findDefault.get();
     return row ? toLibrary(row) : null;
   }
 

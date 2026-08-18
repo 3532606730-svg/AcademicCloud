@@ -5,6 +5,7 @@ export interface Library {
   id: string;
   ownerDomainId: string;
   name: string;
+  isDefault: boolean;
   createdByAccountId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +33,7 @@ export interface LibraryHolding {
   versionCreatedAt: Date;
   file: {
     id: string;
+    uploadedByAccountId: string;
     displayName: string;
     mediaType: string | null;
     sizeBytes: number;

@@ -115,7 +115,10 @@ export interface CreateAppOptions {
   };
   accounts?: { service: AccountAdministrationService; registrationRateLimitMax?: number };
   announcements?: { service: AnnouncementService };
-  drive?: { service: DriveService };
+  drive?: {
+    service: DriveService;
+    completeUpload?: LibraryService["completeDefaultUpload"];
+  };
   favorites?: { service: FavoriteService };
   audit?: { service: AuditService };
   research?: { service: ScholarlyRecordService };
@@ -224,7 +227,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
       throw new Error("drive routes require authentication composition");
     }
 
-    await registerDriveHttp(app, options.drive.service);
+    await registerDriveHttp(app, options.drive.service, options.drive.completeUpload);
   }
 
   if (options.accounts) {

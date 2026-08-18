@@ -30,7 +30,9 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
     api.listLibraries().then((items) => {
       if (cancelled) return;
       setLibraries(items);
-      setSelectedId((current) => current && items.some((item) => item.id === current) ? current : items[0]?.id ?? null);
+      setSelectedId((current) => current && items.some((item) => item.id === current)
+        ? current
+        : items.find((item) => item.isDefault)?.id ?? items[0]?.id ?? null);
     }, (caught) => {
       if (!cancelled) setError(caught);
     }).finally(() => {
@@ -67,22 +69,6 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
     });
     return () => { cancelled = true; };
   }, [api, selectedId, selected?.role]);
-
-  async function createLibrary() {
-    const name = window.prompt(t("sharedLibrary.createPrompt"))?.trim();
-    if (!name) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const library = await api.createLibrary(name);
-      setLibraries((current) => [...current, library]);
-      setSelectedId(library.id);
-    } catch (caught) {
-      setError(caught);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function refreshMembers() {
     if (!selectedId || selected?.role !== "manager") return;
@@ -192,7 +178,6 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
         <aside className="shared-library-list" aria-label={t("sharedLibrary.listAria")}>
           <div className="section-heading">
             <h2 id="shared-library-title">{t("nav.sharedLibrary")}</h2>
-            <button className="button button--small" type="button" onClick={() => void createLibrary()} disabled={busy}>{t("sharedLibrary.create")}</button>
           </div>
           {loading && libraries.length === 0 ? <p role="status">{t("sharedLibrary.loading")}</p> : libraries.length === 0 ? <p>{t("sharedLibrary.empty")}</p> : (
             <div className="shared-library-library-buttons">
@@ -228,15 +213,15 @@ export function SharedLibraryPanel({ api }: { api: AcademicCloudApi }) {
               {selected.role === "manager" && (
                 <>
                 <section className="shared-library-members" aria-labelledby="shared-library-members-title">
-                  <div className="section-heading"><h3 id="shared-library-members-title">{t("sharedLibrary.members")}</h3><button className="button button--small" type="button" onClick={() => void addMember()} disabled={busy}>{t("sharedLibrary.addMember")}</button></div>
+                  <div className="section-heading"><h3 id="shared-library-members-title">{t("sharedLibrary.members")}</h3>{!selected.isDefault && <button className="button button--small" type="button" onClick={() => void addMember()} disabled={busy}>{t("sharedLibrary.addMember")}</button>}</div>
                   <div className="shared-library-member-list">
                     {members.map((member) => (
                       <div className="shared-library-member" key={member.accountId}>
                         <span><strong>{member.loginName ?? member.accountId}</strong><small>{member.state}</small></span>
-                        <select value={member.role} disabled={busy} onChange={(event) => void changeRole(member, event.target.value as LibraryRole)} aria-label={t("sharedLibrary.roleFor", { name: member.loginName ?? member.accountId })}>
+                        <select value={member.role} disabled={busy || selected.isDefault} onChange={(event) => void changeRole(member, event.target.value as LibraryRole)} aria-label={t("sharedLibrary.roleFor", { name: member.loginName ?? member.accountId })}>
                           <option value="manager">{t("sharedLibrary.manager")}</option><option value="member">{t("sharedLibrary.member")}</option>
                         </select>
-                        <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => void removeMember(member)}>{t("sharedLibrary.remove")}</button>
+                        {!selected.isDefault && <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => void removeMember(member)}>{t("sharedLibrary.remove")}</button>}
                       </div>
                     ))}
                   </div>

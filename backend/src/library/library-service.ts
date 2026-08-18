@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AuthorizationDeniedError } from "../auth/authorization.js";
-import type { DriveService } from "../drive/drive-service.js";
+import { DriveError, type DriveService } from "../drive/drive-service.js";
+import type { StoredFile } from "../drive/file.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
 import type { AuditEventKind, AuditReasonCode } from "../audit/audit-event.js";
@@ -27,6 +28,7 @@ export interface LibrarySummary {
   id: string;
   name: string;
   role: LibraryRole;
+  isDefault: boolean;
   createdAt: string;
 }
 
@@ -172,6 +174,7 @@ export class LibraryService {
         id,
         ownerDomainId: `library:${id}`,
         name,
+        isDefault: false,
         createdByAccountId: actor.id,
         createdAt: now,
         updatedAt: now,
@@ -201,8 +204,40 @@ export class LibraryService {
     const account = repositories.accounts.findById(accountId);
     if (!account || account.state !== "active") return [];
     return repositories.libraries.listForAccount(accountId)
+      .filter(({ library }) => library.isDefault)
       .filter(({ membership }) => this.#isEffectiveMembership(repositories, membership))
       .map(({ library, membership }) => this.#summary(library, membership.role));
+  }
+
+  async completeDefaultUpload(actor: AuthenticatedAccount, fileId: string): Promise<StoredFile> {
+    const repositories = this.#persistence.repositories;
+    const canonical = repositories.libraries.findDefault();
+    const current = repositories.accounts.findById(actor.id);
+    if (!canonical || !current || current.state !== "active" || current.role !== actor.role) {
+      throw new DriveError("not_found");
+    }
+
+    // Approval moves the file out of the contributor's account domain. Keep
+    // upload completion idempotent without turning a guessed shared file ID
+    // into an enumeration oracle.
+    const existingHolding = repositories.libraries.findHoldingByFile(canonical.id, fileId);
+    if (existingHolding?.file.uploadedByAccountId === actor.id) {
+      const shared = repositories.files.findByDomainId(canonical.ownerDomainId, fileId);
+      if (shared?.state === "active") return shared;
+    }
+
+    try {
+      return await this.#drive.completeUpload(actor.id, fileId, "account", (transaction, activated, now) => {
+        this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
+      });
+    } catch (error: unknown) {
+      if (error instanceof DriveError) throw error;
+      if (error instanceof LibraryError) {
+        throw new DriveError(error.code === "not_found" || error.code === "authorization_denied" ? "not_found" : "invalid_state", { cause: error });
+      }
+      if (this.#isConstraint(error)) throw new DriveError("invalid_state", { cause: error });
+      throw error;
+    }
   }
 
   listMembers(actor: AuthenticatedAccount, libraryId: string): LibraryMemberView[] {
@@ -512,7 +547,120 @@ export class LibraryService {
   }
 
   #summary(library: Library, role: LibraryRole): LibrarySummary {
-    return { id: library.id, name: library.name, role, createdAt: library.createdAt.toISOString() };
+    return {
+      id: library.id,
+      name: library.name,
+      role,
+      isDefault: library.isDefault,
+      createdAt: library.createdAt.toISOString(),
+    };
+  }
+
+  #intakeActivatedFile(
+    repositories: RepositorySet,
+    actor: AuthenticatedAccount,
+    canonicalLibraryId: string,
+    file: StoredFile,
+    now: Date,
+  ): void {
+    this.#requireActiveActor(actor, repositories);
+    const library = this.#requireMember(actor.id, canonicalLibraryId, repositories);
+    if (!library.isDefault || file.state !== "active") throw new LibraryError("invalid_state");
+
+    const research = repositories.research;
+    if (!research) throw new LibraryError("invalid_state");
+    let artifact = research.findArtifactByStoredFile(actor.id, file.id);
+    if (!artifact) {
+      const record = research.createRecord({
+        id: this.#createId(),
+        ownerId: actor.id,
+        label: file.displayName,
+        createdAt: now,
+        updatedAt: now,
+      });
+      artifact = research.createArtifact({
+        id: this.#createId(),
+        ownerId: actor.id,
+        recordId: record.id,
+        attachmentState: "detached",
+        createdAt: now,
+        updatedAt: now,
+      });
+      research.createVersion({
+        id: this.#createId(),
+        ownerId: actor.id,
+        artifactId: artifact.id,
+        storedFileId: file.id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      artifact = research.updateArtifactState(
+        actor.id,
+        record.id,
+        artifact.id,
+        "detached",
+        "attached",
+        now,
+      );
+      if (!artifact) throw new LibraryError("conflict");
+    }
+
+    if (artifact.attachmentState !== "attached" || research.countArtifacts(actor.id, artifact.recordId) !== 1) {
+      throw new LibraryError("invalid_state");
+    }
+    if (repositories.contributions.findLatestByArtifact(canonicalLibraryId, artifact.id)) return;
+
+    const contribution = repositories.contributions.create({
+      id: this.#createId(),
+      libraryId: canonicalLibraryId,
+      artifactId: artifact.id,
+      contributorAccountId: actor.id,
+      state: "submitted",
+      revision: 0,
+      submittedAt: now,
+      reviewedAt: null,
+      reviewedByAccountId: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (actor.role === "member") {
+      recordAuditEvent(repositories, {
+        action: "libraries.contribution_submit",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: contribution.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+      return;
+    }
+
+    const candidate = repositories.contributions.findCandidate(canonicalLibraryId, contribution.id);
+    if (!candidate) throw new LibraryError("invalid_state");
+    const promoted = repositories.contributions.promote(
+      canonicalLibraryId,
+      contribution.id,
+      contribution.revision,
+      actor.id,
+      candidate.recordId,
+      candidate.contribution.artifactId,
+      candidate.versionId,
+      candidate.file.id,
+      actor.id,
+      now,
+    );
+    if (!promoted) throw new LibraryError("conflict");
+    recordAuditEvent(repositories, {
+      action: "libraries.resource_admit",
+      actorKind: "account",
+      actorAccountId: actor.id,
+      targetId: contribution.id,
+      outcome: "succeeded",
+      reason: null,
+      occurredAt: now,
+    });
   }
 
   #contributionView(candidate: ContributionCandidate): ContributionView {

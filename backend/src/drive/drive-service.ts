@@ -34,6 +34,12 @@ export type DriveErrorCode =
   | "preview_too_large"
   | "storage_unavailable";
 
+export type UploadActivationWork = (
+  repositories: RepositorySet,
+  activated: StoredFile,
+  activatedAt: Date,
+) => void;
+
 // Product/browser safety limits for INLINE PREVIEW only. These are NOT
 // storage limits: uploads and downloads keep their existing 5 GiB contract.
 const INLINE_PREVIEW_SIZE_LIMITS: Readonly<Record<string, number>> = {
@@ -571,6 +577,7 @@ export class DriveService {
     ownerId: string,
     fileId: string,
     auditActor: StorageAuditActor = "account",
+    afterActivation?: UploadActivationWork,
   ): Promise<StoredFile> {
     const file = this.persistence.repositories.files.findById(ownerId, fileId);
 
@@ -579,7 +586,13 @@ export class DriveService {
     }
 
     if (file.state === "active") {
-      return file;
+      if (!afterActivation) return file;
+      return this.persistence.runInTransaction((repositories) => {
+        const current = repositories.files.findById(ownerId, fileId);
+        if (!current || current.state !== "active") throw new DriveError("invalid_state");
+        afterActivation(repositories, current, this.now());
+        return current;
+      });
     }
 
     if (file.state !== "pending_upload") {
@@ -618,6 +631,7 @@ export class DriveService {
 
       if (!activated) throw new DriveError("invalid_state");
       recordDriveAudit(repositories, "drive.upload_activate", auditActor, ownerId, fileId, now);
+      afterActivation?.(repositories, activated, now);
       return activated;
     });
   }

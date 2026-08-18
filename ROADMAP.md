@@ -61,7 +61,7 @@ L1-UX05
 STOP for Owner review
 ```
 
-### RF-SHAREDDEFAULT01 — Canonical Shared Library Default
+### RF-SHAREDDEFAULT01 — Canonical Shared Library Default — Complete
 
 Correct the current optional-sharing/private-Drive product framing without discarding the safe foundations already built.
 
@@ -73,6 +73,8 @@ Required outcome:
 - Owner-originated upload may be admitted directly;
 - ordinary Members do not receive shared folder/destructive/canonical-metadata governance authority merely because they can contribute;
 - existing account-owned corpus transition is designed/tested append-only in repository development, while live migration remains a separate Owner-gated production deployment.
+
+Repository checkpoint advances the development schema head to migration 016. The canonical Library is deterministic and automatic for active accounts; migration rehearsal and runtime tests cover stable identity/provenance/Favorite preservation, Member pending intake, Owner direct admission, fail-closed disabled identities, and transactional rollback. Production remains at schema v15 and was not contacted.
 
 ### L2-CREDENTIALRESET01 — Owner-Assisted Credential Reset
 

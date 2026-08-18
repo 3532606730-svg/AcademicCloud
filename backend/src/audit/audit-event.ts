@@ -20,6 +20,8 @@ export const AUDIT_EVENT_KINDS = [
   "libraries.contribution_approve",
   "libraries.contribution_reject",
   "libraries.contribution_withdraw",
+  "libraries.resource_admit",
+  "libraries.corpus_transition",
   "drive.upload_activate",
   "drive.folder_recycle",
   "drive.folder_restore",

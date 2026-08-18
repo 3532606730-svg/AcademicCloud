@@ -135,6 +135,7 @@ const candidateOwnershipGuard = `
 export class SqliteContributionRepository implements ContributionRepository {
   readonly #create;
   readonly #findById;
+  readonly #findLatestByArtifact;
   readonly #findSubmittedByArtifact;
   readonly #listSubmitted;
   readonly #listForContributor;
@@ -170,6 +171,13 @@ export class SqliteContributionRepository implements ContributionRepository {
       SELECT ${contributionColumns}
       FROM library_contributions
       WHERE library_id = ? AND id = ?
+    `);
+    this.#findLatestByArtifact = database.prepare<[string, string], ContributionRow>(`
+      SELECT ${contributionColumns}
+      FROM library_contributions
+      WHERE library_id = ? AND artifact_id = ?
+      ORDER BY submitted_at DESC, id DESC
+      LIMIT 1
     `);
     this.#findSubmittedByArtifact = database.prepare<[string, string], ContributionRow>(`
       SELECT ${contributionColumns}
@@ -313,6 +321,11 @@ export class SqliteContributionRepository implements ContributionRepository {
 
   findById(libraryId: string, contributionId: string): LibraryContribution | null {
     const row = this.#findById.get(libraryId, contributionId);
+    return row ? toContribution(row) : null;
+  }
+
+  findLatestByArtifact(libraryId: string, artifactId: string): LibraryContribution | null {
+    const row = this.#findLatestByArtifact.get(libraryId, artifactId);
     return row ? toContribution(row) : null;
   }
 

@@ -1,4 +1,5 @@
 import type { Folder } from "../drive/folder.js";
+import type { StoredFile } from "../drive/file.js";
 import type { Persistence } from "../persistence/contracts.js";
 import { FavoriteError, type FavoriteFolderWithAncestors, type FavoritesSnapshot } from "./favorite.js";
 
@@ -21,7 +22,7 @@ export class FavoriteService {
     const folderIds = favorites.listFolderIds(accountId);
 
     const favoriteFiles = fileIds
-      .map((id) => files.findById(accountId, id))
+      .map((id) => this.#findAccessibleFile(accountId, id))
       .filter((file): file is NonNullable<typeof file> => file !== null && file.state === "active");
 
     const favoriteFolders: FavoriteFolderWithAncestors[] = [];
@@ -35,12 +36,24 @@ export class FavoriteService {
   }
 
   setFileFavorite(accountId: string, fileId: string, favorite: boolean): void {
-    const file = this.#persistence.repositories.files.findById(accountId, fileId);
-    // Owner-scoped lookup: a guessed foreign id is indistinguishable from a
-    // missing one, and only ACTIVE resources may be favorited.
+    const file = this.#findAccessibleFile(accountId, fileId);
+    // A guessed inaccessible ID remains indistinguishable from a missing one.
+    // The favorite relation stays account-private even for a shared holding.
     if (!file || file.state !== "active") throw new FavoriteError("not_found");
     if (favorite) this.#persistence.repositories.favorites.addFile(accountId, fileId, this.#now());
     else this.#persistence.repositories.favorites.removeFile(accountId, fileId);
+  }
+
+  #findAccessibleFile(accountId: string, fileId: string): StoredFile | null {
+    const repositories = this.#persistence.repositories;
+    const account = repositories.accounts.findById(accountId);
+    if (!account || account.state !== "active") return null;
+    const privateFile = repositories.files.findById(accountId, fileId);
+    if (privateFile) return privateFile;
+    const library = repositories.libraries.findDefault();
+    if (!library || !repositories.libraries.findMembership(library.id, accountId)) return null;
+    if (!repositories.libraries.findHoldingByFile(library.id, fileId)) return null;
+    return repositories.files.findByDomainId(library.ownerDomainId, fileId);
   }
 
   setFolderFavorite(accountId: string, folderId: string, favorite: boolean): void {

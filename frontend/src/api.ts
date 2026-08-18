@@ -51,6 +51,7 @@ export type AuditEventKind =
   | "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish" | "announcements.delete"
   | "libraries.create" | "libraries.membership_add" | "libraries.membership_change" | "libraries.membership_remove"
   | "libraries.contribution_submit" | "libraries.contribution_approve" | "libraries.contribution_reject" | "libraries.contribution_withdraw"
+  | "libraries.resource_admit" | "libraries.corpus_transition"
   | "drive.upload_activate" | "drive.folder_recycle" | "drive.folder_restore"
   | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
@@ -176,6 +177,7 @@ export interface LibrarySummary {
   id: string;
   name: string;
   role: LibraryRole;
+  isDefault: boolean;
   createdAt: string;
 }
 
@@ -301,7 +303,6 @@ export interface AcademicCloudApi {
   attachFileToScholarlyRecord(recordId: string, fileId: string): Promise<ScholarlyRecord>;
   detachScholarlyArtifact(recordId: string, artifactId: string): Promise<ScholarlyRecord>;
   listLibraries(signal?: AbortSignal): Promise<LibrarySummary[]>;
-  createLibrary(name: string): Promise<LibrarySummary>;
   listLibraryMembers(libraryId: string): Promise<LibraryMember[]>;
   addLibraryMember(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember>;
   changeLibraryMemberRole(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember>;
@@ -585,10 +586,6 @@ export class ApiClient implements AcademicCloudApi {
 
   async listLibraries(signal?: AbortSignal): Promise<LibrarySummary[]> {
     return (await this.#request<{ libraries: LibrarySummary[] }>("/api/libraries", signal ? { signal } : {})).libraries;
-  }
-
-  async createLibrary(name: string): Promise<LibrarySummary> {
-    return (await this.#jsonBody<{ library: LibrarySummary }>("/api/libraries", "POST", { name })).library;
   }
 
   async listLibraryMembers(libraryId: string): Promise<LibraryMember[]> {

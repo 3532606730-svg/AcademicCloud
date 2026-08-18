@@ -3,6 +3,7 @@ import type { ContributionCandidate, LibraryContribution, ContributionState, New
 export interface ContributionRepository {
   create(contribution: NewLibraryContribution): LibraryContribution;
   findById(libraryId: string, contributionId: string): LibraryContribution | null;
+  findLatestByArtifact(libraryId: string, artifactId: string): LibraryContribution | null;
   findSubmittedByArtifact(libraryId: string, artifactId: string): LibraryContribution | null;
   listSubmitted(libraryId: string, limit: number): ContributionCandidate[];
   listForContributor(libraryId: string, accountId: string, limit: number): ContributionCandidate[];

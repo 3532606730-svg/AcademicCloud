@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { AuthenticatedAccount } from "../auth/auth-service.js";
 
 import { DriveError, type DriveService } from "./drive-service.js";
 import type { StoredFile } from "./file.js";
@@ -129,6 +130,11 @@ function sendDriveError(reply: FastifyReply, error: unknown) {
   return reply.code(status).send({ error: error.code });
 }
 
+function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
+  if (!account) throw new DriveError("not_found");
+  return account;
+}
+
 function recordDriveAttempt(
   request: FastifyRequest,
   service: DriveService,
@@ -139,7 +145,12 @@ function recordDriveAttempt(
   if (actor) service.recordAuditAttempt(actor, action, error);
 }
 
-export async function registerDriveHttp(app: FastifyInstance, driveService: DriveService): Promise<void> {
+export async function registerDriveHttp(
+  app: FastifyInstance,
+  driveService: DriveService,
+  completeUpload: (actor: AuthenticatedAccount, fileId: string) => Promise<StoredFile> =
+    (actor, fileId) => driveService.completeUpload(actor.id, fileId),
+): Promise<void> {
   app.addHook("onResponse", async (request, reply) => {
     const route = request.routeOptions.url;
     const accountId = request.authAccount?.id;
@@ -372,7 +383,7 @@ export async function registerDriveHttp(app: FastifyInstance, driveService: Driv
     { preHandler: app.authenticate, schema: { params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } } } },
     async (request, reply) => {
       try {
-        return { file: fileDto(await driveService.completeUpload(requireOwnerId(request.authAccount), request.params.fileId)) };
+        return { file: fileDto(await completeUpload(requireActor(request.authAccount), request.params.fileId)) };
       } catch (error: unknown) {
         recordDriveAttempt(request, driveService, "drive.upload_activate", error);
         return sendDriveError(reply, error);

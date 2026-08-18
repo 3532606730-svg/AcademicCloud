@@ -3,6 +3,7 @@ import { test, type TestContext } from "node:test";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { DriveService } from "../../src/drive/drive-service.js";
+import { FavoriteService } from "../../src/favorites/favorite-service.js";
 import { LibraryError, LibraryService } from "../../src/library/library-service.js";
 import { ScholarlyRecordService } from "../../src/research/service.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
@@ -257,4 +258,119 @@ test("approval and ownership promotion roll back completely when governance audi
   assert.equal(database.prepare<[string], { owner_domain_id: string }>("SELECT owner_domain_id FROM files WHERE id = ?").get(resource.fileId)?.owner_domain_id, `account:${MEMBER.id}`);
   assert.equal(persistence.repositories.contributions.findById(library.id, submitted.id)?.state, "submitted");
   assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_ownership_promotions").get()?.count, 0);
+});
+
+test("canonical Member upload enters pending review automatically and preserves the contributor's private Favorite after approval", async (context) => {
+  const { database, persistence, storage, drive, libraries } = fixture(context);
+  const favorites = new FavoriteService(persistence, () => NOW);
+  const canonical = libraries.listLibraries(MEMBER.id).find((library) => library.isDefault);
+  assert.ok(canonical);
+  assert.equal(libraries.listLibraries(OUTSIDER.id).find((library) => library.isDefault)?.id, canonical.id);
+
+  const reserved = await drive.createUpload(MEMBER.id, {
+    folderId: null,
+    displayName: "member-source.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 12,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  storage.putObject({
+    objectKey: reserved.file.objectKey,
+    sizeBytes: 12,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+
+  const completed = await libraries.completeDefaultUpload(MEMBER, reserved.file.id);
+  assert.equal(completed.state, "active");
+  favorites.setFileFavorite(MEMBER.id, completed.id, true);
+  assert.equal(libraries.listHoldings(OUTSIDER.id, canonical.id).length, 0);
+  const pending = libraries.listContributions(OWNER, canonical.id);
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0]?.file.id, completed.id);
+  assert.equal(pending[0]?.submitterLoginName, MEMBER.loginName);
+  assert.equal(libraries.listMyContributions(MEMBER, canonical.id)[0]?.state, "submitted");
+  assert.equal((await libraries.completeDefaultUpload(MEMBER, completed.id)).id, completed.id);
+  assert.equal(libraries.listContributions(OWNER, canonical.id).length, 1);
+
+  libraries.reviewContribution(OWNER, canonical.id, pending[0]!.id, "approve");
+  assert.equal(libraries.listHoldings(OUTSIDER.id, canonical.id)[0]?.file.id, completed.id);
+  assert.equal(favorites.listFavorites(MEMBER.id).files[0]?.id, completed.id);
+  assert.equal(favorites.listFavorites(OWNER.id).files.length, 0);
+  assert.equal(database.prepare<[string], { uploaded_by_account_id: string; object_key: string }>(
+    "SELECT uploaded_by_account_id, object_key FROM files WHERE id = ?",
+  ).get(completed.id)?.uploaded_by_account_id, MEMBER.id);
+  assert.equal((await libraries.completeDefaultUpload(MEMBER, completed.id)).id, completed.id);
+
+  assert.equal(persistence.repositories.accounts.updateState(OUTSIDER.id, "active", "disabled", NOW), true);
+  assert.throws(() => libraries.listHoldings(OUTSIDER.id, canonical.id), (error) => error instanceof LibraryError && error.code === "not_found");
+});
+
+test("canonical Owner upload is admitted in the completion transaction without a pending self-review", async (context) => {
+  const { database, storage, drive, libraries } = fixture(context);
+  const canonical = libraries.listLibraries(OWNER.id).find((library) => library.isDefault);
+  assert.ok(canonical);
+  const reserved = await drive.createUpload(OWNER.id, {
+    folderId: null,
+    displayName: "owner-source.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 12,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  storage.putObject({
+    objectKey: reserved.file.objectKey,
+    sizeBytes: 12,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+
+  const completed = await libraries.completeDefaultUpload(OWNER, reserved.file.id);
+  assert.equal(libraries.listContributions(OWNER, canonical.id).length, 0);
+  assert.equal(libraries.listHoldings(MEMBER.id, canonical.id)[0]?.file.id, completed.id);
+  assert.equal(database.prepare<[string], { state: string }>(
+    "SELECT state FROM library_contributions WHERE artifact_id = (SELECT artifact_id FROM scholarly_artifact_versions WHERE stored_file_id = ?)",
+  ).get(completed.id)?.state, "approved");
+  assert.equal(database.prepare<[string], { count: number }>(
+    "SELECT count(*) AS count FROM governance_audit_events WHERE action = 'libraries.resource_admit' AND actor_account_id = ?",
+  ).get(OWNER.id)?.count, 1);
+  assert.equal((await libraries.completeDefaultUpload(OWNER, completed.id)).id, completed.id);
+});
+
+test("canonical intake persistence failure rolls upload activation and generated identities back together", async (context) => {
+  const { database, persistence, storage, drive, libraries } = fixture(context);
+  const reserved = await drive.createUpload(MEMBER.id, {
+    folderId: null,
+    displayName: "rollback-source.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 12,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  storage.putObject({
+    objectKey: reserved.file.objectKey,
+    sizeBytes: 12,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: MD5,
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+  const createContribution = persistence.repositories.contributions.create.bind(persistence.repositories.contributions);
+  persistence.repositories.contributions.create = () => { throw new Error("injected intake failure"); };
+  await assert.rejects(libraries.completeDefaultUpload(MEMBER, reserved.file.id), /injected intake failure/);
+  persistence.repositories.contributions.create = createContribution;
+
+  assert.equal(persistence.repositories.files.findById(MEMBER.id, reserved.file.id)?.state, "pending_upload");
+  assert.equal(database.prepare<[string], { count: number }>(
+    "SELECT count(*) AS count FROM scholarly_artifact_versions WHERE stored_file_id = ?",
+  ).get(reserved.file.id)?.count, 0);
+  assert.equal(database.prepare<[string], { count: number }>(
+    "SELECT count(*) AS count FROM governance_audit_events WHERE action = 'drive.upload_activate' AND target_id = ?",
+  ).get(reserved.file.id)?.count, 0);
+  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_contributions").get()?.count, 0);
 });

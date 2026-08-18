@@ -37,6 +37,8 @@ const TARGET_BY_ACTION: Readonly<Record<AuditEventKind, string | null>> = {
   "libraries.contribution_approve": "contribution",
   "libraries.contribution_reject": "contribution",
   "libraries.contribution_withdraw": "contribution",
+  "libraries.resource_admit": "contribution",
+  "libraries.corpus_transition": "library",
   "drive.upload_activate": "file",
   "drive.folder_recycle": "folder",
   "drive.folder_restore": "folder",
@@ -126,12 +128,18 @@ function assertAuditShape(input: AuditRecordInput): void {
     case "announcements.publish":
     case "announcements.unpublish":
     case "announcements.delete":
+    case "libraries.resource_admit":
     case "drive.folder_recycle":
     case "drive.folder_restore":
     case "drive.file_recycle":
     case "drive.file_restore":
       if (!accountActor) {
         throw new TypeError("invalid account mutation audit actor/outcome");
+      }
+      return;
+    case "libraries.corpus_transition":
+      if (input.actorKind !== "system" || input.outcome !== "succeeded") {
+        throw new TypeError("invalid corpus transition audit actor/outcome");
       }
       return;
     case "drive.upload_activate":

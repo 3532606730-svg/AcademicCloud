@@ -21,7 +21,7 @@ Implement the smallest coherent vertical slice that:
 - defines an append-only transition path for existing account-owned corpus resources into the canonical Library while preserving stable IDs, object keys/bytes, checksums, lineage, Favorites, and Personal Research Overlay state;
 - does not silently delete or specially reinterpret known test/synthetic residue.
 
-## Product Invariants
+Product invariants:
 - Academic resources are shared **after Owner admission**.
 - Personal research activity remains private per account.
 - There is no ordinary end-user concept of “my private Drive” versus “Shared Library”.
@@ -29,6 +29,13 @@ Implement the smallest coherent vertical slice that:
 - Owner/Admin has no implicit read access to another user's private research overlay.
 - Contribution approval must not copy OSS bytes when ownership promotion can preserve the existing object identity.
 - Existing stable scholarly/file identities must survive the correction.
+
+## Non-goals
+- No production rollout or live-data migration.
+- No multi-Library redesign.
+- No public registration/external sharing expansion.
+- No metadata/catalog/OCR expansion beyond what is necessary to correct the ownership/intake boundary.
+- No permanent deletion of existing or synthetic production data.
 
 ## Acceptance Criteria
 - A fresh active Member sees the same approved default Library holdings as other active Members without manual Library selection/membership administration in the ordinary product flow.
@@ -48,18 +55,34 @@ Implement the smallest coherent vertical slice that:
 - `docs/decisions/ADR-020-*`
 - `docs/decisions/ADR-021-*`
 
+## Relevant Modules / Files
+- `database/migrations/` append-only schema and transition contract
+- Library/research/ownership/account/audit repositories, services, and HTTP routes
+- Drive upload/finalization path and frontend Library integration
+- focused migration, authorization, contribution, privacy, and UI tests
+
 ## Current State
-PROD-05A is green at schema v15. The existing implementation supports explicit Libraries and contribution promotion, but ordinary files remain account-owned and the UI/product model still presents private `资料库` plus separate `共享资料库`. Live production Library tables are empty.
+Complete and independently green on `codex/project-memory-reconcile-20260817`. Development schema head is v16; production remains closed and unchanged at release `25cdab1…`, schema v15/history 001–015.
 
-## Non-goals
-- No production rollout or live-data migration.
-- No multi-Library redesign.
-- No public registration/external sharing expansion.
-- No metadata/catalog/OCR expansion beyond what is necessary to correct the ownership/intake boundary.
-- No permanent deletion of existing or synthetic production data.
+## Completed
+- Recovered authoritative branch, queue, ADRs, task cards, and exact remote synchronization.
+- Confirmed RF-LIBRARY01/02 are completed substrate and will not be redone.
+- Added append-only migration 016 with one deterministic canonical Library, automatic active-account membership, immutable transition/backfill evidence, and exact no-op redeploy behavior.
+- Transitioned only eligible complete active account-owned Record graphs; pending/deleted/purging/purged residue remains untouched. Stable file/Record/Artifact/Version IDs, object keys, checksums, uploader identity, and account-private Favorites are preserved.
+- Composed upload activation and canonical intake in one database transaction. Member upload creates one pending review candidate; Owner upload promotes directly with no manual self-review; intake failure rolls activation and generated identities back.
+- Retired public creation/listing of optional Libraries from the ordinary API while retaining historical service substrate and existing-data safety.
+- Extended Favorite authorization for accessible canonical holdings without making any account's Favorite relation visible to another account.
+- Reconciled schema-head expectations, API documentation, roadmap, status, board, and this task record.
+- Focused review repaired three concrete findings: exhaustive audit labels, canonical-Owner fail-closed disable behavior, and the remaining public optional-Library creation path. No material finding remains.
 
-## Verification
-Use focused migration/ownership/contribution/privacy tests, one frontend integration pass for the changed data flow, typecheck/build, and one focused independent review. Do not replay PROD-05A or unrelated historical production acceptance.
+## Remaining
+None within this Epic.
+
+## Blockers
+None. Production rollout of migration 016 remains a separate Owner gate.
+
+## Last Verification
+2026-08-18: backend suite PASS 255/255 after schema/security compatibility repair; final changed-path migration/contribution/HTTP rollback checks PASS 14/14 after retiring public optional-Library creation; frontend API/App integration PASS 108/108; workspace typecheck PASS; backend/frontend production build PASS; migration 016 isolated v15→v16 rehearsal reports `integrity_check=ok`, zero foreign-key violations, exact stable identity/object/provenance/Favorite preservation, non-active residue retention, and no-op second run; `git diff --check` PASS (line-ending notices only). Focused authorization/data-transition review has no remaining finding. No production, OSS network, main merge, OCR/RAG, or destructive real-data action occurred.
 
 ## Next Action
-Implement this card before resuming RF-META01 or any later Pre-OCR card.
+Commit and push this Epic as one clean checkpoint, verify local/remote equality, then select `L2-CREDENTIALRESET01` as the next and only authorized task.

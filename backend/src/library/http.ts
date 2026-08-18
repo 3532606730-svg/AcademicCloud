@@ -7,13 +7,11 @@ import { LibraryError, type LibraryService } from "./library-service.js";
 
 const ID_PATTERN = "^[A-Za-z0-9_-]{1,128}$";
 const idSchema = { type: "string", pattern: ID_PATTERN, minLength: 1, maxLength: 128 } as const;
-const nameSchema = { type: "string", minLength: 1, maxLength: 255 } as const;
 const emptyQuerySchema = { type: "object", additionalProperties: false, properties: {} } as const;
 
 interface LibraryParams { libraryId: string; }
 interface MemberParams extends LibraryParams { accountId: string; }
 interface HoldingParams extends LibraryParams { fileId: string; }
-interface CreateLibraryBody { name: string; }
 interface MembershipBody { accountId: string; role: LibraryRole; }
 interface RoleBody { role: LibraryRole; }
 interface HoldingsQuery { limit?: number; }
@@ -52,26 +50,6 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
     "/api/libraries",
     { preHandler: app.authenticate },
     async (request) => ({ libraries: service.listLibraries(requireActor(request.authAccount).id) }),
-  );
-
-  app.post<{ Body: CreateLibraryBody }>(
-    "/api/libraries",
-    {
-      preHandler: app.authenticate,
-      preValidation: requireJson,
-      bodyLimit: 8 * 1024,
-      schema: {
-        querystring: emptyQuerySchema,
-        body: { type: "object", additionalProperties: false, required: ["name"], properties: { name: nameSchema } },
-      },
-    },
-    async (request, reply) => {
-      try {
-        return reply.code(201).send({ library: service.createLibrary(requireActor(request.authAccount), request.body.name) });
-      } catch (error: unknown) {
-        return sendLibraryError(reply, error);
-      }
-    },
   );
 
   app.get<{ Params: LibraryParams }>(

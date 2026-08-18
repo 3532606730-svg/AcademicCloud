@@ -32,6 +32,8 @@ const ACTION_LABELS: Record<AuditEventKind, [string, string]> = {
   "libraries.contribution_approve": ["Contribution approved", "批准贡献"],
   "libraries.contribution_reject": ["Contribution rejected", "拒绝贡献"],
   "libraries.contribution_withdraw": ["Contribution withdrawn", "撤回贡献"],
+  "libraries.resource_admit": ["Resource admitted", "资料入库"],
+  "libraries.corpus_transition": ["Corpus transitioned", "资料库迁移"],
   "drive.upload_activate": ["Upload activated", "激活上传"],
   "drive.folder_recycle": ["Folder recycled", "回收文件夹"],
   "drive.folder_restore": ["Folder restored", "恢复文件夹"],

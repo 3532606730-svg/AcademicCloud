@@ -87,7 +87,6 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     attachFileToScholarlyRecord: vi.fn(),
     detachScholarlyArtifact: vi.fn(),
     listLibraries: vi.fn().mockResolvedValue([]),
-    createLibrary: vi.fn(),
     listLibraryMembers: vi.fn().mockResolvedValue([]),
     addLibraryMember: vi.fn(),
     changeLibraryMemberRole: vi.fn(),
@@ -2350,7 +2349,7 @@ describe("governance audit presentation", () => {
 });
 
 describe("Shared Library contribution UI", () => {
-  const library = { id: "library-1", name: "Sources", role: "manager" as const, createdAt: "2026-08-18T00:00:00.000Z" };
+  const library = { id: "library-1", name: "Sources", role: "manager" as const, isDefault: false, createdAt: "2026-08-18T00:00:00.000Z" };
   const contribution = {
     id: "contribution-1",
     libraryId: library.id,
@@ -2364,6 +2363,25 @@ describe("Shared Library contribution UI", () => {
     submittedAt: "2026-08-18T00:00:00.000Z",
     reviewedAt: null,
   };
+
+  it("selects the canonical Library by default without exposing manual Library creation", async () => {
+    const user = userEvent.setup();
+    const canonical = { ...library, id: "canonical-library", name: "Canonical corpus", isDefault: true };
+    const listLibraryHoldings = vi.fn().mockResolvedValue([]);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraries: vi.fn().mockResolvedValue([library, canonical]),
+      listLibraryHoldings,
+      listLibraryMembers: vi.fn().mockResolvedValue([]),
+      listLibraryContributions: vi.fn().mockResolvedValue([]),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    await user.click(screen.getByRole("button", { name: "Shared Library" }));
+    expect(await screen.findByRole("heading", { name: canonical.name, level: 3 })).toBeInTheDocument();
+    await waitFor(() => expect(listLibraryHoldings).toHaveBeenCalledWith(canonical.id));
+    expect(screen.queryByRole("button", { name: "Create library" })).not.toBeInTheDocument();
+  });
 
   it("shows only explicitly submitted reviewer rows and approves through the scoped API", async () => {
     const user = userEvent.setup();

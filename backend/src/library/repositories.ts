@@ -3,6 +3,7 @@ import type { Library, LibraryHolding, LibraryMembership, LibraryRole, NewLibrar
 export interface LibraryRepository {
   create(library: NewLibrary): Library;
   findById(id: string): Library | null;
+  findDefault(): Library | null;
   listForAccount(accountId: string): Array<{ library: Library; membership: LibraryMembership }>;
   createMembership(membership: NewLibraryMembership): LibraryMembership;
   findMembership(libraryId: string, accountId: string): LibraryMembership | null;

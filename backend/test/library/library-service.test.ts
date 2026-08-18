@@ -97,7 +97,7 @@ test("creates an explicit Library, scopes membership, and protects the last effe
     /last effective library manager/,
   );
   assert.equal(persistence.repositories.accounts.findById(OWNER.id)?.state, "active");
-  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_memberships").get()?.count, 2);
+  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_memberships").get()?.count, 4);
 });
 
 test("Library holdings are non-disclosing and reuse scoped storage download/preview authorization", async (context) => {

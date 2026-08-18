@@ -94,22 +94,17 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
     const ownerCookie = cookieFrom(ownerLogin);
     assert.ok(ownerCookie);
 
-    const created = await app.inject({
+    const retiredCreation = await app.inject({
       method: "POST",
       url: "/api/libraries",
       headers: { ...headers(ownerCookie), "content-type": "application/json" },
       payload: { name: "HTTP Shared Library" },
     });
-    assert.equal(created.statusCode, 201);
-    const libraryId = (created.json() as { library: { id: string } }).library.id;
-
-    const added = await app.inject({
-      method: "POST",
-      url: `/api/libraries/${libraryId}/members`,
-      headers: { ...headers(ownerCookie), "content-type": "application/json" },
-      payload: { accountId: "member-http", role: "member" },
-    });
-    assert.equal(added.statusCode, 200);
+    assert.equal(retiredCreation.statusCode, 404);
+    const ownerLibraries = await app.inject({ method: "GET", url: "/api/libraries", headers: headers(ownerCookie) });
+    const libraryId = (ownerLibraries.json() as { libraries: Array<{ id: string; isDefault: boolean }> }).libraries
+      .find((library) => library.isDefault)?.id;
+    assert.ok(libraryId);
 
     const memberLogin = await app.inject({
       method: "POST",
@@ -119,6 +114,66 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
     });
     assert.equal(memberLogin.statusCode, 200);
     const memberCookie = cookieFrom(memberLogin);
+
+    const memberLibraries = await app.inject({ method: "GET", url: "/api/libraries", headers: headers(memberCookie) });
+    assert.equal(memberLibraries.statusCode, 200);
+    const defaultLibrary = (memberLibraries.json() as { libraries: Array<{ id: string; isDefault: boolean }> }).libraries
+      .find((library) => library.isDefault);
+    assert.ok(defaultLibrary);
+    const reserved = await app.inject({
+      method: "POST",
+      url: "/api/drive/uploads",
+      headers: { ...headers(memberCookie), "content-type": "application/json" },
+      payload: {
+        folderId: null,
+        displayName: "automatic-intake.pdf",
+        mediaType: "application/pdf",
+        sizeBytes: 12,
+        checksum: { algorithm: "md5", value: "1B2M2Y8AsgTpgAmY7PhCfg==" },
+      },
+    });
+    assert.equal(reserved.statusCode, 201);
+    const reservation = reserved.json() as { file: { id: string }; upload: { fields: { key: string } } };
+    storage.putObject({
+      objectKey: reservation.upload.fields.key,
+      sizeBytes: 12,
+      etag: "etag",
+      checksumAlgorithm: "md5",
+      checksum: "1B2M2Y8AsgTpgAmY7PhCfg==",
+      mediaType: "application/pdf",
+      modifiedAt: new Date("2026-08-18T12:00:00.000Z"),
+    });
+    const completed = await app.inject({
+      method: "POST",
+      url: `/api/drive/uploads/${reservation.file.id}/complete`,
+      headers: headers(memberCookie),
+    });
+    assert.equal(completed.statusCode, 200);
+    const defaultPending = await app.inject({
+      method: "GET",
+      url: `/api/libraries/${defaultLibrary.id}/contributions`,
+      headers: headers(ownerCookie),
+    });
+    assert.equal(defaultPending.statusCode, 200);
+    const automaticContribution = (defaultPending.json() as { contributions: Array<{ id: string }> }).contributions[0];
+    assert.ok(automaticContribution);
+    const hiddenBeforeApproval = await app.inject({
+      method: "GET",
+      url: `/api/libraries/${defaultLibrary.id}/holdings`,
+      headers: headers(memberCookie),
+    });
+    assert.equal((hiddenBeforeApproval.json() as { holdings: unknown[] }).holdings.length, 0);
+    assert.equal((await app.inject({
+      method: "POST",
+      url: `/api/libraries/${defaultLibrary.id}/contributions/${automaticContribution.id}/approve`,
+      headers: headers(ownerCookie),
+    })).statusCode, 200);
+    const visibleAfterApproval = await app.inject({
+      method: "GET",
+      url: `/api/libraries/${defaultLibrary.id}/holdings`,
+      headers: headers(memberCookie),
+    });
+    assert.equal((visibleAfterApproval.json() as { holdings: Array<{ file: { id: string } }> }).holdings[0]?.file.id, reservation.file.id);
 
     const submitted = await app.inject({
       method: "POST",
@@ -140,7 +195,7 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
 
     const holdings = await app.inject({ method: "GET", url: `/api/libraries/${libraryId}/holdings`, headers: headers(memberCookie) });
     assert.equal(holdings.statusCode, 200);
-    assert.equal((holdings.json() as { holdings: unknown[] }).holdings.length, 1);
+    assert.equal((holdings.json() as { holdings: unknown[] }).holdings.length, 2);
 
     const nonexistent = await app.inject({ method: "GET", url: "/api/libraries/not-a-library/holdings", headers: headers(memberCookie) });
     assert.equal(nonexistent.statusCode, 404);

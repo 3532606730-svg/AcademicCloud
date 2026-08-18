@@ -28,9 +28,9 @@ test("migration 011 accepts zero accounts and creates empty identity tables", (c
   const database = openSqliteDatabase(join(directory, "empty.sqlite"));
   try {
     runMigrations(database, pinnedDirectory(context, 10));
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [11, 12, 13, 14, 15],
-      currentVersion: 15,
+    assert.deepEqual(runMigrations(database, pinnedDirectory(context, 11)), {
+      appliedVersions: [11],
+      currentVersion: 11,
     });
     for (const table of ["scholarly_records", "scholarly_artifacts", "scholarly_artifact_versions"]) {
       assert.equal(database.prepare<[], { count: number }>(`SELECT count(*) AS count FROM ${table}`).get()!.count, 0);
@@ -51,9 +51,9 @@ test("migration 011 preserves one-account Drive state without fabricating a reco
       INSERT INTO accounts (id, login_name, password_hash, role, state, created_at, updated_at)
       VALUES ('account-a', 'account-a', 'hash', 'owner', 'active', ?, ?)
     `).run(NOW, NOW);
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [11, 12, 13, 14, 15],
-      currentVersion: 15,
+    assert.deepEqual(runMigrations(database, pinnedDirectory(context, 11)), {
+      appliedVersions: [11],
+      currentVersion: 11,
     });
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM ownership_domains").get()!.count, 1);
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM scholarly_records").get()!.count, 0);
@@ -85,9 +85,9 @@ test("migration 011 never backfills existing multi-account Drive files", (contex
       `).run(`file-${id}`, `account:${id}`, id, `${id}.pdf`, `objects/${id}`, MD5, NOW, NOW, NOW);
     }
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [11, 12, 13, 14, 15],
-      currentVersion: 15,
+    assert.deepEqual(runMigrations(database, pinnedDirectory(context, 11)), {
+      appliedVersions: [11],
+      currentVersion: 11,
     });
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM files").get()!.count, 2);
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM scholarly_records").get()!.count, 0);

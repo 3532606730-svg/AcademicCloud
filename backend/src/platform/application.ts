@@ -54,7 +54,10 @@ export async function createApplication(
       },
       accounts: { service: accountAdministrationService },
       announcements: { service: announcementService },
-      drive: { service: driveService },
+      drive: {
+        service: driveService,
+        completeUpload: (actor, fileId) => libraryService.completeDefaultUpload(actor, fileId),
+      },
       favorites: { service: favoriteService },
       audit: { service: auditService },
       research: { service: scholarlyRecordService },
