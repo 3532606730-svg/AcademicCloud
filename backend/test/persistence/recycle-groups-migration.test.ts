@@ -94,7 +94,10 @@ test("migration 006 upgrades legacy recycle rows as independent roots without ch
     assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
     assert.equal(database.prepare<[], { integrity_check: string }>("PRAGMA integrity_check").get()?.integrity_check, "ok");
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [7, 8, 9, 10, 11], currentVersion: 11 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+      appliedVersions: [7, 8, 9, 10, 11, 12, 13, 14, 15],
+      currentVersion: 15,
+    });
     const persistence = new SqlitePersistence(database);
     assert.deepEqual(persistence.repositories.folders.listDeleted("owner-1").map((folder) => folder.id), ["deleted-folder"]);
     assert.deepEqual(persistence.repositories.files.listDeleted("owner-1").map((file) => file.id).sort(), ["deleted-file", "purging-file"]);
