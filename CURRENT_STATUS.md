@@ -4,13 +4,13 @@
 
 ## Current Phase
 
-**`PROD-05A` is active under an explicit Owner-gated production window. The bounded target is exact code checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a`, with production expected to move from `34a2eada…` / schema v8 to `ec6a79a…` / schema v15 using exactly migrations 009–015.**
+**`PROD-05A` is complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; execution is stopped.**
 
-Production remains live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8 pending live read-only preflight. Repository evidence selects `ec6a79a…` rather than newer documentation-only HEAD; no production mutation is allowed until exact artifact, fresh rollback backup/off-host evidence, and one isolated v8→v15 rehearsal are green.
+The requested product/runtime checkpoint is `ec6a79aedb201bd6164a7c68f859c1aa492c218a`. Exact artifact attempts proved that its verification expectations stopped at older schema heads, so the deployed exact release adds only bounded verification repairs across eight test/acceptance files; product runtime, migrations, dependencies, and infrastructure are identical to `ec6a79a…`. GitHub Actions run `32098001755` built and independently verified the final artifact on fresh Linux x64 / Node 24 runners.
 
 ## Source-of-Truth Development Baseline
 
-Current development lineage before this planning reconciliation:
+Current development lineage:
 - branch: `codex/project-memory-reconcile-20260817`;
 - OPS01A / accepted production code checkpoint: `34a2eada158dcf08783dc9538d853f9361425e8a`;
 - RF-AUDIT01 checkpoint: `cb25ce01a5e25c89ae4de3db1110433b71bb45fa`;
@@ -22,28 +22,31 @@ Current development lineage before this planning reconciliation:
 Current execution branch:
 - `codex/project-memory-reconcile-20260817`;
 - accelerated-queue planning checkpoint before implementation: `e915825fd546a122ff8606e699a9fd678c020001`;
-- contains repository development only; no production mutation.
+- contains the completed repository development, `PROD-05A` verification repairs, and production reconciliation; production release identity remains the separate exact artifact checkpoint `25cdab1…`.
 
 Historical migrations 001–015 must not be modified or renumbered. New persistent work must use append-only versions after the actual development schema head.
 
 ## Production State
 
-Production is the accepted routine multi-user release `34a2eada158dcf08783dc9538d853f9361425e8a`, deployed from successful GitHub Actions run `31997033717` using its verified Linux x64 / Node 24 artifact.
+Production is exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e`, deployed from successful GitHub Actions run `32098001755` using its verified Linux x64 / Node 24 artifact. GitHub artifact SHA-256 is `fec93dda3ee779ae6261aed489018fd2d5f2b1151fc82a0785a5d6e7ada7a036`; release archive SHA-256 is `bf3728a9f65a40829521a35eef4f0267cd7362b90844f91a9cbb6b517d681d77`.
 
 Production database state:
-- schema v8 with exact append-only history 1–8;
-- only migrations 005–008 were added by PROD-04A;
-- repository migrations 009–015 remain undeployed.
+- schema v15 with exact append-only history 1–15 and matching installed migration checksums;
+- `PROD-05A` added exactly migrations 009–015 in one invocation;
+- `integrity_check=ok`, `foreign_key_check=0`, and the migration rehearsal's second pass applied zero migrations;
+- preexisting aggregate counts were preserved at accounts 5, folders 4, files 32, sessions 18, invitations 5, and announcements 1;
+- live libraries, memberships, and contributions remain zero because full release-specific mutation acceptance ran only on the isolated backup copy with in-memory object storage.
 
-Accepted production behavior includes Owner/Member invitations and login, cross-account Drive isolation, password/session revocation, disable/re-enable, announcements, Favorites, recycle/restore, upload/download/Preview, and final integrity/resource checks.
+Accepted production behavior now includes the previous multi-user Drive/governance surface plus first-use duplicate/sidebar polish, non-destructive Member archival, announcement deletion/invitation-history polish, real Library ownership/membership/holdings, and explicit Member contribution review/promotion.
 
 Recorded operational boundary remains:
 - public site `https://cloud.ajtlab.top`;
 - backend loopback-only behind Nginx;
 - file bytes in private Alibaba OSS;
-- old release `15181f90d6eecbb0ddb977a0168536a445802ec7` and pre-migration v4 backup SHA-256 `7635f6cb…` remain the rollback pair;
-- never run the old release against schema v8 or invent reverse SQL;
-- no permanent-delete production test has been consumed by PROD-04A;
+- rollback is the inseparable pair of release `34a2eada158dcf08783dc9538d853f9361425e8a` plus schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite` (SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`);
+- the age-encrypted rollback generation and non-secret receipt are off-host in private `AcademicCloud-Backups` commit `b0238baa8bb5e5f44c5ceaf1d37ca3a80e0f9420`;
+- never run `34a2eada…` against schema v15 or invent reverse SQL;
+- no permanent-delete production test has been consumed by PROD-04A or PROD-05A;
 - later deployment, production migration, OSS mutation, autostart/reboot changes, backup pruning, certificate work, and destructive recovery remain separately Owner-gated.
 
 ## Completed Repository Checkpoints Relevant to New Work
@@ -59,7 +62,7 @@ Recorded operational boundary remains:
 
 RF-LIBRARY01 checkpoint: `901d13d081c6c4994416184dc5b98709bf5f43a6` (pushed; local HEAD matched origin at record time).
 
-RF-LIBRARY02 checkpoint: `ec6a79aedb201bd6164a7c68f859c1aa492c218a` (pushed and synchronized; no production action).
+RF-LIBRARY02 product/runtime checkpoint: `ec6a79aedb201bd6164a7c68f859c1aa492c218a` (pushed and included in production release `25cdab1…`).
 
 These completed foundations are why the minimum Library slice can be accelerated safely without first consuming `RF-META01` through `RF-EXPORT01`.
 
@@ -154,9 +157,9 @@ Do not repeatedly run broad historical acceptance suites, production artifact bu
 
 ## Safety Boundaries
 
-This repository objective does **not** authorize:
-- production SSH or mutation;
-- production DB migration/deployment;
+The completed production window did **not** authorize, and no future work may infer authorization for:
+- additional production SSH or mutation after reconciliation;
+- any later production DB migration/deployment;
 - production OSS/DNS/TLS/Nginx/systemd changes;
 - permanent-delete production acceptance;
 - destructive real-data testing;
@@ -168,4 +171,4 @@ This repository objective does **not** authorize:
 
 ## Next Action
 
-STOP. Await explicit Owner direction. Do not select parked Pre-OCR work and do not contact or mutate production.
+STOP. Await explicit Owner direction. Do not select parked Pre-OCR work, contact or mutate production, run `PROD-03C2`, change autostart/infrastructure, merge main, or use any real Member account for testing.

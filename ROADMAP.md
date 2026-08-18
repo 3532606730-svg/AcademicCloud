@@ -296,15 +296,15 @@ OPS01A does not authorize service/timer/journald installation, production SSH, d
 
 ## Separate Production Track
 
-Production is live on the accepted `34a2eada158dcf08783dc9538d853f9361425e8a` / schema v8 multi-user release. Repository feature completion never implies rollout.
+Production is live on accepted exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` / schema v15, containing the requested `ec6a79a…` first-use polish + Shared Library product/runtime baseline plus verification-only artifact repairs. Repository feature completion never implies any later rollout.
 
-`PROD-03C2` permanent-delete confirmation and reboot/autostart policy remain separately Owner-gated. Any later rollout of the first-use polish or Shared Library checkpoints requires a new exact production candidate, migration review, and explicit Owner deployment window.
+`PROD-03C2` permanent-delete confirmation and reboot/autostart policy remain separately Owner-gated. Any later deployment or migration requires a new exact production candidate, migration review, and explicit Owner deployment window.
 
 ## Approved Repository Objective
 
-The previous repository/local objective through `RF-DOMAIN01` and the bounded `PROD-04A` production release are complete.
+The repository/local objective through `RF-LIBRARY02` and the bounded `PROD-05A` production release are complete.
 
-The newly approved repository objective is the accelerated first-use queue only:
+The completed accelerated first-use objective was:
 
 ```text
 L1-UX04
@@ -318,7 +318,7 @@ RF-LIBRARY02
 STOP
 ```
 
-The three polish cards may be completed in the most efficient order, but each remains a bounded checkpoint. After the polish checkpoint(s), `RF-LIBRARY01` must precede `RF-LIBRARY02`. The Agent must not continue into `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, or any other parked task after `RF-LIBRARY02` without new Owner direction.
+The three polish cards and both Library cards are complete. The Agent must not continue into `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, or any other parked task without new Owner direction.
 
 Execution remains repository-driven: long runs consume the explicit queue rather than expanding the chat prompt. Verification should be proportionate to changed risk and should stop once relevant evidence is green and one focused review finds no material issue.
 

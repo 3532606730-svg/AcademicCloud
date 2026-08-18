@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** `PROD-05A` is active under an explicit Owner production gate. Repository work through first-use polish, RF-LIBRARY01, and RF-LIBRARY02 is complete and green at exact code checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a`; production remains exact `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8 pending live preflight and may transition only to schema v15 with migrations 009–015.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, and `PROD-05A` are complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; its product/runtime baseline is requested checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a`, plus verification-only schema-head repairs required by the exact artifact workflow.
 
-**Approved continuous objective:** complete bounded `PROD-05A` only: one exact-head Linux artifact, read-only preflight, fresh verified rollback backup with off-host evidence, one isolated v8→v15 rehearsal, exact deployment, health/integrity/FK plus minimal synthetic release acceptance, durable reconciliation/push, then STOP. `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, and OCR/RAG remain parked or separately gated.
+**Approved continuous objective:** complete; STOP. The rollback pair for the schema-v15 generation is prior release `34a2eada158dcf08783dc9538d853f9361425e8a` plus schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite` (SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`), with age-encrypted off-host evidence in private `AcademicCloud-Backups` commit `b0238baa8bb5e5f44c5ceaf1d37ca3a80e0f9420`. `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, and OCR/RAG remain parked or separately gated.
 
 ## Engineering Workflow
 

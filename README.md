@@ -10,11 +10,11 @@ The repository and Git are durable project memory. Chat is planning context only
 
 ## Current Status
 
-**Production:** exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` is the accepted multi-user generation at `https://cloud.ajtlab.top`, with schema v8/migrations 1–8. Production remains a separate Owner-gated track.
+**Production:** exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` is the accepted multi-user + first-use polish + Shared Library generation at `https://cloud.ajtlab.top`, with schema v15/migrations 1–15. Its product/runtime baseline is `ec6a79aedb201bd6164a7c68f859c1aa492c218a`; the exact release adds verification-only schema-head repairs and no runtime, migration, dependency, or infrastructure delta. Production remains a separate Owner-gated track.
 
 **Development:** Core Drive closure, Accounts I, Global Homepage Announcements, Authenticated Password Change, repository/local OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, and RF-LIBRARY02 are independently green. Schema head is append-only migration 015.
 
-**Active:** `PROD-05A`, a bounded Owner-gated deployment of exact code checkpoint `ec6a79a…` with only migrations 009–015. Newer documentation-only HEAD is not the release target. `RF-META01`, `PROD-03C2`, and the remaining Pre-OCR queue stay parked.
+**Active:** none; STOP. `PROD-05A` is complete. `RF-META01`, `PROD-03C2`, `RF-LIBRARY03`, `RF-LIBRARY04`, and the remaining Pre-OCR queue stay parked pending new Owner direction.
 
 Read:
 - `AGENTS.md` — mandatory repository policy and current product/privacy boundaries;

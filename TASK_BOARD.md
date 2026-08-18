@@ -4,9 +4,9 @@
 
 ## Current Phase
 
-**`PROD-05A` is active under an explicit Owner-gated deployment window. The selected smallest code-bearing release is `ec6a79a…`; production remains `34a2eada…` / schema v8 until the exact artifact, rollback, rehearsal, integrity, and authorization gates pass.**
+**`PROD-05A` is complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the executable queue is at STOP.**
 
-Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8 pending read-only confirmation. `PROD-05A` may deploy only exact code checkpoint `ec6a79aedb201bd6164a7c68f859c1aa492c218a` and apply exactly migrations 009–015; newer documentation-only HEAD is not the release target.
+The requested product/runtime baseline is `ec6a79aedb201bd6164a7c68f859c1aa492c218a`; exact artifact evidence required verification-only schema-head repairs, producing release `25cdab1…` with no runtime, migration, dependency, or infrastructure delta. `PROD-05A` applied exactly migrations 009–015. Later work remains parked pending new Owner direction.
 
 ## Approved Continuous Objective
 
@@ -19,7 +19,7 @@ The new Owner-approved execution sequence is:
 5. `RF-LIBRARY02` — Member contribution review;
 6. STOP.
 
-All six repository-development steps are complete. The prior STOP has been superseded only by the bounded `PROD-05A` production rollout; no unrelated Pre-OCR work is authorized.
+All six repository-development steps and the bounded `PROD-05A` production rollout are complete. No unrelated Pre-OCR work is authorized; STOP.
 
 This is an explicit Owner reprioritization based on first-use need. `RF-META01` and every unrelated later Pre-OCR card remain parked. `RF-LIBRARY03` and `RF-LIBRARY04` also remain parked; catalog, Library Tags, provenance governance, and duplicate/version grouping are not part of this accelerated slice.
 
@@ -27,15 +27,11 @@ Verification is intentionally proportionate: focused changed-component tests, on
 
 Every product Epic remains independently reviewable/checkpointed. Large workstreams must be split in planning rather than implemented as giant diffs.
 
-This production objective authorizes only the `PROD-05A` read-only preflight, verified rollback backup/off-host copy, isolated rehearsal, exact deployment/migrations, and minimal synthetic acceptance. It does not authorize main merge, paid infrastructure, destructive real-data operations, `PROD-03C2`, permanent delete, reboot/autostart, infrastructure-policy changes, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary.
+The consumed `PROD-05A` window authorized only its read-only preflight, verified rollback backup/off-host copy, isolated rehearsal, exact deployment/migrations, and minimal synthetic/read-only acceptance. It did not authorize main merge, paid infrastructure, destructive real-data operations, `PROD-03C2`, permanent delete, reboot/autostart, infrastructure-policy changes, OCR execution, embeddings, retrieval, RAG, or an unrecorded product boundary. No future action may inherit that expired gate.
 
 ## Doing
 
-### PROD-05A — First-Use Polish and Shared Library Release
-
-**Task card:** `tasks/doing/PROD-05A.md`
-
-**Status:** active. Exact candidate `ec6a79a…`; expected schema transition v8→v15 with only migrations 009–015. STOP before unsafe mutation on any material artifact, rollback, migration, integrity, or authorization problem.
+None. STOP.
 
 ## Ready — Accelerated First-Use Queue
 
@@ -74,6 +70,12 @@ The remaining independently reviewed queue stays durably specified in `docs/arch
 `RF-DERIVED01` remains terminal. The accelerated Library slice does not authorize OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, or production rollout.
 
 ## Separate Owner-Gated Production Track
+
+### PROD-05A — First-Use Polish and Shared Library Release
+
+**Task card:** `tasks/done/PROD-05A.md`
+
+**Status:** complete. Exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` (requested product/runtime baseline `ec6a79a…` plus verification-only schema-head repairs) was built and independently verified by GitHub Actions run `32098001755`, backed by fresh schema-v8 rollback generation SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17` and private off-host backup commit `b0238baa8bb5e5f44c5ceaf1d37ca3a80e0f9420`, rehearsed once, and deployed with exactly migrations 009–015. Production is schema v15/history 1–15 with matching checksums, integrity `ok`, zero foreign-key violations, preserved preexisting aggregates, health/readiness/public assets green, zero restarts/errors/OOM findings, unchanged infrastructure policy, and zero live Library/test rows. Full mutation acceptance used only an isolated backup copy with in-memory storage; no real Member or private data was inspected or used. STOP.
 
 ### PROD-03C2 — Remaining First-Usable Production Gates
 
@@ -199,6 +201,7 @@ It is not silently pulled into the accelerated Shared Library program.
 - accepted 1 GiB-class production runtime baseline;
 - public HTTPS production foundation and UX01 production acceptance;
 - PROD-04A exact `34a2eada…` multi-user production release at schema v8 + independent review PASS;
+- PROD-05A exact `25cdab1…` first-use polish + Shared Library production release at schema v15 with only migrations 009–015;
 - L1-UX02 implementation foundation;
 - L1-BUGAUDIT01 + independent review PASS;
 - L1-FAV01 + independent review PASS;

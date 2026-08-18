@@ -12,7 +12,7 @@ Only when the Owner explicitly opens a production operations window:
 - decide and verify the production reboot/autostart policy, or explicitly retain an accepted manual-start policy;
 - reconcile the associated production runbook/evidence after those decisions.
 
-Historical authenticated/live disposable-object acceptance, the accepted UX01 generation, and the later accepted PROD-04A routine multi-user release remain recorded in Git/runbooks and are not to be replayed merely because this card exists.
+Historical authenticated/live disposable-object acceptance, the accepted UX01 generation, the PROD-04A routine multi-user release, and the PROD-05A first-use polish + Shared Library release remain recorded in Git/runbooks and are not to be replayed merely because this card exists.
 
 ## Non-goals
 - No activation under the current Pre-OCR repository/local objective.
@@ -45,10 +45,10 @@ If and only if the Owner explicitly activates this production task:
 - `TASK_BOARD.md`.
 
 ## Current State
-**Parked / Owner-gated, not active.** Production is live on exact commit `34a2eada158dcf08783dc9538d853f9361425e8a` at schema v8 after the accepted PROD-04A routine release. Historical live authenticated/disposable-object and multi-user acceptance is recorded. The remaining policy gates are the exact disposable permanent-delete confirmation and the reboot/autostart decision; neither was authorized or consumed by PROD-04A or the current Pre-OCR repository/local objective.
+**Parked / Owner-gated, not active.** Production is live on exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15 after accepted PROD-05A. Historical live authenticated/disposable-object, multi-user, and isolated Shared Library/contribution acceptance is recorded. The remaining policy gates are the exact disposable permanent-delete confirmation and the reboot/autostart decision; neither was authorized or consumed by PROD-04A or PROD-05A.
 
 ## Completed
-- historical production preflight/authentication/disposable-object acceptance plus UX01 and PROD-04A production acceptance are preserved in Git/runbooks;
+- historical production preflight/authentication/disposable-object acceptance plus UX01, PROD-04A, and PROD-05A production acceptance are preserved in Git/runbooks;
 - this card has been removed from `tasks/doing/` so repository recovery cannot mistake a parked production boundary for the active development task.
 
 ## Remaining
@@ -60,7 +60,7 @@ If and only if the Owner explicitly activates this production task:
 Explicit Owner authorization for a production operations window is mandatory. Without it, this card must remain parked and must not be selected by autonomous repository development.
 
 ## Last Verification
-2026-08-17 PROD-04A reconciliation: production is exact `34a2eada…`, schema v8, with multi-user/browser/runtime acceptance green; current Pre-OCR work remains parked; permanent-delete and autostart/reboot remain separately Owner-gated and unexecuted.
+2026-08-18 PROD-05A reconciliation: production is exact `25cdab1…`, schema v15/history 1–15, with health/integrity/authorization evidence green; parked Pre-OCR work remains stopped; permanent-delete and autostart/reboot remain separately Owner-gated and unexecuted.
 
 ## Next Action
 None under the current continuous objective. Resume only after an explicit Owner instruction that opens this production task and defines the permitted production window.
