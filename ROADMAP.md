@@ -47,9 +47,9 @@ AcademicCloud retains the six conceptual planes from ADR-014:
 
 `Scholarly Record`, `Artifact`, `Artifact Version`, ownership domains, and audit rows are implementation/domain concepts. They should not become primary UI navigation labels merely because they exist internally.
 
-## Immediate Owner Priority — First-Use Product Correction
+## Completed First-Use Product Correction
 
-PROD-05A is complete. Before resuming the remaining Pre-OCR research cards, the Owner has approved one bounded repository-only correction queue:
+The Owner-approved correction completed and deployed this bounded queue:
 
 ```text
 RF-SHAREDDEFAULT01
@@ -58,75 +58,70 @@ L2-CREDENTIALRESET01
         ↓
 L1-UX05
         ↓
+PROD-06A
+        ↓
 STOP for Owner review
 ```
 
 ### RF-SHAREDDEFAULT01 — Canonical Shared Library Default — Complete
 
-Correct the current optional-sharing/private-Drive product framing without discarding the safe foundations already built.
-
-Required outcome:
-- one canonical/default Library authority behind the normal `资料库`;
-- all active authorized members can see approved holdings without a manual sharing ceremony;
-- non-Owner upload automatically enters contribution review and is not public before approval;
-- Owner approval promotes/adopts the resource into shared Library ownership while preserving stable IDs, object bytes/keys, checksums, contributor/uploader provenance, Scholarly Record/Artifact/Version lineage, Favorites, and Personal Research Overlay state;
-- Owner-originated upload may be admitted directly;
-- ordinary Members do not receive shared folder/destructive/canonical-metadata governance authority merely because they can contribute;
-- existing account-owned corpus transition is designed/tested append-only in repository development, while live migration remains a separate Owner-gated production deployment.
-
-Repository checkpoint advances the development schema head to migration 016. The canonical Library is deterministic and automatic for active accounts; migration rehearsal and runtime tests cover stable identity/provenance/Favorite preservation, Member pending intake, Owner direct admission, fail-closed disabled identities, and transactional rollback. Production remains at schema v15 and was not contacted.
+One deterministic canonical Library now backs the ordinary `资料库`; active authorized members can see admitted holdings, Member uploads enter review, Owner uploads may be admitted directly, and production migration 016 preserved stable IDs, object keys/bytes, checksums, provenance, lineage, Favorites, and private-overlay boundaries.
 
 ### L2-CREDENTIALRESET01 — Owner-Assisted Credential Reset — Complete
 
-The previous self-service password-change feature is no longer a desired product surface.
+The old authenticated self-service password route/UI is retired. Owner-issued 30-minute digest-only reset capabilities are single-use, Member-chosen passwords remain unknown to the Owner, successful redemption advances auth revision and revokes sessions, and migration 017 is deployed.
 
-Target model:
-- no authenticated “修改密码” product path for ordinary users;
-- no email/SMS/OAuth recovery infrastructure;
-- if a known Member loses access, the Owner issues a short-lived one-time reset capability;
-- only the capability digest/state is stored;
-- the Member chooses the final password, so the Owner does not learn it;
-- Argon2id limits and session/auth-revision safety remain unchanged;
-- successful reset consumes the capability and invalidates old sessions without silently changing disabled/archived lifecycle state.
+### L1-UX05 — Information Architecture and Visual Hierarchy Repair — Complete
 
-Repository checkpoint advances the development schema head to migration 017. The authenticated `/api/auth/password` route and `修改密码` UI/navigation are absent. Owner issuance is limited to active/disabled Members; 30-minute digest-only capabilities are single-use and reissue atomically supersedes prior outstanding state. Redemption reuses the bounded Argon2id executor and atomically advances authentication revision, consumes the capability, revokes sessions, and records audit evidence. Disabled Members remain disabled; archived accounts are ineligible. Production remains at schema v15 and was not contacted.
+The duplicate top-level `共享资料库` and standalone `学术记录` shell surfaces are removed; Owner administration is consolidated; `上传资料` is the dominant action; stale folder recycle uses revision-bearing atomic lifecycle semantics; L1-UX03 mobile/fullscreen/zero-copy foundations remain preserved.
 
-### L1-UX05 — Information Architecture and Visual Hierarchy Repair
+## Owner Review Follow-up — Catalogue Usability
 
-The interface should feel like a quiet scholarly product, not an enterprise admin console.
+Actual use of production release `855b63c49f12f3375972774e7bc7385088b0495e` exposed a second, narrower first-use issue: the **data/authority model is correct, but the catalogue presentation still visually splices the new canonical holdings feed above the legacy Owner Drive table**. This creates a misplaced `名称 / 大小 / 更新时间` header, removes established file-type icons from canonical holdings, repeats migrated filename-derived labels, leaves redundant explanatory copy, and does not expose an authority-correct recoverable lifecycle action for Library-owned resources.
 
-Required information architecture:
+The Owner has approved the following repository roadmap adjustment. It does **not** authorize production deployment, cleanup, permanent deletion, OCR, external services, or AI extraction:
 
 ```text
-AcademicCloud
-  资料库
-  收藏
-  待处理
-  回收站
-
-User menu
-  管理后台   (Owner only)
-  退出登录
-
-管理后台
-  成员管理
-  投稿审核
-  公告
-  操作记录
+L1-UX06  Canonical Catalogue Presentation Repair
+   ↓
+RF-META01  Canonical Metadata / 资料详情
+   ↓
+RF-METASUGGEST01  Deterministic Title & Metadata Suggestions
+   ↓
+RF-SEARCH01  Catalogue Metadata/Name Search
+   ↓
+remaining Pre-OCR program
 ```
 
-UI requirements:
-- remove the duplicate top-level `共享资料库` concept;
-- remove standalone `学术记录`; scholarly identity stays internal and canonical metadata appears through `资料详情`;
-- remove `管理账户`, `管理公告`, `治理审计`, `修改密码` from global navigation;
-- keep `操作记录` as the existing bounded governance/security audit under Owner administration;
-- one strong Library-page CTA: `上传资料`;
-- demote `新建文件夹` and other secondary actions;
-- keep the warm neutral/deep-green identity but reduce equal-weight bordered buttons, unnecessary boxes, and action competition;
-- preserve responsive/mobile and accessibility behavior;
-- fix the reproducible stale-state folder recycle/delete failure without weakening revision/CAS protection or bypassing normal lifecycle.
+### L1-UX06 — Canonical Catalogue Presentation Repair — Ready
 
-`L1-UX03` already completed the dedicated mobile/fullscreen Preview and zero-descriptive-copy UI work. `L1-UX05` preserves that accepted baseline and must not reopen it as new scope.
+Required outcome:
+- one unified scholarly catalogue surface instead of `SharedLibraryPanel` followed by a second legacy table;
+- desktop headers remain above and aligned with the rows they describe;
+- canonical holdings reuse established PDF/image/text/generic file badges;
+- remove redundant descriptive copy such as `当前账户可访问的共享学术资料。`;
+- do not repeat migrated `recordLabel` when it merely duplicates the filename;
+- keep Preview/Download/Favorites;
+- Owner/Manager gets an authority-correct **recoverable** `移入回收站` path for eligible Library-owned resources while Members remain non-destructive;
+- preserve mobile/accessibility, CAS/revision safety, object identity, provenance, lineage and private overlays.
+
+This is a focused UX/lifecycle repair, not a broad redesign and not `PROD-03C2` permanent deletion.
+
+### RF-META01 — Canonical Metadata, Templates, and Minimal Authorities — Ready After L1-UX06
+
+Canonical shared facts for Book, Article, Manuscript, Inscription, and Archival Document appear through normal `资料详情`. The original filename remains a provenance/detail fact rather than the only human-facing title. RF-META01 still does not itself perform automatic extraction/suggestion.
+
+### RF-METASUGGEST01 — Deterministic Title and Metadata Suggestions — New
+
+After RF-META01 defines canonical fields, add a bounded suggestion layer using already-authorized local signals only: filename and safe embedded document metadata. It may conservatively remove obvious acquisition noise such as extensions, archive/source suffixes, opaque hashes and tested ISBN-like tails, but **suggestions are never silently authoritative**. Preserve the original filename, object key, bytes/checksum and provenance. Ambiguous/low-confidence cases fall back rather than invent facts.
+
+No OCR, LLM/AI extraction, external catalogue/ISBN lookup, fuzzy authority merge or silent production bulk rewrite is authorized by this task.
+
+### RF-SEARCH01 — Authority-Scoped Metadata and Name Search — Priority Moved Forward
+
+Basic catalogue search is now treated as near-term usability infrastructure rather than waiting for Personal Tags/Collections/Saved Views. After canonical metadata/suggestion work, add one search field to the normal `资料库` and search authorized original/display names plus canonical metadata. Search remains authority-filtered before ranking/serialization, stores no query history, and makes no OCR/full-text claim.
+
+`RF-SEARCH01` no longer depends on `RF-ORGANIZE01` merely to provide basic catalogue search.
 
 ## Layer 0 — Project Setup
 
@@ -136,9 +131,9 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 ## Layer 1 — Core Drive / Resource Handling
 
-**Status:** Foundation complete; current UI/data-flow semantics are being corrected by `RF-SHAREDDEFAULT01` + `L1-UX05`.
+**Status:** Foundation complete; one focused post-deployment catalogue presentation/lifecycle repair (`L1-UX06`) is ready.
 
-Completed foundations include architecture, SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, security/reliability, Favorites, bulk operations, recursive recycle/restore, transfer-performance evidence, duplicate-name UX, `L1-UX03` dedicated mobile/fullscreen Preview plus zero-descriptive-copy cleanup, and sticky desktop navigation.
+Completed foundations include architecture, SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, security/reliability, Favorites, bulk operations, recursive recycle/restore, transfer-performance evidence, duplicate-name UX, `L1-UX03` dedicated mobile/fullscreen Preview plus zero-descriptive-copy cleanup, sticky desktop navigation, canonical shared-corpus authority, and first-use shell repair.
 
 The old first-layer “private cloud drive” behavior is historical implementation substrate, not the final product concept for academic holdings after ADR-022.
 
@@ -153,9 +148,6 @@ Completed:
 - bounded governance/security audit;
 - Owner-issued, Member-redeemed one-time credential reset with atomic session invalidation.
 
-Historical note:
-- ADR-024 retires the authenticated self-service HTTP/UI path while preserving its bounded-KDF/CAS reasoning as implementation evidence.
-
 Later separate backlog:
 - one-time external sharing capability (`L2-SHARE01`) if explicitly reopened.
 
@@ -167,50 +159,36 @@ Explicitly not implied:
 
 ## Layer 3 — Personal Scholarly Workspace & Scholarly Model
 
-**Status:** Approved Pre-OCR program; remaining cards parked until the current first-use correction reaches STOP.
+**Status:** Approved Pre-OCR program; canonical catalogue/metadata/search usability is now sequenced first.
 
 ### Personal Research Overlay
 
-Private per-account capabilities include:
-- reading state/progress;
-- Important / To Cite;
-- Recent;
-- Personal Tags;
-- Collections;
-- Saved Research Views;
-- private acquisition/research notes;
-- annotations/highlights/page notes;
-- Citation Workspace;
-- Evidence Bundles;
-- Research Questions and private links.
-
-Owner/Admin authority does not implicitly expose another user's Personal Research Overlay.
+Private per-account capabilities include reading state/progress, Important / To Cite, Recent, Personal Tags, Collections, Saved Research Views, private notes, annotations/highlights/page notes, Citation Workspace, Evidence Bundles, Research Questions and private links. Owner/Admin authority does not implicitly expose another user's Personal Research Overlay.
 
 ### Scholarly identity, metadata, provenance, lineage
 
 Stable Scholarly Record / Artifact / Artifact Version identities are already implemented by `RF-DOMAIN01`.
 
-Remaining approved work includes:
+Near-term work now includes:
+- coherent canonical catalogue presentation/lifecycle (`L1-UX06`);
 - bounded canonical metadata/templates and minimal authorities (`RF-META01`);
-- provenance/fingerprint/leak-safe duplicate handling (`RF-PROV01`);
-- artifact/version/derived lineage (`RF-LINEAGE01`);
-- storage statistics (`RF-STATS01`).
+- deterministic, reviewable local title/metadata suggestions (`RF-METASUGGEST01`);
+- authority-scoped catalogue name/metadata search (`RF-SEARCH01`).
 
-`RF-META01` now depends on `RF-SHAREDDEFAULT01` and must surface canonical information through normal `资料详情`, not a standalone “Scholarly Record” browser.
+Later work includes provenance/fingerprint/leak-safe duplicate handling (`RF-PROV01`), artifact/version/derived lineage (`RF-LINEAGE01`), storage statistics (`RF-STATS01`), and the Personal Research Overlay program.
 
 ### Research intake
 
-Later `RF-INTAKE01` should build on ADR-022: acquisition/contribution intake is a staging/review workflow, not justification for reintroducing a permanent private Drive product. Duplicate checking, metadata capture/suggestion boundaries, and future browser-save APIs remain separate scoped work.
+Later `RF-INTAKE01` should build on ADR-022: acquisition/contribution intake is a staging/review workflow, not justification for reintroducing a permanent private Drive product. Its deterministic/manual suggestion boundary must reuse, not duplicate or broaden, the title/metadata suggestion contracts established earlier. OCR/AI/external lookup remains separately gated.
 
 ## Layer 4 — Shared Academic Library
 
-**Status:** Core primitives complete; default product semantics are being corrected.
+**Status:** Core primitives and canonical default semantics complete; catalogue polish and later catalog governance remain.
 
 Completed:
 - `RF-LIBRARY01` — Library ownership domain, membership/manager authority, holdings read/preview/download;
-- `RF-LIBRARY02` — guarded submitted/approved/rejected/withdrawn contribution review and ownership promotion.
-
-ADR-022 supersedes the earlier **optional Shared Library** framing. These primitives now support the **canonical shared corpus**.
+- `RF-LIBRARY02` — guarded submitted/approved/rejected/withdrawn contribution review and ownership promotion;
+- `RF-SHAREDDEFAULT01` — one canonical default Library and live corpus transition.
 
 Later approved cards remain:
 - `RF-LIBRARY03` — shared catalog, Library Tags, canonical/original naming;
@@ -220,41 +198,28 @@ Later approved cards remain:
 
 **Status:** Approved and parked.
 
-Remaining foundations include:
-- integrity monitor;
-- no-clobber metadata snapshot/recovery;
-- complete cross-plane authorization/non-disclosure matrix;
-- structured scholarly export;
-- stable page/derived-artifact authorization contracts;
-- production-disabled OCR/text/index adapter contracts only.
-
-Pre-OCR completion means these models and boundaries are coherent and independently checkpointed. It does not authorize OCR execution.
+Remaining foundations include integrity monitor, no-clobber metadata snapshot/recovery, complete cross-plane authorization/non-disclosure matrix, structured scholarly export, stable page/derived-artifact authorization contracts, and production-disabled OCR/text/index adapter contracts only.
 
 ## Layer 6 — Intelligence
 
 **Status:** Future; not authorized.
 
-Future sequence remains:
-- OCR/text extraction;
-- full-text indexing/search;
-- embeddings/retrieval;
-- RAG;
-- source/page-grounded research assistance.
-
-Derived authority must never exceed the requesting account's effective authority over shared resources and any private overlay used in the request.
+Future sequence remains OCR/text extraction, full-text indexing/search, embeddings/retrieval, RAG, and source/page-grounded research assistance. Derived authority must never exceed the requesting account's effective authority over shared resources and any private overlay used in the request.
 
 ## Remaining Pre-OCR Execution Order
 
-After the current three-card first-use correction reaches STOP and the Owner reopens research development:
+After Owner explicitly starts repository development again, the revised sequence is:
 
 ```text
-RF-META01
+L1-UX06
+→ RF-META01
+→ RF-METASUGGEST01
+→ RF-SEARCH01
 → RF-PROV01
 → RF-LINEAGE01
 → RF-STATS01
 → RF-OVERLAY01
 → RF-ORGANIZE01
-→ RF-SEARCH01
 → RF-VIEWS01
 → RF-INTAKE01
 → RF-ANNOTATE01
@@ -270,7 +235,7 @@ RF-META01
 → STOP BEFORE OCR
 ```
 
-`RF-LIBRARY01` and `RF-LIBRARY02` were completed early and are not repeated.
+`RF-LIBRARY01` and `RF-LIBRARY02` were completed early and are not repeated. `RF-SEARCH01` is deliberately moved before personal organization because first-use review showed that basic catalogue findability is a core requirement at the current corpus scale and will become mandatory as holdings grow.
 
 ## Cross-Cutting Operations
 
@@ -301,15 +266,16 @@ Preserved but non-blocking:
 - full Time Machine/Rewind;
 - native desktop/mobile apps unless future real use justifies them.
 
-## Completed Repository Objective
+## Current Repository Objective
 
-Only:
+Planning is reconciled. No implementation task is active yet. The next Owner-approved repository queue is now durably recorded as:
 
 ```text
-RF-SHAREDDEFAULT01
-→ L2-CREDENTIALRESET01
-→ L1-UX05
-→ STOP
+L1-UX06
+→ RF-META01
+→ RF-METASUGGEST01
+→ RF-SEARCH01
+→ continue revised Pre-OCR sequence
 ```
 
-The three Epics and bounded PROD-06A release are complete. STOP for independent Owner/ChatGPT review. No further production contact, main merge, permanent deletion, real-data cleanup, OCR/text extraction, indexing, embeddings, retrieval, RAG, or unrelated Pre-OCR consumption is authorized by this roadmap state.
+This planning update does not authorize production contact/mutation, main merge, permanent deletion/`PROD-03C2`, real-data cleanup, OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, or AI extraction.
