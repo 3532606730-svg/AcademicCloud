@@ -78,7 +78,7 @@ None for development. Production OSS CORS/support is a later read-only preflight
 - `git diff --check` PASS; migrations 001–020 remain byte-identical.
 - Production touched: false.
 - SOURCE_BASE=`ec5418912f22a1584b34ffde9d53bd1f5c7a8142`
-- FINAL_HEAD=<this checkpoint>
+- FINAL_HEAD=6491022a7e3da11278a30fed809c55dd235beee0
 - SCHEMA=v21
 - MIGRATION_CREATED=`021_resumable_multipart_transfers.sql`
 - TRUE_MULTIPART_UPLOAD=true
@@ -107,8 +107,8 @@ None for development. Production OSS CORS/support is a later read-only preflight
 - COMPILED_ACCEPTANCE=PASS
 - GIT_DIFF_CHECK=PASS
 - PRODUCTION_TOUCHED=false
-- REMOTE_SYNCHRONIZED=<pending push>
-- LOCAL_SYNCHRONIZED=<pending push>
+- REMOTE_SYNCHRONIZED=true (verified origin/codex/project-memory-reconcile-20260817 at 6491022a7e3da11278a30fed809c55dd235beee0)
+- LOCAL_SYNCHRONIZED=true (verified local/tracking/remote equality at 6491022a7e3da11278a30fed809c55dd235beee0)
 - NEXT=exact Linux x64 / Node 24 combined artifact and Tesseract gate
 
 ## Next Action
