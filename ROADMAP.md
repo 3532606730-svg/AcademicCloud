@@ -1,333 +1,308 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-08-17
+**Last reconciled:** 2026-08-18
 
-The roadmap records durable product sequencing and approved boundaries. `TASK_BOARD.md` is the executable queue; task cards define implementable Epic contracts. A roadmap item is not permission to bypass the current queue or an Owner gate.
+The roadmap records durable product sequencing and approved boundaries. `TASK_BOARD.md` is the executable queue; task cards define bounded implementation contracts. A roadmap item never bypasses an Owner production/cost/destructive-data gate.
 
-AcademicCloud's long-term direction is:
+## Product Direction
 
-> **Reliable Drive → Accounts & Governance → Personal Scholarly Workspace → Shared Academic Library → Research Infrastructure → Source-grounded Intelligence**
+AcademicCloud is a small invitation-only academic database and research workspace.
 
-The repository is designed so that later intelligence grows from explicit scholarly identities, provenance, privacy, and evidence relationships rather than from an unstructured bucket of PDFs.
+Its durable product model is now:
 
-## Cross-Layer Product Model
+> **Owner-curated shared academic corpus + private per-user research activity.**
 
-ADR-014 defines six durable data planes:
+This clarifies ADR-014 after first-use review and is recorded in ADR-022.
 
-1. **Physical Artifact** — stored files/bytes, object identity, checksum, media/lifecycle metadata.
-2. **Scholarly Resource / Scholarly Record** — the logical academic object and canonical scholarly facts.
-3. **Personal Research Overlay** — private per-account reading, organizing, annotation, citation, evidence, and research state.
-4. **Collaborative Overlay** — explicitly shared Library/catalog/contribution state.
-5. **Governance / Operations** — accounts, permissions, announcements, security audit, quota, integrity, recovery evidence.
-6. **Derived Intelligence** — OCR, extracted text, index, embeddings, retrieval, RAG-derived state subject to source authorization.
-
-Mandatory principles across all future layers:
-
-- shared resource does not imply shared research activity;
-- Owner/Admin has no implicit product read authority over another user's Personal Research Overlay;
-- administrative audit is not research surveillance;
-- Folder is storage hierarchy, while Collection is research-semantic organization;
-- original acquired artifacts remain preservable evidence and derived artifacts have explicit lineage;
-- duplicate detection must not reveal inaccessible resources across account boundaries;
-- AI/derived-intelligence authority never exceeds the requesting user's effective authority.
-
-## Immediate Owner Priority Override — First-Use Sharing
-
-Real first-use feedback on 2026-08-17 changes execution order without changing the long-term architecture.
-
-The immediate repository-development sequence is now:
+The ordinary user experience is **not** a private Drive plus a separate Shared Library. There is one canonical `资料库` containing Owner-approved academic resources. A normal Member can contribute material, but contribution is an intake/review action:
 
 ```text
-L1-UX04 + L2-ACCOUNTARCHIVE01 + L2-ADMINPOLISH01
-        ↓
-RF-LIBRARY01 — minimum real Shared Library
-        ↓
-RF-LIBRARY02 — Member contribution review
-        ↓
-STOP before production rollout
+Member upload
+  → 待审核
+  → Owner review
+      → approve → shared 资料库
+      → reject  → not admitted
 ```
 
-`RF-META01` and every unrelated later Pre-OCR card remain parked during this accelerated slice. `RF-LIBRARY03`/`RF-LIBRARY04` also remain parked after the minimum sharing/review slice; catalog, Library Tags, provenance governance, and duplicate/version grouping are not silently pulled forward.
+Owner-originated uploads may be admitted directly because the Owner already holds review authority.
 
-This priority override exists because real sharing and contribution review are now required for actual use. It does **not** authorize a fake shared folder, browse-all Owner authority, Personal Research Overlay exposure, production deployment, or OCR/RAG work.
+Once admitted, the academic resource is shared to all active authorized members for browse/search/preview/download. The contributor remains recorded as provenance, not as exclusive private owner of the approved holding.
 
-Verification policy for this accelerated slice is proportionate: focused changed-component tests, one typecheck/build pass as applicable, and one focused independent review for the Shared Library + review boundary are sufficient when green. Repeated historical acceptance, artifact, backup/restore, benchmark, or unrelated audit campaigns are not required unless a concrete failure or material risk justifies them.
+Around the same shared resource, each account has a mutually private Personal Research Overlay: Favorites, Recent, reading state/progress, Important/To Cite, Personal Tags, Collections, Saved Views, notes, annotations/highlights, Citation Workspace, Evidence, Research Questions, and equivalent personal research state.
+
+The core invariant remains:
+
+> **Shared resource does not imply shared research activity.**
+
+## Cross-Layer Data Model
+
+AcademicCloud retains the six conceptual planes from ADR-014:
+
+1. **Physical Artifact** — stored bytes/file representation and lifecycle identity.
+2. **Scholarly Resource / Scholarly Record** — the logical academic object and canonical shared facts.
+3. **Personal Research Overlay** — private per-account research activity/state.
+4. **Collaborative / Library Plane** — admitted shared corpus, contribution/review, catalog and shared governance state.
+5. **Governance / Operations** — accounts, invitations, permissions, announcements, security audit, integrity/recovery evidence.
+6. **Derived Intelligence** — OCR/text/index/embeddings/retrieval/RAG subject to source authorization.
+
+`Scholarly Record`, `Artifact`, `Artifact Version`, ownership domains, and audit rows are implementation/domain concepts. They should not become primary UI navigation labels merely because they exist internally.
+
+## Immediate Owner Priority — First-Use Product Correction
+
+PROD-05A is complete. Before resuming the remaining Pre-OCR research cards, the Owner has approved one bounded repository-only correction queue:
+
+```text
+RF-SHAREDDEFAULT01
+        ↓
+L2-CREDENTIALRESET01
+        ↓
+L1-UX05
+        ↓
+STOP for Owner review
+```
+
+### RF-SHAREDDEFAULT01 — Canonical Shared Library Default
+
+Correct the current optional-sharing/private-Drive product framing without discarding the safe foundations already built.
+
+Required outcome:
+- one canonical/default Library authority behind the normal `资料库`;
+- all active authorized members can see approved holdings without a manual sharing ceremony;
+- non-Owner upload automatically enters contribution review and is not public before approval;
+- Owner approval promotes/adopts the resource into shared Library ownership while preserving stable IDs, object bytes/keys, checksums, contributor/uploader provenance, Scholarly Record/Artifact/Version lineage, Favorites, and Personal Research Overlay state;
+- Owner-originated upload may be admitted directly;
+- ordinary Members do not receive shared folder/destructive/canonical-metadata governance authority merely because they can contribute;
+- existing account-owned corpus transition is designed/tested append-only in repository development, while live migration remains a separate Owner-gated production deployment.
+
+### L2-CREDENTIALRESET01 — Owner-Assisted Credential Reset
+
+The previous self-service password-change feature is no longer a desired product surface.
+
+Target model:
+- no authenticated “修改密码” product path for ordinary users;
+- no email/SMS/OAuth recovery infrastructure;
+- if a known Member loses access, the Owner issues a short-lived one-time reset capability;
+- only the capability digest/state is stored;
+- the Member chooses the final password, so the Owner does not learn it;
+- Argon2id limits and session/auth-revision safety remain unchanged;
+- successful reset consumes the capability and invalidates old sessions without silently changing disabled/archived lifecycle state.
+
+### L1-UX05 — Information Architecture and Visual Hierarchy Repair
+
+The interface should feel like a quiet scholarly product, not an enterprise admin console.
+
+Required information architecture:
+
+```text
+AcademicCloud
+  资料库
+  收藏
+  待处理
+  回收站
+
+User menu
+  管理后台   (Owner only)
+  退出登录
+
+管理后台
+  成员管理
+  投稿审核
+  公告
+  操作记录
+```
+
+UI requirements:
+- remove the duplicate top-level `共享资料库` concept;
+- remove standalone `学术记录`; scholarly identity stays internal and canonical metadata appears through `资料详情`;
+- remove `管理账户`, `管理公告`, `治理审计`, `修改密码` from global navigation;
+- keep `操作记录` as the existing bounded governance/security audit under Owner administration;
+- one strong Library-page CTA: `上传资料`;
+- demote `新建文件夹` and other secondary actions;
+- keep the warm neutral/deep-green identity but reduce equal-weight bordered buttons, unnecessary boxes, and action competition;
+- preserve responsive/mobile and accessibility behavior;
+- fix the reproducible stale-state folder recycle/delete failure without weakening revision/CAS protection or bypassing normal lifecycle.
 
 ## Layer 0 — Project Setup
 
-**Status:** Complete
+**Status:** Complete.
 
-Delivered:
-- repository structure and Git;
-- persistent project-memory documents;
-- task tracking and ADRs;
-- repository-backed autonomous engineering workflow;
-- local environment baseline.
+Repository structure, persistent project memory, ADR/task workflow, local environment baseline, and repository-driven autonomous engineering are established.
 
-## Layer 1 — Core Drive
+## Layer 1 — Core Drive / Resource Handling
 
-**Goal:** reliable, secure, maintainable private file storage and file management.
+**Status:** Foundation complete; current UI/data-flow semantics are being corrected by `RF-SHAREDDEFAULT01` + `L1-UX05`.
 
-**Status:** Repository-development foundation and closure complete. One bounded first-use UX polish checkpoint is now approved before Shared Library acceleration. Production rollout remains separately Owner-gated.
+Completed foundations include architecture, SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, security/reliability, Favorites, bulk operations, recursive recycle/restore, transfer-performance evidence, duplicate-name UX, and sticky desktop navigation.
 
-Completed foundation:
-- L1-E01 Core Architecture;
-- L1-E02 Database Foundation;
-- L1-E03 Authentication & Authorization;
-- L1-E04 Storage Abstraction;
-- L1-E05 File Management;
-- L1-E06 Frontend Interface;
-- L1-E07 Security & Reliability;
-- L1-E08 Testing & Deployment;
-- UX01 production release accepted;
-- UX02 academic workspace;
-- BUGAUDIT01 cross-layer hardening;
-- FAV01 per-user Favorites;
-- UX03 mobile/zero-descriptive-copy closure;
-- PERF01 evidence-first transfer performance closure;
-- FOLDER01 transactional recursive recycle/restore with explicit recycle provenance.
-
-Immediate bounded polish:
-- **L1-UX04** — clear same-folder duplicate-name upload feedback while preserving the existing uniqueness rule; persistent desktop sidebar while long file lists scroll; no content-level deduplication or mobile redesign.
-
-### Pre-OCR Core Research UX — Approved Program Scope
-
-The following daily-use capabilities are approved for decomposition under the Pre-OCR Research Foundation program. They remain separate, reviewable Epics rather than one bulk implementation:
-
-- **Metadata/name Search** — global file/folder/resource search over authoritative metadata; this is not OCR full-text search.
-- **Recent** — private per-account recent-access/working state; not administrator-visible research surveillance.
-- **Bulk Operations** — safe multi-select operations such as move, recycle, Favorite changes, and other existing-lifecycle actions where atomicity/partial-failure semantics are explicit.
-- **Security / Administrative Audit** — governance events only; no default recording of reading page, search terms, annotation content, or equivalent private research behavior.
-- **Storage Statistics / Quota Foundations** — aggregate capacity/file-count/recycle/pending state and account-scoped statistics; quota enforcement may be separately staged if useful.
+The old first-layer “private cloud drive” behavior is historical implementation substrate, not the final product concept for academic holdings after ADR-022.
 
 ## Layer 2 — Accounts & Governance
 
-**Goal:** controlled multi-user access and lightweight governance without public registration.
-
-**Status:** Foundation complete in repository development; bounded first-use administration polish is approved and accelerated.
+**Status:** Foundation complete; credential recovery is being simplified for the actual small known-member operating model.
 
 Completed:
-- **L2-ACCOUNTS01** — global `owner | member`, deterministic migration, first-Owner bootstrap, digest-only invitations, race-safe invite redemption, Owner administration, Member disable/enable, session revocation, strict drive isolation;
-- **L2-ANNOUNCE01** — database/API-backed Owner-administered global homepage announcements with effective/expiry windows;
-- **L2-PASSWORD01** — self-only authenticated password change with concurrency-safe CAS and atomic revoke-all sessions.
+- Owner/Member accounts and invitation-only registration;
+- Member enable/disable/archive lifecycle and session revocation;
+- announcements and administration polish;
+- bounded governance/security audit;
+- historical authenticated self-password-change implementation.
 
-Immediate bounded polish:
-- **L2-ACCOUNTARCHIVE01** — add non-destructive Member archival after disable, keep identity/data/history/login reserved, hide archived accounts by default, and restore archived → disabled;
-- **L2-ADMINPOLISH01** — Owner-only announcement deletion plus collapsed invitation history while preserving consumed/revoked/expired records and digest-only invitation semantics.
+Current correction:
+- `L2-CREDENTIALRESET01` supersedes self-service password change as the desired product path.
 
-Later independent Layer 2 backlog:
-- **L2-SHARE01 — One-Time External Sharing** — bounded no-login capability, revoke/expiry, short signed download, no public bucket exposure;
-- optional additional session-management UX.
+Later separate backlog:
+- one-time external sharing capability (`L2-SHARE01`) if explicitly reopened.
 
-Explicitly not implied by this layer:
-- public signup/email/SMTP/OAuth;
-- arbitrary global role editing;
-- hard account deletion or username reuse;
-- unrelated external-sharing expansion.
+Explicitly not implied:
+- public signup;
+- SMTP/SMS/OAuth identity infrastructure;
+- hard account deletion/username reuse;
+- unrestricted global role editing.
 
 ## Layer 3 — Personal Scholarly Workspace & Scholarly Model
 
-**Status:** Owner-approved and independently decomposed into the bounded executable queue recorded in `docs/architecture/pre-ocr-execution-plan.md`. The queue is temporarily parked except for the accelerated Library slice recorded above.
+**Status:** Approved Pre-OCR program; remaining cards parked until the current first-use correction reaches STOP.
 
-This layer is what turns AcademicCloud from a general cloud drive into personal scholarly infrastructure.
+### Personal Research Overlay
 
-### 3A. Personal Research Overlay
+Private per-account capabilities include:
+- reading state/progress;
+- Important / To Cite;
+- Recent;
+- Personal Tags;
+- Collections;
+- Saved Research Views;
+- private acquisition/research notes;
+- annotations/highlights/page notes;
+- Citation Workspace;
+- Evidence Bundles;
+- Research Questions and private links.
 
-Approved capabilities:
-- **Reading State** with primary state equivalent to `unread | queued | reading | finished`;
-- **Reading Progress** such as `last_page` and `last_opened_at`;
-- independent private flags such as **Important** and **To Cite**;
-- **Personal Tags** distinct from future Library Tags;
-- **Collections** as many-to-many research-semantic organization, distinct from Folder hierarchy;
-- **Saved Research Views** as private dynamic queries/filters/sorts over accessible resources;
-- private **“Why do I have this?” / acquisition-research note**;
-- consistent integration of Favorites and Recent with the Personal Research Overlay.
+Owner/Admin authority does not implicitly expose another user's Personal Research Overlay.
 
-Privacy invariant: the same shared resource may have different, mutually invisible overlays for different accounts. Owner/Admin authority does not implicitly expose them.
+### Scholarly identity, metadata, provenance, lineage
 
-### 3B. Scholarly Records, Metadata, Provenance, and Relationships
+Stable Scholarly Record / Artifact / Artifact Version identities are already implemented by `RF-DOMAIN01`.
 
-Approved foundation:
-- **Scholarly Record** as the logical academic object separate from a physical file;
-- one record may attach multiple Artifacts and Artifact Versions without duplicating the logical record;
-- **Canonical Scholarly Metadata** appropriate to material type;
-- **Metadata Templates**, initially extensible across material classes such as Book, Article, Manuscript, Inscription, and Archival Document;
-- **Provenance / acquisition records** such as source URL, acquisition date/method, original filename/checksum, source/repository information, and explicit notes where appropriate;
-- **Document Fingerprint / checksum identity** and safe duplicate detection;
-- **artifact/version relationships** such as edition, scan, translation, transcription, and derived-artifact lineage;
-- a **minimal Authority Records foundation** for normalized entities such as Person, Place, Language, Work, or Institution when required by the data model.
+Remaining approved work includes:
+- bounded canonical metadata/templates and minimal authorities (`RF-META01`);
+- provenance/fingerprint/leak-safe duplicate handling (`RF-PROV01`);
+- artifact/version/derived lineage (`RF-LINEAGE01`);
+- storage statistics (`RF-STATS01`).
 
-Boundary: this phase must not become a full RDF/semantic-web/knowledge-graph project. Mature authority control is non-blocking future work.
+`RF-META01` now depends on `RF-SHAREDDEFAULT01` and must surface canonical information through normal `资料详情`, not a standalone “Scholarly Record” browser.
 
-### 3C. Research Intake
+### Research intake
 
-Approved direction:
-
-```text
-discover / upload / save
-        ↓
-Research Inbox
-        ↓
-fingerprint / duplicate check
-        ↓
-metadata capture / suggestion boundary
-        ↓
-user triage
-        ├─ attach to existing Scholarly Record
-        ├─ create a new Scholarly Record
-        ├─ archive as an ordinary file
-        └─ discard
-```
-
-Capabilities:
-- **Research Inbox** rather than forcing immediate permanent classification;
-- safe fingerprint/duplicate handling constrained by accessible-resource visibility;
-- metadata/provenance capture at acquisition time;
-- a stable **Save-to-AcademicCloud intake API/boundary** suitable for future browser tooling.
-
-A polished browser extension is future/non-blocking and must not hold up OCR readiness.
-
-### 3D. Annotation, Citation, Evidence, and Research Questions
-
-Approved capabilities:
-- **sidecar/database Annotations** rather than silently rewriting original PDFs;
-- highlights and page notes;
-- **Citation Workspace**;
-- stable **page-level Evidence** references;
-- **Evidence Bundles** that group references without duplicating source artifacts;
-- **Research Questions** and explicit resource/evidence/question relationships;
-- **structured export foundations**, including machine-readable scholarly/citation output where appropriate.
-
-Private annotations, citation work, evidence organization, and Research Questions remain Personal Research Overlay data unless a future explicit sharing action is approved.
+Later `RF-INTAKE01` should build on ADR-022: acquisition/contribution intake is a staging/review workflow, not justification for reintroducing a permanent private Drive product. Duplicate checking, metadata capture/suggestion boundaries, and future browser-save APIs remain separate scoped work.
 
 ## Layer 4 — Shared Academic Library
 
-**Status:** Owner-approved. The minimum Library foundation and contribution-review workflow are now intentionally accelerated ahead of `RF-META01`; later Library catalog/governance checkpoints remain in their original parked sequence.
+**Status:** Core primitives complete; default product semantics are being corrected.
 
-A Library is a real ownership/domain boundary, not a specially named `/shared` folder.
+Completed:
+- `RF-LIBRARY01` — Library ownership domain, membership/manager authority, holdings read/preview/download;
+- `RF-LIBRARY02` — guarded submitted/approved/rejected/withdrawn contribution review and ownership promotion.
 
-Accelerated immediate scope:
-- **RF-LIBRARY01** — explicit Library entity/ownership domain, minimal manager/member authority, membership, Shared Library navigation, and authorized holdings list/preview/download;
-- **RF-LIBRARY02** — explicit Member submit → reviewer approve/reject/withdraw workflow, with approval atomically promoting the resource to Library ownership while preserving stable IDs/object bytes/contributor provenance and keeping unrelated private data invisible.
+ADR-022 supersedes the earlier **optional Shared Library** framing. These primitives now support the **canonical shared corpus**.
 
-Still-later approved direction:
-- Library-scoped contributor roles such as Trusted Contributor where justified;
-- **Library Tags** distinct from Personal Tags;
-- shared academic catalog and canonical records;
-- canonical/original filename concepts;
-- provenance and source-confidence metadata;
-- duplicate/version grouping;
-- shared scholarly metadata governance.
-
-Critical invariant:
-
-```text
-Shared Scholarly Record
-        +
-User A Personal Research Overlay   (A only)
-        +
-User B Personal Research Overlay   (B only)
-```
-
-Library access or review authority never implicitly exposes another member's unrelated private Drive, reading progress, private tags, Collections, annotations, citation work, Evidence Bundles, Research Questions, or private notes. Reviewers may inspect only resources explicitly submitted into the contribution workflow.
+Later approved cards remain:
+- `RF-LIBRARY03` — shared catalog, Library Tags, canonical/original naming;
+- `RF-LIBRARY04` — shared provenance confidence and duplicate/version grouping.
 
 ## Layer 5 — Research Infrastructure & Pre-OCR Hardening
 
-**Status:** Owner-approved and decomposed as separate integrity, recovery, permission-matrix, and derived-contract checkpoints at the end of the Pre-OCR queue; currently parked.
+**Status:** Approved and parked.
 
-Approved foundations:
-- **Integrity Monitor** for metadata/object identity and other safe consistency signals without automatic destructive repair;
-- **metadata snapshot/recovery foundations** sufficient for logical-state recovery where justified;
-- permission/ownership **matrix verification** across private resources, Personal Overlay, Library resources, governance, exports, and future derived data;
-- structured export contracts;
-- stable **Resource / Artifact / Artifact Version / Page** identity;
-- explicit **Derived Artifact Lineage**;
-- an isolated **OCR adapter boundary**;
-- an **extracted-text storage contract** tied to source artifact/version/page/provenance;
-- authorization contracts for future indexing/retrieval so derived access cannot exceed source access.
+Remaining foundations include:
+- integrity monitor;
+- no-clobber metadata snapshot/recovery;
+- complete cross-plane authorization/non-disclosure matrix;
+- structured scholarly export;
+- stable page/derived-artifact authorization contracts;
+- production-disabled OCR/text/index adapter contracts only.
 
-Pre-OCR completion means these models and boundaries are coherent, tested, and independently checkpointed. It does **not** mean every conceivable non-AI feature has been implemented.
+Pre-OCR completion means these models and boundaries are coherent and independently checkpointed. It does not authorize OCR execution.
 
 ## Layer 6 — Intelligence
 
-**Status:** Future; NOT authorized by the current program.
+**Status:** Future; not authorized.
 
-Future sequence, each separately scoped:
-- OCR / text extraction;
+Future sequence remains:
+- OCR/text extraction;
 - full-text indexing/search;
 - embeddings/retrieval;
 - RAG;
-- evidence/page citation in generated answers;
-- source-grounded research assistance.
+- source/page-grounded research assistance.
 
-Heavy compute remains isolated from the small authoritative Core Drive/control-plane service. Intelligence must preserve resource and Personal Research Overlay authorization defined by ADR-014.
+Derived authority must never exceed the requesting account's effective authority over shared resources and any private overlay used in the request.
+
+## Remaining Pre-OCR Execution Order
+
+After the current three-card first-use correction reaches STOP and the Owner reopens research development:
+
+```text
+RF-META01
+→ RF-PROV01
+→ RF-LINEAGE01
+→ RF-STATS01
+→ RF-OVERLAY01
+→ RF-ORGANIZE01
+→ RF-SEARCH01
+→ RF-VIEWS01
+→ RF-INTAKE01
+→ RF-ANNOTATE01
+→ RF-CITE01
+→ RF-EVIDENCE01
+→ RF-EXPORT01
+→ RF-LIBRARY03
+→ RF-LIBRARY04
+→ RF-INTEGRITY01
+→ RF-RECOVERY01
+→ RF-AUTHMATRIX01
+→ RF-DERIVED01
+→ STOP BEFORE OCR
+```
+
+`RF-LIBRARY01` and `RF-LIBRARY02` were completed early and are not repeated.
+
+## Cross-Cutting Operations
+
+OPS01A and the production runbook remain the operational baseline. Production release selection is explicit; repository HEAD is never automatically a production candidate.
+
+Verification is proportionate, not performative. Run checks that materially cover changed risk; once relevant evidence is green and focused review finds no material issue, record/checkpoint instead of replaying broad historical campaigns.
+
+## Production Track
+
+Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15 from completed `PROD-05A`.
+
+Current rollback pair:
+- previous release `34a2eada158dcf08783dc9538d853f9361425e8a`;
+- schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite`, SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`.
+
+The current repository correction does not authorize production access or data migration. Any eventual transition of existing account-owned holdings into the canonical shared Library is separately Owner-gated after repository implementation/review is green.
+
+`PROD-03C2` permanent-delete confirmation remains separately parked.
 
 ## Non-Blocking Future Backlog
 
-The following ideas are preserved but are **not required to declare Pre-OCR readiness**:
-- **Private Vault** / client-side encryption, with explicit tradeoffs for preview/OCR/search/RAG;
-- **External Deposit Link** for bounded upload-only intake from non-members;
-- polished Chrome/Edge **browser extension** after the intake API stabilizes;
-- mature Authority Records / RDF / semantic-web integration;
-- full Dropbox/Seafile-style **Time Machine / Rewind** rather than the lighter metadata recovery foundation;
-- unrelated expansion of One-Time External Sharing.
+Preserved but non-blocking:
+- Private Vault / client-side encryption;
+- External Deposit Link;
+- polished browser extension after intake APIs stabilize;
+- mature Authority/RDF/semantic-web work;
+- full Time Machine/Rewind;
+- native desktop/mobile apps unless future real use justifies them.
 
-These must not expand the Pre-OCR program indefinitely.
+## Current Approved Repository Objective
 
-## Cross-Cutting Operations Track
-
-Operations is not a product layer.
-
-### OPS01A — Repository Operations Observability & Recovery Preparation
-
-**Status:** Complete in repository development; production activation remains Owner-gated.
-
-Delivered repository/local foundations include:
-- zero-network default readiness audit plus explicit public/live read-only modes;
-- backup identity/receipt/freshness verification;
-- deterministic retention dry-run planning;
-- isolated restore rehearsal with task-owned temporary state and memory storage;
-- disk/RAM/swap/certificate/restart/log-growth readiness contracts;
-- bounded systemd restart-policy template;
-- inactive journald retention template;
-- production artifact inclusion and compiled/runtime verification.
-
-OPS01A does not authorize service/timer/journald installation, production SSH, destructive retention, production restore, certificate replacement, DNS/TLS/OSS/Nginx mutation, or deployment.
-
-## Separate Production Track
-
-Production is live on accepted exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` / schema v15, containing the requested `ec6a79a…` first-use polish + Shared Library product/runtime baseline plus verification-only artifact repairs. Repository feature completion never implies any later rollout.
-
-`PROD-03C2` permanent-delete confirmation and reboot/autostart policy remain separately Owner-gated. Any later deployment or migration requires a new exact production candidate, migration review, and explicit Owner deployment window.
-
-## Approved Repository Objective
-
-The repository/local objective through `RF-LIBRARY02` and the bounded `PROD-05A` production release are complete.
-
-The completed accelerated first-use objective was:
+Only:
 
 ```text
-L1-UX04
-L2-ACCOUNTARCHIVE01
-L2-ADMINPOLISH01
-        ↓
-RF-LIBRARY01
-        ↓
-RF-LIBRARY02
-        ↓
-STOP
+RF-SHAREDDEFAULT01
+→ L2-CREDENTIALRESET01
+→ L1-UX05
+→ STOP
 ```
 
-The three polish cards and both Library cards are complete. The Agent must not continue into `RF-META01`, `RF-LIBRARY03`, `RF-LIBRARY04`, or any other parked task without new Owner direction.
-
-Execution remains repository-driven: long runs consume the explicit queue rather than expanding the chat prompt. Verification should be proportionate to changed risk and should stop once relevant evidence is green and one focused review finds no material issue.
-
-Still separately Owner-gated:
-- production access/mutation/deployment;
-- main merge;
-- real credentials or paid infrastructure;
-- destructive/irreversible real-data operations;
-- `PROD-03C2` permanent-delete testing;
-- OCR execution;
-- embeddings/retrieval/RAG;
-- any product boundary not captured by this roadmap and the resulting approved queue.
+No production deployment, main merge, permanent deletion, real-data cleanup, OCR/text extraction, indexing, embeddings, retrieval, RAG, or unrelated Pre-OCR consumption is authorized by this roadmap update.
