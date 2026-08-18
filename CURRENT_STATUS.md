@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The bounded continuation has reached STOP. Production remained closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
+**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The bounded continuation has reached STOP. PROD-07A consumed the explicit Owner deployment authorization and production now runs exact release `2322169bc33415734d025010c465900c7fbc6bd9`, schema v18/history 001–018.**
 
 The governing product rule remains ADR-022:
 
@@ -25,7 +25,7 @@ Completed result:
 - exact Library/holding detail and metadata routes derive actor, membership, domain, holding, lineage, and audit identity server-side and use an independent opaque metadata CAS;
 - five fixed templates, five Library-domain authority types, typed same-domain links, authority CAS, strict validation, and explicit two-save non-lossy material-type transitions are implemented;
 - the normal catalogue prefers canonical title and `资料详情` provides Member read-only / effective-manager edit behavior while Preview, Download, Favorites, and recycle retain stable file identity and their existing authorization/CAS boundaries;
-- production was not contacted, migrated, deployed, or otherwise changed.
+- PROD-07A later deployed this exact checkpoint through the separately authorized production window; RF-METASUGGEST01/migration 019 remain undeployed.
 
 ## Completed Dependency
 
@@ -51,7 +51,7 @@ L1-UX06   ← DONE
 RF-METASUGGEST01, RF-SEARCH01, and the later Pre-OCR queue remain parked and require new explicit Owner authorization.
 
 ### RF-META01 — Complete
-ADR-026 is implemented through append-only repository schema v18, exact holding-scoped APIs, and normal `资料详情`; no production migration was performed or authorized.
+ADR-026 is implemented through append-only repository schema v18, exact holding-scoped APIs, and normal `资料详情`; PROD-07A later deployed this exact checkpoint through a separately authorized production window.
 
 ### RF-METASUGGEST01 — Preserved, not started
 For PDFs with a usable existing text layer, bounded discovery uses title/copyright/CIP/colophon/front-matter evidence, embedded metadata and filename fallbacks. Default page discovery is first 15 pages + last 5 pages. Pure scanned PDFs return `OCR deferred`; this round does not execute OCR.
@@ -61,26 +61,26 @@ One authority-scoped catalogue metadata/name search field on `资料库`, with a
 
 ## Production Truth
 
-Production remains:
-- exact release `855b63c49f12f3375972774e7bc7385088b0495e`;
-- previous release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e`;
-- schema/history v17 / migrations 001–017 with exact checksums;
-- PROD-06A live transition applied exactly migrations 016–017 once; rollback was not used;
-- GitHub Actions artifact run `32111496535`;
+Production now runs:
+- exact release `2322169bc33415734d025010c465900c7fbc6bd9`;
+- previous release `855b63c49f12f3375972774e7bc7385088b0495e`;
+- schema/history v18 / migrations 001–018 with exact checksums;
+- PROD-07A live transition applied exactly migration 018 once; rollback was not used;
+- corrected Linux x64 / Node 24 artifact archive SHA-256 `fca93a9ce844b713d73a26d146655ecd9689555b7ddf94d18b8a3d6202ebdc17` and manifest SHA-256 `d6ec107a038fec7b53e6fcc2ebc0a7902d1991be252180a23fc9a0db407ea287`;
 - integrity `ok`;
 - foreign-key violations zero;
 - health/readiness green;
 - API loopback-only; autostart policy unchanged;
-- canonical Library/membership/transition/backfill counts 1 / 3 / 28 / 28;
+- canonical Library/membership/active-holding/fallback counts 1 / 3 / 28 / 28;
 - stable IDs, object keys/bytes, checksums, uploader/contributor provenance, Scholarly Record/Artifact/Version lineage, Favorites/private-overlay state, and non-active residue preserved.
 
-Current rollback pair remains inseparable:
-- release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e`;
-- schema-v15 backup `academiccloud-pre-prod06a-20260818T073533Z.sqlite`, SHA-256 `cdc2aec14888d04172bce4555dd6d17f10b5fb7c45efa9c7133070ce4f5bf7c4`;
-- age ciphertext SHA-256 `8349ef5e90e72ff763d7730aadd98df56600e091f431a2c07d2b5a432eda8bf6`;
-- off-host private backup checkpoint `9c8f4503e48e55ea7b65aebe35dd242e878c95e8`.
+PROD-07A rollback pair remains inseparable:
+- release `855b63c49f12f3375972774e7bc7385088b0495e`;
+- fresh schema-v17 backup `academiccloud-pre-prod07a-20260818T135032Z.sqlite`, SHA-256 `b7abaa36355c40c88ab539b2a59e32c20f130539146246c33bd66a6b21579911`;
+- receipt SHA-256 `95ed7830d2dbb565c1b5222191bec63d920ba44635bf118e421c45e99a8092e8`;
+- age ciphertext SHA-256 `1fc7de13aa27f64f42d5fb7625486b700c17312526d3949ce164549a2b74296f`, published off-host at private backup commit `7c29aa6a9bc9171db5c235e427a580118220a6e0`.
 
-Do not rerun PROD-05A or PROD-06A.
+Do not rerun PROD-05A, PROD-06A, or PROD-07A.
 
 ## Safety Boundaries
 
