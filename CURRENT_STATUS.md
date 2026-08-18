@@ -4,9 +4,11 @@
 
 ## Current Phase
 
-**`PROD-06A` is the sole active task: one Owner-authorized bounded production release of the completed First-Use Correction. Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the exact candidate is `f7b9ef0475964f60f28a56450c6ef5e22a0df4c5` at repository schema head v17.**
+**`PROD-06A` is the sole active task: one Owner-authorized bounded production release of the completed First-Use Correction. Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the exact independently verified candidate is `855b63c49f12f3375972774e7bc7385088b0495e` at repository schema head v17.**
 
 `RF-SHAREDDEFAULT01` is complete and synchronized at `51c3d7b82d05574e53849c6ef1b5eec0e9ceabc5`. `L2-CREDENTIALRESET01` is complete and synchronized at `836d78636ef7aab41b03e00321167efed0a94d9d`. `L1-UX05` is complete, independently green, and synchronized at `f7b9ef0475964f60f28a56450c6ef5e22a0df4c5`. These exact consecutive checkpoints satisfy the PROD-06A repository precondition. No production connection or mutation has occurred in PROD-06A yet.
+
+The requested code-bearing checkpoint `f7b9ef0…` exposed two stale verification-only boundaries in exact Linux workflow runs `32110757279` and `32111110773`; neither run packaged an artifact. Candidate `855b63c…` differs from `f7b9ef0…` only in `frontend/src/App.test.tsx` readiness synchronization and `backend/scripts/compiled-acceptance.mjs` schema-17/Owner-assisted-reset acceptance. Successful run `32111496535` built and independently re-downloaded/verified the exact Linux x64 / Node 24 artifact; artifact ID `9315081408`, GitHub artifact SHA-256 `4ba3592680daea05a27e43a08f57f135c70deb75917f1574a3db67a6c84ae413`, and release archive SHA-256 `360397616cc3767181737650c45608df6232cf77d71b3c6fcc48a67c940ee375` are bound to the candidate.
 
 First-use review established that the existing “account-private Drive + optional Shared Library” presentation is not the intended AcademicCloud product. ADR-022 now defines the durable correction:
 

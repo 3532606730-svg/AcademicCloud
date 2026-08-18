@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**`PROD-06A` is the sole active task: one bounded production release of the completed First-Use Correction. Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the exact candidate is `f7b9ef0475964f60f28a56450c6ef5e22a0df4c5` at schema head v17.**
+**`PROD-06A` is the sole active task: one bounded production release of the completed First-Use Correction. Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the exact independently verified candidate is `855b63c49f12f3375972774e7bc7385088b0495e` at schema head v17.**
 
 First-use review corrected a material product-model misunderstanding: AcademicCloud is not “private Drive + optional Shared Library”. It is one Owner-curated shared academic corpus. Approved academic resources are shared to all active authorized members; Member uploads enter Owner review before admission; each member's research activity around those resources remains private.
 
@@ -79,7 +79,7 @@ RF-META01
 
 ## Production State and Gate
 
-Production is currently exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. `PROD-05A` is closed and must not be rerun. PROD-06A is a new bounded gate for exact candidate `f7b9ef0475964f60f28a56450c6ef5e22a0df4c5` and append-only migrations 016–017 only.
+Production is currently exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. `PROD-05A` is closed and must not be rerun. PROD-06A is a new bounded gate for exact candidate `855b63c49f12f3375972774e7bc7385088b0495e` and append-only migrations 016–017 only. The candidate differs from requested code checkpoint `f7b9ef0…` only by two exact-workflow verification repairs; successful artifact run `32111496535` is green.
 
 Current rollback pair:
 - release `34a2eada158dcf08783dc9538d853f9361425e8a`;
