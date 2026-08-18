@@ -5,10 +5,17 @@ import { AuthorizationDeniedError } from "../auth/authorization.js";
 import { DriveError, type DriveService } from "../drive/drive-service.js";
 import { driveEntryVersion } from "../drive/bulk.js";
 import type { StoredFile } from "../drive/file.js";
+import type { DomainRecycleGroup } from "../drive/recycle-repository.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
 import type { AuditEventKind, AuditReasonCode } from "../audit/audit-event.js";
-import type { Library, LibraryHolding, LibraryMembership, LibraryRole } from "./library.js";
+import type {
+  Library,
+  LibraryHolding,
+  LibraryMembership,
+  LibraryRecycledHolding,
+  LibraryRole,
+} from "./library.js";
 import type { ContributionCandidate, ContributionState, LibraryContribution } from "./contribution.js";
 
 export type LibraryErrorCode =
@@ -58,6 +65,17 @@ export interface LibraryHoldingView {
   };
 }
 
+export interface LibraryRecycleFileView {
+  version: string;
+  file: {
+    id: string;
+    displayName: string;
+    mediaType: string | null;
+    sizeBytes: number;
+    deletedAt: string;
+  };
+}
+
 export interface ContributionView {
   id: string;
   libraryId: string;
@@ -103,8 +121,37 @@ function mapHolding(holding: LibraryHolding): LibraryHoldingView {
   };
 }
 
+function mapRecycleFile(holding: LibraryRecycledHolding, file: StoredFile): LibraryRecycleFileView {
+  return {
+    version: driveEntryVersion(file),
+    file: {
+      id: holding.file.id,
+      displayName: holding.file.displayName,
+      mediaType: holding.file.mediaType,
+      sizeBytes: holding.file.sizeBytes,
+      deletedAt: holding.file.deletedAt.toISOString(),
+    },
+  };
+}
+
+function assertOpaqueVersion(value: string): void {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(value)) throw new LibraryError("invalid_input");
+}
+
 function reasonFor(error: unknown): AuditReasonCode {
   if (error instanceof AuthorizationDeniedError) return "authorization_denied";
+  if (error instanceof DriveError) {
+    switch (error.code) {
+      case "not_found": return "not_found";
+      case "name_conflict": return "name_conflict";
+      case "concurrent_change": return "concurrent_change";
+      case "invalid_state": return "invalid_state";
+      case "upload_incomplete": return "upload_incomplete";
+      case "upload_metadata_mismatch": return "upload_metadata_mismatch";
+      case "storage_unavailable": return "storage_unavailable";
+      default: return "invalid_input";
+    }
+  }
   if (error instanceof LibraryError) {
     switch (error.code) {
       case "not_found": return "not_found";
@@ -175,6 +222,19 @@ export class LibraryService {
     const reason = reasonFor(error);
     return tryRecordAuditAttempt(this.#persistence, {
       action: "drive.file_recycle",
+      actorKind: "account",
+      actorAccountId: actor.id,
+      targetId: null,
+      outcome: reason === "storage_unavailable" ? "failed" : "denied",
+      reason,
+      occurredAt: this.#now(),
+    });
+  }
+
+  recordHoldingRestoreAuditAttempt(actor: AuthenticatedAccount, error: unknown): boolean {
+    const reason = reasonFor(error);
+    return tryRecordAuditAttempt(this.#persistence, {
+      action: "drive.file_restore",
       actorKind: "account",
       actorAccountId: actor.id,
       targetId: null,
@@ -370,7 +430,7 @@ export class LibraryService {
       if (!holding) throw new LibraryError("not_found");
       const file = repositories.files.findByDomainId(library.ownerDomainId, holding.file.id);
       if (!file || file.state !== "active") throw new LibraryError("not_found");
-      if (!/^[A-Za-z0-9_-]{43}$/.test(expectedVersion)) throw new LibraryError("invalid_input");
+      assertOpaqueVersion(expectedVersion);
       if (driveEntryVersion(file) !== expectedVersion) throw new LibraryError("concurrent_change");
 
       const now = this.#now();
@@ -401,6 +461,73 @@ export class LibraryService {
         actorKind: "account",
         actorAccountId: actor.id,
         targetId: file.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+    });
+  }
+
+  listRecycle(actor: AuthenticatedAccount, libraryId: string): LibraryRecycleFileView[] {
+    const repositories = this.#persistence.repositories;
+    const library = this.#requireManager(actor.id, libraryId, repositories);
+    return repositories.libraries.listRecycledHoldings(library.id).map((holding) => {
+      const file = repositories.files.findByDomainId(library.ownerDomainId, holding.file.id);
+      if (!file || file.state !== "deleted") throw new LibraryError("invalid_state");
+      return mapRecycleFile(holding, file);
+    });
+  }
+
+  async restoreHolding(
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    fileId: string,
+    expectedVersion: string,
+  ): Promise<void> {
+    const repositories = this.#persistence.repositories;
+    const library = this.#requireManager(actor.id, libraryId, repositories);
+    const holding = repositories.libraries.findRecycledHoldingByFile(library.id, fileId);
+    if (!holding) throw new LibraryError("not_found");
+    const file = repositories.files.findByDomainId(library.ownerDomainId, holding.file.id);
+    if (!file || file.state !== "deleted") throw new LibraryError("not_found");
+    assertOpaqueVersion(expectedVersion);
+    if (driveEntryVersion(file) !== expectedVersion) throw new LibraryError("concurrent_change");
+    const group = this.#requireSingleFileRecycleGroup(repositories, library.ownerDomainId, file.id);
+
+    await this.#drive.verifyAuthorizedFileForRestore(file);
+
+    this.#persistence.runInTransaction((transaction) => {
+      const currentLibrary = this.#requireManager(actor.id, libraryId, transaction);
+      const currentHolding = transaction.libraries.findRecycledHoldingByFile(currentLibrary.id, fileId);
+      if (!currentHolding) throw new LibraryError("not_found");
+      const current = transaction.files.findByDomainId(currentLibrary.ownerDomainId, currentHolding.file.id);
+      if (!current || current.state !== "deleted") throw new LibraryError("not_found");
+      if (driveEntryVersion(current) !== expectedVersion) throw new LibraryError("concurrent_change");
+      const currentGroup = this.#requireSingleFileRecycleGroup(
+        transaction,
+        currentLibrary.ownerDomainId,
+        current.id,
+      );
+      if (currentGroup.id !== group.id) throw new LibraryError("concurrent_change");
+
+      const now = this.#now();
+      if (!transaction.recycle.restoreFileForDomain(
+        currentLibrary.ownerDomainId,
+        current.id,
+        currentGroup.id,
+        current.revision,
+        now,
+      )) {
+        throw new LibraryError("concurrent_change");
+      }
+      if (!transaction.recycle.deleteGroupForDomain(currentLibrary.ownerDomainId, currentGroup.id)) {
+        throw new LibraryError("invalid_state");
+      }
+      recordAuditEvent(transaction, {
+        action: "drive.file_restore",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: current.id,
         outcome: "succeeded",
         reason: null,
         occurredAt: now,
@@ -772,6 +899,25 @@ export class LibraryService {
     const membership = repositories.libraries.findMembership(libraryId, accountId);
     if (!membership || membership.role !== "manager") throw new LibraryError("not_found");
     return library;
+  }
+
+  #requireSingleFileRecycleGroup(
+    repositories: RepositorySet,
+    ownerDomainId: string,
+    fileId: string,
+  ): DomainRecycleGroup {
+    const group = repositories.recycle.findGroupByRootForDomain(ownerDomainId, "file", fileId);
+    if (
+      !group ||
+      group.folderCount !== 0 ||
+      group.fileCount !== 1 ||
+      repositories.recycle.listFolderIdsForDomain(ownerDomainId, group.id).length !== 0
+    ) {
+      throw new LibraryError("invalid_state");
+    }
+    const fileIds = repositories.recycle.listFileIdsForDomain(ownerDomainId, group.id);
+    if (fileIds.length !== 1 || fileIds[0] !== fileId) throw new LibraryError("invalid_state");
+    return group;
   }
 
   #isEffectiveMembership(repositories: RepositorySet, membership: LibraryMembership): boolean {

@@ -52,7 +52,7 @@ Completed outcomes include:
 
 ## Catalogue and Bibliographic Usability Round
 
-Actual use after PROD-06A confirmed the authority/data model but exposed a narrower usability problem: root `资料库` visually stacked canonical holdings above a legacy Owner table, misplaced Name/Size/Updated headers, dropped established file-type icons, repeated filename-derived labels, left redundant descriptive copy, and lacked an authority-correct recoverable lifecycle action for Library-owned holdings. L1-UX06 has repaired that gap.
+Actual use after PROD-06A confirmed the authority/data model but exposed a narrower usability problem: root `资料库` visually stacked canonical holdings above a legacy Owner table, misplaced Name/Size/Updated headers, dropped established file-type icons, repeated filename-derived labels, left redundant descriptive copy, and lacked an authority-correct recoverable lifecycle action for Library-owned holdings. L1-UX06 repaired the presentation and recycle transition; subsequent Owner review found the Library-domain item could not be listed/restored through the account-scoped Recycle product, and the bounded closure repair completed that lifecycle without merging authority domains.
 
 Owner review also established that cleaner scholarly titles and basic catalogue search must arrive in the same near-term round. ADR-025 records the bilingual front-matter bibliographic evidence model and keeps OCR separately gated.
 
@@ -76,7 +76,8 @@ Completed outcome:
 - remove redundant `当前账户可访问的共享学术资料。`-style copy;
 - suppress duplicate migrated `recordLabel` when it merely repeats the filename;
 - preserve Preview/Download/Favorites;
-- Owner/Manager gets an authority-correct **recoverable** `移入回收站` path for eligible Library-owned resources; Members remain non-destructive;
+- Owner/Manager gets an authority-correct **recoverable** `移入回收站` → normal Recycle list → CAS restore path for eligible Library-owned resources; Members cannot list or restore Library governance entries;
+- Library restore performs read-only storage verification and atomic file activation/group consumption/audit; Library rows never enter account bulk/permanent-delete controls;
 - preserve responsive/mobile/accessibility, CAS/revision safety, stable identity, provenance, lineage and private overlays.
 
 No permanent deletion, production cleanup or broad visual redesign.

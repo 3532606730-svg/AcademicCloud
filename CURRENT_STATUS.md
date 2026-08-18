@@ -4,13 +4,13 @@
 
 ## Current Phase
 
-**`L1-UX06 — Canonical Catalogue Presentation Repair` is complete and independently green. Repository execution is stopped for Owner/ChatGPT review. Production remained closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
+**`L1-UX06 — Canonical Catalogue Presentation Repair` is complete and independently green after its bounded Owner-review closure repair. Repository execution is stopped for Owner/ChatGPT review. Production remained closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
 
 The governing product rule remains ADR-022:
 
 > **Academic resources are shared by default after Owner admission; personal research activity is private by default.**
 
-L1-UX06 now renders canonical Library holdings and Owner-managed folder/account rows through one existing catalogue table, restores established file-type badges and compact row actions, suppresses duplicate filename-derived labels and redundant descriptive copy, and adds a manager-only Library-domain recycle action guarded by the established opaque drive-entry version.
+L1-UX06 now renders canonical Library holdings and Owner-managed folder/account rows through one existing catalogue table, restores established file-type badges and compact row actions, suppresses duplicate filename-derived labels and redundant descriptive copy, and supplies a complete manager-only Library-domain recycle → normal Recycle list → CAS restore lifecycle. Account-private and Library governance recycle authority remain distinct internally.
 
 ADR-025 separately records the later bilingual title/copyright/CIP/front-matter evidence model and keeps OCR gated. It is not part of L1-UX06 implementation.
 
@@ -23,6 +23,8 @@ Completed result:
 - existing PDF/image/text/generic badges, `RowMenu`, `StarButton`, responsive rows, and fullscreen Preview behavior reused;
 - one visible filename-derived title until RF-META01, with `recordLabel` residue omitted from compact rows and provenance retained in data;
 - manager-only `POST /api/libraries/:libraryId/holdings/:fileId/recycle`, with active membership, exact-Library holding resolution, Library ownership-domain resolution, opaque `driveEntryVersion` CAS, transactional recycle-group provenance, and non-disclosing Member/wrong-Library/guessed-ID denial;
+- manager-only `GET /api/libraries/:libraryId/recycle` and `POST /api/libraries/:libraryId/recycle/:fileId/restore`, with exact deleted scholarly holding/domain resolution, read-only object metadata verification, post-stat authority/version/group revalidation, atomic restore/group consumption/audit, and no account-path fallback;
+- one top-level Recycle product surface combining separately held account and Library rows; Library rows expose Restore only and never enter account bulk/permanent-delete controls;
 - no permanent delete, storage-byte mutation, schema change, production contact, or private-overlay exposure.
 
 ## Current Execution Boundary
@@ -83,8 +85,8 @@ Any later production release remains a separate Owner gate.
 
 ## Verification Policy
 
-L1-UX06 verification is green: frontend App 95/95 and API 16/16; backend 260/260 including the new Library recycle authorization/domain/CAS/invariant case; focused Library HTTP 1/1; backend/frontend typechecks and production builds pass; `git diff --check` passes (line-ending notices only). PROD-05A/PROD-06A acceptance and production migration/rehearsal were not replayed.
+The bounded closure repair is green: focused backend Library service/HTTP 6/6; focused frontend App/API 113/113; backend/frontend typechecks and `git diff --check` pass (line-ending notices only). Independent review found one active-Recycle re-click loading defect, the repair and regression test are green, and follow-up review found no material findings. No broad historical/production suite, production build, PROD-05A/PROD-06A acceptance, or migration rehearsal was replayed.
 
 ## Next Action
 
-STOP for independent Owner/ChatGPT review after the L1-UX06 checkpoint is published and local/tracking/remote equality is verified. Do not start RF-META01 or contact production without new Owner direction.
+STOP for independent Owner/ChatGPT review. Do not start RF-META01 or contact production without new Owner direction.

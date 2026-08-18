@@ -408,23 +408,51 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[5]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions/contribution%20%2F%20one/download?disposition=inline");
   });
 
-  it("sends the opaque holding version to the scoped Library recycle action", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+  it("uses scoped Library recycle/list/restore contracts with opaque versions", async () => {
+    const recycled = {
+      version: "r".repeat(43),
+      file: {
+        id: "file / one",
+        displayName: "source.pdf",
+        mediaType: "application/pdf",
+        sizeBytes: 12,
+        deletedAt: "2026-08-18T00:00:00.000Z",
+      },
+    };
+    const responses = [
+      new Response(null, { status: 204 }),
+      new Response(JSON.stringify({ files: [recycled] }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(null, { status: 204 }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
     const api = new ApiClient({ fetcher });
     const version = "v".repeat(43);
 
     await api.recycleLibraryHolding("library / one", "file / one", version);
+    await expect(api.listLibraryRecycle("library / one")).resolves.toEqual([recycled]);
+    await api.restoreLibraryHolding("library / one", "file / one", recycled.version);
 
-    expect(fetcher).toHaveBeenCalledWith(
+    expect(fetcher.mock.calls[0]).toEqual([
       "/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/recycle",
       expect.objectContaining({
         method: "POST",
         credentials: "same-origin",
         body: JSON.stringify({ version }),
       }),
-    );
+    ]);
     const headers = new Headers(fetcher.mock.calls[0]?.[1]?.headers);
     expect(headers.get("Content-Type")).toBe("application/json");
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/libraries/library%20%2F%20one/recycle");
+    expect(fetcher.mock.calls[2]).toEqual([
+      "/api/libraries/library%20%2F%20one/recycle/file%20%2F%20one/restore",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "same-origin",
+        body: JSON.stringify({ version: recycled.version }),
+      }),
+    ]);
+    const restoreHeaders = new Headers(fetcher.mock.calls[2]?.[1]?.headers);
+    expect(restoreHeaders.get("Content-Type")).toBe("application/json");
   });
 
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {

@@ -1,4 +1,12 @@
-import type { Library, LibraryHolding, LibraryMembership, LibraryRole, NewLibrary, NewLibraryMembership } from "./library.js";
+import type {
+  Library,
+  LibraryHolding,
+  LibraryMembership,
+  LibraryRecycledHolding,
+  LibraryRole,
+  NewLibrary,
+  NewLibraryMembership,
+} from "./library.js";
 
 export interface LibraryRepository {
   create(library: NewLibrary): Library;
@@ -12,4 +20,6 @@ export interface LibraryRepository {
   deleteMembership(libraryId: string, accountId: string): boolean;
   listHoldings(libraryId: string, limit: number): LibraryHolding[];
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null;
+  listRecycledHoldings(libraryId: string): LibraryRecycledHolding[];
+  findRecycledHoldingByFile(libraryId: string, fileId: string): LibraryRecycledHolding | null;
 }

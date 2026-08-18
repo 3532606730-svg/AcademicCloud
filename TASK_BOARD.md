@@ -4,9 +4,9 @@
 
 ## Current Phase
 
-**`L1-UX06 — Canonical Catalogue Presentation Repair` is complete and green. Repository execution is stopped for independent Owner/ChatGPT review. Production remains exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 and was never contacted by this task.**
+**`L1-UX06 — Canonical Catalogue Presentation Repair` is complete and independently green after its bounded Owner-review closure repair. Repository execution is stopped for Owner/ChatGPT review. Production remains exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 and was never contacted by this task.**
 
-The canonical shared-corpus authority and catalogue presentation/lifecycle repair are now green: root `资料库` uses one established catalogue table for holdings and Owner-managed rows, restores file badges/actions, and provides a manager-only Library-domain CAS recycle action without widening Member authority.
+The canonical shared-corpus authority and catalogue presentation/lifecycle repair are green: root `资料库` uses one established catalogue table for holdings and Owner-managed rows, restores file badges/actions, and provides a manager-only Library-domain recycle → Recycle list → CAS restore lifecycle without widening Member authority or exposing Library permanent delete.
 
 Verification remains proportionate: changed-risk tests and focused independent review only. Do not replay PROD-05A/PROD-06A or broad historical production acceptance.
 

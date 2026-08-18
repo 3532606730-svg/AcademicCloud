@@ -215,6 +215,17 @@ export interface LibraryHolding {
   };
 }
 
+export interface LibraryRecycleFile {
+  version: string;
+  file: {
+    id: string;
+    displayName: string;
+    mediaType: string | null;
+    sizeBytes: number;
+    deletedAt: string;
+  };
+}
+
 export interface LibraryContribution {
   id: string;
   libraryId: string;
@@ -323,6 +334,8 @@ export interface AcademicCloudApi {
   listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]>;
   createLibraryDownload(libraryId: string, fileId: string, disposition?: "attachment" | "inline"): Promise<DownloadAuthorization>;
   recycleLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void>;
+  listLibraryRecycle(libraryId: string, signal?: AbortSignal): Promise<LibraryRecycleFile[]>;
+  restoreLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void>;
   submitLibraryContribution(libraryId: string, artifactId: string): Promise<LibraryContribution>;
   listLibraryContributions(libraryId: string): Promise<LibraryContribution[]>;
   listMyLibraryContributions(libraryId: string): Promise<LibraryContribution[]>;
@@ -659,6 +672,24 @@ export class ApiClient implements AcademicCloudApi {
   recycleLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void> {
     return this.#request<void>(
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/recycle`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ version }),
+      },
+    );
+  }
+
+  async listLibraryRecycle(libraryId: string, signal?: AbortSignal): Promise<LibraryRecycleFile[]> {
+    return (await this.#request<{ files: LibraryRecycleFile[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/recycle`,
+      signal ? { signal } : {},
+    )).files;
+  }
+
+  restoreLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void> {
+    return this.#request<void>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/recycle/${encodeURIComponent(fileId)}/restore`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

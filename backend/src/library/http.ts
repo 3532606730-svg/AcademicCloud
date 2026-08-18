@@ -18,7 +18,7 @@ interface HoldingsQuery { limit?: number; }
 interface DownloadQuery { disposition?: "attachment" | "inline"; }
 interface ContributionParams extends LibraryParams { contributionId: string; }
 interface ContributionBody { artifactId: string; }
-interface HoldingRecycleBody { version: string; }
+interface HoldingVersionBody { version: string; }
 
 function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
   if (!account) throw new LibraryError("not_found");
@@ -229,7 +229,7 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
     },
   );
 
-  app.post<{ Params: HoldingParams; Body: HoldingRecycleBody }>(
+  app.post<{ Params: HoldingParams; Body: HoldingVersionBody }>(
     "/api/libraries/:libraryId/holdings/:fileId/recycle",
     {
       preHandler: app.authenticate,
@@ -257,6 +257,57 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
         return reply.code(204).send();
       } catch (error: unknown) {
         service.recordHoldingRecycleAuditAttempt(actor, error);
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.get<{ Params: LibraryParams }>(
+    "/api/libraries/:libraryId/recycle",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: { type: "object", required: ["libraryId"], properties: { libraryId: idSchema } },
+        querystring: emptyQuerySchema,
+      },
+    },
+    async (request, reply) => {
+      try {
+        return { files: service.listRecycle(requireActor(request.authAccount), request.params.libraryId) };
+      } catch (error: unknown) {
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: HoldingParams; Body: HoldingVersionBody }>(
+    "/api/libraries/:libraryId/recycle/:fileId/restore",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 8 * 1024,
+      schema: {
+        params: {
+          type: "object",
+          required: ["libraryId", "fileId"],
+          properties: { libraryId: idSchema, fileId: idSchema },
+        },
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version"],
+          properties: { version: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = requireActor(request.authAccount);
+      try {
+        await service.restoreHolding(actor, request.params.libraryId, request.params.fileId, request.body.version);
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        service.recordHoldingRestoreAuditAttempt(actor, error);
         return sendLibraryError(reply, error);
       }
     },

@@ -11,6 +11,8 @@ export interface NewDomainRecycleGroup {
   createdAt: Date;
 }
 
+export interface DomainRecycleGroup extends NewDomainRecycleGroup {}
+
 export interface RecycleRepository {
   createGroup(group: NewRecycleGroup): RecycleGroup;
   createGroupForDomain(group: NewDomainRecycleGroup): boolean;
@@ -33,6 +35,21 @@ export interface RecycleRepository {
     expectedRevision: number,
     deletedAt: Date,
   ): boolean;
+  findGroupByRootForDomain(
+    ownerDomainId: string,
+    rootKind: RecycleRootKind,
+    rootId: string,
+  ): DomainRecycleGroup | null;
+  listFolderIdsForDomain(ownerDomainId: string, groupId: string): string[];
+  listFileIdsForDomain(ownerDomainId: string, groupId: string): string[];
+  restoreFileForDomain(
+    ownerDomainId: string,
+    fileId: string,
+    groupId: string,
+    expectedRevision: number,
+    restoredAt: Date,
+  ): boolean;
+  deleteGroupForDomain(ownerDomainId: string, groupId: string): boolean;
   restoreFolder(ownerId: string, folderId: string, groupId: string, restoredAt: Date): boolean;
   restoreFile(
     ownerId: string,

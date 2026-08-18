@@ -9,6 +9,7 @@ import {
   type BulkItem,
   type Invitation,
   type LibraryHolding,
+  type LibraryRecycleFile,
   type LibrarySummary,
   type ManagedAccount,
   type EntriesResponse,
@@ -422,6 +423,10 @@ interface DropOverlayState {
 
 const EMPTY_ENTRIES: EntriesResponse = { folder: null, folders: [], files: [] };
 const EMPTY_RECYCLE: RecycleResponse = { folders: [], files: [] };
+const EMPTY_LIBRARY_RECYCLE: { library: LibrarySummary | null; files: LibraryRecycleFile[] } = {
+  library: null,
+  files: [],
+};
 
 // Only genuine external FILE drags participate in the drop workflow. Text,
 // link, and internal selection drags must pass through untouched.
@@ -494,6 +499,9 @@ function DriveView({
   const [entries, setEntries] = useState<EntriesResponse>(EMPTY_ENTRIES);
   const [pending, setPending] = useState<FileEntry[]>([]);
   const [recycle, setRecycle] = useState<RecycleResponse>(EMPTY_RECYCLE);
+  const [libraryRecycle, setLibraryRecycle] = useState(EMPTY_LIBRARY_RECYCLE);
+  const [libraryRecycleLoading, setLibraryRecycleLoading] = useState(false);
+  const [libraryRecycleError, setLibraryRecycleError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState<unknown>(null);
@@ -622,6 +630,42 @@ function DriveView({
 
     return () => controller.abort();
   }, [api, currentFolderId, revision, view]);
+
+  useEffect(() => {
+    if (view !== "recycle") {
+      setLibraryRecycle(EMPTY_LIBRARY_RECYCLE);
+      setLibraryRecycleLoading(false);
+      setLibraryRecycleError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setLibraryRecycleLoading(true);
+    setLibraryRecycleError(null);
+
+    void (async () => {
+      try {
+        const libraries = await api.listLibraries(controller.signal);
+        const manageable = libraries.filter((library) => library.role === "manager");
+        const library = manageable.find((item) => item.isDefault) ?? manageable[0] ?? null;
+        if (!library) {
+          if (!controller.signal.aborted) setLibraryRecycle(EMPTY_LIBRARY_RECYCLE);
+          return;
+        }
+        const files = await api.listLibraryRecycle(library.id, controller.signal);
+        if (!controller.signal.aborted) setLibraryRecycle({ library, files });
+      } catch (caught: unknown) {
+        if (!(caught instanceof DOMException && caught.name === "AbortError") && !controller.signal.aborted) {
+          setLibraryRecycleError(caught);
+          setLibraryRecycle(EMPTY_LIBRARY_RECYCLE);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLibraryRecycleLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [api, revision, view]);
 
   function patchJob(jobId: string, patch: Partial<UploadJob>) {
     setJobs((current) => current.map((job) => job.id === jobId ? { ...job, ...patch } : job));
@@ -890,6 +934,10 @@ function DriveView({
   }
 
   function goToView(next: DriveViewName) {
+    if (next === "recycle" && view !== "recycle") {
+      setLoading(true);
+      setLibraryRecycleLoading(true);
+    }
     setView(next);
     setSelectedKeys(new Set());
     setError(null);
@@ -1131,6 +1179,28 @@ function DriveView({
     })();
   }
 
+  function restoreRecycledLibraryHolding(library: LibrarySummary, entry: LibraryRecycleFile) {
+    const actionId = `library-restore:${entry.file.id}`;
+    void (async () => {
+      setBusyId(actionId);
+      setError(null);
+      setNotice("");
+      try {
+        await api.restoreLibraryHolding(library.id, entry.file.id, entry.version);
+        setNotice(t("file.restored"));
+        refresh();
+      } catch (caught: unknown) {
+        setError(caught);
+        if (caught instanceof ApiError && (caught.code === "concurrent_change" || caught.code === "invalid_state")) {
+          setNotice(t("file.conflictRefreshed"));
+          refresh();
+        }
+      } finally {
+        setBusyId(null);
+      }
+    })();
+  }
+
   // Drag-and-drop (library view only). A depth counter prevents child-element
   // dragenter/dragleave pairs from flashing the overlay. Non-file drags are
   // never intercepted.
@@ -1193,6 +1263,9 @@ function DriveView({
       : view === "favorites"
         ? t("nav.favorites")
         : t("nav.library");
+  const recycleLoading = loading || libraryRecycleLoading;
+  const recycleCount = recycle.folders.length + recycle.files.length + libraryRecycle.files.length;
+  const recycleLibrary = libraryRecycle.library;
 
   return (
     <>
@@ -1552,7 +1625,9 @@ function DriveView({
         )}
 
         {view === "recycle" && (
-          <section aria-labelledby="recycle-title">            <div className="section-heading"><h2 id="recycle-title">{t("recycle.title")}</h2>{!loading && <span>{t("folder.items", { count: formatCount(language, recycle.folders.length + recycle.files.length) })}</span>}</div>
+          <section aria-labelledby="recycle-title">
+            <div className="section-heading"><h2 id="recycle-title">{t("recycle.title")}</h2>{!recycleLoading && <span>{t("folder.items", { count: formatCount(language, recycleCount) })}</span>}</div>
+            {libraryRecycleError !== null && <div className="alert alert--error" role="alert">{describeError(libraryRecycleError, language)} <button type="button" onClick={() => setLibraryRecycleError(null)}>{t("alert.dismiss")}</button></div>}
             {selectedEntries.length > 0 && (
               <BulkToolbar
                 mode="recycle"
@@ -1562,9 +1637,9 @@ function DriveView({
                 onRestore={() => void runBulk("restore").catch(() => undefined)}
               />
             )}
-            {loading ? <LoadingRows /> : recycle.folders.length + recycle.files.length === 0 ? (
+            {recycleLoading ? <LoadingRows /> : recycleCount === 0 && libraryRecycleError === null ? (
               <EmptyState title={t("recycle.emptyTitle")} />
-            ) : (
+            ) : recycleCount > 0 ? (
               <div className="card-list">
                 {recycle.folders.map((folder) => (
                   <article className="recycle-card" key={folder.id}>
@@ -1607,8 +1682,29 @@ function DriveView({
                     }}>{t("recycle.deleteForever")}</button>
                   </article>
                 ))}
+                {recycleLibrary && libraryRecycle.files.map((entry) => {
+                  const actionId = `library-restore:${entry.file.id}`;
+                  return (
+                    <article
+                      className="recycle-card"
+                      data-entry-kind="library-recycle-holding"
+                      key={`${recycleLibrary.id}:${entry.file.id}`}
+                    >
+                      <span className="entry-select-spacer" aria-hidden="true" />
+                      <FileBadge file={entry.file} />
+                      <div className="entry-primary"><strong>{entry.file.displayName}</strong><span>{formatBytes(entry.file.sizeBytes)} · {t("recycle.fileDeleted", { date: formatDate(entry.file.deletedAt, language) })}</span></div>
+                      <button
+                        className="button button--small"
+                        type="button"
+                        aria-label={t("recycle.restoreFileAria", { name: entry.file.displayName })}
+                        disabled={busyId === actionId}
+                        onClick={() => restoreRecycledLibraryHolding(recycleLibrary, entry)}
+                      >{t("recycle.restore")}</button>
+                    </article>
+                  );
+                })}
               </div>
-            )}
+            ) : null}
           </section>
         )}
 
@@ -2721,7 +2817,7 @@ function StarButton({ active, name, onToggle }: { active: boolean; name: string;
   );
 }
 
-function fileKindLabel(file: Pick<FileEntry, "mediaType"> | LibraryHolding["file"], t: Translator): string {
+function fileKindLabel(file: { mediaType: string | null }, t: Translator): string {
   if (file.mediaType === "application/pdf") return t("file.kindPdf");
   if (file.mediaType?.startsWith("image/")) return t("file.kindImage");
   if (file.mediaType?.startsWith("text/")) return t("file.kindText");
@@ -2870,7 +2966,7 @@ function AccountMenu({
   );
 }
 
-function FileBadge({ file }: { file: Pick<FileEntry, "mediaType"> | LibraryHolding["file"] }) {
+function FileBadge({ file }: { file: { mediaType: string | null } }) {
   if (file.mediaType === "application/pdf") return <PdfIcon size={19} className="file-badge file-badge--pdf" />;
   if (file.mediaType?.startsWith("image/")) return <ImageIcon size={19} className="file-badge file-badge--img" />;
   if (file.mediaType?.startsWith("text/")) return <TextIcon size={19} className="file-badge file-badge--txt" />;
@@ -3070,7 +3166,7 @@ function LoadingRows() {
   return <div className="loading-rows" role="status"><span /><span /><span /><span className="visually-hidden">{t("shared.loadingItems")}</span></div>;
 }
 
-function isPreviewable(file: Pick<FileEntry, "mediaType"> | LibraryHolding["file"]): boolean {
+function isPreviewable(file: { mediaType: string | null }): boolean {
   if (file.mediaType === null) return false;
   return [
     "application/pdf",

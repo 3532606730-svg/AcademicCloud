@@ -16,6 +16,14 @@ const MIGRATIONS_DIRECTORY = fileURLToPath(new URL("../../../database/migrations
 const ORIGIN = "http://127.0.0.1";
 const PASSWORD = "library-http-password-123";
 
+interface HoldingProvenanceRow {
+  file_id: string;
+  contributor_account_id: string;
+  object_key: string;
+  size_bytes: number;
+  [key: string]: unknown;
+}
+
 test("Shared Library HTTP routes enforce server-derived membership and non-disclosure", async () => {
   const dbPath = join(tmpdir(), `academiccloud-library-http-${Date.now()}.sqlite`);
   const provisioning = openSqliteDatabase(dbPath);
@@ -206,7 +214,53 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
     assert.deepEqual(memberManagement.json(), { error: "not_found" });
 
     const ownerHoldings = await app.inject({ method: "GET", url: `/api/libraries/${libraryId}/holdings`, headers: headers(ownerCookie) });
-    const recycleTarget = (ownerHoldings.json() as { holdings: Array<{ file: { id: string }; version: string }> }).holdings[0]!;
+    const ownerHoldingItems = (ownerHoldings.json() as {
+      holdings: Array<{ file: { id: string }; version: string }>;
+    }).holdings;
+    const evidenceBeforeDatabase = openSqliteDatabase(dbPath);
+    const promotionRows = evidenceBeforeDatabase.prepare<[string], HoldingProvenanceRow>(`
+      SELECT
+        library_contributions.id AS contribution_id,
+        library_contributions.library_id,
+        library_contributions.artifact_id,
+        library_contributions.contributor_account_id,
+        library_contributions.state AS contribution_state,
+        library_contributions.revision AS contribution_revision,
+        library_contributions.submitted_at,
+        library_contributions.reviewed_at,
+        library_contributions.reviewed_by_account_id,
+        scholarly_records.id AS record_id,
+        scholarly_records.owner_domain_id AS record_owner_domain_id,
+        scholarly_records.created_by_account_id AS record_creator_id,
+        scholarly_artifacts.owner_domain_id AS artifact_owner_domain_id,
+        scholarly_artifacts.record_id AS artifact_record_id,
+        scholarly_artifacts.attachment_state,
+        scholarly_artifact_versions.id AS version_id,
+        scholarly_artifact_versions.owner_domain_id AS version_owner_domain_id,
+        scholarly_artifact_versions.artifact_id AS version_artifact_id,
+        scholarly_artifact_versions.stored_file_id AS file_id,
+        files.owner_domain_id,
+        files.uploaded_by_account_id,
+        files.object_key,
+        files.checksum_algorithm,
+        files.checksum,
+        files.size_bytes,
+        files.media_type
+      FROM library_contributions
+      JOIN scholarly_artifacts ON scholarly_artifacts.id = library_contributions.artifact_id
+      JOIN scholarly_records ON scholarly_records.id = scholarly_artifacts.record_id
+      JOIN scholarly_artifact_versions ON scholarly_artifact_versions.artifact_id = scholarly_artifacts.id
+      JOIN files ON files.id = scholarly_artifact_versions.stored_file_id
+      WHERE library_contributions.library_id = ? AND library_contributions.state = 'approved'
+      ORDER BY library_contributions.id
+    `).all(libraryId);
+    evidenceBeforeDatabase.close();
+    const recycleTarget = ownerHoldingItems.find((holding) => (
+      promotionRows.some((row) => row.file_id === holding.file.id)
+    ));
+    const provenanceBefore = promotionRows.find((row) => row.file_id === recycleTarget?.file.id);
+    assert.ok(recycleTarget);
+    assert.ok(provenanceBefore);
     const memberRecycle = await app.inject({
       method: "POST",
       url: `/api/libraries/${libraryId}/holdings/${recycleTarget.file.id}/recycle`,
@@ -232,6 +286,173 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
       payload: { version: recycleTarget.version },
     });
     assert.equal(ownerRecycle.statusCode, 204);
+
+    const hiddenAfterRecycle = await app.inject({
+      method: "GET",
+      url: `/api/libraries/${libraryId}/holdings`,
+      headers: headers(ownerCookie),
+    });
+    assert.equal(hiddenAfterRecycle.statusCode, 200);
+    assert.equal((hiddenAfterRecycle.json() as { holdings: unknown[] }).holdings.length, 1);
+
+    const memberRecycleList = await app.inject({
+      method: "GET",
+      url: `/api/libraries/${libraryId}/recycle`,
+      headers: headers(memberCookie),
+    });
+    assert.equal(memberRecycleList.statusCode, 404);
+    assert.deepEqual(memberRecycleList.json(), { error: "not_found" });
+
+    const ownerRecycleList = await app.inject({
+      method: "GET",
+      url: `/api/libraries/${libraryId}/recycle`,
+      headers: headers(ownerCookie),
+    });
+    assert.equal(ownerRecycleList.statusCode, 200);
+    const recycleEntry = (ownerRecycleList.json() as {
+      files: Array<{
+        version: string;
+        file: { id: string; displayName: string; mediaType: string | null; sizeBytes: number; deletedAt: string };
+      }>;
+    }).files[0]!;
+    assert.equal(recycleEntry.file.id, recycleTarget.file.id);
+    assert.equal(recycleEntry.version.length, 43);
+    assert.deepEqual(Object.keys(recycleEntry.file).sort(), ["deletedAt", "displayName", "id", "mediaType", "sizeBytes"]);
+    assert.equal("objectKey" in recycleEntry.file, false);
+    assert.equal("recordId" in recycleEntry, false);
+
+    const accountRecycle = await app.inject({
+      method: "GET",
+      url: "/api/drive/recycle",
+      headers: headers(ownerCookie),
+    });
+    assert.equal(accountRecycle.statusCode, 200);
+    assert.equal(
+      (accountRecycle.json() as { files: Array<{ id: string }> }).files.some((file) => file.id === recycleEntry.file.id),
+      false,
+    );
+
+    const staleRestore = await app.inject({
+      method: "POST",
+      url: `/api/libraries/${libraryId}/recycle/${recycleEntry.file.id}/restore`,
+      headers: { ...headers(ownerCookie), "content-type": "application/json" },
+      payload: { version: "s".repeat(43) },
+    });
+    assert.equal(staleRestore.statusCode, 409);
+    assert.deepEqual(staleRestore.json(), { error: "concurrent_change" });
+    assert.equal((await app.inject({
+      method: "GET",
+      url: `/api/libraries/${libraryId}/recycle`,
+      headers: headers(ownerCookie),
+    })).json<{ files: unknown[] }>().files.length, 1);
+
+    const memberRestore = await app.inject({
+      method: "POST",
+      url: `/api/libraries/${libraryId}/recycle/${recycleEntry.file.id}/restore`,
+      headers: { ...headers(memberCookie), "content-type": "application/json" },
+      payload: { version: recycleEntry.version },
+    });
+    assert.equal(memberRestore.statusCode, 404);
+    assert.deepEqual(memberRestore.json(), { error: "not_found" });
+
+    for (const url of [
+      `/api/libraries/not-a-library/recycle/${recycleEntry.file.id}/restore`,
+      `/api/libraries/${libraryId}/recycle/guessed-file/restore`,
+    ]) {
+      const response = await app.inject({
+        method: "POST",
+        url,
+        headers: { ...headers(ownerCookie), "content-type": "application/json" },
+        payload: { version: recycleEntry.version },
+      });
+      assert.equal(response.statusCode, 404);
+      assert.deepEqual(response.json(), { error: "not_found" });
+    }
+
+    const libraryPermanentDelete = await app.inject({
+      method: "DELETE",
+      url: `/api/libraries/${libraryId}/recycle/${recycleEntry.file.id}/permanent`,
+      headers: headers(ownerCookie),
+    });
+    assert.equal(libraryPermanentDelete.statusCode, 404);
+
+    const ownerRestore = await app.inject({
+      method: "POST",
+      url: `/api/libraries/${libraryId}/recycle/${recycleEntry.file.id}/restore`,
+      headers: { ...headers(ownerCookie), "content-type": "application/json" },
+      payload: { version: recycleEntry.version },
+    });
+    assert.equal(ownerRestore.statusCode, 204);
+    assert.equal((await app.inject({
+      method: "GET",
+      url: `/api/libraries/${libraryId}/recycle`,
+      headers: headers(ownerCookie),
+    })).json<{ files: unknown[] }>().files.length, 0);
+    assert.equal((await app.inject({
+      method: "GET",
+      url: `/api/libraries/${libraryId}/holdings`,
+      headers: headers(ownerCookie),
+    })).json<{ holdings: Array<{ file: { id: string } }> }>().holdings.some(
+      (holding) => holding.file.id === recycleEntry.file.id,
+    ), true);
+
+    const evidenceAfterDatabase = openSqliteDatabase(dbPath);
+    const provenanceAfter = evidenceAfterDatabase.prepare<[string], HoldingProvenanceRow>(`
+      SELECT
+        library_contributions.id AS contribution_id,
+        library_contributions.library_id,
+        library_contributions.artifact_id,
+        library_contributions.contributor_account_id,
+        library_contributions.state AS contribution_state,
+        library_contributions.revision AS contribution_revision,
+        library_contributions.submitted_at,
+        library_contributions.reviewed_at,
+        library_contributions.reviewed_by_account_id,
+        scholarly_records.id AS record_id,
+        scholarly_records.owner_domain_id AS record_owner_domain_id,
+        scholarly_records.created_by_account_id AS record_creator_id,
+        scholarly_artifacts.owner_domain_id AS artifact_owner_domain_id,
+        scholarly_artifacts.record_id AS artifact_record_id,
+        scholarly_artifacts.attachment_state,
+        scholarly_artifact_versions.id AS version_id,
+        scholarly_artifact_versions.owner_domain_id AS version_owner_domain_id,
+        scholarly_artifact_versions.artifact_id AS version_artifact_id,
+        scholarly_artifact_versions.stored_file_id AS file_id,
+        files.owner_domain_id,
+        files.uploaded_by_account_id,
+        files.object_key,
+        files.checksum_algorithm,
+        files.checksum,
+        files.size_bytes,
+        files.media_type
+      FROM library_contributions
+      JOIN scholarly_artifacts ON scholarly_artifacts.id = library_contributions.artifact_id
+      JOIN scholarly_records ON scholarly_records.id = scholarly_artifacts.record_id
+      JOIN scholarly_artifact_versions ON scholarly_artifact_versions.artifact_id = scholarly_artifacts.id
+      JOIN files ON files.id = scholarly_artifact_versions.stored_file_id
+      WHERE scholarly_artifact_versions.stored_file_id = ?
+    `).get(recycleEntry.file.id);
+    const restoreAudit = evidenceAfterDatabase.prepare<[string], {
+      action: string;
+      actor_account_id: string;
+      target_id: string;
+      outcome: string;
+    }>(`
+      SELECT action, actor_account_id, target_id, outcome
+      FROM governance_audit_events
+      WHERE action = 'drive.file_restore' AND target_id = ? AND outcome = 'succeeded'
+      ORDER BY id DESC LIMIT 1
+    `).get(recycleEntry.file.id);
+    evidenceAfterDatabase.close();
+    assert.deepEqual(provenanceAfter, provenanceBefore);
+    assert.equal(provenanceAfter?.contributor_account_id, "member-http");
+    assert.deepEqual(restoreAudit, {
+      action: "drive.file_restore",
+      actor_account_id: "owner-http",
+      target_id: recycleEntry.file.id,
+      outcome: "succeeded",
+    });
+    assert.equal((await storage.statObject(provenanceBefore.object_key))?.sizeBytes, provenanceBefore.size_bytes);
   } finally {
     await app.close();
     rmSync(dbPath, { force: true });

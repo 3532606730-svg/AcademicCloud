@@ -46,3 +46,20 @@ export interface LibraryHolding {
     purgedAt: null;
   };
 }
+
+export interface LibraryRecycledHolding {
+  libraryId: string;
+  recordId: string;
+  artifactId: string;
+  versionId: string;
+  file: {
+    id: string;
+    displayName: string;
+    mediaType: string | null;
+    sizeBytes: number;
+    state: "deleted";
+    revision: number;
+    updatedAt: Date;
+    deletedAt: Date;
+  };
+}

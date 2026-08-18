@@ -1,4 +1,8 @@
-import type { NewDomainRecycleGroup, RecycleRepository } from "../../drive/recycle-repository.js";
+import type {
+  DomainRecycleGroup,
+  NewDomainRecycleGroup,
+  RecycleRepository,
+} from "../../drive/recycle-repository.js";
 import type { NewRecycleGroup, RecycleGroup, RecycleRootKind } from "../../drive/recycle.js";
 import type { SqliteDatabase } from "./database.js";
 import { fromDatabaseTimestamp, toDatabaseTimestamp } from "./records.js";
@@ -23,10 +27,34 @@ interface RecycleGroupParameters {
   createdAt: string;
 }
 
+interface DomainRecycleGroupRow {
+  id: string;
+  owner_domain_id: string;
+  created_by_account_id: string;
+  root_kind: RecycleRootKind;
+  root_id: string;
+  folder_count: number;
+  file_count: number;
+  created_at: string;
+}
+
 function toRecycleGroup(row: RecycleGroupRow): RecycleGroup {
   return {
     id: row.id,
     ownerId: row.owner_id,
+    rootKind: row.root_kind,
+    rootId: row.root_id,
+    folderCount: row.folder_count,
+    fileCount: row.file_count,
+    createdAt: fromDatabaseTimestamp(row.created_at)!,
+  };
+}
+
+function toDomainRecycleGroup(row: DomainRecycleGroupRow): DomainRecycleGroup {
+  return {
+    id: row.id,
+    ownerDomainId: row.owner_domain_id,
+    createdByAccountId: row.created_by_account_id,
     rootKind: row.root_kind,
     rootId: row.root_id,
     folderCount: row.folder_count,
@@ -45,6 +73,11 @@ export class SqliteRecycleRepository implements RecycleRepository {
   readonly #recycleFolder;
   readonly #recycleFile;
   readonly #recycleFileForDomain;
+  readonly #findGroupByRootForDomain;
+  readonly #listFolderIdsForDomain;
+  readonly #listFileIdsForDomain;
+  readonly #restoreFileForDomain;
+  readonly #deleteGroupForDomain;
   readonly #restoreFolder;
   readonly #restoreFile;
   readonly #markFilePurged;
@@ -147,6 +180,45 @@ export class SqliteRecycleRepository implements RecycleRepository {
           updated_at = ?, deleted_at = ?, recycle_group_id = ?
       WHERE owner_domain_id = ? AND id = ? AND state = 'active'
         AND revision = ? AND recycle_group_id IS NULL
+    `);
+    this.#findGroupByRootForDomain = database.prepare<
+      [string, RecycleRootKind, string],
+      DomainRecycleGroupRow
+    >(`
+      SELECT
+        recycle_groups.id, recycle_groups.owner_domain_id,
+        recycle_groups.created_by_account_id, recycle_groups.root_kind,
+        recycle_groups.root_id, recycle_groups.folder_count,
+        recycle_groups.file_count, recycle_groups.created_at
+      FROM recycle_groups
+      WHERE recycle_groups.owner_domain_id = ?
+        AND recycle_groups.root_kind = ? AND recycle_groups.root_id = ?
+    `);
+    this.#listFolderIdsForDomain = database.prepare<[string, string], { id: string }>(`
+      SELECT folders.id
+      FROM folders
+      JOIN recycle_groups ON recycle_groups.id = folders.recycle_group_id
+        AND recycle_groups.owner_domain_id = folders.owner_domain_id
+      WHERE folders.owner_domain_id = ? AND folders.recycle_group_id = ?
+      ORDER BY folders.id
+    `);
+    this.#listFileIdsForDomain = database.prepare<[string, string], { id: string }>(`
+      SELECT files.id
+      FROM files
+      JOIN recycle_groups ON recycle_groups.id = files.recycle_group_id
+        AND recycle_groups.owner_domain_id = files.owner_domain_id
+      WHERE files.owner_domain_id = ? AND files.recycle_group_id = ?
+      ORDER BY files.id
+    `);
+    this.#restoreFileForDomain = database.prepare<[string, string, string, number, string]>(`
+      UPDATE files
+      SET state = 'active', revision = revision + 1,
+          updated_at = ?, deleted_at = NULL, recycle_group_id = NULL
+      WHERE owner_domain_id = ? AND id = ? AND state = 'deleted'
+        AND revision = ? AND recycle_group_id = ?
+    `);
+    this.#deleteGroupForDomain = database.prepare<[string, string]>(`
+      DELETE FROM recycle_groups WHERE owner_domain_id = ? AND id = ?
     `);
     this.#restoreFolder = database.prepare<[string, string, string, string]>(`
       UPDATE folders
@@ -257,6 +329,43 @@ export class SqliteRecycleRepository implements RecycleRepository {
       fileId,
       expectedRevision,
     ).changes === 1;
+  }
+
+  findGroupByRootForDomain(
+    ownerDomainId: string,
+    rootKind: RecycleRootKind,
+    rootId: string,
+  ): DomainRecycleGroup | null {
+    const row = this.#findGroupByRootForDomain.get(ownerDomainId, rootKind, rootId);
+    return row ? toDomainRecycleGroup(row) : null;
+  }
+
+  listFolderIdsForDomain(ownerDomainId: string, groupId: string): string[] {
+    return this.#listFolderIdsForDomain.all(ownerDomainId, groupId).map((row) => row.id);
+  }
+
+  listFileIdsForDomain(ownerDomainId: string, groupId: string): string[] {
+    return this.#listFileIdsForDomain.all(ownerDomainId, groupId).map((row) => row.id);
+  }
+
+  restoreFileForDomain(
+    ownerDomainId: string,
+    fileId: string,
+    groupId: string,
+    expectedRevision: number,
+    restoredAt: Date,
+  ): boolean {
+    return this.#restoreFileForDomain.run(
+      toDatabaseTimestamp(restoredAt)!,
+      ownerDomainId,
+      fileId,
+      expectedRevision,
+      groupId,
+    ).changes === 1;
+  }
+
+  deleteGroupForDomain(ownerDomainId: string, groupId: string): boolean {
+    return this.#deleteGroupForDomain.run(ownerDomainId, groupId).changes === 1;
   }
 
   restoreFolder(ownerId: string, folderId: string, groupId: string, restoredAt: Date): boolean {

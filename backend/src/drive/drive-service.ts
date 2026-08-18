@@ -689,6 +689,27 @@ export class DriveService {
     }
   }
 
+  /**
+   * Verify a server-authorized deleted file against the configured storage
+   * provider before a domain-specific service restores its metadata. The
+   * caller remains responsible for authority and ownership-domain checks.
+   */
+  async verifyAuthorizedFileForRestore(file: StoredFile): Promise<void> {
+    if (file.state !== "deleted") throw new DriveError("not_found");
+    this.assertCurrentStorageProvider(file);
+
+    let metadata: StorageObjectMetadata | null;
+    try {
+      metadata = await this.storage.statObject(file.objectKey);
+    } catch (error: unknown) {
+      throw new DriveError("storage_unavailable", { cause: error });
+    }
+
+    if (!metadata || !storageMetadataMatches(file, metadata)) {
+      throw new DriveError("upload_metadata_mismatch");
+    }
+  }
+
   updateFile(
     ownerId: string,
     fileId: string,

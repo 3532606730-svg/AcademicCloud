@@ -1,5 +1,13 @@
 import type { LibraryRepository } from "../../library/repositories.js";
-import type { Library, LibraryHolding, LibraryMembership, LibraryRole, NewLibrary, NewLibraryMembership } from "../../library/library.js";
+import type {
+  Library,
+  LibraryHolding,
+  LibraryMembership,
+  LibraryRecycledHolding,
+  LibraryRole,
+  NewLibrary,
+  NewLibraryMembership,
+} from "../../library/library.js";
 import type { SqliteDatabase } from "./database.js";
 import { fromDatabaseTimestamp, toDatabaseTimestamp } from "./records.js";
 
@@ -51,6 +59,21 @@ interface HoldingRow {
   file_purged_at: null;
 }
 
+interface RecycledHoldingRow {
+  library_id: string;
+  record_id: string;
+  artifact_id: string;
+  version_id: string;
+  file_id: string;
+  display_name: string;
+  media_type: string | null;
+  size_bytes: number;
+  file_state: "deleted";
+  file_revision: number;
+  file_updated_at: string;
+  file_deleted_at: string;
+}
+
 function toLibrary(row: LibraryRow): Library {
   return {
     id: row.id,
@@ -99,6 +122,25 @@ function toHolding(row: HoldingRow): LibraryHolding {
   };
 }
 
+function toRecycledHolding(row: RecycledHoldingRow): LibraryRecycledHolding {
+  return {
+    libraryId: row.library_id,
+    recordId: row.record_id,
+    artifactId: row.artifact_id,
+    versionId: row.version_id,
+    file: {
+      id: row.file_id,
+      displayName: row.display_name,
+      mediaType: row.media_type,
+      sizeBytes: row.size_bytes,
+      state: row.file_state,
+      revision: row.file_revision,
+      updatedAt: fromDatabaseTimestamp(row.file_updated_at)!,
+      deletedAt: fromDatabaseTimestamp(row.file_deleted_at)!,
+    },
+  };
+}
+
 const libraryColumns = `
   libraries.id, libraries.owner_domain_id, libraries.name,
   libraries.is_default,
@@ -140,6 +182,21 @@ const holdingColumns = `
   files.purged_at AS file_purged_at
 `;
 
+const recycledHoldingColumns = `
+  libraries.id AS library_id,
+  scholarly_records.id AS record_id,
+  scholarly_artifacts.id AS artifact_id,
+  scholarly_artifact_versions.id AS version_id,
+  files.id AS file_id,
+  files.display_name,
+  files.media_type,
+  files.size_bytes,
+  files.state AS file_state,
+  files.revision AS file_revision,
+  files.updated_at AS file_updated_at,
+  files.deleted_at AS file_deleted_at
+`;
+
 export class SqliteLibraryRepository implements LibraryRepository {
   readonly #createDomain;
   readonly #create;
@@ -153,6 +210,8 @@ export class SqliteLibraryRepository implements LibraryRepository {
   readonly #deleteMembership;
   readonly #listHoldings;
   readonly #findHoldingByFile;
+  readonly #listRecycledHoldings;
+  readonly #findRecycledHoldingByFile;
 
   constructor(database: SqliteDatabase) {
     this.#createDomain = database.prepare<{ domainId: string; createdAt: string }>(`
@@ -257,6 +316,38 @@ export class SqliteLibraryRepository implements LibraryRepository {
        AND files.state = 'active'
       WHERE libraries.id = ? AND files.id = ?
     `);
+    const recycledHoldingJoins = `
+      FROM libraries
+      JOIN scholarly_records
+        ON scholarly_records.owner_domain_id = libraries.owner_domain_id
+      JOIN scholarly_artifacts
+        ON scholarly_artifacts.owner_domain_id = scholarly_records.owner_domain_id
+       AND scholarly_artifacts.record_id = scholarly_records.id
+       AND scholarly_artifacts.attachment_state = 'attached'
+      JOIN scholarly_artifact_versions
+        ON scholarly_artifact_versions.owner_domain_id = scholarly_artifacts.owner_domain_id
+       AND scholarly_artifact_versions.artifact_id = scholarly_artifacts.id
+      JOIN files
+        ON files.id = scholarly_artifact_versions.stored_file_id
+       AND files.owner_domain_id = libraries.owner_domain_id
+       AND files.state = 'deleted'
+      JOIN recycle_groups
+        ON recycle_groups.id = files.recycle_group_id
+       AND recycle_groups.owner_domain_id = files.owner_domain_id
+       AND recycle_groups.root_kind = 'file'
+       AND recycle_groups.root_id = files.id
+    `;
+    this.#listRecycledHoldings = database.prepare<[string], RecycledHoldingRow>(`
+      SELECT ${recycledHoldingColumns}
+      ${recycledHoldingJoins}
+      WHERE libraries.id = ?
+      ORDER BY files.deleted_at DESC, files.id
+    `);
+    this.#findRecycledHoldingByFile = database.prepare<[string, string], RecycledHoldingRow>(`
+      SELECT ${recycledHoldingColumns}
+      ${recycledHoldingJoins}
+      WHERE libraries.id = ? AND files.id = ?
+    `);
   }
 
   create(library: NewLibrary): Library {
@@ -338,5 +429,14 @@ export class SqliteLibraryRepository implements LibraryRepository {
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null {
     const row = this.#findHoldingByFile.get(libraryId, fileId);
     return row ? toHolding(row) : null;
+  }
+
+  listRecycledHoldings(libraryId: string): LibraryRecycledHolding[] {
+    return this.#listRecycledHoldings.all(libraryId).map(toRecycledHolding);
+  }
+
+  findRecycledHoldingByFile(libraryId: string, fileId: string): LibraryRecycledHolding | null {
+    const row = this.#findRecycledHoldingByFile.get(libraryId, fileId);
+    return row ? toRecycledHolding(row) : null;
   }
 }

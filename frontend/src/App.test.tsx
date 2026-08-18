@@ -124,6 +124,8 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     listLibraryHoldings: vi.fn().mockResolvedValue([]),
     createLibraryDownload: vi.fn(),
     recycleLibraryHolding: vi.fn().mockResolvedValue(undefined),
+    listLibraryRecycle: vi.fn().mockResolvedValue([]),
+    restoreLibraryHolding: vi.fn().mockResolvedValue(undefined),
     submitLibraryContribution: vi.fn(),
     listLibraryContributions: vi.fn().mockResolvedValue([]),
     listMyLibraryContributions: vi.fn().mockResolvedValue([]),
@@ -1188,6 +1190,103 @@ describe("App", () => {
     await waitFor(() => expect(restoreFile).toHaveBeenCalledWith("file-1"));
     await user.click(screen.getByRole("button", { name: "Delete paper.pdf forever" }));
     await waitFor(() => expect(permanentlyDeleteFile).toHaveBeenCalledWith("file-1"));
+  });
+
+  it("combines manager-visible Library recycle rows without widening account restore or purge authority", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const accountDeleted = { ...FILE, state: "deleted" as const, deletedAt: "2026-08-13T00:00:00.000Z" };
+    const staleVersion = "r".repeat(43);
+    const currentVersion = "q".repeat(43);
+    const libraryDeleted = {
+      version: staleVersion,
+      file: {
+        id: "library-recycled-file",
+        displayName: "shared-source.pdf",
+        mediaType: "application/pdf",
+        sizeBytes: 8192,
+        deletedAt: "2026-08-14T00:00:00.000Z",
+      },
+    };
+    const listLibraryRecycle = vi.fn().mockResolvedValue([])
+      .mockResolvedValueOnce([libraryDeleted])
+      .mockResolvedValueOnce([{ ...libraryDeleted, version: currentVersion }])
+      .mockResolvedValueOnce([]);
+    const restoreLibraryHolding = vi.fn()
+      .mockRejectedValueOnce(new ApiError(409, "concurrent_change"))
+      .mockResolvedValueOnce(undefined);
+    const restoreFile = vi.fn().mockResolvedValue(FILE);
+    const permanentlyDeleteFile = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [accountDeleted] }),
+      listLibraries: vi.fn().mockResolvedValue([DEFAULT_LIBRARY]),
+      listLibraryRecycle,
+      restoreLibraryHolding,
+      restoreFile,
+      permanentlyDeleteFile,
+    });
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole("button", { name: "Recycle" }));
+    const libraryRow = (await screen.findByText("shared-source.pdf")).closest('[data-entry-kind="library-recycle-holding"]');
+    expect(libraryRow).toBeInstanceOf(HTMLElement);
+    const libraryRowElement = libraryRow as HTMLElement;
+    expect(libraryRowElement.querySelector(".file-badge--pdf")).not.toBeNull();
+    expect(within(libraryRowElement).queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(within(libraryRowElement).queryByRole("button", { name: /forever/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete paper.pdf forever" })).toBeInTheDocument();
+
+    await user.click(within(libraryRowElement).getByRole("button", { name: "Restore file shared-source.pdf" }));
+    await waitFor(() => expect(restoreLibraryHolding).toHaveBeenNthCalledWith(
+      1,
+      DEFAULT_LIBRARY.id,
+      libraryDeleted.file.id,
+      staleVersion,
+    ));
+    await waitFor(() => expect(listLibraryRecycle).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole("status")).toHaveTextContent("The catalogue was refreshed");
+
+    const refreshedRow = (await screen.findByText("shared-source.pdf")).closest('[data-entry-kind="library-recycle-holding"]');
+    expect(refreshedRow).toBeInstanceOf(HTMLElement);
+    await user.click(within(refreshedRow as HTMLElement).getByRole("button", { name: "Restore file shared-source.pdf" }));
+    await waitFor(() => expect(restoreLibraryHolding).toHaveBeenNthCalledWith(
+      2,
+      DEFAULT_LIBRARY.id,
+      libraryDeleted.file.id,
+      currentVersion,
+    ));
+    await waitFor(() => expect(screen.queryByText("shared-source.pdf")).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Restore file paper.pdf" }));
+    await waitFor(() => expect(restoreFile).toHaveBeenCalledWith(accountDeleted.id));
+    await user.click(screen.getByRole("button", { name: "Delete paper.pdf forever" }));
+    await waitFor(() => expect(permanentlyDeleteFile).toHaveBeenCalledWith(accountDeleted.id));
+  });
+
+  it("does not request or expose Library governance recycle entries for a Member", async () => {
+    const user = userEvent.setup();
+    const member = { id: "member-1", loginName: "Reader", role: "member" as const };
+    const memberLibrary = { ...DEFAULT_LIBRARY, role: "member" as const };
+    const accountDeleted = { ...FILE, state: "deleted" as const, deletedAt: "2026-08-13T00:00:00.000Z" };
+    const listLibraryRecycle = vi.fn().mockResolvedValue([]);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(member),
+      listRecycle: vi.fn().mockResolvedValue({ folders: [], files: [accountDeleted] }),
+      listLibraries: vi.fn().mockResolvedValue([memberLibrary]),
+      listLibraryRecycle,
+    });
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole("button", { name: "Recycle" }));
+    expect(await screen.findByText("paper.pdf")).toBeInTheDocument();
+    await waitFor(() => expect(api.listLibraries).toHaveBeenCalled());
+    expect(listLibraryRecycle).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-entry-kind="library-recycle-holding"]')).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Recycle" }));
+    expect(screen.getByText("paper.pdf")).toBeInTheDocument();
+    expect(screen.queryByText("Loading items…")).not.toBeInTheDocument();
   });
 
   it("signs out and returns to the login gate", async () => {
@@ -2470,6 +2569,7 @@ describe("Shared Library contribution UI", () => {
     const table = await screen.findByRole("table", { name: "Catalogue" });
     expect(screen.getAllByRole("table")).toHaveLength(1);
     const headingRow = within(table).getByRole("row", { name: /Name.*Size.*Updated/ });
+    await waitFor(() => expect(table.querySelector('[data-entry-kind="library-holding"]')).not.toBeNull());
     const holdingRow = table.querySelector('[data-entry-kind="library-holding"]');
     expect(holdingRow).not.toBeNull();
     expect(Boolean(headingRow.compareDocumentPosition(holdingRow!) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
