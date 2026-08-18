@@ -117,6 +117,9 @@ Repair information architecture and visual hierarchy:
 - use a compact user menu and Owner `管理后台` with `成员管理 / 投稿审核 / 公告 / 操作记录`;
 - make `上传资料` the single strong Library-page CTA and demote secondary actions;
 - retain the warm neutral/deep-green identity while reducing boxes/borders/button competition;
+- systematically remove redundant descriptive microcopy and non-actionable small helper text while retaining necessary state/error/security/accessibility information;
+- directly re-check narrow-screen/mobile Library and preview presentation, reducing cramped desktop-style chrome/text without reopening the accepted OSS signed-preview architecture;
+- preserve the already-completed sticky desktop navigation behavior, accessibility, and bilingual behavior;
 - fix the reproducible stale-state folder recycle/delete failure without weakening revision/CAS protection or bypassing lifecycle.
 
 ## Parked Work
@@ -144,7 +147,7 @@ The visible synthetic/test folders should become removable through the normal sa
 
 ## Verification Policy
 
-Use proportionate verification tied to changed risk. Shared-default ownership/intake work requires focused migration/authorization/privacy/concurrency review. Credential reset requires focused authentication/capability/session-revocation review. UI repair requires focused frontend and stale-state lifecycle tests. Once relevant evidence is green, record/checkpoint instead of replaying historical production campaigns.
+Use proportionate verification tied to changed risk. Shared-default ownership/intake work requires focused migration/authorization/privacy/concurrency review. Credential reset requires focused authentication/capability/session-revocation review. UI repair requires focused frontend, narrow-viewport/mobile/preview, copy-density, and stale-state lifecycle tests/review. Once relevant evidence is green, record/checkpoint instead of replaying historical production campaigns.
 
 ## Next Action
 
