@@ -16,7 +16,7 @@ AcademicCloud uses modular boundaries and explicit interfaces. A failure, change
 
 The first implementation layer focuses only on reliable file storage and file management. OCR, RAG, AI assistance, research graphs, academic workflows, external cloud-drive transfer, and native sync clients were deliberately deferred to reduce early project risk.
 
-This decision still governs the history and safety philosophy of Layer 1. Later product layers were explicitly approved in ADR-010 rather than being pulled into the original Layer 1 scope retroactively.
+This decision still governs the history and safety philosophy of Layer 1. Later product layers were explicitly approved in ADR-010 rather than being pulled into the original Layer 1 scope retroactively. ADR-022 later clarifies that the final academic corpus is not a private-Drive product even though the first implementation layer used private Drive semantics as a safe substrate.
 
 ## ADR-003 — File Bytes Will Not Primarily Live on the Existing System Disk
 
@@ -114,12 +114,12 @@ The same-origin SPA uses exact `APP_ORIGIN` enforcement on unsafe API requests p
 ## ADR-010 — Product Roadmap Expansion and Repository-Driven Continuous Objectives
 
 **Date:** 2026-08-17  
-**Status:** Accepted / refined by ADR-014 and the 2026-08-17 Pre-OCR roadmap reconciliation  
+**Status:** Accepted / refined by ADR-014 and later ADR-022  
 **Full record:** `docs/decisions/ADR-010-product-roadmap-and-execution-model.md`
 
 ADR-010 established the post-Core-Drive sequence and repository-driven continuous-objective model. The coarse original product layers were Core Drive → Accounts & Sharing → Shared Academic Library → Research Infrastructure → Intelligence, with Operations cross-cutting.
 
-The execution model remains authoritative: each Epic is bounded, verified, independently reviewable, recorded, and checkpointed; long runs consume an explicit repository queue rather than a giant chat prompt. The later ADR-014/roadmap reconciliation refines the research layers and privacy/data model without weakening this workflow.
+The execution model remains authoritative: each Epic is bounded, verified, independently reviewable, recorded, and checkpointed; long runs consume an explicit repository queue rather than a giant chat prompt. ADR-014 refined privacy/data planes, and ADR-022 later corrected the default product authority to one Owner-curated shared corpus plus private research overlays.
 
 ## ADR-011 — Accounts, Invitations, and Member Access Administration
 
@@ -135,20 +135,20 @@ Accounts use exactly `owner | member`; ambiguous multi-account legacy databases 
 **Status:** Accepted
 **Full record:** `docs/decisions/ADR-012-global-announcement-publication-model.md`
 
-Global announcements reuse the exact Owner authority from Accounts I and give all active authenticated accounts the same effective read set without changing private-drive isolation. Schema 008 uses server-authoritative publication/expiry boundaries and deterministic ordering; no cleanup worker is required for visibility correctness. Content remains plain text, optional links are normalized credential-free HTTPS URLs, and explicit idempotent publish/unpublish actions cannot be supplied through general content inputs.
+Global announcements reuse the exact Owner authority from Accounts I and give all active authenticated accounts the same effective read set without changing the then-current private-drive isolation. Schema 008 uses server-authoritative publication/expiry boundaries and deterministic ordering; no cleanup worker is required for visibility correctness. Content remains plain text, optional links are normalized credential-free HTTPS URLs, and explicit idempotent publish/unpublish actions cannot be supplied through general content inputs.
 
 ## ADR-013 — Authenticated Password Change Model
 
 **Date:** 2026-08-17
-**Status:** Accepted
+**Status:** Accepted / historical product surface superseded by ADR-022
 **Full record:** `docs/decisions/ADR-013-authenticated-password-change-model.md`
 
-Password change is self-only for authenticated Owner and Member accounts. Current-password verification and replacement hashing reuse the single bounded Argon2id executor outside the SQLite write transaction. The captured password hash plus durable authentication revision form a conditional update token; the successful password update and revoke-all-sessions commit atomically, so concurrent changes, disable/enable races, pending logins, and revocation failures cannot overwrite or revive old authentication state. No migration or dependency is added.
+Password change was implemented as self-only for authenticated Owner and Member accounts, reusing the bounded Argon2id executor with CAS and atomic session revocation. Its security primitives remain useful evidence, but ADR-022 supersedes the need for a routine self-service password-change product surface in this small invitation-only deployment. Future recovery uses Owner-authorized one-time credential reset without revealing the Member's final password.
 
 ## ADR-014 — Privacy, Ownership, Scholarly Resource, and Research-Activity Boundaries
 
 **Date:** 2026-08-17  
-**Status:** Accepted  
+**Status:** Accepted / clarified by ADR-022  
 **Full record:** `docs/decisions/ADR-014-privacy-ownership-and-research-activity-boundaries.md`
 
 AcademicCloud separates Physical Artifact, Scholarly Resource/Record, Personal Research Overlay, Collaborative Overlay, Governance/Operations, and Derived Intelligence.
@@ -157,4 +157,20 @@ The core rule is: **shared resource does not imply shared research activity.** R
 
 Folder and Collection are distinct; canonical metadata and private interpretation are distinct; original acquired artifacts remain preservable evidence while derived artifacts have explicit lineage; duplicate detection must not expose inaccessible resources; and future OCR/index/retrieval/RAG authority may never exceed the requesting user's effective authority.
 
-The 2026-08-17 Roadmap reconciliation uses these boundaries to authorize the Pre-OCR Research Foundation program before any OCR execution begins.
+ADR-022 clarifies the previously underspecified default on the shared-resource side: the canonical AcademicCloud academic corpus is shared after Owner admission rather than remaining account-private until an optional sharing action.
+
+## ADR-022 — Default Shared Library and Private Research Activity
+
+**Date:** 2026-08-18  
+**Status:** Accepted by Owner  
+**Full record:** `docs/decisions/ADR-022-default-shared-library-and-private-research-activity.md`
+
+AcademicCloud is one Owner-curated shared academic corpus, not a collection of private Drives with an optional Shared Library. A normal Member upload enters pending contribution review; Owner approval admits it into the canonical shared `资料库`, while rejection leaves it unadmitted. Owner-originated uploads may be admitted directly because the Owner already holds review authority.
+
+Approved resources are shared to active authorized members for normal corpus access. Favorites, Recent, reading state/progress, Personal Tags, Collections, Saved Views, notes, annotations, citation/evidence work, Research Questions, and equivalent research activity remain private per account.
+
+`Scholarly Record`, `Artifact`, `Artifact Version`, ownership domains, and governance audit remain internal domain/operations concepts rather than primary navigation. Governance audit belongs under Owner administration as `操作记录`.
+
+Routine self-service password change is not required. Lost access is handled by an Owner-authorized, short-lived, single-use credential reset in which the Member chooses the final password; no email/SMS/OAuth recovery infrastructure is introduced.
+
+Existing schema-v15 ownership/Library/contribution foundations remain valid implementation primitives. Their earlier optional-shared-library product framing is superseded; production backfill/transition of existing account-owned corpus data remains separately Owner-gated.
