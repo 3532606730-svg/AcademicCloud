@@ -174,3 +174,15 @@ Approved resources are shared to active authorized members for normal corpus acc
 Routine self-service password change is not required. Lost access is handled by an Owner-authorized, short-lived, single-use credential reset in which the Member chooses the final password; no email/SMS/OAuth recovery infrastructure is introduced.
 
 Existing schema-v15 ownership/Library/contribution foundations remain valid implementation primitives. Their earlier optional-shared-library product framing is superseded; production backfill/transition of existing account-owned corpus data remains separately Owner-gated.
+
+## ADR-023 — Durable Decision Reconciliation and Local Sync
+
+**Date:** 2026-08-18  
+**Status:** Accepted by Owner  
+**Full record:** `docs/decisions/ADR-023-durable-decision-reconciliation-and-local-sync.md`
+
+Newly accepted durable product, architecture, security, workflow, roadmap, task-boundary, or execution-sequencing decisions must be reconciled into the relevant repository memory instead of remaining only in chat. Update the smallest complete authoritative set such as `ROADMAP.md`, `CURRENT_STATUS.md`, `TASK_BOARD.md`, task cards, ADRs, `AGENTS.md`, or the AcademicCloud workflow skill as appropriate.
+
+When the resulting repository changes are pushed to the authorized remote branch and an active local checkout is accessible, synchronize that checkout non-destructively and verify that local HEAD equals the intended remote HEAD. Unknown local work must never be discarded merely to obtain equality.
+
+If the current agent can update GitHub but cannot access the Owner's actual local checkout, it must report local synchronization as outstanding rather than claim success. Repository publication, local synchronization, and production deployment remain distinct states.
