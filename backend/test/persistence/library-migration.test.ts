@@ -29,7 +29,7 @@ test("migration 014 persists Library domains, membership constraints, and append
   ]);
   assert.deepEqual(database.prepare("SELECT target_type FROM governance_audit_target_types WHERE target_type = 'library'").all(), [{ target_type: "library" }]);
   assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM sqlite_master WHERE type = 'table' AND name IN ('libraries', 'library_memberships')").get()?.count, 2);
-  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM sqlite_master WHERE type = 'trigger' AND name LIKE '%library%'").get()?.count, 9);
+  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM sqlite_master WHERE type = 'trigger' AND name LIKE '%library%'").get()?.count, 11);
   assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
 });
 
