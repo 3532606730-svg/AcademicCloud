@@ -119,7 +119,9 @@ UI requirements:
 - one strong Library-page CTA: `上传资料`;
 - demote `新建文件夹` and other secondary actions;
 - keep the warm neutral/deep-green identity but reduce equal-weight bordered buttons, unnecessary boxes, and action competition;
-- preserve responsive/mobile and accessibility behavior;
+- systematically remove redundant descriptive microcopy/small helper text that does not help action, state understanding, recovery, security, or accessibility;
+- directly re-check the narrow-screen/mobile Library and preview presentation, reducing cramped desktop-style chrome/text while preserving the accepted preview/download authorization architecture;
+- preserve the already-completed sticky desktop navigation behavior, responsive accessibility, and bilingual behavior;
 - fix the reproducible stale-state folder recycle/delete failure without weakening revision/CAS protection or bypassing normal lifecycle.
 
 ## Layer 0 — Project Setup
