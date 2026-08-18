@@ -7,6 +7,7 @@ export interface FolderRepository {
   listByParent(ownerId: string, parentId: string | null, state: Folder["state"]): Folder[];
   listDeleted(ownerId: string): Folder[];
   update(folder: Folder): Folder;
+  deleteDeleted(ownerId: string, folderId: string, groupId: string): boolean;
 }
 
 export interface StoredFileRepository {
@@ -17,6 +18,11 @@ export interface StoredFileRepository {
   listDeleted(ownerId: string): StoredFile[];
   listStale(state: "pending_upload" | "purging", updatedBefore: Date, limit: number): StoredFile[];
   update(
+    file: StoredFile,
+    expectedState: StoredFile["state"],
+    expectedRevision: number,
+  ): StoredFile | null;
+  updateForDomain(
     file: StoredFile,
     expectedState: StoredFile["state"],
     expectedRevision: number,

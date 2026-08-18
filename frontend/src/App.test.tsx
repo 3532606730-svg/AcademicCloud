@@ -142,6 +142,7 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     createFolder: vi.fn(),
     updateFolder: vi.fn(),
     deleteFolder: vi.fn(),
+    permanentlyDeleteFolder: vi.fn().mockResolvedValue(undefined),
     restoreFolder: vi.fn(),
     createUpload: vi.fn(),
     renewUpload: vi.fn(),
@@ -151,6 +152,7 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     deleteFile: vi.fn(),
     restoreFile: vi.fn(),
     permanentlyDeleteFile: vi.fn(),
+    permanentlyDeleteLibraryHolding: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

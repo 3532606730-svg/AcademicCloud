@@ -406,6 +406,7 @@ export interface AcademicCloudApi {
   createFolder(name: string, parentId: string | null): Promise<FolderEntry>;
   updateFolder(folderId: string, update: { name?: string; parentId?: string | null }): Promise<FolderEntry>;
   deleteFolder(folderId: string): Promise<void>;
+  permanentlyDeleteFolder(folderId: string, version: string): Promise<void>;
   restoreFolder(folderId: string): Promise<FolderEntry>;
   createUpload(input: {
     folderId: string | null;
@@ -420,7 +421,8 @@ export interface AcademicCloudApi {
   updateFile(fileId: string, update: { displayName?: string; folderId?: string | null }): Promise<FileEntry>;
   deleteFile(fileId: string): Promise<void>;
   restoreFile(fileId: string): Promise<FileEntry>;
-  permanentlyDeleteFile(fileId: string): Promise<void>;
+  permanentlyDeleteFile(fileId: string, version: string): Promise<void>;
+  permanentlyDeleteLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void>;
 }
 
 export class ApiClient implements AcademicCloudApi {
@@ -871,6 +873,14 @@ export class ApiClient implements AcademicCloudApi {
     return this.#request<void>(`/api/drive/folders/${encodeURIComponent(folderId)}`, { method: "DELETE" });
   }
 
+  permanentlyDeleteFolder(folderId: string, version: string): Promise<void> {
+    return this.#request<void>(`/api/drive/folders/${encodeURIComponent(folderId)}/permanent`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version }),
+    });
+  }
+
   restoreFolder(folderId: string): Promise<FolderEntry> {
     return this.#action<{ folder: FolderEntry }>(
       `/api/drive/folders/${encodeURIComponent(folderId)}/restore`,
@@ -929,8 +939,23 @@ export class ApiClient implements AcademicCloudApi {
     ).then((response) => response.file);
   }
 
-  permanentlyDeleteFile(fileId: string): Promise<void> {
-    return this.#request<void>(`/api/drive/files/${encodeURIComponent(fileId)}/permanent`, { method: "DELETE" });
+  permanentlyDeleteFile(fileId: string, version: string): Promise<void> {
+    return this.#request<void>(`/api/drive/files/${encodeURIComponent(fileId)}/permanent`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version }),
+    });
+  }
+
+  permanentlyDeleteLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void> {
+    return this.#request<void>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/recycle/${encodeURIComponent(fileId)}/permanent`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version }),
+      },
+    );
   }
 }
 

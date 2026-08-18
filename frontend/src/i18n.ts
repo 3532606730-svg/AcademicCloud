@@ -342,6 +342,8 @@ const EN = {
   "file.downloadOpened": "Download started.",
   "file.permanentDeleted": "File permanently deleted.",
   "file.permanentConfirm": "Permanently delete “{name}”? This removes the stored object and cannot be undone.",
+  "folder.permanentDeleted": "Folder permanently deleted.",
+  "folder.permanentConfirm": "Permanently delete “{name}” and all of its recycled contents? This removes stored objects and cannot be undone.",
   // entry table
   "table.aria": "Catalogue",
   "table.name": "Name",
@@ -410,6 +412,9 @@ const EN = {
   "bulk.recycleConfirm": "Move {count} selected items to the recycle bin? Active contents of selected folders are included.",
   "bulk.completed": "Updated {count} selected items.",
   "bulk.failedAtomic": "No selected item was changed.",
+  "bulk.permanentDelete": "Delete forever",
+  "bulk.permanentConfirm": "Permanently delete the {count} selected recycled account items? This removes stored objects and cannot be undone.",
+  "bulk.permanentCompleted": "Permanently deleted {count} selected items.",
   // shared
   "shared.loadingItems": "Loading items…",
 } as const;
@@ -737,6 +742,8 @@ const ZH_CN: Record<MessageKey, string> = {
   "file.downloadOpened": "已开始下载。",
   "file.permanentDeleted": "文件已永久删除。",
   "file.permanentConfirm": "永久删除“{name}”？这将移除已存储的对象，且无法撤销。",
+  "folder.permanentDeleted": "文件夹已永久删除。",
+  "folder.permanentConfirm": "永久删除“{name}”及其全部已回收内容？这将移除已存储的对象，且无法撤销。",
   "table.aria": "目录",
   "table.name": "名称",
   "table.size": "大小",
@@ -799,6 +806,9 @@ const ZH_CN: Record<MessageKey, string> = {
   "bulk.recycleConfirm": "将所选 {count} 项移入回收站？所选文件夹中的有效内容也会一并移入。",
   "bulk.completed": "已更新所选 {count} 项。",
   "bulk.failedAtomic": "所选项目均未发生更改。",
+  "bulk.permanentDelete": "永久删除",
+  "bulk.permanentConfirm": "永久删除所选 {count} 个账户回收项目？这将移除已存储的对象，且无法撤销。",
+  "bulk.permanentCompleted": "所选 {count} 项已永久删除。",
   "shared.loadingItems": "正在加载项目…",
 };
 

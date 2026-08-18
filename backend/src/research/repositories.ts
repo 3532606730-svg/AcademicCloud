@@ -20,6 +20,7 @@ export interface ScholarlyRepository {
   createArtifact(artifact: NewScholarlyArtifact): ScholarlyArtifact;
   findArtifact(ownerId: string, recordId: string, artifactId: string): ScholarlyArtifact | null;
   findArtifactByStoredFile(ownerId: string, storedFileId: string): ScholarlyArtifact | null;
+  findArtifactByStoredFileForDomain(ownerDomainId: string, storedFileId: string): ScholarlyArtifact | null;
   listArtifacts(ownerId: string, recordId: string, beforeId: string | null, limit: number): ScholarlyArtifact[];
   updateArtifactState(
     ownerId: string,
@@ -31,5 +32,15 @@ export interface ScholarlyRepository {
   ): ScholarlyArtifact | null;
   createVersion(version: NewScholarlyArtifactVersion): ScholarlyArtifactVersion;
   findVersion(ownerId: string, artifactId: string): ScholarlyArtifactVersion | null;
+  findVersionForDomain(ownerDomainId: string, artifactId: string): ScholarlyArtifactVersion | null;
   isFileAttached(ownerId: string, storedFileId: string): boolean;
+  isFileAttachedForDomain(ownerDomainId: string, storedFileId: string): boolean;
+  updateArtifactStateForDomain(
+    ownerDomainId: string,
+    recordId: string,
+    artifactId: string,
+    expectedState: ScholarlyArtifact["attachmentState"],
+    state: ScholarlyArtifact["attachmentState"],
+    updatedAt: Date,
+  ): ScholarlyArtifact | null;
 }

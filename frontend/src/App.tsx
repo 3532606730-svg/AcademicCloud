@@ -942,6 +942,31 @@ function DriveView({
     }
   }
 
+  async function permanentlyDeleteSelectedRecycle(): Promise<void> {
+    if (account.role !== "owner" || selectedEntries.length === 0) return;
+    if (!window.confirm(t("bulk.permanentConfirm", { count: selectedEntries.length }))) return;
+    setBusyId("bulk");
+    setError(null);
+    setNotice("");
+    try {
+      for (const entry of selectedEntries) {
+        if (entry.kind === "folder") {
+          await api.permanentlyDeleteFolder(entry.item.id, entry.item.version);
+        } else {
+          await api.permanentlyDeleteFile(entry.item.id, entry.item.version);
+        }
+      }
+      setSelectedKeys(new Set());
+      setNotice(t("bulk.permanentCompleted", { count: selectedEntries.length }));
+      refresh();
+    } catch (caught: unknown) {
+      setError(caught);
+      refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function goToView(next: DriveViewName) {
     if (next === "recycle" && view !== "recycle") {
       setLoading(true);
@@ -1051,10 +1076,7 @@ function DriveView({
       setError(null);
       setNotice("");
       try {
-        await api.bulkOperation({
-          action: "recycle",
-          items: [toBulkItem({ kind: "folder", item: folder })],
-        });
+        await api.deleteFolder(folder.id);
         setNotice(t("folder.moved"));
         refresh();
       } catch (caught: unknown) {
@@ -1653,6 +1675,7 @@ function DriveView({
                 busy={busyId === "bulk"}
                 onClear={() => setSelectedKeys(new Set())}
                 onRestore={() => void runBulk("restore").catch(() => undefined)}
+                {...(account.role === "owner" ? { onPermanentDelete: () => void permanentlyDeleteSelectedRecycle() } : {})}
               />
             )}
             {recycleLoading ? <LoadingRows /> : recycleCount === 0 && libraryRecycleError === null ? (
@@ -1675,6 +1698,11 @@ function DriveView({
                     <FolderBadge />
                     <div className="entry-primary"><strong>{folder.name}</strong><span>{t("recycle.folderDeleted", { date: formatDate(folder.deletedAt, language) })}</span></div>
                     <button className="button button--small" type="button" aria-label={t("recycle.restoreFolderAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => void runAction(folder.id, t("recycle.folderRestored"), () => api.restoreFolder(folder.id))}>{t("recycle.restore")}</button>
+                    {account.role === "owner" && <button className="button button--small button--danger" type="button" aria-label={t("recycle.deleteForeverAria", { name: folder.name })} disabled={busyId === folder.id} onClick={() => {
+                      if (window.confirm(t("folder.permanentConfirm", { name: folder.name }))) {
+                        void runAction(folder.id, t("folder.permanentDeleted"), () => api.permanentlyDeleteFolder(folder.id, folder.version));
+                      }
+                    }}>{t("recycle.deleteForever")}</button>}
                   </article>
                 ))}
                 {recycle.files.map((file) => (
@@ -1693,15 +1721,16 @@ function DriveView({
                     <FileBadge file={file} />
                     <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t("recycle.fileDeleted", { date: formatDate(file.deletedAt, language) })}</span></div>
                     <button className="button button--small" type="button" aria-label={t("recycle.restoreFileAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => void runAction(file.id, t("file.restored"), () => api.restoreFile(file.id))}>{t("recycle.restore")}</button>
-                    <button className="button button--small button--danger" type="button" aria-label={t("recycle.deleteForeverAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => {
+                    {account.role === "owner" && <button className="button button--small button--danger" type="button" aria-label={t("recycle.deleteForeverAria", { name: file.displayName })} disabled={busyId === file.id} onClick={() => {
                       if (window.confirm(t("file.permanentConfirm", { name: file.displayName }))) {
-                        void runAction(file.id, t("file.permanentDeleted"), () => api.permanentlyDeleteFile(file.id));
+                        void runAction(file.id, t("file.permanentDeleted"), () => api.permanentlyDeleteFile(file.id, file.version));
                       }
-                    }}>{t("recycle.deleteForever")}</button>
+                    }}>{t("recycle.deleteForever")}</button>}
                   </article>
                 ))}
                 {recycleLibrary && libraryRecycle.files.map((entry) => {
-                  const actionId = `library-restore:${entry.file.id}`;
+                  const restoreActionId = `library-restore:${entry.file.id}`;
+                  const deleteActionId = `library-delete:${entry.file.id}`;
                   return (
                     <article
                       className="recycle-card"
@@ -1715,9 +1744,23 @@ function DriveView({
                         className="button button--small"
                         type="button"
                         aria-label={t("recycle.restoreFileAria", { name: entry.file.displayName })}
-                        disabled={busyId === actionId}
+                        disabled={busyId === restoreActionId || busyId === deleteActionId}
                         onClick={() => restoreRecycledLibraryHolding(recycleLibrary, entry)}
                       >{t("recycle.restore")}</button>
+                      {account.role === "owner" && <button
+                        className="button button--small button--danger"
+                        type="button"
+                        aria-label={t("recycle.deleteForeverAria", { name: entry.file.displayName })}
+                        disabled={busyId === restoreActionId || busyId === deleteActionId}
+                        onClick={() => {
+                          if (!window.confirm(t("file.permanentConfirm", { name: entry.file.displayName }))) return;
+                          void runAction(
+                            deleteActionId,
+                            t("file.permanentDeleted"),
+                            () => api.permanentlyDeleteLibraryHolding(recycleLibrary.id, entry.file.id, entry.version),
+                          );
+                        }}
+                      >{t("recycle.deleteForever")}</button>}
                     </article>
                   );
                 })}
@@ -2597,6 +2640,7 @@ function BulkToolbar({
   onMove,
   onRecycle,
   onRestore,
+  onPermanentDelete,
   onFavoriteAdd,
   onFavoriteRemove,
 }: {
@@ -2607,6 +2651,7 @@ function BulkToolbar({
   onMove?: (trigger: HTMLElement) => void;
   onRecycle?: () => void;
   onRestore?: () => void;
+  onPermanentDelete?: () => void;
   onFavoriteAdd?: () => void;
   onFavoriteRemove?: () => void;
 }) {
@@ -2623,6 +2668,7 @@ function BulkToolbar({
         {onFavoriteAdd && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteAdd}>{t("bulk.favoriteAdd")}</button>}
         {onFavoriteRemove && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteRemove}>{t("bulk.favoriteRemove")}</button>}
         {onRestore && <button className="button button--small" type="button" disabled={busy} onClick={onRestore}>{t("bulk.restore")}</button>}
+        {onPermanentDelete && <button className="button button--small button--danger" type="button" disabled={busy} onClick={onPermanentDelete}>{t("bulk.permanentDelete")}</button>}
         {onRecycle && <button className="button button--small button--danger" type="button" disabled={busy} onClick={onRecycle}>{t("bulk.recycle")}</button>}
         <button className="button button--small button--quiet" type="button" disabled={busy} onClick={onClear}>{t("bulk.clear")}</button>
       </div>

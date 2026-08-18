@@ -336,7 +336,7 @@ input:hover { border-color: #a7b2a8; }
   border-radius: 0.45rem;
   cursor: pointer;
 }
-.entry-select-spacer { display: block; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; }
+.entry-select-spacer { display: block; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; margin: -0.55rem -0.45rem -0.55rem -0.65rem; }
 .entry-select { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .entry-select-box { width: 1.05rem; height: 1.05rem; border: 1.5px solid #8a958c; border-radius: 0.22rem; background: var(--paper); }
 .entry-select:checked + .entry-select-box { border-color: var(--forest); background: var(--forest); box-shadow: inset 0 0 0 3px var(--paper); }

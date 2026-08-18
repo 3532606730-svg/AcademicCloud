@@ -7,6 +7,8 @@ import type {
   NewLibrary,
   NewLibraryMembership,
 } from "./library.js";
+import type { StoredFileState } from "../drive/file.js";
+import type { ScholarlyAttachmentState } from "../research/record.js";
 
 export interface LibraryRepository {
   create(library: NewLibrary): Library;
@@ -22,4 +24,14 @@ export interface LibraryRepository {
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null;
   listRecycledHoldings(libraryId: string): LibraryRecycledHolding[];
   findRecycledHoldingByFile(libraryId: string, fileId: string): LibraryRecycledHolding | null;
+  verifyRecycledHoldingExclusive(
+    libraryId: string,
+    groupId: string,
+    recordId: string,
+    artifactId: string,
+    versionId: string,
+    fileId: string,
+    fileState: Extract<StoredFileState, "deleted" | "purging">,
+    attachmentState: ScholarlyAttachmentState,
+  ): boolean;
 }

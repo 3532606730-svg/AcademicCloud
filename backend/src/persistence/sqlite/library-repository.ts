@@ -8,6 +8,8 @@ import type {
   NewLibrary,
   NewLibraryMembership,
 } from "../../library/library.js";
+import type { StoredFileState } from "../../drive/file.js";
+import type { ScholarlyAttachmentState } from "../../research/record.js";
 import type { SqliteDatabase } from "./database.js";
 import { fromDatabaseTimestamp, toDatabaseTimestamp } from "./records.js";
 
@@ -215,6 +217,7 @@ export class SqliteLibraryRepository implements LibraryRepository {
   readonly #findHoldingByFile;
   readonly #listRecycledHoldings;
   readonly #findRecycledHoldingByFile;
+  readonly #verifyRecycledHoldingExclusive;
 
   constructor(database: SqliteDatabase) {
     this.#createDomain = database.prepare<{ domainId: string; createdAt: string }>(`
@@ -357,6 +360,118 @@ export class SqliteLibraryRepository implements LibraryRepository {
       ${recycledHoldingJoins}
       WHERE libraries.id = ? AND files.id = ?
     `);
+    this.#verifyRecycledHoldingExclusive = database.prepare<{
+      libraryId: string;
+      groupId: string;
+      recordId: string;
+      artifactId: string;
+      versionId: string;
+      fileId: string;
+      fileState: Extract<StoredFileState, "deleted" | "purging">;
+      attachmentState: ScholarlyAttachmentState;
+    }, { exclusive: number }>(`
+      SELECT CASE WHEN
+        EXISTS (
+          SELECT 1
+          FROM libraries
+          JOIN files
+            ON files.owner_domain_id = libraries.owner_domain_id
+           AND files.id = @fileId
+           AND files.state = @fileState
+          JOIN recycle_groups
+            ON recycle_groups.id = files.recycle_group_id
+           AND recycle_groups.owner_domain_id = files.owner_domain_id
+           AND recycle_groups.root_kind = 'file'
+           AND recycle_groups.root_id = files.id
+          WHERE libraries.id = @libraryId
+            AND recycle_groups.id = @groupId
+            AND recycle_groups.folder_count = 0
+            AND recycle_groups.file_count = 1
+        )
+        AND (
+          SELECT COUNT(*) FROM scholarly_records
+          WHERE id = @recordId
+            AND owner_domain_id = (SELECT owner_domain_id FROM libraries WHERE id = @libraryId)
+        ) = 1
+        AND (
+          SELECT COUNT(*) FROM scholarly_artifacts
+          WHERE id = @artifactId
+            AND record_id = @recordId
+            AND owner_domain_id = (SELECT owner_domain_id FROM libraries WHERE id = @libraryId)
+            AND attachment_state = @attachmentState
+        ) = 1
+        AND (
+          SELECT COUNT(*) FROM scholarly_artifacts
+          WHERE record_id = @recordId
+            AND owner_domain_id = (SELECT owner_domain_id FROM libraries WHERE id = @libraryId)
+        ) = 1
+        AND (
+          SELECT COUNT(*) FROM scholarly_artifact_versions
+          WHERE id = @versionId
+            AND artifact_id = @artifactId
+            AND stored_file_id = @fileId
+            AND owner_domain_id = (SELECT owner_domain_id FROM libraries WHERE id = @libraryId)
+        ) = 1
+        AND (
+          SELECT COUNT(*) FROM scholarly_artifact_versions
+          WHERE artifact_id = @artifactId
+            AND owner_domain_id = (SELECT owner_domain_id FROM libraries WHERE id = @libraryId)
+        ) = 1
+        AND (
+          SELECT COUNT(*) FROM scholarly_artifact_versions
+          WHERE stored_file_id = @fileId
+        ) = 1
+        AND (
+          SELECT COUNT(*) FROM files AS same_object
+          WHERE same_object.storage_provider = (SELECT storage_provider FROM files WHERE id = @fileId)
+            AND same_object.object_key = (SELECT object_key FROM files WHERE id = @fileId)
+        ) = 1
+        AND NOT EXISTS (
+          SELECT 1
+          FROM library_ownership_promotions
+          WHERE (record_id = @recordId OR artifact_id = @artifactId OR version_id = @versionId OR file_id = @fileId)
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM library_contributions
+          WHERE artifact_id = @artifactId
+            AND (
+              state = 'submitted'
+              OR (state = 'approved' AND library_id <> @libraryId)
+            )
+        )
+        AND (
+          SELECT COUNT(*)
+          FROM library_contributions
+          WHERE artifact_id = @artifactId
+            AND library_id = @libraryId
+            AND state = 'approved'
+        ) <= 1
+        AND (
+          (
+            SELECT COUNT(*)
+            FROM canonical_library_record_transitions
+            JOIN libraries ON libraries.id = canonical_library_record_transitions.library_id
+            WHERE canonical_library_record_transitions.record_id = @recordId
+              AND canonical_library_record_transitions.library_id = @libraryId
+              AND libraries.owner_domain_id = (SELECT owner_domain_id FROM libraries WHERE id = @libraryId)
+          ) = 1
+          OR (
+            SELECT COUNT(*)
+            FROM library_contributions
+            WHERE library_contributions.library_id = @libraryId
+              AND library_contributions.artifact_id = @artifactId
+              AND library_contributions.state = 'approved'
+          ) = 1
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM canonical_library_record_transitions AS other_transition
+          WHERE other_transition.record_id = @recordId
+            AND other_transition.library_id <> @libraryId
+        )
+      THEN 1 ELSE 0 END AS exclusive
+    `);
   }
 
   create(library: NewLibrary): Library {
@@ -447,5 +562,27 @@ export class SqliteLibraryRepository implements LibraryRepository {
   findRecycledHoldingByFile(libraryId: string, fileId: string): LibraryRecycledHolding | null {
     const row = this.#findRecycledHoldingByFile.get(libraryId, fileId);
     return row ? toRecycledHolding(row) : null;
+  }
+
+  verifyRecycledHoldingExclusive(
+    libraryId: string,
+    groupId: string,
+    recordId: string,
+    artifactId: string,
+    versionId: string,
+    fileId: string,
+    fileState: Extract<StoredFileState, "deleted" | "purging">,
+    attachmentState: ScholarlyAttachmentState,
+  ): boolean {
+    return this.#verifyRecycledHoldingExclusive.get({
+      libraryId,
+      groupId,
+      recordId,
+      artifactId,
+      versionId,
+      fileId,
+      fileState,
+      attachmentState,
+    })?.exclusive === 1;
   }
 }

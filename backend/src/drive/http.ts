@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
+import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js";
 
 import { DriveError, type DriveService } from "./drive-service.js";
 import type { StoredFile } from "./file.js";
@@ -40,6 +41,10 @@ interface FilePatchBody {
   folderId?: string | null;
 }
 
+interface PermanentDeleteBody {
+  version: string;
+}
+
 interface UploadBody {
   folderId?: string | null;
   displayName: string;
@@ -70,6 +75,16 @@ function requireOwnerId(account: { id: string } | null): string {
   }
 
   return account.id;
+}
+
+function requireGlobalOwner(account: AuthenticatedAccount | null): AuthenticatedAccount {
+  if (!account) throw new DriveError("not_found");
+  try {
+    return requireOwner(account);
+  } catch (error: unknown) {
+    if (error instanceof AuthorizationDeniedError) throw new DriveError("not_found", { cause: error });
+    throw error;
+  }
 }
 
 async function requireJson(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -457,6 +472,38 @@ export async function registerDriveHttp(
     },
   );
 
+  app.delete<{ Params: IdParams; Body: PermanentDeleteBody }>(
+    "/api/drive/folders/:folderId/permanent",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      schema: {
+        params: { type: "object", required: ["folderId"], properties: { folderId: idSchema } },
+        querystring: { type: "object", additionalProperties: false, properties: {} },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version"],
+          properties: { version: versionSchema },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const actor = requireGlobalOwner(request.authAccount);
+        await driveService.permanentlyDeleteFolder(
+          actor.id,
+          request.params.folderId,
+          request.body.version,
+        );
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        recordDriveAttempt(request, driveService, "drive.file_purge_request", error);
+        return sendDriveError(reply, error);
+      }
+    },
+  );
+
   app.post<{ Params: FileIdParams }>(
     "/api/drive/files/:fileId/restore",
     { preHandler: app.authenticate, schema: { params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } } } },
@@ -532,12 +579,30 @@ export async function registerDriveHttp(
     },
   );
 
-  app.delete<{ Params: FileIdParams }>(
+  app.delete<{ Params: FileIdParams; Body: PermanentDeleteBody }>(
     "/api/drive/files/:fileId/permanent",
-    { preHandler: app.authenticate, schema: { params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } } } },
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      schema: {
+        params: { type: "object", required: ["fileId"], properties: { fileId: idSchema } },
+        querystring: { type: "object", additionalProperties: false, properties: {} },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version"],
+          properties: { version: versionSchema },
+        },
+      },
+    },
     async (request, reply) => {
       try {
-        await driveService.permanentlyDeleteFile(requireOwnerId(request.authAccount), request.params.fileId);
+        const actor = requireGlobalOwner(request.authAccount);
+        const current = driveService.listRecycle(actor.id).files.find((file) => file.id === request.params.fileId);
+        if (!current || driveEntryVersion(current) !== request.body.version) {
+          throw new DriveError(current ? "concurrent_change" : "not_found");
+        }
+        await driveService.permanentlyDeleteFile(actor.id, request.params.fileId);
         return reply.code(204).send();
       } catch (error: unknown) {
         const action = error instanceof DriveError && ["storage_unavailable", "upload_metadata_mismatch"].includes(error.code)

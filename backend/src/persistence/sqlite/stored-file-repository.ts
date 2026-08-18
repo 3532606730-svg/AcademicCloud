@@ -75,6 +75,7 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
   readonly #listFolderByState;
   readonly #listDeleted;
   readonly #update;
+  readonly #updateForDomain;
   readonly #deletePending;
   readonly #listStale;
 
@@ -166,6 +167,17 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
       WHERE owner_domain_id = (
         SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = @ownerId
       ) AND id = @id
+        AND state = @expectedState AND revision = @expectedRevision
+    `);
+    this.#updateForDomain = database.prepare<StoredFileParameters>(`
+      UPDATE files SET
+        folder_id = @folderId, display_name = @displayName,
+        media_type = @mediaType, size_bytes = @sizeBytes,
+        checksum_algorithm = @checksumAlgorithm, checksum = @checksum,
+        state = @state, revision = revision + 1,
+        updated_at = @updatedAt, activated_at = @activatedAt,
+        deleted_at = @deletedAt, purged_at = @purgedAt
+      WHERE owner_domain_id = @ownerId AND id = @id
         AND state = @expectedState AND revision = @expectedRevision
     `);
     this.#deletePending = database.prepare<[string, string, number]>(`
@@ -262,6 +274,35 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
       expectedRevision,
     });
     return result.changes === 1 ? this.findById(file.ownerId, file.id) : null;
+  }
+
+  updateForDomain(
+    file: StoredFile,
+    expectedState: StoredFileState,
+    expectedRevision: number,
+  ): StoredFile | null {
+    const result = this.#updateForDomain.run({
+      id: file.id,
+      ownerId: file.ownerId,
+      folderId: file.folderId,
+      displayName: file.displayName,
+      storageProvider: file.storageProvider,
+      objectKey: file.objectKey,
+      mediaType: file.mediaType,
+      sizeBytes: file.sizeBytes,
+      checksumAlgorithm: file.checksumAlgorithm,
+      checksum: file.checksum,
+      state: file.state,
+      revision: file.revision,
+      createdAt: toDatabaseTimestamp(file.createdAt)!,
+      updatedAt: toDatabaseTimestamp(file.updatedAt)!,
+      activatedAt: toDatabaseTimestamp(file.activatedAt),
+      deletedAt: toDatabaseTimestamp(file.deletedAt),
+      purgedAt: toDatabaseTimestamp(file.purgedAt),
+      expectedState,
+      expectedRevision,
+    });
+    return result.changes === 1 ? this.findByDomainId(file.ownerId, file.id) : null;
   }
 
   deletePending(ownerId: string, id: string, expectedRevision: number): boolean {

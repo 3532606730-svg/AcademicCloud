@@ -45,6 +45,7 @@ export class SqliteFolderRepository implements FolderRepository {
   readonly #listChildByState;
   readonly #listDeleted;
   readonly #update;
+  readonly #deleteDeleted;
 
   constructor(database: SqliteDatabase) {
     this.#insert = database.prepare<FolderParameters>(`
@@ -109,6 +110,12 @@ export class SqliteFolderRepository implements FolderRepository {
         SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = @ownerId
       ) AND id = @id
     `);
+    this.#deleteDeleted = database.prepare<[string, string, string]>(`
+      DELETE FROM folders
+      WHERE owner_domain_id = (
+        SELECT id FROM ownership_domains WHERE kind = 'account' AND account_id = ?
+      ) AND id = ? AND state = 'deleted' AND recycle_group_id = ?
+    `);
   }
 
   create(folder: NewFolder): Folder {
@@ -157,5 +164,9 @@ export class SqliteFolderRepository implements FolderRepository {
       throw new Error("folder update target was not found");
     }
     return this.findById(folder.ownerId, folder.id)!;
+  }
+
+  deleteDeleted(ownerId: string, folderId: string, groupId: string): boolean {
+    return this.#deleteDeleted.run(ownerId, folderId, groupId).changes === 1;
   }
 }
