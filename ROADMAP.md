@@ -39,6 +39,8 @@ RF-SHAREDDEFAULT01
 → L2-CREDENTIALRESET01
 → L1-UX05
 → PROD-06A
+→ RF-META01
+→ PROD-07A
 → STOP for Owner review
 ```
 
@@ -48,7 +50,7 @@ Completed outcomes include:
 - preserved stable IDs, object keys/bytes, checksums, provenance, lineage and private Favorites/overlay state;
 - Owner-assisted digest-only one-time credential reset and retired self-service password route/UI;
 - canonical shell/admin hierarchy and stale-state recycle safety;
-- production release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017.
+- production release `2322169bc33415734d025010c465900c7fbc6bd9` at schema v18/history 001–018, with the inseparable rollback pair recorded by `PROD-07A`.
 
 ## Catalogue and Bibliographic Usability Round
 
@@ -61,12 +63,13 @@ The durable round sequence for the current Owner continuation is:
 ```text
 L1-UX06   ← COMPLETE
 → RF-META01   ← COMPLETE
+→ PROD-07A   ← COMPLETE
 → STOP for Owner/ChatGPT review   ← REACHED
 
 Preserved later cards: RF-METASUGGEST01 → RF-SEARCH01
 ```
 
-The Owner-authorized RF-META01 continuation is complete. RF-METASUGGEST01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized.
+The Owner-authorized RF-META01 continuation and separately authorized PROD-07A release are complete. RF-METASUGGEST01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized; migration 019 was not deployed.
 
 ### L1-UX06 — Canonical Catalogue Presentation Repair — Complete
 
@@ -174,7 +177,7 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 ## Layer 1 — Core Resource Handling
 
-**Status:** Foundation, L1-UX06, and RF-META01 are complete; STOP is in force after the RF-META01 checkpoint.
+**Status:** Foundation, L1-UX06, RF-META01, and its separately authorized PROD-07A release are complete; STOP is in force.
 
 Completed foundations include SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, Favorites, bulk operations, recursive recycle/restore, duplicate-name UX, upload recovery, mobile/fullscreen Preview, sticky navigation, shared-corpus authority and first-use shell repair.
 
@@ -193,7 +196,7 @@ Later optional backlog includes one-time external sharing if separately reopened
 
 ## Layer 3 — Scholarly Workspace and Model
 
-**Status:** L1-UX06 and canonical metadata RF-META01 are complete. Suggestion/search and the remaining personal-workspace cards are preserved but not active.
+**Status:** L1-UX06 and canonical metadata RF-META01 are complete and RF-META01 is deployed through PROD-07A. Suggestion/search and the remaining personal-workspace cards are preserved but not active.
 
 Stable Scholarly Record / Artifact / Artifact Version identities already exist.
 
@@ -265,14 +268,23 @@ Verification is proportionate, not performative. Run checks that materially cove
 
 ## Production Track
 
-Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 from completed `PROD-06A`.
+Production runs exact release `2322169bc33415734d025010c465900c7fbc6bd9` at schema v18/history 001–018 from completed `PROD-07A`.
+
+PROD-07A evidence:
+- previous release `855b63c49f12f3375972774e7bc7385088b0495e`;
+- migration 018 applied exactly once; rollback was not used;
+- integrity `ok`, foreign-key violations zero, health/readiness green, API loopback-only, and autostart policy unchanged;
+- corrected Linux x64 / Node 24 archive SHA-256 `fca93a9ce844b713d73a26d146655ecd9689555b7ddf94d18b8a3d6202ebdc17` and manifest SHA-256 `d6ec107a038fec7b53e6fcc2ebc0a7902d1991be252180a23fc9a0db407ea287`;
+- fresh schema-v17 rollback backup `academiccloud-pre-prod07a-20260818T135032Z.sqlite` SHA-256 `b7abaa36355c40c88ab539b2a59e32c20f130539146246c33bd66a6b21579911`, with private off-host backup commit `7c29aa6a9bc9171db5c235e427a580118220a6e0`.
 
 Current rollback pair:
-- previous release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e`;
-- schema-v15 backup `academiccloud-pre-prod06a-20260818T073533Z.sqlite`, SHA-256 `cdc2aec14888d04172bce4555dd6d17f10b5fb7c45efa9c7133070ce4f5bf7c4`;
-- encrypted off-host evidence in private backup commit `9c8f4503e48e55ea7b65aebe35dd242e878c95e8`.
+- previous release `855b63c49f12f3375972774e7bc7385088b0495e`;
+- schema-v17 backup `academiccloud-pre-prod07a-20260818T135032Z.sqlite`, SHA-256 `b7abaa36355c40c88ab539b2a59e32c20f130539146246c33bd66a6b21579911`;
+- receipt SHA-256 `95ed7830d2dbb565c1b5222191bec63d920ba44635bf118e421c45e99a8092e8`;
+- age ciphertext SHA-256 `1fc7de13aa27f64f42d5fb7625486b700c17312526d3949ce164549a2b74296f`;
+- encrypted off-host evidence in private backup commit `7c29aa6a9bc9171db5c235e427a580118220a6e0`.
 
-The consumed PROD-06A window leaves no continuing authority for production mutation. Any later release remains separately Owner-gated.
+The consumed PROD-07A window leaves no continuing authority for production mutation. Any later release remains separately Owner-gated.
 
 `PROD-03C2` permanent-delete confirmation remains separately parked.
 

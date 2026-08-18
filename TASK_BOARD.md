@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The RF-META01-only continuation has reached STOP. Production remained closed and exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017.**
+**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The separately authorized `PROD-07A` production release is complete: production now runs exact release `2322169bc33415734d025010c465900c7fbc6bd9` at schema v18/history 001–018. The bounded continuation has reached STOP.**
 
 The canonical shared-corpus authority, catalogue presentation/lifecycle repair, and canonical scholarly metadata destination are green: root `资料库` uses one established catalogue table, prefers canonical title with accepted-filename fallback, exposes ordinary `资料详情`, and retains the manager-only Library-domain recycle → Recycle list → CAS restore lifecycle without widening Member authority or exposing Library permanent delete.
 
@@ -13,6 +13,12 @@ Verification remains proportionate: changed-risk tests and focused independent r
 ## Doing
 
 None. The authorized objective is exhausted at STOP.
+
+## Completed
+
+| Task | Task card | Bounded result |
+|---|---|---|
+| PROD-07A | `tasks/done/PROD-07A.md` | Exact RF-META01 release deployed with migration 018, fresh verified rollback backup, and green focused production acceptance |
 
 ## Parked — Preserved, Not Authorized
 
@@ -30,7 +36,7 @@ L1-UX06   ← DONE
 → STOP   ← REACHED
 ```
 
-RF-METASUGGEST01 and RF-SEARCH01 remain durable future scope and are not authorized. Completing RF-META01 did not authorize production deployment.
+RF-METASUGGEST01 and RF-SEARCH01 remain durable future scope and are not authorized for production. PROD-07A was a separate explicit Owner deployment window and did not include migration 019 or suggestion code.
 
 ## Bibliographic Suggestion Contract — Later in This Round
 
@@ -81,18 +87,25 @@ Starting any parked card requires a new Owner decision after this four-card revi
 
 ## Production State and Gate
 
-Production is exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. `PROD-05A` and `PROD-06A` are closed and must not be rerun.
+Production is exact release `2322169bc33415734d025010c465900c7fbc6bd9` at schema v18/history 001–018. `PROD-05A`, `PROD-06A`, and `PROD-07A` are closed and must not be rerun.
+
+PROD-07A release evidence:
+- previous release `855b63c49f12f3375972774e7bc7385088b0495e`;
+- migration 018 applied exactly once; rollback was not used;
+- integrity `ok`, foreign-key violations zero, health/readiness green, loopback-only API, and autostart policy unchanged;
+- corrected Linux x64 / Node 24 archive SHA-256 `fca93a9ce844b713d73a26d146655ecd9689555b7ddf94d18b8a3d6202ebdc17` and manifest SHA-256 `d6ec107a038fec7b53e6fcc2ebc0a7902d1991be252180a23fc9a0db407ea287`.
 
 Current rollback pair:
-- release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e`;
-- schema-v15 backup `academiccloud-pre-prod06a-20260818T073533Z.sqlite`, SHA-256 `cdc2aec14888d04172bce4555dd6d17f10b5fb7c45efa9c7133070ce4f5bf7c4`;
-- age ciphertext SHA-256 `8349ef5e90e72ff763d7730aadd98df56600e091f431a2c07d2b5a432eda8bf6`, verified off-host at private backup commit `9c8f4503e48e55ea7b65aebe35dd242e878c95e8`.
+- release `855b63c49f12f3375972774e7bc7385088b0495e`;
+- schema-v17 backup `academiccloud-pre-prod07a-20260818T135032Z.sqlite`, SHA-256 `b7abaa36355c40c88ab539b2a59e32c20f130539146246c33bd66a6b21579911`;
+- receipt SHA-256 `95ed7830d2dbb565c1b5222191bec63d920ba44635bf118e421c45e99a8092e8`;
+- age ciphertext SHA-256 `1fc7de13aa27f64f42d5fb7625486b700c17312526d3949ce164549a2b74296f`, verified off-host at private backup commit `7c29aa6a9bc9171db5c235e427a580118220a6e0`.
 
 No continuing authority exists for production mutation, visible test-data cleanup/permanent deletion, `PROD-03C2`, infrastructure changes, main merge, OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, or AI extraction.
 
 ## Completed Milestones Relevant to This Round
 
-RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, RF-META01, PROD-05A and PROD-06A are completed baselines. Final RF-META01 record: `tasks/done/RF-META01.md`.
+RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, RF-META01, PROD-05A, PROD-06A, and PROD-07A are completed baselines. Final records: `tasks/done/RF-META01.md` and `tasks/done/PROD-07A.md`.
 
 ## Separate Parked Production Work
 
