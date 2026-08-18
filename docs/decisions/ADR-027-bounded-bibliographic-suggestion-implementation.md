@@ -1,7 +1,7 @@
 # ADR-027 — Bounded Bibliographic Suggestion Implementation
 
 **Date:** 2026-08-18
-**Status:** Accepted through the RF-METASUGGEST01 Owner checkpoint
+**Status:** Accepted through the RF-METASUGGEST01 Owner checkpoint; amended for the authorized RF-FRONTMATTEROCR01 development checkpoint
 
 ## Context
 
@@ -68,16 +68,78 @@ Accepted metadata preserves the file ID, accepted filename, OSS object key and
 bytes, checksum, uploader/contributor provenance, Record/Artifact/Version
 lineage, Favorites, and all private research overlay state.
 
-## Current authorization boundary
+## RF-METASUGGEST01 checkpoint boundary (historical)
 
-For this Owner checkpoint, RF-METASUGGEST01 is the only authorized Epic and the
-repository stops afterward. RF-SEARCH01, OCR/text extraction, indexing,
+For the 2026-08-18 Owner checkpoint, RF-METASUGGEST01 was the only authorized
+Epic and the repository stopped afterward. At that checkpoint RF-SEARCH01,
+OCR/text extraction, indexing,
 embeddings, retrieval/RAG, external catalogue/ISBN lookup, AI/LLM extraction,
-production contact/deployment, and destructive real-data operations remain
-parked or prohibited pending a new Owner decision.
+production contact/deployment, and destructive real-data operations remained
+parked or prohibited pending a new Owner decision. The amendment below records
+the later, narrowly bounded OCR authorization without rewriting that history.
 
 ## Consequences
 
 The implementation remains small and replaceable: a later authorized OCR
 adapter may supply bounded page text to the same extraction contract, but no
 OCR execution or whole-document processing is implied by this decision.
+
+## RF-FRONTMATTEROCR01 amendment — 2026-08-19
+
+The Owner subsequently authorized bounded local front-matter OCR as a fallback
+inside this same suggestion pipeline. The original RF-METASUGGEST01 checkpoint
+remains historically text-layer-only; this amendment applies prospectively.
+
+### Local adapter and native-text preference
+
+- Every selected page first uses the existing PDF.js text path. A page with
+  usable native letters is never rendered or OCRed. Only a selected page with
+  unusable native text may be rendered, sequentially, and passed to OCR.
+- The provider-neutral adapter invokes an ephemeral local Tesseract CLI through
+  argument-safe child-process APIs. The pinned deployment contract is
+  Tesseract `5.5.3` plus `tessdata_fast` `4.1.0` models `chi_sim`, `chi_tra`, and
+  `eng`; the adapter verifies the exact engine version and required installed
+  language identifiers before recognition. The later deployment gate must
+  verify the pinned trained-data package/checksums because Tesseract's runtime
+  language list does not identify a model-file release. `@napi-rs/canvas`
+  `1.0.7` is an exact Node
+  dependency used only for bounded PDF.js rendering.
+- PDF/page bytes go to Tesseract over process standard input and TSV confidence
+  returns over standard output. No temp raster file, runtime model download,
+  network/cloud OCR, resident service, worker daemon, upload/approval hook, or
+  background queue exists. A later production gate must install the exact
+  local binary/model prerequisites; this development checkpoint does not touch
+  production and fails closed when they are absent or mismatched.
+
+### Resource and trust bounds
+
+- The existing 32 MiB object and exact deduplicated first-15/last-5 page limits
+  remain. Rendering uses scale `1.5` and rejects a page before allocation above
+  2,000 × 2,800 pixels, 5,600,000 pixels, 22,400,000 RGBA bytes, or an 8 MiB
+  encoded PNG.
+- OCR is sequential: at most one page OCR job and one OCR-bearing request are
+  active per web process. Each page has a five-second OCR budget and the total
+  request has a 25-second budget. Caller cancellation kills the local child.
+  OCR TSV output is capped at 2 MiB, decoded page text at 16,384 characters,
+  and total decoded OCR text at 65,536 characters.
+- A scored result below confidence 55, empty text, or text dominated by scripts
+  outside Han/Latin is unusable evidence. Even usable OCR can only yield a
+  review candidate: OCR evidence caps an otherwise high bibliographic
+  confidence at medium, and no OCR-specific field-precedence tier outranks the
+  established page/source rules.
+
+### Immutable provenance and migration 020
+
+Migration 019 has no truthful field for native-versus-OCR origin, engine
+identity, or OCR confidence. Append-only migration 020 therefore adds exactly
+`evidence_origin`, `ocr_engine`, and `ocr_confidence` to retained candidates.
+Existing rows receive a truthful `legacy_v1` storage marker and remain
+reconstructable from their already explicit page/source types; public reads
+normalize those historical rows to native text, embedded PDF metadata, or
+filename. New candidates cannot use the legacy marker, and OCR provenance
+requires a page, bounded engine identity, and integer 0–100 confidence.
+
+Raw page text, rendered images, PDF bytes, object keys, and whole-document
+derived text remain absent from persistence. Generation revalidates active
+manager authority and exact Library domain/source identity after inspection,
+and acceptance still uses the unchanged RF-META01 CAS boundary.

@@ -1,5 +1,8 @@
+import { createCanvas } from "@napi-rs/canvas";
+import type { PDFPageProxy } from "pdfjs-dist";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
+import { OcrError, TesseractCliOcrAdapter, type OcrAdapter } from "./ocr.js";
 import {
   SUGGESTION_LIMITS,
   SUGGESTION_WINDOW,
@@ -7,27 +10,33 @@ import {
   type PdfEmbeddedMetadata,
   type PdfTextInspection,
   type PdfTextPage,
+  type SuggestionLimits,
 } from "./suggestion.js";
 
-/**
- * Errors deliberately carry a small, non-sensitive code.  The suggestion
- * service can turn these into an internal `unsupported`/`ocr_deferred` state
- * without exposing parser diagnostics or PDF contents to a caller.
- */
+export type PdfTextInspectionErrorCode =
+  | "too_large"
+  | "timeout"
+  | "aborted"
+  | "invalid_pdf"
+  | "encrypted_pdf"
+  | "limit_exceeded"
+  | "render_failure"
+  | "ocr_engine_unavailable"
+  | "ocr_engine_failure"
+  | "ocr_language_unavailable"
+  | "ocr_timeout"
+  | "ocr_capacity";
+
+/** Errors expose only a small, non-sensitive code. */
 export class PdfTextInspectionError extends Error {
-  constructor(
-    readonly code: "too_large" | "timeout" | "aborted" | "invalid_pdf" | "encrypted_pdf" | "limit_exceeded",
-    message = code,
-  ) {
-    super(message);
+  constructor(readonly code: PdfTextInspectionErrorCode) {
+    super(code);
     this.name = "PdfTextInspectionError";
   }
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new PdfTextInspectionError("aborted");
-  }
+  if (signal?.aborted) throw new PdfTextInspectionError("aborted");
 }
 
 function remainingBudget(deadline: number): number {
@@ -36,22 +45,20 @@ function remainingBudget(deadline: number): number {
   return remaining;
 }
 
+function operationBudget(deadline: number, maximum: number): number {
+  return Math.max(1, Math.min(remainingBudget(deadline), maximum));
+}
+
 function asBoundedText(value: unknown, limit: number): string {
   if (typeof value !== "string") return "";
-  // PDF.js may return malformed strings containing NUL/control characters.
-  // Keep line boundaries, remove other controls, normalize Unicode, and cap
-  // before any downstream parser sees the value.
   return value
     .normalize("NFC")
     .replace(/\r\n?/g, "\n")
-    // C0, C1, and DEL controls are not valid RF-META01 plain text.  Strip
-    // them before limits/evidence extraction so malformed PDF strings cannot
-    // survive into a persisted suggestion or UI excerpt.
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u0080-\u009f]/g, "")
     .slice(0, limit);
 }
 
-function normaliseEmbedded(info: unknown, limits: typeof SUGGESTION_LIMITS): PdfEmbeddedMetadata {
+function normaliseEmbedded(info: unknown, limits: Readonly<SuggestionLimits>): PdfEmbeddedMetadata {
   if (typeof info !== "object" || info === null) return {};
   const record = info as Record<string, unknown>;
   const values: PdfEmbeddedMetadata = {};
@@ -71,31 +78,23 @@ function normaliseEmbedded(info: unknown, limits: typeof SUGGESTION_LIMITS): Pdf
   return values;
 }
 
-function selectedPageIndices(pageCount: number, limits: typeof SUGGESTION_LIMITS): number[] {
+export function selectedPageIndices(pageCount: number, limits: Readonly<SuggestionLimits> = SUGGESTION_LIMITS): number[] {
   const first = Math.min(SUGGESTION_WINDOW.firstPages, pageCount);
   const lastStart = Math.max(1, pageCount - SUGGESTION_WINDOW.lastPages + 1);
   const selected = new Set<number>();
   for (let index = 1; index <= first; index += 1) selected.add(index);
   for (let index = lastStart; index <= pageCount; index += 1) selected.add(index);
-  const result = [...selected].sort((a, b) => a - b);
-  if (result.length > limits.maxPages) {
-    throw new PdfTextInspectionError("limit_exceeded");
-  }
+  const result = [...selected].sort((left, right) => left - right);
+  if (result.length > limits.maxPages) throw new PdfTextInspectionError("limit_exceeded");
   return result;
 }
 
-function hasUsableText(pages: readonly PdfTextPage[]): boolean {
-  return pages.some((page) => {
-    const compact = page.text.replace(/\s+/gu, "");
-    return compact.length >= 2 && /[\p{L}]/u.test(compact);
-  });
+export function isUsableNativeText(text: string): boolean {
+  const compact = text.replace(/\s+/gu, "");
+  return compact.length >= 2 && /[\p{L}]/u.test(compact);
 }
 
-async function withTimeout<T>(
-  operation: Promise<T>,
-  timeoutMilliseconds: number,
-  signal?: AbortSignal,
-): Promise<T> {
+async function withTimeout<T>(operation: Promise<T>, timeoutMilliseconds: number, signal?: AbortSignal): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let abortHandler: (() => void) | undefined;
   const abortPromise = new Promise<never>((_, reject) => {
@@ -114,31 +113,173 @@ async function withTimeout<T>(
   }
 }
 
-/**
- * Local, text-layer-only PDF inspector. It never renders a page and therefore
- * cannot perform OCR. The caller must supply an already bounded byte buffer;
- * this second check prevents accidental unbounded use by future callers.
- */
-export async function inspectPdfText(
-  bytes: Uint8Array,
-  limits: typeof SUGGESTION_LIMITS = SUGGESTION_LIMITS,
+async function readBoundedPageText(
+  page: PDFPageProxy,
+  maximumCharacters: number,
+  deadline: number,
+  operationTimeoutMilliseconds: number,
   signal?: AbortSignal,
-): Promise<PdfTextInspection> {
-  throwIfAborted(signal);
-  if (bytes.byteLength > limits.maxObjectBytes) {
-    throw new PdfTextInspectionError("too_large");
+): Promise<string> {
+  const stream = page.streamTextContent({ disableNormalization: false });
+  const reader = stream.getReader();
+  let result = "";
+  let closed = false;
+  try {
+    while (result.length < maximumCharacters) {
+      throwIfAborted(signal);
+      const chunk = await withTimeout(
+        reader.read(),
+        operationBudget(deadline, operationTimeoutMilliseconds),
+        signal,
+      );
+      if (chunk.done) {
+        closed = true;
+        break;
+      }
+      for (const item of chunk.value.items) {
+        if (!("str" in item) || typeof item.str !== "string" || item.str.length === 0) continue;
+        const separator = result.length === 0 ? "" : "\n";
+        const remaining = maximumCharacters - result.length - separator.length;
+        if (remaining <= 0) break;
+        const text = asBoundedText(item.str, remaining);
+        if (text.length > 0) result += separator + text;
+      }
+    }
+    if (result.length >= maximumCharacters) {
+      await reader.cancel();
+      closed = true;
+    }
+    return result;
+  } finally {
+    try {
+      if (!closed) {
+        try {
+          await reader.cancel();
+        } catch {
+          // Preserve the bounded parser/cancellation failure that led here.
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
+}
+
+class OcrRequestGate {
+  #active = 0;
+
+  tryAcquire(maximum: number): (() => void) | null {
+    if (this.#active >= maximum) return null;
+    this.#active += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.#active -= 1;
+    };
+  }
+}
+
+const DEFAULT_OCR_REQUEST_GATE = new OcrRequestGate();
+
+function mapOcrError(error: OcrError): PdfTextInspectionError {
+  switch (error.code) {
+    case "aborted": return new PdfTextInspectionError("aborted");
+    case "timeout": return new PdfTextInspectionError("ocr_timeout");
+    case "engine_unavailable":
+    case "engine_version_mismatch": return new PdfTextInspectionError("ocr_engine_unavailable");
+    case "language_data_unavailable": return new PdfTextInspectionError("ocr_language_unavailable");
+    case "input_limit":
+    case "output_limit": return new PdfTextInspectionError("limit_exceeded");
+    case "engine_failure": return new PdfTextInspectionError("ocr_engine_failure");
+  }
+}
+
+async function recognizeWithDeadline(options: {
+  ocr: OcrAdapter;
+  imageBytes: Uint8Array;
+  pageIndex: number;
+  deadline: number;
+  limits: Readonly<SuggestionLimits>;
+  signal?: AbortSignal;
+}) {
+  const controller = new AbortController();
+  let timedOut = false;
+  let timeoutBudget: number;
+  try {
+    timeoutBudget = operationBudget(options.deadline, options.limits.perPageOcrTimeoutMilliseconds);
+  } catch (error: unknown) {
+    if (error instanceof PdfTextInspectionError && error.code === "timeout") {
+      throw new PdfTextInspectionError("ocr_timeout");
+    }
+    throw error;
+  }
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutBudget);
+  const onAbort = (): void => controller.abort();
+  options.signal?.addEventListener("abort", onAbort, { once: true });
+  try {
+    return await options.ocr.recognizePage(
+      { imageBytes: options.imageBytes, pageIndex: options.pageIndex },
+      controller.signal,
+    );
+  } catch (error: unknown) {
+    if (timedOut) throw new PdfTextInspectionError("ocr_timeout");
+    if (options.signal?.aborted) throw new PdfTextInspectionError("aborted");
+    if (error instanceof OcrError) throw mapOcrError(error);
+    throw new PdfTextInspectionError("ocr_engine_failure");
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", onAbort);
+  }
+}
+
+function renderedDimensions(
+  page: { getViewport(options: { scale: number }): { width: number; height: number } },
+  limits: Readonly<SuggestionLimits>,
+): { viewport: ReturnType<typeof page.getViewport>; width: number; height: number } {
+  const viewport = page.getViewport({ scale: limits.renderScale });
+  const width = Math.ceil(viewport.width);
+  const height = Math.ceil(viewport.height);
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1) {
+    throw new PdfTextInspectionError("limit_exceeded");
+  }
+  const pixels = width * height;
+  const bitmapBytes = pixels * 4;
+  if (!Number.isSafeInteger(pixels)
+    || width > limits.maxRenderedPageWidthPixels
+    || height > limits.maxRenderedPageHeightPixels
+    || pixels > limits.maxRenderedPagePixels
+    || bitmapBytes > limits.maxRenderedBitmapBytes) {
+    throw new PdfTextInspectionError("limit_exceeded");
+  }
+  return { viewport, width, height };
+}
+
+async function inspectPdf(options: {
+  bytes: Uint8Array;
+  limits: Readonly<SuggestionLimits>;
+  signal?: AbortSignal;
+  ocr?: OcrAdapter;
+  gate?: OcrRequestGate;
+}): Promise<PdfTextInspection> {
+  const { bytes, limits, signal, ocr } = options;
+  throwIfAborted(signal);
+  if (bytes.byteLength > limits.maxObjectBytes) throw new PdfTextInspectionError("too_large");
   if (bytes.byteLength < 5 || new TextDecoder("ascii").decode(bytes.subarray(0, 5)) !== "%PDF-") {
     throw new PdfTextInspectionError("invalid_pdf");
   }
 
   let loadingTask: ReturnType<typeof getDocument> | undefined;
-  const deadline = Date.now() + limits.timeoutMilliseconds;
+  const startedAt = Date.now();
+  const parserDeadline = startedAt + limits.timeoutMilliseconds;
+  const requestDeadline = startedAt + (ocr === undefined ? limits.timeoutMilliseconds : limits.totalRequestTimeoutMilliseconds);
+  let releaseOcrRequest: (() => void) | undefined;
   try {
-    // Clone because PDF.js may transfer ownership of a supplied Uint8Array.
-    const data = new Uint8Array(bytes);
     loadingTask = getDocument({
-      data,
+      data: new Uint8Array(bytes),
       disableAutoFetch: true,
       disableRange: true,
       disableStream: true,
@@ -149,47 +290,118 @@ export async function inspectPdfText(
       useSystemFonts: false,
       verbosity: 0,
     });
-    const document = await withTimeout(loadingTask.promise, remainingBudget(deadline), signal);
+    const document = await withTimeout(loadingTask.promise, operationBudget(parserDeadline, limits.timeoutMilliseconds), signal);
     const pageCount = document.numPages;
     if (!Number.isSafeInteger(pageCount) || pageCount < 1 || pageCount > 100_000) {
       throw new PdfTextInspectionError("limit_exceeded");
     }
     const pageIndices = selectedPageIndices(pageCount, limits);
-    const pages: PdfTextPage[] = [];
-    let totalCharacters = 0;
+    const inspectedPages: Array<{
+      pageIndex: number;
+      page: PDFPageProxy;
+      nativeText: string;
+    }> = [];
+    let decodedTextCharacters = 0;
     for (const pageIndex of pageIndices) {
       throwIfAborted(signal);
-      const page = await withTimeout(document.getPage(pageIndex), remainingBudget(deadline), signal);
-      const content = await withTimeout(
-        page.getTextContent({ disableNormalization: false }),
-        remainingBudget(deadline),
+      const page = await withTimeout(
+        document.getPage(pageIndex),
+        operationBudget(parserDeadline, limits.timeoutMilliseconds),
         signal,
       );
-      // A newline between items is intentional: PDF.js item boundaries retain
-      // enough layout signal for title/CIP line-oriented heuristics.
-      const rawText = content.items
-        .map((item) => ("str" in item && typeof item.str === "string" ? item.str : ""))
-        .filter((item) => item.length > 0)
-        .join("\n");
-      const remaining = limits.maxTotalTextCharacters - totalCharacters;
-      if (remaining <= 0) throw new PdfTextInspectionError("limit_exceeded");
-      const text = asBoundedText(rawText, Math.min(limits.maxPageTextCharacters, remaining));
-      totalCharacters += text.length;
-      pages.push({ pageIndex, text });
+      const remainingText = limits.maxTotalTextCharacters - decodedTextCharacters;
+      if (remainingText <= 0) throw new PdfTextInspectionError("limit_exceeded");
+      const nativeText = await readBoundedPageText(
+        page,
+        Math.min(limits.maxPageTextCharacters, remainingText),
+        parserDeadline,
+        limits.timeoutMilliseconds,
+        signal,
+      );
+      decodedTextCharacters += nativeText.length;
+      inspectedPages.push({ pageIndex, page, nativeText });
     }
 
     let embeddedMetadata: PdfEmbeddedMetadata = {};
     try {
-      const metadata = await withTimeout(document.getMetadata(), remainingBudget(deadline), signal);
+      const metadata = await withTimeout(
+        document.getMetadata(),
+        operationBudget(parserDeadline, limits.timeoutMilliseconds),
+        signal,
+      );
       embeddedMetadata = normaliseEmbedded(metadata.info, limits);
-      // XMP metadata is deliberately not copied wholesale. PDF Info fields are
-      // the only bounded, explicit fields accepted by this release.
     } catch (error: unknown) {
       if (error instanceof PdfTextInspectionError && ["timeout", "aborted", "limit_exceeded"].includes(error.code)) {
         throw error;
       }
-      // A malformed metadata dictionary must not make otherwise usable text
-      // unavailable; simply proceed without embedded candidates.
+    }
+
+    const pages: PdfTextPage[] = [];
+    let totalCharacters = decodedTextCharacters;
+    let totalOcrCharacters = 0;
+    let nativePageCount = 0;
+    let ocrPageCount = 0;
+
+    for (const { pageIndex, page, nativeText } of inspectedPages) {
+      throwIfAborted(signal);
+      if (isUsableNativeText(nativeText)) {
+        nativePageCount += 1;
+        pages.push({ pageIndex, text: nativeText, evidenceOrigin: "native_text", ocrEngine: null, ocrConfidence: null });
+        continue;
+      }
+
+      if (ocr === undefined) {
+        pages.push({ pageIndex, text: nativeText, evidenceOrigin: "native_text", ocrEngine: null, ocrConfidence: null });
+        continue;
+      }
+      if (releaseOcrRequest === undefined) {
+        const release = (options.gate ?? DEFAULT_OCR_REQUEST_GATE).tryAcquire(limits.maxConcurrentOcrRequests);
+        if (!release) throw new PdfTextInspectionError("ocr_capacity");
+        releaseOcrRequest = release;
+      }
+      if (limits.maxConcurrentPageOcrJobs !== 1) throw new PdfTextInspectionError("limit_exceeded");
+      const dimensions = renderedDimensions(page, limits);
+      const canvas = createCanvas(dimensions.width, dimensions.height);
+      const context = canvas.getContext("2d");
+      let renderTask: ReturnType<typeof page.render> | undefined;
+      try {
+        renderTask = page.render({
+          canvas: canvas as never,
+          canvasContext: context as never,
+          viewport: dimensions.viewport as never,
+        });
+        await withTimeout(renderTask.promise, operationBudget(requestDeadline, limits.timeoutMilliseconds), signal);
+      } catch (error: unknown) {
+        renderTask?.cancel();
+        if (error instanceof PdfTextInspectionError) throw error;
+        throw new PdfTextInspectionError("render_failure");
+      }
+      const imageBytes = new Uint8Array(canvas.toBuffer("image/png"));
+      if (imageBytes.byteLength > limits.maxEncodedPageImageBytes) throw new PdfTextInspectionError("limit_exceeded");
+      ocrPageCount += 1;
+      const recognized = await recognizeWithDeadline({
+        ocr,
+        imageBytes,
+        pageIndex,
+        deadline: requestDeadline,
+        limits,
+        ...(signal === undefined ? {} : { signal }),
+      });
+      const text = recognized.status === "recognized"
+        ? asBoundedText(recognized.text, limits.maxOcrOutputCharactersPerPage)
+        : "";
+      totalOcrCharacters += text.length;
+      totalCharacters += text.length;
+      if (totalOcrCharacters > limits.maxTotalOcrOutputCharacters || totalCharacters > limits.maxTotalTextCharacters) {
+        throw new PdfTextInspectionError("limit_exceeded");
+      }
+      pages.push({
+        pageIndex,
+        text,
+        evidenceOrigin: "ocr",
+        ocrEngine: recognized.engine,
+        ocrConfidence: recognized.confidence,
+      });
     }
     await loadingTask.destroy();
     return {
@@ -198,32 +410,64 @@ export async function inspectPdfText(
       pages,
       embeddedMetadata,
       complete: pages.length === pageIndices.length,
-      hasUsableTextLayer: hasUsableText(pages),
+      hasUsableTextLayer: pages.some((page) => page.evidenceOrigin === "native_text" && isUsableNativeText(page.text)),
+      hasUsableEvidence: pages.some((page) => isUsableNativeText(page.text)),
+      nativePageCount,
+      ocrPageCount,
     };
   } catch (error: unknown) {
     if (error instanceof PdfTextInspectionError) throw error;
     const message = error instanceof Error ? error.message.toLowerCase() : "";
-    if (message.includes("password") || message.includes("encrypted")) {
-      throw new PdfTextInspectionError("encrypted_pdf");
-    }
+    if (message.includes("password") || message.includes("encrypted")) throw new PdfTextInspectionError("encrypted_pdf");
     throw new PdfTextInspectionError("invalid_pdf");
   } finally {
+    releaseOcrRequest?.();
     if (loadingTask && !loadingTask.destroyed) {
       try {
         await loadingTask.destroy();
       } catch {
-        // Cleanup is best effort; no parser internals are exposed.
+        // Cleanup is best effort; parser internals are never exposed.
       }
     }
   }
 }
 
+/** Text-layer-only compatibility path retained for focused parser tests. */
+export function inspectPdfText(
+  bytes: Uint8Array,
+  limits: Readonly<SuggestionLimits> = SUGGESTION_LIMITS,
+  signal?: AbortSignal,
+): Promise<PdfTextInspection> {
+  return inspectPdf({ bytes, limits, ...(signal === undefined ? {} : { signal }) });
+}
+
+/** Native-text-first bounded inspection with local OCR fallback. */
+export function inspectPdfFrontMatter(
+  bytes: Uint8Array,
+  ocr: OcrAdapter,
+  limits: Readonly<SuggestionLimits> = SUGGESTION_LIMITS,
+  signal?: AbortSignal,
+): Promise<PdfTextInspection> {
+  return inspectPdf({ bytes, limits, ocr, ...(signal === undefined ? {} : { signal }) });
+}
+
 export class PdfJsTextInspector implements BoundedPdfTextSource {
-  inspect(bytes: Uint8Array, limits: typeof SUGGESTION_LIMITS, signal?: AbortSignal): Promise<PdfTextInspection> {
+  inspect(bytes: Uint8Array, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
     return inspectPdfText(bytes, limits, signal);
   }
 }
 
-/** Stable service-facing name retained separately from the implementation
- * class so the parser can be replaced without changing suggestion orchestration. */
+export class PdfJsFrontMatterInspector implements BoundedPdfTextSource {
+  readonly #ocr: OcrAdapter;
+
+  constructor(ocr: OcrAdapter = new TesseractCliOcrAdapter()) {
+    this.#ocr = ocr;
+  }
+
+  inspect(bytes: Uint8Array, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
+    return inspectPdfFrontMatter(bytes, this.#ocr, limits, signal);
+  }
+}
+
 export class PdfJsTextSource extends PdfJsTextInspector {}
+export class PdfJsFrontMatterSource extends PdfJsFrontMatterInspector {}

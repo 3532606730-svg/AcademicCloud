@@ -467,6 +467,7 @@ describe("ApiClient", () => {
         authorityType: null, authorityRole: null, identifierScheme: null, value: "The Mongols and the West",
         sourceType: "title_page" as const, sourcePageIndex: 3, pageClass: "title_page" as const,
         confidence: "high" as const, precedenceRank: 1, evidenceExcerpt: "The Mongols and the West",
+        evidenceOrigin: "ocr" as const, ocrEngine: "academiccloud-tesseract-cli-v1/tesseract-5.5.3/chi_sim+chi_tra+eng", ocrConfidence: 88,
         rulesetVersion: "rf-metasuggest-v1",
       }],
       createdAt: "2026-08-18T00:00:00.000Z",

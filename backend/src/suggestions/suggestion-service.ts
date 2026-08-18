@@ -21,7 +21,7 @@ import {
   type StorageAdapter,
 } from "../storage/storage-adapter.js";
 import {
-  PdfJsTextInspector,
+  PdfJsFrontMatterInspector,
   PdfTextInspectionError,
 } from "./pdf-text.js";
 import type { BoundedPdfTextSource } from "./suggestion.js";
@@ -311,7 +311,7 @@ export class SuggestionService {
     this.#persistence = options.persistence;
     this.#storage = options.storage;
     this.#metadata = options.metadata;
-    this.#inspector = options.inspector ?? new PdfJsTextInspector();
+    this.#inspector = options.inspector ?? new PdfJsFrontMatterInspector();
     this.#now = options.now ?? (() => new Date());
     this.#createId = options.createId ?? randomUUID;
   }
@@ -344,7 +344,12 @@ export class SuggestionService {
     });
   }
 
-  async generate(actor: AuthenticatedAccount, libraryId: string, fileId: string): Promise<SuggestionRunSummary> {
+  async generate(
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    fileId: string,
+    signal?: AbortSignal,
+  ): Promise<SuggestionRunSummary> {
     const context = this.#persistence.runInTransaction((repositories) => resolveHolding(actor, libraryId, fileId, repositories));
     if (context.membership.role !== "manager") throw new SuggestionError("not_found");
 
@@ -366,7 +371,7 @@ export class SuggestionService {
           if (!bytes) {
             status = "unsupported";
           } else {
-            const inspection = await this.#inspector.inspect(bytes, SUGGESTION_LIMITS);
+            const inspection = await this.#inspector.inspect(bytes, SUGGESTION_LIMITS, signal);
             window = {
               firstPages: SUGGESTION_WINDOW.firstPages,
               lastPages: SUGGESTION_WINDOW.lastPages,
@@ -374,8 +379,8 @@ export class SuggestionService {
               pageIndices: [...inspection.pageIndices],
               complete: inspection.complete,
             };
-            if (!inspection.hasUsableTextLayer) {
-              status = "ocr_deferred";
+            if (!(inspection.hasUsableEvidence ?? inspection.hasUsableTextLayer)) {
+              status = (inspection.ocrPageCount ?? 0) > 0 ? "no_suggestions" : "ocr_deferred";
             } else {
               const extracted = extractBibliographicSuggestions({
                 pages: inspection.pages,
@@ -399,6 +404,9 @@ export class SuggestionService {
           }
         }
       } catch (error: unknown) {
+        if (error instanceof PdfTextInspectionError && error.code === "aborted") {
+          throw new SuggestionError("unsupported", { cause: error });
+        }
         if (error instanceof StorageObjectReadLimitError
           || error instanceof StorageObjectContentUnavailableError
           || error instanceof PdfTextInspectionError) {
@@ -415,11 +423,13 @@ export class SuggestionService {
       }
     }
 
-    const currentFingerprint = this.#persistence.runInTransaction((repositories) => {
+    const currentContext = this.#persistence.runInTransaction((repositories) => {
       const current = resolveHolding(actor, libraryId, fileId, repositories);
-      return sourceFingerprint(current.file);
+      if (current.membership.role !== "manager") throw new SuggestionError("not_found");
+      return { fingerprint: sourceFingerprint(current.file), ownerDomainId: current.library.ownerDomainId };
     });
-    if (!sameSourceFingerprint(fingerprint, currentFingerprint)) {
+    if (currentContext.ownerDomainId !== context.library.ownerDomainId
+      || !sameSourceFingerprint(fingerprint, currentContext.fingerprint)) {
       status = "stale";
       window = emptyWindow();
       candidates = [];

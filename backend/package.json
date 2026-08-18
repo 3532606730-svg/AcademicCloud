@@ -28,6 +28,7 @@
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
     "@fastify/rate-limit": "^11.2.0",
+    "@napi-rs/canvas": "1.0.7",
     "ali-oss": "6.23.0",
     "argon2": "^0.45.1",
     "better-sqlite3": "^13.0.3",

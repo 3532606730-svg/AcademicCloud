@@ -1,5 +1,6 @@
 import type {
   NewSuggestionRun,
+  EvidenceOrigin,
   PageClass,
   SuggestionCandidate,
   SuggestionConfidence,
@@ -7,6 +8,7 @@ import type {
   SuggestionRunRecord,
   SuggestionStatus,
   SuggestionSourceType,
+  SuggestionRulesetVersion,
 } from "../../suggestions/suggestion.js";
 import { SUGGESTION_RULESET_VERSION } from "../../suggestions/suggestion.js";
 import type { SuggestionRepository } from "../../suggestions/repositories.js";
@@ -51,6 +53,9 @@ interface CandidateRow {
   confidence: SuggestionConfidence;
   precedence_rank: number;
   evidence_excerpt: string | null;
+  evidence_origin: EvidenceOrigin | "legacy_v1";
+  ocr_engine: string | null;
+  ocr_confidence: number | null;
   ruleset_version: string;
 }
 
@@ -65,8 +70,16 @@ const candidateColumns = `
   id, run_id, owner_domain_id, position, field_path, type_field_name,
   authority_type, authority_role, identifier_scheme, value, source_type,
   source_page_index, page_class, confidence, precedence_rank,
-  evidence_excerpt, ruleset_version
+  evidence_excerpt, evidence_origin, ocr_engine, ocr_confidence,
+  ruleset_version
 `;
+
+function publicEvidenceOrigin(row: CandidateRow): EvidenceOrigin {
+  if (row.evidence_origin !== "legacy_v1") return row.evidence_origin;
+  if (row.source_type === "embedded_pdf_metadata") return "embedded_pdf_metadata";
+  if (row.source_type === "filename") return "filename";
+  return "native_text";
+}
 
 function parsePageIndices(value: string): number[] {
   try {
@@ -139,18 +152,23 @@ export class SqliteSuggestionRepository implements SuggestionRepository {
       confidence: SuggestionCandidate["confidence"];
       precedenceRank: number;
       evidenceExcerpt: string | null;
+      evidenceOrigin: EvidenceOrigin;
+      ocrEngine: string | null;
+      ocrConfidence: number | null;
       rulesetVersion: string;
     }>(`
       INSERT INTO scholarly_metadata_suggestion_candidates (
         id, run_id, owner_domain_id, position, field_path, type_field_name,
         authority_type, authority_role, identifier_scheme, value, source_type,
         source_page_index, page_class, confidence, precedence_rank,
-        evidence_excerpt, ruleset_version
+        evidence_excerpt, evidence_origin, ocr_engine, ocr_confidence,
+        ruleset_version
       ) VALUES (
         @id, @runId, @ownerDomainId, @position, @fieldPath, @typeFieldName,
         @authorityType, @authorityRole, @identifierScheme, @value, @sourceType,
         @sourcePageIndex, @pageClass, @confidence, @precedenceRank,
-        @evidenceExcerpt, @rulesetVersion
+        @evidenceExcerpt, @evidenceOrigin, @ocrEngine, @ocrConfidence,
+        @rulesetVersion
       )
     `);
     this.#findRun = database.prepare<[string, string], RunRow>(`
@@ -233,6 +251,9 @@ export class SqliteSuggestionRepository implements SuggestionRepository {
         confidence: candidate.confidence,
         precedenceRank: candidate.precedenceRank,
         evidenceExcerpt: candidate.evidenceExcerpt,
+        evidenceOrigin: candidate.evidenceOrigin,
+        ocrEngine: candidate.ocrEngine,
+        ocrConfidence: candidate.ocrConfidence,
         rulesetVersion: SUGGESTION_RULESET_VERSION,
       });
     });
@@ -281,7 +302,10 @@ export class SqliteSuggestionRepository implements SuggestionRepository {
       confidence: candidate.confidence,
       precedenceRank: candidate.precedence_rank,
       evidenceExcerpt: candidate.evidence_excerpt,
-      rulesetVersion: candidate.ruleset_version as typeof SUGGESTION_RULESET_VERSION,
+      evidenceOrigin: publicEvidenceOrigin(candidate),
+      ocrEngine: candidate.ocr_engine,
+      ocrConfidence: candidate.ocr_confidence,
+      rulesetVersion: candidate.ruleset_version as SuggestionRulesetVersion,
     }));
     return {
       id: row.id,
@@ -290,7 +314,7 @@ export class SqliteSuggestionRepository implements SuggestionRepository {
       recordId: row.record_id,
       fileId: row.file_id,
       status: row.status,
-      rulesetVersion: row.ruleset_version as typeof SUGGESTION_RULESET_VERSION,
+      rulesetVersion: row.ruleset_version as SuggestionRulesetVersion,
       sourceVersion: row.source_version,
       window: {
         firstPages: 15,

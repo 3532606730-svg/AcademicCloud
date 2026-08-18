@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { inspectPdfText, PdfTextInspectionError } from "../../src/suggestions/pdf-text.js";
+import {
+  inspectPdfFrontMatter,
+  inspectPdfText,
+  PdfTextInspectionError,
+} from "../../src/suggestions/pdf-text.js";
+import { OcrError, type OcrAdapter, type OcrRecognition } from "../../src/suggestions/ocr.js";
+import { SUGGESTION_LIMITS, type SuggestionLimits } from "../../src/suggestions/suggestion.js";
 
-function makePdf(pages: string[]): Uint8Array {
+function makePdf(pages: string[], mediaBox = "0 0 612 792"): Uint8Array {
   const objects: string[] = [
     `<< /Type /Catalog /Pages 2 0 R >>`,
     `<< /Type /Pages /Kids [${pages.map((_, index) => `${3 + index * 2} 0 R`).join(" ")}] /Count ${pages.length} >>`,
@@ -14,7 +20,7 @@ function makePdf(pages: string[]): Uint8Array {
     const contentObject = pageObject + 1;
     const escaped = value.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)");
     const stream = `BT /F1 12 Tf 72 720 Td (${escaped}) Tj ET`;
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${fontObject} 0 R >> >> /Contents ${contentObject} 0 R >>`);
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [${mediaBox}] /Resources << /Font << /F1 ${fontObject} 0 R >> >> /Contents ${contentObject} 0 R >>`);
     objects.push(`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`);
   });
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
@@ -29,6 +35,26 @@ function makePdf(pages: string[]): Uint8Array {
   for (let index = 1; index < offsets.length; index += 1) output += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
   output += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
   return new TextEncoder().encode(output);
+}
+
+function limits(overrides: Partial<SuggestionLimits> = {}): Readonly<SuggestionLimits> {
+  return { ...SUGGESTION_LIMITS, ...overrides };
+}
+
+class RecordingOcrAdapter implements OcrAdapter {
+  readonly calls: Array<{ pageIndex: number; imageBytes: number }> = [];
+
+  constructor(readonly recognize: (pageIndex: number, signal?: AbortSignal) => Promise<OcrRecognition>) {}
+
+  async recognizePage(input: { imageBytes: Uint8Array; pageIndex: number }, signal?: AbortSignal): Promise<OcrRecognition> {
+    this.calls.push({ pageIndex: input.pageIndex, imageBytes: input.imageBytes.byteLength });
+    assert.deepEqual([...input.imageBytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+    return this.recognize(input.pageIndex, signal);
+  }
+}
+
+function recognized(text: string, confidence = 88): OcrRecognition {
+  return { status: "recognized", text, confidence, engine: "test-local-ocr" };
 }
 
 test("inspector reads exactly first 15 plus last 5 pages with 1-based evidence indices", async () => {
@@ -69,4 +95,103 @@ test("malformed control characters are removed before evidence limits are applie
   const inspection = await inspectPdfText(makePdf(["Title\u0085\u0090 page"]));
   assert.equal(inspection.hasUsableTextLayer, true);
   assert.equal(/[\u0080-\u009f]/u.test(inspection.pages[0]?.text ?? ""), false);
+});
+
+test("native text bypasses OCR while image-only and mixed bounded pages use fallback selectively", async () => {
+  const nativeOnly = new RecordingOcrAdapter(async () => recognized("must not run"));
+  const nativeInspection = await inspectPdfFrontMatter(makePdf(["Native title page"]), nativeOnly);
+  assert.equal(nativeOnly.calls.length, 0);
+  assert.equal(nativeInspection.pages[0]?.evidenceOrigin, "native_text");
+
+  const imageOnly = new RecordingOcrAdapter(async (pageIndex) => recognized(`OCR title page ${pageIndex}`, 86));
+  const imageInspection = await inspectPdfFrontMatter(makePdf([""]), imageOnly);
+  assert.deepEqual(imageOnly.calls.map((call) => call.pageIndex), [1]);
+  assert.equal(imageInspection.pages[0]?.text, "OCR title page 1");
+  assert.equal(imageInspection.pages[0]?.evidenceOrigin, "ocr");
+  assert.equal(imageInspection.pages[0]?.ocrEngine, "test-local-ocr");
+  assert.equal(imageInspection.pages[0]?.ocrConfidence, 86);
+
+  const mixed = new RecordingOcrAdapter(async (pageIndex) => recognized(`OCR page ${pageIndex}`));
+  const mixedInspection = await inspectPdfFrontMatter(makePdf(["Native page", "", "Native ending"]), mixed);
+  assert.deepEqual(mixed.calls.map((call) => call.pageIndex), [2]);
+  assert.deepEqual(mixedInspection.pages.map((page) => page.evidenceOrigin), ["native_text", "ocr", "native_text"]);
+  assert.equal(mixedInspection.nativePageCount, 2);
+  assert.equal(mixedInspection.ocrPageCount, 1);
+});
+
+test("pages outside first 15 plus last 5 are never rendered or OCRed and short windows deduplicate", async () => {
+  const pages = Array.from({ length: 25 }, (_, index) => index === 15 ? "" : `Native page ${index + 1}`);
+  const adapter = new RecordingOcrAdapter(async (pageIndex) => recognized(`OCR page ${pageIndex}`));
+  const inspection = await inspectPdfFrontMatter(makePdf(pages), adapter);
+  assert.deepEqual(inspection.pageIndices, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 23, 24, 25]);
+  assert.deepEqual(adapter.calls, []);
+  assert.deepEqual((await inspectPdfFrontMatter(makePdf(Array(10).fill("Native page")), adapter)).pageIndices, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+});
+
+test("render dimensions are rejected before allocation or OCR", async () => {
+  const adapter = new RecordingOcrAdapter(async () => recognized("must not run"));
+  await assert.rejects(
+    () => inspectPdfFrontMatter(makePdf([""], "0 0 100000 100000"), adapter),
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code === "limit_exceeded",
+  );
+  assert.equal(adapter.calls.length, 0);
+});
+
+test("OCR timeout and engine failure fail closed without returning partial evidence", async () => {
+  for (const failure of [new OcrError("timeout"), new OcrError("engine_failure")]) {
+    const adapter = new RecordingOcrAdapter(async () => { throw failure; });
+    await assert.rejects(
+      () => inspectPdfFrontMatter(makePdf([""]), adapter),
+      (error: unknown) => error instanceof PdfTextInspectionError
+        && (error.code === "ocr_timeout" || error.code === "ocr_engine_failure"),
+    );
+  }
+});
+
+test("per-page and total OCR text limits plus total request timeout are enforced", async () => {
+  const bounded = new RecordingOcrAdapter(async () => recognized("A".repeat(SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage + 500)));
+  const onePage = await inspectPdfFrontMatter(makePdf([""]), bounded);
+  assert.equal(onePage.pages[0]?.text.length, SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage);
+
+  const total = new RecordingOcrAdapter(async () => recognized("A".repeat(SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage)));
+  await assert.rejects(
+    () => inspectPdfFrontMatter(makePdf(["", "", "", "", ""]), total),
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code === "limit_exceeded",
+  );
+
+  const slow = new RecordingOcrAdapter((_pageIndex, signal) => new Promise((_resolve, reject) => {
+    signal?.addEventListener("abort", () => reject(new OcrError("aborted")), { once: true });
+  }));
+  await assert.rejects(
+    () => inspectPdfFrontMatter(makePdf([""]), slow, limits({
+      perPageOcrTimeoutMilliseconds: 20,
+      totalRequestTimeoutMilliseconds: 20,
+    })),
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code === "ocr_timeout",
+  );
+});
+
+test("only one OCR-bearing request is active and cancellation releases capacity", async () => {
+  let markEntered!: () => void;
+  const entered = new Promise<void>((resolve) => { markEntered = resolve; });
+  const holding = new RecordingOcrAdapter((_pageIndex, signal) => new Promise((_resolve, reject) => {
+    markEntered();
+    signal?.addEventListener("abort", () => reject(new OcrError("aborted")), { once: true });
+  }));
+  const controller = new AbortController();
+  const first = inspectPdfFrontMatter(makePdf([""]), holding, SUGGESTION_LIMITS, controller.signal);
+  await entered;
+  const secondAdapter = new RecordingOcrAdapter(async () => recognized("must not run"));
+  await assert.rejects(
+    () => inspectPdfFrontMatter(makePdf([""]), secondAdapter),
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code === "ocr_capacity",
+  );
+  assert.equal(secondAdapter.calls.length, 0);
+  controller.abort();
+  await assert.rejects(
+    () => first,
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code === "aborted",
+  );
+  const recovered = new RecordingOcrAdapter(async () => recognized("Recovered"));
+  assert.equal((await inspectPdfFrontMatter(makePdf([""]), recovered)).pages[0]?.text, "Recovered");
 });
