@@ -4,15 +4,15 @@
 
 ## Current Phase
 
-**`PROD-06A` is the sole active task: one bounded production release of the completed First-Use Correction. Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the exact independently verified candidate is `855b63c49f12f3375972774e7bc7385088b0495e` at schema head v17.**
+**`PROD-06A` is complete. Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. The approved First-Use Correction objective is exhausted; no task is active and execution is stopped for independent Owner/ChatGPT review.**
 
 First-use review corrected a material product-model misunderstanding: AcademicCloud is not “private Drive + optional Shared Library”. It is one Owner-curated shared academic corpus. Approved academic resources are shared to all active authorized members; Member uploads enter Owner review before admission; each member's research activity around those resources remains private.
 
 ADR-022 is the governing product correction.
 
-## Approved Continuous Objective — First-Use Correction Production Release
+## Completed Continuous Objective — First-Use Correction Production Release
 
-Execute only `PROD-06A → STOP for independent Owner/ChatGPT review`. The release must use the smallest exact verified candidate containing already-complete `RF-SHAREDDEFAULT01`, `L2-CREDENTIALRESET01`, and `L1-UX05`, apply only migrations 016–017 after a verified schema-v15 rollback generation and isolated rehearsal, and preserve the task card's data/privacy/rollback boundaries.
+Completed `PROD-06A → STOP for independent Owner/ChatGPT review`. Exact release `855b63c…` contains the already-complete `RF-SHAREDDEFAULT01`, `L2-CREDENTIALRESET01`, and `L1-UX05`, applied only migrations 016–017 after a verified schema-v15 rollback generation and isolated rehearsal, and preserved the task card's data/privacy/rollback boundaries.
 
 `L2-CREDENTIALRESET01` is technically independent after recovery, but the final shell must not retain the self-service password-change surface. `L1-UX05` should consume the shared-corpus semantics from `RF-SHAREDDEFAULT01` rather than implementing another UI-only sharing fiction.
 
@@ -20,13 +20,13 @@ Verification must remain proportionate: focused changed-risk tests, one typechec
 
 ## Doing
 
-`PROD-06A` — [task card](tasks/doing/PROD-06A.md); bounded exact First-Use Correction release from production schema v15 to v17.
+None. STOP.
 
-## Ready — Owner-Approved First-Use Correction
+## Ready — STOP Boundary
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 1 | STOP | — | Independent Owner/ChatGPT review after PROD-06A final reconciliation |
+| 1 | STOP | — | Independent Owner/ChatGPT review after completed PROD-06A final reconciliation |
 
 ## Product Model — Authoritative Short Form
 
@@ -79,13 +79,14 @@ RF-META01
 
 ## Production State and Gate
 
-Production is currently exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. `PROD-05A` is closed and must not be rerun. PROD-06A is a new bounded gate for exact candidate `855b63c49f12f3375972774e7bc7385088b0495e` and append-only migrations 016–017 only. The candidate differs from requested code checkpoint `f7b9ef0…` only by two exact-workflow verification repairs; successful artifact run `32111496535` is green.
+Production is exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history and exact checksums 001–017. `PROD-05A` and `PROD-06A` are closed and must not be rerun. Exact release `855b63c…` differs from requested code checkpoint `f7b9ef0…` only by two exact-workflow verification repairs; successful artifact run `32111496535` is green and one live migration invocation applied exactly 016–017.
 
 Current rollback pair:
-- release `34a2eada158dcf08783dc9538d853f9361425e8a`;
-- schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite`, SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`.
+- release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e`;
+- schema-v15 backup `academiccloud-pre-prod06a-20260818T073533Z.sqlite`, SHA-256 `cdc2aec14888d04172bce4555dd6d17f10b5fb7c45efa9c7133070ce4f5bf7c4`;
+- age ciphertext SHA-256 `8349ef5e90e72ff763d7730aadd98df56600e091f431a2c07d2b5a432eda8bf6`, verified off-host at private backup commit `9c8f4503e48e55ea7b65aebe35dd242e878c95e8`.
 
-PROD-06A does **not** authorize:
+Completed PROD-06A leaves no continuing authority for:
 - production mutation outside the exact reviewed correction transition and its protective rollback procedure;
 - cleanup/permanent deletion of the visible test folders/files;
 - `PROD-03C2`;
@@ -93,7 +94,7 @@ PROD-06A does **not** authorize:
 - main merge;
 - OCR/text extraction, full-text indexing, embeddings, retrieval, or RAG.
 
-The Owner has authorized that production transition only inside PROD-06A and only through the reviewed migration 016 contract after all artifact, preflight, backup/off-host, and isolated-rehearsal gates pass.
+The consumed Owner window authorized that production transition only inside PROD-06A. It does not leave continuing production authority after this STOP.
 
 ## Completed Milestones Relevant to This Queue
 
@@ -107,6 +108,7 @@ The Owner has authorized that production transition only inside PROD-06A and onl
 - `L1-UX05` — one canonical `资料库` surface, compact account menu, unified Owner `管理后台`, hidden internal engineering destinations, one dominant upload action, Member-safe shared-structure controls, and stale-folder conflict refresh/retry through revision-bearing atomic recycle; production untouched.
 - `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01` — first-use polish already complete.
 - `PROD-05A` — exact release `25cdab1…`, schema v15, production verification green.
+- `PROD-06A` — [completed task card](tasks/done/PROD-06A.md); exact release `855b63c…`, schema v17, production transition and focused acceptance green.
 
 ## Separate Parked Production Work
 

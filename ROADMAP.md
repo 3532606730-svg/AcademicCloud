@@ -280,13 +280,14 @@ Verification is proportionate, not performative. Run checks that materially cove
 
 ## Production Track
 
-Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15 from completed `PROD-05A`.
+Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 from completed `PROD-06A`.
 
 Current rollback pair:
-- previous release `34a2eada158dcf08783dc9538d853f9361425e8a`;
-- schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite`, SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`.
+- previous release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e`;
+- schema-v15 backup `academiccloud-pre-prod06a-20260818T073533Z.sqlite`, SHA-256 `cdc2aec14888d04172bce4555dd6d17f10b5fb7c45efa9c7133070ce4f5bf7c4`;
+- encrypted off-host evidence in private backup commit `9c8f4503e48e55ea7b65aebe35dd242e878c95e8`.
 
-The current repository correction does not authorize production access or data migration. Any eventual transition of existing account-owned holdings into the canonical shared Library is separately Owner-gated after repository implementation/review is green.
+The completed correction and consumed PROD-06A window do not authorize any further production access or mutation. Any later release remains separately Owner-gated.
 
 `PROD-03C2` permanent-delete confirmation remains separately parked.
 
@@ -300,7 +301,7 @@ Preserved but non-blocking:
 - full Time Machine/Rewind;
 - native desktop/mobile apps unless future real use justifies them.
 
-## Current Approved Repository Objective
+## Completed Repository Objective
 
 Only:
 
@@ -311,4 +312,4 @@ RF-SHAREDDEFAULT01
 → STOP
 ```
 
-No production deployment, main merge, permanent deletion, real-data cleanup, OCR/text extraction, indexing, embeddings, retrieval, RAG, or unrelated Pre-OCR consumption is authorized by this roadmap update.
+The three Epics and bounded PROD-06A release are complete. STOP for independent Owner/ChatGPT review. No further production contact, main merge, permanent deletion, real-data cleanup, OCR/text extraction, indexing, embeddings, retrieval, RAG, or unrelated Pre-OCR consumption is authorized by this roadmap state.
