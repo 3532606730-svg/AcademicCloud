@@ -158,13 +158,8 @@ input:hover { border-color: #a7b2a8; }
 }
 .account-menu { display: flex; align-items: center; gap: 0.65rem; }
 .avatar { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: 50%; color: #fcfcf9; background: var(--forest); font-size: 0.78rem; font-weight: 700; }
-.account-name { font-size: 0.84rem; font-weight: 620; color: var(--ink); }
-.shared-library-launch { white-space: nowrap; }
-
-/* Compact account access: a small anchored popover with the account name,
-   language switch, and sign out. Mobile-only via CSS; the popover renders
-   only while open so the always-visible desktop controls stay unique. */
-.account-trigger-root { position: relative; display: none; }
+/* One compact account entry at every viewport width. */
+.account-trigger-root { position: relative; display: block; }
 .account-trigger {
   display: grid;
   width: 2.75rem;
@@ -250,22 +245,21 @@ input:hover { border-color: #a7b2a8; }
 
 .workspace { position: relative; min-width: 0; padding: clamp(1.75rem, 2.5vw, 2.25rem); overflow-x: hidden; }
 
-.shared-library-panel { margin-top: 1.25rem; }
-.shared-library-layout { display: grid; grid-template-columns: minmax(13rem, 0.32fr) minmax(0, 1fr); gap: 1.25rem; }
-.shared-library-list, .shared-library-content { min-width: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 0.7rem; background: var(--paper); }
-.shared-library-list .section-heading, .shared-library-content .section-heading { align-items: flex-start; }
-.shared-library-list h2, .shared-library-content h3 { margin: 0; }
-.shared-library-library-buttons, .shared-library-holdings, .shared-library-member-list { display: grid; gap: 0.55rem; }
-.shared-library-library { display: grid; gap: 0.25rem; width: 100%; padding: 0.75rem; color: var(--ink); text-align: left; border: 1px solid var(--line); border-radius: 0.55rem; background: transparent; cursor: pointer; }
-.shared-library-library span, .shared-library-holding span, .shared-library-member small { color: var(--muted); font-size: 0.78rem; }
-.shared-library-library.is-active { border-color: var(--forest); background: var(--forest-soft); }
-.shared-library-holding, .shared-library-member { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: 0.55rem; }
+.shared-library-panel { margin-top: 1.35rem; }
+.library-catalogue-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 0.7rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line); }
+.library-catalogue-heading h2 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-size: 1.05rem; font-weight: 500; }
+.library-catalogue-heading p { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.8rem; }
+.library-catalogue-heading > span { color: var(--muted); font-size: 0.8rem; }
+.shared-library-holdings, .shared-library-member-list { display: grid; }
+.shared-library-holding span, .shared-library-member small { color: var(--muted); font-size: 0.78rem; }
+.shared-library-holding, .shared-library-member { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 0.2rem; border-bottom: 1px solid var(--line); }
+.shared-library-holding:last-child, .shared-library-member:last-child { border-bottom: 0; }
 .shared-library-holding > div:first-child, .shared-library-member > span { display: grid; min-width: 0; gap: 0.2rem; }
 .shared-library-holding strong, .shared-library-member strong { overflow-wrap: anywhere; }
 .shared-library-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .shared-library-members { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
-.shared-library-member select { min-height: 2.1rem; padding: 0.25rem 0.45rem; border: 1px solid var(--line); border-radius: 0.45rem; background: var(--paper); }
 .shared-library-empty { color: var(--muted); }
+.owner-library-selector { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; }
 .scholarly-contribution-library { display: grid; grid-template-columns: minmax(8rem, auto) minmax(10rem, 1fr); align-items: center; gap: 0.65rem; padding: 0.65rem 0; color: var(--muted); font-size: 0.82rem; }
 .scholarly-contribution-library select { min-height: 2.1rem; padding: 0.25rem 0.45rem; border: 1px solid var(--line); border-radius: 0.45rem; background: var(--paper); }
 .workspace-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.4rem; }
@@ -494,7 +488,7 @@ input:hover { border-color: #a7b2a8; }
 @keyframes drop-overlay-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* Dialogs */
-.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop, .scholarly-records-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
+.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .owner-administration-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop, .scholarly-records-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
 .move-modal { width: min(38rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto auto minmax(10rem, 1fr) auto; overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
 .move-modal[open] { display: grid; }
 .move-modal > header, .move-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; }
@@ -541,6 +535,37 @@ input:hover { border-color: #a7b2a8; }
 .new-folder-modal .new-folder-body label { color: #7d857e; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.02em; }
 .new-folder-modal footer { justify-content: flex-end; border-top: 1px solid var(--line); }
 .new-folder-modal footer .button { font-size: 0.875rem; }
+
+.owner-administration-modal {
+  width: min(68rem, calc(100% - 2.5rem));
+  height: min(46rem, calc(100vh - 2.5rem));
+  max-height: calc(100vh - 2.5rem);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  border-radius: 0.8rem;
+  background: var(--paper);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
+}
+.owner-administration-modal[open] { display: grid; }
+.owner-administration-modal > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--line); }
+.owner-administration-modal > header > div { display: grid; gap: 0.12rem; }
+.owner-administration-modal h2, .owner-administration-modal h3 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-weight: 500; }
+.owner-administration-modal h2 { font-size: 1.15rem; }
+.owner-administration-kicker { color: var(--muted); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+.owner-administration-layout { display: grid; min-height: 0; grid-template-columns: 12.5rem minmax(0, 1fr); }
+.owner-administration-nav { display: grid; align-content: start; gap: 0.2rem; padding: 1rem 0.7rem; border-right: 1px solid var(--line); background: #f7f7f2; }
+.owner-administration-nav-item { min-height: 2.7rem; padding: 0.55rem 0.7rem; color: var(--muted); text-align: left; border: 0; border-radius: 0.45rem; background: transparent; cursor: pointer; font-size: 0.86rem; font-weight: 620; }
+.owner-administration-nav-item:hover { color: var(--ink); background: #eceee9; }
+.owner-administration-nav-item.is-active { color: var(--forest-deep); background: var(--forest-soft); }
+.owner-administration-content { min-width: 0; min-height: 0; overflow-y: auto; padding: 1.25rem; }
+.owner-administration-content > h3 { margin-bottom: 1rem; font-size: 1.1rem; }
+.owner-administration-panel { min-height: 0; }
+.owner-administration-panel.account-administration-body,
+.owner-administration-panel.announcement-administration-body,
+.owner-administration-panel.audit-body { overflow: visible; padding: 0; }
 
 .account-administration-modal {
   width: min(46rem, calc(100% - 2.5rem));
@@ -685,9 +710,8 @@ input:hover { border-color: #a7b2a8; }
   .topbar .brand { font-size: 0.9rem; }
   .topbar .brand > span { width: 1.9rem; height: 1.9rem; }
 
-  /* Compact account access replaces the always-visible row. */
+  /* The same compact account access remains touch-sized on mobile. */
   .account-menu { gap: 0.35rem; }
-  .account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-action-button { display: none; }
   .account-trigger-root { display: block; }
 
   /* The desktop sidebar becomes the mobile bottom navigation: same four
@@ -751,8 +775,8 @@ input:hover { border-color: #a7b2a8; }
   .breadcrumbs { display: none; }
   .command-bar { width: 100%; }
   .command-bar .button { flex: 1; min-height: 2.75rem; }
-  .shared-library-launch { min-height: 2.75rem; }
-  .shared-library-layout { grid-template-columns: 1fr; }
+  .command-bar .button--quiet { flex: 0 0 auto; }
+  .library-catalogue-heading { align-items: flex-start; flex-direction: column; }
   .shared-library-holding, .shared-library-member { align-items: stretch; flex-direction: column; }
   .shared-library-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shared-library-actions .button, .shared-library-member .button, .shared-library-member select { min-height: 2.75rem; }
@@ -876,6 +900,23 @@ input:hover { border-color: #a7b2a8; }
   .new-folder-modal footer { padding: 0.9rem 1rem calc(0.9rem + env(safe-area-inset-bottom)); }
   .new-folder-modal .button { min-height: 2.75rem; }
   .new-folder-modal footer .button { min-width: 5.5rem; }
+
+  .owner-administration-modal {
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+  .owner-administration-modal > header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }
+  .owner-administration-layout { grid-template: auto minmax(0, 1fr) / 1fr; }
+  .owner-administration-nav { grid-auto-flow: column; grid-auto-columns: minmax(7.5rem, 1fr); overflow-x: auto; padding: 0.55rem 0.7rem; border-right: 0; border-bottom: 1px solid var(--line); }
+  .owner-administration-nav-item { min-height: 2.75rem; text-align: center; }
+  .owner-administration-content { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
+  .owner-administration-content .button, .owner-administration-content select { min-height: 2.75rem; }
 
   .account-administration-modal {
     width: 100%;

@@ -18,9 +18,9 @@ import {
   type ScholarlyRecordSummary,
 } from "./api.ts";
 import { uploadDirectly, type UploadProgressMetrics } from "./direct-upload.ts";
-import { AnnouncementAdministrationDialog, AnnouncementFeed } from "./announcements.tsx";
-import { AuditDialog } from "./audit.tsx";
-import { SharedLibraryPanel } from "./shared-library.tsx";
+import { AnnouncementAdministrationPanel, AnnouncementFeed } from "./announcements.tsx";
+import { AuditPanel } from "./audit.tsx";
+import { ContributionReviewPanel, SharedLibraryPanel } from "./shared-library.tsx";
 import { describeError, formatCount, formatDate } from "./i18n.ts";
 import { LanguageProvider, LanguageSwitch, useLanguage, type Translator } from "./i18n-react.tsx";
 import {
@@ -361,7 +361,7 @@ function LoginView({
   );
 }
 
-type DriveViewName = "library" | "pending" | "recycle" | "favorites" | "shared";
+type DriveViewName = "library" | "pending" | "recycle" | "favorites";
 type UploadPhase = "queued" | "checksum" | "reserving" | "uploading" | "verifying" | "complete" | "error" | "cancelled";
 
 const ACTIVE_UPLOAD_PHASES: ReadonlySet<UploadPhase> = new Set(["checksum", "reserving", "uploading", "verifying"]);
@@ -507,13 +507,10 @@ function DriveView({
   const [favoriteFileIds, setFavoriteFileIds] = useState<ReadonlySet<string>>(new Set());
   const [favoriteFolderIds, setFavoriteFolderIds] = useState<ReadonlySet<string>>(new Set());
   const [accountAdministrationOpen, setAccountAdministrationOpen] = useState(false);
-  const [announcementAdministrationOpen, setAnnouncementAdministrationOpen] = useState(false);
-  const [auditOpen, setAuditOpen] = useState(false);
-  const [recordDialogOpen, setRecordDialogOpen] = useState(false);
+  const [accountAdministrationReturnFocus, setAccountAdministrationReturnFocus] = useState<HTMLElement | null>(null);
   const [announcementRevision, setAnnouncementRevision] = useState(0);
   const dragDepthRef = useRef(0);
   const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
-  const recordTriggerRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
@@ -975,10 +972,46 @@ function DriveView({
     });
   }
 
-  function deleteFolder(folder: FolderEntry) {
-    if (window.confirm(t("folder.moveConfirm", { name: folder.name }))) {
-      void runAction(folder.id, t("folder.moved"), () => api.deleteFolder(folder.id));
+  async function reconcileFolderConflict(): Promise<void> {
+    if (view === "favorites") {
+      const response = await api.listFavorites();
+      setFavorites(response);
+      setFavoriteFileIds(new Set(response.files.map((file) => file.id)));
+      setFavoriteFolderIds(new Set(response.folders.map((folder) => folder.id)));
+      return;
     }
+    const response = await api.listEntries(currentFolderId);
+    setEntries(response);
+  }
+
+  function deleteFolder(folder: FolderEntry) {
+    if (!window.confirm(t("folder.moveConfirm", { name: folder.name }))) return;
+    void (async () => {
+      setBusyId(folder.id);
+      setError(null);
+      setNotice("");
+      try {
+        await api.bulkOperation({
+          action: "recycle",
+          items: [toBulkItem({ kind: "folder", item: folder })],
+        });
+        setNotice(t("folder.moved"));
+        refresh();
+      } catch (caught: unknown) {
+        if (caught instanceof ApiError && (caught.code === "invalid_state" || caught.code === "concurrent_change")) {
+          try {
+            await reconcileFolderConflict();
+            setNotice(t("folder.conflictRefreshed"));
+          } catch (refreshError: unknown) {
+            setError(refreshError);
+          }
+        } else {
+          setError(caught);
+        }
+      } finally {
+        setBusyId(null);
+      }
+    })();
   }
 
   function renameFile(file: FileEntry) {
@@ -1096,46 +1129,25 @@ function DriveView({
       ? t("nav.recycle")
       : view === "favorites"
         ? t("nav.favorites")
-        : t("nav.sharedLibrary");
+        : t("nav.library");
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen || announcementAdministrationOpen || auditOpen || recordDialogOpen}>
+    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
         <div className="account-menu">
-          <LanguageSwitch />
-          <button className="button button--quiet shared-library-launch" type="button" onClick={() => goToView("shared")}>
-            {t("nav.sharedLibrary")}
-          </button>
           <AccountMenu
             accountName={account.loginName}
             owner={account.role === "owner"}
             busy={busyId === "logout"}
-            onManageAccounts={() => setAccountAdministrationOpen(true)}
-            onManageAnnouncements={() => setAnnouncementAdministrationOpen(true)}
-            onManageAudit={() => setAuditOpen(true)}
+            onManage={(returnFocus) => {
+              setAccountAdministrationReturnFocus(returnFocus);
+              setAccountAdministrationOpen(true);
+            }}
             onSignOut={() => void signOut()}
           />
-          <span className="avatar desktop-avatar" aria-hidden="true">{account.loginName.slice(0, 1).toUpperCase()}</span>
-          <span className="account-name">{account.loginName}</span>
-          {account.role === "owner" && (
-            <>
-              <button className="button button--quiet account-action-button" type="button" onClick={() => setAccountAdministrationOpen(true)}>
-                {t("account.manage")}
-              </button>
-              <button className="button button--quiet account-action-button" type="button" onClick={() => setAnnouncementAdministrationOpen(true)}>
-                {t("announcements.manage")}
-              </button>
-              <button className="button button--quiet account-action-button" type="button" onClick={() => setAuditOpen(true)}>
-                {t("audit.manage")}
-              </button>
-            </>
-          )}
-          <button className="button button--quiet sign-out-button" type="button" onClick={() => void signOut()} disabled={busyId === "logout"}>
-            {t("nav.signOut")}
-          </button>
         </div>
       </header>
 
@@ -1194,7 +1206,7 @@ function DriveView({
               </nav>
             )}
             <h1>{workspaceTitle}</h1>
-            {view === "library" && !loading && (
+            {view === "library" && path.length > 0 && !loading && (
               <p className="workspace-summary">
                 {t("workspace.itemSummary", {
                   files: formatCount(language, entries.files.length),
@@ -1213,18 +1225,16 @@ function DriveView({
           </div>
           {view === "library" && (
             <div className="command-bar">
-              <button ref={recordTriggerRef} className="button button--secondary" type="button" onClick={() => setRecordDialogOpen(true)}>
-                {t("records.open")}
-              </button>
-              <button className="button button--secondary" type="button" onClick={openNewFolderDialog}>
+              {account.role === "owner" && <button className="button button--quiet" type="button" onClick={openNewFolderDialog}>
                 {t("workspace.newFolder")}
-              </button>
+              </button>}
               <label className="button button--primary upload-button">
-                {t("workspace.uploadFiles")}
+                {t("workspace.uploadResources")}
                 <input
                   className="visually-hidden"
                   type="file"
                   multiple
+                  aria-label={t("workspace.uploadFiles")}
                   onChange={(event) => {
                     for (const file of Array.from(event.target.files ?? [])) enqueueFile(file);
                     event.target.value = "";
@@ -1238,10 +1248,11 @@ function DriveView({
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
         {notice && <div className="alert alert--success" role="status">{notice}</div>}
 
-        {view === "shared" && <SharedLibraryPanel api={api} />}
-
         {view === "library" && path.length === 0 && (
-          <AnnouncementFeed api={api} revision={announcementRevision} />
+          <>
+            <AnnouncementFeed api={api} revision={announcementRevision} />
+            <SharedLibraryPanel api={api} revision={revision} />
+          </>
         )}
 
         {activeJobs.length > 0 && (
@@ -1285,7 +1296,7 @@ function DriveView({
           </section>
         )}
 
-        {view === "library" && (
+        {view === "library" && account.role === "owner" && (path.length > 0 || !isLibraryEmpty) && (
           <section aria-labelledby="contents-title">
             <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
             {selectedEntries.length > 0 && (
@@ -1497,29 +1508,16 @@ function DriveView({
           returnFocus={newFolderTriggerRef.current}
         />
       )}
-      {recordDialogOpen && (
-        <ScholarlyRecordsDialog
-          api={api}
-          availableFiles={entries.files}
-          onClose={() => setRecordDialogOpen(false)}
-          returnFocus={recordTriggerRef.current}
-        />
-      )}
       {accountAdministrationOpen && (
-        <AccountAdministrationDialog
+        <OwnerAdministrationDialog
           api={api}
           ownerId={account.id}
           onClose={() => setAccountAdministrationOpen(false)}
+          returnFocus={accountAdministrationReturnFocus}
+          onAnnouncementChanged={() => setAnnouncementRevision((value) => value + 1)}
+          onLibraryChanged={refresh}
         />
       )}
-      {announcementAdministrationOpen && (
-        <AnnouncementAdministrationDialog
-          api={api}
-          onClose={() => setAnnouncementAdministrationOpen(false)}
-          onChanged={() => setAnnouncementRevision((value) => value + 1)}
-        />
-      )}
-      {auditOpen && <AuditDialog api={api} onClose={() => setAuditOpen(false)} />}
       {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void downloadFile(preview.file)} />}
       {moveRequest && (
         <MoveDialog
@@ -1573,7 +1571,7 @@ function invitationStatusKey(status: Invitation["status"]) {
   }
 }
 
-function ScholarlyRecordsDialog({
+export function ScholarlyRecordsDialog({
   api,
   availableFiles,
   onClose,
@@ -1868,14 +1866,75 @@ function ScholarlyRecordsDialog({
   );
 }
 
-function AccountAdministrationDialog({
+type OwnerAdministrationSection = "members" | "contributions" | "announcements" | "activity";
+
+function OwnerAdministrationDialog({
   api,
   ownerId,
   onClose,
+  returnFocus,
+  onAnnouncementChanged,
+  onLibraryChanged,
 }: {
   api: AcademicCloudApi;
   ownerId: string;
   onClose: () => void;
+  returnFocus: HTMLElement | null;
+  onAnnouncementChanged: () => void;
+  onLibraryChanged: () => void;
+}) {
+  const { t } = useLanguage();
+  const [section, setSection] = useState<OwnerAdministrationSection>("members");
+  const dialogRef = useModalDialog(onClose, false, returnFocus);
+  const sections: Array<{ id: OwnerAdministrationSection; label: string }> = [
+    { id: "members", label: t("ownerAdmin.members") },
+    { id: "contributions", label: t("ownerAdmin.contributions") },
+    { id: "announcements", label: t("ownerAdmin.announcements") },
+    { id: "activity", label: t("ownerAdmin.activity") },
+  ];
+  const activeLabel = sections.find((item) => item.id === section)?.label ?? "";
+
+  return (
+    <dialog ref={dialogRef} className="owner-administration-modal" aria-labelledby="owner-administration-title">
+      <header>
+        <div>
+          <span className="owner-administration-kicker">AcademicCloud</span>
+          <h2 id="owner-administration-title">{t("ownerAdmin.title")}</h2>
+        </div>
+        <button className="button button--quiet" type="button" onClick={onClose} aria-label={t("ownerAdmin.closeAria")}>{t("preview.close")}</button>
+      </header>
+      <div className="owner-administration-layout">
+        <nav className="owner-administration-nav" aria-label={t("ownerAdmin.sectionsAria")}>
+          {sections.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={section === item.id ? "owner-administration-nav-item is-active" : "owner-administration-nav-item"}
+              aria-current={section === item.id ? "page" : undefined}
+              onClick={() => setSection(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <section className="owner-administration-content" aria-labelledby="owner-administration-section-title">
+          <h3 id="owner-administration-section-title">{activeLabel}</h3>
+          {section === "members" && <AccountAdministrationPanel api={api} ownerId={ownerId} />}
+          {section === "contributions" && <ContributionReviewPanel api={api} onChanged={onLibraryChanged} />}
+          {section === "announcements" && <AnnouncementAdministrationPanel api={api} onChanged={onAnnouncementChanged} />}
+          {section === "activity" && <AuditPanel api={api} />}
+        </section>
+      </div>
+    </dialog>
+  );
+}
+
+function AccountAdministrationPanel({
+  api,
+  ownerId,
+}: {
+  api: AcademicCloudApi;
+  ownerId: string;
 }) {
   const { language, t } = useLanguage();
   const [accounts, setAccounts] = useState<ManagedAccount[]>([]);
@@ -1890,7 +1949,6 @@ function AccountAdministrationDialog({
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const dialogRef = useModalDialog(onClose, busyId !== null);
 
   useEffect(() => {
     let live = true;
@@ -1977,12 +2035,7 @@ function AccountAdministrationDialog({
   const historicalInvitations = invitations.filter((invitation) => invitation.status !== "available");
 
   return (
-    <dialog ref={dialogRef} className="account-administration-modal" aria-labelledby="account-administration-title">
-      <header>
-        <h2 id="account-administration-title">{t("accounts.title")}</h2>
-        <button className="button button--quiet" type="button" onClick={onClose} disabled={busyId !== null} aria-label={t("accounts.closeAria")}>{t("preview.close")}</button>
-      </header>
-      <div className="account-administration-body">
+      <div className="account-administration-body owner-administration-panel">
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
         {loading ? <LoadingRows /> : (
           <>
@@ -2079,7 +2132,6 @@ function AccountAdministrationDialog({
           </>
         )}
       </div>
-    </dialog>
   );
 }
 
@@ -2488,27 +2540,22 @@ function fileKindLabel(file: FileEntry, t: Translator): string {
   return t("file.kindFile");
 }
 
-// Compact account access for the mobile topbar: avatar trigger + popover with
-// account name, language switch, and sign out. Desktop keeps its always
-// visible row; CSS decides which presentation shows at which width. The
-// popover renders only while open, so the desktop controls stay unique. The
+// Compact account access for every authenticated shell: avatar trigger +
+// popover with account name, language, the single Owner administration entry,
+// and sign out. The
 // interactive section is a real ARIA menu (menuitem roles, arrow/Home/End
 // navigation, focus moves in on open) mirroring RowMenu semantics.
 function AccountMenu({
   accountName,
   owner,
   busy,
-  onManageAccounts,
-  onManageAnnouncements,
-  onManageAudit,
+  onManage,
   onSignOut,
 }: {
   accountName: string;
   owner: boolean;
   busy: boolean;
-  onManageAccounts: () => void;
-  onManageAnnouncements: () => void;
-  onManageAudit: () => void;
+  onManage: (returnFocus: HTMLElement) => void;
   onSignOut: () => void;
 }) {
   const { t } = useLanguage();
@@ -2604,41 +2651,17 @@ function AccountMenu({
           <div className="account-popover-menu" role="menu" aria-label={t("account.menuLabel")} onKeyDown={onMenuKeyDown}>
             <LanguageSwitch labelled menuitem />
             {owner && (
-              <>
                 <button
                   className="account-popover-signout"
                   type="button"
                   role="menuitem"
                   onClick={() => {
                     close(false);
-                    onManageAccounts();
+                    if (triggerRef.current) onManage(triggerRef.current);
                   }}
                 >
-                  {t("account.manage")}
+                  {t("ownerAdmin.open")}
                 </button>
-                <button
-                  className="account-popover-signout"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    close(false);
-                    onManageAnnouncements();
-                  }}
-                >
-                  {t("announcements.manage")}
-                </button>
-                <button
-                  className="account-popover-signout"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    close(false);
-                    onManageAudit();
-                  }}
-                >
-                  {t("audit.manage")}
-                </button>
-              </>
             )}
             <button
               className="account-popover-signout"

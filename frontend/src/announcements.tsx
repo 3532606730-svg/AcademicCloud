@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import type { AcademicCloudApi, Announcement, AnnouncementInput } from "./api.ts";
 import { describeError, formatDate } from "./i18n.ts";
@@ -95,13 +95,11 @@ function sortAnnouncements(items: Announcement[]): Announcement[] {
     right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id));
 }
 
-export function AnnouncementAdministrationDialog({
+export function AnnouncementAdministrationPanel({
   api,
-  onClose,
   onChanged,
 }: {
   api: AcademicCloudApi;
-  onClose: () => void;
   onChanged: () => void;
 }) {
   const { language, t } = useLanguage();
@@ -111,57 +109,6 @@ export function AnnouncementAdministrationDialog({
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const onCloseRef = useRef(onClose);
-  const busyRef = useRef(busyId !== null);
-  onCloseRef.current = onClose;
-  busyRef.current = busyId !== null;
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const handleCancel = (event: Event) => {
-      event.preventDefault();
-      if (!busyRef.current) onCloseRef.current();
-    };
-    const fallbackKeys = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busyRef.current) {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
-        "a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])",
-      ));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
-    dialog.addEventListener("cancel", handleCancel);
-    if (typeof dialog.showModal === "function") {
-      dialog.showModal();
-    } else {
-      dialog.setAttribute("open", "");
-      document.addEventListener("keydown", fallbackKeys);
-      dialog.querySelector<HTMLElement>("input:not([disabled]), button:not([disabled])")?.focus();
-    }
-    return () => {
-      dialog.removeEventListener("cancel", handleCancel);
-      document.removeEventListener("keydown", fallbackKeys);
-      if (dialog.open && typeof dialog.close === "function") dialog.close();
-      previousFocus?.focus();
-    };
-  }, []);
-
   useEffect(() => {
     let live = true;
     api.listAllAnnouncements().then(
@@ -242,12 +189,7 @@ export function AnnouncementAdministrationDialog({
   }
 
   return (
-    <dialog ref={dialogRef} className="announcement-administration-modal" aria-labelledby="announcement-administration-title">
-      <header>
-        <h2 id="announcement-administration-title">{t("announcements.manage")}</h2>
-        <button className="button button--quiet" type="button" onClick={onClose} disabled={busyId !== null} aria-label={t("announcements.closeAria")}>{t("preview.close")}</button>
-      </header>
-      <div className="announcement-administration-body">
+      <div className="announcement-administration-body owner-administration-panel">
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
         <form className="announcement-form" onSubmit={(event) => void submit(event)}>
           <div className="announcement-form-heading">
@@ -304,6 +246,5 @@ export function AnnouncementAdministrationDialog({
           )}
         </section>
       </div>
-    </dialog>
   );
 }

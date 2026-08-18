@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   type AcademicCloudApi,
@@ -78,65 +78,13 @@ function label(pair: [string, string], language: "en" | "zh-CN"): string {
   return language === "zh-CN" ? pair[1] : pair[0];
 }
 
-function useAuditDialog(onClose: () => void) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const cancel = (event: Event) => {
-      event.preventDefault();
-      onCloseRef.current();
-    };
-    const fallbackKeys = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
-        "a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])",
-      ));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
-    dialog.addEventListener("cancel", cancel);
-    if (typeof dialog.showModal === "function") {
-      dialog.showModal();
-    } else {
-      dialog.setAttribute("open", "");
-      document.addEventListener("keydown", fallbackKeys);
-      dialog.querySelector<HTMLElement>("button:not([disabled])")?.focus();
-    }
-    return () => {
-      dialog.removeEventListener("cancel", cancel);
-      document.removeEventListener("keydown", fallbackKeys);
-      if (dialog.open && typeof dialog.close === "function") dialog.close();
-      previousFocus?.focus();
-    };
-  }, []);
-  return dialogRef;
-}
-
 function eventTarget(event: AuditEvent): string {
   if (!event.targetKind || !event.targetId) return "—";
   return `${event.targetKind} · ${event.targetId}`;
 }
 
-export function AuditDialog({ api, onClose }: { api: AcademicCloudApi; onClose: () => void }) {
+export function AuditPanel({ api }: { api: AcademicCloudApi }) {
   const { language, t } = useLanguage();
-  const dialogRef = useAuditDialog(onClose);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [nextBeforeId, setNextBeforeId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,14 +110,7 @@ export function AuditDialog({ api, onClose }: { api: AcademicCloudApi; onClose: 
   useEffect(() => { void load(); }, [api]);
 
   return (
-    <dialog ref={dialogRef} className="audit-modal" aria-labelledby="audit-title">
-      <header>
-        <h2 id="audit-title">{t("audit.title")}</h2>
-        <button className="button button--quiet" type="button" onClick={onClose} aria-label={t("audit.closeAria")}>
-          {t("preview.close")}
-        </button>
-      </header>
-      <div className="audit-body">
+      <div className="audit-body owner-administration-panel">
         {error !== null && (
           <div className="alert alert--error" role="alert">
             <span>{t("audit.error")} {describeError(error, language)}</span>
@@ -208,6 +149,5 @@ export function AuditDialog({ api, onClose }: { api: AcademicCloudApi; onClose: 
           </button>
         )}
       </div>
-    </dialog>
   );
 }

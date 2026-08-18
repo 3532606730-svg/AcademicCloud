@@ -122,15 +122,18 @@ describe("mobile presentation stylesheet", () => {
     expect(ruleHas(block, ".language-switch button {", /min-height:\s*2\.75rem/)).toBe(true);
   });
 
-  it("keeps Owner administration actions in the compact account popover instead of the mobile topbar", () => {
+  it("keeps the single compact account entry visible instead of restoring desktop admin actions", () => {
     const block = mobileBlock();
-    expect(ruleHas(block, ".account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-action-button {", /display:\s*none/)).toBe(true);
+    expect(ruleHas(block, ".account-trigger-root {", /display:\s*block/)).toBe(true);
+    expect(block).not.toContain(".account-action-button");
   });
 
-  it("presents governance audit as a fullscreen mobile dialog with bounded horizontal rows", () => {
+  it("presents unified Owner administration as a fullscreen mobile surface with bounded activity rows", () => {
     const block = mobileBlock();
-    expect(ruleHas(block, ".audit-modal {", /height:\s*100dvh/)).toBe(true);
-    expect(ruleHas(block, ".audit-modal {", /border-radius:\s*0/)).toBe(true);
+    expect(ruleHas(block, ".owner-administration-modal {", /height:\s*100dvh/)).toBe(true);
+    expect(ruleHas(block, ".owner-administration-modal {", /border-radius:\s*0/)).toBe(true);
+    expect(ruleHas(block, ".owner-administration-layout {", /grid-template:\s*auto minmax\(0, 1fr\) \/ 1fr/)).toBe(true);
+    expect(ruleHas(block, ".owner-administration-nav-item {", /min-height:\s*2\.75rem/)).toBe(true);
     expect(ruleHas(block, ".audit-table {", /min-width:\s*46rem/)).toBe(true);
     expect(ruleHas(block, ".audit-load-older {", /min-height:\s*2\.75rem/)).toBe(true);
   });

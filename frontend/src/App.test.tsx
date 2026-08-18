@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { App } from "./App.tsx";
+import { App, ScholarlyRecordsDialog } from "./App.tsx";
 import {
   ApiError,
   type AcademicCloudApi,
@@ -15,6 +15,7 @@ import {
 } from "./api.ts";
 import type { UploadProgressMetrics } from "./direct-upload.ts";
 import { DirectUploadError } from "./direct-upload.ts";
+import { LanguageProvider } from "./i18n-react.tsx";
 
 afterEach(() => {
   window.localStorage.removeItem("academiccloud.language");
@@ -157,6 +158,16 @@ async function openRowMenu(name: string) {
   return screen.getByRole("menu", { name: `Actions for ${name}` });
 }
 
+async function openOwnerAdministration(section: "Member management" | "Contribution review" | "Announcements" | "Activity log" = "Member management") {
+  await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+  await userEvent.click(within(screen.getByRole("menu", { name: "Account" })).getByRole("menuitem", { name: "Administration" }));
+  const dialog = await screen.findByRole("dialog", { name: "Administration" });
+  if (section !== "Member management") {
+    await userEvent.click(within(dialog).getByRole("button", { name: section }));
+  }
+  return dialog;
+}
+
 describe("App", () => {
   it("recovers an anonymous session, signs in, and renders an empty library", async () => {
     const user = userEvent.setup();
@@ -169,7 +180,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
-    expect(await screen.findByText("This folder is empty")).toBeInTheDocument();
+    expect(await screen.findByText("Library is unavailable")).toBeInTheDocument();
     expect(api.login).toHaveBeenCalledWith("Scholar", "valid-password");
     expect(api.listEntries).toHaveBeenCalledWith(null, expect.any(AbortSignal));
   });
@@ -253,8 +264,10 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Library" });
 
     expect(within(screen.getByRole("complementary", { name: "Primary navigation" })).getAllByRole("button")).toHaveLength(4);
-    await user.click(screen.getByRole("button", { name: "Manage accounts" }));
-    const dialog = await screen.findByRole("dialog", { name: "Account administration" });
+    const dialog = await openOwnerAdministration();
+    for (const section of ["Member management", "Contribution review", "Announcements", "Activity log"]) {
+      expect(within(dialog).getByRole("button", { name: section })).toBeInTheDocument();
+    }
     expect(await within(dialog).findByText("Reader")).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole("button", { name: "Create invitation" }));
@@ -285,11 +298,15 @@ describe("App", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
-    expect(screen.queryByRole("button", { name: "Manage accounts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Administration" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Account menu" }));
     const menu = within(screen.getByRole("menu", { name: "Account" }));
-    expect(menu.queryByRole("menuitem", { name: "Manage accounts" })).not.toBeInTheDocument();
+    expect(menu.queryByRole("menuitem", { name: "Administration" })).not.toBeInTheDocument();
     expect(menu.queryByRole("menuitem", { name: "Change password" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New folder" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Shared Library" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Scholarly records" })).not.toBeInTheDocument();
+    expect(screen.getByText("Upload resources")).toBeInTheDocument();
   });
 
   it("keeps usable invitations prominent and collapses durable invitation history with a count", async () => {
@@ -314,8 +331,7 @@ describe("App", () => {
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "Manage accounts" }));
-    const dialog = await screen.findByRole("dialog", { name: "Account administration" });
+    const dialog = await openOwnerAdministration();
 
     expect(await within(dialog).findByText("Available")).toBeInTheDocument();
     expect(within(dialog).getAllByRole("button", { name: "Revoke" })).toHaveLength(1);
@@ -347,8 +363,7 @@ describe("App", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
-    await user.click(screen.getByRole("button", { name: "Manage accounts" }));
-    const dialog = await screen.findByRole("dialog", { name: "Account administration" });
+    const dialog = await openOwnerAdministration();
     expect(await within(dialog).findByText("Former Reader")).toBeInTheDocument();
     expect(within(dialog).queryByText("Archived Reader")).not.toBeInTheDocument();
 
@@ -498,8 +513,7 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Library" });
 
     expect(within(screen.getByRole("complementary", { name: "Primary navigation" })).getAllByRole("button")).toHaveLength(4);
-    await user.click(screen.getByRole("button", { name: "Manage announcements" }));
-    const dialog = await screen.findByRole("dialog", { name: "Manage announcements" });
+    const dialog = await openOwnerAdministration("Announcements");
     await user.type(within(dialog).getByLabelText("Title"), "Archive hours");
     await user.type(within(dialog).getByLabelText("Body"), "Closes at 18:00.");
     await user.selectOptions(within(dialog).getByLabelText("Severity"), "warning");
@@ -534,19 +548,21 @@ describe("App", () => {
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue({ ...ACCOUNT, role: "member" as const }) });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    expect(screen.queryByRole("button", { name: "Manage announcements" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Administration" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Account menu" }));
-    expect(within(screen.getByRole("menu", { name: "Account" })).queryByRole("menuitem", { name: "Manage announcements" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("menu", { name: "Account" })).queryByRole("menuitem", { name: "Administration" })).not.toBeInTheDocument();
   });
 
-  it("renders the root library without an eyebrow, without a redundant breadcrumb, with title and counts", async () => {
+  it("renders the canonical Library without a duplicate product destination or redundant breadcrumb", async () => {
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
     await openLibrary(api);
 
     expect(screen.queryByText("Your research files")).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
-    expect(await screen.findByText("0 files · 0 folders")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Holdings" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Shared Library" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Scholarly records" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New folder" })).toBeInTheDocument();
     expect(screen.getByLabelText("Upload files")).toBeInTheDocument();
   });
@@ -823,12 +839,16 @@ describe("App", () => {
   it("keeps the row action menu compact and exposes folder/file actions inside it", async () => {
     const user = userEvent.setup();
     const deleteFile = vi.fn().mockResolvedValue(undefined);
-    const deleteFolder = vi.fn().mockResolvedValue(undefined);
+    const bulkOperation = vi.fn().mockImplementation(async (input: BulkOperationInput) => ({
+      action: input.action,
+      atomic: true as const,
+      items: input.items.map((selected) => ({ ...selected, outcome: "succeeded" as const })),
+    }));
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
       deleteFile,
-      deleteFolder,
+      bulkOperation,
     });
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<App api={api} />);
@@ -851,8 +871,47 @@ describe("App", () => {
     expect(within(folderMenu).getByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
     expect(within(folderMenu).getByRole("menuitem", { name: "Move" })).toBeInTheDocument();
     await user.click(within(folderMenu).getByRole("menuitem", { name: "Move to trash" }));
-    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith("folder-1"));
+    await waitFor(() => expect(bulkOperation).toHaveBeenCalledWith({
+      action: "recycle",
+      items: [{ kind: "folder", id: FOLDER.id, version: FOLDER.version }],
+    }));
     expect(window.confirm).toHaveBeenCalledWith("Move “Sources” and its active contents to the recycle bin?");
+  });
+
+  it("refreshes a stale folder row after a recycle conflict and retries with the reconciled revision", async () => {
+    const user = userEvent.setup();
+    const freshFolder = { ...FOLDER, version: "n".repeat(43), updatedAt: "2026-08-18T01:00:00.000Z" };
+    const listEntries = vi.fn()
+      .mockResolvedValueOnce({ folder: null, folders: [FOLDER], files: [] })
+      .mockResolvedValue({ folder: null, folders: [freshFolder], files: [] });
+    const bulkOperation = vi.fn()
+      .mockRejectedValueOnce(new ApiError(409, "invalid_state"))
+      .mockImplementation(async (input: BulkOperationInput) => ({
+        action: input.action,
+        atomic: true as const,
+        items: input.items.map((selected) => ({ ...selected, outcome: "succeeded" as const })),
+      }));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listEntries, bulkOperation });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    let menu = await openRowMenu("Sources");
+    await user.click(within(menu).getByRole("menuitem", { name: "Move to trash" }));
+    await waitFor(() => expect(bulkOperation).toHaveBeenLastCalledWith({
+      action: "recycle",
+      items: [{ kind: "folder", id: FOLDER.id, version: FOLDER.version }],
+    }));
+    expect(await screen.findByRole("status")).toHaveTextContent("this view was refreshed");
+    expect(listEntries).toHaveBeenCalledTimes(2);
+
+    menu = await openRowMenu("Sources");
+    await user.click(within(menu).getByRole("menuitem", { name: "Move to trash" }));
+    await waitFor(() => expect(bulkOperation).toHaveBeenLastCalledWith({
+      action: "recycle",
+      items: [{ kind: "folder", id: FOLDER.id, version: freshFolder.version }],
+    }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Folder moved to the recycle bin");
   });
 
   it("closes the row menu on Escape and restores focus to the trigger", async () => {
@@ -1108,7 +1167,8 @@ describe("App", () => {
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), logout });
     render(<App api={api} />);
 
-    await user.click(await screen.findByRole("button", { name: "Sign out" }));
+    await user.click(await screen.findByRole("button", { name: "Account menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "Sign out" }));
     expect(await screen.findByRole("heading", { name: "AC AcademicCloud" })).toBeInTheDocument();
     expect(logout).toHaveBeenCalledOnce();
   });
@@ -1119,13 +1179,14 @@ describe("App", () => {
     render(<App api={api} />);
 
     expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "中文" }));
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "中文" }));
     expect(await screen.findByRole("heading", { name: "资料库" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "退出登录" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "退出登录" })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("zh-CN");
     expect(window.localStorage.getItem("academiccloud.language")).toBe("zh-CN");
 
-    await user.click(screen.getByRole("button", { name: "EN" }));
+    await user.click(screen.getByRole("menuitem", { name: "English" }));
     expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("en");
   });
@@ -1138,11 +1199,11 @@ describe("App", () => {
     });
     render(<App api={api} />);
 
-    expect(await screen.findByText("1 files · 0 folders")).toBeInTheDocument();
+    expect(await screen.findByText("paper.pdf")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New folder" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "中文" }));
-    expect(await screen.findByText("1 个文件 · 0 个文件夹")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "中文" }));
     expect(screen.getByRole("button", { name: "新建文件夹" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "打开 paper.pdf 的操作菜单" })).toBeInTheDocument();
 
@@ -1181,7 +1242,8 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Online preview is currently unavailable"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "中文" }));
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "中文" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("在线预览暂不可用"));
   });
 
@@ -1199,7 +1261,8 @@ describe("App", () => {
     render(<App api={api} checksumFile={checksumFile} directUpload={vi.fn().mockRejectedValue(new DirectUploadError("upload_unreachable", "Could not reach object storage."))} />);
 
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "中文" }));
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "中文" }));
     await screen.findByRole("heading", { name: "资料库" });
     await user.upload(await screen.findByLabelText("上传文件"), new File(["x"], "a.pdf", { type: "application/pdf" }));
     checksumResolvers[0]!(FILE.checksum);
@@ -1218,7 +1281,8 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Favorites", level: 1 })).toBeInTheDocument();
     expect(await screen.findByText("No favorites yet")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "中文" }));
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "中文" }));
     expect(await screen.findByRole("heading", { name: "收藏", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("还没有收藏")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "收藏" })).toBeInTheDocument();
@@ -1872,7 +1936,7 @@ describe("bounded atomic bulk operations", () => {
   });
 });
 
-describe("private scholarly record identity UI", () => {
+describe("scholarly record detail component (not a global shell destination)", () => {
   const EMPTY_RECORD: ScholarlyRecord = {
     id: "record-1",
     label: "Private source",
@@ -1918,9 +1982,7 @@ describe("private scholarly record identity UI", () => {
       attachFileToScholarlyRecord,
       detachScholarlyArtifact,
     });
-    render(<App api={api} />);
-
-    await user.click(await screen.findByRole("button", { name: "Scholarly records" }));
+    render(<LanguageProvider><ScholarlyRecordsDialog api={api} availableFiles={[FILE]} onClose={vi.fn()} returnFocus={null} /></LanguageProvider>);
     const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
     expect(within(dialog).getByText("No scholarly records")).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText("Record label"), EMPTY_RECORD.label);
@@ -1950,8 +2012,7 @@ describe("private scholarly record identity UI", () => {
       getScholarlyRecord: vi.fn().mockResolvedValue(EMPTY_RECORD),
       attachFileToScholarlyRecord: vi.fn().mockRejectedValue(new ApiError(409, "conflict")),
     });
-    render(<App api={api} />);
-    await user.click(await screen.findByRole("button", { name: "Scholarly records" }));
+    render(<LanguageProvider><ScholarlyRecordsDialog api={api} availableFiles={[FILE]} onClose={vi.fn()} returnFocus={null} /></LanguageProvider>);
     const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
     await user.selectOptions(within(dialog).getByLabelText("Files in this folder"), FILE.id);
     await user.click(within(dialog).getByRole("button", { name: "Attach file" }));
@@ -1984,8 +2045,7 @@ describe("private scholarly record identity UI", () => {
       listScholarlyRecords: vi.fn().mockResolvedValue({ records: [first, second], nextBeforeId: null }),
       getScholarlyRecord,
     });
-    render(<App api={api} />);
-    await user.click(await screen.findByRole("button", { name: "Scholarly records" }));
+    render(<LanguageProvider><ScholarlyRecordsDialog api={api} availableFiles={[]} onClose={vi.fn()} returnFocus={null} /></LanguageProvider>);
     const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
     await within(dialog).findByRole("heading", { name: first.label });
     await user.click(within(dialog).getByRole("button", { name: "Load more" }));
@@ -2020,7 +2080,7 @@ describe("zero-descriptive-copy", () => {
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
     render(<App api={api} />);
 
-    expect(await screen.findByText("This folder is empty")).toBeInTheDocument();
+    expect(await screen.findByText("Library is unavailable")).toBeInTheDocument();
     expect(screen.queryByText(/upload a source file|create a folder to begin/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Favorites" }));
@@ -2259,8 +2319,7 @@ describe("governance audit presentation", () => {
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAuditEvents });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getAllByRole("button", { name: "Governance audit" })[0]!);
-    const dialog = await screen.findByRole("dialog", { name: "Governance and security audit" });
+    const dialog = await openOwnerAdministration("Activity log");
     expect(within(dialog).getByRole("status")).toHaveTextContent("Loading audit events");
     expect(within(dialog).queryByText("No governance events")).not.toBeInTheDocument();
     resolvePage({ events: [], nextBeforeId: null, retentionPolicy: "latest_20000_events" });
@@ -2275,8 +2334,7 @@ describe("governance audit presentation", () => {
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAuditEvents });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getAllByRole("button", { name: "Governance audit" })[0]!);
-    const dialog = await screen.findByRole("dialog", { name: "Governance and security audit" });
+    const dialog = await openOwnerAdministration("Activity log");
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Could not load audit events");
     expect(within(dialog).queryByText("No governance events")).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Retry" }));
@@ -2305,14 +2363,13 @@ describe("governance audit presentation", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
-    const trigger = screen.getAllByRole("button", { name: "Governance audit" })[0]!;
-    await user.click(trigger);
-    const dialog = await screen.findByRole("dialog", { name: "Governance and security audit" });
+    const trigger = screen.getByRole("button", { name: "Account menu" });
+    const dialog = await openOwnerAdministration("Activity log");
     expect(await within(dialog).findByText("Permanent deletion completed")).toBeInTheDocument();
     expect(within(dialog).getByText("file · file-opaque-7")).toBeInTheDocument();
     expect(within(dialog).queryByText(/paper\.pdf|private note|search/i)).not.toBeInTheDocument();
     expect(listAuditEvents).toHaveBeenCalledWith(undefined, 50);
-    await user.click(within(dialog).getByRole("button", { name: "Close governance audit" }));
+    await user.click(within(dialog).getByRole("button", { name: "Close administration" }));
     expect(trigger).toHaveFocus();
   });
 
@@ -2321,7 +2378,8 @@ describe("governance audit presentation", () => {
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(member) });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    expect(screen.queryByRole("button", { name: "Governance audit" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(within(screen.getByRole("menu", { name: "Account" })).queryByRole("menuitem", { name: "Administration" })).not.toBeInTheDocument();
   });
 });
 
@@ -2354,9 +2412,9 @@ describe("Shared Library contribution UI", () => {
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "Shared Library" }));
-    expect(await screen.findByRole("heading", { name: canonical.name, level: 3 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Holdings" })).toBeInTheDocument();
     await waitFor(() => expect(listLibraryHoldings).toHaveBeenCalledWith(canonical.id));
+    expect(screen.queryByRole("button", { name: "Shared Library" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create library" })).not.toBeInTheDocument();
   });
 
@@ -2373,8 +2431,8 @@ describe("Shared Library contribution UI", () => {
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "Shared Library" }));
-    expect(await screen.findByRole("heading", { name: "Contribution review" })).toBeInTheDocument();
+    const dialog = await openOwnerAdministration("Contribution review");
+    expect(await within(dialog).findByRole("heading", { name: "Contribution review" })).toBeInTheDocument();
     expect(screen.getByText("submitted.pdf")).toBeInTheDocument();
     expect(screen.queryByText("unrelated-private.pdf")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Approve" }));
@@ -2398,10 +2456,10 @@ describe("Shared Library contribution UI", () => {
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "Shared Library" }));
+    const dialog = await openOwnerAdministration("Contribution review");
     expect(await screen.findByText("submitted.pdf")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Second sources/ }));
+    await user.click(within(dialog).getByRole("button", { name: /Second sources/ }));
 
     await waitFor(() => expect(screen.queryByText("submitted.pdf")).not.toBeInTheDocument());
     expect(listLibraryContributions).toHaveBeenLastCalledWith(secondLibrary.id);
@@ -2425,23 +2483,23 @@ describe("Shared Library contribution UI", () => {
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "Shared Library" }));
+    const dialog = await openOwnerAdministration("Contribution review");
     expect(await screen.findByText("submitted.pdf")).toBeInTheDocument();
-    const secondButton = screen.getByRole("button", { name: /Second sources/ });
+    const secondButton = within(dialog).getByRole("button", { name: /Second sources/ });
 
     await user.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(reviewLibraryContribution).toHaveBeenCalledWith(library.id, contribution.id, "approve"));
     expect(secondButton).toBeDisabled();
     await user.click(secondButton);
-    expect(screen.getByRole("heading", { name: library.name, level: 3 })).toBeInTheDocument();
+    expect(secondButton).toHaveClass("button--quiet");
 
     resolveReview({ ...contribution, state: "approved", revision: 1, reviewedAt: "2026-08-18T00:01:00.000Z" });
     await waitFor(() => expect(secondButton).toBeEnabled());
     await user.click(secondButton);
-    expect(await screen.findByRole("heading", { name: secondLibrary.name, level: 3 })).toBeInTheDocument();
+    await waitFor(() => expect(secondButton).not.toHaveClass("button--quiet"));
   });
 
-  it("lets a member explicitly submit one attached artifact to an accessible Library", async () => {
+  it("supports contribution submission when mounted by a future resource-detail flow", async () => {
     const user = userEvent.setup();
     const memberLibrary = { ...library, role: "member" as const };
     const record = {
@@ -2468,9 +2526,7 @@ describe("Shared Library contribution UI", () => {
       getScholarlyRecord: vi.fn().mockResolvedValue(record),
       submitLibraryContribution,
     });
-    render(<App api={api} />);
-    await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "Scholarly records" }));
+    render(<LanguageProvider><ScholarlyRecordsDialog api={api} availableFiles={[FILE]} onClose={vi.fn()} returnFocus={null} /></LanguageProvider>);
     const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
     const submit = await within(dialog).findByRole("button", { name: "Submit to shared library" });
     await user.click(submit);
@@ -2492,7 +2548,6 @@ describe("Shared Library contribution UI", () => {
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "Shared Library" }));
     expect(await screen.findByText("submitted.pdf")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Withdraw" }));
     await waitFor(() => expect(withdrawLibraryContribution).toHaveBeenCalledWith(memberLibrary.id, contribution.id));

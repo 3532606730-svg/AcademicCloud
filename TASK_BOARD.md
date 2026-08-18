@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**`PROD-05A` is complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. A new Owner-approved repository-only first-use correction queue is now open; production remains closed.**
+**`PROD-05A` is complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. The Owner-approved repository-only first-use correction queue is complete; production remains closed and repository development is stopped for Owner review.**
 
 First-use review corrected a material product-model misunderstanding: AcademicCloud is not “private Drive + optional Shared Library”. It is one Owner-curated shared academic corpus. Approved academic resources are shared to all active authorized members; Member uploads enter Owner review before admission; each member's research activity around those resources remains private.
 
@@ -16,7 +16,7 @@ Execute only the following queue:
 
 1. `RF-SHAREDDEFAULT01` — **complete and green**; canonical shared Library, automatic Member intake, Owner direct admission, preserved private overlays/stable identities, and append-only migration 016.
 2. `L2-CREDENTIALRESET01` — **complete and green**; authenticated self-service route/UI removed, Owner-issued digest-only one-time reset added, and atomic auth-revision/session invalidation preserved in migration 017.
-3. `L1-UX05` — correct information architecture and visual hierarchy; hide engineering entities/admin actions from the global shell; move audit to `操作记录`; fix stale-state folder recycle/delete UX without weakening CAS.
+3. `L1-UX05` — **complete and green**; canonical Library shell, unified Owner administration, restrained action hierarchy, preserved Member boundaries/mobile behavior, and revision-safe stale-folder recycle recovery.
 4. STOP for Owner first-use review.
 
 `L2-CREDENTIALRESET01` is technically independent after recovery, but the final shell must not retain the self-service password-change surface. `L1-UX05` should consume the shared-corpus semantics from `RF-SHAREDDEFAULT01` rather than implementing another UI-only sharing fiction.
@@ -25,14 +25,13 @@ Verification must remain proportionate: focused changed-risk tests, one typechec
 
 ## Doing
 
-None. `L2-CREDENTIALRESET01` is independently green and awaiting its clean checkpoint publication. Select `L1-UX05` only after local/remote equality is verified.
+None. The approved continuous objective is exhausted.
 
 ## Ready — Owner-Approved First-Use Correction
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 1 | `L1-UX05` | `tasks/ready/L1-UX05.md` | premium/quiet information architecture + admin consolidation + stale-state delete repair |
-| 2 | STOP | — | Owner inspects real first-use behavior before resuming the research queue |
+| 1 | STOP | — | Owner inspects real first-use behavior after L1-UX05 before resuming the research queue |
 
 ## Product Model — Authoritative Short Form
 
@@ -110,6 +109,7 @@ Any future production transition from account-owned corpus data to the canonical
 - `RF-LIBRARY02` — guarded contribution review and ownership promotion.
 - `RF-SHAREDDEFAULT01` — canonical default `资料库`, automatic active-account access, Member pending upload intake, Owner direct admission, private Favorite preservation, and transactional v15→v16 corpus transition; repository verification green, production untouched.
 - `L2-CREDENTIALRESET01` — Owner-issued 30-minute digest-only reset capability, deterministic reissue supersession, Member-chosen final password, atomic capability consumption/auth-revision/session revocation, retired self-service HTTP/UI, and append-only migration 017; production untouched.
+- `L1-UX05` — one canonical `资料库` surface, compact account menu, unified Owner `管理后台`, hidden internal engineering destinations, one dominant upload action, Member-safe shared-structure controls, and stale-folder conflict refresh/retry through revision-bearing atomic recycle; production untouched.
 - `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01` — first-use polish already complete.
 - `PROD-05A` — exact release `25cdab1…`, schema v15, production verification green.
 

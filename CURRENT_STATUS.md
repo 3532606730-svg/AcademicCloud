@@ -4,9 +4,9 @@
 
 ## Current Phase
 
-**`PROD-05A` is complete and production is closed. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. Repository development is reopening only for an Owner-approved first-use product-model and UX correction.**
+**`PROD-05A` is complete and production is closed. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. The Owner-approved repository-only first-use correction objective is complete and stopped for Owner review.**
 
-`RF-SHAREDDEFAULT01` is complete and synchronized at `51c3d7b82d05574e53849c6ef1b5eec0e9ceabc5`. `L2-CREDENTIALRESET01` is independently green and awaiting checkpoint publication. Development schema head is v17; production remains unchanged at v15. `L1-UX05` is the only remaining authorized Epic and must be selected only after the credential-reset checkpoint is pushed and synchronized.
+`RF-SHAREDDEFAULT01` is complete and synchronized at `51c3d7b82d05574e53849c6ef1b5eec0e9ceabc5`. `L2-CREDENTIALRESET01` is complete and synchronized at `836d78636ef7aab41b03e00321167efed0a94d9d`. `L1-UX05` is independently green at the current repository checkpoint. Development schema head is v17; production remains unchanged at v15. No repository task is active.
 
 First-use review established that the existing “account-private Drive + optional Shared Library” presentation is not the intended AcademicCloud product. ADR-022 now defines the durable correction:
 
@@ -114,17 +114,10 @@ Migration 016 establishes the deterministic canonical Library and a transactiona
 ### L2-CREDENTIALRESET01 — Complete
 Migration 017 adds immutable digest-only reset capability/audit state. Only the active Owner may issue a 30-minute link for an active or disabled Member; reissue supersedes the prior outstanding link. The Member chooses the final password on a dedicated anonymous same-origin surface. Redemption is single-winner and atomically consumes the link, advances `auth_revision`, revokes every session, and rejects stale old-password login publication. Disabled state remains disabled; archived accounts are ineligible. The authenticated self-service route and UI/navigation are removed. No email/SMS/OAuth infrastructure was introduced and production was not contacted.
 
-### L1-UX05
-Repair information architecture and visual hierarchy:
-- remove duplicate `共享资料库` top-level product concept;
-- remove standalone `学术记录`;
-- remove `管理账户`, `管理公告`, `治理审计`, and `修改密码` from global navigation;
-- use a compact user menu and Owner `管理后台` with `成员管理 / 投稿审核 / 公告 / 操作记录`;
-- make `上传资料` the single strong Library-page CTA and demote secondary actions;
-- retain the warm neutral/deep-green identity while reducing boxes/borders/button competition;
-- fix the reproducible stale-state folder recycle/delete failure without weakening revision/CAS protection or bypassing lifecycle.
+### L1-UX05 — Complete
+The normal `资料库` now renders the canonical RF-SHAREDDEFAULT01 holdings directly; the duplicate `共享资料库` destination and standalone `学术记录` shell action are removed. The compact account menu exposes one Owner-only `管理后台` containing `成员管理 / 投稿审核 / 公告 / 操作记录`, while Members receive no administration or shared-structure control. `上传资料` is the only strong page action and Owner folder organization is subordinate. Warm-neutral/deep-green identity, mobile navigation, Preview behavior, and zero-descriptive-copy foundations remain intact.
 
-`L1-UX05` must preserve the completed `L1-UX03` mobile/Preview/zero-descriptive-copy behavior rather than reopening or reimplementing it.
+Single-folder recycle now uses the existing revision-bearing atomic bulk lifecycle. An `invalid_state` or `concurrent_change` response reloads the visible Library/Favorites state; retry then carries the refreshed opaque version. CAS and recycle provenance remain enforced, with no direct deletion or production cleanup.
 
 ## Parked Work
 
@@ -155,4 +148,4 @@ Use proportionate verification tied to changed risk. Shared-default ownership/in
 
 ## Next Action
 
-Publish and synchronize the independently green `L2-CREDENTIALRESET01` checkpoint, then select and complete only `L1-UX05`. STOP for Owner review afterward. Do not contact production or resume `RF-META01`.
+STOP for Owner review. The approved continuous objective is exhausted; do not contact production, resume `RF-META01`, or select another task without new Owner direction.
