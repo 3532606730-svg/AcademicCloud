@@ -1,14 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { AcademicCloudApi, LibraryContribution, LibraryHolding, LibrarySummary } from "./api.ts";
 import { describeError } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function preferredLibrary(libraries: LibrarySummary[]): LibrarySummary | null {
   return libraries.find((library) => library.isDefault) ?? libraries[0] ?? null;
@@ -19,7 +13,19 @@ function preferredLibrary(libraries: LibrarySummary[]): LibrarySummary | null {
  * the canonical corpus; this component therefore presents holdings directly
  * instead of exposing a second top-level "Shared Library" product chooser.
  */
-export function SharedLibraryPanel({ api, revision = 0 }: { api: AcademicCloudApi; revision?: number }) {
+export function SharedLibraryPanel({
+  api,
+  revision = 0,
+  renderCatalogue,
+}: {
+  api: AcademicCloudApi;
+  revision?: number;
+  renderCatalogue: (state: {
+    library: LibrarySummary | null;
+    holdings: LibraryHolding[];
+    loading: boolean;
+  }) => ReactNode;
+}) {
   const { language, t } = useLanguage();
   const [library, setLibrary] = useState<LibrarySummary | null>(null);
   const [holdings, setHoldings] = useState<LibraryHolding[]>([]);
@@ -66,20 +72,6 @@ export function SharedLibraryPanel({ api, revision = 0 }: { api: AcademicCloudAp
     return () => { cancelled = true; };
   }, [api, library, revision]);
 
-  async function openHolding(holding: LibraryHolding, disposition: "attachment" | "inline") {
-    if (!library) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const authorization = await api.createLibraryDownload(library.id, holding.file.id, disposition);
-      window.open(authorization.url, "_blank", "noopener,noreferrer");
-    } catch (caught) {
-      setError(caught);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function withdrawContribution(contribution: LibraryContribution) {
     if (!library) return;
     setBusy(true);
@@ -95,32 +87,9 @@ export function SharedLibraryPanel({ api, revision = 0 }: { api: AcademicCloudAp
   }
 
   return (
-    <section className="shared-library-panel" aria-labelledby="library-holdings-title">
-      <div className="library-catalogue-heading">
-        <div>
-          <h2 id="library-holdings-title">{t("sharedLibrary.holdings")}</h2>
-          {library && <p>{t("sharedLibrary.canonicalSummary")}</p>}
-        </div>
-        {!loading && library && <span>{t("sharedLibrary.holdingCount", { count: holdings.length })}</span>}
-      </div>
+    <div className="shared-library-panel">
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
-      {loading ? <p role="status">{t("sharedLibrary.loading")}</p> : !library ? (
-        <p className="shared-library-empty">{t("sharedLibrary.empty")}</p>
-      ) : holdings.length === 0 ? (
-        <p className="shared-library-empty">{t("sharedLibrary.noHoldings")}</p>
-      ) : (
-        <div className="shared-library-holdings" aria-label={t("sharedLibrary.holdingsAria")}>
-          {holdings.map((holding) => (
-            <article className="shared-library-holding" key={holding.artifactId}>
-              <div><strong>{holding.file.displayName}</strong><span>{holding.recordLabel} · {formatBytes(holding.file.sizeBytes)}</span></div>
-              <div className="shared-library-actions">
-                <button className="button button--small" type="button" disabled={busy} onClick={() => void openHolding(holding, "inline")}>{t("menu.preview")}</button>
-                <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => void openHolding(holding, "attachment")}>{t("menu.download")}</button>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+      {renderCatalogue({ library, holdings, loading })}
       {library?.role !== "manager" && contributions.length > 0 && (
         <section className="shared-library-members" aria-labelledby="shared-library-my-contributions-title">
           <div className="section-heading"><h3 id="shared-library-my-contributions-title">{t("sharedLibrary.myContributions")}</h3><span>{contributions.length}</span></div>
@@ -134,7 +103,7 @@ export function SharedLibraryPanel({ api, revision = 0 }: { api: AcademicCloudAp
           </div>
         </section>
       )}
-    </section>
+    </div>
   );
 }
 

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AuthorizationDeniedError } from "../auth/authorization.js";
 import { DriveError, type DriveService } from "../drive/drive-service.js";
+import { driveEntryVersion } from "../drive/bulk.js";
 import type { StoredFile } from "../drive/file.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
@@ -15,7 +16,8 @@ export type LibraryErrorCode =
   | "authorization_denied"
   | "invalid_input"
   | "invalid_state"
-  | "conflict";
+  | "conflict"
+  | "concurrent_change";
 
 export class LibraryError extends Error {
   constructor(readonly code: LibraryErrorCode, options?: ErrorOptions) {
@@ -46,11 +48,13 @@ export interface LibraryHoldingView {
   recordLabel: string;
   artifactId: string;
   versionId: string;
+  version: string;
   file: {
     id: string;
     displayName: string;
     mediaType: string | null;
     sizeBytes: number;
+    updatedAt: string;
   };
 }
 
@@ -88,11 +92,13 @@ function mapHolding(holding: LibraryHolding): LibraryHoldingView {
     recordLabel: holding.recordLabel,
     artifactId: holding.artifactId,
     versionId: holding.versionId,
+    version: driveEntryVersion(holding.file),
     file: {
       id: holding.file.id,
       displayName: holding.file.displayName,
       mediaType: holding.file.mediaType,
       sizeBytes: holding.file.sizeBytes,
+      updatedAt: holding.file.updatedAt.toISOString(),
     },
   };
 }
@@ -106,6 +112,7 @@ function reasonFor(error: unknown): AuditReasonCode {
       case "invalid_input": return "invalid_input";
       case "invalid_state": return "invalid_state";
       case "conflict": return "concurrent_change";
+      case "concurrent_change": return "concurrent_change";
     }
   }
   if (error instanceof TypeError || error instanceof RangeError) return "invalid_input";
@@ -155,6 +162,19 @@ export class LibraryService {
     const reason = reasonFor(error);
     return tryRecordAuditAttempt(this.#persistence, {
       action,
+      actorKind: "account",
+      actorAccountId: actor.id,
+      targetId: null,
+      outcome: reason === "storage_unavailable" ? "failed" : "denied",
+      reason,
+      occurredAt: this.#now(),
+    });
+  }
+
+  recordHoldingRecycleAuditAttempt(actor: AuthenticatedAccount, error: unknown): boolean {
+    const reason = reasonFor(error);
+    return tryRecordAuditAttempt(this.#persistence, {
+      action: "drive.file_recycle",
       actorKind: "account",
       actorAccountId: actor.id,
       targetId: null,
@@ -341,6 +361,51 @@ export class LibraryService {
     const repositories = this.#persistence.repositories;
     this.#requireMember(accountId, libraryId, repositories);
     return repositories.libraries.listHoldings(libraryId, limit).map(mapHolding);
+  }
+
+  recycleHolding(actor: AuthenticatedAccount, libraryId: string, fileId: string, expectedVersion: string): void {
+    this.#persistence.runInTransaction((repositories) => {
+      const library = this.#requireManager(actor.id, libraryId, repositories);
+      const holding = repositories.libraries.findHoldingByFile(library.id, fileId);
+      if (!holding) throw new LibraryError("not_found");
+      const file = repositories.files.findByDomainId(library.ownerDomainId, holding.file.id);
+      if (!file || file.state !== "active") throw new LibraryError("not_found");
+      if (!/^[A-Za-z0-9_-]{43}$/.test(expectedVersion)) throw new LibraryError("invalid_input");
+      if (driveEntryVersion(file) !== expectedVersion) throw new LibraryError("concurrent_change");
+
+      const now = this.#now();
+      const groupId = this.#createId();
+      if (!repositories.recycle.createGroupForDomain({
+        id: groupId,
+        ownerDomainId: library.ownerDomainId,
+        createdByAccountId: actor.id,
+        rootKind: "file",
+        rootId: file.id,
+        folderCount: 0,
+        fileCount: 1,
+        createdAt: now,
+      })) {
+        throw new LibraryError("invalid_state");
+      }
+      if (!repositories.recycle.recycleFileForDomain(
+        library.ownerDomainId,
+        file.id,
+        groupId,
+        file.revision,
+        now,
+      )) {
+        throw new LibraryError("concurrent_change");
+      }
+      recordAuditEvent(repositories, {
+        action: "drive.file_recycle",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: file.id,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+    });
   }
 
   async createDownload(

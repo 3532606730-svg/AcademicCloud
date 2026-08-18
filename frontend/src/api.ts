@@ -205,11 +205,13 @@ export interface LibraryHolding {
   recordLabel: string;
   artifactId: string;
   versionId: string;
+  version: string;
   file: {
     id: string;
     displayName: string;
     mediaType: string | null;
     sizeBytes: number;
+    updatedAt: string;
   };
 }
 
@@ -320,6 +322,7 @@ export interface AcademicCloudApi {
   removeLibraryMember(libraryId: string, accountId: string): Promise<void>;
   listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]>;
   createLibraryDownload(libraryId: string, fileId: string, disposition?: "attachment" | "inline"): Promise<DownloadAuthorization>;
+  recycleLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void>;
   submitLibraryContribution(libraryId: string, artifactId: string): Promise<LibraryContribution>;
   listLibraryContributions(libraryId: string): Promise<LibraryContribution[]>;
   listMyLibraryContributions(libraryId: string): Promise<LibraryContribution[]>;
@@ -651,6 +654,17 @@ export class ApiClient implements AcademicCloudApi {
     return (await this.#request<{ download: DownloadAuthorization }>(
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/download?${query.toString()}`,
     )).download;
+  }
+
+  recycleLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void> {
+    return this.#request<void>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/recycle`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ version }),
+      },
+    );
   }
 
   async submitLibraryContribution(libraryId: string, artifactId: string): Promise<LibraryContribution> {

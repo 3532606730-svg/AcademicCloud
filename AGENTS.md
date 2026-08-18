@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX05, PROD-05A, and PROD-06A are complete and green. Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. The bounded First-Use Correction objective is exhausted and execution is stopped for independent Owner/ChatGPT review.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX05, L1-UX06, PROD-05A, and PROD-06A are complete and green. Production remains exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. Repository execution is stopped for independent Owner/ChatGPT review.
 
-**Approved continuous objective:** complete. The First-Use Correction Epics and bounded PROD-06A release are independently green; STOP. The remaining Pre-OCR queue, any further production contact/mutation, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, credentials, paid infrastructure, unrelated OSS mutation, and OCR/RAG remain parked or prohibited without new explicit Owner authorization.
+**Approved continuous objective:** complete. `L1-UX06` repaired the canonical catalogue presentation and authority-correct recoverable Library recycle path; STOP. `RF-META01`, `RF-METASUGGEST01`, `RF-SEARCH01`, the remaining Pre-OCR queue, any further production contact/mutation, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, credentials, paid infrastructure, unrelated OSS mutation, and OCR/RAG remain parked or prohibited without new explicit Owner authorization.
 
 ## Engineering Workflow
 
@@ -69,7 +69,7 @@ Additional invariants:
 
 ### Layer 1 — Core Drive / Resource Handling
 
-**Foundation complete; product semantics/UI are under the current bounded correction.** Authentication, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, and deployment/recovery foundation are green. ADR-022 supersedes the old final-product framing of an account-private Drive. `RF-SHAREDDEFAULT01` and `L1-UX05` adapt the proven substrate to one canonical shared `资料库` and the quieter first-use shell.
+**Foundation complete, including the L1-UX06 catalogue repair.** Authentication, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, deployment/recovery foundation, canonical shared `资料库`, and the unified catalogue presentation/lifecycle are green. Repository execution is stopped for Owner review.
 
 ### Layer 2 — Accounts & Governance
 
@@ -87,7 +87,7 @@ Owner-approved Pre-OCR direction includes:
 - Research Inbox/intake;
 - sidecar annotations, citations, page-level evidence, Evidence Bundles, Research Questions, structured export foundations.
 
-These remain parked until the current first-use correction reaches STOP and the Owner explicitly reopens the Pre-OCR queue. `RF-META01` must surface canonical information through normal `资料详情`, not a standalone `学术记录` browser.
+These remain parked at the current STOP until the Owner explicitly reopens the Pre-OCR queue. `RF-META01` must surface canonical information through normal `资料详情`, not a standalone `学术记录` browser.
 
 ### Layer 4 — Shared Academic Library
 
@@ -95,7 +95,7 @@ These remain parked until the current first-use correction reaches STOP and the 
 - `RF-LIBRARY01`: Library ownership/domain boundary, membership/manager authority, authorized holdings list/preview/download;
 - `RF-LIBRARY02`: explicit submitted/approved/rejected/withdrawn contribution review with guarded ownership promotion preserving stable identities/object bytes/contributor provenance/private overlays.
 
-ADR-022 supersedes their earlier optional-Shared-Library product framing. The ordinary product is one Owner-curated shared academic corpus. `RF-SHAREDDEFAULT01` is the current bounded correction that makes that canonical Library the default authority/data flow and defines/tests the append-only transition path for existing account-owned corpus data without authorizing production migration.
+ADR-022 supersedes their earlier optional-Shared-Library product framing. The ordinary product is one Owner-curated shared academic corpus. Completed `RF-SHAREDDEFAULT01` made that canonical Library the default authority/data flow and defined/tested the append-only transition path for existing account-owned corpus data.
 
 Later parked Layer 4 direction includes Library Tags, shared catalog/canonical records/naming, provenance/source confidence, and duplicate/version grouping.
 

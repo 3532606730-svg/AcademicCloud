@@ -39,10 +39,16 @@ interface HoldingRow {
   version_created_at: string;
   file_id: string;
   uploaded_by_account_id: string;
+  folder_id: string | null;
   display_name: string;
   media_type: string | null;
   size_bytes: number;
+  file_state: "active";
+  file_revision: number;
   file_created_at: string;
+  file_updated_at: string;
+  file_deleted_at: null;
+  file_purged_at: null;
 }
 
 function toLibrary(row: LibraryRow): Library {
@@ -79,10 +85,16 @@ function toHolding(row: HoldingRow): LibraryHolding {
     file: {
       id: row.file_id,
       uploadedByAccountId: row.uploaded_by_account_id,
+      folderId: row.folder_id,
       displayName: row.display_name,
       mediaType: row.media_type,
       sizeBytes: row.size_bytes,
+      state: row.file_state,
+      revision: row.file_revision,
       createdAt: fromDatabaseTimestamp(row.file_created_at)!,
+      updatedAt: fromDatabaseTimestamp(row.file_updated_at)!,
+      deletedAt: null,
+      purgedAt: null,
     },
   };
 }
@@ -116,10 +128,16 @@ const holdingColumns = `
   scholarly_artifact_versions.created_at AS version_created_at,
   files.id AS file_id,
   files.uploaded_by_account_id,
+  files.folder_id,
   files.display_name,
   files.media_type,
   files.size_bytes,
-  files.created_at AS file_created_at
+  files.state AS file_state,
+  files.revision AS file_revision,
+  files.created_at AS file_created_at,
+  files.updated_at AS file_updated_at,
+  files.deleted_at AS file_deleted_at,
+  files.purged_at AS file_purged_at
 `;
 
 export class SqliteLibraryRepository implements LibraryRepository {

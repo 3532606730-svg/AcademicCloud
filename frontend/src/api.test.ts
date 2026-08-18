@@ -408,6 +408,25 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[5]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions/contribution%20%2F%20one/download?disposition=inline");
   });
 
+  it("sends the opaque holding version to the scoped Library recycle action", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+    const api = new ApiClient({ fetcher });
+    const version = "v".repeat(43);
+
+    await api.recycleLibraryHolding("library / one", "file / one", version);
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/recycle",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "same-origin",
+        body: JSON.stringify({ version }),
+      }),
+    );
+    const headers = new Headers(fetcher.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("Content-Type")).toBe("application/json");
+  });
+
   it("sends favorites writes as bodyless PUT/DELETE without Content-Type or body", async () => {
     const responses = [
       new Response(null, { status: 204 }), // setFileFavorite(true)

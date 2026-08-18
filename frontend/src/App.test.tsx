@@ -11,6 +11,7 @@ import {
   type FileEntry,
   type FolderEntry,
   type Invitation,
+  type LibraryHolding,
   type ScholarlyRecord,
 } from "./api.ts";
 import type { UploadProgressMetrics } from "./direct-upload.ts";
@@ -26,6 +27,13 @@ afterEach(() => {
 
 const EMPTY_ENTRIES: EntriesResponse = { folder: null, folders: [], files: [] };
 const ACCOUNT = { id: "account-1", loginName: "Scholar", role: "owner" as const };
+const DEFAULT_LIBRARY = {
+  id: "default-library",
+  name: "Canonical corpus",
+  role: "manager" as const,
+  isDefault: true,
+  createdAt: "2026-08-18T00:00:00.000Z",
+};
 const FOLDER: FolderEntry = {
   id: "folder-1",
   parentId: null,
@@ -52,6 +60,26 @@ const FILE: FileEntry = {
   purgedAt: null,
   version: "g".repeat(43),
 };
+
+const LIBRARY_HOLDINGS: LibraryHolding[] = ([
+  ["book.pdf", "application/pdf"],
+  ["scan.png", "image/png"],
+  ["notes.txt", "text/plain"],
+  ["archive.bin", "application/octet-stream"],
+ ] as const).map(([displayName, mediaType], index): LibraryHolding => ({
+  recordId: `record-${index}`,
+  recordLabel: displayName,
+  artifactId: `artifact-${index}`,
+  versionId: `version-${index}`,
+  version: `${String.fromCharCode(118 + index)}`.repeat(43),
+  file: {
+    id: `library-file-${index}`,
+    displayName,
+    mediaType,
+    sizeBytes: 12 + index,
+    updatedAt: `2026-08-18T00:0${index}:00.000Z`,
+  },
+}));
 
 function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
   return {
@@ -88,13 +116,14 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     createScholarlyRecord: vi.fn(),
     attachFileToScholarlyRecord: vi.fn(),
     detachScholarlyArtifact: vi.fn(),
-    listLibraries: vi.fn().mockResolvedValue([]),
+    listLibraries: vi.fn().mockResolvedValue([DEFAULT_LIBRARY]),
     listLibraryMembers: vi.fn().mockResolvedValue([]),
     addLibraryMember: vi.fn(),
     changeLibraryMemberRole: vi.fn(),
     removeLibraryMember: vi.fn().mockResolvedValue(undefined),
     listLibraryHoldings: vi.fn().mockResolvedValue([]),
     createLibraryDownload: vi.fn(),
+    recycleLibraryHolding: vi.fn().mockResolvedValue(undefined),
     submitLibraryContribution: vi.fn(),
     listLibraryContributions: vi.fn().mockResolvedValue([]),
     listMyLibraryContributions: vi.fn().mockResolvedValue([]),
@@ -171,7 +200,7 @@ async function openOwnerAdministration(section: "Member management" | "Contribut
 describe("App", () => {
   it("recovers an anonymous session, signs in, and renders an empty library", async () => {
     const user = userEvent.setup();
-    const api = fakeApi();
+    const api = fakeApi({ listLibraries: vi.fn().mockResolvedValue([]) });
     render(<App api={api} />);
 
     expect(await screen.findByRole("heading", { name: "AC AcademicCloud" })).toBeInTheDocument();
@@ -560,7 +589,7 @@ describe("App", () => {
     expect(screen.queryByText("Your research files")).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Holdings" })).toBeInTheDocument();
+    expect(await screen.findByText("This folder is empty")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Shared Library" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Scholarly records" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New folder" })).toBeInTheDocument();
@@ -2077,7 +2106,7 @@ describe("zero-descriptive-copy", () => {
 
   it("renders every empty state without explanatory second sentences", async () => {
     const user = userEvent.setup();
-    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listLibraries: vi.fn().mockResolvedValue([]) });
     render(<App api={api} />);
 
     expect(await screen.findByText("Library is unavailable")).toBeInTheDocument();
@@ -2412,10 +2441,78 @@ describe("Shared Library contribution UI", () => {
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
-    expect(await screen.findByRole("heading", { name: "Holdings" })).toBeInTheDocument();
+    expect(await screen.findByText("This folder is empty")).toBeInTheDocument();
     await waitFor(() => expect(listLibraryHoldings).toHaveBeenCalledWith(canonical.id));
     expect(screen.queryByRole("button", { name: "Shared Library" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create library" })).not.toBeInTheDocument();
+  });
+
+  it("renders holdings and Owner folders in one catalogue with reused badges, actions, and CAS recycle", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const canonical = { ...library, id: "canonical-library", name: "Canonical corpus", isDefault: true };
+    const createLibraryDownload = vi.fn().mockResolvedValue({
+      method: "GET" as const,
+      url: "https://example.invalid/library-download",
+      expiresAt: "2026-08-18T00:05:00.000Z",
+    });
+    const recycleLibraryHolding = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [] }),
+      listLibraries: vi.fn().mockResolvedValue([canonical]),
+      listLibraryHoldings: vi.fn().mockResolvedValue(LIBRARY_HOLDINGS),
+      createLibraryDownload,
+      recycleLibraryHolding,
+    });
+    render(<App api={api} />);
+
+    const table = await screen.findByRole("table", { name: "Catalogue" });
+    expect(screen.getAllByRole("table")).toHaveLength(1);
+    const headingRow = within(table).getByRole("row", { name: /Name.*Size.*Updated/ });
+    const holdingRow = table.querySelector('[data-entry-kind="library-holding"]');
+    expect(holdingRow).not.toBeNull();
+    expect(Boolean(headingRow.compareDocumentPosition(holdingRow!) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(within(table).getByRole("button", { name: "Sources" })).toBeInTheDocument();
+    expect(holdingRow?.querySelector(".file-badge--pdf")).not.toBeNull();
+    expect(table.querySelector('[data-entry-kind="library-holding"] .file-badge--img')).not.toBeNull();
+    expect(table.querySelector('[data-entry-kind="library-holding"] .file-badge--txt')).not.toBeNull();
+    expect(table.querySelector('[data-entry-kind="library-holding"] .file-badge--file')).not.toBeNull();
+    expect(within(holdingRow as HTMLElement).getByText("book.pdf")).toBeInTheDocument();
+    expect(within(holdingRow as HTMLElement).queryByText("book.pdf", { selector: ".entry-secondary" })).not.toBeInTheDocument();
+    expect(screen.queryByText("The shared scholarly corpus available to your account.")).not.toBeInTheDocument();
+    expect(screen.queryByText("当前账户可访问的共享学术资料。")).not.toBeInTheDocument();
+
+    await user.click(within(holdingRow as HTMLElement).getByRole("button", { name: "Add book.pdf to favorites" }));
+    await waitFor(() => expect(api.setFileFavorite).toHaveBeenCalledWith("library-file-0", true));
+
+    const menu = await openRowMenu("book.pdf");
+    await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
+    await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(canonical.id, "library-file-0", "inline"));
+    await user.click(screen.getByRole("button", { name: "Close preview" }));
+
+    const menuAfterPreview = await openRowMenu("book.pdf");
+    await user.click(within(menuAfterPreview).getByRole("menuitem", { name: "Move to trash" }));
+    await waitFor(() => expect(recycleLibraryHolding).toHaveBeenCalledWith(canonical.id, "library-file-0", LIBRARY_HOLDINGS[0]!.version));
+    confirm.mockRestore();
+  });
+
+  it("does not expose Library recycle to Members while retaining catalogue actions", async () => {
+    const member = { id: "member-1", loginName: "Reader", role: "member" as const };
+    const canonical = { ...library, id: "canonical-library", isDefault: true, role: "member" as const };
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(member),
+      listLibraries: vi.fn().mockResolvedValue([canonical]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+    });
+    render(<App api={api} />);
+
+    const row = await screen.findByRole("row", { name: /book\.pdf/ });
+    const menu = await openRowMenu("book.pdf");
+    expect(within(menu).getByRole("menuitem", { name: "Preview" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Download" })).toBeInTheDocument();
+    expect(within(menu).queryByRole("menuitem", { name: "Move to trash" })).not.toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "Add book.pdf to favorites" })).toBeInTheDocument();
   });
 
   it("shows only explicitly submitted reviewer rows and approves through the scoped API", async () => {

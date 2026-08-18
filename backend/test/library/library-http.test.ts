@@ -204,6 +204,34 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
     const memberManagement = await app.inject({ method: "GET", url: `/api/libraries/${libraryId}/members`, headers: headers(memberCookie) });
     assert.equal(memberManagement.statusCode, 404);
     assert.deepEqual(memberManagement.json(), { error: "not_found" });
+
+    const ownerHoldings = await app.inject({ method: "GET", url: `/api/libraries/${libraryId}/holdings`, headers: headers(ownerCookie) });
+    const recycleTarget = (ownerHoldings.json() as { holdings: Array<{ file: { id: string }; version: string }> }).holdings[0]!;
+    const memberRecycle = await app.inject({
+      method: "POST",
+      url: `/api/libraries/${libraryId}/holdings/${recycleTarget.file.id}/recycle`,
+      headers: { ...headers(memberCookie), "content-type": "application/json" },
+      payload: { version: recycleTarget.version },
+    });
+    assert.equal(memberRecycle.statusCode, 404);
+    assert.deepEqual(memberRecycle.json(), { error: "not_found" });
+
+    const staleRecycle = await app.inject({
+      method: "POST",
+      url: `/api/libraries/${libraryId}/holdings/${recycleTarget.file.id}/recycle`,
+      headers: { ...headers(ownerCookie), "content-type": "application/json" },
+      payload: { version: "s".repeat(43) },
+    });
+    assert.equal(staleRecycle.statusCode, 409);
+    assert.deepEqual(staleRecycle.json(), { error: "concurrent_change" });
+
+    const ownerRecycle = await app.inject({
+      method: "POST",
+      url: `/api/libraries/${libraryId}/holdings/${recycleTarget.file.id}/recycle`,
+      headers: { ...headers(ownerCookie), "content-type": "application/json" },
+      payload: { version: recycleTarget.version },
+    });
+    assert.equal(ownerRecycle.statusCode, 204);
   } finally {
     await app.close();
     rmSync(dbPath, { force: true });

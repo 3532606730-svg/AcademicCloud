@@ -246,16 +246,12 @@ input:hover { border-color: #a7b2a8; }
 .workspace { position: relative; min-width: 0; padding: clamp(1.75rem, 2.5vw, 2.25rem); overflow-x: hidden; }
 
 .shared-library-panel { margin-top: 1.35rem; }
-.library-catalogue-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 0.7rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line); }
-.library-catalogue-heading h2 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-size: 1.05rem; font-weight: 500; }
-.library-catalogue-heading p { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.8rem; }
-.library-catalogue-heading > span { color: var(--muted); font-size: 0.8rem; }
-.shared-library-holdings, .shared-library-member-list { display: grid; }
-.shared-library-holding span, .shared-library-member small { color: var(--muted); font-size: 0.78rem; }
-.shared-library-holding, .shared-library-member { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 0.2rem; border-bottom: 1px solid var(--line); }
-.shared-library-holding:last-child, .shared-library-member:last-child { border-bottom: 0; }
-.shared-library-holding > div:first-child, .shared-library-member > span { display: grid; min-width: 0; gap: 0.2rem; }
-.shared-library-holding strong, .shared-library-member strong { overflow-wrap: anywhere; }
+.shared-library-member-list { display: grid; }
+.shared-library-member small { color: var(--muted); font-size: 0.78rem; }
+.shared-library-member { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 0.2rem; border-bottom: 1px solid var(--line); }
+.shared-library-member:last-child { border-bottom: 0; }
+.shared-library-member > span { display: grid; min-width: 0; gap: 0.2rem; }
+.shared-library-member strong { overflow-wrap: anywhere; }
 .shared-library-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .shared-library-members { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .shared-library-empty { color: var(--muted); }
@@ -340,6 +336,7 @@ input:hover { border-color: #a7b2a8; }
   border-radius: 0.45rem;
   cursor: pointer;
 }
+.entry-select-spacer { display: block; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; }
 .entry-select { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .entry-select-box { width: 1.05rem; height: 1.05rem; border: 1.5px solid #8a958c; border-radius: 0.22rem; background: var(--paper); }
 .entry-select:checked + .entry-select-box { border-color: var(--forest); background: var(--forest); box-shadow: inset 0 0 0 3px var(--paper); }
@@ -776,8 +773,7 @@ input:hover { border-color: #a7b2a8; }
   .command-bar { width: 100%; }
   .command-bar .button { flex: 1; min-height: 2.75rem; }
   .command-bar .button--quiet { flex: 0 0 auto; }
-  .library-catalogue-heading { align-items: flex-start; flex-direction: column; }
-  .shared-library-holding, .shared-library-member { align-items: stretch; flex-direction: column; }
+  .shared-library-member { align-items: stretch; flex-direction: column; }
   .shared-library-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shared-library-actions .button, .shared-library-member .button, .shared-library-member select { min-height: 2.75rem; }
 
@@ -798,6 +794,7 @@ input:hover { border-color: #a7b2a8; }
   .entry-row > .entry-meta { display: none; }
   .entry-name { gap: 0.7rem; }
   .entry-select-control { margin-left: -0.6rem; }
+  .entry-select-spacer { flex-basis: 2.15rem; width: 2.15rem; }
   .entry-mobile-meta { display: block; }
   .star-button, .row-menu-trigger { width: 2.75rem; height: 2.75rem; }
   .bulk-toolbar { position: sticky; z-index: 20; top: 0.35rem; align-items: stretch; flex-direction: column; }

@@ -4,21 +4,17 @@
 
 ## Current Phase
 
-**`L1-UX06 — Canonical Catalogue Presentation Repair` is Doing. Production remains exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 and is closed to this repository task.**
+**`L1-UX06 — Canonical Catalogue Presentation Repair` is complete and green. Repository execution is stopped for independent Owner/ChatGPT review. Production remains exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 and was never contacted by this task.**
 
-The canonical shared-corpus authority is correct. Current work repairs only the first-use catalogue presentation/lifecycle gap: root `资料库` stacks canonical holdings above a legacy Owner table, misplacing Name/Size/Updated headers, omitting established file-type icons, repeating filename-derived labels, retaining redundant descriptive copy, and lacking an authority-correct recoverable lifecycle action for Library-owned resources.
+The canonical shared-corpus authority and catalogue presentation/lifecycle repair are now green: root `资料库` uses one established catalogue table for holdings and Owner-managed rows, restores file badges/actions, and provides a manager-only Library-domain CAS recycle action without widening Member authority.
 
 Verification remains proportionate: changed-risk tests and focused independent review only. Do not replay PROD-05A/PROD-06A or broad historical production acceptance.
 
 ## Doing
 
-| Task | Task card | Bounded result |
-|---|---|---|
-| L1-UX06 | `tasks/doing/L1-UX06.md` | One coherent canonical catalogue; correct header/icon/duplicate-copy behavior; Owner/Manager recoverable Library-owned lifecycle without Member destructive authority |
+None. The authorized L1-UX06 run is complete and stopped.
 
-The historical `tasks/ready/L1-UX06.md` path is a moved-to-Doing pointer only and must not be executed separately.
-
-## Ready — Current Owner-Approved Round
+## Ready — Preserved, Not Started
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
@@ -27,17 +23,14 @@ The historical `tasks/ready/L1-UX06.md` path is a moved-to-Doing pointer only an
 | 3 | RF-SEARCH01 | `tasks/ready/RF-SEARCH01.md` | Authority-scoped catalogue name/metadata search field; no OCR/full-text claim |
 | 4 | STOP | — | Independent Owner/ChatGPT review before any later Pre-OCR card or production gate |
 
-Current round:
+Current execution boundary:
 
 ```text
-L1-UX06   ← DOING
-→ RF-META01
-→ RF-METASUGGEST01
-→ RF-SEARCH01
-→ STOP
+L1-UX06   ← DONE
+→ STOP for Owner/ChatGPT review
 ```
 
-Completing these cards does not authorize later Pre-OCR work or production deployment.
+The listed Ready cards remain durable future scope; this run did not start them. Owner review/continuation is required before selecting RF-META01. Completing any repository card never authorizes production deployment.
 
 ## Bibliographic Suggestion Contract — Later in This Round
 
@@ -99,7 +92,7 @@ No continuing authority exists for production mutation, visible test-data cleanu
 
 ## Completed Milestones Relevant to This Round
 
-RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05, PROD-05A and PROD-06A remain completed baselines and must not be reopened by L1-UX06.
+RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, PROD-05A and PROD-06A are completed baselines. Final L1-UX06 record: `tasks/done/L1-UX06.md`.
 
 ## Separate Parked Production Work
 

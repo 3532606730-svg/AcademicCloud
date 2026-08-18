@@ -33,7 +33,13 @@ export interface BulkOperationResult {
   items: BulkItemResult[];
 }
 
-export function driveEntryVersion(entry: Folder | StoredFile): string {
+type FolderVersionSource = Pick<Folder, "id" | "parentId" | "name" | "state" | "updatedAt" | "deletedAt">;
+type FileVersionSource = Pick<
+  StoredFile,
+  "id" | "folderId" | "displayName" | "state" | "revision" | "updatedAt" | "deletedAt" | "purgedAt"
+>;
+
+export function driveEntryVersion(entry: FolderVersionSource | FileVersionSource): string {
   const mutableIdentity = "displayName" in entry
     ? [
         "file",

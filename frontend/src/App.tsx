@@ -8,6 +8,8 @@ import {
   type BulkAction,
   type BulkItem,
   type Invitation,
+  type LibraryHolding,
+  type LibrarySummary,
   type ManagedAccount,
   type EntriesResponse,
   type FileEntry,
@@ -391,9 +393,10 @@ interface UploadJob {
 }
 
 interface PreviewState {
-  file: FileEntry;
+  file: Pick<FileEntry, "displayName" | "mediaType">;
   url: string;
   returnFocus: HTMLElement | null;
+  download: () => Promise<void>;
 }
 
 type MoveRequest =
@@ -908,7 +911,7 @@ function DriveView({
     setError(null);
   }
 
-  async function toggleFileFavorite(file: FileEntry) {
+  async function toggleFileFavorite(file: Pick<FileEntry, "id">) {
     const active = favoriteFileIds.has(file.id);
     const next = new Set(favoriteFileIds);
     if (active) next.delete(file.id);
@@ -1058,6 +1061,7 @@ function DriveView({
         file,
         url: authorization.url,
         returnFocus: returnFocus ?? fallbackFocus,
+        download: () => downloadFile(file),
       });
     } catch (caught: unknown) {
       // preview_unavailable renders the localized fail-safe message; the
@@ -1066,6 +1070,65 @@ function DriveView({
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function downloadLibraryHolding(library: LibrarySummary, holding: LibraryHolding) {
+    await runAction(`download-${holding.file.id}`, t("file.downloadOpened"), async () => {
+      const authorization = await api.createLibraryDownload(library.id, holding.file.id);
+      const anchor = document.createElement("a");
+      anchor.href = authorization.url;
+      anchor.download = holding.file.displayName;
+      anchor.rel = "noopener noreferrer";
+      anchor.click();
+    });
+  }
+
+  async function openLibraryPreview(
+    library: LibrarySummary,
+    holding: LibraryHolding,
+    returnFocus?: HTMLElement | null,
+  ) {
+    const fallbackFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setBusyId(`preview-${holding.file.id}`);
+    setError(null);
+    try {
+      const authorization = await api.createLibraryDownload(library.id, holding.file.id, "inline");
+      setPreview({
+        file: {
+          displayName: holding.file.displayName,
+          mediaType: holding.file.mediaType ?? "application/octet-stream",
+        },
+        url: authorization.url,
+        returnFocus: returnFocus ?? fallbackFocus,
+        download: () => downloadLibraryHolding(library, holding),
+      });
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function recycleLibraryHolding(library: LibrarySummary, holding: LibraryHolding) {
+    if (!window.confirm(t("file.recycleConfirm", { name: holding.file.displayName }))) return;
+    void (async () => {
+      setBusyId(holding.file.id);
+      setError(null);
+      setNotice("");
+      try {
+        await api.recycleLibraryHolding(library.id, holding.file.id, holding.version);
+        setNotice(t("file.recycled"));
+        refresh();
+      } catch (caught: unknown) {
+        setError(caught);
+        if (caught instanceof ApiError && (caught.code === "concurrent_change" || caught.code === "invalid_state")) {
+          setNotice(t("file.conflictRefreshed"));
+          refresh();
+        }
+      } finally {
+        setBusyId(null);
+      }
+    })();
   }
 
   // Drag-and-drop (library view only). A depth counter prevents child-element
@@ -1251,7 +1314,69 @@ function DriveView({
         {view === "library" && path.length === 0 && (
           <>
             <AnnouncementFeed api={api} revision={announcementRevision} />
-            <SharedLibraryPanel api={api} revision={revision} />
+            <SharedLibraryPanel
+              api={api}
+              revision={revision}
+              renderCatalogue={({ library, holdings, loading: holdingsLoading }) => {
+                const rootFolders = account.role === "owner" ? entries.folders : [];
+                const rootFiles = account.role === "owner" ? entries.files : [];
+                const catalogueLoading = loading || holdingsLoading;
+                const catalogueEmpty = rootFolders.length + rootFiles.length + holdings.length === 0;
+                return (
+                  <section aria-labelledby="contents-title">
+                    <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
+                    {account.role === "owner" && selectedEntries.length > 0 && (
+                      <BulkToolbar
+                        mode="library"
+                        selectedCount={selectedEntries.length}
+                        busy={busyId === "bulk"}
+                        onClear={() => setSelectedKeys(new Set())}
+                        onMove={(trigger) => setMoveRequest({ kind: "bulk", items: selectedEntries, returnFocus: trigger })}
+                        onRecycle={() => {
+                          if (window.confirm(t("bulk.recycleConfirm", { count: selectedEntries.length }))) {
+                            void runBulk("recycle").catch(() => undefined);
+                          }
+                        }}
+                        onFavoriteAdd={() => void runBulk("favorite_add").catch(() => undefined)}
+                        onFavoriteRemove={() => void runBulk("favorite_remove").catch(() => undefined)}
+                      />
+                    )}
+                    {catalogueLoading ? <LoadingRows /> : !library ? (
+                      <EmptyState title={t("sharedLibrary.empty")} />
+                    ) : catalogueEmpty ? (
+                      <EmptyState title={t("folder.emptyTitle")} />
+                    ) : (
+                      <EntryTable
+                        folders={rootFolders}
+                        files={rootFiles}
+                        holdings={holdings}
+                        library={library}
+                        busyId={busyId}
+                        onEnterFolder={enterFolder}
+                        onRenameFolder={renameFolder}
+                        onMoveFolder={moveFolder}
+                        onDeleteFolder={deleteFolder}
+                        onPreview={(file, trigger) => void openPreview(file, trigger)}
+                        onDownload={(file) => void downloadFile(file)}
+                        onRenameFile={renameFile}
+                        onMoveFile={moveFile}
+                        onDeleteFile={deleteFile}
+                        onPreviewHolding={(holding, trigger) => void openLibraryPreview(library, holding, trigger)}
+                        onDownloadHolding={(holding) => void downloadLibraryHolding(library, holding)}
+                        onRecycleHolding={(holding) => recycleLibraryHolding(library, holding)}
+                        starFileIds={favoriteFileIds}
+                        starFolderIds={favoriteFolderIds}
+                        onToggleFileFavorite={(file) => void toggleFileFavorite(file)}
+                        onToggleFolderFavorite={(folder) => void toggleFolderFavorite(folder)}
+                        selectedKeys={selectedKeys}
+                        onToggleSelected={toggleSelection}
+                        selectionDisabled={busyId === "bulk"}
+                      />
+                    )}
+                  </section>
+                );
+              }}
+            />
           </>
         )}
 
@@ -1296,7 +1421,7 @@ function DriveView({
           </section>
         )}
 
-        {view === "library" && account.role === "owner" && (path.length > 0 || !isLibraryEmpty) && (
+        {view === "library" && account.role === "owner" && path.length > 0 && (
           <section aria-labelledby="contents-title">
             <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
             {selectedEntries.length > 0 && (
@@ -1518,7 +1643,7 @@ function DriveView({
           onLibraryChanged={refresh}
         />
       )}
-      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void downloadFile(preview.file)} />}
+      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void preview.download()} />}
       {moveRequest && (
         <MoveDialog
           api={api}
@@ -2378,6 +2503,8 @@ function BulkToolbar({
 function EntryTable({
   folders,
   files,
+  holdings = [],
+  library,
   busyId,
   onEnterFolder,
   onRenameFolder,
@@ -2388,6 +2515,9 @@ function EntryTable({
   onRenameFile,
   onMoveFile,
   onDeleteFile,
+  onPreviewHolding,
+  onDownloadHolding,
+  onRecycleHolding,
   starFileIds,
   starFolderIds,
   onToggleFileFavorite,
@@ -2398,6 +2528,8 @@ function EntryTable({
 }: {
   folders: FolderEntry[];
   files: FileEntry[];
+  holdings?: LibraryHolding[];
+  library?: LibrarySummary;
   busyId: string | null;
   onEnterFolder: (folder: FolderEntry) => void;
   onRenameFolder: (folder: FolderEntry) => void;
@@ -2408,9 +2540,12 @@ function EntryTable({
   onRenameFile: (file: FileEntry) => void;
   onMoveFile: (file: FileEntry, trigger?: HTMLElement) => void;
   onDeleteFile: (file: FileEntry) => void;
+  onPreviewHolding?: (holding: LibraryHolding, trigger?: HTMLElement) => void;
+  onDownloadHolding?: (holding: LibraryHolding) => void;
+  onRecycleHolding?: (holding: LibraryHolding) => void;
   starFileIds?: ReadonlySet<string>;
   starFolderIds?: ReadonlySet<string>;
-  onToggleFileFavorite?: (file: FileEntry) => void;
+  onToggleFileFavorite?: (file: Pick<FileEntry, "id">) => void;
   onToggleFolderFavorite?: (folder: FolderEntry) => void;
   selectedKeys: ReadonlySet<string>;
   onToggleSelected: (entry: SelectableEntry) => void;
@@ -2465,6 +2600,59 @@ function EntryTable({
                 { key: "trash", label: t("menu.trash"), danger: true, disabled: busyId === folder.id, onSelect: () => onDeleteFolder(folder) },
               ]}
             />
+          </div>
+        </div>
+      ))}
+      {holdings.map((holding) => (
+        <div className="entry-row" role="row" key={holding.artifactId} data-entry-kind="library-holding">
+          <div className="entry-name" role="cell">
+            <span className="entry-select-spacer" aria-hidden="true" />
+            <FileBadge file={holding.file} />
+            <div className="entry-name-body">
+              <strong className="entry-filename" title={holding.file.displayName}>{holding.file.displayName}</strong>
+              <span className="entry-mobile-meta">{fileKindLabel(holding.file, t)} · {formatBytes(holding.file.sizeBytes)}</span>
+            </div>
+          </div>
+          <span role="cell" className="entry-meta">{formatBytes(holding.file.sizeBytes)}</span>
+          <span role="cell" className="entry-meta">{formatDate(holding.file.updatedAt, language)}</span>
+          <div className="entry-actions" role="cell">
+            {onToggleFileFavorite && (
+              <StarButton
+                active={starFileIds?.has(holding.file.id) ?? false}
+                name={holding.file.displayName}
+                onToggle={() => onToggleFileFavorite(holding.file)}
+              />
+            )}
+            {library && onDownloadHolding && (
+              <RowMenu
+                triggerLabel={t("menu.openAria", { name: holding.file.displayName })}
+                menuLabel={t("menu.aria", { name: holding.file.displayName })}
+                items={[
+                  ...(isPreviewable(holding.file) && onPreviewHolding ? [{
+                    key: "preview",
+                    label: t("menu.preview"),
+                    disabled: busyId === `preview-${holding.file.id}`,
+                    onSelect: (trigger: HTMLElement) => onPreviewHolding(holding, trigger),
+                  }] : []),
+                  {
+                    key: "download",
+                    label: t("menu.download"),
+                    disabled: busyId === `download-${holding.file.id}`,
+                    onSelect: () => onDownloadHolding(holding),
+                  },
+                  ...(library.role === "manager" && onRecycleHolding ? [
+                    { key: "separator", separator: true as const },
+                    {
+                      key: "trash",
+                      label: t("menu.trash"),
+                      danger: true,
+                      disabled: busyId === holding.file.id,
+                      onSelect: () => onRecycleHolding(holding),
+                    },
+                  ] : []),
+                ]}
+              />
+            )}
           </div>
         </div>
       ))}
@@ -2533,10 +2721,10 @@ function StarButton({ active, name, onToggle }: { active: boolean; name: string;
   );
 }
 
-function fileKindLabel(file: FileEntry, t: Translator): string {
+function fileKindLabel(file: Pick<FileEntry, "mediaType"> | LibraryHolding["file"], t: Translator): string {
   if (file.mediaType === "application/pdf") return t("file.kindPdf");
-  if (file.mediaType.startsWith("image/")) return t("file.kindImage");
-  if (file.mediaType.startsWith("text/")) return t("file.kindText");
+  if (file.mediaType?.startsWith("image/")) return t("file.kindImage");
+  if (file.mediaType?.startsWith("text/")) return t("file.kindText");
   return t("file.kindFile");
 }
 
@@ -2682,10 +2870,10 @@ function AccountMenu({
   );
 }
 
-function FileBadge({ file }: { file: FileEntry }) {
+function FileBadge({ file }: { file: Pick<FileEntry, "mediaType"> | LibraryHolding["file"] }) {
   if (file.mediaType === "application/pdf") return <PdfIcon size={19} className="file-badge file-badge--pdf" />;
-  if (file.mediaType.startsWith("image/")) return <ImageIcon size={19} className="file-badge file-badge--img" />;
-  if (file.mediaType.startsWith("text/")) return <TextIcon size={19} className="file-badge file-badge--txt" />;
+  if (file.mediaType?.startsWith("image/")) return <ImageIcon size={19} className="file-badge file-badge--img" />;
+  if (file.mediaType?.startsWith("text/")) return <TextIcon size={19} className="file-badge file-badge--txt" />;
   return <FileIcon size={19} className="file-badge file-badge--file" />;
 }
 
@@ -2882,7 +3070,8 @@ function LoadingRows() {
   return <div className="loading-rows" role="status"><span /><span /><span /><span className="visually-hidden">{t("shared.loadingItems")}</span></div>;
 }
 
-function isPreviewable(file: FileEntry): boolean {
+function isPreviewable(file: Pick<FileEntry, "mediaType"> | LibraryHolding["file"]): boolean {
+  if (file.mediaType === null) return false;
   return [
     "application/pdf",
     "text/plain",

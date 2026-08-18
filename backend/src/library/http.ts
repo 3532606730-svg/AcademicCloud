@@ -18,6 +18,7 @@ interface HoldingsQuery { limit?: number; }
 interface DownloadQuery { disposition?: "attachment" | "inline"; }
 interface ContributionParams extends LibraryParams { contributionId: string; }
 interface ContributionBody { artifactId: string; }
+interface HoldingRecycleBody { version: string; }
 
 function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
   if (!account) throw new LibraryError("not_found");
@@ -26,7 +27,11 @@ function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccoun
 
 function sendLibraryError(reply: FastifyReply, error: unknown) {
   if (error instanceof LibraryError) {
-    const status = error.code === "invalid_input" ? 400 : error.code === "conflict" || error.code === "invalid_state" ? 409 : 404;
+    const status = error.code === "invalid_input"
+      ? 400
+      : error.code === "conflict" || error.code === "invalid_state" || error.code === "concurrent_change"
+        ? 409
+        : 404;
     return reply.code(status).send({ error: error.code === "authorization_denied" ? "not_found" : error.code });
   }
   if (error instanceof DriveError) {
@@ -219,6 +224,39 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
           ),
         };
       } catch (error: unknown) {
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: HoldingParams; Body: HoldingRecycleBody }>(
+    "/api/libraries/:libraryId/holdings/:fileId/recycle",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 8 * 1024,
+      schema: {
+        params: {
+          type: "object",
+          required: ["libraryId", "fileId"],
+          properties: { libraryId: idSchema, fileId: idSchema },
+        },
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version"],
+          properties: { version: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = requireActor(request.authAccount);
+      try {
+        service.recycleHolding(actor, request.params.libraryId, request.params.fileId, request.body.version);
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        service.recordHoldingRecycleAuditAttempt(actor, error);
         return sendLibraryError(reply, error);
       }
     },

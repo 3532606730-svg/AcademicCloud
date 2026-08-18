@@ -34,9 +34,15 @@ export interface LibraryHolding {
   file: {
     id: string;
     uploadedByAccountId: string;
+    folderId: string | null;
     displayName: string;
     mediaType: string | null;
     sizeBytes: number;
+    state: "active";
+    revision: number;
     createdAt: Date;
+    updatedAt: Date;
+    deletedAt: null;
+    purgedAt: null;
   };
 }

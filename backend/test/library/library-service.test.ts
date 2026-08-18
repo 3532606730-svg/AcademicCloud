@@ -148,3 +148,94 @@ test("disabled Library members lose effective access while membership and holdin
   assert.equal(libraries.listMembers(OWNER, library.id).find((entry) => entry.accountId === MEMBER.id)?.state, "disabled");
   assert.equal(database.prepare<[string], { count: number }>("SELECT count(*) AS count FROM scholarly_artifact_versions WHERE stored_file_id = ?").get(fileId)?.count, 1);
 });
+
+test("Library recycle is manager-only, domain-scoped, CAS guarded, and recoverable", async (context) => {
+  const { database, persistence, storage, libraries } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Shared Sources");
+  const otherLibrary = libraries.createLibrary(OWNER, "Other Sources");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const fileId = addLibraryHolding(database, library.id, `library:${library.id}`);
+  const objectKey = `objects/aa/${"b".repeat(62)}`;
+  storage.putObject({
+    objectKey,
+    sizeBytes: 12,
+    etag: "etag",
+    checksumAlgorithm: "md5",
+    checksum: "YWNhZGVtaWNjb3Vk",
+    mediaType: "application/pdf",
+    modifiedAt: NOW,
+  });
+  persistence.repositories.favorites.addFile(MEMBER.id, fileId, NOW);
+
+  const beforeHolding = libraries.listHoldings(OWNER.id, library.id)[0]!;
+  const beforeFile = persistence.repositories.files.findByDomainId(`library:${library.id}`, fileId)!;
+  const beforeLineage = database.prepare<[string], Array<{ id: string }>>(
+    "SELECT id FROM scholarly_artifact_versions WHERE stored_file_id = ?",
+  ).all(fileId);
+
+  assert.throws(
+    () => libraries.recycleHolding(MEMBER, library.id, fileId, beforeHolding.version),
+    (error) => error instanceof LibraryError && error.code === "not_found",
+  );
+  assert.throws(
+    () => libraries.recycleHolding(OWNER, otherLibrary.id, fileId, beforeHolding.version),
+    (error) => error instanceof LibraryError && error.code === "not_found",
+  );
+  assert.throws(
+    () => libraries.recycleHolding(OWNER, library.id, fileId, "s".repeat(43)),
+    (error) => error instanceof LibraryError && error.code === "concurrent_change",
+  );
+  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM recycle_groups").get()?.count, 0);
+  assert.equal(persistence.repositories.files.findByDomainId(`library:${library.id}`, fileId)?.state, "active");
+
+  // A disabled or archived manager cannot mutate the Library, even when the
+  // caller still holds a previously authenticated actor snapshot.
+  libraries.changeMemberRole(OWNER, library.id, MEMBER.id, "manager");
+  persistence.repositories.accounts.updateState(MEMBER.id, "active", "disabled", NOW);
+  assert.throws(
+    () => libraries.recycleHolding(MEMBER, library.id, fileId, beforeHolding.version),
+    (error) => error instanceof LibraryError && error.code === "not_found",
+  );
+  persistence.repositories.accounts.updateState(MEMBER.id, "disabled", "archived", NOW);
+  assert.throws(
+    () => libraries.recycleHolding(MEMBER, library.id, fileId, beforeHolding.version),
+    (error) => error instanceof LibraryError && error.code === "not_found",
+  );
+
+  libraries.recycleHolding(OWNER, library.id, fileId, beforeHolding.version);
+
+  const afterFile = persistence.repositories.files.findByDomainId(`library:${library.id}`, fileId)!;
+  assert.equal(afterFile.state, "deleted");
+  assert.equal(afterFile.ownerId, `library:${library.id}`);
+  assert.equal(afterFile.objectKey, beforeFile.objectKey);
+  assert.equal(afterFile.checksum, beforeFile.checksum);
+  assert.equal(
+    database.prepare<[string, string], { uploaded_by_account_id: string }>(
+      "SELECT uploaded_by_account_id FROM files WHERE id = ? AND owner_domain_id = ?",
+    ).get(fileId, `library:${library.id}`)?.uploaded_by_account_id,
+    OWNER.id,
+  );
+  assert.equal(afterFile.revision, beforeFile.revision + 1);
+  assert.deepEqual(
+    database.prepare<[string], Array<{ id: string }>>(
+      "SELECT id FROM scholarly_artifact_versions WHERE stored_file_id = ?",
+    ).all(fileId),
+    beforeLineage,
+  );
+  assert.equal(persistence.repositories.favorites.listFileIds(MEMBER.id).includes(fileId), true);
+  const recycleGroup = database.prepare<[string, string], {
+    owner_domain_id: string;
+    created_by_account_id: string;
+    root_kind: string;
+    root_id: string;
+  }>(
+    "SELECT owner_domain_id, created_by_account_id, root_kind, root_id FROM recycle_groups WHERE root_id = ? AND owner_domain_id = ?",
+  ).get(fileId, `library:${library.id}`);
+  assert.deepEqual(recycleGroup, {
+    owner_domain_id: `library:${library.id}`,
+    created_by_account_id: OWNER.id,
+    root_kind: "file",
+    root_id: fileId,
+  });
+  assert.equal((await storage.statObject(objectKey))?.sizeBytes, 12);
+});

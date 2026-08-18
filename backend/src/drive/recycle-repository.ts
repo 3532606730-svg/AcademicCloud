@@ -1,7 +1,19 @@
 import type { RecycleGroup, RecycleRootKind, NewRecycleGroup } from "./recycle.js";
 
+export interface NewDomainRecycleGroup {
+  id: string;
+  ownerDomainId: string;
+  createdByAccountId: string;
+  rootKind: RecycleRootKind;
+  rootId: string;
+  folderCount: number;
+  fileCount: number;
+  createdAt: Date;
+}
+
 export interface RecycleRepository {
   createGroup(group: NewRecycleGroup): RecycleGroup;
+  createGroupForDomain(group: NewDomainRecycleGroup): boolean;
   findGroupById(ownerId: string, groupId: string): RecycleGroup | null;
   findGroupByRoot(ownerId: string, rootKind: RecycleRootKind, rootId: string): RecycleGroup | null;
   listFolderIds(ownerId: string, groupId: string): string[];
@@ -9,6 +21,13 @@ export interface RecycleRepository {
   recycleFolder(ownerId: string, folderId: string, groupId: string, deletedAt: Date): boolean;
   recycleFile(
     ownerId: string,
+    fileId: string,
+    groupId: string,
+    expectedRevision: number,
+    deletedAt: Date,
+  ): boolean;
+  recycleFileForDomain(
+    ownerDomainId: string,
     fileId: string,
     groupId: string,
     expectedRevision: number,

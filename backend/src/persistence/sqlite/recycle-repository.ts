@@ -1,4 +1,4 @@
-import type { RecycleRepository } from "../../drive/recycle-repository.js";
+import type { NewDomainRecycleGroup, RecycleRepository } from "../../drive/recycle-repository.js";
 import type { NewRecycleGroup, RecycleGroup, RecycleRootKind } from "../../drive/recycle.js";
 import type { SqliteDatabase } from "./database.js";
 import { fromDatabaseTimestamp, toDatabaseTimestamp } from "./records.js";
@@ -37,12 +37,14 @@ function toRecycleGroup(row: RecycleGroupRow): RecycleGroup {
 
 export class SqliteRecycleRepository implements RecycleRepository {
   readonly #insertGroup;
+  readonly #insertGroupForDomain;
   readonly #findGroupById;
   readonly #findGroupByRoot;
   readonly #listFolderIds;
   readonly #listFileIds;
   readonly #recycleFolder;
   readonly #recycleFile;
+  readonly #recycleFileForDomain;
   readonly #restoreFolder;
   readonly #restoreFile;
   readonly #markFilePurged;
@@ -64,6 +66,26 @@ export class SqliteRecycleRepository implements RecycleRepository {
         @folderCount, @fileCount, @createdAt
       FROM ownership_domains
       WHERE kind = 'account' AND account_id = @ownerId
+    `);
+    this.#insertGroupForDomain = database.prepare<{
+      id: string;
+      ownerDomainId: string;
+      createdByAccountId: string;
+      rootKind: RecycleRootKind;
+      rootId: string;
+      folderCount: number;
+      fileCount: number;
+      createdAt: string;
+    }>(`
+      INSERT INTO recycle_groups (
+        id, owner_domain_id, created_by_account_id, root_kind, root_id,
+        folder_count, file_count, created_at
+      )
+      SELECT
+        @id, ownership_domains.id, @createdByAccountId, @rootKind, @rootId,
+        @folderCount, @fileCount, @createdAt
+      FROM ownership_domains
+      WHERE ownership_domains.id = @ownerDomainId
     `);
     this.#findGroupById = database.prepare<[string, string], RecycleGroupRow>(`
       SELECT ${groupColumns}
@@ -119,6 +141,13 @@ export class SqliteRecycleRepository implements RecycleRepository {
       ) AND id = ? AND state = 'active'
         AND revision = ? AND recycle_group_id IS NULL
     `);
+    this.#recycleFileForDomain = database.prepare<[string, string, string, string, string, number]>(`
+      UPDATE files
+      SET state = 'deleted', revision = revision + 1,
+          updated_at = ?, deleted_at = ?, recycle_group_id = ?
+      WHERE owner_domain_id = ? AND id = ? AND state = 'active'
+        AND revision = ? AND recycle_group_id IS NULL
+    `);
     this.#restoreFolder = database.prepare<[string, string, string, string]>(`
       UPDATE folders
       SET state = 'active', updated_at = ?, deleted_at = NULL, recycle_group_id = NULL
@@ -165,6 +194,19 @@ export class SqliteRecycleRepository implements RecycleRepository {
     return this.findGroupById(group.ownerId, group.id)!;
   }
 
+  createGroupForDomain(group: NewDomainRecycleGroup): boolean {
+    return this.#insertGroupForDomain.run({
+      id: group.id,
+      ownerDomainId: group.ownerDomainId,
+      createdByAccountId: group.createdByAccountId,
+      rootKind: group.rootKind,
+      rootId: group.rootId,
+      folderCount: group.folderCount,
+      fileCount: group.fileCount,
+      createdAt: toDatabaseTimestamp(group.createdAt)!,
+    }).changes === 1;
+  }
+
   findGroupById(ownerId: string, groupId: string): RecycleGroup | null {
     const row = this.#findGroupById.get(ownerId, groupId);
     return row ? toRecycleGroup(row) : null;
@@ -197,6 +239,24 @@ export class SqliteRecycleRepository implements RecycleRepository {
   ): boolean {
     const timestamp = toDatabaseTimestamp(deletedAt)!;
     return this.#recycleFile.run(timestamp, timestamp, groupId, ownerId, fileId, expectedRevision).changes === 1;
+  }
+
+  recycleFileForDomain(
+    ownerDomainId: string,
+    fileId: string,
+    groupId: string,
+    expectedRevision: number,
+    deletedAt: Date,
+  ): boolean {
+    const timestamp = toDatabaseTimestamp(deletedAt)!;
+    return this.#recycleFileForDomain.run(
+      timestamp,
+      timestamp,
+      groupId,
+      ownerDomainId,
+      fileId,
+      expectedRevision,
+    ).changes === 1;
   }
 
   restoreFolder(ownerId: string, folderId: string, groupId: string, restoredAt: Date): boolean {

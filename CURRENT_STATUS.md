@@ -4,56 +4,43 @@
 
 ## Current Phase
 
-**`L1-UX06 — Canonical Catalogue Presentation Repair` is active as the first card in the Owner-approved four-card repository round. Production remains closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
+**`L1-UX06 — Canonical Catalogue Presentation Repair` is complete and independently green. Repository execution is stopped for Owner/ChatGPT review. Production remained closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
 
 The governing product rule remains ADR-022:
 
 > **Academic resources are shared by default after Owner admission; personal research activity is private by default.**
 
-Owner use after PROD-06A confirmed the live authority/data transition but exposed a catalogue presentation gap: root `资料库` stacks canonical Library holdings above the legacy Owner `EntryTable`, so the visible Name/Size/Updated header and folder rows appear after holdings; canonical holdings also lose established file-type icons, repeat migrated filename-derived labels, retain redundant descriptive copy, and lack an authority-correct recoverable lifecycle action for Library-owned resources.
+L1-UX06 now renders canonical Library holdings and Owner-managed folder/account rows through one existing catalogue table, restores established file-type badges and compact row actions, suppresses duplicate filename-derived labels and redundant descriptive copy, and adds a manager-only Library-domain recycle action guarded by the established opaque drive-entry version.
 
 ADR-025 separately records the later bilingual title/copyright/CIP/front-matter evidence model and keeps OCR gated. It is not part of L1-UX06 implementation.
 
-## Active Task
+## Completed Task
 
-`tasks/doing/L1-UX06.md`
+`tasks/done/L1-UX06.md`
 
-Task start baseline:
-- authoritative branch: `codex/project-memory-reconcile-20260817`;
-- planning baseline before task opening: `0692f0f7c68d576132b17fd6001e0f4b6582a3ff`;
-- active task opening begins with `5f76713866f135d0151d34c63e13f47f87812ece` and subsequent durable-state reconciliation;
-- production is not an implementation target for this card.
+Completed result:
+- one coherent root catalogue with its desktop header above Owner folders/account rows and canonical holdings;
+- existing PDF/image/text/generic badges, `RowMenu`, `StarButton`, responsive rows, and fullscreen Preview behavior reused;
+- one visible filename-derived title until RF-META01, with `recordLabel` residue omitted from compact rows and provenance retained in data;
+- manager-only `POST /api/libraries/:libraryId/holdings/:fileId/recycle`, with active membership, exact-Library holding resolution, Library ownership-domain resolution, opaque `driveEntryVersion` CAS, transactional recycle-group provenance, and non-disclosing Member/wrong-Library/guessed-ID denial;
+- no permanent delete, storage-byte mutation, schema change, production contact, or private-overlay exposure.
 
-L1-UX06 owns only:
-- one coherent canonical catalogue surface;
-- correct desktop header placement;
-- restored PDF/image/text/generic badges;
-- removal of redundant summary copy and duplicate migrated labels;
-- preserved Preview/Download/Favorites;
-- Owner/Manager-only recoverable `移入回收站` for eligible Library-owned resources through authority-correct lifecycle semantics;
-- preserved CAS/revision, stable IDs, object keys/bytes, checksums, provenance, lineage, and private overlays.
-
-It does **not** own metadata schemas, automatic bibliographic suggestions, search, OCR, production deployment, cleanup, or permanent deletion.
-
-## Current Owner-Approved Round
+## Current Execution Boundary
 
 ```text
-L1-UX06   ← DOING
-→ RF-META01
-→ RF-METASUGGEST01
-→ RF-SEARCH01
+L1-UX06   ← DONE
 → STOP for Owner/ChatGPT review
 ```
 
-The later Pre-OCR queue remains parked after RF-SEARCH01 until another explicit Owner start.
+`RF-META01`, `RF-METASUGGEST01`, and `RF-SEARCH01` remain preserved Ready cards but were not started in this run. The later Pre-OCR queue remains parked.
 
-### RF-META01 — Next only after L1-UX06 is green
+### RF-META01 — Preserved, not started
 Canonical metadata/templates and minimal authority records surface through normal `资料详情`; original filenames remain provenance/detail rather than the only human-facing title.
 
-### RF-METASUGGEST01 — Then
+### RF-METASUGGEST01 — Preserved, not started
 For PDFs with a usable existing text layer, bounded discovery uses title/copyright/CIP/colophon/front-matter evidence, embedded metadata and filename fallbacks. Default page discovery is first 15 pages + last 5 pages. Pure scanned PDFs return `OCR deferred`; this round does not execute OCR.
 
-### RF-SEARCH01 — Then
+### RF-SEARCH01 — Preserved, not started
 One authority-scoped catalogue metadata/name search field on `资料库`, with authority filtering before ranking/serialization and no persisted query history or OCR/full-text claim.
 
 ## Production Truth
@@ -81,7 +68,7 @@ Do not rerun PROD-05A or PROD-06A.
 
 ## Safety Boundaries
 
-The Owner has authorized the four-card **repository** round only. L1-UX06 does not authorize:
+The consumed L1-UX06 repository authorization did not authorize:
 - production contact, mutation, deployment, or cleanup;
 - direct DB cleanup or permanent deletion / `PROD-03C2`;
 - deletion of visible historical production residue;
@@ -96,8 +83,8 @@ Any later production release remains a separate Owner gate.
 
 ## Verification Policy
 
-Verification is proportionate, not performative. For L1-UX06: inspect the existing shared-library/root catalogue/EntryTable path first; run affected frontend/component tests and only focused backend authorization/CAS/lifecycle tests if Library-owned recycle semantics change. One typecheck/build pass may be used as applicable. Do not replay historical production campaigns, migrations, or PROD-05A/PROD-06A acceptance.
+L1-UX06 verification is green: frontend App 95/95 and API 16/16; backend 260/260 including the new Library recycle authorization/domain/CAS/invariant case; focused Library HTTP 1/1; backend/frontend typechecks and production builds pass; `git diff --check` passes (line-ending notices only). PROD-05A/PROD-06A acceptance and production migration/rehearsal were not replayed.
 
 ## Next Action
 
-Implement and independently review `L1-UX06` only. Checkpoint/push durable evidence when green. Advance to RF-META01 only after independent review; production remains closed.
+STOP for independent Owner/ChatGPT review after the L1-UX06 checkpoint is published and local/tracking/remote equality is verified. Do not start RF-META01 or contact production without new Owner direction.

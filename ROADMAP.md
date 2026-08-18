@@ -50,27 +50,26 @@ Completed outcomes include:
 - canonical shell/admin hierarchy and stale-state recycle safety;
 - production release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017.
 
-## Current Owner-Approved Round — Catalogue and Bibliographic Usability
+## Catalogue and Bibliographic Usability Round
 
-Actual use after PROD-06A confirmed the authority/data model but exposed a narrower usability problem: root `资料库` still visually stacks canonical holdings above a legacy Owner table. This misplaces Name/Size/Updated headers, drops established file-type icons, repeats filename-derived labels, leaves redundant descriptive copy, and lacks an authority-correct recoverable lifecycle action for Library-owned holdings.
+Actual use after PROD-06A confirmed the authority/data model but exposed a narrower usability problem: root `资料库` visually stacked canonical holdings above a legacy Owner table, misplaced Name/Size/Updated headers, dropped established file-type icons, repeated filename-derived labels, left redundant descriptive copy, and lacked an authority-correct recoverable lifecycle action for Library-owned holdings. L1-UX06 has repaired that gap.
 
 Owner review also established that cleaner scholarly titles and basic catalogue search must arrive in the same near-term round. ADR-025 records the bilingual front-matter bibliographic evidence model and keeps OCR separately gated.
 
-The **entire currently authorized repository round** is:
+The durable round sequence remains:
 
 ```text
-L1-UX06
-→ RF-META01
-→ RF-METASUGGEST01
-→ RF-SEARCH01
+L1-UX06   ← COMPLETE
 → STOP for Owner/ChatGPT review
+
+Preserved future cards: RF-META01 → RF-METASUGGEST01 → RF-SEARCH01
 ```
 
-Completing RF-SEARCH01 does **not** automatically authorize the later Pre-OCR cards.
+The L1-UX06 run did not start the preserved future cards. A new Owner continuation is required before RF-META01; completing RF-SEARCH01 in any later run would not automatically authorize the later Pre-OCR cards.
 
-### L1-UX06 — Canonical Catalogue Presentation Repair
+### L1-UX06 — Canonical Catalogue Presentation Repair — Complete
 
-Required outcome:
+Completed outcome:
 - one coherent catalogue surface rather than `SharedLibraryPanel` stacked above a second legacy table;
 - desktop headers above and aligned with the rows they describe;
 - restored PDF/image/text/generic badges;
@@ -173,7 +172,7 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 ## Layer 1 — Core Resource Handling
 
-**Status:** Foundation complete; `L1-UX06` is the current focused catalogue repair.
+**Status:** Foundation and the focused L1-UX06 catalogue repair are complete; STOP for Owner review.
 
 Completed foundations include SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, Favorites, bulk operations, recursive recycle/restore, duplicate-name UX, upload recovery, mobile/fullscreen Preview, sticky navigation, shared-corpus authority and first-use shell repair.
 
@@ -192,12 +191,14 @@ Later optional backlog includes one-time external sharing if separately reopened
 
 ## Layer 3 — Scholarly Workspace and Model
 
-**Status:** Current round advances canonical catalogue/metadata/search first; remaining personal-workspace cards are parked.
+**Status:** L1-UX06 is complete. Canonical metadata/suggestion/search and the remaining personal-workspace cards are preserved but not active.
 
 Stable Scholarly Record / Artifact / Artifact Version identities already exist.
 
-Current round:
-- `L1-UX06` catalogue presentation/lifecycle;
+Completed:
+- `L1-UX06` catalogue presentation/lifecycle.
+
+Preserved future sequence, requiring Owner continuation:
 - `RF-META01` canonical metadata/templates/minimal authorities;
 - `RF-METASUGGEST01` bilingual front-matter evidence suggestions;
 - `RF-SEARCH01` authority-scoped catalogue search.
@@ -288,11 +289,7 @@ Preserved but non-blocking:
 Only:
 
 ```text
-L1-UX06
-→ RF-META01
-→ RF-METASUGGEST01
-→ RF-SEARCH01
-→ STOP for Owner/ChatGPT review
+STOP for Owner/ChatGPT review after completed L1-UX06
 ```
 
-This authorization is repository-only. It does not authorize production contact/mutation, main merge, permanent deletion, real-data cleanup, OCR execution, whole-book text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN/web lookup or AI extraction.
+RF-META01 and later cards require new Owner continuation. No current authority exists for production contact/mutation, main merge, permanent deletion, real-data cleanup, OCR execution, whole-book text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN/web lookup or AI extraction.
