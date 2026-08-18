@@ -122,6 +122,8 @@ UI requirements:
 - preserve responsive/mobile and accessibility behavior;
 - fix the reproducible stale-state folder recycle/delete failure without weakening revision/CAS protection or bypassing normal lifecycle.
 
+`L1-UX03` already completed the dedicated mobile/fullscreen Preview and zero-descriptive-copy UI work. `L1-UX05` preserves that accepted baseline and must not reopen it as new scope.
+
 ## Layer 0 — Project Setup
 
 **Status:** Complete.
@@ -132,7 +134,7 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 **Status:** Foundation complete; current UI/data-flow semantics are being corrected by `RF-SHAREDDEFAULT01` + `L1-UX05`.
 
-Completed foundations include architecture, SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, security/reliability, Favorites, bulk operations, recursive recycle/restore, transfer-performance evidence, duplicate-name UX, and sticky desktop navigation.
+Completed foundations include architecture, SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, security/reliability, Favorites, bulk operations, recursive recycle/restore, transfer-performance evidence, duplicate-name UX, `L1-UX03` dedicated mobile/fullscreen Preview plus zero-descriptive-copy cleanup, and sticky desktop navigation.
 
 The old first-layer “private cloud drive” behavior is historical implementation substrate, not the final product concept for academic holdings after ADR-022.
 
