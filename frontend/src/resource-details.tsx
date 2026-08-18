@@ -12,6 +12,7 @@ import {
   type MetadataSuggestionCandidate,
   type MetadataSuggestionRun,
   type MetadataSuggestionConfidence,
+  type MetadataSuggestionEvidenceOrigin,
   type MetadataSuggestionSourceType,
   type MetadataSuggestionStatus,
   type LibraryMetadataInput,
@@ -134,6 +135,12 @@ const SUGGESTION_CONFIDENCE_KEYS: Record<MetadataSuggestionConfidence, MessageKe
   medium: "metadata.suggestions.confidence.medium",
   low: "metadata.suggestions.confidence.low",
 };
+const SUGGESTION_ORIGIN_KEYS: Record<MetadataSuggestionEvidenceOrigin, MessageKey> = {
+  native_text: "metadata.suggestions.origin.nativeText",
+  ocr: "metadata.suggestions.origin.ocr",
+  embedded_pdf_metadata: "metadata.suggestions.origin.embedded",
+  filename: "metadata.suggestions.origin.filename",
+};
 
 function suggestionSourceLabel(value: MetadataSuggestionSourceType, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_SOURCE_KEYS[value]);
@@ -143,6 +150,9 @@ function suggestionStatusLabel(value: MetadataSuggestionStatus, t: ReturnType<ty
 }
 function suggestionConfidenceLabel(value: MetadataSuggestionConfidence, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_CONFIDENCE_KEYS[value]);
+}
+function suggestionOriginLabel(value: MetadataSuggestionEvidenceOrigin, t: ReturnType<typeof useLanguage>["t"]): string {
+  return t(SUGGESTION_ORIGIN_KEYS[value]);
 }
 function suggestionPageClassLabel(value: string | null): string {
   return value ? value.replaceAll("_", " ") : "—";
@@ -721,6 +731,8 @@ function MetadataSuggestionsPanel({
                   <dd>{suggestionSourceLabel(candidate.sourceType, t)}{candidate.sourcePageIndex !== null ? ` · ${t("metadata.suggestions.page", { page: candidate.sourcePageIndex })}` : ""}</dd>
                   <dt>{t("metadata.suggestions.pageClass")}</dt>
                   <dd>{suggestionPageClassLabel(candidate.pageClass)}</dd>
+                  <dt>{t("metadata.suggestions.origin")}</dt>
+                  <dd>{suggestionOriginLabel(candidate.evidenceOrigin, t)}{candidate.evidenceOrigin === "ocr" && candidate.ocrConfidence !== null ? ` · ${candidate.ocrConfidence}%` : ""}</dd>
                   <dt>{t("metadata.suggestions.confidence")}</dt>
                   <dd>{suggestionConfidenceLabel(candidate.confidence, t)}</dd>
                   {candidate.evidenceExcerpt && <><dt>{t("metadata.suggestions.evidence")}</dt><dd className="metadata-suggestion-excerpt">{candidate.evidenceExcerpt}</dd></>}

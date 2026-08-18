@@ -49,10 +49,22 @@ export async function registerSuggestionHttp(app: FastifyInstance, service: Sugg
       schema: { params: paramsSchema, querystring: emptyQuerySchema },
     },
     async (request, reply) => {
+      const controller = new AbortController();
+      const onAborted = (): void => controller.abort();
+      request.raw.once("aborted", onAborted);
       try {
-        return { run: await service.generate(requireActor(request.authAccount), request.params.libraryId, request.params.fileId) };
+        return {
+          run: await service.generate(
+            requireActor(request.authAccount),
+            request.params.libraryId,
+            request.params.fileId,
+            controller.signal,
+          ),
+        };
       } catch (error: unknown) {
         return sendSuggestionError(reply, error);
+      } finally {
+        request.raw.removeListener("aborted", onAborted);
       }
     },
   );

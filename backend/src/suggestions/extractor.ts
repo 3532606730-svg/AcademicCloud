@@ -1,5 +1,6 @@
 import {
   SUGGESTION_RULESET_VERSION,
+  type EvidenceOrigin,
   type PageClass,
   type PdfEmbeddedMetadata,
   type PdfTextPage,
@@ -44,6 +45,9 @@ interface CandidateSeed {
   pageClass: PageClass | null;
   confidence: SuggestionConfidence;
   evidenceExcerpt: string | null;
+  evidenceOrigin: EvidenceOrigin;
+  ocrEngine: string | null;
+  ocrConfidence: number | null;
 }
 
 const TITLEISH_RANK: Readonly<Record<SuggestionSourceType, number>> = {
@@ -195,11 +199,32 @@ function sourceRank(
     : BIBLIOGRAPHIC_RANK[source];
 }
 
-function confidenceFor(source: SuggestionSourceType, explicit: boolean): SuggestionConfidence {
-  if (source === "filename") return "low";
-  if (explicit || source === "cip_page" || source === "copyright_page") return "high";
-  if (source === "embedded_pdf_metadata") return "medium";
-  return "medium";
+function confidenceFor(
+  source: SuggestionSourceType,
+  explicit: boolean,
+  page: PdfTextPage | undefined,
+): SuggestionConfidence {
+  let confidence: SuggestionConfidence;
+  if (source === "filename") confidence = "low";
+  else if (explicit || source === "cip_page" || source === "copyright_page") confidence = "high";
+  else confidence = "medium";
+  if (page?.evidenceOrigin !== "ocr") return confidence;
+  if ((page.ocrConfidence ?? 0) < 75) return "low";
+  return confidence === "high" ? "medium" : confidence;
+}
+
+function evidenceOrigin(context: PageContext | null, sourceType: SuggestionSourceType): EvidenceOrigin {
+  if (context) return context.page.evidenceOrigin ?? "native_text";
+  return sourceType === "embedded_pdf_metadata" ? "embedded_pdf_metadata" : "filename";
+}
+
+function originRank(origin: EvidenceOrigin): number {
+  switch (origin) {
+    case "native_text": return 0;
+    case "ocr": return 1;
+    case "embedded_pdf_metadata": return 2;
+    case "filename": return 3;
+  }
 }
 
 function labelValue(line: string, patterns: readonly RegExp[]): string | null {
@@ -495,8 +520,11 @@ function addSeed(seeds: CandidateSeed[], context: PageContext | null, seed: Seed
     sourceType,
     sourcePageIndex: context?.page.pageIndex ?? null,
     pageClass: context?.pageClass ?? null,
-    confidence: seed.explicit ? confidenceFor(sourceType, true) : confidenceFor(sourceType, false),
+    confidence: confidenceFor(sourceType, seed.explicit ?? false, context?.page),
     evidenceExcerpt: excerpt(pageText, value),
+    evidenceOrigin: evidenceOrigin(context, sourceType),
+    ocrEngine: context?.page.evidenceOrigin === "ocr" ? context.page.ocrEngine ?? null : null,
+    ocrConfidence: context?.page.evidenceOrigin === "ocr" ? context.page.ocrConfidence ?? null : null,
   };
   seeds.push(candidate);
 }
@@ -745,13 +773,21 @@ function dedupeAndRank(seeds: CandidateSeed[]): Omit<SuggestionCandidate, "id">[
   for (const seed of seeds) {
     const key = [seed.fieldPath, seed.typeFieldName ?? "", seed.authorityType ?? "", seed.authorityRole ?? "", seed.identifierScheme ?? "", matchingText(seed.value)].join("|");
     const previous = map.get(key);
-    if (!previous || sourceRank(seed.fieldPath, seed.sourceType, seed.authorityRole) < sourceRank(previous.fieldPath, previous.sourceType, previous.authorityRole)) map.set(key, seed);
+    const rank = sourceRank(seed.fieldPath, seed.sourceType, seed.authorityRole);
+    const previousRank = previous
+      ? sourceRank(previous.fieldPath, previous.sourceType, previous.authorityRole)
+      : Number.MAX_SAFE_INTEGER;
+    if (!previous || rank < previousRank || (rank === previousRank && originRank(seed.evidenceOrigin) < originRank(previous.evidenceOrigin))) {
+      map.set(key, seed);
+    }
   }
   const values = [...map.values()].sort((a, b) => {
     const rankDifference = sourceRank(a.fieldPath, a.sourceType, a.authorityRole) - sourceRank(b.fieldPath, b.sourceType, b.authorityRole);
     if (rankDifference !== 0) return rankDifference;
     const pageDifference = (a.sourcePageIndex ?? Number.MAX_SAFE_INTEGER) - (b.sourcePageIndex ?? Number.MAX_SAFE_INTEGER);
     if (pageDifference !== 0) return pageDifference;
+    const originDifference = originRank(a.evidenceOrigin) - originRank(b.evidenceOrigin);
+    if (originDifference !== 0) return originDifference;
     return matchingText(a.value).localeCompare(matchingText(b.value));
   });
   return values.map((seed, position) => ({
@@ -767,6 +803,9 @@ function dedupeAndRank(seeds: CandidateSeed[]): Omit<SuggestionCandidate, "id">[
     confidence: seed.confidence,
     precedenceRank: sourceRank(seed.fieldPath, seed.sourceType, seed.authorityRole),
     evidenceExcerpt: seed.evidenceExcerpt,
+    evidenceOrigin: seed.evidenceOrigin,
+    ocrEngine: seed.ocrEngine,
+    ocrConfidence: seed.ocrConfidence,
     rulesetVersion: SUGGESTION_RULESET_VERSION,
     position,
   }));

@@ -310,6 +310,11 @@ export type MetadataSuggestionFieldPath =
   | "typeField"
   | "authority";
 export type MetadataSuggestionConfidence = "high" | "medium" | "low";
+export type MetadataSuggestionEvidenceOrigin =
+  | "native_text"
+  | "ocr"
+  | "embedded_pdf_metadata"
+  | "filename";
 export interface MetadataSuggestionCandidate {
   id: string;
   position: number;
@@ -325,6 +330,9 @@ export interface MetadataSuggestionCandidate {
   confidence: MetadataSuggestionConfidence;
   precedenceRank: number;
   evidenceExcerpt: string | null;
+  evidenceOrigin: MetadataSuggestionEvidenceOrigin;
+  ocrEngine: string | null;
+  ocrConfidence: number | null;
   rulesetVersion: string;
 }
 export interface MetadataSuggestionWindow {

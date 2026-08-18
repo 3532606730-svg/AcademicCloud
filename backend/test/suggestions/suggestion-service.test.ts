@@ -5,7 +5,7 @@ import { test, type TestContext } from "node:test";
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
 import { SuggestionError, SuggestionService } from "../../src/suggestions/suggestion-service.js";
-import type { BoundedPdfTextSource } from "../../src/suggestions/suggestion.js";
+import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfTextPage } from "../../src/suggestions/suggestion.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createTestPersistence } from "../persistence/helpers.js";
 
@@ -98,6 +98,9 @@ test("deterministic bilingual text-layer suggestions preserve evidence and never
     assert.ok(candidate.rulesetVersion);
     assert.ok(candidate.evidenceExcerpt);
     assert.ok(candidate.sourcePageIndex === null || candidate.sourcePageIndex >= 1);
+    assert.equal(candidate.ocrEngine, null);
+    assert.equal(candidate.ocrConfidence, null);
+    assert.ok(["native_text", "embedded_pdf_metadata", "filename"].includes(candidate.evidenceOrigin));
   }
   assert.equal(metadata.getDetails(OWNER, library.id, fileId).metadata, null);
   const persisted = suggestions.getLatest(MEMBER, library.id, fileId);
@@ -167,16 +170,42 @@ test("manager acceptance uses RF-META01 CAS; Member acceptance and stale source 
   assert.equal(suggestions.getLatest(OWNER, library.id, fileId)?.status, "accepted");
 });
 
-test("image-only and non-PDF sources fail closed without guessing", async (context) => {
+test("image-only PDF evidence reaches the existing extractor with truthful OCR provenance", async (context) => {
   const { database, persistence, library, fileId, storage, metadata } = fixture(context);
   const imageBytes = pdfWithText([""]);
   const objectKey = "objects/aa/" + "b".repeat(62);
   storage.putObject({ objectKey, sizeBytes: imageBytes.byteLength, etag: null, checksumAlgorithm: "md5", checksum: "other", mediaType: "application/pdf", modifiedAt: NOW }, imageBytes);
   database.prepare("UPDATE files SET size_bytes = ?, checksum = ? WHERE id = ?").run(imageBytes.byteLength, "other", fileId);
   let runNumber = 0;
-  const service = new SuggestionService({ persistence, storage, metadata, now: () => NOW, createId: () => `run-image-${++runNumber}` });
+  const service = new SuggestionService({
+    persistence,
+    storage,
+    metadata,
+    inspector: fixedInspector([{
+      pageIndex: 1,
+      text: "书名：元史西域人华化考\n作者：陈垣\n出版社：中华书局\n出版时间：2008",
+      evidenceOrigin: "ocr",
+      ocrEngine: "test-local-ocr",
+      ocrConfidence: 86,
+    }]),
+    now: () => NOW,
+    createId: () => `run-image-${++runNumber}`,
+  });
   const image = await service.generate(OWNER, library.id, fileId);
-  assert.equal(image.status, "ocr_deferred");
+  assert.equal(image.status, "ready");
+  assert.equal(image.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")?.value, "元史西域人华化考");
+  assert.equal(image.candidates.every((candidate) => candidate.evidenceOrigin === "ocr"), true);
+  assert.equal(image.candidates.every((candidate) => candidate.ocrEngine === "test-local-ocr"), true);
+  assert.equal(image.candidates.every((candidate) => candidate.ocrConfidence === 86), true);
+  assert.equal(image.candidates.some((candidate) => candidate.confidence === "high"), false);
+  assert.deepEqual(service.getLatest(MEMBER, library.id, fileId), image);
+  const candidateColumns = database.prepare<[], { name: string }>(
+    "PRAGMA table_info(scholarly_metadata_suggestion_candidates)",
+  ).all().map((column) => column.name);
+  assert.equal(candidateColumns.includes("evidence_origin"), true);
+  assert.equal(candidateColumns.includes("ocr_engine"), true);
+  assert.equal(candidateColumns.includes("ocr_confidence"), true);
+  assert.equal(candidateColumns.some((name) => /page_text|raw_text|image|bitmap|pdf_bytes/u.test(name)), false);
   database.prepare("UPDATE files SET media_type = 'text/plain', revision = revision + 1 WHERE id = ?").run(fileId);
   const nonPdf = await service.generate(OWNER, library.id, fileId);
   assert.equal(nonPdf.status, "unsupported");
@@ -194,7 +223,7 @@ test("same-domain run trigger rejects mismatched Record/file evidence", (context
   `).run(library.ownerDomainId, library.id, createHash("sha256").update("bad").digest("base64url"), OWNER.id, NOW.toISOString()), /suggestion run requires/);
 });
 
-function fixedInspector(pages: Array<{ pageIndex: number; text: string }>): BoundedPdfTextSource {
+function fixedInspector(pages: PdfTextPage[]): BoundedPdfTextSource {
   return {
     async inspect() {
       return {
@@ -204,10 +233,68 @@ function fixedInspector(pages: Array<{ pageIndex: number; text: string }>): Boun
         embeddedMetadata: {},
         complete: true,
         hasUsableTextLayer: true,
+        hasUsableEvidence: true,
+        nativePageCount: pages.filter((page) => page.evidenceOrigin !== "ocr").length,
+        ocrPageCount: pages.filter((page) => page.evidenceOrigin === "ocr").length,
       };
     },
   };
 }
+
+test("English OCR evidence reaches the existing classifier/extractor without canonical writes", async (context) => {
+  const { persistence, library, fileId, storage, metadata } = fixture(context);
+  const service = new SuggestionService({
+    persistence,
+    storage,
+    metadata,
+    inspector: fixedInspector([{
+      pageIndex: 3,
+      text: "Title: The Mongols and the West, 1221-1410\nAuthor: Peter Jackson",
+      evidenceOrigin: "ocr",
+      ocrEngine: "test-local-ocr",
+      ocrConfidence: 91,
+    }]),
+    now: () => NOW,
+    createId: () => "run-english-ocr",
+  });
+  const run = await service.generate(OWNER, library.id, fileId);
+  const title = run.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle");
+  assert.equal(title?.value, "The Mongols and the West, 1221-1410");
+  assert.equal(title?.evidenceOrigin, "ocr");
+  assert.equal(title?.ocrConfidence, 91);
+  assert.equal(metadata.getDetails(OWNER, library.id, fileId).metadata, null);
+});
+
+test("authorization changed during OCR is revalidated before any run is persisted", async (context) => {
+  const { database, persistence, library, fileId, storage, metadata } = fixture(context);
+  let continueInspection!: () => void;
+  let markEntered!: () => void;
+  const entered = new Promise<void>((resolve) => { markEntered = resolve; });
+  const release = new Promise<void>((resolve) => { continueInspection = resolve; });
+  const inspector: BoundedPdfTextSource = {
+    async inspect() {
+      markEntered();
+      await release;
+      return fixedInspector([{
+        pageIndex: 1,
+        text: "Title: Bounded OCR",
+        evidenceOrigin: "ocr",
+        ocrEngine: "test-local-ocr",
+        ocrConfidence: 90,
+      }]).inspect(new Uint8Array(), SUGGESTION_LIMITS);
+    },
+  };
+  const service = new SuggestionService({ persistence, storage, metadata, inspector, now: () => NOW, createId: () => "run-revoked" });
+  const pending = service.generate(OWNER, library.id, fileId);
+  await entered;
+  assert.equal(persistence.repositories.accounts.updateState(OWNER.id, "active", "disabled", new Date(NOW.getTime() + 1_000)), true);
+  continueInspection();
+  await assert.rejects(
+    () => pending,
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM scholarly_metadata_suggestion_runs").get()?.count, 0);
+});
 
 test("manager can explicitly accept a selected candidate through the RF-META01 CAS path", async (context) => {
   const { library, fileId, suggestions, metadata } = fixture(context);

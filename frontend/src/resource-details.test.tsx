@@ -85,14 +85,17 @@ const SUGGESTION_RUN: MetadataSuggestionRun = {
       authorityType: null, authorityRole: null, identifierScheme: null,
       value: "The Mongols and the West, 1221–1410", sourceType: "title_page", sourcePageIndex: 3,
       pageClass: "title_page", confidence: "high", precedenceRank: 1,
-      evidenceExcerpt: "The Mongols and the West, 1221–1410", rulesetVersion: "rf-metasuggest-v1",
+      evidenceExcerpt: "The Mongols and the West, 1221–1410", evidenceOrigin: "ocr",
+      ocrEngine: "academiccloud-tesseract-cli-v1/tesseract-5.5.3/chi_sim+chi_tra+eng", ocrConfidence: 88,
+      rulesetVersion: "rf-frontmatterocr-v1",
     },
     {
       id: "run-1:1", position: 1, fieldPath: "identifier", typeFieldName: null,
       authorityType: null, authorityRole: null, identifierScheme: "isbn",
       value: "9780000000000", sourceType: "copyright_page", sourcePageIndex: 4,
       pageClass: "copyright_page", confidence: "medium", precedenceRank: 1,
-      evidenceExcerpt: "ISBN 9780000000000", rulesetVersion: "rf-metasuggest-v1",
+      evidenceExcerpt: "ISBN 9780000000000", evidenceOrigin: "native_text", ocrEngine: null,
+      ocrConfidence: null, rulesetVersion: "rf-frontmatterocr-v1",
     },
   ],
   createdAt: "2026-08-18T00:00:00.000Z",
@@ -234,6 +237,7 @@ describe("Resource details", () => {
     expect((await screen.findAllByText("The Mongols and the West, 1221–1410")).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Title page · Page 3/)).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText(/Local OCR · 88%/)).toBeInTheDocument();
     expect(screen.getByText("Evidence-backed suggestions")).toBeInTheDocument();
     expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
   });
@@ -248,7 +252,7 @@ describe("Resource details", () => {
     });
     await screen.findByRole("dialog", { name: "元西域人华化考" });
     expect(await screen.findByText("OCR deferred")).toBeInTheDocument();
-    expect(screen.getByText(/no usable text layer/i)).toBeInTheDocument();
+    expect(screen.getByText(/retained run predates local OCR/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Find metadata suggestions" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Accept selected" })).not.toBeInTheDocument();
   });
