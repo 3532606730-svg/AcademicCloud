@@ -1,6 +1,6 @@
 ---
 name: academiccloud-workflow
-description: Run the repository-backed AcademicCloud engineering workflow for approved work. Use when the user asks to start the next task, continue development, execute an AcademicCloud task or Epic, fix the current task, resume interrupted work, or complete an approved continuous objective. Restore state from the repository, select and execute scoped work, validate results, maintain task memory and project documentation, create Git checkpoints, coordinate subagents when useful, and enforce escalation boundaries. This skill defines the engineering process; it is not a source of product requirements beyond approved repository scope.
+description: Run the repository-backed AcademicCloud engineering workflow for approved work. Use when the user asks to start the next task, continue development, execute an AcademicCloud task or Epic, fix the current task, resume interrupted work, or complete an approved continuous objective. Restore state from the repository, select and execute scoped work, validate results, maintain task memory and project documentation, create Git checkpoints, coordinate subagents when useful, reconcile accepted durable decisions, and keep the authorized remote branch and accessible local checkout aligned without discarding user work. This skill defines the engineering process; it is not a source of product requirements beyond approved repository scope.
 ---
 
 # AcademicCloud Engineering Workflow
@@ -12,6 +12,7 @@ description: Run the repository-backed AcademicCloud engineering workflow for ap
 - Derive product scope and technical constraints from current code, Git, `AGENTS.md`, current/ready task cards, `CURRENT_STATUS.md`, `TASK_BOARD.md`, accepted ADRs, `PROJECT_SPEC.md`, and `ROADMAP.md`.
 - Work autonomously only inside the approved current task or explicitly approved continuous objective.
 - Production access, real credentials, real cost, destructive real-data operations, and unapproved product boundaries remain Owner-gated even when repository work is autonomous.
+- Follow ADR-023 for durable decision reconciliation and local/remote synchronization. Chat agreement alone is not durable project state.
 
 ## Recover the Minimum Context
 
@@ -52,7 +53,7 @@ Use this order for claims about actual project state:
 11. `ROADMAP.md`;
 12. chat history.
 
-If chat memory conflicts with repository facts, use repository facts. If state files disagree with code/Git, investigate and reconcile the records within scope; do not rewrite implementation history to hide a mismatch.
+If chat memory conflicts with repository facts, use repository facts unless the Owner has just explicitly changed the decision in the current interaction. In that case, reconcile the new accepted durable decision into the relevant repository records before implementation depends on it. If state files disagree with code/Git, investigate and reconcile the records within scope; do not rewrite implementation history to hide a mismatch.
 
 ## Select and Maintain Tasks
 
@@ -88,13 +89,29 @@ Store decisions/evidence in natural locations:
 - source/configuration in code;
 - behavioral evidence in tests;
 - checkpoints in Git;
-- durable architecture/product-model changes in ADRs;
+- durable architecture/product/security/workflow changes in ADRs;
+- durable sequencing/product inventory in `ROADMAP.md`;
+- current project truth in `CURRENT_STATUS.md`;
 - queue state in `TASK_BOARD.md`;
 - approved not-yet-active Epic specs in `tasks/ready/`;
 - active working memory in `tasks/doing/`;
-- completed Epic records in `tasks/done/`.
+- completed Epic records in `tasks/done/`;
+- persistent agent/workflow rules in `AGENTS.md` and this skill when the rule truly applies across future tasks.
 
 Do not create competing `HANDOFF.md`, `STATUS2.md`, `CONTEXT.md`, `MEMORY.md`, context databases, or similar state systems.
+
+## Reconcile Newly Accepted Durable Decisions
+
+When the Owner and agent finalize a durable product, architecture, security, workflow, roadmap, task-boundary, or execution-sequencing decision:
+1. identify the smallest complete authoritative repository set affected by the decision;
+2. update those files before implementation continues against the changed decision;
+3. use an ADR/`DECISION_LOG.md` when the decision changes durable rationale, supersedes an earlier rule, or materially affects future engineering behavior;
+4. update `ROADMAP.md`, `CURRENT_STATUS.md`, `TASK_BOARD.md`, and task cards only where their responsibilities are actually affected—do not duplicate the same prose everywhere;
+5. inspect for stale contradictory wording in high-authority recovery files, especially `AGENTS.md`, active/ready task cards, current status, and the board;
+6. checkpoint and publish the reconciliation when Git publication is authorized;
+7. if an active local checkout is accessible after publication, synchronize and verify it under the Local Synchronization section below.
+
+A decision is not considered fully reconciled merely because it appears in chat or in one low-authority note while higher-authority recovery files still contradict it.
 
 ## Execute the Standard Lifecycle
 
@@ -117,16 +134,30 @@ Run only applicable checks that actually exist. Never claim nonexistent tests. R
 Check acceptance criteria, diff scope, module boundaries, data safety, security consequences, concurrency/rollback where relevant, and unintended changes. Use a read-only reviewer/subagent when it materially increases confidence.
 
 ### G. Record
-Update the task card, `CURRENT_STATUS.md`, and `TASK_BOARD.md`. Update an ADR/`DECISION_LOG.md` only for durable product/architecture/security/workflow changes.
+Update the task card, `CURRENT_STATUS.md`, and `TASK_BOARD.md` as appropriate. Update `ROADMAP.md`, ADR/`DECISION_LOG.md`, `AGENTS.md`, or this skill when a durable product/architecture/security/workflow/sequencing decision requires them. Reconcile stale contradictory wording in the authoritative recovery path.
 
 ### H. Commit
-Create an ordinary task-level Git checkpoint when acceptance criteria are satisfied, applicable checks pass, the diff is scoped, and repository records match reality.
+Create an ordinary task/decision-level Git checkpoint when acceptance criteria or planning reconciliation are satisfied, applicable checks pass, the diff is scoped, and repository records match reality.
 
 Never automatically force-push, rewrite history, deploy production, or delete unknown user work.
 
-### I. Progress or Report
-- If no broader continuous objective is authorized: report the checkpoint and stop.
-- If a broader continuous objective is explicitly authorized: re-recover state from the repository, select the next approved Ready Epic, and continue in a fresh bounded task context where practical.
+### I. Publish
+When the active task/decision authorizes ordinary publication to the existing non-main working branch, push the checkpoint through the established GitHub/SSH path and verify the intended remote branch advanced to the expected commit. A push is not a production deployment and does not authorize main merge.
+
+### J. Synchronize Local
+If the authorized remote branch changed and the executing agent has access to the active local checkout expected to continue development:
+1. inspect branch, HEAD, index, and working tree before synchronization;
+2. fetch the intended remote branch;
+3. if the checkout is clean and only behind the intended remote branch, fast-forward it non-destructively;
+4. if local commits or user changes exist, preserve them and use the least-destructive safe reconciliation appropriate to the actual state; do not force-reset or overwrite unknown work merely to obtain equality;
+5. re-check branch/HEAD and working tree after synchronization;
+6. verify local HEAD equals the intended remote branch HEAD and that the newly reconciled durable files are present locally.
+
+Only report `LOCAL_SYNCHRONIZED=true` after actual local evidence. If the current environment can update GitHub but cannot access the Owner's real local checkout, explicitly report local synchronization as outstanding. Never claim or imply that GitHub publication automatically changed an inaccessible local machine.
+
+### K. Progress or Report
+- If no broader continuous objective is authorized: report the checkpoint, remote publication state, local synchronization state, and stop.
+- If a broader continuous objective is explicitly authorized: only continue after repository records and the accessible local checkout are reconciled; then re-recover state from the repository, select the next approved Ready Epic, and continue in a fresh bounded task context where practical.
 - Never use continuous progression to bypass a mandatory escalation.
 
 ## Default Autonomous Authority
@@ -141,7 +172,8 @@ Within the current approved task/objective and accepted architecture, decide ord
 - tests/fixtures/bug fixes/bounded refactors;
 - logging and ordinary error handling;
 - task/project-state updates;
-- ordinary non-main Git checkpoints and pushes when the task authorizes them.
+- ordinary non-main Git checkpoints and pushes when the task authorizes them;
+- non-destructive local synchronization after an authorized remote update when the local checkout is accessible and safe to reconcile.
 
 For significant but reversible technical decisions:
 1. confirm compliance with `AGENTS.md` and relevant ADRs;
@@ -189,13 +221,13 @@ Ordinary technical uncertainty, test failures, dependency choices, and reversibl
 ## Main Agent and Subagents
 
 When subagents are useful:
-- main agent owns task selection, scope, project state, escalation, result review, and final reporting;
+- main agent owns task selection, scope, project state, escalation, result review, durable-decision reconciliation, local/remote state convergence, and final reporting;
 - prefer one write-intensive implementation agent per Epic;
 - do not let multiple agents concurrently edit related files in the same working tree;
 - use parallel agents mainly for read-only exploration, test/log analysis, security review, performance analysis, and documentation review;
 - require subagents to recover context from repository/task cards rather than long chat handoffs;
 - require concise evidence/results, not full logs;
-- main agent inspects resulting diff, verification, and task state before committing/reporting.
+- main agent inspects resulting diff, verification, task state, remote publication, and local synchronization evidence before reporting completion.
 
 ### Anti-pause rule
 
@@ -209,7 +241,8 @@ If a reviewer is slow, wait for that same reviewer; do not spawn duplicates mere
 
 - Continue autonomously through ordinary subtasks inside the active Epic.
 - At Epic completion, create an evidence-backed Git checkpoint and reconcile repository state.
-- If the Owner authorized multiple Epics as one continuous objective, begin the next ordinary Ready Epic only after the previous checkpoint is green.
+- If the checkpoint is published and an accessible local checkout is the ongoing development source, synchronize/verify it before autonomous progression.
+- If the Owner authorized multiple Epics as one continuous objective, begin the next ordinary Ready Epic only after the previous checkpoint and project memory are green and synchronized where local access exists.
 - Each Epic remains an independently reviewable unit even inside a long autonomous run.
 - Optional/conditional Epics may be skipped when the board's preconditions are not satisfied; skipping an optional Epic is not failure.
 - Never use elapsed time as a reason to invent extra features.
@@ -219,11 +252,15 @@ If a reviewer is slow, wait for that same reviewer; do not spawn duplicates mere
 
 - `CURRENT_STATUS.md` is the concise project-level truth.
 - `TASK_BOARD.md` is the executable queue/index.
+- `ROADMAP.md` is the durable product/sequencing inventory.
 - `tasks/ready/` stores approved future Epic specs.
 - `tasks/doing/` stores active Epic memory.
 - `tasks/done/` stores completed Epic records.
+- ADRs/`DECISION_LOG.md` preserve durable rationale and supersession.
+- `AGENTS.md` plus this skill preserve persistent engineering rules.
 - Do not paste full source, long logs, or whole architecture history into task cards/chat.
 - Preserve completed knowledge through code, tests, Git, ADRs, and completed task cards.
+- Do not assume a remote-only update has synchronized an inaccessible local checkout.
 
 ## Scheduling
 
