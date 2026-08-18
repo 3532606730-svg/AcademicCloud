@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The bounded continuation has reached STOP. Production remained closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
+**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` and the Owner-authorized `RF-METASUGGEST01 — Front-Matter Bibliographic Suggestions` are complete and independently green. No repository Epic is active; the boundary is STOP for independent Owner/ChatGPT review. Development schema is v19/history 001–019. Production remains closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
 
 The governing product rule remains ADR-022:
 
@@ -12,19 +12,20 @@ The governing product rule remains ADR-022:
 
 L1-UX06 now renders canonical Library holdings and Owner-managed folder/account rows through one existing catalogue table, restores established file-type badges and compact row actions, suppresses duplicate filename-derived labels and redundant descriptive copy, and supplies a complete manager-only Library-domain recycle → normal Recycle list → CAS restore lifecycle. Account-private and Library governance recycle authority remain distinct internally.
 
-ADR-026 records the implemented canonical metadata, minimal authority, CAS, non-lossy type-transition, privacy, and filename-separation contract. ADR-025 remains the later suggestion/evidence model and keeps extraction/OCR outside this completed Epic.
+ADR-026 records the implemented canonical metadata, minimal authority, CAS, non-lossy type-transition, privacy, and filename-separation contract. ADR-025 and ADR-027 record the completed bounded local text-layer suggestion/evidence model; they keep OCR, whole-document extraction, and external/AI enrichment outside this checkpoint.
 
-## Execution State
+## Latest Completed Epic
 
-`tasks/done/RF-META01.md`
+`tasks/done/RF-METASUGGEST01.md`
 
-There is no active task. The strict v1 contract supports Book, Article, Manuscript, Inscription, and Archival Document through ordinary `资料详情`. Canonical titles are now the preferred catalogue title, with accepted acquisition/display filename fallback and a separate `原始文件名` fact. Effective Members read; only effective Library managers mutate.
+`RF-META01` remains complete. RF-METASUGGEST01 generates deterministic, reviewable Chinese/English bibliographic suggestions from bounded local existing text-layer evidence and conservative embedded/filename fallbacks. Suggestions remain proposals; only explicit effective-manager acceptance through the RF-META01 CAS path may write canonical metadata. Pure image-only PDFs return `OCR deferred`; no OCR, network, AI, or production action was authorized.
 
 Completed result:
-- append-only migration 018 advances the development schema from v17 to v18 without metadata backfill or changes to existing Record/Artifact/Version/file identity, accepted filename, object key/checksum, provenance, Favorites, or private overlays;
-- exact Library/holding detail and metadata routes derive actor, membership, domain, holding, lineage, and audit identity server-side and use an independent opaque metadata CAS;
-- five fixed templates, five Library-domain authority types, typed same-domain links, authority CAS, strict validation, and explicit two-save non-lossy material-type transitions are implemented;
-- the normal catalogue prefers canonical title and `资料详情` provides Member read-only / effective-manager edit behavior while Preview, Download, Favorites, and recycle retain stable file identity and their existing authorization/CAS boundaries;
+- append-only migration 019 advances development from schema v18 to v19 and stores only immutable suggestion-run/candidate evidence; no PDF bytes, raw page text, object keys, or private overlay state are persisted;
+- a provider-neutral storage read seam and pinned PDF.js 6.2.108 inspector enforce a 32 MiB object cap, first-15/last-5 page window, per-page/total text limits, embedded metadata limits, and a five-second budget without rendering/OCR;
+- deterministic bilingual page classification and extraction support title/CIP/copyright/colophon evidence, older title-page publication statements, field-specific precedence, source/page/class/confidence, conservative filename cleanup, ambiguity, and OCR-deferred/unsupported states;
+- normal `资料详情` shows reviewable candidates to Members read-only and gives effective Library managers explicit generate/select/use/accept controls; acceptance rechecks source/database CAS, rejects conflicts and unresolved authorities, and calls RF-META01 rather than writing canonical SQL directly;
+- focused tests cover Chinese/English/CIP/older books/body-noise/metadata placeholders, exact page bounds, malformed/image-only PDFs, authority/privacy/identity preservation, stale/provider changes, HTTP authorization, and frontend evidence behavior;
 - production was not contacted, migrated, deployed, or otherwise changed.
 
 ## Completed Dependency
@@ -45,16 +46,17 @@ Completed result:
 ```text
 L1-UX06   ← DONE
 → RF-META01   ← DONE
-→ STOP   ← REACHED
+→ RF-METASUGGEST01   ← DONE
+→ STOP
 ```
 
-RF-METASUGGEST01, RF-SEARCH01, and the later Pre-OCR queue remain parked and require new explicit Owner authorization.
+RF-SEARCH01 and the later Pre-OCR queue remain parked and require new explicit Owner authorization.
 
 ### RF-META01 — Complete
 ADR-026 is implemented through append-only repository schema v18, exact holding-scoped APIs, and normal `资料详情`; no production migration was performed or authorized.
 
-### RF-METASUGGEST01 — Preserved, not started
-For PDFs with a usable existing text layer, bounded discovery uses title/copyright/CIP/colophon/front-matter evidence, embedded metadata and filename fallbacks. Default page discovery is first 15 pages + last 5 pages. Pure scanned PDFs return `OCR deferred`; this round does not execute OCR.
+### RF-METASUGGEST01 — Complete
+ADR-025/027 are implemented through migration 019, bounded provider-neutral text-layer inspection, deterministic Chinese/English evidence extraction, reviewable normal `资料详情` suggestions, and explicit manager-only RF-META01 CAS acceptance. Default discovery is first 15 pages + last 5 pages; pure scanned PDFs return `OCR deferred`; this Epic did not execute OCR or contact production.
 
 ### RF-SEARCH01 — Preserved, not started
 One authority-scoped catalogue metadata/name search field on `资料库`, with authority filtering before ranking/serialization and no persisted query history or OCR/full-text claim.
@@ -84,23 +86,24 @@ Do not rerun PROD-05A or PROD-06A.
 
 ## Safety Boundaries
 
-The consumed L1-UX06 repository authorization did not authorize:
+The current RF-METASUGGEST01 repository authorization does not authorize:
 - production contact, mutation, deployment, or cleanup;
 - direct DB cleanup or permanent deletion / `PROD-03C2`;
 - deletion of visible historical production residue;
 - main merge;
 - reboot/autostart, DNS/TLS/Nginx/systemd/firewall/certificate changes;
 - credentials or paid infrastructure changes;
-- OCR execution or whole-book text extraction;
+- OCR execution, whole-book/whole-document text extraction, or image processing;
 - full-text indexing, embeddings, retrieval, RAG;
-- external metadata/catalogue services, ISBN APIs, web lookup, or AI/LLM extraction.
+- external metadata/catalogue services, ISBN APIs, web search, or AI/LLM extraction;
+- RF-SEARCH01, persisted query history, full-text indexing, embeddings, retrieval, or RAG.
 
 Any later production release remains a separate Owner gate.
 
 ## Verification Policy
 
-RF-META01 is green on the exact closing tree: backend 268/268 and frontend 182/182 tests; both typechecks; both release builds; migration 018 v17→v18 preservation/idempotency; and compiled restart/backup/restore acceptance with `firstMigrationCount: 18`, canonical metadata retained across restart/restore, readiness green, and `redeployMigrationCount: 0`. Independent review found one test-only unknown-template fixture/query defect, which was repaired; follow-up review found no remaining P0–P2 issue. `git diff --check` is green apart from expected Windows line-ending notices. No production or broad historical production acceptance was contacted or replayed.
+RF-META01 remains green at checkpoint `2322169bc33415734d025010c465900c7fbc6bd9`. RF-METASUGGEST01 is complete at the checkpoint reported in its done card; changed-risk tests, full backend/frontend suites, builds, and independent review are the relevant evidence. Do not replay unrelated historical production acceptance or contact production.
 
 ## Next Action
 
-STOP for independent Owner/ChatGPT review. Do not start RF-METASUGGEST01, RF-SEARCH01, another Pre-OCR task, or any production work without new explicit Owner authorization.
+STOP for independent Owner/ChatGPT review. Do not start RF-SEARCH01, OCR/RAG work, or contact production without a new explicit authorization.

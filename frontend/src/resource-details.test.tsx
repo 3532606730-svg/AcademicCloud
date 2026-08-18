@@ -8,6 +8,7 @@ import {
   type LibraryHolding,
   type LibraryHoldingDetails,
   type LibrarySummary,
+  type MetadataSuggestionRun,
   type MaterialType,
   type MetadataTypeFields,
 } from "./api.ts";
@@ -69,6 +70,33 @@ function detail(
     },
   };
 }
+
+const SUGGESTION_RUN: MetadataSuggestionRun = {
+  id: "run-1",
+  libraryId: LIBRARY.id,
+  fileId: HOLDING.file.id,
+  status: "ready",
+  rulesetVersion: "rf-metasuggest-v1",
+  sourceVersion: "s".repeat(43),
+  window: { firstPages: 15, lastPages: 5, pageCount: 20, pageIndices: [1, 2, 20], complete: true },
+  candidates: [
+    {
+      id: "run-1:0", position: 0, fieldPath: "canonicalTitle", typeFieldName: null,
+      authorityType: null, authorityRole: null, identifierScheme: null,
+      value: "The Mongols and the West, 1221–1410", sourceType: "title_page", sourcePageIndex: 3,
+      pageClass: "title_page", confidence: "high", precedenceRank: 1,
+      evidenceExcerpt: "The Mongols and the West, 1221–1410", rulesetVersion: "rf-metasuggest-v1",
+    },
+    {
+      id: "run-1:1", position: 1, fieldPath: "identifier", typeFieldName: null,
+      authorityType: null, authorityRole: null, identifierScheme: "isbn",
+      value: "9780000000000", sourceType: "copyright_page", sourcePageIndex: 4,
+      pageClass: "copyright_page", confidence: "medium", precedenceRank: 1,
+      evidenceExcerpt: "ISBN 9780000000000", rulesetVersion: "rf-metasuggest-v1",
+    },
+  ],
+  createdAt: "2026-08-18T00:00:00.000Z",
+};
 
 function renderDetails(options: {
   library?: LibrarySummary;
@@ -193,5 +221,53 @@ describe("Resource details", () => {
     await user.selectOptions(screen.getByLabelText("Material type"), "article");
     expect(screen.getByText(/Clear the current material-specific fields/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Material type")).toHaveValue("book");
+  });
+
+  it("shows bounded source/page/confidence evidence without writing canonical metadata during generation", async () => {
+    const generate = vi.fn().mockResolvedValue(SUGGESTION_RUN);
+    const getSuggestions = vi.fn().mockResolvedValue(null);
+    const { api } = renderDetails({ api: { generateLibraryMetadataSuggestions: generate, getLibraryMetadataSuggestions: getSuggestions } });
+    const user = userEvent.setup();
+    await screen.findByRole("dialog", { name: "元西域人华化考" });
+    expect(screen.getByRole("button", { name: "Find metadata suggestions" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Find metadata suggestions" }));
+    expect((await screen.findAllByText("The Mongols and the West, 1221–1410")).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Title page · Page 3/)).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText("Evidence-backed suggestions")).toBeInTheDocument();
+    expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
+  });
+
+  it("keeps Members read-only and exposes OCR deferred state without an accept control", async () => {
+    const run = { ...SUGGESTION_RUN, status: "ocr_deferred" as const, candidates: [] };
+    const getSuggestions = vi.fn().mockResolvedValue(run);
+    renderDetails({
+      library: { ...LIBRARY, role: "member" },
+      initial: detail("book", {}, false),
+      api: { getLibraryMetadataSuggestions: getSuggestions, generateLibraryMetadataSuggestions: vi.fn() },
+    });
+    await screen.findByRole("dialog", { name: "元西域人华化考" });
+    expect(await screen.findByText("OCR deferred")).toBeInTheDocument();
+    expect(screen.getByText(/no usable text layer/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Find metadata suggestions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Accept selected" })).not.toBeInTheDocument();
+  });
+
+  it("accepts only an explicit manager selection with the current metadata CAS", async () => {
+    const accept = vi.fn().mockResolvedValue({ detail: { ...detail(), metadataVersion: "n".repeat(43) }, run: { ...SUGGESTION_RUN, status: "accepted" as const } });
+    const getSuggestions = vi.fn().mockResolvedValue(SUGGESTION_RUN);
+    const { api, onSaved } = renderDetails({ api: { getLibraryMetadataSuggestions: getSuggestions, acceptLibraryMetadataSuggestions: accept } });
+    const user = userEvent.setup();
+    await screen.findByRole("dialog", { name: "元西域人华化考" });
+    await user.click(await screen.findByRole("checkbox", { name: /Selected: Canonical title/ }));
+    await user.click(screen.getByRole("button", { name: "Accept selected" }));
+    await waitFor(() => expect(accept).toHaveBeenCalledTimes(1));
+    expect(accept).toHaveBeenCalledWith(LIBRARY.id, HOLDING.file.id, SUGGESTION_RUN.id, expect.objectContaining({
+      acceptedCandidateIds: ["run-1:0"],
+      metadataVersion: "m".repeat(43),
+    }));
+    expect(vi.mocked(accept).mock.calls[0]![3]).not.toHaveProperty("metadata");
+    expect(onSaved).toHaveBeenCalledTimes(1);
+    expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
   });
 });

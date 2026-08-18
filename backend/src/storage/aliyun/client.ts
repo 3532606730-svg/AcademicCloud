@@ -9,6 +9,18 @@ export interface AliyunHeadResult {
   };
 }
 
+export interface AliyunGetObjectOptions {
+  headers?: Record<string, string>;
+}
+
+export interface AliyunGetResult {
+  content?: unknown;
+  res: {
+    status?: number;
+    headers: object;
+  };
+}
+
 export interface AliyunDownloadSignRequest {
   queries?: Record<string, string>;
 }
@@ -21,6 +33,7 @@ export interface AliyunOssClientPort {
     objectKey: string,
   ): Promise<string>;
   head(objectKey: string): Promise<AliyunHeadResult>;
+  get(objectKey: string, file?: unknown, options?: AliyunGetObjectOptions): Promise<AliyunGetResult>;
   delete(objectKey: string): Promise<unknown>;
 }
 

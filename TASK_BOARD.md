@@ -4,35 +4,41 @@
 
 ## Current Phase
 
-**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The RF-META01-only continuation has reached STOP. Production remained closed and exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017.**
+**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` and the Owner-authorized `RF-METASUGGEST01 — Front-Matter Bibliographic Suggestions` are complete and independently green. No Epic is Doing; the board now stops for independent Owner/ChatGPT review. Development schema is v19/history 001–019. Production remains closed and exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017.**
 
-The canonical shared-corpus authority, catalogue presentation/lifecycle repair, and canonical scholarly metadata destination are green: root `资料库` uses one established catalogue table, prefers canonical title with accepted-filename fallback, exposes ordinary `资料详情`, and retains the manager-only Library-domain recycle → Recycle list → CAS restore lifecycle without widening Member authority or exposing Library permanent delete.
+The canonical shared-corpus authority, catalogue presentation/lifecycle repair, canonical scholarly metadata destination, and bounded suggestion layer are green. RF-METASUGGEST01 owned only the bounded local text-layer evidence/suggestion layer: root `资料库` remains unchanged, suggestions remain proposals, and explicit manager acceptance uses the RF-META01 CAS path.
 
 Verification remains proportionate: changed-risk tests and focused independent review only. Do not replay PROD-05A/PROD-06A or broad historical production acceptance.
 
 ## Doing
 
-None. The authorized objective is exhausted at STOP.
+No task is currently Doing. The authorized continuous objective is complete.
 
-## Parked — Preserved, Not Authorized
+## Completed
+
+| Task | Task card | Bounded result |
+|---|---|---|
+| RF-METASUGGEST01 | `tasks/done/RF-METASUGGEST01.md` | Deterministic bilingual front/back-matter suggestions with bounded text-layer evidence, explicit manager acceptance through RF-META01 CAS, and no production contact |
+
+## Ready / Parked — Preserved, Not Authorized
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 1 | RF-METASUGGEST01 | `tasks/ready/RF-METASUGGEST01.md` | Preserved only; not authorized in this run |
-| 2 | RF-SEARCH01 | `tasks/ready/RF-SEARCH01.md` | Preserved only; not authorized in this run |
-| 3 | STOP | — | Reached; independent Owner/ChatGPT review is now required |
+| 1 | RF-SEARCH01 | `tasks/ready/RF-SEARCH01.md` | Preserved only; not authorized in this run |
+| 2 | STOP | — | Required immediately after RF-METASUGGEST01 |
 
 Current execution boundary:
 
 ```text
 L1-UX06   ← DONE
 → RF-META01   ← DONE
-→ STOP   ← REACHED
+→ RF-METASUGGEST01   ← DONE
+→ STOP
 ```
 
-RF-METASUGGEST01 and RF-SEARCH01 remain durable future scope and are not authorized. Completing RF-META01 did not authorize production deployment.
+RF-SEARCH01 and the later Pre-OCR queue remain durable future scope and are not authorized. RF-METASUGGEST01 is complete and did not authorize production deployment, OCR, external lookup, or AI extraction.
 
-## Bibliographic Suggestion Contract — Later in This Round
+## Bibliographic Suggestion Contract — Completed RF-METASUGGEST01
 
 ADR-025 governs RF-METASUGGEST01 after L1-UX06 and RF-META01. For PDFs with a usable existing text layer, default discovery is first 15 pages + last 5 pages and may classify title/copyright/CIP/colophon/front-matter evidence. Every proposal is evidence-backed and requires authorization before becoming canonical. Pure image-only PDFs return `OCR deferred`; no OCR, AI extraction, external catalogue lookup or network enrichment is authorized.
 
@@ -54,7 +60,7 @@ Ordinary Members do not gain shared folder/canonical-metadata/destructive corpus
 
 ## Parked Pre-OCR Queue After This Round
 
-After STOP, preserved later order begins:
+After this STOP, preserved later order begins:
 
 ```text
 RF-PROV01
@@ -77,7 +83,7 @@ RF-PROV01
 → STOP BEFORE OCR
 ```
 
-Starting any parked card requires a new Owner decision after this four-card review.
+Starting any parked card requires a new Owner decision after this checkpoint.
 
 ## Production State and Gate
 
@@ -92,7 +98,7 @@ No continuing authority exists for production mutation, visible test-data cleanu
 
 ## Completed Milestones Relevant to This Round
 
-RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, RF-META01, PROD-05A and PROD-06A are completed baselines. Final RF-META01 record: `tasks/done/RF-META01.md`.
+RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, RF-META01, RF-METASUGGEST01, PROD-05A and PROD-06A are completed baselines. Final records: `tasks/done/RF-META01.md` and `tasks/done/RF-METASUGGEST01.md`.
 
 ## Separate Parked Production Work
 

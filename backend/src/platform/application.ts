@@ -9,6 +9,7 @@ import { ScholarlyRecordService } from "../research/service.js";
 import { LibraryService } from "../library/library-service.js";
 import { CredentialResetService } from "../auth/credential-reset-service.js";
 import { CanonicalMetadataService } from "../metadata/metadata-service.js";
+import { SuggestionService } from "../suggestions/suggestion-service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
 import { openSqliteDatabase } from "../persistence/sqlite/database.js";
 import { assertMigrationsCurrent, runMigrations } from "../persistence/sqlite/migrations.js";
@@ -49,6 +50,11 @@ export async function createApplication(
     const auditService = new AuditService(persistence);
     const scholarlyRecordService = new ScholarlyRecordService(persistence);
     const canonicalMetadataService = new CanonicalMetadataService(persistence);
+    const suggestionService = new SuggestionService({
+      persistence,
+      storage,
+      metadata: canonicalMetadataService,
+    });
     const app = await createApp({
       logger: { level: config.logLevel },
       auth: {
@@ -67,6 +73,7 @@ export async function createApplication(
       audit: { service: auditService },
       research: { service: scholarlyRecordService },
       metadata: { service: canonicalMetadataService },
+      suggestions: { service: suggestionService },
       libraries: { service: libraryService },
       readinessCheck: () => persistence.isReady(),
     });

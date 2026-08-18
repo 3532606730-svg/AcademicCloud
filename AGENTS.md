@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX05, L1-UX06, and RF-META01 are complete and green. The development schema head is v18 while production remains exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. The RF-META01-only continuation is exhausted and execution is stopped for independent Owner/ChatGPT review.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX05, L1-UX06, RF-META01, and the bounded RF-METASUGGEST01 suggestion layer are complete and independently green. The development schema head is v19 (migrations 001–019); production remains exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. Stop after the RF-METASUGGEST01 checkpoint for independent Owner/ChatGPT review.
 
-**Approved continuous objective:** complete. RF-META01 is independently green and the required STOP has been reached. `L1-UX06` remains independently green with its authority-correct Library recycle → manager list → restore path. `RF-METASUGGEST01`, `RF-SEARCH01`, the remaining Pre-OCR queue, any production contact/mutation, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, credentials, paid infrastructure, unrelated OSS mutation, and OCR/RAG remain parked or prohibited without new explicit Owner authorization.
+**Approved continuous objective:** complete exactly `RF-METASUGGEST01`, then STOP. `RF-META01` and `L1-UX06` remain independently green. `RF-SEARCH01`, the remaining Pre-OCR queue, any production contact/mutation, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, credentials, paid infrastructure, unrelated OSS mutation, OCR, whole-document text extraction, indexing, embeddings, retrieval, RAG, external catalogue/ISBN lookup, web search, and AI extraction remain parked or prohibited without new explicit Owner authorization.
 
 ## Engineering Workflow
 
@@ -87,7 +87,7 @@ Owner-approved Pre-OCR direction includes:
 - Research Inbox/intake;
 - sidecar annotations, citations, page-level evidence, Evidence Bundles, Research Questions, structured export foundations.
 
-`RF-META01` is complete: canonical information is surfaced through normal `资料详情`, not a standalone `学术记录` browser. RF-METASUGGEST01 and the remaining Pre-OCR queue remain parked until a later Owner decision.
+`RF-META01` is complete: canonical information is surfaced through normal `资料详情`, not a standalone `学术记录` browser. `RF-METASUGGEST01` is complete: it inspects only local existing text-layer evidence in the fixed first-15/last-5 window, records reviewable bilingual proposals, and may never silently write canonical metadata. `RF-SEARCH01` and the remaining Pre-OCR queue remain parked.
 
 ### Layer 4 — Shared Academic Library
 

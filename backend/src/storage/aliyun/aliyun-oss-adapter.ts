@@ -8,6 +8,11 @@ import {
   createContentDisposition,
 } from "../authorization.js";
 import { assertValidObjectKey } from "../object-key.js";
+import {
+  assertBoundedReadLimit,
+  StorageObjectContentUnavailableError,
+  StorageObjectReadLimitError,
+} from "../storage-adapter.js";
 import type {
   BrowserDownloadAuthorization,
   BrowserUploadAuthorization,
@@ -16,7 +21,7 @@ import type {
   StorageAdapter,
   StorageObjectMetadata,
 } from "../storage-adapter.js";
-import type { AliyunOssClientPort } from "./client.js";
+import type { AliyunGetResult, AliyunOssClientPort } from "./client.js";
 import { createAliyunBrowserClient, createAliyunOssClient } from "./client.js";
 import type { AliyunOssConfig } from "./config.js";
 
@@ -78,6 +83,40 @@ function isNotFound(error: unknown): boolean {
     candidate.code === "NoSuchKey" ||
     candidate.code === "NoSuchObject"
   );
+}
+
+function toUint8Array(content: unknown): Uint8Array | null {
+  if (content instanceof Uint8Array) {
+    return new Uint8Array(content);
+  }
+
+  if (content instanceof ArrayBuffer) {
+    return new Uint8Array(content.slice(0));
+  }
+
+  if (typeof content === "string") {
+    return new TextEncoder().encode(content);
+  }
+
+  return null;
+}
+
+function parseContentRangeTotal(headers: HeaderMap): number | null {
+  const value = readHeader(headers, "content-range");
+
+  if (value === null) {
+    return null;
+  }
+
+  const match = /^bytes\s+\d+-\d+\/(\d+|\*)$/i.exec(value.trim());
+
+  if (!match || match[1] === "*") {
+    return null;
+  }
+
+  const parsed = Number(match[1]);
+
+  return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
 export class AliyunOssStorageAdapter implements StorageAdapter {
@@ -203,6 +242,69 @@ export class AliyunOssStorageAdapter implements StorageAdapter {
 
       throw error;
     }
+  }
+
+  async readObject(objectKey: string, maxBytes: number): Promise<Uint8Array | null> {
+    assertValidObjectKey(objectKey);
+    assertBoundedReadLimit(maxBytes);
+
+    const metadata = await this.statObject(objectKey);
+
+    if (!metadata) {
+      return null;
+    }
+
+    if (metadata.sizeBytes > maxBytes) {
+      throw new StorageObjectReadLimitError(objectKey, metadata.sizeBytes, maxBytes);
+    }
+
+    if (metadata.sizeBytes === 0) {
+      return new Uint8Array();
+    }
+
+    let result: AliyunGetResult;
+
+    try {
+      // Ask OSS for only the bounded prefix even after HEAD.  The HEAD check
+      // prevents ordinary oversized objects from being fetched, while the
+      // range protects against a concurrent size change between HEAD and GET.
+      result = await this.client.get(objectKey, undefined, {
+        headers: { Range: `bytes=0-${maxBytes - 1}` },
+      });
+    } catch (error: unknown) {
+      if (isNotFound(error)) {
+        return null;
+      }
+
+      throw error;
+    }
+
+    const responseHeaders = asHeaderMap(result.res.headers);
+    const rangeTotal = parseContentRangeTotal(responseHeaders);
+
+    if (rangeTotal !== null && rangeTotal > maxBytes) {
+      throw new StorageObjectReadLimitError(objectKey, rangeTotal, maxBytes);
+    }
+
+    const bytes = toUint8Array(result.content);
+
+    if (!bytes) {
+      throw new StorageObjectContentUnavailableError(objectKey);
+    }
+
+    if (bytes.byteLength > maxBytes) {
+      throw new StorageObjectReadLimitError(objectKey, bytes.byteLength, maxBytes);
+    }
+
+    if (rangeTotal !== null && (rangeTotal !== metadata.sizeBytes || bytes.byteLength !== rangeTotal)) {
+      throw new Error(`OSS object content changed or was truncated while reading: ${objectKey}`);
+    }
+
+    if (bytes.byteLength !== metadata.sizeBytes && rangeTotal === null) {
+      throw new Error(`OSS object size changed while reading: ${objectKey}`);
+    }
+
+    return bytes;
   }
 
   async deleteObject(objectKey: string): Promise<void> {

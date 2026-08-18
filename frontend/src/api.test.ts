@@ -453,6 +453,63 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[3]?.[1]?.body).toBe(JSON.stringify({ type: "person", canonicalLabel: "Author", aliases: [] }));
   });
 
+  it("uses bounded metadata-suggestion generation, review, and explicit acceptance contracts", async () => {
+    const run = {
+      id: "run-1",
+      libraryId: "library / one",
+      fileId: "file / one",
+      status: "ready" as const,
+      rulesetVersion: "rf-metasuggest-v1",
+      sourceVersion: "v".repeat(43),
+      window: { firstPages: 15, lastPages: 5, pageCount: 20, pageIndices: [1, 2, 20], complete: true },
+      candidates: [{
+        id: "run-1:0", position: 0, fieldPath: "canonicalTitle" as const, typeFieldName: null,
+        authorityType: null, authorityRole: null, identifierScheme: null, value: "The Mongols and the West",
+        sourceType: "title_page" as const, sourcePageIndex: 3, pageClass: "title_page" as const,
+        confidence: "high" as const, precedenceRank: 1, evidenceExcerpt: "The Mongols and the West",
+        rulesetVersion: "rf-metasuggest-v1",
+      }],
+      createdAt: "2026-08-18T00:00:00.000Z",
+    };
+    const detail = {
+      displayTitle: "The Mongols and the West",
+      originalFilename: "mongols.pdf",
+      metadataVersion: "m".repeat(43),
+      metadata: null,
+      canEditMetadata: true,
+      file: { id: "file / one", mediaType: "application/pdf", sizeBytes: 12, updatedAt: "2026-08-18T00:00:00.000Z" },
+    };
+    const responses = [
+      new Response(JSON.stringify({ run }), { status: 201, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ run }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ detail, run: { ...run, status: "accepted" } }), { status: 200, headers: { "content-type": "application/json" } }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+    await expect(api.generateLibraryMetadataSuggestions("library / one", "file / one")).resolves.toEqual(run);
+    await expect(api.getLibraryMetadataSuggestions("library / one", "file / one")).resolves.toEqual(run);
+    const acceptance = {
+      acceptedCandidateIds: ["run-1:0"],
+      metadataVersion: detail.metadataVersion,
+      metadata: {
+        materialType: "book" as const,
+        canonicalTitle: "The Mongols and the West",
+        subtitle: null,
+        alternativeTitles: [],
+        dateStatement: null,
+        identifiers: [],
+        typeFields: {},
+        authorityLinks: [],
+      },
+    };
+    await expect(api.acceptLibraryMetadataSuggestions("library / one", "file / one", "run-1", acceptance)).resolves.toMatchObject({ detail });
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestions");
+    expect(fetcher.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBeUndefined();
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestions");
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestions/run-1/accept");
+  });
+
   it("uses scoped Library recycle/list/restore contracts with opaque versions", async () => {
     const recycled = {
       version: "r".repeat(43),

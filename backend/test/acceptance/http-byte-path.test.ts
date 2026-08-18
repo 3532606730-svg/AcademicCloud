@@ -89,6 +89,17 @@ class LocalHttpObjectStorage implements StorageAdapter {
     };
   }
 
+  async readObject(objectKey: string, maxBytes: number): Promise<Uint8Array | null> {
+    const object = this.objects.get(objectKey);
+
+    if (!object) return null;
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || object.bytes.length > maxBytes) {
+      throw new RangeError("bounded read limit exceeded");
+    }
+
+    return new Uint8Array(object.bytes);
+  }
+
   async deleteObject(objectKey: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/objects/${encodeURIComponent(objectKey)}`, {
       method: "DELETE",

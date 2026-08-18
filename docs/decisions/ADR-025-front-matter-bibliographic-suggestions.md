@@ -13,9 +13,9 @@ The repository remains STOP-before-OCR. This decision therefore distinguishes **
 
 ## Decision
 
-### 1. Current near-term round
+### 1. Original sequencing proposal and current authorization
 
-The Owner-approved repository round is:
+ADR-025 originally recorded this intended near-term sequence:
 
 ```text
 L1-UX06
@@ -25,11 +25,18 @@ L1-UX06
 → STOP for Owner/ChatGPT review
 ```
 
+The subsequent Owner checkpoint authorizes **RF-METASUGGEST01 only** for the
+current repository run. The implementation checkpoint stops immediately after
+that Epic; RF-SEARCH01 is preserved in `tasks/ready/` but is not authorized or
+started. ADR-027 records the bounded implementation and this superseding
+current-run boundary. A later Owner decision is required before any search,
+OCR, or other parked work begins.
+
 The remaining Pre-OCR cards stay parked until a later explicit Owner restart.
 
 ### 2. Front-matter evidence is the primary suggestion source
 
-After RF-META01 defines canonical fields, RF-METASUGGEST01 will inspect a bounded local page window for PDFs that already contain usable text. Default discovery is limited to the first 15 pages plus the last 5 pages; it must not scan an entire book merely to identify bibliography.
+After RF-META01 defined canonical fields, the completed RF-METASUGGEST01 implementation inspects a bounded local page window for PDFs that already contain usable text. Default discovery is limited to the first 15 pages plus the last 5 pages; it never scans an entire book merely to identify bibliography.
 
 The classifier may recognize:
 - cover;
@@ -110,7 +117,7 @@ Accepting a cleaner title or metadata proposal does not rename the OSS object ke
 
 RF-METASUGGEST01 does **not** execute OCR. If a PDF is image-only and has no usable text layer, the current round returns a bounded `OCR deferred` state and allows manual metadata entry.
 
-The implementation should define a stable page-text adapter so a later Owner-authorized OCR task can feed OCR text from selected front/back-matter pages into the same classifier/evidence contract without redesigning the bibliographic model.
+The implementation defines a stable page-text adapter so a later Owner-authorized OCR task could feed OCR text from selected front/back-matter pages into the same classifier/evidence contract without redesigning the bibliographic model.
 
 No whole-book OCR is implied by metadata discovery. A later OCR design should prefer bounded candidate pages rather than processing hundreds of pages merely to find title/copyright information.
 
@@ -132,6 +139,11 @@ This decision does not authorize:
 
 - ADR-022 remains authoritative for the shared-corpus/private-overlay product model.
 - RF-META01 owns canonical metadata contracts and `资料详情`.
-- RF-METASUGGEST01 owns the bounded deterministic evidence/suggestion layer defined here.
-- RF-SEARCH01 follows suggestions in the current round and searches authorized names/canonical metadata only; OCR/full-text search remains later.
-- The project remains STOP-before-OCR after this four-card round unless the Owner explicitly authorizes further work.
+- RF-METASUGGEST01 completed the bounded deterministic evidence/suggestion layer defined here.
+- RF-SEARCH01 remains a separately parked future card and is not authorized by
+  the current RF-METASUGGEST01 checkpoint; if later opened, it may search
+  authorized names/canonical metadata only, while OCR/full-text search remains
+  separately gated.
+- The project remains STOP-before-OCR after the currently authorized
+  RF-METASUGGEST01 checkpoint unless the Owner explicitly authorizes further
+  work.

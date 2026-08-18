@@ -11,6 +11,11 @@ import {
 import type { AliyunOssConfig } from "../../src/storage/aliyun/config.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createObjectKey } from "../../src/storage/object-key.js";
+import {
+  MAX_BOUNDED_READ_BYTES,
+  StorageObjectContentUnavailableError,
+  StorageObjectReadLimitError,
+} from "../../src/storage/storage-adapter.js";
 
 const MD5 = "1B2M2Y8AsgTpgAmY7PhCfg==";
 
@@ -31,6 +36,11 @@ class FakeAliyunClient implements AliyunOssClientPort {
     res: { headers: {} },
   };
   headError: unknown;
+  getResult: Awaited<ReturnType<AliyunOssClientPort["get"]>> = {
+    content: new Uint8Array(),
+    res: { status: 200, headers: {} },
+  };
+  getError: unknown;
   deleteError: unknown;
   readonly signatureCalls: Array<{
     method: "GET";
@@ -39,6 +49,10 @@ class FakeAliyunClient implements AliyunOssClientPort {
     objectKey: string;
   }> = [];
   readonly headCalls: string[] = [];
+  readonly getCalls: Array<{
+    objectKey: string;
+    options: { headers?: Record<string, string> } | undefined;
+  }> = [];
   readonly deleteCalls: string[] = [];
 
   async signatureUrlV4(
@@ -58,6 +72,19 @@ class FakeAliyunClient implements AliyunOssClientPort {
     }
 
     return this.headResult;
+  }
+
+  async get(
+    objectKey: string,
+    _file?: unknown,
+    options?: { headers?: Record<string, string> },
+  ): Promise<Awaited<ReturnType<AliyunOssClientPort["get"]>>> {
+    this.getCalls.push({ objectKey, options });
+    if (this.getError) {
+      throw this.getError;
+    }
+
+    return this.getResult;
   }
 
   async delete(objectKey: string): Promise<void> {
@@ -345,4 +372,65 @@ test("in-memory adapter supplies deterministic contract behavior without network
   await adapter.deleteObject(objectKey);
   await adapter.deleteObject(objectKey);
   assert.equal(await adapter.statObject(objectKey), null);
+});
+
+test("bounded in-memory reads require explicit bytes, copy content, and fail closed on limits", async () => {
+  const objectKey = createObjectKey();
+  const adapter = new InMemoryStorageAdapter();
+  const metadata = {
+    objectKey,
+    sizeBytes: 4,
+    etag: null,
+    checksumAlgorithm: null,
+    checksum: null,
+    mediaType: "application/pdf",
+    modifiedAt: null,
+  } as const;
+
+  adapter.putObject(metadata, new Uint8Array([1, 2, 3, 4]));
+  const bytes = await adapter.readObject(objectKey, 4);
+  assert.deepEqual(bytes && [...bytes], [1, 2, 3, 4]);
+  bytes![0] = 9;
+  assert.deepEqual([...(await adapter.readObject(objectKey, 4))!], [1, 2, 3, 4]);
+  await assert.rejects(
+    adapter.readObject(objectKey, 3),
+    (error: unknown) => error instanceof StorageObjectReadLimitError,
+  );
+
+  const metadataOnly = createObjectKey();
+  adapter.putObject({ ...metadata, objectKey: metadataOnly });
+  await assert.rejects(
+    adapter.readObject(metadataOnly, 4),
+    (error: unknown) => error instanceof StorageObjectContentUnavailableError,
+  );
+  await assert.rejects(adapter.readObject(objectKey, MAX_BOUNDED_READ_BYTES + 1), RangeError);
+});
+
+test("Aliyun bounded reads HEAD first, use a capped range, and reject oversized responses", async () => {
+  const client = new FakeAliyunClient();
+  const adapter = new AliyunOssStorageAdapter(config, client);
+  const objectKey = createObjectKey();
+  client.headResult = {
+    status: 200,
+    res: { headers: { "Content-Length": "4", "Content-Type": "application/pdf" } },
+  };
+  client.getResult = {
+    content: new Uint8Array([1, 2, 3, 4]),
+    res: { status: 206, headers: { "Content-Length": "4", "Content-Range": "bytes 0-3/4" } },
+  };
+
+  assert.deepEqual([...(await adapter.readObject(objectKey, 4))!], [1, 2, 3, 4]);
+  assert.deepEqual(client.getCalls, [
+    { objectKey, options: { headers: { Range: "bytes=0-3" } } },
+  ]);
+
+  client.headResult = {
+    status: 200,
+    res: { headers: { "Content-Length": "5" } },
+  };
+  await assert.rejects(
+    adapter.readObject(objectKey, 4),
+    (error: unknown) => error instanceof StorageObjectReadLimitError,
+  );
+  assert.equal(client.getCalls.length, 1);
 });

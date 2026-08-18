@@ -8,6 +8,12 @@ import {
   type LibraryAuthority,
   type LibraryHolding,
   type LibraryHoldingDetails,
+  type MetadataSuggestionAcceptInput,
+  type MetadataSuggestionCandidate,
+  type MetadataSuggestionRun,
+  type MetadataSuggestionConfidence,
+  type MetadataSuggestionSourceType,
+  type MetadataSuggestionStatus,
   type LibraryMetadataInput,
   type LibrarySummary,
   type MaterialType,
@@ -103,6 +109,43 @@ function materialLabel(value: unknown, t: ReturnType<typeof useLanguage>["t"]): 
 }
 function fieldLabel(value: string, t: ReturnType<typeof useLanguage>["t"]): string {
   return value in FIELD_LABEL_KEYS ? t(fieldLabelKey(value as keyof MetadataTypeFields)) : value;
+}
+
+const SUGGESTION_SOURCE_KEYS: Record<MetadataSuggestionSourceType, MessageKey> = {
+  title_page: "metadata.suggestions.source.titlePage",
+  copyright_page: "metadata.suggestions.source.copyrightPage",
+  cip_page: "metadata.suggestions.source.cipPage",
+  colophon: "metadata.suggestions.source.colophon",
+  series_page: "metadata.suggestions.source.seriesPage",
+  embedded_pdf_metadata: "metadata.suggestions.source.embedded",
+  filename: "metadata.suggestions.source.filename",
+};
+const SUGGESTION_STATUS_KEYS: Record<MetadataSuggestionStatus, MessageKey> = {
+  ready: "metadata.suggestions.status.ready",
+  ambiguous: "metadata.suggestions.status.ambiguous",
+  no_suggestions: "metadata.suggestions.status.noSuggestions",
+  ocr_deferred: "metadata.suggestions.status.ocrDeferred",
+  unsupported: "metadata.suggestions.status.unsupported",
+  stale: "metadata.suggestions.status.stale",
+  accepted: "metadata.suggestions.status.accepted",
+};
+const SUGGESTION_CONFIDENCE_KEYS: Record<MetadataSuggestionConfidence, MessageKey> = {
+  high: "metadata.suggestions.confidence.high",
+  medium: "metadata.suggestions.confidence.medium",
+  low: "metadata.suggestions.confidence.low",
+};
+
+function suggestionSourceLabel(value: MetadataSuggestionSourceType, t: ReturnType<typeof useLanguage>["t"]): string {
+  return t(SUGGESTION_SOURCE_KEYS[value]);
+}
+function suggestionStatusLabel(value: MetadataSuggestionStatus, t: ReturnType<typeof useLanguage>["t"]): string {
+  return t(SUGGESTION_STATUS_KEYS[value]);
+}
+function suggestionConfidenceLabel(value: MetadataSuggestionConfidence, t: ReturnType<typeof useLanguage>["t"]): string {
+  return t(SUGGESTION_CONFIDENCE_KEYS[value]);
+}
+function suggestionPageClassLabel(value: string | null): string {
+  return value ? value.replaceAll("_", " ") : "—";
 }
 
 function useResourceDialog(onClose: () => void, disabled: boolean, returnFocus?: HTMLElement | null) {
@@ -216,7 +259,13 @@ export function ResourceDetailsDialog({
   const [authorities, setAuthorities] = useState<LibraryAuthority[]>([]);
   const [authorityType, setAuthorityType] = useState<AuthorityType>("person");
   const [authorityLabel, setAuthorityLabel] = useState("");
-  const dialogRef = useResourceDialog(onClose, saving, returnFocus);
+  const [suggestionRun, setSuggestionRun] = useState<MetadataSuggestionRun | null>(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsGenerating, setSuggestionsGenerating] = useState(false);
+  const [suggestionsAccepting, setSuggestionsAccepting] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState<unknown>(null);
+  const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<Set<string>>(() => new Set());
+  const dialogRef = useResourceDialog(onClose, saving || suggestionsGenerating || suggestionsAccepting, returnFocus);
 
   const groupedAuthorities = useMemo(() => {
     const map = new Map<string, LibraryAuthority>();
@@ -241,6 +290,29 @@ export function ResourceDetailsDialog({
   useEffect(() => { void loadDetails(); }, [api, library.id, holding.file.id]);
 
   useEffect(() => {
+    const getSuggestions = api.getLibraryMetadataSuggestions;
+    if (!getSuggestions || holding.file.mediaType !== "application/pdf") {
+      setSuggestionRun(null);
+      setSuggestionsError(null);
+      setSelectedSuggestionIds(new Set());
+      return;
+    }
+    const controller = new AbortController();
+    setSuggestionsLoading(true);
+    setSuggestionsError(null);
+    getSuggestions(library.id, holding.file.id, controller.signal)
+      .then((run) => {
+        setSuggestionRun(run);
+        setSelectedSuggestionIds(new Set());
+      })
+      .catch((caught: unknown) => {
+        if (!(caught instanceof DOMException && caught.name === "AbortError")) setSuggestionsError(caught);
+      })
+      .finally(() => setSuggestionsLoading(false));
+    return () => controller.abort();
+  }, [api, library.id, holding.file.id, holding.file.mediaType]);
+
+  useEffect(() => {
     if (!editing || library.role !== "manager") return;
     const controller = new AbortController();
     Promise.all(AUTHORITY_TYPES.map((type) => api.listLibraryAuthorities(library.id, type, controller.signal)))
@@ -249,6 +321,123 @@ export function ResourceDetailsDialog({
       });
     return () => controller.abort();
   }, [api, editing, library.id, library.role]);
+
+  async function generateSuggestions() {
+    const generate = api.generateLibraryMetadataSuggestions;
+    if (!generate || library.role !== "manager") return;
+    setSuggestionsGenerating(true);
+    setSuggestionsError(null);
+    setNotice("");
+    try {
+      const run = await generate(library.id, holding.file.id);
+      setSuggestionRun(run);
+      setSelectedSuggestionIds(new Set());
+    } catch (caught) {
+      setSuggestionsError(caught);
+    } finally {
+      setSuggestionsGenerating(false);
+    }
+  }
+
+  function metadataForSuggestionAcceptance(): MetadataSuggestionAcceptInput["metadata"] | undefined {
+    if (!detail) return undefined;
+    return {
+      materialType: draft.materialType,
+      canonicalTitle: draft.canonicalTitle.trim(),
+      subtitle: draft.subtitle.trim() || null,
+      alternativeTitles: draft.alternativeTitles.map((title) => title.trim()).filter(Boolean),
+      dateStatement: draft.dateStatement.trim() || null,
+      identifiers: draft.identifiers.map((item) => ({ scheme: item.scheme.trim(), value: item.value.trim() })).filter((item) => item.scheme && item.value),
+      typeFields: Object.fromEntries(Object.entries(draft.typeFields).filter(([, value]) => value?.trim())) as MetadataTypeFields,
+      authorityLinks: draft.authorityLinks,
+    };
+  }
+
+  async function acceptSuggestions() {
+    const accept = api.acceptLibraryMetadataSuggestions;
+    if (!accept || !detail || !suggestionRun || library.role !== "manager" || selectedSuggestionIds.size === 0) return;
+    setSuggestionsAccepting(true);
+    setSuggestionsError(null);
+    setNotice("");
+    try {
+      const acceptance: MetadataSuggestionAcceptInput = {
+        acceptedCandidateIds: [...selectedSuggestionIds],
+        metadataVersion: detail.metadataVersion,
+      };
+      // With no explicit edit payload the server applies the selected
+      // candidates to the current canonical metadata through RF-META01. Once
+      // the manager opens the ordinary editor, send that explicit draft so
+      // edits and candidate acceptance remain one CAS-guarded write.
+      if (editing) {
+        const acceptedMetadata = metadataForSuggestionAcceptance();
+        if (acceptedMetadata) acceptance.metadata = acceptedMetadata;
+      }
+      const response = await accept(library.id, holding.file.id, suggestionRun.id, acceptance);
+      const nextDetail = response.detail;
+      if (nextDetail) {
+        setDetail(nextDetail);
+        setDraft(draftFromDetail(nextDetail));
+        setEditing(false);
+        onSaved(nextDetail);
+      } else {
+        // The server may return only the updated run in a future compatible
+        // response. Refresh the canonical detail before showing success.
+        await loadDetails();
+        setEditing(false);
+      }
+      setSuggestionRun(response.run ?? { ...suggestionRun, status: "accepted" });
+      setSelectedSuggestionIds(new Set());
+      setNotice(t("metadata.suggestions.accepted"));
+    } catch (caught) {
+      if (caught instanceof ApiError && (caught.code === "concurrent_change" || caught.code === "stale" || caught.code === "suggestions_stale" || caught.code === "source_changed")) {
+        try {
+          const latest = await api.getLibraryHoldingDetails(library.id, holding.file.id);
+          setDetail(latest);
+          setDraft(draftFromDetail(latest));
+          setEditing(false);
+          onSaved(latest);
+          setSuggestionRun(null);
+          setSelectedSuggestionIds(new Set());
+          setNotice(t("metadata.conflictRefreshed"));
+        } catch (refreshError) {
+          setSuggestionsError(refreshError);
+        }
+      } else {
+        setSuggestionsError(caught);
+      }
+    } finally {
+      setSuggestionsAccepting(false);
+    }
+  }
+
+  function useSuggestionInEditor(candidate: MetadataSuggestionCandidate) {
+    if (!detail || !isMaterialType(draft.materialType)) return;
+    setEditing(true);
+    if (candidate.fieldPath === "canonicalTitle") {
+      setDraft((current) => ({ ...current, canonicalTitle: candidate.value }));
+    } else if (candidate.fieldPath === "subtitle") {
+      setDraft((current) => ({ ...current, subtitle: candidate.value }));
+    } else if (candidate.fieldPath === "dateStatement") {
+      setDraft((current) => ({ ...current, dateStatement: candidate.value }));
+    } else if (candidate.fieldPath === "identifier" && candidate.identifierScheme) {
+      setDraft((current) => {
+        const existing = current.identifiers.findIndex((item) => item.scheme.toLowerCase() === candidate.identifierScheme!.toLowerCase());
+        if (existing >= 0) {
+          return { ...current, identifiers: current.identifiers.map((item, index) => index === existing ? { scheme: candidate.identifierScheme!, value: candidate.value } : item) };
+        }
+        return current.identifiers.length >= 8
+          ? current
+          : { ...current, identifiers: [...current.identifiers, { scheme: candidate.identifierScheme!, value: candidate.value }] };
+      });
+    } else if (candidate.fieldPath === "typeField" && candidate.typeFieldName) {
+      const knownField = FIELDS_BY_TYPE[draft.materialType].some(({ key }) => key === candidate.typeFieldName);
+      if (knownField) setDraft((current) => ({ ...current, typeFields: { ...current.typeFields, [candidate.typeFieldName!]: candidate.value } }));
+      else setNotice(t("metadata.suggestions.authorityReview"));
+    } else if (candidate.fieldPath === "authority") {
+      setNotice(t("metadata.suggestions.authorityReview"));
+    }
+    setSelectedSuggestionIds((current) => new Set(current).add(candidate.id));
+  }
 
   function updateType(next: MaterialType) {
     if (next !== draft.materialType && FIELDS_BY_TYPE[draft.materialType].some(({ key }) => Boolean(draft.typeFields[key]?.trim()))) {
@@ -344,6 +533,29 @@ export function ResourceDetailsDialog({
                 <legend>{t("metadata.originalFilename")}</legend>
                 <p>{detail.originalFilename}</p>
               </fieldset>
+              {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
+                <MetadataSuggestionsPanel
+                  run={suggestionRun}
+                  loading={suggestionsLoading}
+                  generating={suggestionsGenerating}
+                  accepting={suggestionsAccepting}
+                  error={suggestionsError}
+                  manager={library.role === "manager" && detail.canEditMetadata}
+                  requiresEditor={!detail.metadata && !editing}
+                  selectedIds={selectedSuggestionIds}
+                  onGenerate={() => void generateSuggestions()}
+                  onToggle={(candidateId) => setSelectedSuggestionIds((current) => {
+                    const next = new Set(current);
+                    if (next.has(candidateId)) next.delete(candidateId);
+                    else next.add(candidateId);
+                    return next;
+                  })}
+                  onUseInEditor={useSuggestionInEditor}
+                  onAccept={() => void acceptSuggestions()}
+                  t={t}
+                  language={language}
+                />
+              )}
               <footer className="resource-details-actions">
                 <button className="button button--quiet" type="button" onClick={onPreview} disabled={!holding.file.mediaType || (!holding.file.mediaType.startsWith("image/") && holding.file.mediaType !== "application/pdf")}>{t("menu.preview")}</button>
                 <button className="button" type="button" onClick={onDownload}>{t("menu.download")}</button>
@@ -351,22 +563,47 @@ export function ResourceDetailsDialog({
               </footer>
             </>
           ) : (
-            <MetadataEditor
-              draft={draft}
-              setDraft={setDraft}
-              onTypeChange={updateType}
-              authorities={authorities}
-              authoritiesById={groupedAuthorities}
-              authorityType={authorityType}
-              setAuthorityType={setAuthorityType}
-              authorityLabel={authorityLabel}
-              setAuthorityLabel={setAuthorityLabel}
-              onCreateAuthority={() => void createAuthority()}
-              onCancel={() => { setDraft(draftFromDetail(detail)); setEditing(false); setNotice(""); }}
-              onSave={() => void save()}
-              saving={saving}
-              t={t}
-            />
+            <>
+              {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
+                <MetadataSuggestionsPanel
+                  run={suggestionRun}
+                  loading={suggestionsLoading}
+                  generating={suggestionsGenerating}
+                  accepting={suggestionsAccepting}
+                  error={suggestionsError}
+                  manager={library.role === "manager" && detail.canEditMetadata}
+                  requiresEditor={!detail.metadata && !editing}
+                  selectedIds={selectedSuggestionIds}
+                  onGenerate={() => void generateSuggestions()}
+                  onToggle={(candidateId) => setSelectedSuggestionIds((current) => {
+                    const next = new Set(current);
+                    if (next.has(candidateId)) next.delete(candidateId);
+                    else next.add(candidateId);
+                    return next;
+                  })}
+                  onUseInEditor={useSuggestionInEditor}
+                  onAccept={() => void acceptSuggestions()}
+                  t={t}
+                  language={language}
+                />
+              )}
+              <MetadataEditor
+                draft={draft}
+                setDraft={setDraft}
+                onTypeChange={updateType}
+                authorities={authorities}
+                authoritiesById={groupedAuthorities}
+                authorityType={authorityType}
+                setAuthorityType={setAuthorityType}
+                authorityLabel={authorityLabel}
+                setAuthorityLabel={setAuthorityLabel}
+                onCreateAuthority={() => void createAuthority()}
+                onCancel={() => { setDraft(draftFromDetail(detail)); setEditing(false); setNotice(""); }}
+                onSave={() => void save()}
+                saving={saving}
+                t={t}
+              />
+            </>
           )}
         </div>
       )}
@@ -396,6 +633,116 @@ function MetadataReadOnly({ metadata, t }: { metadata: NonNullable<LibraryHoldin
 
 function ReactFact({ label, value }: { label: string; value: string }) {
   return <><dt>{label}</dt><dd>{value}</dd></>;
+}
+
+function suggestionFieldLabel(candidate: MetadataSuggestionCandidate, t: ReturnType<typeof useLanguage>["t"]): string {
+  if (candidate.fieldPath === "canonicalTitle") return t("metadata.canonicalTitle");
+  if (candidate.fieldPath === "subtitle") return t("metadata.subtitle");
+  if (candidate.fieldPath === "dateStatement") return t("metadata.dateStatement");
+  if (candidate.fieldPath === "identifier") return candidate.identifierScheme
+    ? `${t("metadata.identifiers")} (${candidate.identifierScheme})`
+    : t("metadata.identifiers");
+  if (candidate.fieldPath === "typeField" && candidate.typeFieldName) return fieldLabel(candidate.typeFieldName, t);
+  if (candidate.fieldPath === "authority" && candidate.authorityRole) return t(roleLabelKey(candidate.authorityRole));
+  return candidate.fieldPath;
+}
+
+function MetadataSuggestionsPanel({
+  run,
+  loading,
+  generating,
+  accepting,
+  error,
+  manager,
+  requiresEditor,
+  selectedIds,
+  onGenerate,
+  onToggle,
+  onUseInEditor,
+  onAccept,
+  t,
+  language,
+}: {
+  run: MetadataSuggestionRun | null;
+  loading: boolean;
+  generating: boolean;
+  accepting: boolean;
+  error: unknown;
+  manager: boolean;
+  requiresEditor: boolean;
+  selectedIds: Set<string>;
+  onGenerate: () => void;
+  onToggle: (candidateId: string) => void;
+  onUseInEditor: (candidate: MetadataSuggestionCandidate) => void;
+  onAccept: () => void;
+  t: ReturnType<typeof useLanguage>["t"];
+  language: Parameters<typeof describeError>[1];
+}) {
+  const busy = loading || generating || accepting;
+  const reviewable = run?.status === "ready" || run?.status === "ambiguous";
+  return (
+    <section className="metadata-suggestions" aria-labelledby="metadata-suggestions-title">
+      <header className="metadata-suggestions-header">
+        <h3 id="metadata-suggestions-title">{t("metadata.suggestions.title")}</h3>
+        {manager && <button className="button button--small" type="button" onClick={onGenerate} disabled={busy}>
+          {generating ? t("metadata.suggestions.generating") : t("metadata.suggestions.generate")}
+        </button>}
+      </header>
+      {loading && <p className="muted" role="status">{t("metadata.suggestions.loading")}</p>}
+      {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+      {!loading && !run && <p className="muted">{t("metadata.suggestions.none")}</p>}
+      {run && (
+        <>
+          <p className={`metadata-suggestions-status metadata-suggestions-status--${run.status}`} role="status">
+            {suggestionStatusLabel(run.status, t)}
+          </p>
+          {run.status === "ocr_deferred" && <p className="muted">{t("metadata.suggestions.ocrDeferredDescription")}</p>}
+          {run.status === "unsupported" && <p className="muted">{t("metadata.suggestions.unsupportedDescription")}</p>}
+          {run.status === "stale" && <p className="muted">{t("metadata.suggestions.staleDescription")}</p>}
+          {run.candidates.length > 0 && <div className="metadata-suggestions-list">
+            {run.candidates.map((candidate) => {
+              const selected = selectedIds.has(candidate.id);
+              return <article className={`metadata-suggestion${selected ? " is-selected" : ""}`} key={candidate.id}>
+                <div className="metadata-suggestion-main">
+                  {manager && reviewable && <input
+                    type="checkbox"
+                    aria-label={`${t("metadata.suggestions.selected")}: ${suggestionFieldLabel(candidate, t)} — ${candidate.value}`}
+                    checked={selected}
+                    onChange={() => onToggle(candidate.id)}
+                    disabled={accepting}
+                  />}
+                  <div className="metadata-suggestion-value">
+                    <strong>{suggestionFieldLabel(candidate, t)}</strong>
+                    <span>{candidate.value}</span>
+                  </div>
+                </div>
+                <dl className="metadata-suggestion-evidence">
+                  <dt>{t("metadata.suggestions.source")}</dt>
+                  <dd>{suggestionSourceLabel(candidate.sourceType, t)}{candidate.sourcePageIndex !== null ? ` · ${t("metadata.suggestions.page", { page: candidate.sourcePageIndex })}` : ""}</dd>
+                  <dt>{t("metadata.suggestions.pageClass")}</dt>
+                  <dd>{suggestionPageClassLabel(candidate.pageClass)}</dd>
+                  <dt>{t("metadata.suggestions.confidence")}</dt>
+                  <dd>{suggestionConfidenceLabel(candidate.confidence, t)}</dd>
+                  {candidate.evidenceExcerpt && <><dt>{t("metadata.suggestions.evidence")}</dt><dd className="metadata-suggestion-excerpt">{candidate.evidenceExcerpt}</dd></>}
+                </dl>
+                {manager && reviewable && <button className="button button--small button--quiet" type="button" onClick={() => onUseInEditor(candidate)} disabled={accepting}>
+                  {t("metadata.suggestions.useInEditor")}
+                </button>}
+              </article>;
+            })}
+          </div>}
+          {run.candidates.some((candidate) => candidate.fieldPath === "authority") && <p className="muted">{t("metadata.suggestions.authorityReview")}</p>}
+          {!manager && run.candidates.length > 0 && <p className="muted">{t("metadata.suggestions.managerOnly")}</p>}
+          {manager && requiresEditor && reviewable && run.candidates.length > 0 && <p className="muted">{t("metadata.suggestions.editBeforeAccept")}</p>}
+          {manager && reviewable && run.candidates.length > 0 && <footer className="metadata-suggestions-actions">
+            <button className="button button--primary" type="button" onClick={onAccept} disabled={accepting || requiresEditor || selectedIds.size === 0}>
+              {accepting ? t("metadata.suggestions.accepting") : t("metadata.suggestions.accept")}
+            </button>
+          </footer>}
+        </>
+      )}
+    </section>
+  );
 }
 
 function MetadataEditor({

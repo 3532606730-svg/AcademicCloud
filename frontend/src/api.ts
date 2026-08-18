@@ -270,6 +270,100 @@ export interface LibraryMetadataInput {
   authorityLinks: Array<{ authorityId: string; role: AuthorityRole }>;
 }
 
+/**
+ * Bounded, deterministic bibliographic suggestion evidence.  These values
+ * intentionally mirror the server contract but do not expose object keys,
+ * raw PDF bytes, or private research state to the browser.
+ */
+export type MetadataSuggestionStatus =
+  | "ready"
+  | "ambiguous"
+  | "no_suggestions"
+  | "ocr_deferred"
+  | "unsupported"
+  | "stale"
+  | "accepted";
+export type MetadataSuggestionSourceType =
+  | "title_page"
+  | "copyright_page"
+  | "cip_page"
+  | "colophon"
+  | "series_page"
+  | "embedded_pdf_metadata"
+  | "filename";
+export type MetadataSuggestionPageClass =
+  | "cover"
+  | "half_title"
+  | "title_page"
+  | "copyright_page"
+  | "cip_page"
+  | "colophon"
+  | "series_page"
+  | "contents_preface"
+  | "ordinary_body"
+  | "unknown";
+export type MetadataSuggestionFieldPath =
+  | "canonicalTitle"
+  | "subtitle"
+  | "dateStatement"
+  | "identifier"
+  | "typeField"
+  | "authority";
+export type MetadataSuggestionConfidence = "high" | "medium" | "low";
+export interface MetadataSuggestionCandidate {
+  id: string;
+  position: number;
+  fieldPath: MetadataSuggestionFieldPath;
+  typeFieldName: keyof MetadataTypeFields | null;
+  authorityType: AuthorityType | null;
+  authorityRole: AuthorityRole | null;
+  identifierScheme: string | null;
+  value: string;
+  sourceType: MetadataSuggestionSourceType;
+  sourcePageIndex: number | null;
+  pageClass: MetadataSuggestionPageClass | null;
+  confidence: MetadataSuggestionConfidence;
+  precedenceRank: number;
+  evidenceExcerpt: string | null;
+  rulesetVersion: string;
+}
+export interface MetadataSuggestionWindow {
+  firstPages: number;
+  lastPages: number;
+  pageCount: number | null;
+  pageIndices: number[];
+  complete: boolean;
+}
+export interface MetadataSuggestionRun {
+  id: string;
+  libraryId: string;
+  fileId: string;
+  status: MetadataSuggestionStatus;
+  rulesetVersion: string;
+  sourceVersion: string;
+  window: MetadataSuggestionWindow;
+  candidates: MetadataSuggestionCandidate[];
+  createdAt: string;
+}
+export interface MetadataSuggestionResponse {
+  run: MetadataSuggestionRun | null;
+}
+export type LibraryMetadataWithoutVersion = Omit<LibraryMetadataInput, "metadataVersion">;
+export interface MetadataSuggestionAcceptInput {
+  acceptedCandidateIds: string[];
+  metadataVersion: string;
+  /**
+   * Optional explicit edit.  If present, the server validates and writes it
+   * through the RF-META01 CAS contract; omission means accept the selected
+   * candidates as proposed by the server.
+   */
+  metadata?: LibraryMetadataWithoutVersion;
+}
+export interface MetadataSuggestionAcceptResponse {
+  detail?: LibraryHoldingDetails;
+  run?: MetadataSuggestionRun;
+}
+
 export interface LibraryRecycleFile {
   version: string;
   file: {
@@ -389,6 +483,15 @@ export interface AcademicCloudApi {
   listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]>;
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
   updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails>;
+  /** Metadata suggestions are optional for compatibility with older API fakes. */
+  generateLibraryMetadataSuggestions?(libraryId: string, fileId: string): Promise<MetadataSuggestionRun>;
+  getLibraryMetadataSuggestions?(libraryId: string, fileId: string, signal?: AbortSignal): Promise<MetadataSuggestionRun | null>;
+  acceptLibraryMetadataSuggestions?(
+    libraryId: string,
+    fileId: string,
+    runId: string,
+    input: MetadataSuggestionAcceptInput,
+  ): Promise<MetadataSuggestionAcceptResponse>;
   listLibraryAuthorities(libraryId: string, type: AuthorityType, signal?: AbortSignal): Promise<LibraryAuthority[]>;
   createLibraryAuthority(libraryId: string, input: { type: AuthorityType; canonicalLabel: string; aliases: string[] }): Promise<LibraryAuthority>;
   createLibraryDownload(libraryId: string, fileId: string, disposition?: "attachment" | "inline"): Promise<DownloadAuthorization>;
@@ -728,6 +831,41 @@ export class ApiClient implements AcademicCloudApi {
     return this.#jsonBody<LibraryHoldingDetails>(
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata`,
       "PUT",
+      input,
+    );
+  }
+
+  async generateLibraryMetadataSuggestions(libraryId: string, fileId: string): Promise<MetadataSuggestionRun> {
+    const response = await this.#action<MetadataSuggestionRun | MetadataSuggestionResponse>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata/suggestions`,
+      "POST",
+    );
+    const run = "run" in response ? response.run : response;
+    if (!run) throw new ApiError(404, "not_found");
+    return run;
+  }
+
+  async getLibraryMetadataSuggestions(
+    libraryId: string,
+    fileId: string,
+    signal?: AbortSignal,
+  ): Promise<MetadataSuggestionRun | null> {
+    const response = await this.#request<MetadataSuggestionResponse | MetadataSuggestionRun>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata/suggestions`,
+      signal ? { signal } : {},
+    );
+    return "run" in response ? response.run : response;
+  }
+
+  acceptLibraryMetadataSuggestions(
+    libraryId: string,
+    fileId: string,
+    runId: string,
+    input: MetadataSuggestionAcceptInput,
+  ): Promise<MetadataSuggestionAcceptResponse> {
+    return this.#jsonBody<MetadataSuggestionAcceptResponse>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata/suggestions/${encodeURIComponent(runId)}/accept`,
+      "POST",
       input,
     );
   }

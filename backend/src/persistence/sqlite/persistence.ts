@@ -15,6 +15,7 @@ import { SqliteLibraryRepository } from "./library-repository.js";
 import { SqliteContributionRepository } from "./contribution-repository.js";
 import { SqliteCredentialResetRepository } from "./credential-reset-repository.js";
 import { SqliteCanonicalMetadataRepository } from "./metadata-repository.js";
+import { SqliteSuggestionRepository } from "./suggestion-repository.js";
 
 export class SqlitePersistence implements Persistence {
   readonly repositories: RepositorySet;
@@ -37,6 +38,7 @@ export class SqlitePersistence implements Persistence {
       contributions: new SqliteContributionRepository(database),
       credentialResets: new SqliteCredentialResetRepository(database),
       metadata: new SqliteCanonicalMetadataRepository(database),
+      suggestions: new SqliteSuggestionRepository(database),
     };
   }
 

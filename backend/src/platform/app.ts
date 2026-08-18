@@ -26,6 +26,8 @@ import { registerLibraryHttp } from "../library/http.js";
 import type { CanonicalMetadataService } from "../metadata/metadata-service.js";
 import { registerMetadataHttp } from "../metadata/http.js";
 import type { CredentialResetService } from "../auth/credential-reset-service.js";
+import type { SuggestionService } from "../suggestions/suggestion-service.js";
+import { registerSuggestionHttp } from "../suggestions/http.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -130,6 +132,7 @@ export interface CreateAppOptions {
   research?: { service: ScholarlyRecordService };
   libraries?: { service: LibraryService };
   metadata?: { service: CanonicalMetadataService };
+  suggestions?: { service: SuggestionService };
   readinessCheck?: () => boolean;
 }
 
@@ -284,6 +287,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   if (options.metadata) {
     if (!options.auth) throw new Error("metadata routes require authentication composition");
     await registerMetadataHttp(app, options.metadata.service);
+  }
+
+  if (options.suggestions) {
+    if (!options.auth) throw new Error("suggestion routes require authentication composition");
+    await registerSuggestionHttp(app, options.suggestions.service);
   }
 
   return app;
