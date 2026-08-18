@@ -4,20 +4,15 @@
 
 ## Current Phase
 
-**`PROD-05A` is complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. The Owner-approved repository-only first-use correction queue is complete; production remains closed and repository development is stopped for Owner review.**
+**`PROD-06A` is the sole active task: one bounded production release of the completed First-Use Correction. Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the exact candidate is `f7b9ef0475964f60f28a56450c6ef5e22a0df4c5` at schema head v17.**
 
 First-use review corrected a material product-model misunderstanding: AcademicCloud is not “private Drive + optional Shared Library”. It is one Owner-curated shared academic corpus. Approved academic resources are shared to all active authorized members; Member uploads enter Owner review before admission; each member's research activity around those resources remains private.
 
 ADR-022 is the governing product correction.
 
-## Approved Continuous Objective — Shared Corpus + First-Use UX Repair
+## Approved Continuous Objective — First-Use Correction Production Release
 
-Execute only the following queue:
-
-1. `RF-SHAREDDEFAULT01` — **complete and green**; canonical shared Library, automatic Member intake, Owner direct admission, preserved private overlays/stable identities, and append-only migration 016.
-2. `L2-CREDENTIALRESET01` — **complete and green**; authenticated self-service route/UI removed, Owner-issued digest-only one-time reset added, and atomic auth-revision/session invalidation preserved in migration 017.
-3. `L1-UX05` — **complete and green**; canonical Library shell, unified Owner administration, restrained action hierarchy, preserved Member boundaries/mobile behavior, and revision-safe stale-folder recycle recovery.
-4. STOP for Owner first-use review.
+Execute only `PROD-06A → STOP for independent Owner/ChatGPT review`. The release must use the smallest exact verified candidate containing already-complete `RF-SHAREDDEFAULT01`, `L2-CREDENTIALRESET01`, and `L1-UX05`, apply only migrations 016–017 after a verified schema-v15 rollback generation and isolated rehearsal, and preserve the task card's data/privacy/rollback boundaries.
 
 `L2-CREDENTIALRESET01` is technically independent after recovery, but the final shell must not retain the self-service password-change surface. `L1-UX05` should consume the shared-corpus semantics from `RF-SHAREDDEFAULT01` rather than implementing another UI-only sharing fiction.
 
@@ -25,13 +20,13 @@ Verification must remain proportionate: focused changed-risk tests, one typechec
 
 ## Doing
 
-None. The approved continuous objective is exhausted.
+`PROD-06A` — [task card](tasks/doing/PROD-06A.md); bounded exact First-Use Correction release from production schema v15 to v17.
 
 ## Ready — Owner-Approved First-Use Correction
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 1 | STOP | — | Owner inspects real first-use behavior after L1-UX05 before resuming the research queue |
+| 1 | STOP | — | Independent Owner/ChatGPT review after PROD-06A final reconciliation |
 
 ## Product Model — Authoritative Short Form
 
@@ -84,21 +79,21 @@ RF-META01
 
 ## Production State and Gate
 
-Production is exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. `PROD-05A` is closed and must not be rerun merely because repository development resumes.
+Production is currently exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. `PROD-05A` is closed and must not be rerun. PROD-06A is a new bounded gate for exact candidate `f7b9ef0475964f60f28a56450c6ef5e22a0df4c5` and append-only migrations 016–017 only.
 
 Current rollback pair:
 - release `34a2eada158dcf08783dc9538d853f9361425e8a`;
 - schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite`, SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`.
 
-The new correction queue does **not** authorize:
-- production SSH, migration, deployment, live-data backfill, or OSS mutation;
+PROD-06A does **not** authorize:
+- production mutation outside the exact reviewed correction transition and its protective rollback procedure;
 - cleanup/permanent deletion of the visible test folders/files;
 - `PROD-03C2`;
 - reboot/autostart/infrastructure policy changes;
 - main merge;
 - OCR/text extraction, full-text indexing, embeddings, retrieval, or RAG.
 
-Any future production transition from account-owned corpus data to the canonical shared Library requires a separate Owner-gated deployment after repository implementation/review is green.
+The Owner has authorized that production transition only inside PROD-06A and only through the reviewed migration 016 contract after all artifact, preflight, backup/off-host, and isolated-rehearsal gates pass.
 
 ## Completed Milestones Relevant to This Queue
 

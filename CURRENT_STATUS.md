@@ -4,9 +4,9 @@
 
 ## Current Phase
 
-**`PROD-05A` is complete and production is closed. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. The Owner-approved repository-only first-use correction objective is complete and stopped for Owner review.**
+**`PROD-06A` is the sole active task: one Owner-authorized bounded production release of the completed First-Use Correction. Production currently runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15; the exact candidate is `f7b9ef0475964f60f28a56450c6ef5e22a0df4c5` at repository schema head v17.**
 
-`RF-SHAREDDEFAULT01` is complete and synchronized at `51c3d7b82d05574e53849c6ef1b5eec0e9ceabc5`. `L2-CREDENTIALRESET01` is complete and synchronized at `836d78636ef7aab41b03e00321167efed0a94d9d`. `L1-UX05` is independently green at the current repository checkpoint. Development schema head is v17; production remains unchanged at v15. No repository task is active.
+`RF-SHAREDDEFAULT01` is complete and synchronized at `51c3d7b82d05574e53849c6ef1b5eec0e9ceabc5`. `L2-CREDENTIALRESET01` is complete and synchronized at `836d78636ef7aab41b03e00321167efed0a94d9d`. `L1-UX05` is complete, independently green, and synchronized at `f7b9ef0475964f60f28a56450c6ef5e22a0df4c5`. These exact consecutive checkpoints satisfy the PROD-06A repository precondition. No production connection or mutation has occurred in PROD-06A yet.
 
 First-use review established that the existing “account-private Drive + optional Shared Library” presentation is not the intended AcademicCloud product. ADR-022 now defines the durable correction:
 
@@ -35,14 +35,14 @@ Rollback is the inseparable pair:
 
 Off-host encrypted rollback evidence is recorded at private backup repository commit `b0238baa8bb5e5f44c5ceaf1d37ca3a80e0f9420`.
 
-Do not rerun PROD-05A or infer authorization for another production mutation from this status.
+Do not rerun PROD-05A. PROD-06A authorizes only the exact bounded v15→v17 correction release recorded in `tasks/doing/PROD-06A.md`; it does not reopen any other production or development work.
 
 ## Repository Baseline
 
 Authoritative development branch:
 - `codex/project-memory-reconcile-20260817`.
 
-Historical migrations 001–017 are immutable. Development schema head is v17; new persistent work must use append-only versions after it. Production remains separately fixed at v15/history 001–015.
+Historical migrations 001–017 are immutable. Development schema head is v17; new persistent work must use append-only versions after it. Production remains at v15/history 001–015 until every PROD-06A artifact, preflight, backup/off-host, and rehearsal gate is green.
 
 Important completed foundations:
 - `RF-AUDIT01` — bounded governance/security audit without private research surveillance;
@@ -131,8 +131,8 @@ The remaining sequence after that is preserved as:
 
 ## Safety Boundaries
 
-The current repository queue does **not** authorize:
-- production SSH, migration, deployment, live-data backfill, or OSS mutation;
+`PROD-06A` authorizes only the reviewed production release procedure in its task card: exact-artifact verification, read-only preflight, protective backup/off-host evidence, isolated rehearsal, the exact append-only 016–017 live transition, and bounded non-destructive acceptance. It does **not** authorize:
+- any production change outside that exact release/database transition;
 - direct database cleanup or permanent deletion of visible test/synthetic folders/files;
 - `PROD-03C2`;
 - reboot/autostart, DNS/TLS/Nginx/systemd/firewall/certificate changes;
@@ -148,4 +148,4 @@ Use proportionate verification tied to changed risk. Shared-default ownership/in
 
 ## Next Action
 
-STOP for Owner review. The approved continuous objective is exhausted; do not contact production, resume `RF-META01`, or select another task without new Owner direction.
+Execute `PROD-06A` gate by gate. Fail closed before unsafe mutation on any material mismatch; otherwise reconcile the exact production release/schema/evidence, push the final checkpoint, and STOP for independent Owner/ChatGPT review. Do not resume `RF-META01` or select another task.
