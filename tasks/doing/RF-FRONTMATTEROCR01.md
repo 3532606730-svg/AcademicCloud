@@ -50,7 +50,7 @@ Extend RF-METASUGGEST01 so scanned or image-only PDF front matter can produce th
 - `frontend/src/api.ts`, `frontend/src/resource-details.tsx`, and i18n
 
 ## Current State
-Implementation complete and independently green in isolated worktree `D:\Projects\AcademicCloud-ocr` on branch `codex/rf-frontmatterocr01-20260819`, based exactly on development commit `35d03dd350d874cb43e85e4fc4cd3b22ee5abd89`. Development schema is v20/history 001–020; migration 020 and RF-FRONTMATTEROCR01 remain development-only and undeployed. The separate production session and normal Owner checkout are untouched. Authoritative development/current-state reconciliation remains intentionally pending until that separate deployment session has published and stopped.
+Implementation complete and independently green in isolated worktree `D:\Projects\AcademicCloud-ocr` on branch `codex/rf-frontmatterocr01-20260819`, which began exactly at development commit `35d03dd350d874cb43e85e4fc4cd3b22ee5abd89`. Development schema on this isolated branch is v20/history 001–020; migration 020 and RF-FRONTMATTEROCR01 remain development-only and undeployed. Implementation checkpoint `bcd8211c0b0a091ec8ff3b8f674eaf2c9be72427` is published on the temporary task branch. The one authorized post-push state check found `PROD-08R` active on authoritative branch head `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`, so integration and authoritative current-state reconciliation are intentionally blocked until that separate deployment session has published final durable truth and stopped.
 
 ## Completed
 - Proved the isolated branch/worktree begins exactly at the authorized base and is clean.
@@ -65,11 +65,11 @@ Implementation complete and independently green in isolated worktree `D:\Project
 - Added deterministic synthetic PDF/render/adapter/provenance/migration/UI tests for native bypass, image-only and mixed fallback, exact page windows, malformed/oversized input, pixel allocation guards, engine/language/timeout/output/cancellation/capacity failures, Chinese/English evidence, unsupported scripts, confidence, immutable retention, stale sources, authorization changes, and no raw page-text/image persistence.
 
 ## Remaining
-- Commit and push the isolated task branch.
-- Reconcile authoritative current-state files only after the separate deployment session has completed and published durable truth; otherwise stop at the isolated pushed checkpoint.
+- After the separate `PROD-08R` deployment session has completed, published final durable production truth, and reached STOP, reconcile this isolated implementation non-destructively with the newest authoritative development line.
+- Only then rerun merge-affected verification and finalize `tasks/done/RF-FRONTMATTEROCR01.md`, `CURRENT_STATUS.md`, `TASK_BOARD.md`, and the high-level `ROADMAP.md` result. Do not start RF-SEARCH01.
 
 ## Blockers
-None for isolated implementation. Authoritative integration/current-state reconciliation remains conditional on completion of the separate production deployment session.
+`PROD-08R — v19 Production Artifact Runtime Repair and Release Resume` is active in durable repository state at authoritative head `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`. The task instruction prohibits merge/rebase and current-state finalization while that session is active. This is not an implementation blocker; the safe isolated checkpoint is published.
 
 ## Last Verification
 - Isolation: task branch initial HEAD, merge-base, and authorized base were all `35d03dd350d874cb43e85e4fc4cd3b22ee5abd89`; requested worktree/branch were absent before creation.
@@ -81,6 +81,8 @@ None for isolated implementation. Authoritative integration/current-state reconc
 - Compiled acceptance passing with `firstMigrationCount: 20`, restart/readiness, backup/restore, canonical metadata, and `redeployMigrationCount: 0` green.
 - `git diff --check` clean. Static review found no OCR network/cloud call, upload/approval/background hook, whole-document traversal, search/index/embedding/RAG path, raw OCR/page-image persistence, migration beyond 020, production contact, or current-state/deployment evidence edit.
 - No production endpoint, credential, database, OSS object, release, backup, deployment artifact, or real academic document was contacted, inspected, or changed.
+- Git implementation checkpoint `bcd8211c0b0a091ec8ff3b8f674eaf2c9be72427` was pushed to `origin/codex/rf-frontmatterocr01-20260819` and local/remote task heads matched at the checkpoint.
+- One post-push repository-only state check fetched origin and found authoritative head `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`; its durable `CURRENT_STATUS.md` explicitly says `PROD-08R` is active. No production system was contacted, and no repeated polling was performed.
 
 ## Next Action
-Commit and push the green isolated implementation branch. If the separate deployment session is still active or its durable reconciliation is unpublished, stop without merging or finalizing `CURRENT_STATUS.md`, `TASK_BOARD.md`, or `ROADMAP.md`.
+STOP after publishing this task-local waiting-state note. Do not merge/rebase, finalize `CURRENT_STATUS.md`/`TASK_BOARD.md`/`ROADMAP.md`, contact production, or poll the deployment session repeatedly. Resume only after the separate deployment session has completed and reached STOP.
