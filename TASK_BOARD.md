@@ -4,9 +4,11 @@
 
 ## Current Phase
 
-**`PROD-06A` is complete. Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. No implementation task is active. Owner first-use review has approved a new repository-only catalogue-usability queue; production remains closed.**
+**`PROD-06A` is complete. Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. No implementation task is active. Owner first-use review has approved one bounded repository-only catalogue/bibliographic round; production remains closed.**
 
-The canonical shared-corpus authority is correct, but actual use exposed a presentation gap: root `资料库` currently stacks the canonical holdings feed above the legacy Owner table, producing a misplaced Name/Size/Updated header, missing file-type icons on holdings, duplicated filename-derived labels, redundant descriptive copy, and no authority-correct recoverable lifecycle action for Library-owned holdings.
+The canonical shared-corpus authority is correct, but actual use exposed a presentation gap: root `资料库` stacks the canonical holdings feed above the legacy Owner table, producing a misplaced Name/Size/Updated header, missing file-type icons on holdings, duplicated filename-derived labels, redundant descriptive copy, and no authority-correct recoverable lifecycle action for Library-owned holdings.
+
+Owner review also approved bilingual front-matter bibliographic suggestions for PDFs that already have text layers. ADR-025 defines title/copyright/CIP/colophon evidence, field-level precedence, and the strict OCR-deferred boundary.
 
 Verification remains proportionate: focused changed-risk tests and focused independent review. Do not replay PROD-05A/PROD-06A or broad historical production acceptance.
 
@@ -14,17 +16,47 @@ Verification remains proportionate: focused changed-risk tests and focused indep
 
 None. Planning/synchronization only.
 
-## Ready — Owner-Approved Repository Queue
+## Ready — Current Owner-Approved Round
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
 | 1 | L1-UX06 | `tasks/ready/L1-UX06.md` | One coherent canonical catalogue; header/icon/duplicate-copy repair; Owner/Manager recoverable Library lifecycle without Member destructive authority |
 | 2 | RF-META01 | `tasks/ready/RF-META01.md` | Canonical metadata/templates and `资料详情`; original filename retained as detail/provenance |
-| 3 | RF-METASUGGEST01 | `tasks/ready/RF-METASUGGEST01.md` | Deterministic reviewable title/metadata suggestions from filename + safe embedded metadata; no OCR/network/AI |
+| 3 | RF-METASUGGEST01 | `tasks/ready/RF-METASUGGEST01.md` | Bounded Chinese/English title/copyright/CIP/colophon + embedded-metadata + filename evidence suggestions; source/page/confidence visible; OCR deferred |
 | 4 | RF-SEARCH01 | `tasks/ready/RF-SEARCH01.md` | Early authority-scoped catalogue name/metadata search field; no OCR/full-text claim |
-| 5 | RF-PROV01 onward | existing ready cards | Continue revised Pre-OCR sequence after the four near-term catalogue tasks |
+| 5 | STOP | — | Independent Owner/ChatGPT review before any later Pre-OCR card or production gate |
 
-Starting an implementation card remains a separate execution step. This board update does not authorize production mutation or deployment.
+This round ends after RF-SEARCH01. Starting later Pre-OCR work is **not** implicitly authorized by completing these four cards.
+
+## Bibliographic Suggestion Contract — ADR-025 Short Form
+
+For PDFs with a usable existing text layer, RF-METASUGGEST01 uses a bounded default discovery window:
+
+```text
+first 15 pages + last 5 pages
+```
+
+It may classify cover, half-title, title page, copyright/title-page verso, Chinese 版权/CIP, Library of Congress/British Library CIP, colophon, series page, contents/preface, and body pages.
+
+Field-level evidence precedence:
+
+```text
+Title / subtitle / primary creator:
+  title page
+  → CIP / colophon / copyright evidence
+  → embedded PDF metadata
+  → filename
+
+Publisher / place / year / edition / ISBN:
+  copyright / title-page verso / CIP / colophon
+  → title page
+  → embedded PDF metadata
+  → filename
+```
+
+Older books without a modern copyright page may use title-page publication statements as primary evidence. Every proposal records source/page/page-class/ruleset/confidence and requires authorized confirmation before becoming canonical.
+
+Pure image-only/scanned PDFs must not guess; this round reports `OCR deferred` and preserves manual metadata entry. No OCR execution, AI extraction, external catalogue lookup, or network metadata enrichment is authorized.
 
 ## Product Model — Authoritative Short Form
 
@@ -44,14 +76,12 @@ Owner upload may be admitted directly because the Owner already holds review aut
 
 `Scholarly Record`, `Artifact`, `Artifact Version`, ownership domains, and audit event tables remain internal implementation/domain concepts. Normal UI uses `资料` / `资料详情`.
 
-## Revised Pre-OCR Queue
+## Parked Pre-OCR Queue After This Round
+
+After STOP, the preserved later order is:
 
 ```text
-L1-UX06
-→ RF-META01
-→ RF-METASUGGEST01
-→ RF-SEARCH01
-→ RF-PROV01
+RF-PROV01
 → RF-LINEAGE01
 → RF-STATS01
 → RF-OVERLAY01
@@ -71,7 +101,7 @@ L1-UX06
 → STOP BEFORE OCR
 ```
 
-`RF-SEARCH01` is intentionally moved before personal organization because basic catalogue findability is already a first-use requirement. `RF-LIBRARY01` and `RF-LIBRARY02` are complete and are not repeated.
+`RF-LIBRARY01` and `RF-LIBRARY02` are complete and are not repeated. Starting any parked card requires a new Owner execution decision after the four-card review.
 
 ## Production State and Gate
 
@@ -82,9 +112,9 @@ Current rollback pair:
 - schema-v15 backup `academiccloud-pre-prod06a-20260818T073533Z.sqlite`, SHA-256 `cdc2aec14888d04172bce4555dd6d17f10b5fb7c45efa9c7133070ce4f5bf7c4`;
 - age ciphertext SHA-256 `8349ef5e90e72ff763d7730aadd98df56600e091f431a2c07d2b5a432eda8bf6`, verified off-host at private backup commit `9c8f4503e48e55ea7b65aebe35dd242e878c95e8`.
 
-No continuing authority exists for production mutation, visible test-data cleanup/permanent deletion, `PROD-03C2`, reboot/autostart/infrastructure changes, main merge, OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, or AI extraction.
+No continuing authority exists for production mutation, visible test-data cleanup/permanent deletion, `PROD-03C2`, reboot/autostart/infrastructure changes, main merge, OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, or AI extraction.
 
-## Completed Milestones Relevant to This Queue
+## Completed Milestones Relevant to This Round
 
 - `RF-AUDIT01` — bounded governance/security audit without research surveillance.
 - `RF-OWNERSHIP01` — explicit `account | library` ownership domains and separate provenance.
