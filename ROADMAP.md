@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-08-18
+**Last reconciled:** 2026-08-19
 
 The roadmap records durable product sequencing and approved boundaries. `TASK_BOARD.md` is the executable queue; task cards define bounded implementation contracts. A roadmap item never bypasses an Owner production/cost/destructive-data gate.
 
@@ -41,6 +41,7 @@ RF-SHAREDDEFAULT01
 → PROD-06A
 → RF-META01
 → PROD-07A
+→ PROD-07B
 → STOP for Owner review
 ```
 
@@ -50,7 +51,7 @@ Completed outcomes include:
 - preserved stable IDs, object keys/bytes, checksums, provenance, lineage and private Favorites/overlay state;
 - Owner-assisted digest-only one-time credential reset and retired self-service password route/UI;
 - canonical shell/admin hierarchy and stale-state recycle safety;
-- production release `2322169bc33415734d025010c465900c7fbc6bd9` at schema v18/history 001–018, with the inseparable rollback pair recorded by `PROD-07A`.
+- production release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018, with the inseparable rollback pair recorded by `PROD-07B`.
 
 ## Catalogue and Bibliographic Usability Round
 
@@ -64,12 +65,13 @@ The durable round sequence for the current Owner continuation is:
 L1-UX06   ← COMPLETE
 → RF-META01   ← COMPLETE
 → PROD-07A   ← COMPLETE
+→ PROD-07B   ← COMPLETE
 → STOP for Owner/ChatGPT review   ← REACHED
 
 Preserved later cards: RF-METASUGGEST01 → RF-SEARCH01
 ```
 
-The Owner-authorized RF-META01 continuation and separately authorized PROD-07A release are complete. RF-METASUGGEST01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized; migration 019 was not deployed.
+The Owner-authorized RF-META01 continuation, separately authorized PROD-07A release, and separately authorized PROD-07B hotfix are complete. RF-METASUGGEST01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized; migration 019 was not deployed.
 
 ### L1-UX06 — Canonical Catalogue Presentation Repair — Complete
 
@@ -80,11 +82,11 @@ Completed outcome:
 - remove redundant `当前账户可访问的共享学术资料。`-style copy;
 - suppress duplicate migrated `recordLabel` when it merely repeats the filename;
 - preserve Preview/Download/Favorites;
-- Owner/Manager gets an authority-correct **recoverable** `移入回收站` → normal Recycle list → CAS restore path for eligible Library-owned resources; Members cannot list or restore Library governance entries;
-- Library restore performs read-only storage verification and atomic file activation/group consumption/audit; Library rows never enter account bulk/permanent-delete controls;
+- At the L1-UX06 checkpoint, Owner/Manager got an authority-correct **recoverable** `移入回收站` → normal Recycle list → CAS restore path for eligible Library-owned resources; Members cannot list or restore Library governance entries. PROD-07B later added the separate global-Owner-only permanent-delete control and Library purge lifecycle;
+- Library restore performs read-only storage verification and atomic file activation/group consumption/audit; Library rows remain outside account bulk lifecycle operations and use a distinct Library-domain permanent-delete route;
 - preserve responsive/mobile/accessibility, CAS/revision safety, stable identity, provenance, lineage and private overlays.
 
-No permanent deletion, production cleanup or broad visual redesign.
+L1-UX06 itself performed no permanent deletion or production cleanup; PROD-07B is the later bounded control/lifecycle hotfix and also performed no real resource deletion during acceptance.
 
 ### RF-META01 — Canonical Metadata / 资料详情 — Complete
 
@@ -177,7 +179,7 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 ## Layer 1 — Core Resource Handling
 
-**Status:** Foundation, L1-UX06, RF-META01, and its separately authorized PROD-07A release are complete; STOP is in force.
+**Status:** Foundation, L1-UX06, RF-META01, PROD-07A, and the separately authorized PROD-07B hotfix are complete; STOP is in force.
 
 Completed foundations include SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, Favorites, bulk operations, recursive recycle/restore, duplicate-name UX, upload recovery, mobile/fullscreen Preview, sticky navigation, shared-corpus authority and first-use shell repair.
 
@@ -196,7 +198,7 @@ Later optional backlog includes one-time external sharing if separately reopened
 
 ## Layer 3 — Scholarly Workspace and Model
 
-**Status:** L1-UX06 and canonical metadata RF-META01 are complete and RF-META01 is deployed through PROD-07A. Suggestion/search and the remaining personal-workspace cards are preserved but not active.
+**Status:** L1-UX06 and canonical metadata RF-META01 are complete and deployed through PROD-07A; PROD-07B added the bounded recycle/permanent-delete correction. Suggestion/search and the remaining personal-workspace cards are preserved but not active.
 
 Stable Scholarly Record / Artifact / Artifact Version identities already exist.
 
@@ -268,25 +270,26 @@ Verification is proportionate, not performative. Run checks that materially cove
 
 ## Production Track
 
-Production runs exact release `2322169bc33415734d025010c465900c7fbc6bd9` at schema v18/history 001–018 from completed `PROD-07A`.
+Production runs exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018 from completed `PROD-07B`.
 
-PROD-07A evidence:
-- previous release `855b63c49f12f3375972774e7bc7385088b0495e`;
-- migration 018 applied exactly once; rollback was not used;
-- integrity `ok`, foreign-key violations zero, health/readiness green, API loopback-only, and autostart policy unchanged;
-- corrected Linux x64 / Node 24 archive SHA-256 `fca93a9ce844b713d73a26d146655ecd9689555b7ddf94d18b8a3d6202ebdc17` and manifest SHA-256 `d6ec107a038fec7b53e6fcc2ebc0a7902d1991be252180a23fc9a0db407ea287`;
-- fresh schema-v17 rollback backup `academiccloud-pre-prod07a-20260818T135032Z.sqlite` SHA-256 `b7abaa36355c40c88ab539b2a59e32c20f130539146246c33bd66a6b21579911`, with private off-host backup commit `7c29aa6a9bc9171db5c235e427a580118220a6e0`.
+PROD-07B evidence:
+- previous release `2322169bc33415734d025010c465900c7fbc6bd9`;
+- no migration command ran; schema/history/checksums 001–018 remain exact; rollback was not used;
+- integrity `ok`, foreign-key violations zero, health/readiness green, API loopback-only, autostart disabled, and protected systemd/Nginx/logrotate hashes unchanged;
+- Linux x64 / Node 24 archive SHA-256 `ad084372db6e128cc4a7ff2beae4dbbe7c8b1077c0bb07db926d69bacfbcbca6` and manifest SHA-256 `7fe3b0608dddf7431af9cc3bb0ff4a0de40401c2257b2a6eadd4e76eb69287e8`;
+- fresh schema-v18 rollback backup `academiccloud-pre-hotfix-20260818T161319Z.sqlite` SHA-256 `5233f0866384ef774f5def211721c6f114c4aef0b3acef96731ee30581a11963`, with private off-host backup commit `49e72e5`;
+- root-row spacer, direct folder recycle, Owner-only account/Library permanent-delete controls, exclusivity proof/revalidation, and forged-request denial are recorded in `tasks/done/PROD-07B.md`.
 
 Current rollback pair:
-- previous release `855b63c49f12f3375972774e7bc7385088b0495e`;
-- schema-v17 backup `academiccloud-pre-prod07a-20260818T135032Z.sqlite`, SHA-256 `b7abaa36355c40c88ab539b2a59e32c20f130539146246c33bd66a6b21579911`;
-- receipt SHA-256 `95ed7830d2dbb565c1b5222191bec63d920ba44635bf118e421c45e99a8092e8`;
-- age ciphertext SHA-256 `1fc7de13aa27f64f42d5fb7625486b700c17312526d3949ce164549a2b74296f`;
-- encrypted off-host evidence in private backup commit `7c29aa6a9bc9171db5c235e427a580118220a6e0`.
+- previous release `2322169bc33415734d025010c465900c7fbc6bd9`;
+- schema-v18 backup `academiccloud-pre-hotfix-20260818T161319Z.sqlite`, SHA-256 `5233f0866384ef774f5def211721c6f114c4aef0b3acef96731ee30581a11963`;
+- receipt SHA-256 `aebe203e88ad047e97f765aa0ccbad441dabe6cf193a7fe9bc10125391d55e67`;
+- age ciphertext SHA-256 `2a5c0decfab2133db708c027416e5f558dfc08ed25e5c7fe11a9b5d29eb0f7ec`;
+- encrypted off-host evidence in private backup commit `49e72e5`.
 
-The consumed PROD-07A window leaves no continuing authority for production mutation. Any later release remains separately Owner-gated.
+The consumed PROD-07B window leaves no continuing authority for another production release, real resource recycle/purge, or infrastructure mutation. Any later release or destructive confirmation remains separately Owner-gated.
 
-`PROD-03C2` permanent-delete confirmation remains separately parked.
+`PROD-03C2` disposable-object permanent-delete confirmation/cleanup remains separately parked; PROD-07B deployed the controls and lifecycle but did not perform that destructive acceptance.
 
 ## Non-Blocking Future Backlog
 
@@ -306,4 +309,4 @@ Only:
 STOP for Owner/ChatGPT review
 ```
 
-RF-META01 is complete and no repository Epic is active. Later cards require new Owner continuation. No authority exists for production contact/mutation, main merge, permanent deletion, real-data cleanup, OCR execution, whole-book text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN/web lookup or AI extraction.
+RF-META01 is complete and no repository Epic is active. Later cards require new Owner continuation. No further authority exists for production contact/mutation, main merge, real-data cleanup, destructive acceptance, OCR execution, whole-book text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN/web lookup or AI extraction.

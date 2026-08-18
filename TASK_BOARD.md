@@ -1,12 +1,12 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-18
+**Last reconciled:** 2026-08-19
 
 ## Current Phase
 
-**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The separately authorized `PROD-07A` production release is complete: production now runs exact release `2322169bc33415734d025010c465900c7fbc6bd9` at schema v18/history 001–018. The bounded continuation has reached STOP.**
+**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` remains complete and independently green. The separately authorized `PROD-07B` hotfix is complete: production now runs exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at unchanged schema v18/history 001–018. The bounded continuation has reached STOP.**
 
-The canonical shared-corpus authority, catalogue presentation/lifecycle repair, and canonical scholarly metadata destination are green: root `资料库` uses one established catalogue table, prefers canonical title with accepted-filename fallback, exposes ordinary `资料详情`, and retains the manager-only Library-domain recycle → Recycle list → CAS restore lifecycle without widening Member authority or exposing Library permanent delete.
+The canonical shared-corpus authority, catalogue presentation/lifecycle repair, and canonical scholarly metadata destination remain green. PROD-07B aligns ordinary root account rows and canonical Library holdings as sibling catalogue rows, restores the ordinary account-folder `移入回收站` action through its direct lifecycle endpoint, and exposes explicit destructive confirmation plus global-Owner-only permanent deletion for recycled account resources and eligible recycled Library holdings. Library membership/manager/contributor/uploader authority alone never grants permanent deletion.
 
 Verification remains proportionate: changed-risk tests and focused independent review only. Do not replay PROD-05A/PROD-06A or broad historical production acceptance.
 
@@ -18,6 +18,7 @@ None. The authorized objective is exhausted at STOP.
 
 | Task | Task card | Bounded result |
 |---|---|---|
+| PROD-07B | `tasks/done/PROD-07B.md` | Exact 18-file hotfix deployed without migration; fresh v18 rollback backup, exclusive Library purge proof/revalidation, and non-destructive production smoke are recorded |
 | PROD-07A | `tasks/done/PROD-07A.md` | Exact RF-META01 release deployed with migration 018, fresh verified rollback backup, and green focused production acceptance |
 
 ## Parked — Preserved, Not Authorized
@@ -36,7 +37,7 @@ L1-UX06   ← DONE
 → STOP   ← REACHED
 ```
 
-RF-METASUGGEST01 and RF-SEARCH01 remain durable future scope and are not authorized for production. PROD-07A was a separate explicit Owner deployment window and did not include migration 019 or suggestion code.
+RF-METASUGGEST01 and RF-SEARCH01 remain durable future scope and are not authorized for production. PROD-07B was a separate explicit Owner hotfix/deployment window and did not include migration 019, suggestion code, OCR, search, or RAG.
 
 ## Bibliographic Suggestion Contract — Later in This Round
 
@@ -87,26 +88,27 @@ Starting any parked card requires a new Owner decision after this four-card revi
 
 ## Production State and Gate
 
-Production is exact release `2322169bc33415734d025010c465900c7fbc6bd9` at schema v18/history 001–018. `PROD-05A`, `PROD-06A`, and `PROD-07A` are closed and must not be rerun.
+Production is exact release `bc5788633e0295744905b4ae2dcdfcc5d97635bf` at schema v18/history 001–018. `PROD-05A`, `PROD-06A`, `PROD-07A`, and `PROD-07B` are closed and must not be rerun.
 
-PROD-07A release evidence:
-- previous release `855b63c49f12f3375972774e7bc7385088b0495e`;
-- migration 018 applied exactly once; rollback was not used;
-- integrity `ok`, foreign-key violations zero, health/readiness green, loopback-only API, and autostart policy unchanged;
-- corrected Linux x64 / Node 24 archive SHA-256 `fca93a9ce844b713d73a26d146655ecd9689555b7ddf94d18b8a3d6202ebdc17` and manifest SHA-256 `d6ec107a038fec7b53e6fcc2ebc0a7902d1991be252180a23fc9a0db407ea287`.
+PROD-07B release evidence:
+- previous release `2322169bc33415734d025010c465900c7fbc6bd9`;
+- no migration command ran; schema/history/checksums remain exact v18 / 001–018; rollback was not used;
+- integrity `ok`, foreign-key violations zero, safe aggregates unchanged, health/readiness green, loopback-only API, autostart disabled, and protected systemd/Nginx/logrotate hashes unchanged;
+- Linux x64 / Node 24 archive SHA-256 `ad084372db6e128cc4a7ff2beae4dbbe7c8b1077c0bb07db926d69bacfbcbca6` and manifest SHA-256 `7fe3b0608dddf7431af9cc3bb0ff4a0de40401c2257b2a6eadd4e76eb69287e8`;
+- exact public asset hashes match the release; forged unauthenticated calls to account-folder, account-file, and Library permanent-delete routes returned 401; no real production resource was recycled or purged.
 
 Current rollback pair:
-- release `855b63c49f12f3375972774e7bc7385088b0495e`;
-- schema-v17 backup `academiccloud-pre-prod07a-20260818T135032Z.sqlite`, SHA-256 `b7abaa36355c40c88ab539b2a59e32c20f130539146246c33bd66a6b21579911`;
-- receipt SHA-256 `95ed7830d2dbb565c1b5222191bec63d920ba44635bf118e421c45e99a8092e8`;
-- age ciphertext SHA-256 `1fc7de13aa27f64f42d5fb7625486b700c17312526d3949ce164549a2b74296f`, verified off-host at private backup commit `7c29aa6a9bc9171db5c235e427a580118220a6e0`.
+- release `2322169bc33415734d025010c465900c7fbc6bd9`;
+- schema-v18 backup `academiccloud-pre-hotfix-20260818T161319Z.sqlite`, 667,648 bytes, SHA-256 `5233f0866384ef774f5def211721c6f114c4aef0b3acef96731ee30581a11963`;
+- receipt SHA-256 `aebe203e88ad047e97f765aa0ccbad441dabe6cf193a7fe9bc10125391d55e67`;
+- age ciphertext SHA-256 `2a5c0decfab2133db708c027416e5f558dfc08ed25e5c7fe11a9b5d29eb0f7ec`, verified off-host at private backup commit `49e72e5`.
 
 No continuing authority exists for production mutation, visible test-data cleanup/permanent deletion, `PROD-03C2`, infrastructure changes, main merge, OCR/text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, or AI extraction.
 
 ## Completed Milestones Relevant to This Round
 
-RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, RF-META01, PROD-05A, PROD-06A, and PROD-07A are completed baselines. Final records: `tasks/done/RF-META01.md` and `tasks/done/PROD-07A.md`.
+RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, RF-META01, PROD-05A, PROD-06A, PROD-07A, and PROD-07B are completed baselines. Final records: `tasks/done/RF-META01.md`, `tasks/done/PROD-07A.md`, and `tasks/done/PROD-07B.md`.
 
 ## Separate Parked Production Work
 
-`PROD-03C2` permanent-delete confirmation remains a separate Owner gate. L1-UX06 may expose normal recoverable `移入回收站` behavior only; it must not bypass lifecycle semantics or permanently delete production data.
+`PROD-03C2` destructive disposable-object confirmation/cleanup remains a separate Owner gate. PROD-07B deployed the controls and server lifecycle but did not recycle or permanently delete a real production resource. Any future destructive confirmation must use a dedicated disposable object and must not be inferred from this completed deployment.
