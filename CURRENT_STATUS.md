@@ -48,6 +48,7 @@ Important completed foundations:
 - `RF-DOMAIN01` — stable Scholarly Record / Artifact / Artifact Version identity;
 - `RF-LIBRARY01` — explicit Library ownership/membership/holdings foundation;
 - `RF-LIBRARY02` — guarded contribution review and ownership promotion;
+- `L1-UX03` — dedicated mobile experience, fullscreen mobile Preview, and zero-descriptive-copy cleanup; this is a completed baseline to preserve, not pending UX05 scope;
 - `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01` — completed first-use polish;
 - `PROD-05A` — exact production release `25cdab1…` at schema v15.
 
@@ -118,6 +119,8 @@ Repair information architecture and visual hierarchy:
 - make `上传资料` the single strong Library-page CTA and demote secondary actions;
 - retain the warm neutral/deep-green identity while reducing boxes/borders/button competition;
 - fix the reproducible stale-state folder recycle/delete failure without weakening revision/CAS protection or bypassing lifecycle.
+
+`L1-UX05` must preserve the completed `L1-UX03` mobile/Preview/zero-descriptive-copy behavior rather than reopening or reimplementing it.
 
 ## Parked Work
 
