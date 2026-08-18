@@ -54,6 +54,7 @@ export class SqliteAccountRepository implements AccountRepository {
   readonly #list;
   readonly #updateState;
   readonly #updatePassword;
+  readonly #resetPassword;
 
   constructor(database: SqliteDatabase) {
     this.#insert = database.prepare<AccountParameters>(`
@@ -89,6 +90,12 @@ export class SqliteAccountRepository implements AccountRepository {
       UPDATE accounts
       SET password_hash = ?, updated_at = ?, auth_revision = auth_revision + 1
       WHERE id = ? AND state = 'active' AND archived_at IS NULL
+        AND password_hash = ? AND auth_revision = ?
+    `);
+    this.#resetPassword = database.prepare<[string, string, string, string, number]>(`
+      UPDATE accounts
+      SET password_hash = ?, updated_at = ?, auth_revision = auth_revision + 1
+      WHERE id = ? AND state IN ('active', 'disabled') AND archived_at IS NULL
         AND password_hash = ? AND auth_revision = ?
     `);
   }
@@ -144,6 +151,22 @@ export class SqliteAccountRepository implements AccountRepository {
     updatedAt: Date,
   ): boolean {
     return this.#updatePassword.run(
+      passwordHash,
+      toDatabaseTimestamp(updatedAt)!,
+      id,
+      expectedPasswordHash,
+      expectedAuthRevision,
+    ).changes === 1;
+  }
+
+  resetPassword(
+    id: string,
+    expectedPasswordHash: string,
+    expectedAuthRevision: number,
+    passwordHash: string,
+    updatedAt: Date,
+  ): boolean {
+    return this.#resetPassword.run(
       passwordHash,
       toDatabaseTimestamp(updatedAt)!,
       id,

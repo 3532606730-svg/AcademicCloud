@@ -22,6 +22,16 @@ export interface Invitation {
   status: "available" | "expired" | "consumed" | "revoked";
 }
 
+export interface CredentialResetIssue {
+  reset: {
+    id: string;
+    accountId: string;
+    createdAt: string;
+    expiresAt: string;
+  };
+  rawToken: string;
+}
+
 export interface Announcement {
   id: string;
   title: string;
@@ -45,9 +55,9 @@ export interface AnnouncementInput {
 }
 
 export type AuditEventKind =
-  | "auth.login" | "auth.logout" | "auth.password_change"
+  | "auth.login" | "auth.logout" | "auth.password_change" | "auth.credential_reset"
   | "accounts.owner_bootstrap" | "accounts.register" | "accounts.invitation_create"
-  | "accounts.invitation_revoke" | "accounts.member_state_change"
+  | "accounts.invitation_revoke" | "accounts.member_state_change" | "accounts.credential_reset_issue"
   | "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish" | "announcements.delete"
   | "libraries.create" | "libraries.membership_add" | "libraries.membership_change" | "libraries.membership_remove"
   | "libraries.contribution_submit" | "libraries.contribution_approve" | "libraries.contribution_reject" | "libraries.contribution_withdraw"
@@ -56,12 +66,12 @@ export type AuditEventKind =
   | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
 export type AuditActorKind = "account" | "system" | "anonymous";
-export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "file" | "folder";
+export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "credential_reset" | "file" | "folder";
 export type AuditReasonCode =
   | "invalid_credentials" | "invalid_current_password" | "password_change_conflict" | "password_unchanged"
   | "invalid_invitation" | "login_unavailable" | "authorization_denied" | "not_found" | "invalid_target"
   | "invalid_state" | "invalid_input" | "rate_limit_exceeded" | "kdf_overloaded" | "storage_unavailable"
-  | "upload_incomplete" | "upload_metadata_mismatch" | "name_conflict" | "concurrent_change";
+  | "upload_incomplete" | "upload_metadata_mismatch" | "name_conflict" | "concurrent_change" | "invalid_credential_reset";
 export interface AuditEvent {
   id: number;
   occurredAt: string;
@@ -277,13 +287,14 @@ export interface AcademicCloudApi {
   getSession(signal?: AbortSignal): Promise<Account>;
   login(loginName: string, password: string): Promise<Account>;
   registerMember(inviteToken: string, loginName: string, password: string): Promise<ManagedAccount>;
-  changePassword(currentPassword: string, newPassword: string): Promise<void>;
+  redeemCredentialReset(token: string, newPassword: string): Promise<void>;
   logout(): Promise<void>;
   createInvitation(): Promise<{ invitation: Invitation; rawToken: string }>;
   listInvitations(): Promise<Invitation[]>;
   revokeInvitation(invitationId: string): Promise<Invitation>;
   listAccounts(includeArchived?: boolean): Promise<ManagedAccount[]>;
   setAccountState(accountId: string, state: "active" | "disabled" | "archived"): Promise<ManagedAccount>;
+  issueCredentialReset(accountId: string): Promise<CredentialResetIssue>;
   listAnnouncements(signal?: AbortSignal): Promise<Announcement[]>;
   listAllAnnouncements(): Promise<Announcement[]>;
   createAnnouncement(input: AnnouncementInput): Promise<Announcement>;
@@ -417,8 +428,8 @@ export class ApiClient implements AcademicCloudApi {
     return response.account;
   }
 
-  changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    return this.#jsonBody<void>("/api/auth/password", "POST", { currentPassword, newPassword });
+  redeemCredentialReset(token: string, newPassword: string): Promise<void> {
+    return this.#jsonBody<void>("/api/auth/credential-reset", "POST", { token, newPassword });
   }
 
   logout(): Promise<void> {
@@ -451,6 +462,13 @@ export class ApiClient implements AcademicCloudApi {
       "PATCH",
       { state },
     )).account;
+  }
+
+  issueCredentialReset(accountId: string): Promise<CredentialResetIssue> {
+    return this.#action<CredentialResetIssue>(
+      `/api/accounts/${encodeURIComponent(accountId)}/credential-reset`,
+      "POST",
+    );
   }
 
   async listAnnouncements(signal?: AbortSignal): Promise<Announcement[]> {

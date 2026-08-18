@@ -186,3 +186,13 @@ Newly accepted durable product, architecture, security, workflow, roadmap, task-
 When the resulting repository changes are pushed to the authorized remote branch and an active local checkout is accessible, synchronize that checkout non-destructively and verify that local HEAD equals the intended remote HEAD. Unknown local work must never be discarded merely to obtain equality.
 
 If the current agent can update GitHub but cannot access the Owner's actual local checkout, it must report local synchronization as outstanding rather than claim success. Repository publication, local synchronization, and production deployment remain distinct states.
+
+## ADR-024 — Owner-Assisted Credential Reset
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-024-owner-assisted-credential-reset.md`
+
+Only the active Owner may issue a 30-minute, 256-bit one-time reset capability for an active or disabled Member. Persistence keeps only the capability digest and immutable lifecycle evidence; reissue atomically supersedes every prior outstanding capability for the same Member. The Member chooses the final password on a dedicated same-origin surface, and the Owner never receives it.
+
+Redemption reuses the bounded Argon2id executor and atomically updates the exact password/authentication revision, consumes the capability, revokes every old session, and records audit evidence. Exactly one concurrent redemption wins, a pending old-password login cannot publish, disabled Members stay disabled, and archived accounts are ineligible. The authenticated self-service password HTTP/UI path is retired; no email/SMS/OAuth/public recovery service is introduced.

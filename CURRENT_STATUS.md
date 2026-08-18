@@ -6,7 +6,7 @@
 
 **`PROD-05A` is complete and production is closed. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. Repository development is reopening only for an Owner-approved first-use product-model and UX correction.**
 
-`RF-SHAREDDEFAULT01` is complete and green in the repository. Development schema head is v16; production remains unchanged at v15. The next authorized Epic is `L2-CREDENTIALRESET01`.
+`RF-SHAREDDEFAULT01` is complete and synchronized at `51c3d7b82d05574e53849c6ef1b5eec0e9ceabc5`. `L2-CREDENTIALRESET01` is independently green and awaiting checkpoint publication. Development schema head is v17; production remains unchanged at v15. `L1-UX05` is the only remaining authorized Epic and must be selected only after the credential-reset checkpoint is pushed and synchronized.
 
 First-use review established that the existing “account-private Drive + optional Shared Library” presentation is not the intended AcademicCloud product. ADR-022 now defines the durable correction:
 
@@ -42,7 +42,7 @@ Do not rerun PROD-05A or infer authorization for another production mutation fro
 Authoritative development branch:
 - `codex/project-memory-reconcile-20260817`.
 
-Historical migrations 001–016 are immutable. Development schema head is v16; new persistent work must use append-only versions after it. Production remains separately fixed at v15/history 001–015.
+Historical migrations 001–017 are immutable. Development schema head is v17; new persistent work must use append-only versions after it. Production remains separately fixed at v15/history 001–015.
 
 Important completed foundations:
 - `RF-AUDIT01` — bounded governance/security audit without private research surveillance;
@@ -51,6 +51,7 @@ Important completed foundations:
 - `RF-LIBRARY01` — explicit Library ownership/membership/holdings foundation;
 - `RF-LIBRARY02` — guarded contribution review and ownership promotion;
 - `RF-SHAREDDEFAULT01` — deterministic canonical `资料库`, automatic active-account membership, Member pending intake, Owner direct admission, private Favorite preservation, and append-only v15→v16 corpus transition;
+- `L2-CREDENTIALRESET01` — Owner-issued 30-minute one-time reset, digest-only capability persistence, deterministic reissue supersession, Member-chosen final password, atomic auth-revision/session revocation, and retired self-service HTTP/UI in append-only migration 017;
 - `L1-UX03` — dedicated mobile experience, fullscreen mobile Preview, and zero-descriptive-copy cleanup; this is a completed baseline to preserve, not pending UX05 scope;
 - `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01` — completed first-use polish;
 - `PROD-05A` — exact production release `25cdab1…` at schema v15.
@@ -110,8 +111,8 @@ STOP for Owner review
 ### RF-SHAREDDEFAULT01 — Complete
 Migration 016 establishes the deterministic canonical Library and a transactional, restart-safe transition for eligible active account-owned corpus records while preserving stable resource/file identities, object keys, checksums, uploader provenance, and account-private Favorites. Runtime upload completion now creates one pending Member contribution or directly admits an Owner upload through the guarded promotion transaction. Disabled/archived identities remain denied. No production access or migration occurred.
 
-### L2-CREDENTIALRESET01
-Remove the authenticated self-service password-change product path. Add Owner-authorized, short-lived, one-time credential reset with digest-only capability storage and Member-chosen final password. No email/SMS/OAuth recovery infrastructure.
+### L2-CREDENTIALRESET01 — Complete
+Migration 017 adds immutable digest-only reset capability/audit state. Only the active Owner may issue a 30-minute link for an active or disabled Member; reissue supersedes the prior outstanding link. The Member chooses the final password on a dedicated anonymous same-origin surface. Redemption is single-winner and atomically consumes the link, advances `auth_revision`, revokes every session, and rejects stale old-password login publication. Disabled state remains disabled; archived accounts are ineligible. The authenticated self-service route and UI/navigation are removed. No email/SMS/OAuth infrastructure was introduced and production was not contacted.
 
 ### L1-UX05
 Repair information architecture and visual hierarchy:
@@ -154,4 +155,4 @@ Use proportionate verification tied to changed risk. Shared-default ownership/in
 
 ## Next Action
 
-Publish and synchronize the independently green `RF-SHAREDDEFAULT01` checkpoint, then select `L2-CREDENTIALRESET01`. Continue only through `L1-UX05`, then STOP for Owner review. Do not contact production or resume `RF-META01`.
+Publish and synchronize the independently green `L2-CREDENTIALRESET01` checkpoint, then select and complete only `L1-UX05`. STOP for Owner review afterward. Do not contact production or resume `RF-META01`.

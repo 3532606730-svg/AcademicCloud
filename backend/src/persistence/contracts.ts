@@ -9,6 +9,7 @@ import type { AuditRepository } from "../audit/audit-repository.js";
 import type { ScholarlyRepository } from "../research/repositories.js";
 import type { LibraryRepository } from "../library/repositories.js";
 import type { ContributionRepository } from "../library/contribution-repositories.js";
+import type { CredentialResetRepository } from "../auth/credential-reset-repository.js";
 
 export interface RepositorySet {
   accounts: AccountRepository;
@@ -23,6 +24,7 @@ export interface RepositorySet {
   research?: ScholarlyRepository;
   libraries: LibraryRepository;
   contributions: ContributionRepository;
+  credentialResets: CredentialResetRepository;
 }
 
 export interface Persistence {

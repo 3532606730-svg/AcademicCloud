@@ -19,11 +19,13 @@ const TARGET_BY_ACTION: Readonly<Record<AuditEventKind, string | null>> = {
   "auth.login": "account",
   "auth.logout": null,
   "auth.password_change": null,
+  "auth.credential_reset": "credential_reset",
   "accounts.owner_bootstrap": "account",
   "accounts.register": "account",
   "accounts.invitation_create": "invitation",
   "accounts.invitation_revoke": "invitation",
   "accounts.member_state_change": "account",
+  "accounts.credential_reset_issue": "credential_reset",
   "announcements.create": "announcement",
   "announcements.edit": "announcement",
   "announcements.publish": "announcement",
@@ -112,6 +114,9 @@ function assertAuditShape(input: AuditRecordInput): void {
     case "auth.password_change":
       if (!accountActor) throw new TypeError("invalid authenticated audit actor");
       return;
+    case "auth.credential_reset":
+      if (input.actorKind !== "anonymous") throw new TypeError("invalid credential reset audit actor");
+      return;
     case "accounts.owner_bootstrap":
       if (input.actorKind !== "system" || input.outcome !== "succeeded") {
         throw new TypeError("invalid Owner bootstrap audit actor/outcome");
@@ -123,6 +128,7 @@ function assertAuditShape(input: AuditRecordInput): void {
     case "accounts.invitation_create":
     case "accounts.invitation_revoke":
     case "accounts.member_state_change":
+    case "accounts.credential_reset_issue":
     case "announcements.create":
     case "announcements.edit":
     case "announcements.publish":

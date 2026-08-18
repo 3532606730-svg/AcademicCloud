@@ -23,6 +23,7 @@ import type { ScholarlyRecordService } from "../research/service.js";
 import { registerResearchHttp } from "../research/http.js";
 import type { LibraryService } from "../library/library-service.js";
 import { registerLibraryHttp } from "../library/http.js";
+import type { CredentialResetService } from "../auth/credential-reset-service.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -48,6 +49,9 @@ export const LOGGER_REDACT_PATHS = [
   "body.newPassword",
   "newPassword",
   "*.newPassword",
+  "body.token",
+  "token",
+  "*.token",
   "body.inviteToken",
   "inviteToken",
   "*.inviteToken",
@@ -111,9 +115,9 @@ export interface CreateAppOptions {
     appOrigin: string;
     environment: AppConfig["environment"];
     loginRateLimitMax?: number;
-    passwordChangeRateLimitMax?: number;
   };
   accounts?: { service: AccountAdministrationService; registrationRateLimitMax?: number };
+  credentialReset?: { service: CredentialResetService; redemptionRateLimitMax?: number };
   announcements?: { service: AnnouncementService };
   drive?: {
     service: DriveService;
@@ -216,9 +220,12 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
       ...(options.auth.loginRateLimitMax === undefined
         ? {}
         : { loginRateLimitMax: options.auth.loginRateLimitMax }),
-      ...(options.auth.passwordChangeRateLimitMax === undefined
+      ...(options.credentialReset === undefined
         ? {}
-        : { passwordChangeRateLimitMax: options.auth.passwordChangeRateLimitMax }),
+        : { credentialResetService: options.credentialReset.service }),
+      ...(options.credentialReset?.redemptionRateLimitMax === undefined
+        ? {}
+        : { credentialResetRateLimitMax: options.credentialReset.redemptionRateLimitMax }),
     });
   }
 
@@ -234,6 +241,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
     if (!options.auth) throw new Error("account routes require authentication composition");
     await registerAccountsHttp(app, {
       service: options.accounts.service,
+      ...(options.credentialReset === undefined
+        ? {}
+        : { credentialResetService: options.credentialReset.service }),
       ...(options.accounts.registrationRateLimitMax === undefined
         ? {}
         : { registrationRateLimitMax: options.accounts.registrationRateLimitMax }),

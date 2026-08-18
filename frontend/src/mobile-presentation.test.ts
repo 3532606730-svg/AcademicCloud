@@ -127,13 +127,6 @@ describe("mobile presentation stylesheet", () => {
     expect(ruleHas(block, ".account-menu > .language-switch, .desktop-avatar, .account-name, .sign-out-button, .account-action-button {", /display:\s*none/)).toBe(true);
   });
 
-  it("presents password change as a fullscreen mobile dialog with touch-sized actions", () => {
-    const block = mobileBlock();
-    expect(ruleHas(block, ".password-change-modal {", /height:\s*100dvh/)).toBe(true);
-    expect(ruleHas(block, ".password-change-modal header .button {", /min-width:\s*2\.75rem;\s*min-height:\s*2\.75rem/)).toBe(true);
-    expect(ruleHas(block, ".password-change-actions .button {", /min-height:\s*2\.75rem/)).toBe(true);
-  });
-
   it("presents governance audit as a fullscreen mobile dialog with bounded horizontal rows", () => {
     const block = mobileBlock();
     expect(ruleHas(block, ".audit-modal {", /height:\s*100dvh/)).toBe(true);

@@ -2,11 +2,13 @@ export const AUDIT_EVENT_KINDS = [
   "auth.login",
   "auth.logout",
   "auth.password_change",
+  "auth.credential_reset",
   "accounts.owner_bootstrap",
   "accounts.register",
   "accounts.invitation_create",
   "accounts.invitation_revoke",
   "accounts.member_state_change",
+  "accounts.credential_reset_issue",
   "announcements.create",
   "announcements.edit",
   "announcements.publish",
@@ -50,12 +52,13 @@ export const AUDIT_REASON_CODES = [
   "upload_metadata_mismatch",
   "name_conflict",
   "concurrent_change",
+  "invalid_credential_reset",
 ] as const;
 
 export type AuditEventKind = (typeof AUDIT_EVENT_KINDS)[number];
 export type AuditReasonCode = (typeof AUDIT_REASON_CODES)[number];
 export type AuditActorKind = "account" | "system" | "anonymous";
-export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "file" | "folder";
+export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "credential_reset" | "file" | "folder";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
 
 export interface AuditEvent {

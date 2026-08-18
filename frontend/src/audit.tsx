@@ -14,11 +14,13 @@ const ACTION_LABELS: Record<AuditEventKind, [string, string]> = {
   "auth.login": ["Sign in", "登录"],
   "auth.logout": ["Sign out", "退出登录"],
   "auth.password_change": ["Password change", "修改密码"],
+  "auth.credential_reset": ["Password reset redeemed", "使用密码重设链接"],
   "accounts.owner_bootstrap": ["Owner bootstrap", "初始化所有者"],
   "accounts.register": ["Account registration", "账户注册"],
   "accounts.invitation_create": ["Invitation created", "创建邀请"],
   "accounts.invitation_revoke": ["Invitation revoked", "撤销邀请"],
   "accounts.member_state_change": ["Member state change", "成员状态变更"],
+  "accounts.credential_reset_issue": ["Password reset issued", "签发密码重设链接"],
   "announcements.create": ["Announcement created", "创建公告"],
   "announcements.edit": ["Announcement edited", "编辑公告"],
   "announcements.publish": ["Announcement published", "发布公告"],
@@ -69,6 +71,7 @@ const REASON_LABELS: Record<AuditReasonCode, [string, string]> = {
   upload_metadata_mismatch: ["Upload metadata mismatch", "上传元数据不匹配"],
   name_conflict: ["Name conflict", "名称冲突"],
   concurrent_change: ["Concurrent change", "并发变更"],
+  invalid_credential_reset: ["Invalid password reset", "密码重设链接无效"],
 };
 
 function label(pair: [string, string], language: "en" | "zh-CN"): string {

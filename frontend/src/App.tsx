@@ -53,6 +53,13 @@ function takeInvitationTokenFromLocation(): string | null {
   return match[1]!;
 }
 
+function takeCredentialResetTokenFromLocation(): string | null {
+  const match = /^#\/reset\/([A-Za-z0-9_-]{43})$/.exec(window.location.hash);
+  if (!match) return null;
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  return match[1]!;
+}
+
 export interface AppProps {
   api?: AcademicCloudApi;
   checksumFile?: typeof calculateFileMd5;
@@ -78,6 +85,8 @@ function AppContent({
 }) {
   const [auth, setAuth] = useState<AuthState>({ phase: "checking" });
   const [invitationToken, setInvitationToken] = useState<string | null>(takeInvitationTokenFromLocation);
+  const [credentialResetToken, setCredentialResetToken] = useState<string | null>(takeCredentialResetTokenFromLocation);
+  const [credentialResetComplete, setCredentialResetComplete] = useState(false);
   const api = useMemo(
     () =>
       injectedApi ??
@@ -90,6 +99,7 @@ function AppContent({
   );
 
   useEffect(() => {
+    if (credentialResetToken) return;
     const controller = new AbortController();
     api.getSession(controller.signal).then(
       (account) => setAuth({ phase: "authenticated", account }),
@@ -103,7 +113,22 @@ function AppContent({
       },
     );
     return () => controller.abort();
-  }, [api]);
+  }, [api, credentialResetToken]);
+
+  if (credentialResetToken) {
+    return (
+      <CredentialResetView
+        api={api}
+        token={credentialResetToken}
+        onCancel={() => setCredentialResetToken(null)}
+        onComplete={() => {
+          setCredentialResetToken(null);
+          setCredentialResetComplete(true);
+          setAuth({ phase: "anonymous" });
+        }}
+      />
+    );
+  }
 
   if (auth.phase === "checking") {
     return <LoadingScreen />;
@@ -123,6 +148,7 @@ function AppContent({
     return (
       <LoginView
         api={api}
+        resetComplete={credentialResetComplete}
         {...(auth.message === undefined ? {} : { initialError: auth.message })}
         onAuthenticated={(account) => setAuth({ phase: "authenticated", account })}
       />
@@ -137,6 +163,62 @@ function AppContent({
       directUpload={directUpload}
       onSignedOut={(message) => setAuth({ phase: "anonymous", ...(message ? { message } : {}) })}
     />
+  );
+}
+
+function CredentialResetView({
+  api,
+  token,
+  onCancel,
+  onComplete,
+}: {
+  api: AcademicCloudApi;
+  token: string;
+  onCancel: () => void;
+  onComplete: () => void;
+}) {
+  const { language, t } = useLanguage();
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState<unknown>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    if (password !== confirmation) {
+      setError(new ApiError(400, "password_mismatch"));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.redeemCredentialReset(token, password);
+      setPassword("");
+      setConfirmation("");
+      onComplete();
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="login-shell">
+      <section className="login-card" aria-labelledby="credential-reset-title">
+        <h1 className="brand" id="credential-reset-title"><span>AC</span> {t("credentialReset.title")}</h1>
+        {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+        <form onSubmit={(event) => void submit(event)}>
+          <label htmlFor="credential-reset-password">{t("credentialReset.newPassword")}</label>
+          <input id="credential-reset-password" type="password" autoComplete="new-password" minLength={12} maxLength={1024} value={password} onChange={(event) => setPassword(event.target.value)} required autoFocus />
+          <label htmlFor="credential-reset-confirm">{t("credentialReset.confirmPassword")}</label>
+          <input id="credential-reset-confirm" type="password" autoComplete="new-password" minLength={12} maxLength={1024} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required />
+          <button className="button button--primary button--wide" type="submit" disabled={submitting}>{submitting ? t("credentialReset.submitting") : t("credentialReset.submit")}</button>
+          <button className="button button--quiet button--wide" type="button" onClick={onCancel} disabled={submitting}>{t("credentialReset.cancel")}</button>
+        </form>
+        <div className="login-language"><LanguageSwitch labelled /></div>
+      </section>
+    </main>
   );
 }
 
@@ -212,10 +294,12 @@ function LoadingScreen() {
 function LoginView({
   api,
   initialError,
+  resetComplete,
   onAuthenticated,
 }: {
   api: AcademicCloudApi;
   initialError?: unknown;
+  resetComplete?: boolean;
   onAuthenticated: (account: Account) => void;
 }) {
   const { language, t } = useLanguage();
@@ -241,6 +325,7 @@ function LoginView({
     <main className="login-shell">
       <section className="login-card" aria-labelledby="brand-title">
         <h1 className="brand" id="brand-title"><span>AC</span> AcademicCloud</h1>
+        {resetComplete && <div className="alert alert--success" role="status">{t("credentialReset.complete")}</div>}
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
         <form onSubmit={(event) => void submit(event)}>
           <label htmlFor="login-name">{t("login.nameLabel")}</label>
@@ -267,6 +352,7 @@ function LoginView({
             {submitting ? t("login.submitting") : t("login.submit")}
           </button>
         </form>
+        <p className="login-help">{t("credentialReset.loginHint")}</p>
         <div className="login-language">
           <LanguageSwitch labelled />
         </div>
@@ -423,7 +509,6 @@ function DriveView({
   const [accountAdministrationOpen, setAccountAdministrationOpen] = useState(false);
   const [announcementAdministrationOpen, setAnnouncementAdministrationOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
-  const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const [announcementRevision, setAnnouncementRevision] = useState(0);
   const dragDepthRef = useRef(0);
@@ -752,12 +837,6 @@ function DriveView({
     }
   }
 
-  function passwordChanged() {
-    for (const job of jobs) job.controller.abort();
-    setPasswordChangeOpen(false);
-    onSignedOut();
-  }
-
   async function runAction(id: string, successMessage: string, action: () => Promise<unknown>): Promise<boolean> {
     setBusyId(id);
     setError(null);
@@ -1021,7 +1100,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen || announcementAdministrationOpen || passwordChangeOpen || auditOpen || recordDialogOpen}>
+    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen || announcementAdministrationOpen || auditOpen || recordDialogOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -1037,7 +1116,6 @@ function DriveView({
             onManageAccounts={() => setAccountAdministrationOpen(true)}
             onManageAnnouncements={() => setAnnouncementAdministrationOpen(true)}
             onManageAudit={() => setAuditOpen(true)}
-            onChangePassword={() => setPasswordChangeOpen(true)}
             onSignOut={() => void signOut()}
           />
           <span className="avatar desktop-avatar" aria-hidden="true">{account.loginName.slice(0, 1).toUpperCase()}</span>
@@ -1055,9 +1133,6 @@ function DriveView({
               </button>
             </>
           )}
-          <button className="button button--quiet account-action-button" type="button" onClick={() => setPasswordChangeOpen(true)}>
-            {t("password.change")}
-          </button>
           <button className="button button--quiet sign-out-button" type="button" onClick={() => void signOut()} disabled={busyId === "logout"}>
             {t("nav.signOut")}
           </button>
@@ -1445,13 +1520,6 @@ function DriveView({
         />
       )}
       {auditOpen && <AuditDialog api={api} onClose={() => setAuditOpen(false)} />}
-      {passwordChangeOpen && (
-        <PasswordChangeDialog
-          api={api}
-          onClose={() => setPasswordChangeOpen(false)}
-          onChanged={passwordChanged}
-        />
-      )}
       {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void downloadFile(preview.file)} />}
       {moveRequest && (
         <MoveDialog
@@ -1813,6 +1881,11 @@ function AccountAdministrationDialog({
   const [accounts, setAccounts] = useState<ManagedAccount[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [oneTimeLink, setOneTimeLink] = useState<string | null>(null);
+  const [credentialResetLink, setCredentialResetLink] = useState<{
+    loginName: string;
+    link: string;
+    expiresAt: string;
+  } | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -1882,6 +1955,24 @@ function AccountAdministrationDialog({
     }
   }
 
+  async function issueCredentialReset(account: ManagedAccount) {
+    setBusyId(`credential-reset-${account.id}`);
+    setError(null);
+    setCredentialResetLink(null);
+    try {
+      const created = await api.issueCredentialReset(account.id);
+      setCredentialResetLink({
+        loginName: account.loginName,
+        link: `${window.location.origin}/#/reset/${created.rawToken}`,
+        expiresAt: created.reset.expiresAt,
+      });
+    } catch (caught: unknown) {
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const availableInvitations = invitations.filter((invitation) => invitation.status === "available");
   const historicalInvitations = invitations.filter((invitation) => invitation.status !== "available");
 
@@ -1911,6 +2002,9 @@ function AccountAdministrationDialog({
                     </div>
                     {account.role === "member" && account.id !== ownerId && (
                       <div className="account-administration-row-actions">
+                        {account.state !== "archived" && (
+                          <button className="button button--small" type="button" disabled={busyId !== null} onClick={() => void issueCredentialReset(account)}>{t("credentialReset.issue")}</button>
+                        )}
                         {account.state === "active" && (
                           <button className="button button--small button--danger" type="button" disabled={busyId !== null} onClick={() => void setMemberState(account, "disabled")}>{t("accounts.disable")}</button>
                         )}
@@ -1928,6 +2022,14 @@ function AccountAdministrationDialog({
                   </article>
                 ))}
               </div>
+              {credentialResetLink !== null && (
+                <div className="invitation-link" role="status">
+                  <label htmlFor="one-time-credential-reset-link">{t("credentialReset.oneTimeLink", { name: credentialResetLink.loginName })}</label>
+                  <input id="one-time-credential-reset-link" readOnly value={credentialResetLink.link} onFocus={(event) => event.currentTarget.select()} />
+                  <span>{t("credentialReset.expires", { date: formatDate(credentialResetLink.expiresAt, language) })}</span>
+                  <button className="button button--quiet button--small" type="button" onClick={() => setCredentialResetLink(null)}>{t("accounts.dismissLink")}</button>
+                </div>
+              )}
             </section>
             <section aria-labelledby="invitation-list-title">
               <div className="account-administration-section-heading">
@@ -1977,69 +2079,6 @@ function AccountAdministrationDialog({
           </>
         )}
       </div>
-    </dialog>
-  );
-}
-
-function PasswordChangeDialog({
-  api,
-  onClose,
-  onChanged,
-}: {
-  api: AcademicCloudApi;
-  onClose: () => void;
-  onChanged: () => void;
-}) {
-  const { language, t } = useLanguage();
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-  const [error, setError] = useState<unknown>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const dialogRef = useModalDialog(onClose, submitting);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    if (newPassword !== confirmation) {
-      setError(new ApiError(400, "password_mismatch"));
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await api.changePassword(currentPassword, newPassword);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmation("");
-      onChanged();
-    } catch (caught: unknown) {
-      setError(caught);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <dialog ref={dialogRef} className="password-change-modal" aria-labelledby="password-change-title">
-      <form onSubmit={(event) => void submit(event)}>
-        <header>
-          <h2 id="password-change-title">{t("password.change")}</h2>
-          <button className="button button--quiet" type="button" onClick={onClose} disabled={submitting} aria-label={t("password.closeAria")}>{t("preview.close")}</button>
-        </header>
-        <div className="password-change-body">
-          {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
-          <label htmlFor="password-current">{t("password.current")}</label>
-          <input id="password-current" name="currentPassword" type="password" autoComplete="current-password" minLength={1} maxLength={1024} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required autoFocus />
-          <label htmlFor="password-new">{t("password.new")}</label>
-          <input id="password-new" name="newPassword" type="password" autoComplete="new-password" minLength={12} maxLength={1024} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required />
-          <label htmlFor="password-confirm">{t("password.confirm")}</label>
-          <input id="password-confirm" name="passwordConfirmation" type="password" autoComplete="new-password" minLength={12} maxLength={1024} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required />
-          <div className="password-change-actions">
-            <button className="button button--quiet" type="button" onClick={onClose} disabled={submitting}>{t("password.cancel")}</button>
-            <button className="button button--primary" type="submit" disabled={submitting}>{submitting ? t("password.saving") : t("password.save")}</button>
-          </div>
-        </div>
-      </form>
     </dialog>
   );
 }
@@ -2462,7 +2501,6 @@ function AccountMenu({
   onManageAccounts,
   onManageAnnouncements,
   onManageAudit,
-  onChangePassword,
   onSignOut,
 }: {
   accountName: string;
@@ -2471,7 +2509,6 @@ function AccountMenu({
   onManageAccounts: () => void;
   onManageAnnouncements: () => void;
   onManageAudit: () => void;
-  onChangePassword: () => void;
   onSignOut: () => void;
 }) {
   const { t } = useLanguage();
@@ -2603,17 +2640,6 @@ function AccountMenu({
                 </button>
               </>
             )}
-            <button
-              className="account-popover-signout"
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                close(false);
-                onChangePassword();
-              }}
-            >
-              {t("password.change")}
-            </button>
             <button
               className="account-popover-signout"
               type="button"

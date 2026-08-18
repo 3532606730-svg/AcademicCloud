@@ -76,7 +76,7 @@ Required outcome:
 
 Repository checkpoint advances the development schema head to migration 016. The canonical Library is deterministic and automatic for active accounts; migration rehearsal and runtime tests cover stable identity/provenance/Favorite preservation, Member pending intake, Owner direct admission, fail-closed disabled identities, and transactional rollback. Production remains at schema v15 and was not contacted.
 
-### L2-CREDENTIALRESET01 — Owner-Assisted Credential Reset
+### L2-CREDENTIALRESET01 — Owner-Assisted Credential Reset — Complete
 
 The previous self-service password-change feature is no longer a desired product surface.
 
@@ -88,6 +88,8 @@ Target model:
 - the Member chooses the final password, so the Owner does not learn it;
 - Argon2id limits and session/auth-revision safety remain unchanged;
 - successful reset consumes the capability and invalidates old sessions without silently changing disabled/archived lifecycle state.
+
+Repository checkpoint advances the development schema head to migration 017. The authenticated `/api/auth/password` route and `修改密码` UI/navigation are absent. Owner issuance is limited to active/disabled Members; 30-minute digest-only capabilities are single-use and reissue atomically supersedes prior outstanding state. Redemption reuses the bounded Argon2id executor and atomically advances authentication revision, consumes the capability, revokes sessions, and records audit evidence. Disabled Members remain disabled; archived accounts are ineligible. Production remains at schema v15 and was not contacted.
 
 ### L1-UX05 — Information Architecture and Visual Hierarchy Repair
 
@@ -142,17 +144,17 @@ The old first-layer “private cloud drive” behavior is historical implementat
 
 ## Layer 2 — Accounts & Governance
 
-**Status:** Foundation complete; credential recovery is being simplified for the actual small known-member operating model.
+**Status:** Foundation complete; Owner-assisted credential recovery is implemented for the small known-member operating model.
 
 Completed:
 - Owner/Member accounts and invitation-only registration;
 - Member enable/disable/archive lifecycle and session revocation;
 - announcements and administration polish;
 - bounded governance/security audit;
-- historical authenticated self-password-change implementation.
+- Owner-issued, Member-redeemed one-time credential reset with atomic session invalidation.
 
-Current correction:
-- `L2-CREDENTIALRESET01` supersedes self-service password change as the desired product path.
+Historical note:
+- ADR-024 retires the authenticated self-service HTTP/UI path while preserving its bounded-KDF/CAS reasoning as implementation evidence.
 
 Later separate backlog:
 - one-time external sharing capability (`L2-SHARE01`) if explicitly reopened.

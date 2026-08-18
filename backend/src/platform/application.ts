@@ -7,6 +7,7 @@ import { FavoriteService } from "../favorites/favorite-service.js";
 import { AuditService } from "../audit/audit-service.js";
 import { ScholarlyRecordService } from "../research/service.js";
 import { LibraryService } from "../library/library-service.js";
+import { CredentialResetService } from "../auth/credential-reset-service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
 import { openSqliteDatabase } from "../persistence/sqlite/database.js";
 import { assertMigrationsCurrent, runMigrations } from "../persistence/sqlite/migrations.js";
@@ -39,6 +40,7 @@ export async function createApplication(
       passwordHasher,
     });
     const accountAdministrationService = new AccountAdministrationService({ persistence, passwordHasher });
+    const credentialResetService = new CredentialResetService({ persistence, passwordHasher });
     const announcementService = new AnnouncementService({ persistence });
     const driveService = new DriveService(persistence, storage);
     const libraryService = new LibraryService(persistence, driveService);
@@ -53,6 +55,7 @@ export async function createApplication(
         environment: config.environment,
       },
       accounts: { service: accountAdministrationService },
+      credentialReset: { service: credentialResetService },
       announcements: { service: announcementService },
       drive: {
         service: driveService,

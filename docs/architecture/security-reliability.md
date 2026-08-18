@@ -14,7 +14,7 @@ Every `/api` response, including errors, carries:
 
 Control-plane request bodies are limited to 16 KiB. Connection inactivity is limited to 10 seconds and request receipt to 30 seconds. Object-storage SDK calls have their own explicit timeout because the HTTP request timeout does not cancel an in-progress provider call.
 
-Fastify's raw request logging is disabled so a query string cannot place a token or signed URL in logs. Completion logs contain only the method, matched route template, status, and duration. Unhandled failures record a stable error type without serializing the original exception or cause. Redaction covers authorization and cookie headers, passwords, session secrets, signed URLs, upload policy/signature fields, AccessKey material, and STS tokens.
+Fastify's raw request logging is disabled so a query string cannot place a token or signed URL in logs. Completion logs contain only the method, matched route template, status, and duration. Unhandled failures record a stable error type without serializing the original exception or cause. Redaction covers authorization and cookie headers, passwords, invitation/reset capabilities, session secrets, signed URLs, upload policy/signature fields, AccessKey material, and STS tokens.
 
 Audit events cover exact-origin rejection, session rejection, login outcomes, logout, owner-scoped drive misses, upload completion, soft deletion, restore, and permanent deletion. Events contain stable names/outcomes and authenticated account IDs only. They do not contain request bodies, filenames, object keys, cookies, credentials, provider responses, or signed URLs.
 
@@ -25,6 +25,7 @@ Audit events cover exact-origin rejection, session rejection, login outcomes, lo
 The Layer 1 single-process target remains compatible with the 512 MB host:
 
 - Argon2id uses 64 MiB and one active KDF with at most four queued operations;
+- login, registration, and Owner-assisted credential reset share that single bounded KDF executor;
 - file bytes travel directly between the browser and object storage;
 - control-plane bodies are capped at 16 KiB;
 - OSS requests default to 30 seconds and are bounded to 1-120 seconds;

@@ -156,20 +156,20 @@ describe("ApiClient", () => {
     assertBodylessRequestInit(calls[4]?.init, "POST");
   });
 
-  it("sends password change only in a same-origin JSON body", async () => {
+  it("sends credential redemption only in a same-origin JSON body", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
     const api = new ApiClient({ fetcher });
 
-    await api.changePassword("current-password-123", "new-password-456");
+    await api.redeemCredentialReset("R".repeat(43), "new-password-456");
 
     expect(fetcher).toHaveBeenCalledOnce();
     const [path, init] = fetcher.mock.calls[0]!;
-    expect(path).toBe("/api/auth/password");
+    expect(path).toBe("/api/auth/credential-reset");
     expect(init?.method).toBe("POST");
     expect(init?.credentials).toBe("same-origin");
     expect(new Headers(init?.headers).get("Content-Type")).toBe("application/json");
     expect(init?.body).toBe(JSON.stringify({
-      currentPassword: "current-password-123",
+      token: "R".repeat(43),
       newPassword: "new-password-456",
     }));
   });

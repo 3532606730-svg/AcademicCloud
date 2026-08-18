@@ -42,8 +42,8 @@ test("migration 009 exposes fixed registries and immutable audit rows", (context
 
   const kinds = database.prepare<[], { count: number }>("SELECT count(*) AS count FROM governance_audit_event_kinds").get();
   const reasons = database.prepare<[], { count: number }>("SELECT count(*) AS count FROM governance_audit_reason_codes").get();
-  assert.equal(kinds?.count, 30);
-  assert.equal(reasons?.count, 18);
+  assert.equal(kinds?.count, 32);
+  assert.equal(reasons?.count, 19);
 
   const event = persistence.runInTransaction((repositories) => recordAuditEvent(repositories, {
     action: "auth.login", outcome: "succeeded", actorKind: "account", actorAccountId: "owner-1",

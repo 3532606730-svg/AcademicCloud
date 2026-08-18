@@ -14,4 +14,11 @@ export interface AccountRepository {
     passwordHash: string,
     updatedAt: Date,
   ): boolean;
+  resetPassword(
+    id: string,
+    expectedPasswordHash: string,
+    expectedAuthRevision: number,
+    passwordHash: string,
+    updatedAt: Date,
+  ): boolean;
 }

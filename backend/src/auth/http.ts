@@ -7,10 +7,10 @@ import {
   type AuthenticatedAccount,
   AuthService,
   InvalidCredentialsError,
-  PasswordChangeError,
   SESSION_DURATION_MILLISECONDS,
 } from "./auth-service.js";
 import { PasswordKdfOverloadedError } from "./password-hasher.js";
+import { CredentialResetError, type CredentialResetService } from "./credential-reset-service.js";
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const SESSION_MAX_AGE_SECONDS = SESSION_DURATION_MILLISECONDS / 1_000;
@@ -30,7 +30,8 @@ export interface AuthHttpOptions {
   appOrigin: string;
   environment: AppEnvironment;
   loginRateLimitMax?: number;
-  passwordChangeRateLimitMax?: number;
+  credentialResetService?: CredentialResetService;
+  credentialResetRateLimitMax?: number;
 }
 
 interface LoginBody {
@@ -38,8 +39,8 @@ interface LoginBody {
   password: string;
 }
 
-interface ChangePasswordBody {
-  currentPassword: string;
+interface CredentialResetBody {
+  token: string;
   newPassword: string;
 }
 
@@ -58,7 +59,7 @@ type AuthAuditEvent =
   | "auth.session_check"
   | "auth.login"
   | "auth.logout"
-  | "auth.password_change";
+  | "auth.credential_reset";
 
 type AuthAuditOutcome = "succeeded" | "denied" | "busy" | "noop";
 
@@ -222,72 +223,58 @@ export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOp
     return reply.code(204).send();
   });
 
-  app.post<{ Body: ChangePasswordBody }>(
-    "/api/auth/password",
-    {
-      preHandler: app.authenticate,
-      config: {
-        rateLimit: {
-          max: options.passwordChangeRateLimitMax ?? 5,
-          timeWindow: "1 minute",
-          onExceeded: (request: FastifyRequest) => {
-            const secret = request.cookies[cookiePolicy.name];
-            const account = secret ? options.authService.resolveSession(secret) : null;
-            if (account) options.authService.recordPasswordChangeBusy(account, "rate_limit_exceeded");
-            writeAuthAudit(request, "auth.password_change", "denied", { reason: "rate_limit_exceeded" });
+  if (options.credentialResetService) {
+    app.post<{ Body: CredentialResetBody }>(
+      "/api/auth/credential-reset",
+      {
+        config: {
+          rateLimit: {
+            max: options.credentialResetRateLimitMax ?? 5,
+            timeWindow: "1 minute",
+            onExceeded: (request: FastifyRequest) => {
+              options.credentialResetService!.recordRedemptionBusy("rate_limit_exceeded");
+              writeAuthAudit(request, "auth.credential_reset", "denied", { reason: "rate_limit_exceeded" });
+            },
           },
         },
-      },
-      schema: {
-        body: {
-          type: "object",
-          additionalProperties: false,
-          required: ["currentPassword", "newPassword"],
-          properties: {
-            currentPassword: { type: "string", minLength: 1, maxLength: 1_024 },
-            newPassword: { type: "string", minLength: 12, maxLength: 1_024 },
+        schema: {
+          body: {
+            type: "object",
+            additionalProperties: false,
+            required: ["token", "newPassword"],
+            properties: {
+              token: { type: "string", minLength: 1, maxLength: 1_024 },
+              newPassword: { type: "string", minLength: 12, maxLength: 1_024 },
+            },
           },
         },
+        preValidation: async (request, reply) => {
+          const contentType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase();
+          if (contentType !== "application/json") {
+            await reply.code(415).send({ error: "unsupported_media_type" });
+          }
+        },
       },
-      preValidation: async (request, reply) => {
-        const contentType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase();
-        if (contentType !== "application/json") {
-          await reply.code(415).send({ error: "unsupported_media_type" });
+      async (request, reply) => {
+        try {
+          await options.credentialResetService!.redeem(request.body.token, request.body.newPassword);
+          writeAuthAudit(request, "auth.credential_reset", "succeeded");
+          return reply.code(204).send();
+        } catch (error: unknown) {
+          if (error instanceof CredentialResetError) {
+            writeAuthAudit(request, "auth.credential_reset", "denied", { reason: "invalid_credential_reset" });
+            return reply.code(400).send({ error: "invalid_credential_reset" });
+          }
+          if (error instanceof PasswordKdfOverloadedError) {
+            options.credentialResetService!.recordRedemptionBusy("kdf_overloaded");
+            writeAuthAudit(request, "auth.credential_reset", "busy", { reason: "kdf_overloaded" });
+            return reply.header("retry-after", "1").code(429).send({ error: "credential_reset_busy" });
+          }
+          throw error;
         }
       },
-    },
-    async (request, reply) => {
-      try {
-        await options.authService.changePassword(
-          request.authAccount!,
-          request.body.currentPassword,
-          request.body.newPassword,
-        );
-        writeAuthAudit(request, "auth.password_change", "succeeded", { accountId: request.authAccount!.id });
-        reply.clearCookie(cookiePolicy.name, cookiePolicy.options);
-        return reply.code(204).send();
-      } catch (error: unknown) {
-        if (error instanceof PasswordChangeError) {
-          writeAuthAudit(request, "auth.password_change", "denied", {
-            accountId: request.authAccount!.id,
-            reason: error.code,
-          });
-          return reply
-            .code(error.code === "password_change_conflict" ? 409 : 400)
-            .send({ error: error.code });
-        }
-        if (error instanceof PasswordKdfOverloadedError) {
-          options.authService.recordPasswordChangeBusy(request.authAccount!);
-          writeAuthAudit(request, "auth.password_change", "busy", {
-            accountId: request.authAccount!.id,
-            reason: "kdf_overloaded",
-          });
-          return reply.header("retry-after", "1").code(429).send({ error: "password_change_busy" });
-        }
-        throw error;
-      }
-    },
-  );
+    );
+  }
 
   app.get(
     "/api/auth/session",

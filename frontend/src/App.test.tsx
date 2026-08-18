@@ -57,13 +57,14 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     getSession: vi.fn().mockRejectedValue(new ApiError(401, "authentication_required")),
     login: vi.fn().mockResolvedValue(ACCOUNT),
     registerMember: vi.fn(),
-    changePassword: vi.fn().mockResolvedValue(undefined),
+    redeemCredentialReset: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(undefined),
     createInvitation: vi.fn(),
     listInvitations: vi.fn().mockResolvedValue([]),
     revokeInvitation: vi.fn(),
     listAccounts: vi.fn().mockResolvedValue([{ ...ACCOUNT, state: "active", createdAt: "2026-08-17T00:00:00.000Z" }]),
     setAccountState: vi.fn(),
+    issueCredentialReset: vi.fn(),
     listAnnouncements: vi.fn().mockResolvedValue([]),
     listAllAnnouncements: vi.fn().mockResolvedValue([]),
     createAnnouncement: vi.fn(),
@@ -235,6 +236,10 @@ describe("App", () => {
     const createInvitation = vi.fn().mockResolvedValue({ invitation, rawToken });
     const revokeInvitation = vi.fn().mockResolvedValue({ ...invitation, revokedAt: "2026-08-17T01:00:00.000Z", status: "revoked" as const });
     const setAccountState = vi.fn().mockResolvedValue({ ...member, state: "disabled" as const });
+    const issueCredentialReset = vi.fn().mockResolvedValue({
+      reset: { id: "reset-1", accountId: member.id, createdAt: "2026-08-17T00:00:00.000Z", expiresAt: "2026-08-17T00:30:00.000Z" },
+      rawToken: "R".repeat(43),
+    });
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listAccounts: vi.fn().mockResolvedValue([owner, member]),
@@ -242,6 +247,7 @@ describe("App", () => {
       createInvitation,
       revokeInvitation,
       setAccountState,
+      issueCredentialReset,
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
@@ -256,6 +262,12 @@ describe("App", () => {
     expect(link).toHaveValue(`${window.location.origin}/#/invite/${rawToken}`);
     expect(storageContains(window.localStorage, rawToken)).toBe(false);
     expect(storageContains(window.sessionStorage, rawToken)).toBe(false);
+
+    await user.click(within(dialog).getByRole("button", { name: "Issue reset link" }));
+    await waitFor(() => expect(issueCredentialReset).toHaveBeenCalledWith("member-1"));
+    expect(await within(dialog).findByLabelText("One-time password reset link for Reader")).toHaveValue(
+      `${window.location.origin}/#/reset/${"R".repeat(43)}`,
+    );
 
     await user.click(within(dialog).getByRole("button", { name: "Disable" }));
     await waitFor(() => expect(setAccountState).toHaveBeenCalledWith("member-1", "disabled"));
@@ -277,7 +289,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Account menu" }));
     const menu = within(screen.getByRole("menu", { name: "Account" }));
     expect(menu.queryByRole("menuitem", { name: "Manage accounts" })).not.toBeInTheDocument();
-    expect(menu.getByRole("menuitem", { name: "Change password" })).toBeInTheDocument();
+    expect(menu.queryByRole("menuitem", { name: "Change password" })).not.toBeInTheDocument();
   });
 
   it("keeps usable invitations prominent and collapses durable invitation history with a count", async () => {
@@ -354,27 +366,23 @@ describe("App", () => {
     expect(within(dialog).getByRole("button", { name: "Archive" })).toBeInTheDocument();
   });
 
-  it("lets both Members and Owners change only their own password and returns to Login", async () => {
+  it("redeems an Owner-issued reset link on a dedicated anonymous surface and returns to sign in", async () => {
     const user = userEvent.setup();
-    const changePassword = vi.fn().mockResolvedValue(undefined);
-    const member = { ...ACCOUNT, role: "member" as const };
-    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(member), changePassword });
+    const rawToken = "R".repeat(43);
+    window.history.replaceState(null, "", `/#/reset/${rawToken}`);
+    const redeemCredentialReset = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({ redeemCredentialReset });
     render(<App api={api} />);
-    await screen.findByRole("heading", { name: "Library" });
+    expect(await screen.findByRole("heading", { name: "AC Reset password" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("");
+    await user.type(screen.getByLabelText("New password"), "new-password-456");
+    await user.type(screen.getByLabelText("Confirm new password"), "new-password-456");
+    await user.click(screen.getByRole("button", { name: "Reset password" }));
 
-    await user.click(screen.getByRole("button", { name: "Change password" }));
-    const dialog = await screen.findByRole("dialog", { name: "Change password" });
-    expect(within(dialog).getByLabelText("Current password")).toHaveAttribute("autocomplete", "current-password");
-    expect(within(dialog).getByLabelText("New password")).toHaveAttribute("autocomplete", "new-password");
-    expect(within(dialog).getByLabelText("Confirm new password")).toHaveAttribute("autocomplete", "new-password");
-    await user.type(within(dialog).getByLabelText("Current password"), "current-password-123");
-    await user.type(within(dialog).getByLabelText("New password"), "new-password-456");
-    await user.type(within(dialog).getByLabelText("Confirm new password"), "new-password-456");
-    await user.click(within(dialog).getByRole("button", { name: "Change password" }));
-
-    await waitFor(() => expect(changePassword).toHaveBeenCalledWith("current-password-123", "new-password-456"));
+    await waitFor(() => expect(redeemCredentialReset).toHaveBeenCalledWith(rawToken, "new-password-456"));
     expect(await screen.findByRole("heading", { name: "AC AcademicCloud" })).toBeInTheDocument();
-    for (const secret of ["current-password-123", "new-password-456"]) {
+    expect(screen.getByRole("status")).toHaveTextContent("Password reset complete");
+    for (const secret of [rawToken, "new-password-456"]) {
       expect(window.location.href).not.toContain(secret);
       expect(storageContains(window.localStorage, secret)).toBe(false);
       expect(storageContains(window.sessionStorage, secret)).toBe(false);
@@ -382,56 +390,25 @@ describe("App", () => {
     }
   });
 
-  it("keeps confirmation local and leaves the password dialog open on failure", async () => {
+  it("keeps reset confirmation local and reports every invalid capability generically", async () => {
     const user = userEvent.setup();
-    const changePassword = vi.fn().mockRejectedValue(new ApiError(400, "invalid_current_password"));
-    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), changePassword });
+    const rawToken = "S".repeat(43);
+    window.history.replaceState(null, "", `/#/reset/${rawToken}`);
+    const redeemCredentialReset = vi.fn().mockRejectedValue(new ApiError(400, "invalid_credential_reset"));
+    const api = fakeApi({ redeemCredentialReset });
     render(<App api={api} />);
-    await screen.findByRole("heading", { name: "Library" });
-    await user.click(screen.getByRole("button", { name: "Change password" }));
-    const dialog = await screen.findByRole("dialog", { name: "Change password" });
-    await user.type(within(dialog).getByLabelText("Current password"), "wrong-current-password");
-    await user.type(within(dialog).getByLabelText("New password"), "new-password-456");
-    await user.type(within(dialog).getByLabelText("Confirm new password"), "different-password-789");
-    await user.click(within(dialog).getByRole("button", { name: "Change password" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("do not match");
-    expect(changePassword).not.toHaveBeenCalled();
+    await screen.findByRole("heading", { name: "AC Reset password" });
+    await user.type(screen.getByLabelText("New password"), "new-password-456");
+    await user.type(screen.getByLabelText("Confirm new password"), "different-password-789");
+    await user.click(screen.getByRole("button", { name: "Reset password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("do not match");
+    expect(redeemCredentialReset).not.toHaveBeenCalled();
 
-    await user.clear(within(dialog).getByLabelText("Confirm new password"));
-    await user.type(within(dialog).getByLabelText("Confirm new password"), "new-password-456");
-    await user.click(within(dialog).getByRole("button", { name: "Change password" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("current password is incorrect");
-    expect(changePassword).toHaveBeenCalledWith("wrong-current-password", "new-password-456");
-    expect(dialog).toBeInTheDocument();
-  });
-
-  it("aborts active upload work before password-change success clears the authenticated shell", async () => {
-    const user = userEvent.setup();
-    let checksumSignal: AbortSignal | undefined;
-    const checksumFile = vi.fn((_file: Blob, options?: { signal?: AbortSignal }) => {
-      checksumSignal = options?.signal;
-      return new Promise<string>((_resolve, reject) => {
-        options?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
-      });
-    });
-    const api = fakeApi({
-      getSession: vi.fn().mockResolvedValue(ACCOUNT),
-      changePassword: vi.fn().mockResolvedValue(undefined),
-    });
-    render(<App api={api} checksumFile={checksumFile} />);
-    await user.upload(await screen.findByLabelText("Upload files"), new File(["a"], "active.pdf", { type: "application/pdf" }));
-    await waitFor(() => expect(checksumFile).toHaveBeenCalledOnce());
-    expect(checksumSignal?.aborted).toBe(false);
-
-    await user.click(screen.getByRole("button", { name: "Change password" }));
-    const dialog = await screen.findByRole("dialog", { name: "Change password" });
-    await user.type(within(dialog).getByLabelText("Current password"), "current-password-123");
-    await user.type(within(dialog).getByLabelText("New password"), "new-password-456");
-    await user.type(within(dialog).getByLabelText("Confirm new password"), "new-password-456");
-    await user.click(within(dialog).getByRole("button", { name: "Change password" }));
-
-    await waitFor(() => expect(checksumSignal?.aborted).toBe(true));
-    expect(await screen.findByRole("heading", { name: "AC AcademicCloud" })).toBeInTheDocument();
+    await user.clear(screen.getByLabelText("Confirm new password"));
+    await user.type(screen.getByLabelText("Confirm new password"), "new-password-456");
+    await user.click(screen.getByRole("button", { name: "Reset password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("invalid, used, replaced, or expired");
+    expect(redeemCredentialReset).toHaveBeenCalledWith(rawToken, "new-password-456");
   });
 
   it("renders only server-backed effective announcements as escaped plain text with semantic severity", async () => {

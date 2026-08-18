@@ -1,7 +1,7 @@
 # ADR-013 — Authenticated Password Change Model
 
 **Date:** 2026-08-17
-**Status:** Accepted
+**Status:** Historical; self-service product surface superseded by ADR-022 and ADR-024
 
 ## Context
 
@@ -61,3 +61,7 @@ Revisit this decision if:
 - multiple application instances or another transactional database are introduced;
 - sessions move to an external store that cannot participate in the password-update transaction;
 - privileged reauthentication is required for operations other than password change.
+
+## Supersession
+
+ADR-024 removes the authenticated self-service HTTP/UI product path and replaces it with Owner-issued, Member-redeemed one-time credential reset. The bounded Argon2id, authentication-revision compare-and-swap, stale-login rejection, and atomic revoke-all-session reasoning in this record remains authoritative implementation evidence where ADR-024 reuses it.

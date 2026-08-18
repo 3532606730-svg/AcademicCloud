@@ -4,7 +4,7 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, and `PROD-05A` are complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. Repository development is reopened only for the Owner-approved first-use correction defined by ADR-022.
+**Current execution phase:** Core Drive repository closure, Accounts I, Global Homepage Announcements, OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, first-use polish, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, and `PROD-05A` are complete and green. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` at schema v15/history 1–15. The only remaining authorized repository Epic is `L1-UX05`, followed by STOP for Owner review.
 
 **Approved continuous objective:** execute only `RF-SHAREDDEFAULT01 → L2-CREDENTIALRESET01 → L1-UX05 → STOP for Owner review`. Production remains closed. The remaining Pre-OCR queue, `PROD-03C2`, permanent delete, reboot/autostart, main merge, infrastructure-policy changes, and OCR/RAG remain parked or separately gated. The rollback pair for the schema-v15 production generation is prior release `34a2eada158dcf08783dc9538d853f9361425e8a` plus schema-v8 backup `academiccloud-pre-prod05a-20260818T041406Z.sqlite` (SHA-256 `873374176280848ae9cd6747a01dcdf19f0423ce32c8fea7f30c042ba1199b17`), with age-encrypted off-host evidence in private `AcademicCloud-Backups` commit `b0238baa8bb5e5f44c5ceaf1d37ca3a80e0f9420`.
 
@@ -73,7 +73,7 @@ Additional invariants:
 
 ### Layer 2 — Accounts & Governance
 
-**Foundation complete; credential recovery is being simplified.** Exact `owner | member`, invite-only registration, Owner administration, disable/enable/archive/session revocation, Global Homepage Announcements, and the historical authenticated password-change implementation are green. ADR-022 supersedes routine self-service password change as a desired product surface. `L2-CREDENTIALRESET01` replaces it with Owner-authorized one-time reset where the Member chooses the final password. One-Time External Sharing remains a separate later Layer 2 capability unless explicitly queued.
+**Foundation complete.** Exact `owner | member`, invite-only registration, Owner administration, disable/enable/archive/session revocation, Global Homepage Announcements, and Owner-assisted credential reset are green. ADR-024 retires the authenticated self-service password HTTP/UI path: the active Owner may issue a digest-only, 30-minute, one-time capability for an active or disabled Member, and the Member chooses the final password while session/auth-revision safety remains atomic. One-Time External Sharing remains a separate later Layer 2 capability unless explicitly queued.
 
 ### Layer 3 — Personal Scholarly Workspace & Scholarly Model
 

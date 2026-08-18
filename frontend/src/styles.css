@@ -104,6 +104,7 @@ button:disabled { cursor: wait; opacity: 0.55; }
 .login-card .brand { margin: 0 0 1.8rem; font-size: 1.05rem; }
 .login-card form { display: grid; gap: 0.6rem; }
 .login-card label { margin-top: 0.7rem; font-size: 0.85rem; font-weight: 640; }
+.login-help { margin: 1rem 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
 .login-language { margin-top: 1rem; display: flex; justify-content: flex-end; }
 
 input { width: 100%; min-height: 2.8rem; padding: 0.68rem 0.8rem; color: var(--ink); border: 1px solid #c9cfc7; border-radius: 0.5rem; background: #fbfcf9; }
@@ -493,7 +494,7 @@ input:hover { border-color: #a7b2a8; }
 @keyframes drop-overlay-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* Dialogs */
-.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop, .password-change-modal::backdrop, .scholarly-records-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
+.preview-modal::backdrop, .move-modal::backdrop, .new-folder-modal::backdrop, .account-administration-modal::backdrop, .announcement-administration-modal::backdrop, .scholarly-records-modal::backdrop { background: rgba(16, 28, 21, 0.62); }
 .move-modal { width: min(38rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto auto minmax(10rem, 1fr) auto; overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
 .move-modal[open] { display: grid; }
 .move-modal > header, .move-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; }
@@ -576,14 +577,6 @@ input:hover { border-color: #a7b2a8; }
 .invitation-history summary { color: var(--muted); cursor: pointer; font-size: 0.84rem; font-weight: 650; }
 .invitation-history[open] summary { color: var(--ink); }
 
-.password-change-modal { width: min(28rem, calc(100% - 2.5rem)); padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
-.password-change-modal[open] { display: block; }
-.password-change-modal > form { display: grid; }
-.password-change-modal header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--line); }
-.password-change-modal h2 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif; font-size: 1.15rem; }
-.password-change-body { display: grid; gap: 0.45rem; padding: 1.2rem; }
-.password-change-body label { color: var(--muted); font-size: 0.8rem; font-weight: 650; }
-.password-change-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.6rem; }
 
 .scholarly-records-modal { width: min(62rem, calc(100% - 2.5rem)); max-height: calc(100vh - 2.5rem); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; padding: 0; color: var(--ink); border: 0; border-radius: 0.8rem; background: var(--paper); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28); }
 .scholarly-records-modal[open] { display: grid; }
@@ -899,11 +892,6 @@ input:hover { border-color: #a7b2a8; }
   .account-administration-row { align-items: flex-start; }
   .account-administration-row .button, .account-administration-section-heading .button { min-height: 2.75rem; }
 
-  .password-change-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border-radius: 0; }
-  .password-change-modal header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }
-  .password-change-body { padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
-  .password-change-modal header .button { min-width: 2.75rem; min-height: 2.75rem; }
-  .password-change-actions .button { min-height: 2.75rem; }
 
   .scholarly-records-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border-radius: 0; }
   .scholarly-records-modal > header { padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; }

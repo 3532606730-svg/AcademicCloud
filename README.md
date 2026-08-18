@@ -16,7 +16,7 @@ The repository and Git are durable project memory. Chat is planning context only
 
 **Production:** exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` runs at `https://cloud.ajtlab.top`, schema v15 / migrations 1–15. Its product/runtime baseline is `ec6a79aedb201bd6164a7c68f859c1aa492c218a`; the exact release adds verification-only schema-head repairs and no runtime, migration, dependency, or infrastructure delta. Production remains a separate Owner-gated track.
 
-**Development baseline:** Core Drive, Accounts I, announcements, historical authenticated password change, repository/local OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, L1-UX03/L1-UX04 first-use polish, RF-LIBRARY01, and RF-LIBRARY02 are independently green. Schema head is append-only migration 015.
+**Development baseline:** Core Drive, Accounts I, announcements, repository/local OPS01A, RF-PLAN01, RF-AUDIT01, RF-OWNERSHIP01, RF-BULK01, RF-DOMAIN01, L1-UX03/L1-UX04 first-use polish, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, and L2-CREDENTIALRESET01 are independently green. Schema head is append-only migration 017; production remains separately at v15.
 
 **Current approved repository objective:**
 
@@ -90,7 +90,7 @@ Foundation complete:
 - Global Homepage Announcements;
 - bounded governance/security audit.
 
-Historical authenticated self-service password change exists in the deployed baseline, but ADR-022 supersedes it as a desired product surface. `L2-CREDENTIALRESET01` replaces it with Owner-authorized, short-lived, one-time reset capability and Member-chosen final password. No email/SMS/OAuth recovery infrastructure is planned.
+ADR-024 retires authenticated self-service password change from the development product surface. The active Owner can issue a digest-only, 30-minute, one-time reset link for an active or disabled Member; the Member chooses the final password, all old sessions are revoked atomically, and disabled state is preserved. No email/SMS/OAuth recovery infrastructure is introduced. The deployed production baseline remains unchanged until a separate Owner-gated release.
 
 ### Layer 3 — Personal Scholarly Workspace & Scholarly Model
 

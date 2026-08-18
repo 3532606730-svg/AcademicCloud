@@ -15,7 +15,7 @@ ADR-022 is the governing product correction.
 Execute only the following queue:
 
 1. `RF-SHAREDDEFAULT01` — **complete and green**; canonical shared Library, automatic Member intake, Owner direct admission, preserved private overlays/stable identities, and append-only migration 016.
-2. `L2-CREDENTIALRESET01` — remove authenticated self-service password change and replace it with Owner-authorized one-time credential reset, with no email/SMS infrastructure.
+2. `L2-CREDENTIALRESET01` — **complete and green**; authenticated self-service route/UI removed, Owner-issued digest-only one-time reset added, and atomic auth-revision/session invalidation preserved in migration 017.
 3. `L1-UX05` — correct information architecture and visual hierarchy; hide engineering entities/admin actions from the global shell; move audit to `操作记录`; fix stale-state folder recycle/delete UX without weakening CAS.
 4. STOP for Owner first-use review.
 
@@ -25,15 +25,14 @@ Verification must remain proportionate: focused changed-risk tests, one typechec
 
 ## Doing
 
-None between Epic checkpoints. `RF-SHAREDDEFAULT01` is complete; select `L2-CREDENTIALRESET01` only after the checkpoint is committed, pushed, and synchronized.
+None. `L2-CREDENTIALRESET01` is independently green and awaiting its clean checkpoint publication. Select `L1-UX05` only after local/remote equality is verified.
 
 ## Ready — Owner-Approved First-Use Correction
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 1 | `L2-CREDENTIALRESET01` | `tasks/ready/L2-CREDENTIALRESET01.md` | Owner-assisted single-use password reset; remove self-service change |
-| 2 | `L1-UX05` | `tasks/ready/L1-UX05.md` | premium/quiet information architecture + admin consolidation + stale-state delete repair |
-| 3 | STOP | — | Owner inspects real first-use behavior before resuming the research queue |
+| 1 | `L1-UX05` | `tasks/ready/L1-UX05.md` | premium/quiet information architecture + admin consolidation + stale-state delete repair |
+| 2 | STOP | — | Owner inspects real first-use behavior before resuming the research queue |
 
 ## Product Model — Authoritative Short Form
 
@@ -110,6 +109,7 @@ Any future production transition from account-owned corpus data to the canonical
 - `RF-LIBRARY01` — Library ownership/membership/holdings foundation.
 - `RF-LIBRARY02` — guarded contribution review and ownership promotion.
 - `RF-SHAREDDEFAULT01` — canonical default `资料库`, automatic active-account access, Member pending upload intake, Owner direct admission, private Favorite preservation, and transactional v15→v16 corpus transition; repository verification green, production untouched.
+- `L2-CREDENTIALRESET01` — Owner-issued 30-minute digest-only reset capability, deterministic reissue supersession, Member-chosen final password, atomic capability consumption/auth-revision/session revocation, retired self-service HTTP/UI, and append-only migration 017; production untouched.
 - `L1-UX04`, `L2-ACCOUNTARCHIVE01`, `L2-ADMINPOLISH01` — first-use polish already complete.
 - `PROD-05A` — exact release `25cdab1…`, schema v15, production verification green.
 

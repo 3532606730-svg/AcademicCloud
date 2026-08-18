@@ -3,6 +3,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js";
 import { PasswordKdfOverloadedError } from "../auth/password-hasher.js";
 import {
+  CredentialResetError,
+  type CredentialResetService,
+} from "../auth/credential-reset-service.js";
+import {
   AccountAdministrationError,
   AccountAdministrationService,
   AccountConflictError,
@@ -89,6 +93,7 @@ function mapAdministrationError(error: unknown, reply: FastifyReply) {
 
 export interface AccountsHttpOptions {
   service: AccountAdministrationService;
+  credentialResetService?: CredentialResetService;
   registrationRateLimitMax?: number;
 }
 
@@ -250,4 +255,49 @@ export async function registerAccountsHttp(app: FastifyInstance, options: Accoun
       }
     },
   );
+
+  if (options.credentialResetService) {
+    app.post<{ Params: IdParameters }>(
+      "/api/accounts/:id/credential-reset",
+      {
+        preHandler: app.authenticate,
+        schema: {
+          params: {
+            type: "object",
+            additionalProperties: false,
+            required: ["id"],
+            properties: { id: { type: "string", minLength: 1, maxLength: 128 } },
+          },
+        },
+      },
+      async (request, reply) => {
+        if (!requireOwnerRequest(request, reply, () => options.credentialResetService!.recordIssueAttempt(
+          request.authAccount!, new AuthorizationDeniedError(),
+        ))) return;
+        try {
+          const created = options.credentialResetService!.issue(request.authAccount!, request.params.id);
+          writeAudit(request, "accounts.credential_reset_issue", "succeeded", {
+            actorAccountId: request.authAccount!.id,
+            targetAccountId: request.params.id,
+          });
+          return reply.code(201).send({
+            reset: {
+              id: created.reset.id,
+              accountId: created.reset.accountId,
+              createdAt: created.reset.createdAt.toISOString(),
+              expiresAt: created.reset.expiresAt.toISOString(),
+            },
+            rawToken: created.rawToken,
+          });
+        } catch (error: unknown) {
+          options.credentialResetService!.recordIssueAttempt(request.authAccount!, error);
+          if (error instanceof CredentialResetError) {
+            if (error.code === "not_found") return reply.code(404).send({ error: "not_found" });
+            return reply.code(409).send({ error: error.code });
+          }
+          throw error;
+        }
+      },
+    );
+  }
 }
