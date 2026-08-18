@@ -72,6 +72,7 @@ Complete. Production runs exact release `25cdab1d0e2188bf36d1324b1e53972a1f9cda8
 - Repaired only stale schema-head expectations discovered by the exact artifact workflow; final candidate `25cdab1…` has the same product runtime, migrations, dependencies, and infrastructure as `ec6a79a…`.
 - Passed GitHub Actions run `32098001755`: backend `251/251`, frontend `165/165`, production build, Linux native-module/runtime checks, compiled acceptance, artifact publication, and independent fresh-runner download/verification.
 - Completed read-only production preflight, created the fresh bound schema-v8 rollback generation, encrypted and pushed it off-host, and proved the off-host ciphertext/receipt hashes at backup repository commit `b0238ba…`.
+- Recorded the deployed `recovery-main.js` symlink-entry quirk after the first protected invocation exited without creating files; no mutation occurred, and the verified immutable-release invocation then created/verified the no-clobber backup and receipt. The routine `backup-main.js` entrypoint is unaffected.
 - Rehearsed v8→v15 once with exact 009–015/zero second pass and completed full synthetic Library authorization/submission/approval acceptance on the isolated copy using in-memory storage. Removed the rehearsal stage exactly.
 - Stopped the service, atomically selected `25cdab1…`, applied exactly migrations 009–015 once, restarted without changing enablement or policy, and retained prior release `34a2eada…` for the rollback pair.
 - Verified live schema/history/checksums 1–15, integrity `ok`, zero foreign-key violations, unchanged preexisting aggregates, zero live Library rows/test junk, health/readiness/public assets, anonymous Library denial, zero restarts, zero post-release app/OOM findings, unchanged infrastructure hashes, and loopback-only API binding.
@@ -83,7 +84,7 @@ None. The bounded production window is exhausted.
 
 ## Blockers
 
-None. Two initial exact-workflow runs failed safely on stale verification assertions; the repairs were verification-only and the final exact artifact passed. A rehearsal fixture typo was confined to the disposable isolated copy and repaired without another migration rehearsal or any live-data effect.
+None. Two initial exact-workflow runs failed safely on stale verification assertions; the repairs were verification-only and the final exact artifact passed. The first recovery-receipt invocation through the `current` symlink produced no files and was safely repeated through the exact immutable release path, now recorded in the runbook. A rehearsal fixture typo was confined to the disposable isolated copy and repaired without another migration rehearsal or any live-data effect.
 
 ## Last Verification
 

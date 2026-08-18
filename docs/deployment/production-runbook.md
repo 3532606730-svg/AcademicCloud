@@ -180,6 +180,25 @@ database and migrations paths against the approved change record.
    ```
 
 3. Copy the verified backup to the approved encrypted off-host destination before migration.
+
+   When using the OPS01A `recovery-main.js backup-create` / `receipt-verify`
+   boundary instead of `backup-main.js`, invoke the script through the exact
+   immutable release path, not the `/opt/academiccloud/current` symlink:
+
+   ```bash
+   ACADEMICCLOUD_RELEASE_ROOT="$(readlink -f /opt/academiccloud/current)"
+   academiccloud_op /usr/bin/node \
+     "$ACADEMICCLOUD_RELEASE_ROOT/backend/dist/operations/recovery-main.js" \
+     backup-create --backup=<path> --receipt=<path> --source-commit=<commit>
+   ```
+
+   Releases through `25cdab1d0e2188bf36d1324b1e53972a1f9cda8e` compare
+   the process entry path with the module's real path before executing this
+   command. Addressing it through `current` therefore exits without publishing
+   a backup or receipt. The exact immutable path preserves the reviewed runner,
+   configured database/migrations paths, no-clobber behavior, and receipt
+   verification. `backup-main.js` does not have this entry-guard quirk.
+
 4. Stop the API, switch `current`, redefine `academiccloud_op` so its working directory resolves through the new `current`, run the new compiled migration entry through it, start, and verify health/readiness plus the critical path. File uploads/downloads remain approval-gated live OSS tests.
    The production application itself NEVER applies migrations at startup: it
    opens the database, asserts the schema is initialized and current, and
