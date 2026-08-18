@@ -41,6 +41,9 @@ const TARGET_BY_ACTION: Readonly<Record<AuditEventKind, string | null>> = {
   "libraries.contribution_withdraw": "contribution",
   "libraries.resource_admit": "contribution",
   "libraries.corpus_transition": "library",
+  "libraries.metadata_update": "scholarly_record",
+  "libraries.authority_create": "authority",
+  "libraries.authority_update": "authority",
   "drive.upload_activate": "file",
   "drive.folder_recycle": "folder",
   "drive.folder_restore": "folder",
@@ -147,6 +150,11 @@ function assertAuditShape(input: AuditRecordInput): void {
       if (input.actorKind !== "system" || input.outcome !== "succeeded") {
         throw new TypeError("invalid corpus transition audit actor/outcome");
       }
+      return;
+    case "libraries.metadata_update":
+    case "libraries.authority_create":
+    case "libraries.authority_update":
+      if (!accountActor) throw new TypeError("invalid scholarly metadata audit actor");
       return;
     case "drive.upload_activate":
     case "drive.file_purge_request":

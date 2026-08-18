@@ -61,12 +61,13 @@ export type AuditEventKind =
   | "announcements.create" | "announcements.edit" | "announcements.publish" | "announcements.unpublish" | "announcements.delete"
   | "libraries.create" | "libraries.membership_add" | "libraries.membership_change" | "libraries.membership_remove"
   | "libraries.contribution_submit" | "libraries.contribution_approve" | "libraries.contribution_reject" | "libraries.contribution_withdraw"
-  | "libraries.resource_admit" | "libraries.corpus_transition"
+  | "libraries.resource_admit" | "libraries.corpus_transition" | "libraries.metadata_update"
+  | "libraries.authority_create" | "libraries.authority_update"
   | "drive.upload_activate" | "drive.folder_recycle" | "drive.folder_restore"
   | "drive.file_recycle" | "drive.file_restore" | "drive.file_purge_request" | "drive.file_purge_complete";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
 export type AuditActorKind = "account" | "system" | "anonymous";
-export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "credential_reset" | "file" | "folder";
+export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "credential_reset" | "file" | "folder" | "scholarly_record" | "authority";
 export type AuditReasonCode =
   | "invalid_credentials" | "invalid_current_password" | "password_change_conflict" | "password_unchanged"
   | "invalid_invitation" | "login_unavailable" | "authorization_denied" | "not_found" | "invalid_target"
@@ -203,6 +204,7 @@ export interface LibraryMember {
 export interface LibraryHolding {
   recordId: string;
   recordLabel: string;
+  canonicalTitle: string | null;
   artifactId: string;
   versionId: string;
   version: string;
@@ -213,6 +215,59 @@ export interface LibraryHolding {
     sizeBytes: number;
     updatedAt: string;
   };
+}
+
+export type MaterialType = "book" | "article" | "manuscript" | "inscription" | "archival_document";
+export type AuthorityType = "person" | "place" | "language" | "work" | "institution";
+export type AuthorityRole =
+  | "author" | "editor" | "translator" | "compiler" | "scribe" | "sender" | "recipient" | "creator" | "contributor"
+  | "publication_place" | "creation_place" | "discovery_place" | "content_language" | "original_language"
+  | "container_work" | "series_work" | "source_work" | "publisher" | "holding_institution" | "issuing_body";
+export type MetadataTypeFields = Partial<Record<
+  | "editionStatement" | "volumeStatement" | "issueStatement" | "locator"
+  | "shelfmark" | "supportStatement" | "extentStatement" | "scriptStatement"
+  | "objectType" | "materialStatement" | "dimensionsStatement"
+  | "documentType" | "fondsOrCollection" | "seriesStatement" | "referenceCode",
+  string
+>>;
+export interface MetadataIdentifier { scheme: string; value: string; }
+export interface LibraryAuthority {
+  id: string;
+  type: AuthorityType;
+  canonicalLabel: string;
+  aliases: string[];
+  version: string;
+}
+export interface LibraryMetadataAuthorityLink extends LibraryAuthority { role: AuthorityRole; }
+export interface LibraryMetadata {
+  contractVersion: 1;
+  materialType: MaterialType;
+  canonicalTitle: string;
+  subtitle: string | null;
+  alternativeTitles: string[];
+  dateStatement: string | null;
+  identifiers: MetadataIdentifier[];
+  typeFields: MetadataTypeFields;
+  authorityLinks: LibraryMetadataAuthorityLink[];
+}
+export interface LibraryHoldingDetails {
+  displayTitle: string;
+  originalFilename: string;
+  metadataVersion: string;
+  metadata: LibraryMetadata | null;
+  canEditMetadata: boolean;
+  file: Pick<LibraryHolding["file"], "id" | "mediaType" | "sizeBytes" | "updatedAt">;
+}
+export interface LibraryMetadataInput {
+  metadataVersion: string;
+  materialType: MaterialType;
+  canonicalTitle: string;
+  subtitle: string | null;
+  alternativeTitles: string[];
+  dateStatement: string | null;
+  identifiers: MetadataIdentifier[];
+  typeFields: MetadataTypeFields;
+  authorityLinks: Array<{ authorityId: string; role: AuthorityRole }>;
 }
 
 export interface LibraryRecycleFile {
@@ -332,6 +387,10 @@ export interface AcademicCloudApi {
   changeLibraryMemberRole(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember>;
   removeLibraryMember(libraryId: string, accountId: string): Promise<void>;
   listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]>;
+  getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
+  updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails>;
+  listLibraryAuthorities(libraryId: string, type: AuthorityType, signal?: AbortSignal): Promise<LibraryAuthority[]>;
+  createLibraryAuthority(libraryId: string, input: { type: AuthorityType; canonicalLabel: string; aliases: string[] }): Promise<LibraryAuthority>;
   createLibraryDownload(libraryId: string, fileId: string, disposition?: "attachment" | "inline"): Promise<DownloadAuthorization>;
   recycleLibraryHolding(libraryId: string, fileId: string, version: string): Promise<void>;
   listLibraryRecycle(libraryId: string, signal?: AbortSignal): Promise<LibraryRecycleFile[]>;
@@ -408,7 +467,7 @@ export class ApiClient implements AcademicCloudApi {
   // JSON body request: the body is REQUIRED by the type signature, so an
   // accidental "Content-Type: application/json with an empty body" request
   // (rejected by the Fastify JSON parser with 400) cannot be constructed.
-  #jsonBody<T>(path: string, method: "POST" | "PATCH", body: unknown): Promise<T> {
+  #jsonBody<T>(path: string, method: "POST" | "PATCH" | "PUT", body: unknown): Promise<T> {
     return this.#request<T>(path, {
       method,
       headers: { "Content-Type": "application/json" },
@@ -656,6 +715,39 @@ export class ApiClient implements AcademicCloudApi {
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings`,
       signal ? { signal } : {},
     )).holdings;
+  }
+
+  getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails> {
+    return this.#request<LibraryHoldingDetails>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/details`,
+      signal ? { signal } : {},
+    );
+  }
+
+  updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails> {
+    return this.#jsonBody<LibraryHoldingDetails>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata`,
+      "PUT",
+      input,
+    );
+  }
+
+  async listLibraryAuthorities(libraryId: string, type: AuthorityType, signal?: AbortSignal): Promise<LibraryAuthority[]> {
+    return (await this.#request<{ authorities: LibraryAuthority[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/authorities?type=${encodeURIComponent(type)}`,
+      signal ? { signal } : {},
+    )).authorities;
+  }
+
+  async createLibraryAuthority(
+    libraryId: string,
+    input: { type: AuthorityType; canonicalLabel: string; aliases: string[] },
+  ): Promise<LibraryAuthority> {
+    return (await this.#jsonBody<{ authority: LibraryAuthority }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/authorities`,
+      "POST",
+      input,
+    )).authority;
   }
 
   async createLibraryDownload(

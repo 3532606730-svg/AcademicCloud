@@ -27,6 +27,7 @@ export interface LibraryHolding {
   libraryId: string;
   recordId: string;
   recordLabel: string;
+  canonicalTitle: string | null;
   artifactId: string;
   artifactCreatedAt: Date;
   versionId: string;

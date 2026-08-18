@@ -408,6 +408,51 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[5]?.[0]).toBe("/api/libraries/library%20%2F%20one/contributions/contribution%20%2F%20one/download?disposition=inline");
   });
 
+  it("uses exact Library/file metadata and domain-authority contracts without authority injection", async () => {
+    const detail = {
+      displayTitle: "Canonical title",
+      originalFilename: "source.pdf",
+      metadataVersion: "m".repeat(43),
+      metadata: null,
+      canEditMetadata: true,
+      file: { id: "file / one", mediaType: "application/pdf", sizeBytes: 12, updatedAt: "2026-08-18T00:00:00.000Z" },
+    };
+    const authority = { id: "authority-1", type: "person" as const, canonicalLabel: "Author", aliases: [], version: "a".repeat(43) };
+    const input = {
+      metadataVersion: detail.metadataVersion,
+      materialType: "book" as const,
+      canonicalTitle: "Canonical title",
+      subtitle: null,
+      alternativeTitles: [],
+      dateStatement: null,
+      identifiers: [],
+      typeFields: { editionStatement: "First edition" },
+      authorityLinks: [{ authorityId: authority.id, role: "author" as const }],
+    };
+    const responses = [
+      new Response(JSON.stringify(detail), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ ...detail, metadataVersion: "n".repeat(43) }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ authorities: [authority], nextBeforeId: null }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ authority }), { status: 201, headers: { "content-type": "application/json" } }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+
+    await api.getLibraryHoldingDetails("library / one", "file / one");
+    await api.updateLibraryHoldingMetadata("library / one", "file / one", input);
+    await api.listLibraryAuthorities("library / one", "person");
+    await api.createLibraryAuthority("library / one", { type: "person", canonicalLabel: "Author", aliases: [] });
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/details");
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata");
+    expect(fetcher.mock.calls[1]?.[1]?.method).toBe("PUT");
+    expect(fetcher.mock.calls[1]?.[1]?.body).toBe(JSON.stringify(input));
+    expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).not.toMatchObject({ recordId: expect.anything(), ownerDomainId: expect.anything(), actorAccountId: expect.anything() });
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/libraries/library%20%2F%20one/authorities?type=person");
+    expect(fetcher.mock.calls[3]?.[0]).toBe("/api/libraries/library%20%2F%20one/authorities");
+    expect(fetcher.mock.calls[3]?.[1]?.body).toBe(JSON.stringify({ type: "person", canonicalLabel: "Author", aliases: [] }));
+  });
+
   it("uses scoped Library recycle/list/restore contracts with opaque versions", async () => {
     const recycled = {
       version: "r".repeat(43),

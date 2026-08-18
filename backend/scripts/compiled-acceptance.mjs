@@ -53,6 +53,7 @@ try {
   );
   const compiledFileId = `compiled-file-${randomBytes(8).toString("hex")}`;
   seedCompiledFile(databasePath, account.account.id, compiledFileId);
+  const compiledHolding = seedCompiledLibraryHolding(databasePath, account.account.id);
 
   application = startApplication();
   const health = await waitForJson(`http://127.0.0.1:${port}/api/health`);
@@ -69,6 +70,36 @@ try {
   if (loginResponse.status !== 200) throw new Error("compiled login failed");
   const cookie = loginResponse.headers.get("set-cookie")?.split(";", 1)[0];
   if (!cookie?.startsWith("__Host-ac_session=")) throw new Error("compiled session cookie missing");
+  const metadataBefore = await fetchJson(
+    `http://127.0.0.1:${port}/api/libraries/canonical-library/holdings/${compiledHolding.fileId}/details`,
+    { headers: { cookie } },
+  );
+  const compiledAuthor = await fetchJson(
+    `http://127.0.0.1:${port}/api/libraries/canonical-library/authorities`,
+    {
+      method: "POST",
+      headers: { cookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
+      body: JSON.stringify({ type: "person", canonicalLabel: "Compiled Author", aliases: [] }),
+    },
+  );
+  const compiledMetadata = await fetchJson(
+    `http://127.0.0.1:${port}/api/libraries/canonical-library/holdings/${compiledHolding.fileId}/metadata`,
+    {
+      method: "PUT",
+      headers: { cookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
+      body: JSON.stringify({
+        metadataVersion: metadataBefore.metadataVersion,
+        materialType: "book",
+        canonicalTitle: "Compiled Canonical Title",
+        subtitle: null,
+        alternativeTitles: [],
+        dateStatement: "2026",
+        identifiers: [{ scheme: "local", value: "compiled-1" }],
+        typeFields: { editionStatement: "First edition" },
+        authorityLinks: [{ authorityId: compiledAuthor.authority.id, role: "author" }],
+      }),
+    },
+  );
   const invitation = await fetchJson(`http://127.0.0.1:${port}/api/accounts/invitations`, {
     method: "POST",
     headers: { cookie, origin: environment.APP_ORIGIN },
@@ -148,6 +179,10 @@ try {
   });
   const scholarlyRecordAfterRestart = await fetchJson(
     `http://127.0.0.1:${port}/api/research/records/${createdRecord.record.id}`,
+    { headers: { cookie } },
+  );
+  const metadataAfterRestart = await fetchJson(
+    `http://127.0.0.1:${port}/api/libraries/canonical-library/holdings/${compiledHolding.fileId}/details`,
     { headers: { cookie } },
   );
   const retiredPasswordChange = await fetch(`http://127.0.0.1:${port}/api/auth/password`, {
@@ -237,6 +272,10 @@ try {
     `http://127.0.0.1:${port}/api/research/records/${createdRecord.record.id}`,
     { headers: { cookie } },
   );
+  const restoredMetadata = await fetchJson(
+    `http://127.0.0.1:${port}/api/libraries/canonical-library/holdings/${compiledHolding.fileId}/details`,
+    { headers: { cookie } },
+  );
   await stopApplication(application);
   application = undefined;
   const redeployMigration = runJson(join(distDirectory, "persistence", "sqlite", "migrate.js"));
@@ -267,6 +306,10 @@ try {
       attachedArtifact.version.id,
       compiledFileId,
     ),
+    canonicalMetadataSurvivedRestart:
+      metadataAfterRestart.displayTitle === "Compiled Canonical Title"
+      && metadataAfterRestart.originalFilename === "compiled-acquisition.pdf"
+      && metadataAfterRestart.metadata?.authorityLinks?.[0]?.canonicalLabel === "Compiled Author",
     selfServicePasswordRouteRetired: retiredPasswordChange.status === 404,
     credentialResetRevokedOldMemberSession: revokedMemberSession.status === 401,
     freshMemberLoginAfterCredentialReset: newMemberLoginResponse.status === 200,
@@ -299,9 +342,13 @@ try {
       attachedArtifact.version.id,
       compiledFileId,
     ),
+    restoredCanonicalMetadataValid:
+      restoredMetadata.displayTitle === compiledMetadata.displayTitle
+      && restoredMetadata.originalFilename === "compiled-acquisition.pdf"
+      && restoredMetadata.metadata?.identifiers?.[0]?.value === "compiled-1",
     redeployMigrationCount: redeployMigration.appliedVersions.length,
   };
-  assert.equal(result.firstMigrationCount, 17);
+  assert.equal(result.firstMigrationCount, 18);
   assert.equal(result.provisionedLogin, "CompiledAcceptance");
   assert.equal(result.health, "ok");
   assert.equal(result.readiness, "ready");
@@ -310,6 +357,7 @@ try {
   assert.equal(result.scholarlyRecordSurvivedRestart, true);
   assert.equal(result.scholarlyDetachReattachStable, true);
   assert.equal(result.scholarlyIdentitySurvivedRestart, true);
+  assert.equal(result.canonicalMetadataSurvivedRestart, true);
   assert.equal(result.selfServicePasswordRouteRetired, true);
   assert.equal(result.credentialResetRevokedOldMemberSession, true);
   assert.equal(result.freshMemberLoginAfterCredentialReset, true);
@@ -324,6 +372,7 @@ try {
   assert.equal(result.restoredAnnouncementValid, true);
   assert.equal(result.restoredScholarlyRecordValid, true);
   assert.equal(result.restoredScholarlyIdentityValid, true);
+  assert.equal(result.restoredCanonicalMetadataValid, true);
   assert.equal(result.redeployMigrationCount, 0);
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } finally {
@@ -364,6 +413,61 @@ function seedCompiledFile(path, accountId, fileId) {
       WHERE ownership_domains.kind = 'account' AND ownership_domains.account_id = @accountId
     `).run({ fileId, accountId, objectKey: `compiled/${fileId}`, now });
     if (inserted.changes !== 1) throw new Error("compiled scholarly file seed failed");
+  } finally {
+    database.close();
+  }
+}
+
+function seedCompiledLibraryHolding(path, accountId) {
+  const database = new Database(path);
+  const suffix = randomBytes(8).toString("hex");
+  const fileId = `compiled-library-file-${suffix}`;
+  const recordId = `compiled-library-record-${suffix}`;
+  const artifactId = `compiled-library-artifact-${suffix}`;
+  const versionId = `compiled-library-version-${suffix}`;
+  try {
+    database.pragma("foreign_keys = ON");
+    const now = new Date().toISOString();
+    database.transaction(() => {
+      database.prepare(`
+        INSERT INTO files (
+          id, owner_domain_id, uploaded_by_account_id, folder_id, display_name,
+          storage_provider, object_key, media_type, size_bytes, checksum_algorithm,
+          checksum, state, revision, created_at, updated_at, activated_at,
+          deleted_at, purged_at, recycle_group_id
+        ) VALUES (
+          @fileId, 'library:canonical-library', @accountId, NULL,
+          'compiled-acquisition.pdf', 'aliyun-oss', @objectKey,
+          'application/pdf', 8, 'md5', '1B2M2Y8AsgTpgAmY7PhCfg==',
+          'active', 0, @now, @now, @now, NULL, NULL, NULL
+        )
+      `).run({ fileId, accountId, objectKey: `compiled-library/${fileId}`, now });
+      database.prepare(`
+        INSERT INTO scholarly_records (
+          id, owner_domain_id, created_by_account_id, label, created_at, updated_at
+        ) VALUES (
+          @recordId, 'library:canonical-library', @accountId,
+          'compiled legacy label', @now, @now
+        )
+      `).run({ recordId, accountId, now });
+      database.prepare(`
+        INSERT INTO scholarly_artifacts (
+          id, owner_domain_id, record_id, attachment_state, created_at, updated_at
+        ) VALUES (
+          @artifactId, 'library:canonical-library', @recordId,
+          'detached', @now, @now
+        )
+      `).run({ artifactId, recordId, now });
+      database.prepare(`
+        INSERT INTO scholarly_artifact_versions (
+          id, owner_domain_id, artifact_id, stored_file_id, created_at, updated_at
+        ) VALUES (
+          @versionId, 'library:canonical-library', @artifactId, @fileId, @now, @now
+        )
+      `).run({ versionId, artifactId, fileId, now });
+      database.prepare("UPDATE scholarly_artifacts SET attachment_state = 'attached' WHERE id = ?").run(artifactId);
+    })();
+    return { fileId, recordId, artifactId, versionId };
   } finally {
     database.close();
   }

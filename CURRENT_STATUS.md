@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**`L1-UX06 — Canonical Catalogue Presentation Repair` is complete and independently green after its bounded Owner-review closure repair. Repository execution is stopped for Owner/ChatGPT review. Production remained closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
+**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The bounded continuation has reached STOP. Production remained closed and unchanged at exact release `855b63c49f12f3375972774e7bc7385088b0495e`, schema v17/history 001–017.**
 
 The governing product rule remains ADR-022:
 
@@ -12,9 +12,22 @@ The governing product rule remains ADR-022:
 
 L1-UX06 now renders canonical Library holdings and Owner-managed folder/account rows through one existing catalogue table, restores established file-type badges and compact row actions, suppresses duplicate filename-derived labels and redundant descriptive copy, and supplies a complete manager-only Library-domain recycle → normal Recycle list → CAS restore lifecycle. Account-private and Library governance recycle authority remain distinct internally.
 
-ADR-025 separately records the later bilingual title/copyright/CIP/front-matter evidence model and keeps OCR gated. It is not part of L1-UX06 implementation.
+ADR-026 records the implemented canonical metadata, minimal authority, CAS, non-lossy type-transition, privacy, and filename-separation contract. ADR-025 remains the later suggestion/evidence model and keeps extraction/OCR outside this completed Epic.
 
-## Completed Task
+## Execution State
+
+`tasks/done/RF-META01.md`
+
+There is no active task. The strict v1 contract supports Book, Article, Manuscript, Inscription, and Archival Document through ordinary `资料详情`. Canonical titles are now the preferred catalogue title, with accepted acquisition/display filename fallback and a separate `原始文件名` fact. Effective Members read; only effective Library managers mutate.
+
+Completed result:
+- append-only migration 018 advances the development schema from v17 to v18 without metadata backfill or changes to existing Record/Artifact/Version/file identity, accepted filename, object key/checksum, provenance, Favorites, or private overlays;
+- exact Library/holding detail and metadata routes derive actor, membership, domain, holding, lineage, and audit identity server-side and use an independent opaque metadata CAS;
+- five fixed templates, five Library-domain authority types, typed same-domain links, authority CAS, strict validation, and explicit two-save non-lossy material-type transitions are implemented;
+- the normal catalogue prefers canonical title and `资料详情` provides Member read-only / effective-manager edit behavior while Preview, Download, Favorites, and recycle retain stable file identity and their existing authorization/CAS boundaries;
+- production was not contacted, migrated, deployed, or otherwise changed.
+
+## Completed Dependency
 
 `tasks/done/L1-UX06.md`
 
@@ -31,13 +44,14 @@ Completed result:
 
 ```text
 L1-UX06   ← DONE
-→ STOP for Owner/ChatGPT review
+→ RF-META01   ← DONE
+→ STOP   ← REACHED
 ```
 
-`RF-META01`, `RF-METASUGGEST01`, and `RF-SEARCH01` remain preserved Ready cards but were not started in this run. The later Pre-OCR queue remains parked.
+RF-METASUGGEST01, RF-SEARCH01, and the later Pre-OCR queue remain parked and require new explicit Owner authorization.
 
-### RF-META01 — Preserved, not started
-Canonical metadata/templates and minimal authority records surface through normal `资料详情`; original filenames remain provenance/detail rather than the only human-facing title.
+### RF-META01 — Complete
+ADR-026 is implemented through append-only repository schema v18, exact holding-scoped APIs, and normal `资料详情`; no production migration was performed or authorized.
 
 ### RF-METASUGGEST01 — Preserved, not started
 For PDFs with a usable existing text layer, bounded discovery uses title/copyright/CIP/colophon/front-matter evidence, embedded metadata and filename fallbacks. Default page discovery is first 15 pages + last 5 pages. Pure scanned PDFs return `OCR deferred`; this round does not execute OCR.
@@ -85,8 +99,8 @@ Any later production release remains a separate Owner gate.
 
 ## Verification Policy
 
-The bounded closure repair is green: focused backend Library service/HTTP 6/6; focused frontend App/API 113/113; backend/frontend typechecks and `git diff --check` pass (line-ending notices only). Independent review found one active-Recycle re-click loading defect, the repair and regression test are green, and follow-up review found no material findings. No broad historical/production suite, production build, PROD-05A/PROD-06A acceptance, or migration rehearsal was replayed.
+RF-META01 is green on the exact closing tree: backend 268/268 and frontend 182/182 tests; both typechecks; both release builds; migration 018 v17→v18 preservation/idempotency; and compiled restart/backup/restore acceptance with `firstMigrationCount: 18`, canonical metadata retained across restart/restore, readiness green, and `redeployMigrationCount: 0`. Independent review found one test-only unknown-template fixture/query defect, which was repaired; follow-up review found no remaining P0–P2 issue. `git diff --check` is green apart from expected Windows line-ending notices. No production or broad historical production acceptance was contacted or replayed.
 
 ## Next Action
 
-STOP for independent Owner/ChatGPT review. Do not start RF-META01 or contact production without new Owner direction.
+STOP for independent Owner/ChatGPT review. Do not start RF-METASUGGEST01, RF-SEARCH01, another Pre-OCR task, or any production work without new explicit Owner authorization.

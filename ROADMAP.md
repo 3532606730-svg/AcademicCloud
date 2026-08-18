@@ -56,16 +56,17 @@ Actual use after PROD-06A confirmed the authority/data model but exposed a narro
 
 Owner review also established that cleaner scholarly titles and basic catalogue search must arrive in the same near-term round. ADR-025 records the bilingual front-matter bibliographic evidence model and keeps OCR separately gated.
 
-The durable round sequence remains:
+The durable round sequence for the current Owner continuation is:
 
 ```text
 L1-UX06   ← COMPLETE
-→ STOP for Owner/ChatGPT review
+→ RF-META01   ← COMPLETE
+→ STOP for Owner/ChatGPT review   ← REACHED
 
-Preserved future cards: RF-META01 → RF-METASUGGEST01 → RF-SEARCH01
+Preserved later cards: RF-METASUGGEST01 → RF-SEARCH01
 ```
 
-The L1-UX06 run did not start the preserved future cards. A new Owner continuation is required before RF-META01; completing RF-SEARCH01 in any later run would not automatically authorize the later Pre-OCR cards.
+The Owner-authorized RF-META01 continuation is complete. RF-METASUGGEST01, RF-SEARCH01, and the later Pre-OCR cards remain preserved but unauthorized.
 
 ### L1-UX06 — Canonical Catalogue Presentation Repair — Complete
 
@@ -82,7 +83,7 @@ Completed outcome:
 
 No permanent deletion, production cleanup or broad visual redesign.
 
-### RF-META01 — Canonical Metadata / 资料详情
+### RF-META01 — Canonical Metadata / 资料详情 — Complete
 
 Add bounded versioned canonical metadata contracts and minimal authority records for Book, Article, Manuscript, Inscription and Archival Document.
 
@@ -173,7 +174,7 @@ Repository structure, persistent project memory, ADR/task workflow, local enviro
 
 ## Layer 1 — Core Resource Handling
 
-**Status:** Foundation and the focused L1-UX06 catalogue repair are complete; STOP for Owner review.
+**Status:** Foundation, L1-UX06, and RF-META01 are complete; STOP is in force after the RF-META01 checkpoint.
 
 Completed foundations include SQLite/auth/storage abstraction, file/folder lifecycle, responsive frontend, Favorites, bulk operations, recursive recycle/restore, duplicate-name UX, upload recovery, mobile/fullscreen Preview, sticky navigation, shared-corpus authority and first-use shell repair.
 
@@ -192,15 +193,15 @@ Later optional backlog includes one-time external sharing if separately reopened
 
 ## Layer 3 — Scholarly Workspace and Model
 
-**Status:** L1-UX06 is complete. Canonical metadata/suggestion/search and the remaining personal-workspace cards are preserved but not active.
+**Status:** L1-UX06 and canonical metadata RF-META01 are complete. Suggestion/search and the remaining personal-workspace cards are preserved but not active.
 
 Stable Scholarly Record / Artifact / Artifact Version identities already exist.
 
 Completed:
 - `L1-UX06` catalogue presentation/lifecycle.
+- `RF-META01` canonical metadata/templates/minimal Library-domain authorities through ordinary `资料详情`.
 
 Preserved future sequence, requiring Owner continuation:
-- `RF-META01` canonical metadata/templates/minimal authorities;
 - `RF-METASUGGEST01` bilingual front-matter evidence suggestions;
 - `RF-SEARCH01` authority-scoped catalogue search.
 
@@ -290,7 +291,7 @@ Preserved but non-blocking:
 Only:
 
 ```text
-STOP for Owner/ChatGPT review after completed L1-UX06
+STOP for Owner/ChatGPT review
 ```
 
-RF-META01 and later cards require new Owner continuation. No current authority exists for production contact/mutation, main merge, permanent deletion, real-data cleanup, OCR execution, whole-book text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN/web lookup or AI extraction.
+RF-META01 is complete and no repository Epic is active. Later cards require new Owner continuation. No authority exists for production contact/mutation, main merge, permanent deletion, real-data cleanup, OCR execution, whole-book text extraction, full-text indexing, embeddings, retrieval, RAG, external metadata services, ISBN/web lookup or AI extraction.

@@ -4,33 +4,33 @@
 
 ## Current Phase
 
-**`L1-UX06 — Canonical Catalogue Presentation Repair` is complete and independently green after its bounded Owner-review closure repair. Repository execution is stopped for Owner/ChatGPT review. Production remains exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017 and was never contacted by this task.**
+**`RF-META01 — Canonical Metadata, Templates, and Minimal Authorities` is complete and independently green. The RF-META01-only continuation has reached STOP. Production remained closed and exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017.**
 
-The canonical shared-corpus authority and catalogue presentation/lifecycle repair are green: root `资料库` uses one established catalogue table for holdings and Owner-managed rows, restores file badges/actions, and provides a manager-only Library-domain recycle → Recycle list → CAS restore lifecycle without widening Member authority or exposing Library permanent delete.
+The canonical shared-corpus authority, catalogue presentation/lifecycle repair, and canonical scholarly metadata destination are green: root `资料库` uses one established catalogue table, prefers canonical title with accepted-filename fallback, exposes ordinary `资料详情`, and retains the manager-only Library-domain recycle → Recycle list → CAS restore lifecycle without widening Member authority or exposing Library permanent delete.
 
 Verification remains proportionate: changed-risk tests and focused independent review only. Do not replay PROD-05A/PROD-06A or broad historical production acceptance.
 
 ## Doing
 
-None. The authorized L1-UX06 run is complete and stopped.
+None. The authorized objective is exhausted at STOP.
 
-## Ready — Preserved, Not Started
+## Parked — Preserved, Not Authorized
 
 | Order | Task | Task card | Bounded result |
 |---:|---|---|---|
-| 1 | RF-META01 | `tasks/ready/RF-META01.md` | Canonical metadata/templates and `资料详情`; original filename retained as detail/provenance |
-| 2 | RF-METASUGGEST01 | `tasks/ready/RF-METASUGGEST01.md` | Bounded Chinese/English title/copyright/CIP/colophon + embedded-metadata + filename evidence suggestions; source/page/confidence visible; OCR deferred |
-| 3 | RF-SEARCH01 | `tasks/ready/RF-SEARCH01.md` | Authority-scoped catalogue name/metadata search field; no OCR/full-text claim |
-| 4 | STOP | — | Independent Owner/ChatGPT review before any later Pre-OCR card or production gate |
+| 1 | RF-METASUGGEST01 | `tasks/ready/RF-METASUGGEST01.md` | Preserved only; not authorized in this run |
+| 2 | RF-SEARCH01 | `tasks/ready/RF-SEARCH01.md` | Preserved only; not authorized in this run |
+| 3 | STOP | — | Reached; independent Owner/ChatGPT review is now required |
 
 Current execution boundary:
 
 ```text
 L1-UX06   ← DONE
-→ STOP for Owner/ChatGPT review
+→ RF-META01   ← DONE
+→ STOP   ← REACHED
 ```
 
-The listed Ready cards remain durable future scope; this run did not start them. Owner review/continuation is required before selecting RF-META01. Completing any repository card never authorizes production deployment.
+RF-METASUGGEST01 and RF-SEARCH01 remain durable future scope and are not authorized. Completing RF-META01 did not authorize production deployment.
 
 ## Bibliographic Suggestion Contract — Later in This Round
 
@@ -92,7 +92,7 @@ No continuing authority exists for production mutation, visible test-data cleanu
 
 ## Completed Milestones Relevant to This Round
 
-RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, PROD-05A and PROD-06A are completed baselines. Final L1-UX06 record: `tasks/done/L1-UX06.md`.
+RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05/06, RF-META01, PROD-05A and PROD-06A are completed baselines. Final RF-META01 record: `tasks/done/RF-META01.md`.
 
 ## Separate Parked Production Work
 

@@ -23,6 +23,8 @@ import type { ScholarlyRecordService } from "../research/service.js";
 import { registerResearchHttp } from "../research/http.js";
 import type { LibraryService } from "../library/library-service.js";
 import { registerLibraryHttp } from "../library/http.js";
+import type { CanonicalMetadataService } from "../metadata/metadata-service.js";
+import { registerMetadataHttp } from "../metadata/http.js";
 import type { CredentialResetService } from "../auth/credential-reset-service.js";
 
 const SECURITY_HEADERS = {
@@ -127,6 +129,7 @@ export interface CreateAppOptions {
   audit?: { service: AuditService };
   research?: { service: ScholarlyRecordService };
   libraries?: { service: LibraryService };
+  metadata?: { service: CanonicalMetadataService };
   readinessCheck?: () => boolean;
 }
 
@@ -276,6 +279,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   if (options.libraries) {
     if (!options.auth) throw new Error("library routes require authentication composition");
     await registerLibraryHttp(app, options.libraries.service);
+  }
+
+  if (options.metadata) {
+    if (!options.auth) throw new Error("metadata routes require authentication composition");
+    await registerMetadataHttp(app, options.metadata.service);
   }
 
   return app;

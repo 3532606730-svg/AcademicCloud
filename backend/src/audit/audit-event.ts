@@ -24,6 +24,9 @@ export const AUDIT_EVENT_KINDS = [
   "libraries.contribution_withdraw",
   "libraries.resource_admit",
   "libraries.corpus_transition",
+  "libraries.metadata_update",
+  "libraries.authority_create",
+  "libraries.authority_update",
   "drive.upload_activate",
   "drive.folder_recycle",
   "drive.folder_restore",
@@ -58,7 +61,7 @@ export const AUDIT_REASON_CODES = [
 export type AuditEventKind = (typeof AUDIT_EVENT_KINDS)[number];
 export type AuditReasonCode = (typeof AUDIT_REASON_CODES)[number];
 export type AuditActorKind = "account" | "system" | "anonymous";
-export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "credential_reset" | "file" | "folder";
+export type AuditTargetType = "account" | "invitation" | "announcement" | "library" | "contribution" | "credential_reset" | "file" | "folder" | "scholarly_record" | "authority";
 export type AuditOutcome = "succeeded" | "denied" | "failed" | "busy";
 
 export interface AuditEvent {

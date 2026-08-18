@@ -9,6 +9,7 @@ import {
   type BulkItem,
   type Invitation,
   type LibraryHolding,
+  type LibraryHoldingDetails,
   type LibraryRecycleFile,
   type LibrarySummary,
   type ManagedAccount,
@@ -43,6 +44,7 @@ import {
 import { calculateFileMd5 } from "./md5.ts";
 import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
+import { ResourceDetailsDialog } from "./resource-details.tsx";
 
 type AuthState =
   | { phase: "checking" }
@@ -400,6 +402,12 @@ interface PreviewState {
   download: () => Promise<void>;
 }
 
+interface ResourceDetailsRequest {
+  library: LibrarySummary;
+  holding: LibraryHolding;
+  returnFocus: HTMLElement | null;
+}
+
 type MoveRequest =
   | { kind: "folder"; item: FolderEntry; returnFocus: HTMLElement | null }
   | { kind: "file"; item: FileEntry; returnFocus: HTMLElement | null }
@@ -510,6 +518,7 @@ function DriveView({
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [resourceDetailsRequest, setResourceDetailsRequest] = useState<ResourceDetailsRequest | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
   const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
@@ -1157,6 +1166,14 @@ function DriveView({
     }
   }
 
+  function openResourceDetails(library: LibrarySummary, holding: LibraryHolding, returnFocus?: HTMLElement | null) {
+    setResourceDetailsRequest({
+      library,
+      holding,
+      returnFocus: returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null),
+    });
+  }
+
   function recycleLibraryHolding(library: LibrarySummary, holding: LibraryHolding) {
     if (!window.confirm(t("file.recycleConfirm", { name: holding.file.displayName }))) return;
     void (async () => {
@@ -1269,7 +1286,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || moveRequest !== null || accountAdministrationOpen}>
+    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -1435,6 +1452,7 @@ function DriveView({
                         onMoveFile={moveFile}
                         onDeleteFile={deleteFile}
                         onPreviewHolding={(holding, trigger) => void openLibraryPreview(library, holding, trigger)}
+                        onOpenHoldingDetails={(holding, trigger) => openResourceDetails(library, holding, trigger)}
                         onDownloadHolding={(holding) => void downloadLibraryHolding(library, holding)}
                         onRecycleHolding={(holding) => recycleLibraryHolding(library, holding)}
                         starFileIds={favoriteFileIds}
@@ -1737,6 +1755,22 @@ function DriveView({
           returnFocus={accountAdministrationReturnFocus}
           onAnnouncementChanged={() => setAnnouncementRevision((value) => value + 1)}
           onLibraryChanged={refresh}
+        />
+      )}
+      {resourceDetailsRequest && (
+        <ResourceDetailsDialog
+          api={api}
+          library={resourceDetailsRequest.library}
+          holding={resourceDetailsRequest.holding}
+          returnFocus={resourceDetailsRequest.returnFocus}
+          onClose={() => setResourceDetailsRequest(null)}
+          onSaved={(_detail: LibraryHoldingDetails) => refresh()}
+          onPreview={() => {
+            const request = resourceDetailsRequest;
+            setResourceDetailsRequest(null);
+            void openLibraryPreview(request.library, request.holding, request.returnFocus);
+          }}
+          onDownload={() => void downloadLibraryHolding(resourceDetailsRequest.library, resourceDetailsRequest.holding)}
         />
       )}
       {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void preview.download()} />}
@@ -2611,6 +2645,7 @@ function EntryTable({
   onRenameFile,
   onMoveFile,
   onDeleteFile,
+  onOpenHoldingDetails,
   onPreviewHolding,
   onDownloadHolding,
   onRecycleHolding,
@@ -2636,6 +2671,7 @@ function EntryTable({
   onRenameFile: (file: FileEntry) => void;
   onMoveFile: (file: FileEntry, trigger?: HTMLElement) => void;
   onDeleteFile: (file: FileEntry) => void;
+  onOpenHoldingDetails?: (holding: LibraryHolding, trigger?: HTMLElement) => void;
   onPreviewHolding?: (holding: LibraryHolding, trigger?: HTMLElement) => void;
   onDownloadHolding?: (holding: LibraryHolding) => void;
   onRecycleHolding?: (holding: LibraryHolding) => void;
@@ -2699,13 +2735,17 @@ function EntryTable({
           </div>
         </div>
       ))}
-      {holdings.map((holding) => (
+      {holdings.map((holding) => {
+        const displayTitle = holding.canonicalTitle?.trim() || holding.file.displayName;
+        return (
         <div className="entry-row" role="row" key={holding.artifactId} data-entry-kind="library-holding">
           <div className="entry-name" role="cell">
             <span className="entry-select-spacer" aria-hidden="true" />
             <FileBadge file={holding.file} />
             <div className="entry-name-body">
-              <strong className="entry-filename" title={holding.file.displayName}>{holding.file.displayName}</strong>
+              {onOpenHoldingDetails ? (
+                <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onOpenHoldingDetails(holding, event.currentTarget)}>{displayTitle}</button>
+              ) : <strong className="entry-filename" title={displayTitle}>{displayTitle}</strong>}
               <span className="entry-mobile-meta">{fileKindLabel(holding.file, t)} · {formatBytes(holding.file.sizeBytes)}</span>
             </div>
           </div>
@@ -2715,14 +2755,14 @@ function EntryTable({
             {onToggleFileFavorite && (
               <StarButton
                 active={starFileIds?.has(holding.file.id) ?? false}
-                name={holding.file.displayName}
+                name={displayTitle}
                 onToggle={() => onToggleFileFavorite(holding.file)}
               />
             )}
             {library && onDownloadHolding && (
               <RowMenu
-                triggerLabel={t("menu.openAria", { name: holding.file.displayName })}
-                menuLabel={t("menu.aria", { name: holding.file.displayName })}
+                triggerLabel={t("menu.openAria", { name: displayTitle })}
+                menuLabel={t("menu.aria", { name: displayTitle })}
                 items={[
                   ...(isPreviewable(holding.file) && onPreviewHolding ? [{
                     key: "preview",
@@ -2751,7 +2791,8 @@ function EntryTable({
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
       {files.map((file) => (
         <div className={selectedKeys.has(selectionKey("file", file.id)) ? "entry-row is-selected" : "entry-row"} role="row" key={file.id}>
           <div className="entry-name" role="cell">
@@ -3122,7 +3163,7 @@ function useModalDialog(onClose: () => void, closeDisabled = false, returnFocus?
       }
       if (event.key !== "Tab") return;
       const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
-        "a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
       ));
       if (focusable.length === 0) return;
       const first = focusable[0];

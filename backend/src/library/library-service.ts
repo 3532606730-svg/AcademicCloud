@@ -53,6 +53,7 @@ export interface LibraryMemberView {
 export interface LibraryHoldingView {
   recordId: string;
   recordLabel: string;
+  canonicalTitle: string | null;
   artifactId: string;
   versionId: string;
   version: string;
@@ -108,6 +109,7 @@ function mapHolding(holding: LibraryHolding): LibraryHoldingView {
   return {
     recordId: holding.recordId,
     recordLabel: holding.recordLabel,
+    canonicalTitle: holding.canonicalTitle,
     artifactId: holding.artifactId,
     versionId: holding.versionId,
     version: driveEntryVersion(holding.file),

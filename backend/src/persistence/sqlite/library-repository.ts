@@ -41,6 +41,7 @@ interface HoldingRow {
   library_id: string;
   record_id: string;
   record_label: string;
+  canonical_title: string | null;
   artifact_id: string;
   artifact_created_at: string;
   version_id: string;
@@ -101,6 +102,7 @@ function toHolding(row: HoldingRow): LibraryHolding {
     libraryId: row.library_id,
     recordId: row.record_id,
     recordLabel: row.record_label,
+    canonicalTitle: row.canonical_title,
     artifactId: row.artifact_id,
     artifactCreatedAt: fromDatabaseTimestamp(row.artifact_created_at)!,
     versionId: row.version_id,
@@ -164,6 +166,7 @@ const holdingColumns = `
   libraries.id AS library_id,
   scholarly_records.id AS record_id,
   scholarly_records.label AS record_label,
+  scholarly_record_metadata.canonical_title,
   scholarly_artifacts.id AS artifact_id,
   scholarly_artifacts.created_at AS artifact_created_at,
   scholarly_artifact_versions.id AS version_id,
@@ -290,6 +293,9 @@ export class SqliteLibraryRepository implements LibraryRepository {
       JOIN scholarly_artifact_versions
         ON scholarly_artifact_versions.owner_domain_id = scholarly_artifacts.owner_domain_id
        AND scholarly_artifact_versions.artifact_id = scholarly_artifacts.id
+      LEFT JOIN scholarly_record_metadata
+        ON scholarly_record_metadata.owner_domain_id = scholarly_records.owner_domain_id
+       AND scholarly_record_metadata.record_id = scholarly_records.id
       JOIN files
         ON files.id = scholarly_artifact_versions.stored_file_id
        AND files.owner_domain_id = libraries.owner_domain_id
@@ -310,6 +316,9 @@ export class SqliteLibraryRepository implements LibraryRepository {
       JOIN scholarly_artifact_versions
         ON scholarly_artifact_versions.owner_domain_id = scholarly_artifacts.owner_domain_id
        AND scholarly_artifact_versions.artifact_id = scholarly_artifacts.id
+      LEFT JOIN scholarly_record_metadata
+        ON scholarly_record_metadata.owner_domain_id = scholarly_records.owner_domain_id
+       AND scholarly_record_metadata.record_id = scholarly_records.id
       JOIN files
         ON files.id = scholarly_artifact_versions.stored_file_id
        AND files.owner_domain_id = libraries.owner_domain_id

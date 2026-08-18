@@ -69,6 +69,7 @@ const LIBRARY_HOLDINGS: LibraryHolding[] = ([
  ] as const).map(([displayName, mediaType], index): LibraryHolding => ({
   recordId: `record-${index}`,
   recordLabel: displayName,
+  canonicalTitle: null,
   artifactId: `artifact-${index}`,
   versionId: `version-${index}`,
   version: `${String.fromCharCode(118 + index)}`.repeat(43),
@@ -122,6 +123,10 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     changeLibraryMemberRole: vi.fn(),
     removeLibraryMember: vi.fn().mockResolvedValue(undefined),
     listLibraryHoldings: vi.fn().mockResolvedValue([]),
+    getLibraryHoldingDetails: vi.fn(),
+    updateLibraryHoldingMetadata: vi.fn(),
+    listLibraryAuthorities: vi.fn().mockResolvedValue([]),
+    createLibraryAuthority: vi.fn(),
     createLibraryDownload: vi.fn(),
     recycleLibraryHolding: vi.fn().mockResolvedValue(undefined),
     listLibraryRecycle: vi.fn().mockResolvedValue([]),
