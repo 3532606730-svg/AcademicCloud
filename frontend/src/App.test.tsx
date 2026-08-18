@@ -2014,7 +2014,7 @@ describe("scholarly record detail component (not a global shell destination)", (
     });
     render(<LanguageProvider><ScholarlyRecordsDialog api={api} availableFiles={[FILE]} onClose={vi.fn()} returnFocus={null} /></LanguageProvider>);
     const dialog = await screen.findByRole("dialog", { name: "Scholarly records" });
-    await user.selectOptions(within(dialog).getByLabelText("Files in this folder"), FILE.id);
+    await user.selectOptions(await within(dialog).findByLabelText("Files in this folder"), FILE.id);
     await user.click(within(dialog).getByRole("button", { name: "Attach file" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("already attached to another scholarly record");
     expect(within(dialog).getByLabelText("Files in this folder")).toHaveValue(FILE.id);
