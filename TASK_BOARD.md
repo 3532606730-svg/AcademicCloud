@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development is complete and green at schema v20/history 001–020. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019. The next authorized steps are one narrow workflow clarification and RF-TRANSFER01 development; production remains untouched until the final combined artifact gate passes.**
+**RF-FRONTMATTEROCR01 development and the narrow workflow proportionality clarification are complete and green at schema v20/history 001–020. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019. RF-TRANSFER01 is next; production remains untouched until the final combined artifact gate passes.**
 
 ## Doing
 
@@ -32,7 +32,7 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 → final app + database cutover to f62766c… / v19 / 001–019
 → PROD-08R PASS / CLOSED
 → RF-FRONTMATTEROCR01 PASS / CLOSED in development; production unchanged
-→ workflow proportionality clarification
+→ workflow proportionality clarification PASS
 → RF-TRANSFER01
 → exact combined artifact gate
 → bounded final deployment and reconciliation
@@ -43,14 +43,13 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | Workflow proportionality clarification | Authorized next; workflow-only, no product/schema change |
-| 2 | RF-TRANSFER01 | Authorized after the workflow clarification; true multipart upload and standards-based Range download resume |
-| 3 | Final combined artifact/deployment | Authorized only after OCR and transfer development checkpoints are closed and the exact artifact jobs are green |
-| 4 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
-| 5 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
-| 6 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
-| 7 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
-| 8 | STOP | Required after final production reconciliation |
+| 1 | RF-TRANSFER01 | Authorized next; true multipart upload and standards-based Range download resume |
+| 2 | Final combined artifact/deployment | Authorized only after OCR and transfer development checkpoints are closed and the exact artifact jobs are green |
+| 3 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
+| 4 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
+| 5 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
+| 6 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
+| 7 | STOP | Required after final production reconciliation |
 
 RF-FRONTMATTEROCR01 authorizes only the completed bounded local/offline fallback. RF-SEARCH01, the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
 
@@ -116,4 +115,4 @@ The rollback pair is exact prior application `bc5788633e0295744905b4ae2dcdfcc5d9
 
 ## Next Action
 
-Publish and verify the RF-FRONTMATTEROCR01 closure checkpoint, reconcile the narrow workflow proportionality clarification, then create/activate RF-TRANSFER01. Do not contact production.
+Create and activate RF-TRANSFER01 — True Resumable Upload and Download. Do not contact production.

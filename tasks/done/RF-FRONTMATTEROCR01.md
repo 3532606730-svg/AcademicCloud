@@ -82,6 +82,7 @@ None.
 - Backend and frontend production builds passing.
 - Compiled acceptance passing with `firstMigrationCount: 20`, restart/readiness, backup/restore, canonical metadata, and `redeployMigrationCount: 0` green.
 - Migrations 001–019 are byte-unchanged; migration 020 is the only appended migration. `git diff --check` is clean. Static review found no OCR network/cloud call, upload/approval/background hook, whole-document traversal, search/index/embedding/RAG path, raw OCR/page-image persistence, migration beyond 020, or production contact.
+- GitHub Actions workflow `32177558840` passed for exact closure source `a7b974e0d31d0ece3a623b40a062baa845df30b0`: Linux x64 / Node 24 job `95842863911` and independent fresh-runner download/verification job `95843592236` both succeeded. The release archive SHA-256 is `aa0e7cf6f158bb0bc8fde65c7a300d9efe9474de23e216e585e98c5b6ed14149`; manifest SHA-256 is `438afe7b80685c1878e09d74bbd81dc27e29873e2aafb40fb9281739d9419029`. Extracted runtime verification proved schema count 20, the exact three-file ELF64 x86-64 native set, PDF.js 6.2.108, canvas 1.0.7, health/readiness, and zero redeploy migrations.
 - No production endpoint, credential, database, OSS object, release, backup, deployment artifact, or real academic document was contacted, inspected, or changed.
 
 ```text
@@ -106,12 +107,12 @@ TESTS=backend 322/322; frontend 193/193; focused backend 30/30; focused frontend
 TYPECHECK=backend PASS; frontend PASS
 BUILDS=backend production PASS; frontend production PASS
 COMPILED_ACCEPTANCE=PASS; firstMigrationCount=20; redeployMigrationCount=0
-ARTIFACT_RUNTIME=PROD-08R exact PDF.js/canvas allowlist and ELF boundary preserved; Linux workflow verification pending closure publication
+ARTIFACT_RUNTIME=PASS; workflow 32177558840; jobs 95842863911/95843592236; archive aa0e7cf6f158bb0bc8fde65c7a300d9efe9474de23e216e585e98c5b6ed14149; manifest 438afe7b80685c1878e09d74bbd81dc27e29873e2aafb40fb9281739d9419029
 PRODUCTION_TOUCHED=false
-REMOTE_SYNCHRONIZED=pending closure publication
-LOCAL_SYNCHRONIZED=pending closure publication
-NEXT=durable workflow proportionality clarification, then RF-TRANSFER01
+REMOTE_SYNCHRONIZED=true; closure checkpoint a7b974e0d31d0ece3a623b40a062baa845df30b0 matched origin after fetch
+LOCAL_SYNCHRONIZED=true; closure checkpoint a7b974e0d31d0ece3a623b40a062baa845df30b0 matched tracking/remote
+NEXT=RF-TRANSFER01
 ```
 
 ## Next Action
-Publish and verify the authoritative closure checkpoint, then apply the separately authorized narrow workflow proportionality clarification before activating RF-TRANSFER01. Do not contact production.
+RF-FRONTMATTEROCR01 is closed. Proceed to RF-TRANSFER01 after the separately checkpointed workflow proportionality clarification. Do not contact production.

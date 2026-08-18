@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development is complete and green at schema v20/history 001–020. Production remains unchanged at the closed PROD-08R v19 checkpoint. The continuous objective proceeds next through one narrow workflow clarification and RF-TRANSFER01 development before any final artifact or production gate.**
+**RF-FRONTMATTEROCR01 development and the narrow workflow proportionality clarification are complete and green at schema v20/history 001–020. Production remains unchanged at the closed PROD-08R v19 checkpoint. RF-TRANSFER01 is the next authorized development task before any final artifact or production gate.**
 
 The governing product rule remains ADR-022:
 
@@ -60,6 +60,7 @@ Never select `bc578863…` against the live v19 database; restore the paired v18
 - bounded local/offline OCR preserves native-text preference, the exact deduplicated first-15/last-5 window, manager review and RF-META CAS acceptance, Library-domain non-disclosure, and no raw OCR/page-image persistence;
 - full backend 322/322, full frontend 193/193, focused OCR/artifact 30/30, focused frontend 33/33, both typechecks/builds, and compiled acceptance are green;
 - the PROD-08R exact PDF.js/canvas native runtime allowlist and ELF64 x86-64 verification boundary remain intact;
+- the workflow now distinguishes structural deployment invariants from ordinary mutable business-state drift, while preserving migration, authorization, corruption, destructive-data, and backup/rollback gates;
 - `tasks/done/PROD-08R.md` and `tasks/done/RF-FRONTMATTEROCR01.md` preserve bounded evidence; no task is currently Doing.
 
 ## Safety Boundaries
@@ -68,4 +69,4 @@ No production contact or mutation is authorized during the remaining development
 
 ## Next Action
 
-Publish and verify the RF-FRONTMATTEROCR01 closure checkpoint, reconcile the narrow workflow proportionality clarification, then activate RF-TRANSFER01. Do not contact production.
+Create and activate RF-TRANSFER01 — True Resumable Upload and Download. Do not contact production.

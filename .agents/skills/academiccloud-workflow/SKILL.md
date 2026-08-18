@@ -130,6 +130,16 @@ Implement continuously inside scope. Make ordinary internal structure, API, sche
 ### E. Verify
 Run only applicable checks that actually exist. Never claim nonexistent tests. Repair failures caused by the task before proceeding.
 
+### E1. Distinguish Deployment Invariants from Mutable Business State
+
+Fail closed on structural deployment invariants, including exact release/artifact identity, expected schema and migration history/checksums, SQLite integrity, foreign-key integrity, protected configuration, required service/listener/health/readiness state, backup/rollback-pair integrity, unexpected migrations, and concrete evidence of unauthorized or system-caused destructive behavior.
+
+Once normal application writes are allowed, ordinary mutable business state is not itself a deployment invariant. File/folder counts, Favorites, Recycle contents, pending uploads, catalogue contents, and other normal user-created/deleted/moved resource counts may legitimately change. A count delta alone must not trigger broad forensic review or block a deployment.
+
+When a migration requires comparison with a frozen backup, perform that comparison while writes remain frozen. After normal service/user activity resumes, do not infer corruption merely from business-row count drift. If the Owner identifies a questioned ordinary business-state change as their intentional action, accept that explanation unless contradictory technical evidence already exists.
+
+Keep verification proportionate: one weak signal receives one bounded check, not recursive investigation. This distinction never weakens migration integrity, authorization, real corruption detection, destructive-data safety, or backup/rollback correctness.
+
 ### F. Review
 Check acceptance criteria, diff scope, module boundaries, data safety, security consequences, concurrency/rollback where relevant, and unintended changes. Use a read-only reviewer/subagent when it materially increases confidence.
 
