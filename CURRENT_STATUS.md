@@ -4,15 +4,15 @@
 
 ## Current Phase
 
-**`PROD-06A` is complete. Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. No implementation task is active. Owner first-use review has approved a new repository-only catalogue-usability queue; production remains closed.**
+**`PROD-06A` is complete. Production runs exact release `855b63c49f12f3375972774e7bc7385088b0495e` at schema v17/history 001–017. No implementation task is active. Owner first-use review has approved one bounded repository-only catalogue/bibliographic round; production remains closed.**
 
 The governing product rule remains ADR-022:
 
 > **Academic resources are shared by default after Owner admission; personal research activity is private by default.**
 
-The live authority/data transition is correct. Actual Owner use after deployment exposed a narrower presentation/usability issue: root `资料库` currently renders canonical Library holdings through `SharedLibraryPanel` and then renders the legacy Owner `EntryTable` below it. This causes the visible Name/Size/Updated header and folder rows to appear after the holdings, removes established file-type icons from the holdings rows, repeats migrated filename-derived labels, leaves redundant descriptive copy, and lacks an authority-correct recoverable lifecycle action for Library-owned holdings.
+Actual Owner use after deployment confirmed the live authority/data transition but exposed a narrower catalogue presentation/usability gap: root `资料库` currently stacks canonical Library holdings above the legacy Owner `EntryTable`, causing the visible Name/Size/Updated header and folder rows to appear after holdings, dropping established file-type icons from holdings, repeating migrated filename-derived labels, retaining redundant descriptive copy, and lacking an authority-correct recoverable lifecycle action for Library-owned holdings.
 
-This review also established that basic catalogue search and cleaner scholarly titles must arrive earlier than previously sequenced.
+Owner review also established that cleaner scholarly titles and basic catalogue search must arrive now, and that title/metadata suggestions should use bibliographic evidence from title/copyright/CIP/front-matter pages when a PDF already has a text layer rather than relying mainly on noisy filenames. ADR-025 records the bilingual front-matter evidence model and keeps OCR separately gated.
 
 ## Production Truth
 
@@ -47,34 +47,19 @@ Historical migrations 001–017 are immutable. Development and production schema
 
 Important completed foundations remain green: RF-AUDIT01, RF-OWNERSHIP01, RF-DOMAIN01, RF-LIBRARY01, RF-LIBRARY02, RF-SHAREDDEFAULT01, L2-CREDENTIALRESET01, L1-UX03/04/05, PROD-05A and PROD-06A.
 
-## Owner-Approved Near-Term Repository Queue
+## Owner-Approved Current Repository Round
 
-No card is currently Doing. The approved planning order is:
+No card is currently Doing. The entire currently approved implementation round is:
 
 ```text
 L1-UX06
 → RF-META01
 → RF-METASUGGEST01
 → RF-SEARCH01
-→ RF-PROV01
-→ RF-LINEAGE01
-→ RF-STATS01
-→ RF-OVERLAY01
-→ RF-ORGANIZE01
-→ RF-VIEWS01
-→ RF-INTAKE01
-→ RF-ANNOTATE01
-→ RF-CITE01
-→ RF-EVIDENCE01
-→ RF-EXPORT01
-→ RF-LIBRARY03
-→ RF-LIBRARY04
-→ RF-INTEGRITY01
-→ RF-RECOVERY01
-→ RF-AUTHMATRIX01
-→ RF-DERIVED01
-→ STOP BEFORE OCR
+→ STOP for Owner/ChatGPT review
 ```
+
+The remaining Pre-OCR cards stay parked after RF-SEARCH01 until the Owner explicitly starts another round.
 
 ### L1-UX06 — Ready
 `tasks/ready/L1-UX06.md` owns the concrete catalogue regression: one unified catalogue, correct header placement, restored PDF/image/text/generic icons, removal of redundant summary copy and duplicate migrated labels, and Owner/Manager recoverable `移入回收站` semantics for eligible Library-owned resources without giving Members destructive authority. This is not permanent deletion and not a broad redesign.
@@ -82,30 +67,41 @@ L1-UX06
 ### RF-META01 — Ready after L1-UX06
 Canonical metadata/templates and minimal authority records surface through normal `资料详情`. Original filenames remain preserved as provenance/detail rather than serving as the only human-facing title.
 
-### RF-METASUGGEST01 — New / Ready after RF-META01
-`tasks/ready/RF-METASUGGEST01.md` owns deterministic, reviewable title/metadata suggestions from already-authorized local signals such as filenames and safe embedded metadata. It may conservatively remove tested acquisition noise but cannot silently rewrite canonical facts, object keys, bytes or provenance. No OCR, AI/LLM extraction, network catalogue lookup or fuzzy merge.
+### RF-METASUGGEST01 — Ready after RF-META01
+`tasks/ready/RF-METASUGGEST01.md` and ADR-025 define the bounded bilingual bibliographic suggestion layer. For PDFs with an existing text layer, default discovery inspects only the first 15 pages plus the last 5 pages and classifies likely cover/half-title/title/copyright/CIP/colophon/series pages before extracting field-level evidence.
 
-### RF-SEARCH01 — Priority moved forward
-Basic authority-scoped catalogue metadata/name search now follows RF-METASUGGEST01 instead of waiting for RF-ORGANIZE01. The first UI is a quiet search field on `资料库`; original/display names and canonical metadata are searchable, with authority filtering before ranking/serialization and no persisted query history. No OCR/full-text claim.
+Evidence precedence is field-specific: title/subtitle/creator prefers title-page evidence; publisher/place/year/edition/ISBN prefers copyright/title-page verso/CIP/colophon evidence. Embedded PDF metadata and filename cleanup remain lower-confidence fallbacks. Chinese and English/Latin-script bibliographic cues are first-class. Every proposal records source/page/page-class/ruleset/confidence and requires authorized confirmation before becoming canonical.
+
+Original filename, object key, bytes/checksum and provenance remain unchanged. Pure scanned PDFs do not guess; they return an `OCR deferred` state. This round defines the future page-text/OCR adapter boundary but does not execute OCR, AI extraction, external catalogue lookup or network metadata enrichment.
+
+### RF-SEARCH01 — Ready after RF-METASUGGEST01
+Basic authority-scoped catalogue metadata/name search follows RF-METASUGGEST01 instead of waiting for RF-ORGANIZE01. The first UI is a quiet search field on `资料库`; original/display names and canonical metadata are searchable, with authority filtering before ranking/serialization and no persisted query history. No OCR/full-text claim.
+
+## Parked After This Round
+
+After RF-SEARCH01 the project must STOP. The preserved later Pre-OCR order begins with:
+
+`RF-PROV01 → RF-LINEAGE01 → RF-STATS01 → RF-OVERLAY01 → RF-ORGANIZE01 → RF-VIEWS01 → RF-INTAKE01 → RF-ANNOTATE01 → RF-CITE01 → RF-EVIDENCE01 → RF-EXPORT01 → RF-LIBRARY03 → RF-LIBRARY04 → RF-INTEGRITY01 → RF-RECOVERY01 → RF-AUTHMATRIX01 → RF-DERIVED01 → STOP BEFORE OCR`.
 
 ## Safety Boundaries
 
-This planning update authorizes repository planning only. It does **not** authorize:
+This Owner decision authorizes the four-card repository round only. It does **not** authorize:
 - production deployment/contact/mutation;
 - direct DB cleanup or permanent deletion / `PROD-03C2`;
 - deletion of visible historical synthetic/test production residue;
 - main merge;
 - reboot/autostart, DNS/TLS/Nginx/systemd/firewall/certificate changes;
 - credentials or paid infrastructure changes;
-- OCR/text extraction, full-text indexing, embeddings, retrieval, RAG;
-- external metadata/catalogue services or AI extraction.
+- OCR execution or whole-book text extraction;
+- full-text indexing, embeddings, retrieval, RAG;
+- external metadata/catalogue services, ISBN APIs, web lookup, or AI/LLM extraction.
 
 Any later production release remains separately Owner-gated.
 
 ## Verification Policy
 
-Verification is proportionate, not performative. `L1-UX06` should run affected frontend/component tests and only the focused backend authorization/lifecycle tests required by an authority-correct Library recycle path. RF-META/METASUGGEST/SEARCH verification should focus on schema/data-loss, authorization/non-disclosure, deterministic parsing/search, unsafe rendering, and concurrency boundaries. Do not replay historical production campaigns when unchanged.
+Verification is proportionate, not performative. `L1-UX06` should run affected frontend/component tests and only the focused backend authorization/lifecycle tests required by an authority-correct Library recycle path. RF-META/METASUGGEST/SEARCH verification should focus on schema/data-loss, authorization/non-disclosure, deterministic parsing/search, bounded page processing, evidence precedence, unsafe rendering, and concurrency boundaries. Do not replay historical production campaigns when unchanged.
 
 ## Next Action
 
-Repository planning is reconciled. When the Owner explicitly starts development, select `L1-UX06` as the next bounded card, implement and independently review it, then STOP before any production deployment.
+When execution starts, select `L1-UX06`, complete and independently review it, then continue only through the four-card round above. STOP after RF-SEARCH01. Production remains closed throughout unless the Owner later opens a separate production gate.
