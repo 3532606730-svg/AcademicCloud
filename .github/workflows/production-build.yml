@@ -38,6 +38,7 @@ jobs:
       SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       ARCHIVE_BASENAME: academiccloud-linux-x64-node24-${{ github.event.pull_request.head.sha || github.sha }}
       TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
+      GITHUB_API_TOKEN: ${{ github.token }}
 
     steps:
       - name: Check out the exact source commit
@@ -106,6 +107,7 @@ jobs:
           test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
           docker run --rm --platform linux/amd64 \
             --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
+            --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
             --volume "$GITHUB_WORKSPACE:/work" \
             --workdir /work \
             "$TESSERACT_BUILDER_IMAGE" \
@@ -137,6 +139,7 @@ jobs:
           )
           docker run --rm --platform linux/amd64 \
             --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
+            --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
             --volume "$GITHUB_WORKSPACE:/work" \
             --workdir /work \
             "$TESSERACT_BUILDER_IMAGE" \

@@ -37,6 +37,10 @@ if [[ "${TESSERACT_BUILDER_IMAGE:-}" != "${BUILDER_IMAGE_EXPECTED}" ]]; then
   echo "unexpected Tesseract builder image identity" >&2
   exit 3
 fi
+if [[ -z "${GITHUB_API_TOKEN:-}" ]]; then
+  echo "GitHub API token is required for pinned tag-signature verification" >&2
+  exit 3
+fi
 if [[ "$(uname -s)" != "Linux" || "$(uname -m)" != "x86_64" ]]; then
   echo "Tesseract runtime must be built on Linux x86_64" >&2
   exit 3
@@ -51,6 +55,18 @@ export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 export TZ=UTC
 export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH_VALUE}"
+
+github_api_get() {
+  local url="$1"
+  local output="$2"
+  curl --fail --show-error --silent --location \
+    --retry 4 --retry-all-errors --retry-delay 2 \
+    --proto '=https' --tlsv1.2 \
+    --header "Authorization: Bearer ${GITHUB_API_TOKEN}" \
+    --header 'X-GitHub-Api-Version: 2022-11-28' \
+    "${url}" \
+    --output "${output}"
+}
 
 echo "APT::Snapshot \"${APT_SNAPSHOT}\";" > /etc/apt/apt.conf.d/50academiccloud-snapshot
 # The digest-pinned minimal Ubuntu image intentionally has no CA bundle. APT's
@@ -83,10 +99,9 @@ rm -rf "${WORK_ROOT}" "${OUTPUT_ROOT}"
 mkdir -p "${WORK_ROOT}" "${SOURCE_ROOT}" "${BUILD_ROOT}" "${INSTALL_ROOT}"
 mkdir -p "${OUTPUT_ROOT}/bin" "${OUTPUT_ROOT}/lib" "${OUTPUT_ROOT}/tessdata/configs" "${OUTPUT_ROOT}/licenses/ubuntu-packages"
 
-curl --fail --show-error --silent --location \
-  --proto '=https' --tlsv1.2 \
+github_api_get \
   "https://api.github.com/repos/tesseract-ocr/tesseract/git/tags/${TESSERACT_TAG_OBJECT}" \
-  --output "${WORK_ROOT}/tesseract-tag.json"
+  "${WORK_ROOT}/tesseract-tag.json"
 jq -e \
   --arg commit "${TESSERACT_COMMIT}" \
   '.object.type == "commit" and .object.sha == $commit and .verification.verified == true and .verification.reason == "valid"' \
@@ -100,10 +115,9 @@ echo "${TESSERACT_SOURCE_SHA256}  ${SOURCE_ARCHIVE}" | sha256sum --check --stric
 tar --extract --gzip --file "${SOURCE_ARCHIVE}" --directory "${SOURCE_ROOT}" --strip-components=1
 [[ "$(cat "${SOURCE_ROOT}/VERSION")" == "${TESSERACT_TAG}" ]]
 
-curl --fail --show-error --silent --location \
-  --proto '=https' --tlsv1.2 \
+github_api_get \
   "https://api.github.com/repos/tesseract-ocr/tessdata_fast/git/tags/${TESSDATA_TAG_OBJECT}" \
-  --output "${WORK_ROOT}/tessdata-tag.json"
+  "${WORK_ROOT}/tessdata-tag.json"
 jq -e \
   --arg commit "${TESSDATA_COMMIT}" \
   '.object.type == "commit" and .object.sha == $commit and .verification.verified == true and .verification.reason == "valid"' \
