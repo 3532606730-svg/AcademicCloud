@@ -130,24 +130,26 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/production-artifact.mjs prepare \
-            --release=output/repro-release
-          npm ci --omit=dev --workspace @academiccloud/backend --include-workspace-root=false \
-            --prefix output/repro-release
+            --release=output/release
+          (
+            cd output/release
+            npm ci --omit=dev --workspace @academiccloud/backend --include-workspace-root=false
+          )
           docker run --rm --platform linux/amd64 \
             --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
             --volume "$GITHUB_WORKSPACE:/work" \
             --workdir /work \
             "$TESSERACT_BUILDER_IMAGE" \
-            bash scripts/build-tesseract-runtime.sh output/repro-release/runtime/tesseract
+            bash scripts/build-tesseract-runtime.sh output/release/runtime/tesseract
           node scripts/production-artifact.mjs finalize \
-            --release=output/repro-release \
+            --release=output/release \
             --manifest=output/${ARCHIVE_BASENAME}.repro.manifest.json \
             --commit=${SOURCE_COMMIT}
           node scripts/production-artifact.mjs pack \
-            --release=output/repro-release \
+            --release=output/release \
             --archive=output/${ARCHIVE_BASENAME}.repro.tar.gz \
             --checksum=output/${ARCHIVE_BASENAME}.repro.tar.gz.sha256
-          cmp --silent \
+          diff --unified=3 \
             "output/${ARCHIVE_BASENAME}.manifest.json" \
             "output/${ARCHIVE_BASENAME}.repro.manifest.json"
           test "$(cut -d' ' -f1 "output/${ARCHIVE_BASENAME}.tar.gz.sha256")" = \

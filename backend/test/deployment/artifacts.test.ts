@@ -151,6 +151,9 @@ test("production artifact builds and independently verifies the exact release-lo
   assert.match(builder, /patchelf --set-rpath '\$ORIGIN\/\.\.\/lib'/u);
   assert.match(workflow, /ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316/u);
   assert.match(workflow, /Rebuild cleanly and prove deterministic archive and manifest/u);
+  assert.doesNotMatch(workflow, /output\/repro-release/u);
+  assert.doesNotMatch(workflow, /--prefix output\/release/u);
+  assert.match(workflow, /diff --unified=3/u);
   assert.match(workflow, /verify-downloaded-artifact/u);
   assert.doesNotMatch(workflow, /apt(?:-get)? install tesseract/u);
 });
