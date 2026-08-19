@@ -175,8 +175,20 @@ function suggestionConfidenceLabel(value: MetadataSuggestionConfidence, t: Retur
 function suggestionOriginLabel(value: MetadataSuggestionEvidenceOrigin, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_ORIGIN_KEYS[value]);
 }
-function suggestionPageClassLabel(value: string | null): string {
-  return value ? value.replaceAll("_", " ") : "—";
+function suggestionErrorLabel(error: unknown, t: ReturnType<typeof useLanguage>["t"]): string {
+  if (error instanceof ApiError) {
+    const keys: Partial<Record<string, MessageKey>> = {
+      invalid_input: "metadata.suggestions.error.invalidInput",
+      conflict: "metadata.suggestions.error.conflict",
+      concurrent_change: "metadata.suggestions.error.concurrentChange",
+      stale: "metadata.suggestions.error.stale",
+      unsupported: "metadata.suggestions.error.unsupported",
+      not_found: "metadata.suggestions.error.notFound",
+    };
+    const key = keys[error.code];
+    if (key) return t(key);
+  }
+  return t("metadata.suggestions.error.internal");
 }
 
 function useResourceDialog(onClose: () => void, disabled: boolean, returnFocus?: HTMLElement | null) {
@@ -290,6 +302,8 @@ export function ResourceDetailsDialog({
   const [authorities, setAuthorities] = useState<LibraryAuthority[]>([]);
   const [authorityType, setAuthorityType] = useState<AuthorityType>("person");
   const [authorityLabel, setAuthorityLabel] = useState("");
+  const [pendingAuthorityRole, setPendingAuthorityRole] = useState<AuthorityRole | null>(null);
+  const [pendingAuthorityCandidateId, setPendingAuthorityCandidateId] = useState<string | null>(null);
   const [suggestionRun, setSuggestionRun] = useState<MetadataSuggestionRun | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsGenerating, setSuggestionsGenerating] = useState(false);
@@ -321,7 +335,7 @@ export function ResourceDetailsDialog({
   useEffect(() => { void loadDetails(); }, [api, library.id, holding.file.id]);
 
   useEffect(() => {
-    if (!api.getLibraryMetadataSuggestions || holding.file.mediaType !== "application/pdf") {
+    if (!api.getLibraryMetadataSuggestions) {
       setSuggestionRun(null);
       setSuggestionsError(null);
       setSelectedSuggestionIds(new Set());
@@ -340,7 +354,7 @@ export function ResourceDetailsDialog({
       })
       .finally(() => setSuggestionsLoading(false));
     return () => controller.abort();
-  }, [api, library.id, holding.file.id, holding.file.mediaType]);
+  }, [api, library.id, holding.file.id]);
 
   useEffect(() => {
     if (!editing || library.role !== "manager") return;
@@ -462,7 +476,19 @@ export function ResourceDetailsDialog({
       if (knownField) setDraft((current) => ({ ...current, typeFields: { ...current.typeFields, [candidate.typeFieldName!]: candidate.value } }));
       else setNotice(t("metadata.suggestions.authorityReview"));
     } else if (candidate.fieldPath === "authority") {
-      setNotice(t("metadata.suggestions.authorityReview"));
+      if (candidate.authorityType && candidate.authorityRole) {
+        setAuthorityType(candidate.authorityType);
+        setAuthorityLabel(candidate.value);
+        setPendingAuthorityRole(candidate.authorityRole);
+        setPendingAuthorityCandidateId(candidate.id);
+      }
+      setNotice(t("metadata.suggestions.resolveAuthority"));
+      setSelectedSuggestionIds((current) => {
+        const next = new Set(current);
+        next.delete(candidate.id);
+        return next;
+      });
+      return;
     }
     setSelectedSuggestionIds((current) => new Set(current).add(candidate.id));
   }
@@ -483,8 +509,13 @@ export function ResourceDetailsDialog({
     try {
       const authority = await api.createLibraryAuthority(library.id, { type: authorityType, canonicalLabel: authorityLabel, aliases: [] });
       setAuthorities((current) => [...current, authority]);
-      const role = ROLES_BY_TYPE[authority.type][0]!;
+      const role = pendingAuthorityRole && ROLES_BY_TYPE[authority.type].includes(pendingAuthorityRole)
+        ? pendingAuthorityRole
+        : ROLES_BY_TYPE[authority.type][0]!;
       setDraft((current) => ({ ...current, authorityLinks: [...current.authorityLinks, { authorityId: authority.id, role }] }));
+      if (pendingAuthorityCandidateId) setSelectedSuggestionIds((current) => new Set(current).add(pendingAuthorityCandidateId));
+      setPendingAuthorityRole(null);
+      setPendingAuthorityCandidateId(null);
       setAuthorityLabel("");
       setNotice(t("metadata.authorityCreated"));
     } catch (caught) {
@@ -492,6 +523,16 @@ export function ResourceDetailsDialog({
     } finally {
       setSaving(false);
     }
+  }
+
+  function linkAuthority(authority: LibraryAuthority): void {
+    const role = pendingAuthorityRole && ROLES_BY_TYPE[authority.type].includes(pendingAuthorityRole)
+      ? pendingAuthorityRole
+      : ROLES_BY_TYPE[authority.type][0]!;
+    setDraft((current) => ({ ...current, authorityLinks: [...current.authorityLinks, { authorityId: authority.id, role }] }));
+    if (pendingAuthorityCandidateId) setSelectedSuggestionIds((current) => new Set(current).add(pendingAuthorityCandidateId));
+    setPendingAuthorityRole(null);
+    setPendingAuthorityCandidateId(null);
   }
 
   async function save() {
@@ -626,6 +667,7 @@ export function ResourceDetailsDialog({
                 authorityLabel={authorityLabel}
                 setAuthorityLabel={setAuthorityLabel}
                 onCreateAuthority={() => void createAuthority()}
+                onAuthorityLinked={linkAuthority}
                 onCancel={() => { setDraft(draftFromDetail(detail)); setEditing(false); setNotice(""); }}
                 onSave={() => void save()}
                 saving={saving}
@@ -717,13 +759,14 @@ function MetadataSuggestionsPanel({
         </button>}
       </header>
       {loading && <p className="muted" role="status">{t("metadata.suggestions.loading")}</p>}
-      {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+      {error !== null && <div className="alert alert--error" role="alert">{suggestionErrorLabel(error, t)}</div>}
       {!loading && !run && <p className="muted">{t("metadata.suggestions.none")}</p>}
       {run && (
         <>
           <p className={`metadata-suggestions-status metadata-suggestions-status--${run.status}`} role="status">
             {suggestionStatusLabel(run.status, t)}
           </p>
+          {!run.window.complete && run.candidates.length > 0 && <p className="muted">{t("metadata.suggestions.partialDescription")}</p>}
           {run.status === "ocr_deferred" && <p className="muted">{t("metadata.suggestions.ocrDeferredDescription")}</p>}
           {run.status === "unsupported" && <p className="muted">{t("metadata.suggestions.unsupportedDescription")}</p>}
           {run.status === "stale" && <p className="muted">{t("metadata.suggestions.staleDescription")}</p>}
@@ -732,7 +775,7 @@ function MetadataSuggestionsPanel({
               const selected = selectedIds.has(candidate.id);
               return <article className={`metadata-suggestion${selected ? " is-selected" : ""}`} key={candidate.id}>
                 <div className="metadata-suggestion-main">
-                  {manager && reviewable && <input
+                  {manager && reviewable && candidate.fieldPath !== "authority" && <input
                     type="checkbox"
                     aria-label={`${t("metadata.suggestions.selected")}: ${suggestionFieldLabel(candidate, t)} — ${candidate.value}`}
                     checked={selected}
@@ -747,8 +790,6 @@ function MetadataSuggestionsPanel({
                 <dl className="metadata-suggestion-evidence">
                   <dt>{t("metadata.suggestions.source")}</dt>
                   <dd>{suggestionSourceLabel(candidate.sourceType, t)}{candidate.sourcePageIndex !== null ? ` · ${t("metadata.suggestions.page", { page: candidate.sourcePageIndex })}` : ""}</dd>
-                  <dt>{t("metadata.suggestions.pageClass")}</dt>
-                  <dd>{suggestionPageClassLabel(candidate.pageClass)}</dd>
                   <dt>{t("metadata.suggestions.origin")}</dt>
                   <dd>{suggestionOriginLabel(candidate.evidenceOrigin, t)}{candidate.evidenceOrigin === "ocr" && candidate.ocrConfidence !== null ? ` · ${candidate.ocrConfidence}%` : ""}</dd>
                   <dt>{t("metadata.suggestions.confidence")}</dt>
@@ -756,7 +797,7 @@ function MetadataSuggestionsPanel({
                   {candidate.evidenceExcerpt && <><dt>{t("metadata.suggestions.evidence")}</dt><dd className="metadata-suggestion-excerpt">{candidate.evidenceExcerpt}</dd></>}
                 </dl>
                 {manager && reviewable && <button className="button button--small button--quiet" type="button" onClick={() => onUseInEditor(candidate)} disabled={accepting}>
-                  {t("metadata.suggestions.useInEditor")}
+                  {candidate.fieldPath === "authority" ? t("metadata.suggestions.resolveAuthority") : t("metadata.suggestions.useInEditor")}
                 </button>}
               </article>;
             })}
@@ -786,6 +827,7 @@ function MetadataEditor({
   authorityLabel,
   setAuthorityLabel,
   onCreateAuthority,
+  onAuthorityLinked,
   onCancel,
   onSave,
   saving,
@@ -801,6 +843,7 @@ function MetadataEditor({
   authorityLabel: string;
   setAuthorityLabel: (value: string) => void;
   onCreateAuthority: () => void;
+  onAuthorityLinked: (authority: LibraryAuthority) => void;
   onCancel: () => void;
   onSave: () => void;
   saving: boolean;
@@ -872,7 +915,7 @@ function MetadataEditor({
           <select aria-label={t("metadata.linkAuthority")} value="" onChange={(event) => {
             const authority = authoritiesById.get(event.target.value);
             if (!authority) return;
-            setDraft((current) => ({ ...current, authorityLinks: [...current.authorityLinks, { authorityId: authority.id, role: ROLES_BY_TYPE[authority.type][0]! }] }));
+            onAuthorityLinked(authority);
           }}>
             <option value="">{t("metadata.linkAuthority")}</option>
             {authorities.filter((authority) => authority.type === authorityType).map((authority) => <option key={authority.id} value={authority.id}>{authority.canonicalLabel}</option>)}

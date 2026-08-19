@@ -243,7 +243,7 @@ describe("Resource details", () => {
     expect(screen.getByText(/Title page · Page 3/)).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText(/Local OCR · 88%/)).toBeInTheDocument();
-    expect(screen.getByText("Evidence-backed suggestions")).toBeInTheDocument();
+    expect(screen.getByText("Resource information suggestions")).toBeInTheDocument();
     expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
   });
 
@@ -277,7 +277,7 @@ describe("Resource details", () => {
     )).toBe(true));
 
     await user.click(screen.getByRole("button", { name: "Find metadata suggestions" }));
-    await screen.findByText("Evidence-backed suggestions");
+    await screen.findByText("Resource information suggestions");
     await user.click(screen.getByRole("checkbox", { name: /Canonical title/ }));
     await user.click(screen.getByRole("button", { name: "Accept selected" }));
 
@@ -316,7 +316,7 @@ describe("Resource details", () => {
     } });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Find metadata suggestions" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("The item no longer exists or is not available to this account.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("This resource is no longer available to your account.");
   });
 
   it("keeps Members read-only and exposes OCR deferred state without an accept control", async () => {
@@ -328,8 +328,8 @@ describe("Resource details", () => {
       api: { getLibraryMetadataSuggestions: getSuggestions, generateLibraryMetadataSuggestions: vi.fn() },
     });
     await screen.findByRole("dialog", { name: "元西域人华化考" });
-    expect(await screen.findByText("OCR deferred")).toBeInTheDocument();
-    expect(screen.getByText(/retained run predates local OCR/i)).toBeInTheDocument();
+    expect(await screen.findByText("Some content could not be read")).toBeInTheDocument();
+    expect(screen.getByText(/Try again if needed/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Find metadata suggestions" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Accept selected" })).not.toBeInTheDocument();
   });

@@ -332,7 +332,14 @@ function yearsNear(text: string, keywords: RegExp): string[] {
   return [...new Set(values)];
 }
 
-function filenameFallback(filename: string): string | null {
+interface FilenameFacts {
+  title: string | null;
+  author: string | null;
+  publisher: string | null;
+  dateStatement: string | null;
+}
+
+function cleanedFilenameStem(filename: string): string {
   const base = filename.split(/[\\/]/).pop() ?? filename;
   let value = base.replace(/\.(?:pdf|PDF)$/i, "");
   // Only a finite, documented set of acquisition suffixes is stripped. This
@@ -350,10 +357,31 @@ function filenameFallback(filename: string): string | null {
     .replace(/[+_]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  if (!plausibleTitle(value) || isGenericPlaceholder(value)) return null;
-  if (/^(?:img|dsc|scan|document|file)[ _-]?\d{2,}$/i.test(value)) return null;
-  if (/^[0-9a-f]{16,}$/i.test(value)) return null;
   return value;
+}
+
+function filenameFacts(filename: string): FilenameFacts {
+  const stem = cleanedFilenameStem(filename);
+  const structured = stem.match(/^(.{1,120}?)\s*[《<]\s*(.{2,180}?)\s*[》>]\s*[（(]\s*(.{2,180}?)\s*[）)]\s*$/u);
+  if (structured) {
+    const author = cleanPersonValue(structured[1] ?? "");
+    const title = clean(structured[2] ?? "");
+    const tail = clean(structured[3] ?? "");
+    const date = tail.match(/(?:^|[^\d])((?:18|19|20)\d{2}(?:[./-]\d{1,2})?(?:[./-]\d{1,2})?)(?:$|[^\d])/u)?.[1] ?? null;
+    const publisher = clean(tail.replace(date ?? "", "").replace(/[，,;；:：]+$/u, ""));
+    return {
+      title: plausibleTitle(title) && !isGenericPlaceholder(title) ? title : null,
+      author: plausibleTitle(author) && !isGenericPlaceholder(author) ? author : null,
+      publisher: plausibleTitle(publisher) && !isGenericPlaceholder(publisher) ? publisher : null,
+      dateStatement: date,
+    };
+  }
+  const title = plausibleTitle(stem) && !isGenericPlaceholder(stem)
+    && !/^(?:img|dsc|scan|document|file)[ _-]?\d{2,}$/i.test(stem)
+    && !/^[0-9a-f]{16,}$/i.test(stem)
+    ? stem
+    : null;
+  return { title, author: null, publisher: null, dateStatement: null };
 }
 
 function cleanPersonValue(value: string): string {
@@ -758,13 +786,16 @@ function embeddedCandidates(metadata: PdfEmbeddedMetadata, seeds: CandidateSeed[
     addSeed(seeds, null, { fieldPath: "canonicalTitle", value: metadata.title, sourceType: "embedded_pdf_metadata" });
   }
   if (metadata.author && clean(metadata.author) && !isGenericPlaceholder(metadata.author)) {
-    addSeed(seeds, null, {
-      fieldPath: "authority",
-      authorityType: "person",
-      authorityRole: "author",
-      value: metadata.author,
-      sourceType: "embedded_pdf_metadata",
-    });
+    const authors = metadata.author.split(/\s*(?:;|；|\||\band\b|和)\s*/iu).map(clean).filter(Boolean).slice(0, 8);
+    for (const author of authors) {
+      addSeed(seeds, null, {
+        fieldPath: "authority",
+        authorityType: "person",
+        authorityRole: "author",
+        value: author,
+        sourceType: "embedded_pdf_metadata",
+      });
+    }
   }
 }
 
@@ -833,21 +864,25 @@ function hasTopRankConflict(candidates: readonly Omit<SuggestionCandidate, "id">
  * byte-for-byte equivalent candidate ordering and evidence.
  */
 export function extractSuggestions(input: SuggestionExtractionInput): SuggestionExtractionResult {
-  const hasText = input.hasUsableTextLayer ?? input.pages.some((page) => {
+  const nativeTextUsable = input.hasUsableTextLayer ?? input.pages.some((page) => {
     const compact = page.text.replace(/\s+/gu, "");
-    return compact.length >= 2 && /[\p{L}]/u.test(compact);
+    return compact.length >= 2 && /[\p{L}]/u.test(compact) && !/^\d+$/u.test(compact);
   });
-  if (!hasText) return { status: "ocr_deferred", candidates: [] };
+  const ocrRan = input.pages.some((page) => page.evidenceOrigin === "ocr");
+  const hasText = nativeTextUsable || ocrRan;
   const seeds: CandidateSeed[] = [];
   const contexts = pageContexts(input.pages);
   for (const context of contexts) parsePage(context, seeds);
   embeddedCandidates(input.embeddedMetadata, seeds);
-  if (!seeds.some((seed) => seed.fieldPath === "canonicalTitle")) {
-    const fallback = filenameFallback(input.filename);
-    if (fallback) addSeed(seeds, null, { fieldPath: "canonicalTitle", value: fallback, sourceType: "filename" });
+  const filename = filenameFacts(input.filename);
+  if (filename.title && !seeds.some((seed) => seed.fieldPath === "canonicalTitle")) {
+    addSeed(seeds, null, { fieldPath: "canonicalTitle", value: filename.title, sourceType: "filename" });
   }
+  if (filename.author) addSeed(seeds, null, { fieldPath: "authority", authorityType: "person", authorityRole: "author", value: filename.author, sourceType: "filename" });
+  if (filename.publisher) addSeed(seeds, null, { fieldPath: "authority", authorityType: "institution", authorityRole: "publisher", value: filename.publisher, sourceType: "filename" });
+  if (filename.dateStatement) addSeed(seeds, null, { fieldPath: "dateStatement", value: filename.dateStatement, sourceType: "filename" });
   const candidates = dedupeAndRank(seeds);
-  if (candidates.length === 0) return { status: "no_suggestions", candidates: [] };
+  if (candidates.length === 0) return { status: hasText ? "no_suggestions" : "ocr_deferred", candidates: [] };
   return { status: hasTopRankConflict(candidates) ? "ambiguous" : "ready", candidates };
 }
 

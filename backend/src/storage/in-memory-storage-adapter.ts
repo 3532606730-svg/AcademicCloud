@@ -8,6 +8,8 @@ import {
 import { assertValidObjectKey } from "./object-key.js";
 import {
   assertBoundedReadLimit,
+  assertBoundedRange,
+  MAX_BOUNDED_RANGE_BYTES,
   StorageObjectContentUnavailableError,
   StorageObjectReadLimitError,
 } from "./storage-adapter.js";
@@ -27,6 +29,7 @@ import type {
   StorageAdapter,
   StorageMultipartPart,
   StorageObjectMetadata,
+  StorageObjectRange,
 } from "./storage-adapter.js";
 
 export class InMemoryStorageAdapter implements StorageAdapter {
@@ -209,6 +212,18 @@ export class InMemoryStorageAdapter implements StorageAdapter {
     }
 
     return new Uint8Array(bytes);
+  }
+
+  async readObjectRange(objectKey: string, begin: number, end: number, maxBytes = MAX_BOUNDED_RANGE_BYTES): Promise<StorageObjectRange | null> {
+    assertValidObjectKey(objectKey);
+    assertBoundedRange(begin, end, maxBytes);
+    const metadata = this.objects.get(objectKey);
+    if (!metadata) return null;
+    if (begin >= metadata.sizeBytes) return { begin, end: begin, bytes: new Uint8Array() };
+    const bytes = this.objectBytes.get(objectKey);
+    if (!bytes) throw new StorageObjectContentUnavailableError(objectKey);
+    const actualEnd = Math.min(end, metadata.sizeBytes);
+    return { begin, end: actualEnd, bytes: new Uint8Array(bytes.subarray(begin, actualEnd)) };
   }
 
   async deleteObject(objectKey: string): Promise<void> {

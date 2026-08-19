@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   inspectPdfFrontMatter,
+  inspectPdfFrontMatterRange,
   inspectPdfText,
   PdfTextInspectionError,
 } from "../../src/suggestions/pdf-text.js";
@@ -194,4 +195,27 @@ test("only one OCR-bearing request is active and cancellation releases capacity"
   );
   const recovered = new RecordingOcrAdapter(async () => recognized("Recovered"));
   assert.equal((await inspectPdfFrontMatter(makePdf([""]), recovered)).pages[0]?.text, "Recovered");
+});
+
+test("range-backed inspector accepts an object larger than the whole-object compatibility ceiling", async () => {
+  const base = new TextDecoder().decode(makePdf(["Range-backed title evidence"]));
+  const startxref = Number(base.match(/startxref\n(\d+)/u)?.[1] ?? 0);
+  const padding = "%".repeat(33 * 1024 * 1024);
+  const largeText = `${base}${padding}\nstartxref\n${startxref}\n%%EOF`;
+  const bytes = new TextEncoder().encode(largeText);
+  const requests: Array<[number, number]> = [];
+  const source = {
+    length: bytes.byteLength,
+    async read(begin: number, end: number): Promise<Uint8Array> {
+      requests.push([begin, end]);
+      if (requests.length <= 8) console.log("R", requests.length, begin, end);
+      return bytes.slice(begin, end);
+    },
+  };
+  await assert.rejects(
+    () => inspectPdfFrontMatterRange(source, new RecordingOcrAdapter(async () => recognized("unused")), limits({ timeoutMilliseconds: 250, totalRequestTimeoutMilliseconds: 250 })),
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code !== "too_large",
+  );
+  assert.ok(requests.length >= 1);
+  assert.ok(requests.every(([begin, end]) => end > begin && end - begin <= SUGGESTION_LIMITS.rangeChunkBytes));
 });

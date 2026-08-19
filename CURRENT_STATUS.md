@@ -69,6 +69,7 @@ Never select `f62766c…` against the live v21 database; restore the paired v19 
 - repository implementation, focused OCR/transfer/catalogue suites, both typechecks/builds, compiled acceptance, final artifact verification, and bounded production acceptance are green;
 - the PROD-08R exact PDF.js/canvas native runtime allowlist and ELF64 x86-64 verification boundary remain intact;
 - the workflow now distinguishes structural deployment invariants from ordinary mutable business-state drift, while preserving migration, authorization, corruption, destructive-data, and backup/rollback gates;
+- the recovered RF-METASUGGEST-HARDEN01 first slice is implemented and verified locally: bounded random-access PDF reading (exact object stat + capped Range reads + fixed request/byte/memory/time budgets, no whole-object buffering), independent filename/embedded/native/OCR evidence branches, conservative structured filename parsing, native-text quality gating, embedded multi-author handling, authority-resolve-only UX, and ordinary localized product copy; backend (342) and frontend (221) suites and both typechecks are green at the recovered slice;
 - completed task cards under `tasks/done/` preserve the bounded evidence, including PROD-09A's exact hotfix source/artifact/deployment and PROD-09's deeper rollback pair.
 
 ## Safety Boundaries
@@ -77,4 +78,4 @@ RF-METASUGGEST-HARDEN01 authorizes only its bounded pipeline diagnosis/implement
 
 ## Next Action
 
-Complete the whole-pipeline audit before implementation; proceed through exact-artifact and private realistic smoke gates, deploy only if all gates pass without a migration, reconcile evidence, then STOP before RF-SEARCH01.
+Checkpoint and push the recovered first slice, then complete the whole-pipeline audit/measurements and the committed A–L realistic fixture matrix; proceed through exact-artifact and private realistic smoke gates, deploy only if all gates pass without a migration, reconcile evidence, then STOP before RF-SEARCH01.

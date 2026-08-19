@@ -1,6 +1,6 @@
 import { createCanvas } from "@napi-rs/canvas";
 import type { PDFPageProxy } from "pdfjs-dist";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { getDocument, PDFDataRangeTransport } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import { OcrError, TesseractCliOcrAdapter, type OcrAdapter } from "./ocr.js";
 import {
@@ -10,6 +10,7 @@ import {
   type PdfEmbeddedMetadata,
   type PdfTextInspection,
   type PdfTextPage,
+  type PdfRangeSource,
   type SuggestionLimits,
 } from "./suggestion.js";
 
@@ -90,8 +91,74 @@ export function selectedPageIndices(pageCount: number, limits: Readonly<Suggesti
 }
 
 export function isUsableNativeText(text: string): boolean {
-  const compact = text.replace(/\s+/gu, "");
-  return compact.length >= 2 && /[\p{L}]/u.test(compact);
+  const compact = text
+    .normalize("NFC")
+    .replace(/[\u0000-\u001f\u007f-\u009f]/gu, "")
+    .replace(/\s+/gu, "");
+  if (compact.length < 2 || !/[\p{L}]/u.test(compact)) return false;
+  if (/^\d+[\p{P}\p{S}]?$/u.test(compact)) return false;
+  const letters = [...compact].filter((character) => /\p{L}/u.test(character));
+  const meaningful = letters.filter((character) => /[\p{Script=Han}\p{Script=Latin}]/u.test(character));
+  if (meaningful.length < 2 || meaningful.length / Math.max(1, letters.length) < 0.55) return false;
+  // Broken font maps commonly produce long runs of replacement/private-use
+  // glyphs. A short, explicitly labelled title is still admitted by the
+  // extractor, but an opaque glyph run must not suppress OCR.
+  if (/^[\uE000-\uF8FF\uFFFD]+$/u.test(compact)) return false;
+  return true;
+}
+
+class PdfRangeTransport extends PDFDataRangeTransport {
+  private requests = 0;
+  private fetchedBytes = 0;
+  private reservedBytes = 0;
+  private aborted = false;
+
+  constructor(
+    private readonly source: PdfRangeSource,
+    private readonly limits: Readonly<SuggestionLimits>,
+    private readonly signal?: AbortSignal,
+    initialData?: Uint8Array,
+  ) {
+    // The prefix is deliberately the only progressive data. Marking the
+    // progressive stream done forces PDF.js to satisfy later page/xref reads
+    // through requestDataRange instead of silently draining the whole object.
+    super(source.length, initialData ?? null, true);
+    if (initialData) this.reservedBytes += initialData.byteLength;
+  }
+
+  get metrics(): { requests: number; fetchedBytes: number } {
+    return { requests: this.requests, fetchedBytes: this.fetchedBytes };
+  }
+
+  override requestDataRange(begin: number, end: number): void {
+    const boundedEnd = Math.min(end, begin + this.limits.rangeChunkBytes, this.length);
+    const size = boundedEnd - begin;
+    // The aggregate byte budget is reserved synchronously so concurrent PDF.js
+    // requests can never collectively exceed the hard ceiling.
+    if (size <= 0
+      || this.requests >= this.limits.maxRangeRequests
+      || this.reservedBytes + size > this.limits.maxRangeBytes) {
+      // PDF.js has no public range-error callback. Delivering an empty chunk
+      // makes the worker fail closed; the inspection wrapper maps that failure
+      // to a bounded invalid/partial result without exposing provider details.
+      this.onDataRange(begin, new Uint8Array());
+      return;
+    }
+    this.requests += 1;
+    this.reservedBytes += size;
+    void this.source.read(begin, boundedEnd, this.signal).then((bytes) => {
+      if (this.aborted) return;
+      this.fetchedBytes += bytes.byteLength;
+      this.onDataRange(begin, bytes);
+    }).catch(() => {
+      if (this.aborted) return;
+      this.onDataRange(begin, new Uint8Array());
+    });
+  }
+
+  override abort(): void {
+    this.aborted = true;
+  }
 }
 
 async function withTimeout<T>(operation: Promise<T>, timeoutMilliseconds: number, signal?: AbortSignal): Promise<T> {
@@ -259,16 +326,21 @@ function renderedDimensions(
 }
 
 async function inspectPdf(options: {
-  bytes: Uint8Array;
+  bytes?: Uint8Array;
+  source?: PdfRangeSource;
   limits: Readonly<SuggestionLimits>;
   signal?: AbortSignal;
   ocr?: OcrAdapter;
   gate?: OcrRequestGate;
 }): Promise<PdfTextInspection> {
-  const { bytes, limits, signal, ocr } = options;
+  const { bytes, source, limits, signal, ocr } = options;
   throwIfAborted(signal);
-  if (bytes.byteLength > limits.maxObjectBytes) throw new PdfTextInspectionError("too_large");
-  if (bytes.byteLength < 5 || new TextDecoder("ascii").decode(bytes.subarray(0, 5)) !== "%PDF-") {
+  if (!bytes && !source) throw new PdfTextInspectionError("invalid_pdf");
+  if (bytes && bytes.byteLength > limits.maxObjectBytes) throw new PdfTextInspectionError("too_large");
+  if (source && (!Number.isSafeInteger(source.length) || source.length < 5 || source.length > limits.maxObjectSizeBytes)) {
+    throw new PdfTextInspectionError("too_large");
+  }
+  if (bytes && (bytes.byteLength < 5 || new TextDecoder("ascii").decode(bytes.subarray(0, 5)) !== "%PDF-")) {
     throw new PdfTextInspectionError("invalid_pdf");
   }
 
@@ -278,10 +350,14 @@ async function inspectPdf(options: {
   const requestDeadline = startedAt + (ocr === undefined ? limits.timeoutMilliseconds : limits.totalRequestTimeoutMilliseconds);
   let releaseOcrRequest: (() => void) | undefined;
   try {
+    const initialData = source
+      ? await withTimeout(source.read(0, Math.min(source.length, limits.rangeChunkBytes), signal), operationBudget(parserDeadline, limits.timeoutMilliseconds), signal)
+      : undefined;
+    const rangeTransport = source ? new PdfRangeTransport(source, limits, signal, initialData) : undefined;
     loadingTask = getDocument({
-      data: new Uint8Array(bytes),
+      ...(bytes ? { data: new Uint8Array(bytes) } : { range: rangeTransport!, length: source!.length, rangeChunkSize: limits.rangeChunkBytes }),
       disableAutoFetch: true,
-      disableRange: true,
+      disableRange: source ? false : true,
       disableStream: true,
       enableXfa: false,
       isImageDecoderSupported: false,
@@ -302,24 +378,37 @@ async function inspectPdf(options: {
       nativeText: string;
     }> = [];
     let decodedTextCharacters = 0;
+    let complete = true;
     for (const pageIndex of pageIndices) {
       throwIfAborted(signal);
-      const page = await withTimeout(
-        document.getPage(pageIndex),
-        operationBudget(parserDeadline, limits.timeoutMilliseconds),
-        signal,
-      );
-      const remainingText = limits.maxTotalTextCharacters - decodedTextCharacters;
-      if (remainingText <= 0) throw new PdfTextInspectionError("limit_exceeded");
-      const nativeText = await readBoundedPageText(
-        page,
-        Math.min(limits.maxPageTextCharacters, remainingText),
-        parserDeadline,
-        limits.timeoutMilliseconds,
-        signal,
-      );
-      decodedTextCharacters += nativeText.length;
-      inspectedPages.push({ pageIndex, page, nativeText });
+      try {
+        const page = await withTimeout(
+          document.getPage(pageIndex),
+          operationBudget(parserDeadline, limits.timeoutMilliseconds),
+          signal,
+        );
+        const remainingText = limits.maxTotalTextCharacters - decodedTextCharacters;
+        if (remainingText <= 0) {
+          complete = false;
+          break;
+        }
+        const nativeText = await readBoundedPageText(
+          page,
+          Math.min(limits.maxPageTextCharacters, remainingText),
+          parserDeadline,
+          limits.timeoutMilliseconds,
+          signal,
+        );
+        decodedTextCharacters += nativeText.length;
+        inspectedPages.push({ pageIndex, page, nativeText });
+      } catch (error: unknown) {
+        if (error instanceof PdfTextInspectionError && ["aborted", "timeout", "limit_exceeded"].includes(error.code)) {
+          if (error.code === "aborted") throw error;
+          complete = false;
+          break;
+        }
+        complete = false;
+      }
     }
 
     let embeddedMetadata: PdfEmbeddedMetadata = {};
@@ -409,7 +498,7 @@ async function inspectPdf(options: {
       pageIndices,
       pages,
       embeddedMetadata,
-      complete: pages.length === pageIndices.length,
+      complete: complete && pages.length === pageIndices.length,
       hasUsableTextLayer: pages.some((page) => page.evidenceOrigin === "native_text" && isUsableNativeText(page.text)),
       hasUsableEvidence: pages.some((page) => isUsableNativeText(page.text)),
       nativePageCount,
@@ -451,6 +540,15 @@ export function inspectPdfFrontMatter(
   return inspectPdf({ bytes, limits, ocr, ...(signal === undefined ? {} : { signal }) });
 }
 
+export function inspectPdfFrontMatterRange(
+  source: PdfRangeSource,
+  ocr: OcrAdapter,
+  limits: Readonly<SuggestionLimits> = SUGGESTION_LIMITS,
+  signal?: AbortSignal,
+): Promise<PdfTextInspection> {
+  return inspectPdf({ source, limits, ocr, ...(signal === undefined ? {} : { signal }) });
+}
+
 export class PdfJsTextInspector implements BoundedPdfTextSource {
   inspect(bytes: Uint8Array, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
     return inspectPdfText(bytes, limits, signal);
@@ -466,6 +564,10 @@ export class PdfJsFrontMatterInspector implements BoundedPdfTextSource {
 
   inspect(bytes: Uint8Array, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
     return inspectPdfFrontMatter(bytes, this.#ocr, limits, signal);
+  }
+
+  inspectRange(source: PdfRangeSource, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
+    return inspectPdfFrontMatterRange(source, this.#ocr, limits, signal);
   }
 }
 

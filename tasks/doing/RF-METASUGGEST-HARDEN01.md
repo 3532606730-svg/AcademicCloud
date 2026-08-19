@@ -53,16 +53,18 @@ Complete one structural hardening pass of the bounded metadata-suggestion pipeli
 - `AGENTS.md`, `CURRENT_STATUS.md`, `TASK_BOARD.md`, `ROADMAP.md`, and this task card.
 
 ## Current State
-Active at clean authoritative checkpoint `a163018e5df778ea78614caf964318fbb0a76751` on `codex/project-memory-reconcile-20260817`, tracking the identical remote head. Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, schema v21/history 001–021. The Owner authorized this task end-to-end, including bounded private read-only smoke and conditional same-schema production release; RF-SEARCH01 remains parked.
+First hardening slice recovered and green at local HEAD `cf0bd68…` (the task-authorization docs commit on top of base `a163018e…`) on `codex/project-memory-reconcile-20260817`, tracking the identical remote head. Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, schema v21/history 001–021, and has not been touched. Bounded random-access PDF reading, independent evidence branches, structured filename parsing, native-text quality, embedded-metadata author splitting, authority-resolve UX, and product copy are implemented and typecheck/tested; the deeper remaining work (A–L realistic fixtures, measured OCR/parser tuning, exact-artifact and private smoke gates, conditional release) is still outstanding.
 
 ## Completed
-- Recovered the clean branch/upstream/checkpoint and prior PROD-09A production truth.
-- Reconciled the new bounded task boundary into the authoritative recovery path.
-- Started read-only whole-pipeline audits; no implementation or production contact has occurred.
+- Recovered the existing uncommitted first slice (storage range contract, in-memory + Aliyun range reads, PDF.js range transport, evidence independence, native-text quality, structured filename, embedded authors, authority UX, product copy) and repaired its task-caused regressions.
+- Backend typecheck green; frontend typecheck green.
+- Focused suggestion/storage suites (78) and the full backend suite (342) pass; frontend suite (221) passes.
+- Repaired: OCR fail-closed budget/limit behavior, non-PDF media-type gate, extractor `no_suggestions` vs `ocr_deferred` truthfulness, service-level filename survival on failed inspection, and a synchronous aggregate range-byte budget.
+- Added `filename evidence survives a failed PDF inspection` service test.
 
 ## Remaining
 - Complete and record the structural pipeline audit and representative runtime measurements.
-- Implement the bounded hardening and committed A–L regression corpus.
+- Add the committed A–L realistic regression corpus and measured OCR/parser budget/strategy decisions.
 - Pass changed-risk, build, artifact, independent-runner, and private pre-cutover smoke gates.
 - Conditionally deploy the exact artifact, complete post-cutover acceptance, reconcile/publish/synchronize, and stop.
 
@@ -70,8 +72,9 @@ Active at clean authoritative checkpoint `a163018e5df778ea78614caf964318fbb0a767
 None. A necessary schema migration or any failed exact-artifact/private-smoke gate is a mandatory stop before production.
 
 ## Last Verification
-- 2026-08-19: local HEAD, tracking head, and remote-tracking head all equal `a163018e5df778ea78614caf964318fbb0a76751`; the working tree was clean before task-boundary reconciliation.
-- Production was not contacted during task selection/recovery.
+- Backend `tsc --noEmit` green; full backend test suite 342/342 pass (incl. storage range, Aliyun Range, PDF.js range transport, request/byte bounds, large-object inspection, no whole-object buffering, range failure, evidence independence, filename/embedded fallback).
+- Frontend `tsc --noEmit` green; frontend suite 221/221 pass (incl. updated product-copy and authority-resolve UX expectations).
+- `git diff --check` clean. Production was not contacted.
 
 ## Next Action
-Finish the complete structural audit and measurements before applying implementation changes.
+Create the RECOVERED_FIRST_SLICE_CHECKPOINT and push it, then continue with the structural audit/measurements and the committed A–L realistic fixture matrix before the exact-artifact and private smoke gates.

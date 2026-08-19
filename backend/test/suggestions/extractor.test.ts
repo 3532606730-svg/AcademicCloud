@@ -125,6 +125,20 @@ test("image-only input returns OCR deferred and does not invent a filename fact"
   assert.deepEqual(result.candidates, []);
 });
 
+test("structured Chinese filename remains independent evidence with separate title, author, publisher, and year", () => {
+  const result = extractSuggestions({
+    pages: [{ pageIndex: 9, text: "" }],
+    embeddedMetadata: {},
+    filename: "张帆《元代宰相制度研究》（北京大学出版社1997）.pdf",
+  });
+  assert.equal(result.status, "ready");
+  assert.equal(result.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")?.value, "元代宰相制度研究");
+  assert.equal(result.candidates.find((candidate) => candidate.authorityRole === "author")?.value, "张帆");
+  assert.equal(result.candidates.find((candidate) => candidate.authorityRole === "publisher")?.value, "北京大学出版社");
+  assert.equal(result.candidates.find((candidate) => candidate.fieldPath === "dateStatement")?.value, "1997");
+  assert.equal(result.candidates.some((candidate) => candidate.fieldPath === "canonicalTitle" && candidate.value.includes("张帆")), false);
+});
+
 test("numeric-only page text is not treated as a usable text layer", () => {
   const result = extractSuggestions({
     pages: [{ pageIndex: 3, text: "12345" }],

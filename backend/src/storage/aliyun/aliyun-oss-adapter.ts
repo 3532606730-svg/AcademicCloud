@@ -10,6 +10,8 @@ import {
 import { assertValidObjectKey } from "../object-key.js";
 import {
   assertBoundedReadLimit,
+  assertBoundedRange,
+  MAX_BOUNDED_RANGE_BYTES,
   StorageObjectContentUnavailableError,
   StorageObjectReadLimitError,
 } from "../storage-adapter.js";
@@ -28,6 +30,7 @@ import type {
   MultipartUploadHandle,
   StorageAdapter,
   StorageObjectMetadata,
+  StorageObjectRange,
 } from "../storage-adapter.js";
 import type { AliyunGetResult, AliyunOssClientPort } from "./client.js";
 import { createAliyunBrowserClient, createAliyunOssClient } from "./client.js";
@@ -450,6 +453,42 @@ export class AliyunOssStorageAdapter implements StorageAdapter {
     }
 
     return bytes;
+  }
+
+  async readObjectRange(objectKey: string, begin: number, end: number, maxBytes = MAX_BOUNDED_RANGE_BYTES): Promise<StorageObjectRange | null> {
+    assertValidObjectKey(objectKey);
+    assertBoundedRange(begin, end, maxBytes);
+    const metadata = await this.statObject(objectKey);
+    if (!metadata) return null;
+    if (begin >= metadata.sizeBytes) return { begin, end: begin, bytes: new Uint8Array() };
+    const requestedEnd = Math.min(end, metadata.sizeBytes);
+    let result: AliyunGetResult;
+    try {
+      result = await this.client.get(objectKey, undefined, {
+        headers: { Range: `bytes=${begin}-${requestedEnd - 1}` },
+      });
+    } catch (error: unknown) {
+      if (isNotFound(error)) return null;
+      throw error;
+    }
+    const headers = asHeaderMap(result.res.headers);
+    const contentRange = readHeader(headers, "content-range");
+    const bytes = toUint8Array(result.content);
+    if (!bytes) throw new StorageObjectContentUnavailableError(objectKey);
+    if (bytes.byteLength > requestedEnd - begin) {
+      throw new StorageObjectReadLimitError(objectKey, bytes.byteLength, requestedEnd - begin);
+    }
+    if (bytes.byteLength !== requestedEnd - begin) {
+      // A short response is only safe at EOF. Any other truncation would let
+      // PDF.js observe a fabricated partial object.
+      if (requestedEnd !== metadata.sizeBytes) {
+        throw new Error(`OSS object range was truncated while reading: ${objectKey}`);
+      }
+    }
+    if (contentRange && !new RegExp(`^bytes\\s+${begin}-${begin + bytes.byteLength - 1}\\/${metadata.sizeBytes}$`, "u").test(contentRange)) {
+      throw new Error(`OSS returned an invalid content range for bounded PDF read: ${objectKey}`);
+    }
+    return { begin, end: begin + bytes.byteLength, bytes };
   }
 
   async deleteObject(objectKey: string): Promise<void> {

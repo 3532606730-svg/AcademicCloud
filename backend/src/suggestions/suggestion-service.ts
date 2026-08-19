@@ -15,7 +15,6 @@ import type {
   TypeFieldName,
 } from "../metadata/metadata.js";
 import {
-  MAX_BOUNDED_READ_BYTES,
   StorageObjectContentUnavailableError,
   StorageObjectReadLimitError,
   type StorageAdapter,
@@ -24,7 +23,7 @@ import {
   PdfJsFrontMatterInspector,
   PdfTextInspectionError,
 } from "./pdf-text.js";
-import type { BoundedPdfTextSource } from "./suggestion.js";
+import type { BoundedPdfTextSource, PdfRangeSource } from "./suggestion.js";
 import { extractBibliographicSuggestions } from "./extractor.js";
 import type { SuggestionRepository } from "./repositories.js";
 import {
@@ -73,8 +72,9 @@ export interface SuggestionAcceptanceResult {
   run: SuggestionRunSummary;
 }
 
-const PDF_MEDIA_TYPE = "application/pdf";
 const VERSION_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
+
+const PDF_MEDIA_TYPE = "application/pdf";
 
 function sourceFingerprint(file: StoredFile): {
   value: string;
@@ -180,10 +180,6 @@ function objectMatchesFile(
   if (file.checksum && metadata.checksum !== file.checksum) return false;
   if (file.checksumAlgorithm && metadata.checksumAlgorithm !== file.checksumAlgorithm) return false;
   return true;
-}
-
-function ensurePdfSource(file: StoredFile): void {
-  if (file.mediaType?.toLowerCase() !== PDF_MEDIA_TYPE) throw new SuggestionError("unsupported");
 }
 
 function safeCandidateIds(value: unknown): string[] {
@@ -364,30 +360,56 @@ export class SuggestionService {
       try {
         const metadata = await this.#storage.statObject(context.file.objectKey);
         observedObject = metadata;
-        if (!objectMatchesFile(metadata, context.file)) {
+        if (!metadata || !objectMatchesFile(metadata, context.file)) {
           status = "stale";
         } else {
-          const bytes = await this.#storage.readObject(context.file.objectKey, SUGGESTION_LIMITS.maxObjectBytes);
-          if (!bytes) {
+          let pdfHeader: Uint8Array | null = null;
+          if (this.#storage.readObjectRange) {
+            const header = await this.#storage.readObjectRange(context.file.objectKey, 0, Math.min(5, metadata.sizeBytes));
+            pdfHeader = header?.bytes ?? null;
+          } else if (metadata.sizeBytes <= SUGGESTION_LIMITS.maxObjectBytes) {
+            const bytes = await this.#storage.readObject(context.file.objectKey, SUGGESTION_LIMITS.maxObjectBytes);
+            pdfHeader = bytes?.subarray(0, 5) ?? null;
+          }
+          if (!pdfHeader || new TextDecoder("ascii").decode(pdfHeader) !== "%PDF-") {
             status = "unsupported";
           } else {
-            const inspection = await this.#inspector.inspect(bytes, SUGGESTION_LIMITS, signal);
-            window = {
-              firstPages: SUGGESTION_WINDOW.firstPages,
-              lastPages: SUGGESTION_WINDOW.lastPages,
-              pageCount: inspection.pageCount,
-              pageIndices: [...inspection.pageIndices],
-              complete: inspection.complete,
-            };
-            if (!(inspection.hasUsableEvidence ?? inspection.hasUsableTextLayer)) {
-              status = (inspection.ocrPageCount ?? 0) > 0 ? "no_suggestions" : "ocr_deferred";
+            let inspection: Awaited<ReturnType<NonNullable<BoundedPdfTextSource["inspect"]>>> | null = null;
+            if (metadata && this.#inspector.inspectRange && this.#storage.readObjectRange) {
+              const source: PdfRangeSource = {
+                length: metadata.sizeBytes,
+                read: async (begin, end, rangeSignal) => {
+                  const result = await this.#storage.readObjectRange!(context.file.objectKey, begin, end);
+                  if (!result || result.end < end) throw new StorageObjectContentUnavailableError(context.file.objectKey);
+                  if (rangeSignal?.aborted) throw new PdfTextInspectionError("aborted");
+                  return result.bytes;
+                },
+              };
+              inspection = await this.#inspector.inspectRange(source, SUGGESTION_LIMITS, signal);
             } else {
+              const bytes = await this.#storage.readObject(context.file.objectKey, SUGGESTION_LIMITS.maxObjectBytes);
+              if (bytes) inspection = await this.#inspector.inspect(bytes, SUGGESTION_LIMITS, signal);
+            }
+            if (inspection) {
+              window = {
+                firstPages: SUGGESTION_WINDOW.firstPages,
+                lastPages: SUGGESTION_WINDOW.lastPages,
+                pageCount: inspection.pageCount,
+                pageIndices: [...inspection.pageIndices],
+                complete: inspection.complete,
+              };
               const extracted = extractBibliographicSuggestions({
                 pages: inspection.pages,
                 embeddedMetadata: inspection.embeddedMetadata,
                 filename: context.file.displayName,
+                hasUsableTextLayer: inspection.hasUsableTextLayer,
               });
               status = extracted.status;
+              candidates = extracted.candidates;
+              if (candidates.length === 0 && !inspection.complete && status === "ocr_deferred") status = "unsupported";
+            } else {
+              const extracted = extractBibliographicSuggestions({ pages: [], embeddedMetadata: {}, filename: context.file.displayName });
+              status = extracted.status === "ocr_deferred" ? "unsupported" : extracted.status;
               candidates = extracted.candidates;
             }
           }
@@ -410,16 +432,15 @@ export class SuggestionService {
         if (error instanceof StorageObjectReadLimitError
           || error instanceof StorageObjectContentUnavailableError
           || error instanceof PdfTextInspectionError) {
-          status = error instanceof PdfTextInspectionError && error.code === "aborted"
-            ? "unsupported"
-            : "unsupported";
+          window = emptyWindow();
+          const extracted = extractBibliographicSuggestions({ pages: [], embeddedMetadata: {}, filename: context.file.displayName });
+          status = extracted.status === "ocr_deferred" ? "unsupported" : extracted.status;
+          candidates = extracted.candidates;
         } else {
           // Unexpected failures belong to the suggestion-specific HTTP
           // diagnostic boundary. Do not persist a misleading unsupported run.
           throw error;
         }
-        window = emptyWindow();
-        candidates = [];
       }
     }
 

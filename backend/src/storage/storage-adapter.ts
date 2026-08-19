@@ -100,6 +100,16 @@ export interface StorageObjectMetadata {
  */
 export const MAX_BOUNDED_READ_BYTES = 32 * 1024 * 1024;
 
+/** Maximum size of one provider range request used by bounded PDF inspection. */
+export const MAX_BOUNDED_RANGE_BYTES = 2 * 1024 * 1024;
+
+export interface StorageObjectRange {
+  /** Zero-based inclusive start, exclusive end. */
+  begin: number;
+  end: number;
+  bytes: Uint8Array;
+}
+
 export class StorageObjectReadLimitError extends Error {
   readonly code = "storage_object_read_limit" as const;
 
@@ -127,6 +137,15 @@ export function assertBoundedReadLimit(maxBytes: number): void {
     throw new RangeError(
       `Bounded object read limit must be an integer between 1 and ${MAX_BOUNDED_READ_BYTES} bytes`,
     );
+  }
+}
+
+export function assertBoundedRange(begin: number, end: number, maxBytes = MAX_BOUNDED_RANGE_BYTES): void {
+  if (!Number.isSafeInteger(begin) || begin < 0
+    || !Number.isSafeInteger(end) || end < begin
+    || !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_BOUNDED_RANGE_BYTES
+    || end - begin > maxBytes) {
+    throw new RangeError(`Bounded object range must be a safe half-open range no larger than ${MAX_BOUNDED_RANGE_BYTES} bytes`);
   }
 }
 
@@ -166,6 +185,20 @@ export interface StorageAdapter {
    * StorageObjectReadLimitError.
    */
   readObject(objectKey: string, maxBytes: number): Promise<Uint8Array | null>;
+
+  /**
+   * Read one bounded half-open byte range without applying the whole-object
+   * size gate. Implementations must enforce the per-request maximum and return
+   * exactly the requested bytes, except at EOF. The method is optional for
+   * legacy test/provider adapters; bounded PDF inspection falls back to the
+   * whole-object path only when the object is within its 32 MiB ceiling.
+   */
+  readObjectRange?(
+    objectKey: string,
+    begin: number,
+    end: number,
+    maxBytes?: number,
+  ): Promise<StorageObjectRange | null>;
 
   deleteObject(objectKey: string): Promise<void>;
 }

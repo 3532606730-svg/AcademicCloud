@@ -4,6 +4,7 @@ import { test, type TestContext } from "node:test";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
+import { PdfTextInspectionError } from "../../src/suggestions/pdf-text.js";
 import { SuggestionError, SuggestionService } from "../../src/suggestions/suggestion-service.js";
 import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfTextPage } from "../../src/suggestions/suggestion.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
@@ -264,6 +265,27 @@ test("unexpected inspection failures escape without persisting a partial suggest
   assert.equal(database.prepare<[], { count: number }>(
     "SELECT count(*) AS count FROM scholarly_metadata_suggestion_runs",
   ).get()?.count, 0);
+});
+
+test("filename evidence survives a failed PDF inspection instead of forcing unsupported", async (context) => {
+  const { persistence, library, fileId, storage, metadata } = fixture(context);
+  const service = new SuggestionService({
+    persistence,
+    storage,
+    metadata,
+    inspector: {
+      async inspect() {
+        throw new PdfTextInspectionError("invalid_pdf");
+      },
+    },
+    now: () => NOW,
+    createId: () => "run-filename-survival",
+  });
+  const run = await service.generate(OWNER, library.id, fileId);
+  assert.equal(run.status, "ready");
+  assert.equal(run.window.complete, false);
+  assert.equal(run.candidates.some((candidate) => candidate.sourceType === "filename"), true);
+  assert.equal(run.candidates.every((candidate) => candidate.evidenceOrigin === "filename"), true);
 });
 
 test("English OCR evidence reaches the existing classifier/extractor without canonical writes", async (context) => {

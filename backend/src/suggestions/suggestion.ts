@@ -8,6 +8,11 @@ export type SuggestionRulesetVersion =
 export const SUGGESTION_WINDOW = Object.freeze({ firstPages: 15, lastPages: 5 });
 export interface SuggestionLimits {
   maxObjectBytes: number;
+  /** Maximum stat-reported PDF size accepted by the bounded range path. */
+  maxObjectSizeBytes: number;
+  maxRangeBytes: number;
+  maxRangeRequests: number;
+  rangeChunkBytes: number;
   maxPages: number;
   maxPageTextCharacters: number;
   maxTotalTextCharacters: number;
@@ -31,6 +36,10 @@ export interface SuggestionLimits {
 }
 export const SUGGESTION_LIMITS: Readonly<SuggestionLimits> = Object.freeze({
   maxObjectBytes: 32 * 1024 * 1024,
+  maxObjectSizeBytes: 4 * 1024 * 1024 * 1024,
+  maxRangeBytes: 32 * 1024 * 1024,
+  maxRangeRequests: 64,
+  rangeChunkBytes: 1 * 1024 * 1024,
   maxPages: 20,
   maxPageTextCharacters: 16_384,
   maxTotalTextCharacters: 262_144,
@@ -182,6 +191,12 @@ export interface PdfTextInspection {
 
 export interface BoundedPdfTextSource {
   inspect(bytes: Uint8Array, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection>;
+  inspectRange?(source: PdfRangeSource, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection>;
+}
+
+export interface PdfRangeSource {
+  readonly length: number;
+  read(begin: number, end: number, signal?: AbortSignal): Promise<Uint8Array>;
 }
 
 export interface SuggestionSourceFingerprint {
