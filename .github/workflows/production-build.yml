@@ -115,6 +115,16 @@ jobs:
             "$TESSERACT_BUILDER_IMAGE" \
             bash scripts/build-tesseract-runtime.sh output/release/runtime/tesseract
 
+      - name: Realistic fixture OCR E2E (release-local Tesseract)
+        shell: bash
+        env:
+          OCR_TESSERACT_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/bin/tesseract
+          OCR_TESSDATA_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/tessdata
+          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/lib
+        run: |
+          set -euo pipefail
+          npx tsx --test backend/test/suggestions/realistic-ocr-e2e.test.ts
+
       - name: Finalize the release tree and manifest
         run: >-
           node scripts/production-artifact.mjs finalize

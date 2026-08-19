@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-METASUGGEST-HARDEN01 is the sole active task at clean checkpoint `a163018e5df778ea78614caf964318fbb0a76751`. Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at schema v21/history 001–021. Complete the structural audit/hardening, exact-artifact private smoke, conditional no-migration release, evidence reconciliation, then STOP. RF-SEARCH01 remains parked.**
+**RF-METASUGGEST-HARDEN01 is the sole active task; its recovered first hardening slice is committed, published, and synchronized at `9e0414e2997feffe90189d7cae788bb8e083238e` (local/tracking/remote equal, clean worktree). Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at schema v21/history 001–021. Complete the structural audit/hardening, exact-artifact private smoke, conditional no-migration release, evidence reconciliation, then STOP. RF-SEARCH01 remains parked.**
 
 ## Doing
 
@@ -49,7 +49,7 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 → immutable no-migration cutover at unchanged v21 / 001–021
 → authenticated suggestion POST 200, no `.anonymous`/raw-error exposure, canonical metadata unchanged
 → PROD-09A PASS / CLOSED
-→ RF-METASUGGEST-HARDEN01 whole-pipeline hardening and conditional same-schema release — ACTIVE
+→ RF-METASUGGEST-HARDEN01 recovered first slice committed+pushed at 9e0414e; whole-pipeline hardening and conditional same-schema release — ACTIVE
 → STOP before RF-SEARCH01
 ```
 

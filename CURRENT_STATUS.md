@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-METASUGGEST-HARDEN01 is ACTIVE at clean checkpoint `a163018e5df778ea78614caf964318fbb0a76751` on `codex/project-memory-reconcile-20260817`. Production remains exact immutable hotfix `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at unchanged schema v21/history 001–021. The sole authorized objective is a structural end-to-end real-world PDF metadata-suggestion hardening pass, exact-artifact private no-persistence smoke, and conditional same-schema release; a required migration stops for Owner approval. RF-SEARCH01 remains parked.**
+**RF-METASUGGEST-HARDEN01 is ACTIVE. The recovered first hardening slice is committed, published, and synchronized at `9e0414e2997feffe90189d7cae788bb8e083238e` on `codex/project-memory-reconcile-20260817` (local/tracking/remote equal, clean worktree); the task base is `a163018e…`. Production remains exact immutable hotfix `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at unchanged schema v21/history 001–021. The sole authorized objective is a structural end-to-end real-world PDF metadata-suggestion hardening pass, exact-artifact private no-persistence smoke, and conditional same-schema release; a required migration stops for Owner approval. RF-SEARCH01 remains parked.**
 
 The governing product rule remains ADR-022:
 
@@ -78,4 +78,4 @@ RF-METASUGGEST-HARDEN01 authorizes only its bounded pipeline diagnosis/implement
 
 ## Next Action
 
-Checkpoint and push the recovered first slice, then complete the whole-pipeline audit/measurements and the committed A–L realistic fixture matrix; proceed through exact-artifact and private realistic smoke gates, deploy only if all gates pass without a migration, reconcile evidence, then STOP before RF-SEARCH01.
+The recovered first slice is already checkpointed and pushed at `9e0414e…`. Next: complete the whole-pipeline audit/measurements and the committed A–L realistic fixture matrix; proceed through exact-artifact and private realistic smoke gates, deploy only if all gates pass without a migration, reconcile evidence, then STOP before RF-SEARCH01.

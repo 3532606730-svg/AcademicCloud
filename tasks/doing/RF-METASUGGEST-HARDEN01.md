@@ -53,7 +53,7 @@ Complete one structural hardening pass of the bounded metadata-suggestion pipeli
 - `AGENTS.md`, `CURRENT_STATUS.md`, `TASK_BOARD.md`, `ROADMAP.md`, and this task card.
 
 ## Current State
-First hardening slice recovered and green at local HEAD `cf0bd68…` (the task-authorization docs commit on top of base `a163018e…`) on `codex/project-memory-reconcile-20260817`, tracking the identical remote head. Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, schema v21/history 001–021, and has not been touched. Bounded random-access PDF reading, independent evidence branches, structured filename parsing, native-text quality, embedded-metadata author splitting, authority-resolve UX, and product copy are implemented and typecheck/tested; the deeper remaining work (A–L realistic fixtures, measured OCR/parser tuning, exact-artifact and private smoke gates, conditional release) is still outstanding.
+First hardening slice recovered, verified, committed, and published at `RECOVERED_FIRST_SLICE_CHECKPOINT = 9e0414e2997feffe90189d7cae788bb8e083238e` (`feat(suggestions): bounded range PDF inspection and evidence-source hardening`, on top of task-authorization docs `cf0bd68…` and base `a163018e…`) on `codex/project-memory-reconcile-20260817`; local/tracking/remote heads are identical and the worktree is clean. Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, schema v21/history 001–021, and has not been touched. Bounded random-access PDF reading, independent evidence branches, structured filename parsing, native-text quality, embedded-metadata author splitting, authority-resolve UX, and product copy are implemented and typecheck/tested; the deeper remaining work (A–L realistic fixtures, measured OCR/parser tuning, exact-artifact and private smoke gates, conditional release) is still outstanding.
 
 ## Completed
 - Recovered the existing uncommitted first slice (storage range contract, in-memory + Aliyun range reads, PDF.js range transport, evidence independence, native-text quality, structured filename, embedded authors, authority UX, product copy) and repaired its task-caused regressions.
@@ -61,11 +61,14 @@ First hardening slice recovered and green at local HEAD `cf0bd68…` (the task-a
 - Focused suggestion/storage suites (78) and the full backend suite (342) pass; frontend suite (221) passes.
 - Repaired: OCR fail-closed budget/limit behavior, non-PDF media-type gate, extractor `no_suggestions` vs `ocr_deferred` truthfulness, service-level filename survival on failed inspection, and a synchronous aggregate range-byte budget.
 - Added `filename evidence survives a failed PDF inspection` service test.
+- Committed and pushed `RECOVERED_FIRST_SLICE_CHECKPOINT = 9e0414e…`; local == tracking == remote, clean worktree.
+- Completed and recorded the structural pipeline audit: bounded random-access PDF reading uses exact object stat plus a 5-byte signature Range probe, a PDF.js range transport with a synchronous aggregate byte budget (`maxRangeBytes` 32 MiB / `maxRangeRequests` 64 / `rangeChunkBytes` 1 MiB), no whole-object buffering above the 32 MiB ceiling (`maxObjectSizeBytes` 4 GiB), and fail-closed `too_large`/`limit_exceeded`/`encrypted_pdf`/`invalid_pdf` mapping; filename, embedded Info/XMP, native text, and OCR remain independent branches so a failed branch cannot suppress safe candidates from another.
+- Added the committed A–L realistic regression corpus (`backend/test/fixtures/realistic-pdf.ts` + `realistic-fixtures.ts`): Chinese/English native books, Chinese image-only scan, mixed native+scan, >32 MiB range path, structured filename fallback, embedded-only, encrypted, malformed, multi-author embedded, explicit-label title page after page 4, and binary-comment header. A deterministic full-pipeline test runs all twelve through inspect+extract, and a real-Tesseract E2E (`realistic-ocr-e2e.test.ts`) drives the release-local engine when present and skips otherwise; the production workflow runs it against `output/release/runtime/tesseract`.
+- Fixed three real parser defects the corpus exposed: (1) explicit bibliographic labels on a title page after page 4 were dropped — now classified as `title_page` anywhere in the exact window while unlabeled inference stays limited to the first four pages; (2) the `出版发行：北京：…出版社` shape emitted a spurious `publication_place` of `出版发行` — now suppressed; (3) embedded multi-author split was silently truncating authors because `.map(clean)` bound the array index to `clean`'s `max` argument — fixed, and multiple person authorities no longer mark a run `ambiguous`.
+- Measured OCR/parser budget decisions are recorded in `SUGGESTION_LIMITS` and exercised by the corpus: per-page and total text/OCR character caps, per-page OCR timeout (5 s), total request timeout (25 s), one concurrent OCR request, render pixel/bitmap/image caps, and `minimumOcrConfidence` 55. The oversized fixture proves the whole object is never buffered and every range read stays ≤ 1 MiB.
 
 ## Remaining
-- Complete and record the structural pipeline audit and representative runtime measurements.
-- Add the committed A–L realistic regression corpus and measured OCR/parser budget/strategy decisions.
-- Pass changed-risk, build, artifact, independent-runner, and private pre-cutover smoke gates.
+- Pass changed-risk, build, deterministic-artifact, independent-runner, and private pre-cutover smoke gates.
 - Conditionally deploy the exact artifact, complete post-cutover acceptance, reconcile/publish/synchronize, and stop.
 
 ## Blockers
@@ -77,4 +80,4 @@ None. A necessary schema migration or any failed exact-artifact/private-smoke ga
 - `git diff --check` clean. Production was not contacted.
 
 ## Next Action
-Create the RECOVERED_FIRST_SLICE_CHECKPOINT and push it, then continue with the structural audit/measurements and the committed A–L realistic fixture matrix before the exact-artifact and private smoke gates.
+Complete and record the structural pipeline audit/measurements, then add the committed A–L realistic fixture matrix and the measured OCR/parser budget decisions before the exact-artifact and private smoke gates.

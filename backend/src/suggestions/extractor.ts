@@ -164,6 +164,11 @@ function classifyPage(page: PdfTextPage): PageClass {
   );
   const oneLineCover = page.pageIndex <= 2 && lines.length === 1 && text.length <= 180 && !/[.!?。！？]$/.test(text.trim()) && !isNonTitleEvidenceLine(text);
   if (page.pageIndex <= 4 && (titleSignals > 0 || sparseStrong || oneLineCover)) return "title_page";
+  // Explicit bibliographic labels (题名/书名/Title/作者/Author/副题名/…)
+  // are admissible anywhere in the exact selected window; unlabeled title-page
+  // inference stays limited to the first four pages. This covers a labelled
+  // title page that appears after page 4 or in the last-five window.
+  if (titleSignals > 0 && (sparseFrontMatter || (lines.length === 1 && text.length <= 240))) return "title_page";
   if (words > 20 || text.length > 240) return "ordinary_body";
   return "unknown";
 }
@@ -187,13 +192,24 @@ function pageContexts(pages: readonly PdfTextPage[]): PageContext[] {
     });
 }
 
+const PERSON_AUTHORITY_ROLES: readonly string[] = [
+  "author",
+  "editor",
+  "translator",
+  "compiler",
+  "scribe",
+  "sender",
+  "recipient",
+  "creator",
+  "contributor",
+];
+
 function sourceRank(
   fieldPath: SuggestionFieldPath,
   source: SuggestionSourceType,
   authorityRole: AuthorityRole | null = null,
 ): number {
-  const titleAuthority = fieldPath === "authority"
-    && ["author", "editor", "translator", "compiler", "scribe", "sender", "recipient", "creator", "contributor"].includes(authorityRole ?? "");
+  const titleAuthority = fieldPath === "authority" && PERSON_AUTHORITY_ROLES.includes(authorityRole ?? "");
   return fieldPath === "canonicalTitle" || fieldPath === "subtitle" || titleAuthority
     ? TITLEISH_RANK[source]
     : BIBLIOGRAPHIC_RANK[source];
@@ -718,7 +734,10 @@ function parsePage(context: PageContext, seeds: CandidateSeed[]): void {
           value: cleanPublisherValue(copyrightPublisher),
         });
       }
-      const place = !line.includes("/")
+      // A publication label such as `出版发行：北京：…出版社` is not a place;
+      // only a leading non-label segment followed by a colon is treated as one.
+      const labelledPublication = /^(?:出版发行|出版者|出版社|出版|published(?:\s+by)?|publisher|imprint)\s*[:：]/iu.test(line);
+      const place = !line.includes("/") && !labelledPublication
         ? line.match(/^([^，,：:]{1,64})\s*[:：]\s*[^，,。；;]*(?:出版社|出版|published)/i)?.[1]
         : undefined;
       if (place) addSeed(seeds, context, { fieldPath: "authority", authorityType: "place", authorityRole: "publication_place", value: place });
@@ -786,7 +805,9 @@ function embeddedCandidates(metadata: PdfEmbeddedMetadata, seeds: CandidateSeed[
     addSeed(seeds, null, { fieldPath: "canonicalTitle", value: metadata.title, sourceType: "embedded_pdf_metadata" });
   }
   if (metadata.author && clean(metadata.author) && !isGenericPlaceholder(metadata.author)) {
-    const authors = metadata.author.split(/\s*(?:;|；|\||\band\b|和)\s*/iu).map(clean).filter(Boolean).slice(0, 8);
+    // Map explicitly: passing `clean` straight to `map` would bind the array
+    // index to its `max` argument and truncate authors.
+    const authors = metadata.author.split(/\s*(?:;|；|\||\band\b|和)\s*/iu).map((author) => clean(author)).filter(Boolean).slice(0, 8);
     for (const author of authors) {
       addSeed(seeds, null, {
         fieldPath: "authority",
@@ -845,6 +866,9 @@ function dedupeAndRank(seeds: CandidateSeed[]): Omit<SuggestionCandidate, "id">[
 function hasTopRankConflict(candidates: readonly Omit<SuggestionCandidate, "id">[]): boolean {
   const groups = new Map<string, Omit<SuggestionCandidate, "id">[]>();
   for (const candidate of candidates) {
+    // Multiple person authorities (co-authors, editors, translators) are
+    // complementary proposals, never conflicting evidence for one fact.
+    if (candidate.fieldPath === "authority" && PERSON_AUTHORITY_ROLES.includes(candidate.authorityRole ?? "")) continue;
     const key = [candidate.fieldPath, candidate.typeFieldName ?? "", candidate.authorityType ?? "", candidate.authorityRole ?? "", candidate.identifierScheme ?? ""].join("|");
     const group = groups.get(key) ?? [];
     group.push(candidate);

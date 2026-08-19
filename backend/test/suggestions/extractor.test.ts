@@ -265,3 +265,44 @@ test("imprint and publication-only front matter cannot become a canonical title"
     assert.equal(result.candidates.some((candidate) => candidate.fieldPath === "canonicalTitle"), false, text);
   }
 });
+
+test("multiple embedded authors remain separate complementary candidates rather than a conflict", () => {
+  const result = extractSuggestions({
+    pages: [{ pageIndex: 1, text: "" }],
+    embeddedMetadata: { title: "The Mongols and the West, 1221–1410", author: "Peter Jackson; David Morgan" },
+    filename: "multi-author.pdf",
+  });
+  assert.equal(result.status, "ready");
+  assert.deepEqual(
+    result.candidates.filter((candidate) => candidate.authorityRole === "author").map((candidate) => candidate.value),
+    ["David Morgan", "Peter Jackson"],
+  );
+  assert.equal(result.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")?.value, "The Mongols and the West, 1221–1410");
+});
+
+test("a Chinese publication label never becomes a spurious publication place", () => {
+  const result = extractSuggestions({
+    pages: [{ pageIndex: 2, text: "版权页\n出版发行：北京：北京大学出版社\n出版时间：1997" }],
+    embeddedMetadata: {},
+    filename: "fallback.pdf",
+  });
+  assert.deepEqual(
+    result.candidates.filter((candidate) => candidate.authorityRole === "publication_place").map((candidate) => candidate.value),
+    ["北京"],
+  );
+  assert.equal(result.candidates.find((candidate) => candidate.authorityRole === "publisher")?.value, "北京大学出版社");
+});
+
+test("an explicit-label title page after page 4 is still classified as a title page", () => {
+  const result = extractSuggestions({
+    pages: [{ pageIndex: 6, text: "题名：元代宰相制度研究\n作者：张帆" }],
+    embeddedMetadata: {},
+    filename: "fallback.pdf",
+  });
+  const title = result.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle");
+  assert.equal(result.status, "ready");
+  assert.equal(title?.value, "元代宰相制度研究");
+  assert.equal(title?.sourceType, "title_page");
+  assert.equal(title?.sourcePageIndex, 6);
+  assert.equal(result.candidates.find((candidate) => candidate.authorityRole === "author")?.value, "张帆");
+});
