@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development, the narrow workflow proportionality clarification, and RF-TRANSFER01 — True Resumable Upload and Download are complete and green at development schema v21/history 001–021. Production remains unchanged at the closed PROD-08R v19 checkpoint. The next gate is the exact combined Linux x64 / Node 24 artifact, including the Tesseract packaging proof, before any production contact.**
+**RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. PROD-09 is active under ADR-030: build and independently verify the exact combined Linux x64 / Node 24 artifact with release-local Tesseract 5.5.3/tessdata_fast 4.1.0 before any production contact. Production remains unchanged at the closed PROD-08R v19 checkpoint.**
 
 The governing product rule remains ADR-022:
 
@@ -70,4 +70,4 @@ No production contact or mutation is authorized during the remaining development
 
 ## Next Action
 
-Build and independently verify the exact combined Linux x64 / Node 24 artifact from the RF-TRANSFER01 checkpoint, including deterministic archive/manifest identity, production-only dependency/native-runtime audits, and the exact release-local Tesseract 5.5.3/tessdata_fast 4.1.0 chi_sim/chi_tra/eng packaging proof. Do not contact production until both artifact jobs are green.
+Implement ADR-030's release-local Tesseract runtime, produce the exact combined artifact, and require both the primary and independent fresh-runner artifact jobs to pass. Do not contact production first.

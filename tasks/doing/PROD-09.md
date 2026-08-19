@@ -1,0 +1,68 @@
+# PROD-09 — Final Combined OCR and Transfer Release
+
+## Task ID
+PROD-09 — Final Combined OCR and Transfer Release
+
+## Goal
+Produce an independently verified immutable Linux x64 / Node 24 artifact with a release-local Tesseract 5.5.3 runtime, then deploy the exact combined schema-v21 application through the bounded Owner-authorized production gate and reconcile final evidence before stopping.
+
+## Scope
+- Build exact official Tesseract 5.5.3 source in controlled Linux x86_64 CI and package its audited minimum release-local runtime dependency closure.
+- Package exact official `tessdata_fast` 4.1.0 `eng`, `chi_sim`, and `chi_tra` models with pinned file hashes and upstream notices.
+- Make AcademicCloud invoke the release-local OCR runtime with child-scoped library/model paths.
+- Extend manifest, artifact policy, extracted runtime probes, deterministic archive checks, and independent fresh-runner verification without weakening the existing PDF.js/canvas/argon2/better-sqlite3 boundary.
+- Only after both artifact jobs pass, run the authorized bounded production preflight, fresh verified encrypted off-host schema-v19 backup, exact migrations 020–021, immutable cutover, changed-risk OCR/transfer/Range acceptance, and durable evidence reconciliation.
+
+## Non-goals
+- System-wide Tesseract or package installation on production; host-library replacement; global environment changes; daemon/service creation; cloud OCR; runtime downloads; paid services; unrelated infrastructure changes.
+- RF-SEARCH01, whole-document extraction, indexing/search, embeddings/retrieval/RAG, main merge, incident-database inspection, real permanent deletion/PROD-03C2, reboot/autostart, credentials, DNS/TLS/firewall changes, or unrelated OSS/data cleanup.
+
+## Acceptance Criteria
+- Source tag/commit/archive and builder/toolchain/build dependency identities are exact and recorded; unpinned or unresolved inputs fail closed.
+- The release-local runtime contains only the bounded executable/library/model/notice set; every packaged file has manifest SHA-256 and every ELF is Linux x86-64 with an exact resolved closure and no CI workspace dependency.
+- Extracted artifact reports Tesseract 5.5.3, discovers exact `eng`, `chi_sim`, `chi_tra` model hashes, passes a deterministic synthetic OCR probe offline, and preserves PDF.js/canvas/argon2/better-sqlite3 and compiled acceptance.
+- The production artifact archive and manifest are deterministic across two clean builds, and the independent fresh runner redownloads and repeats runtime verification without rebuilding or downloading OCR components.
+- Production remains untouched until both artifact jobs are green. Preflight proves exact `f62766c…`/v19/001–019 structural state before mutation.
+- Writes are frozen before a fresh verified schema-v19 backup; only encrypted backup plus non-secret evidence is published and independently hash-verified off-host.
+- Exactly migrations 020 and 021 apply once; integrity/FK/history/checksums remain exact; immutable release cutover, OCR/transfer/Range/health/readiness acceptance pass without arbitrary real-document OCR or destructive pre-existing targets.
+- Final task/status/board/roadmap/AGENTS/runbook evidence is reconciled, pushed, and local/tracking/remote state is verified clean; then STOP.
+
+## Relevant ADRs
+- ADR-023 — durable decision reconciliation and synchronization.
+- ADR-027 — bounded bibliographic suggestion implementation and local OCR amendment.
+- ADR-029 — provider-backed multipart transfer and browser-native Range resume.
+- ADR-030 — release-local Tesseract runtime.
+
+## Relevant Modules / Files
+- `.github/workflows/production-build.yml`
+- `scripts/production-artifact.mjs` and bounded Tesseract build/runtime helpers
+- `backend/src/suggestions/ocr.ts`
+- `backend/test/deployment/artifacts.test.ts` and OCR/artifact tests
+- `deployment/env/academiccloud.env.example`
+- `docs/deployment/production-runbook.md`
+- authoritative project/task/evidence records
+
+## Current State
+Active on clean synchronized authoritative branch `codex/project-memory-reconcile-20260817` from `f02930748fc488f09336ec043561f0c3989adac8`. RF-FRONTMATTEROCR01 and RF-TRANSFER01 development are closed at schema v21/history 001–021. Production remains untouched at exact `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`, schema v19/history 001–019.
+
+## Completed
+- Owner authorized the exact release-local Tesseract build/package/deployment boundary.
+- Recovered the existing artifact/runtime repair, task state, production truth, and final continuous-objective boundary.
+
+## Remaining
+- Reconcile and publish ADR-030/task activation.
+- Implement and verify deterministic release-local OCR build/package/runtime evidence.
+- Produce two green artifact jobs from the exact final source commit.
+- Execute bounded production preflight/backup/migrations/cutover/acceptance only after the artifact gate.
+- Reconcile/publish final evidence and stop.
+
+## Blockers
+None. Ordinary build/link/package details are authorized; any inability to produce a deterministic independently verifiable closure fails the artifact gate before production.
+
+## Last Verification
+- RF-TRANSFER01 checkpoint `6491022a7e3da11278a30fed809c55dd235beee0`: backend 335/335, frontend 211/211, both typechecks/builds, compiled acceptance, migration head 21, and diff check PASS.
+- Publication evidence checkpoint `f02930748fc488f09336ec043561f0c3989adac8`: local/tracking/remote equal and clean.
+- Production touched: false.
+
+## Next Action
+Publish the Owner decision/PROD-09 activation checkpoint, implement the bounded release-local runtime and artifact evidence, and run the two-job artifact gate. Do not contact production first.

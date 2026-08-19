@@ -4,13 +4,13 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development, the narrow workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019 and remains untouched until the final combined artifact gate passes.**
+**RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. PROD-09 is active under ADR-030. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019 and remains untouched until both final combined artifact jobs pass.**
 
 ## Doing
 
 | Task | Task card | State |
 |---|---|---|
-| None | — | RF-TRANSFER01 checkpointed; final artifact gate is the next authorized boundary |
+| PROD-09 | `tasks/doing/PROD-09.md` | Active; release-local Tesseract artifact gate first, then bounded final deployment only after both artifact jobs pass |
 
 ## Done
 
@@ -46,7 +46,7 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | Final combined artifact/deployment | Authorized only after OCR and transfer development checkpoints are closed and the exact artifact jobs are green |
+| 1 | PROD-09 final combined artifact/deployment | Active; artifact implementation/build first, production only after both jobs are green |
 | 2 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
 | 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
 | 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
@@ -117,4 +117,4 @@ The rollback pair is exact prior application `bc5788633e0295744905b4ae2dcdfcc5d9
 
 ## Next Action
 
-Build and independently verify the exact combined Linux x64 / Node 24 artifact from the RF-TRANSFER01 checkpoint, including the Tesseract packaging gate. Do not contact production until both artifact jobs are green.
+Implement ADR-030 and pass both exact combined artifact jobs. Do not contact production first.

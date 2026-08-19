@@ -69,11 +69,11 @@ L1-UX06
 → RF-FRONTMATTEROCR01 bounded local OCR development
 → workflow proportionality clarification
 → RF-TRANSFER01 true resumable transfer development — complete
-→ exact combined artifact and bounded final production deployment
+→ PROD-09 exact release-local OCR artifact and bounded final production deployment — active
 → STOP
 ```
 
-L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, and RF-TRANSFER01 development are complete. Development is schema v21/history 001–021; production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019, with RF-METASUGGEST01/L1-UX07 deployed and PROD-07B behavior preserved. The previous release remains `bc5788633e0295744905b4ae2dcdfcc5d97635bf`; rollback was used during fail-closed PROD-08R attempts before final success. The next authorized boundary is the exact combined Linux x64 / Node 24 artifact and Tesseract packaging gate. RF-SEARCH01 and the later Pre-OCR cards remain parked.
+L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, and RF-TRANSFER01 development are complete. Development is schema v21/history 001–021; production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019, with RF-METASUGGEST01/L1-UX07 deployed and PROD-07B behavior preserved. The previous release remains `bc5788633e0295744905b4ae2dcdfcc5d97635bf`; rollback was used during fail-closed PROD-08R attempts before final success. PROD-09 is active under ADR-030: exact release-local Tesseract artifact gate first, bounded deployment only after both artifact jobs pass. RF-SEARCH01 and the later Pre-OCR cards remain parked.
 
 ### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
 
@@ -317,9 +317,9 @@ PROD-08R truth preserved
 → RF-FRONTMATTEROCR01 development complete
 → workflow proportionality clarification
 → RF-TRANSFER01 development complete
-→ exact Linux x64 / Node 24 combined artifact
+→ PROD-09 exact Linux x64 / Node 24 release-local OCR artifact
 → bounded final production deployment and reconciliation
 → STOP
 ```
 
-RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, the narrow workflow proportionality clarification, and RF-TRANSFER01 development are complete. RF-METASUGGEST01 and L1-UX07 remain deployed in exact production release `f62766c…`; bounded OCR and development migrations 020–021 remain undeployed. The next authorized boundary is the exact combined Linux x64 / Node 24 artifact and Tesseract packaging gate, followed only after green artifact jobs by the bounded final production deployment. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, infrastructure-policy repair, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited.
+RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 development are complete. RF-METASUGGEST01 and L1-UX07 remain deployed in exact production release `f62766c…`; bounded OCR and development migrations 020–021 remain undeployed. PROD-09 is active under ADR-030; production contact remains deferred until both exact artifact jobs are green. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited.

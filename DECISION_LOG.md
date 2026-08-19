@@ -228,3 +228,20 @@ without whole-file JavaScript Blob buffering. Account/Library authority and
 private research-overlay boundaries are unchanged. A post-migration rollback
 requires the paired pre-migration database backup; this ADR authorizes no
 production contact or provider/infrastructure policy change.
+
+## ADR-030 — Release-Local Tesseract Runtime
+
+**Date:** 2026-08-19
+**Status:** Accepted by Owner for the final combined release
+**Full record:** `docs/decisions/ADR-030-release-local-tesseract-runtime.md`
+
+The final artifact builds exact official Tesseract 5.5.3 source in controlled
+Linux x86_64 CI and packages a bounded audited runtime with exact
+`tessdata_fast` 4.1.0 `eng`, `chi_sim`, and `chi_tra`. Source, builder,
+toolchain, dependency closure, binary/library/model hashes, licenses, extracted
+runtime probes, and independent fresh-runner verification are mandatory.
+
+AcademicCloud invokes the release-local engine with child-scoped library/model
+paths. Production receives no package installation, host-library replacement,
+global environment change, daemon, cloud OCR, runtime download, or unrelated
+infrastructure authority.
