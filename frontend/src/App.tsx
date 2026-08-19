@@ -870,7 +870,7 @@ function DriveView({
     controller: AbortController,
   ): Promise<void> {
     if (!api.getUploadStatus || !api.authorizeUploadPart || !api.resumeUpload || !api.completeMultipartUpload) {
-      throw new Error("Multipart upload API is unavailable");
+      throw new Error(t("upload.unavailable"));
     }
     let transfer: MultipartTransfer;
     if (initialTransfer.state === "paused") {
@@ -1006,7 +1006,7 @@ function DriveView({
       }
 
       if (existing?.uploadKind === "multipart") {
-        if (!api.getUploadStatus) throw new Error("Multipart upload API is unavailable");
+        if (!api.getUploadStatus) throw new Error(t("upload.unavailable"));
         const status = await api.getUploadStatus(existing.id);
         if (status.kind === "complete") {
           patchJob(job.id, { phase: "complete", uploaded: true, progress: 1 });
@@ -1060,7 +1060,7 @@ function DriveView({
     const fileId = job.fileId!;
     try {
       if (job.transfer !== null) {
-        if (!api.getUploadStatus) throw new Error("Multipart upload API is unavailable");
+        if (!api.getUploadStatus) throw new Error(t("upload.unavailable"));
         const status = await api.getUploadStatus(fileId);
         if (status.kind === "complete") {
           patchJob(job.id, { phase: "complete", uploaded: true, progress: 1 });
@@ -2038,9 +2038,9 @@ function DriveView({
                 {pending.map((file) => (
                   <article className="pending-card" key={file.id}>
                     <FileBadge file={file} />
-                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t(file.uploadKind === "multipart" ? "pending.multipartState" : "pending.legacyState")}</span></div>
+                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t("pending.readyToContinue")}</span></div>
                     <label className="button button--small" aria-label={t("pending.chooseOriginalAria", { name: file.displayName })}>
-                      {t(file.uploadKind === "multipart" ? "pending.chooseOriginal" : "pending.chooseLegacy")}
+                      {t("pending.chooseOriginal")}
                       <input className="visually-hidden" type="file" onChange={(event) => {
                         const selected = event.target.files?.[0];
                         if (selected) enqueueFile(selected, file);
@@ -2052,10 +2052,10 @@ function DriveView({
                       void runAction(file.id, t("upload.abandoned"), async () => {
                         if (file.uploadKind === "multipart") {
                           const status = await api.getUploadStatus?.(file.id);
-                          if (!status || status.kind !== "multipart" || !api.abandonMultipartUpload) throw new Error("Multipart upload API is unavailable");
+                          if (!status || status.kind !== "multipart" || !api.abandonMultipartUpload) throw new Error(t("upload.abandonUnavailable"));
                           await api.abandonMultipartUpload(file.id, status.version);
                         } else {
-                          if (!api.abandonLegacyUpload) throw new Error("Legacy upload abandonment is unavailable");
+                          if (!api.abandonLegacyUpload) throw new Error(t("upload.abandonUnavailable"));
                           await api.abandonLegacyUpload(file.id);
                         }
                       });

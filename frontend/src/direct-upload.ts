@@ -49,7 +49,7 @@ export function uploadDirectly(
   options: DirectUploadOptions = {},
 ): Promise<void> {
   if (authorization.method !== "POST") {
-    return Promise.reject(new TypeError("Unsupported direct upload method"));
+    return Promise.reject(new DirectUploadError("upload_unavailable", "Unsupported direct upload method"));
   }
 
   const inactivityTimeoutMs = options.inactivityTimeoutMs ?? DEFAULT_INACTIVITY_TIMEOUT_MS;
@@ -142,12 +142,12 @@ export function uploadPartDirectly(
   options: DirectUploadOptions = {},
 ): Promise<void> {
   if (authorization.method !== "PUT") {
-    return Promise.reject(new TypeError("Unsupported multipart part method"));
+    return Promise.reject(new DirectUploadError("upload_unavailable", "Unsupported upload method"));
   }
   const signedContentLength = Object.entries(authorization.headers)
     .find(([name]) => name.toLowerCase() === "content-length")?.[1];
   if (signedContentLength !== undefined && signedContentLength !== String(bytes.size)) {
-    return Promise.reject(new TypeError("Multipart part size does not match its signed authorization"));
+    return Promise.reject(new DirectUploadError("upload_metadata_mismatch", "Upload size does not match its authorization"));
   }
   const inactivityTimeoutMs = options.inactivityTimeoutMs ?? DEFAULT_INACTIVITY_TIMEOUT_MS;
   return new Promise((resolve, reject) => {

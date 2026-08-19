@@ -237,6 +237,30 @@ describe("createUploadForm", () => {
   });
 });
 
+describe("upload authorization failures", () => {
+  it("uses localizable error codes instead of exposing authorization mechanics", async () => {
+    const invalidDirectAuthorization = {
+      ...AUTHORIZATION,
+      method: "PUT",
+    } as unknown as UploadAuthorization;
+    await expect(uploadDirectly(invalidDirectAuthorization, new File(["source"], "paper.pdf"))).rejects.toMatchObject({
+      code: "upload_unavailable",
+    });
+
+    const invalidPartAuthorization = {
+      ...PART_AUTHORIZATION,
+      method: "POST",
+    } as unknown as MultipartPartAuthorization;
+    await expect(uploadPartDirectly(invalidPartAuthorization, new Blob(["source"]))).rejects.toMatchObject({
+      code: "upload_unavailable",
+    });
+
+    await expect(uploadPartDirectly(PART_AUTHORIZATION, new Blob(["short"]))).rejects.toMatchObject({
+      code: "upload_metadata_mismatch",
+    });
+  });
+});
+
 describe("uploadPartDirectly", () => {
   it.each([200, 201, 204])("uses exact PUT headers and accepts provider status %s", async (status) => {
     const xhr = new FakeXhr();

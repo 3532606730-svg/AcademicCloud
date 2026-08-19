@@ -870,6 +870,29 @@ describe("App", () => {
     expect(api.createUpload).not.toHaveBeenCalled();
   });
 
+  it("shows the same user-facing continuation state for every unfinished upload", async () => {
+    const user = userEvent.setup();
+    const previousUpload = {
+      ...FILE,
+      id: "previous-upload-1",
+      displayName: "previous.pdf",
+      state: "pending_upload" as const,
+      activatedAt: null,
+      uploadKind: "legacy" as const,
+    };
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listPending: vi.fn().mockResolvedValue([PENDING_MULTIPART_FILE, previousUpload]),
+    });
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole("button", { name: "Pending" }));
+
+    expect(await screen.findAllByText(/Ready to continue/)).toHaveLength(2);
+    expect(screen.getAllByText("Choose original file and continue")).toHaveLength(2);
+    expect(screen.queryByText(/multipart|legacy|remote parts|re-upload once/i)).not.toBeInTheDocument();
+  });
+
   it("skips dropped directories, reports them, and still uploads regular files", async () => {
     const checksumFile = vi.fn(() => new Promise<string>(() => {}));
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
@@ -1363,7 +1386,7 @@ describe("App", () => {
       new File(["abcdef"], "same-name.pdf", { type: "application/pdf" }),
     );
 
-    expect(await screen.findByText("Choose the same file originally reserved for this pending upload.")).toBeInTheDocument();
+    expect(await screen.findByText("Choose the original file for this unfinished upload and try again.")).toBeInTheDocument();
     expect(getUploadStatus).not.toHaveBeenCalled();
     expect(authorizeUploadPart).not.toHaveBeenCalled();
   });
@@ -1748,7 +1771,7 @@ describe("App", () => {
     await user.upload(await screen.findByLabelText("上传文件"), new File(["x"], "a.pdf", { type: "application/pdf" }));
     checksumResolvers[0]!(FILE.checksum);
 
-    await waitFor(() => expect(screen.getByText("无法连接到对象存储，请检查网络后重试。")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("无法连接到上传服务，请检查网络后重试。")).toBeInTheDocument());
     expect(screen.queryByText(/Could not reach object storage/)).not.toBeInTheDocument();
   });
 
@@ -1925,7 +1948,7 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Library" });
 
     await user.click(screen.getByRole("button", { name: "Recycle" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Object storage is temporarily unavailable");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Uploads are temporarily unavailable");
 
     await user.click(screen.getByRole("button", { name: "Favorites" }));
     expect(await screen.findByText("paper.pdf")).toBeInTheDocument();
@@ -1960,7 +1983,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Favorites" }));
     // The retry failure surfaces as an actionable Favorites error — the page
     // is NOT silently stuck in permanent loading.
-    expect(await screen.findByRole("alert")).toHaveTextContent("Object storage is temporarily unavailable");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Uploads are temporarily unavailable");
     expect(within(screen.getByRole("alert")).getByRole("button", { name: "Refresh" })).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(listFavorites).toHaveBeenCalledTimes(2);
@@ -2261,16 +2284,16 @@ describe("App", () => {
     await waitFor(() => expect(completeUpload).toHaveBeenCalledTimes(2));
 
     expect(screen.queryByText("Queued")).not.toBeInTheDocument();
-    expect(screen.getByText("Verifying stored file")).toBeInTheDocument();
+    expect(screen.getByText("Verifying upload")).toBeInTheDocument();
     expect(screen.getByText("1 in progress or needing attention")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Pending" }));
     await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "Library" }));
     expect(completeUpload).toHaveBeenCalledTimes(2);
-    expect(screen.getByText("Verifying stored file")).toBeInTheDocument();
+    expect(screen.getByText("Verifying upload")).toBeInTheDocument();
 
     settleRetryComplete!();
-    await waitFor(() => expect(screen.queryByText("Verifying stored file")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Verifying upload")).not.toBeInTheDocument());
     expect(completeUpload).toHaveBeenCalledTimes(2);
     expect(await screen.findByRole("status")).toHaveTextContent("Uploaded");
   });
