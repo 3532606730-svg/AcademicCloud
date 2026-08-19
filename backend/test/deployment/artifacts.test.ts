@@ -141,6 +141,9 @@ test("production artifact builds and independently verifies the exact release-lo
   assert.match(runtime, /verifyDynamicClosure/u);
   assert.match(runtime, /synthetic OCR probe/u);
   assert.match(builder, /APT::Snapshot/u);
+  assert.match(builder, /signed InRelease metadata still authenticates this first snapshot-only/u);
+  assert.match(builder, /rm -f "\$\{SNAPSHOT_CA_BOOTSTRAP_CONFIG\}"/u);
+  assert.match(builder, /require a normal certificate-verified snapshot refresh/u);
   assert.match(builder, /tagSignatureVerified/u);
   assert.match(builder, /patchelf --set-rpath '\$ORIGIN\/\.\.\/lib'/u);
   assert.match(workflow, /ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316/u);

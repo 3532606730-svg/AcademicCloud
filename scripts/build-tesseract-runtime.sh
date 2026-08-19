@@ -24,6 +24,7 @@ readonly SOURCE_ARCHIVE="${WORK_ROOT}/tesseract-5.5.3.tar.gz"
 readonly SOURCE_ROOT="${WORK_ROOT}/source"
 readonly BUILD_ROOT="${WORK_ROOT}/build"
 readonly INSTALL_ROOT="${WORK_ROOT}/install"
+readonly SNAPSHOT_CA_BOOTSTRAP_CONFIG="/etc/apt/apt.conf.d/49academiccloud-snapshot-ca-bootstrap"
 
 declare -Ar MODEL_SHA256=(
   [eng]="7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
@@ -52,6 +53,17 @@ export TZ=UTC
 export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH_VALUE}"
 
 echo "APT::Snapshot \"${APT_SNAPSHOT}\";" > /etc/apt/apt.conf.d/50academiccloud-snapshot
+# The digest-pinned minimal Ubuntu image intentionally has no CA bundle. APT's
+# signed InRelease metadata still authenticates this first snapshot-only
+# bootstrap; the temporary TLS exception is removed immediately after the exact
+# snapshot ca-certificates package is installed. Delete every bootstrap index
+# and require a normal certificate-verified snapshot refresh before installing
+# any build dependency.
+echo 'Acquire::https::Verify-Peer "false";' > "${SNAPSHOT_CA_BOOTSTRAP_CONFIG}"
+apt-get update
+apt-get install -y --no-install-recommends ca-certificates
+rm -f "${SNAPSHOT_CA_BOOTSTRAP_CONFIG}"
+rm -rf /var/lib/apt/lists/*
 apt-get update
 apt-get install -y --no-install-recommends \
   binutils \
