@@ -41,6 +41,10 @@ if [[ -z "${GITHUB_API_TOKEN:-}" ]]; then
   echo "GitHub API token is required for pinned tag-signature verification" >&2
   exit 3
 fi
+if [[ ! "${ARTIFACT_OUTPUT_UID:-}" =~ ^[1-9][0-9]*$ || ! "${ARTIFACT_OUTPUT_GID:-}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "non-root artifact output UID/GID are required" >&2
+  exit 3
+fi
 if [[ "$(uname -s)" != "Linux" || "$(uname -m)" != "x86_64" ]]; then
   echo "Tesseract runtime must be built on Linux x86_64" >&2
   exit 3
@@ -334,5 +338,9 @@ LD_LIBRARY_PATH="${OUTPUT_ROOT}/lib" "${OUTPUT_ROOT}/bin/tesseract" \
   --tessdata-dir "${OUTPUT_ROOT}/tessdata" --list-langs \
   | grep -E '^(eng|chi_sim|chi_tra)$'
 
+# The container needs root only for its isolated snapshot toolchain. Return the
+# bounded mounted output to the invoking runner so a same-path clean rebuild
+# can remove it without broad permissions or host-level sudo.
+chown -R "${ARTIFACT_OUTPUT_UID}:${ARTIFACT_OUTPUT_GID}" "${OUTPUT_ROOT}"
 rm -rf "${WORK_ROOT}"
 echo "release-local Tesseract runtime built at ${1}"

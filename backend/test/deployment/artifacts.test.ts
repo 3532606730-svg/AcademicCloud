@@ -149,10 +149,14 @@ test("production artifact builds and independently verifies the exact release-lo
   assert.match(builder, /require a normal certificate-verified snapshot refresh/u);
   assert.match(builder, /Authorization: Bearer \$\{GITHUB_API_TOKEN\}/u);
   assert.match(builder, /--retry 4 --retry-all-errors --retry-delay 2/u);
+  assert.match(builder, /chown -R "\$\{ARTIFACT_OUTPUT_UID\}:\$\{ARTIFACT_OUTPUT_GID\}" "\$\{OUTPUT_ROOT\}"/u);
+  assert.match(artifact, /mkdirSync\(join\(releaseDirectory, "runtime"\), \{ recursive: true \}\)/u);
   assert.match(builder, /tagSignatureVerified/u);
   assert.match(builder, /patchelf --set-rpath '\$ORIGIN\/\.\.\/lib'/u);
   assert.match(workflow, /ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316/u);
   assert.equal(workflow.match(/--env "GITHUB_API_TOKEN=\$GITHUB_API_TOKEN"/gu)?.length, 2);
+  assert.equal(workflow.match(/--env "ARTIFACT_OUTPUT_UID=\$\(id -u\)"/gu)?.length, 2);
+  assert.equal(workflow.match(/--env "ARTIFACT_OUTPUT_GID=\$\(id -g\)"/gu)?.length, 2);
   assert.match(workflow, /Rebuild cleanly and prove deterministic archive and manifest/u);
   assert.doesNotMatch(workflow, /output\/repro-release/u);
   assert.doesNotMatch(workflow, /--prefix output\/release/u);

@@ -129,6 +129,7 @@ function prepareRelease(releaseOption) {
   rmSync(releaseDirectory, { recursive: true, force: true });
   mkdirSync(join(releaseDirectory, "backend"), { recursive: true });
   mkdirSync(join(releaseDirectory, "frontend"), { recursive: true });
+  mkdirSync(join(releaseDirectory, "runtime"), { recursive: true });
 
   copyRequired("package.json", releaseDirectory);
   copyRequired("package-lock.json", releaseDirectory);

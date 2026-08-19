@@ -108,6 +108,8 @@ jobs:
           docker run --rm --platform linux/amd64 \
             --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
             --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
+            --env "ARTIFACT_OUTPUT_UID=$(id -u)" \
+            --env "ARTIFACT_OUTPUT_GID=$(id -g)" \
             --volume "$GITHUB_WORKSPACE:/work" \
             --workdir /work \
             "$TESSERACT_BUILDER_IMAGE" \
@@ -140,6 +142,8 @@ jobs:
           docker run --rm --platform linux/amd64 \
             --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
             --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
+            --env "ARTIFACT_OUTPUT_UID=$(id -u)" \
+            --env "ARTIFACT_OUTPUT_GID=$(id -g)" \
             --volume "$GITHUB_WORKSPACE:/work" \
             --workdir /work \
             "$TESSERACT_BUILDER_IMAGE" \
