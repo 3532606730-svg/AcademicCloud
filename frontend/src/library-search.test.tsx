@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -164,7 +164,7 @@ describe("LibrarySearchField", () => {
     expect(await screen.findByText("No matching resources")).toBeInTheDocument();
   });
 
-  it("shows a localized error through the existing describeError pattern", async () => {
+  it("shows a localized error through the existing describeError pattern without a ghost dismiss button", async () => {
     const user = userEvent.setup();
     const api = {
       searchLibraryHoldings: vi.fn().mockRejectedValue(new ApiError(500, "internal_error")),
@@ -172,7 +172,16 @@ describe("LibrarySearchField", () => {
     const input = renderField(api);
 
     await user.type(input, "x");
-    expect(await screen.findByRole("alert")).toHaveTextContent("AcademicCloud encountered an unexpected error.");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("AcademicCloud encountered an unexpected error.");
+    // The error stays until the query changes; there is no dismiss affordance
+    // that could clear only the message while leaving a ghost error state.
+    expect(within(alert).queryByRole("button")).toBeNull();
+
+    // Retrying with a new query clears the previous error state.
+    await user.clear(input);
+    await user.type(input, "x");
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
   });
 
   it("activates a result with click and Enter, reporting the exact result", async () => {

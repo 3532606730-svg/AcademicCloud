@@ -1,4 +1,5 @@
 import type { LibraryRepository } from "../../library/repositories.js";
+import type { HoldingCursor } from "../../library/search.js";
 import type {
   Library,
   LibraryHolding,
@@ -240,6 +241,7 @@ export class SqliteLibraryRepository implements LibraryRepository {
   readonly #updateMembershipRole;
   readonly #deleteMembership;
   readonly #listHoldings;
+  readonly #listHoldingsPage;
   readonly #findHoldingByFile;
   readonly #listRecycledHoldings;
   readonly #findRecycledHoldingByFile;
@@ -332,6 +334,39 @@ export class SqliteLibraryRepository implements LibraryRepository {
       WHERE libraries.id = ?
       ORDER BY scholarly_artifacts.created_at DESC, scholarly_artifacts.id DESC
       LIMIT ?
+    `);
+    this.#listHoldingsPage = database.prepare<{
+      libraryId: string;
+      afterCreatedAt: string | null;
+      afterArtifactId: string | null;
+      limit: number;
+    }, HoldingRow>(`
+      SELECT ${holdingColumns}
+      FROM libraries
+      JOIN scholarly_records
+        ON scholarly_records.owner_domain_id = libraries.owner_domain_id
+      JOIN scholarly_artifacts
+        ON scholarly_artifacts.owner_domain_id = scholarly_records.owner_domain_id
+       AND scholarly_artifacts.record_id = scholarly_records.id
+       AND scholarly_artifacts.attachment_state = 'attached'
+      JOIN scholarly_artifact_versions
+        ON scholarly_artifact_versions.owner_domain_id = scholarly_artifacts.owner_domain_id
+       AND scholarly_artifact_versions.artifact_id = scholarly_artifacts.id
+      LEFT JOIN scholarly_record_metadata
+        ON scholarly_record_metadata.owner_domain_id = scholarly_records.owner_domain_id
+       AND scholarly_record_metadata.record_id = scholarly_records.id
+      JOIN files
+        ON files.id = scholarly_artifact_versions.stored_file_id
+       AND files.owner_domain_id = libraries.owner_domain_id
+       AND files.state = 'active'
+      WHERE libraries.id = @libraryId
+        AND (
+          @afterCreatedAt IS NULL
+          OR scholarly_artifacts.created_at < @afterCreatedAt
+          OR (scholarly_artifacts.created_at = @afterCreatedAt AND scholarly_artifacts.id < @afterArtifactId)
+        )
+      ORDER BY scholarly_artifacts.created_at DESC, scholarly_artifacts.id DESC
+      LIMIT @limit
     `);
     this.#findHoldingByFile = database.prepare<[string, string], HoldingRow>(`
       SELECT ${holdingColumns}
@@ -577,6 +612,15 @@ export class SqliteLibraryRepository implements LibraryRepository {
 
   listHoldings(libraryId: string, limit: number): LibraryHolding[] {
     return this.#listHoldings.all(libraryId, limit).map(toHolding);
+  }
+
+  listHoldingsPage(libraryId: string, after: HoldingCursor | null, limit: number): LibraryHolding[] {
+    return this.#listHoldingsPage.all({
+      libraryId,
+      afterCreatedAt: after ? toDatabaseTimestamp(after.artifactCreatedAt) : null,
+      afterArtifactId: after?.artifactId ?? null,
+      limit,
+    }).map(toHolding);
   }
 
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null {

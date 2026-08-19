@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  collectAllHoldings,
   searchHoldings,
   SEARCH_QUERY_MAX_LENGTH,
   SearchInputError,
+  type HoldingCursor,
   type SearchableHolding,
 } from "../../src/library/search.js";
 import type { CanonicalMetadata } from "../../src/metadata/metadata.js";
@@ -137,4 +139,54 @@ test("result DTO exposes only presentation fields, never internal identity", () 
   assert.equal("artifactId" in result, false);
   assert.equal("ownerDomainId" in result, false);
   assert.equal("rank" in result, false);
+});
+
+test("combined author + title queries hit the author+title tier deterministically", () => {
+  const chinese = holding({
+    fileId: "zh-combined",
+    canonicalTitle: "元代宰相制度研究",
+    authorLabels: ["张帆"],
+    authorities: [{ type: "person", role: "author", label: "张帆", aliases: [] }],
+  });
+  const english = holding({
+    fileId: "en-combined",
+    canonicalTitle: "The Mongols and the West",
+    authorLabels: ["Peter Jackson"],
+    authorities: [{ type: "person", role: "author", label: "Peter Jackson", aliases: [] }],
+  });
+  const exactAuthor = holding({
+    fileId: "exact-author",
+    canonicalTitle: "另一本书",
+    authorLabels: ["张帆"],
+    authorities: [{ type: "person", role: "author", label: "张帆", aliases: [] }],
+  });
+
+  assert.deepEqual(results("张帆 元代宰相制度研究", [chinese]).map((item) => item.fileId), ["zh-combined"]);
+  assert.deepEqual(results("Peter Jackson The Mongols and the West", [english]).map((item) => item.fileId), ["en-combined"]);
+
+  // Exact authority still outranks the combined author+title tier.
+  const page = searchHoldings([chinese, exactAuthor], "张帆", 10, null);
+  assert.deepEqual(page.results.map((item) => item.fileId), ["exact-author", "zh-combined"]);
+
+  // An unseparated Chinese string is never segmented into invented words.
+  assert.deepEqual(results("张帆元代宰相制度研究", [chinese]).map((item) => item.fileId), []);
+});
+
+test("collectAllHoldings enumerates the whole corpus and fails closed instead of truncating", () => {
+  interface Row extends HoldingCursor { id: string }
+  const rows: Row[] = Array.from({ length: 5 }, (_, index) => ({
+    id: `h${index}`,
+    artifactCreatedAt: new Date(2026, 0, 1, 0, 0, 5 - index),
+    artifactId: `artifact-${index}`,
+  }));
+  function paginator(after: HoldingCursor | null, limit: number): Row[] {
+    const rest = after ? rows.filter((row) => (
+      row.artifactCreatedAt < after.artifactCreatedAt
+      || (row.artifactCreatedAt.getTime() === after.artifactCreatedAt.getTime() && row.artifactId < after.artifactId)
+    )) : rows;
+    return rest.slice(0, limit);
+  }
+
+  assert.deepEqual(collectAllHoldings(paginator, 2, 100)?.map((row) => row.id), ["h0", "h1", "h2", "h3", "h4"]);
+  assert.equal(collectAllHoldings(paginator, 2, 2), null, "exceeding the page guard must fail closed, not truncate");
 });

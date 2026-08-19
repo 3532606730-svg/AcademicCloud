@@ -18,8 +18,10 @@ import type {
 } from "./library.js";
 import { libraryHoldingView, type LibraryHoldingView } from "./holding-view.js";
 import {
+  collectAllHoldings,
   searchHoldings,
-  SEARCH_MAX_CORPUS_SCAN,
+  SEARCH_MAX_SCAN_PAGES,
+  SEARCH_SCAN_PAGE_SIZE,
   type LibrarySearchPage,
   type SearchableAuthority,
   type SearchableHolding,
@@ -481,7 +483,14 @@ export class LibraryService {
     // matching, counting, ranking, or pagination can observe the corpus.
     return this.#persistence.runInTransaction((repositories) => {
       const library = this.#requireMember(accountId, libraryId, repositories);
-      const holdings = repositories.libraries.listHoldings(library.id, SEARCH_MAX_CORPUS_SCAN);
+      // Enumerate the ENTIRE accessible corpus by keyset pagination so search
+      // never silently truncates; a defensive guard fails closed instead.
+      const holdings = collectAllHoldings(
+        (after, pageLimit) => repositories.libraries.listHoldingsPage(library.id, after, pageLimit),
+        SEARCH_SCAN_PAGE_SIZE,
+        SEARCH_MAX_SCAN_PAGES,
+      );
+      if (holdings === null) throw new LibraryError("invalid_state");
       const searchable = holdings.map((holding) => this.#searchableHolding(library.ownerDomainId, holding, repositories));
       return searchHoldings(searchable, rawQuery, limit, cursor);
     });

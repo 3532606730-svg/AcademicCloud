@@ -17,8 +17,44 @@ import type {
 export const SEARCH_QUERY_MAX_LENGTH = 100;
 export const SEARCH_DEFAULT_LIMIT = 50;
 export const SEARCH_MAX_LIMIT = 100;
-/** Upper bound on the accessible holdings scanned per request (no migration). */
-export const SEARCH_MAX_CORPUS_SCAN = 5_000;
+/** Page size used to enumerate the accessible corpus (bounded per page). */
+export const SEARCH_SCAN_PAGE_SIZE = 200;
+/**
+ * Defensive fail-closed enumeration guard.  The accessible corpus is collected
+ * page by page until exhausted, so search always covers the ENTIRE corpus and
+ * never silently truncates.  If a pathological corpus still exceeds
+ * pageSize × maxPages, the collector reports exhaustion failure instead of
+ * returning a partial result.
+ */
+export const SEARCH_MAX_SCAN_PAGES = 500;
+
+export interface HoldingCursor {
+  artifactCreatedAt: Date;
+  artifactId: string;
+}
+
+/**
+ * Collect every accessible holding via keyset pagination.  Returns null when
+ * the defensive page guard is exceeded so the caller can fail closed rather
+ * than silently search a truncated corpus.
+ */
+export function collectAllHoldings<T extends HoldingCursor>(
+  listPage: (after: HoldingCursor | null, limit: number) => T[],
+  pageSize: number = SEARCH_SCAN_PAGE_SIZE,
+  maxPages: number = SEARCH_MAX_SCAN_PAGES,
+): T[] | null {
+  const collected: T[] = [];
+  let after: HoldingCursor | null = null;
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+    const rows = listPage(after, pageSize);
+    if (rows.length === 0) return collected;
+    collected.push(...rows);
+    if (rows.length < pageSize) return collected;
+    const last = rows[rows.length - 1]!;
+    after = { artifactCreatedAt: last.artifactCreatedAt, artifactId: last.artifactId };
+  }
+  return null;
+}
 
 export class SearchInputError extends Error {
   constructor(readonly code: "empty_query" | "query_too_long" | "invalid_cursor" | "invalid_limit") {
@@ -118,12 +154,48 @@ function otherMetadataValues(holding: SearchableHolding): string[] {
 }
 
 /**
+ * True when an explicitly separated query is a "author + title" combination:
+ * every whitespace-separated part matches a person authority label or the
+ * canonical title (case/punctuation/whitespace-insensitive), and at least one
+ * part matches the person and at least one matches the title. An unseparated
+ * string is never segmented into invented words, so a single-part query never
+ * reaches this tier.
+ */
+function combinedAuthorTitle(holding: SearchableHolding, query: string, titleCompact: string): boolean {
+  const parts = query.split(/\s+/u).filter(Boolean);
+  if (parts.length < 2 || !titleCompact) return false;
+  const personLabels = personAuthorityLabels(holding)
+    .map((label) => normalizeForMatch(label))
+    .filter((label) => label.length >= 2);
+  let authorMatched = false;
+  let titleMatched = false;
+  for (const part of parts) {
+    const partCompact = normalizeForMatch(part);
+    if (!partCompact) continue;
+    const matchesPerson = personLabels.some((label) => (
+      label === partCompact || label.startsWith(partCompact) || label.includes(partCompact)
+    ));
+    const matchesTitle = titleCompact === partCompact
+      || titleCompact.startsWith(partCompact)
+      || titleCompact.includes(partCompact);
+    if (matchesPerson) {
+      authorMatched = true;
+    } else if (matchesTitle) {
+      titleMatched = true;
+    } else {
+      return false;
+    }
+  }
+  return authorMatched && titleMatched;
+}
+
+/**
  * Rank a holding against an already-normalized compact query.
  * Lower is better; -1 means no match. The tiers mirror the documented
  * contract: exact title, title prefix/strong title, exact authority,
  * author+title, exact identifier, other canonical metadata, filename.
  */
-function rank(holding: SearchableHolding, queryCompact: string): number {
+function rank(holding: SearchableHolding, query: string, queryCompact: string): number {
   const titleCompact = holding.canonicalTitle ? normalizeForMatch(holding.canonicalTitle) : "";
 
   if (titleCompact && titleCompact === queryCompact) return 0;
@@ -132,11 +204,7 @@ function rank(holding: SearchableHolding, queryCompact: string): number {
   const anyAuthorityExact = authorityLabels(holding).some((label) => normalizeForMatch(label) === queryCompact);
   if (anyAuthorityExact) return 2;
 
-  const personPrefix = personAuthorityLabels(holding).some((label) => {
-    const compact = normalizeForMatch(label);
-    return compact.startsWith(queryCompact) || compact.includes(queryCompact);
-  });
-  if (personPrefix && titleCompact && titleCompact.includes(queryCompact)) return 3;
+  if (combinedAuthorTitle(holding, query, titleCompact)) return 3;
 
   if (identifierValues(holding).some((value) => normalizeForMatch(value) === queryCompact)) return 4;
 
@@ -210,7 +278,7 @@ export function searchHoldings(
 
   const matched: Array<{ rank: number; fileId: string; holding: SearchableHolding }> = [];
   for (const holding of holdings) {
-    const matchRank = rank(holding, queryCompact);
+    const matchRank = rank(holding, query, queryCompact);
     if (matchRank < 0) continue;
     matched.push({ rank: matchRank, fileId: holding.fileId, holding });
   }

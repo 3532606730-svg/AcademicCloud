@@ -180,9 +180,7 @@ export function LibrarySearchField({
         <div className="library-search-results">
           {status === "loading" && <p className="muted" role="status">{t("librarySearch.loading")}</p>}
           {status === "error" && (
-            <div className="alert alert--error" role="alert">
-              {describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button>
-            </div>
+            <div className="alert alert--error" role="alert">{describeError(error, language)}</div>
           )}
           {status === "success" && results.length === 0 && (
             <p className="muted">{t("librarySearch.noResults")}</p>
