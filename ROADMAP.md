@@ -54,7 +54,7 @@ Completed outcomes include:
 
 Actual use after PROD-06A confirmed the authority/data model but exposed a narrower usability problem: root `资料库` visually stacked canonical holdings above a legacy Owner table, misplaced Name/Size/Updated headers, dropped established file-type icons, repeated filename-derived labels, left redundant descriptive copy, and lacked an authority-correct recoverable lifecycle action for Library-owned holdings. L1-UX06 repaired the presentation and recycle transition; subsequent Owner review found the Library-domain item could not be listed/restored through the account-scoped Recycle product, and the bounded closure repair completed that lifecycle without merging authority domains.
 
-Owner review established that cleaner scholarly titles and eventual basic catalogue search are near-term usability needs. RF-META01 and RF-METASUGGEST01 completed the canonical/reviewable metadata layer, and RF-FRONTMATTEROCR01 later added only bounded local/offline fallback for unusable pages in the same exact first-15/last-5 window. RF-SEARCH01 remains parked. PROD-07B supplied the production recycle/permanent-delete hotfix, and L1-UX07 reconciled those product changes into the v19 line while fixing the catalogue interaction model. ADR-025/027 govern the bounded OCR boundary; ADR-028 governs permanent-delete authority, exclusivity, and destructive-boundary revalidation.
+Owner review established that cleaner scholarly titles and eventual basic catalogue search are near-term usability needs. RF-META01 and RF-METASUGGEST01 completed the canonical/reviewable metadata layer, and RF-FRONTMATTEROCR01 later added bounded local/offline fallback for unusable pages in the same exact first-15/last-5 window. Real-world PDFs then exposed structural large-object, evidence-independence, native-quality, extraction, and product-copy gaps. RF-METASUGGEST-HARDEN01 is the active closure pass and conditional same-schema release; RF-SEARCH01 remains parked. PROD-07B supplied the production recycle/permanent-delete hotfix, and L1-UX07 reconciled those product changes into the v19 line while fixing the catalogue interaction model. ADR-025/027 govern the bounded OCR boundary; ADR-028 governs permanent-delete authority, exclusivity, and destructive-boundary revalidation.
 
 The durable completed sequence is:
 
@@ -70,10 +70,12 @@ L1-UX06
 → workflow proportionality clarification
 → RF-TRANSFER01 true resumable transfer development — complete
 → PROD-09 exact release-local OCR artifact and bounded final production deployment — complete
-→ STOP
+→ PROD-09A metadata-suggestion receiver/error-boundary hotfix — complete
+→ RF-METASUGGEST-HARDEN01 real-world PDF pipeline hardening and conditional same-schema release — active
+→ STOP before RF-SEARCH01
 ```
 
-L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, RF-TRANSFER01 development, PROD-09, and PROD-09A are complete. Production runs exact immutable release `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a` at unchanged schema v21/history 001–021, with the metadata-suggestion receiver/error-leak hotfix, RF-METASUGGEST01/L1-UX07, bounded local OCR, and resumable transfer deployed while PROD-07B behavior and the PROD-08R runtime repair remain preserved. The previous release is `9d2fc9b08e2e02c821ef357f149ed928510c2825`; PROD-09A rollback was not used. RF-SEARCH01 and the later Pre-OCR cards remain parked, and the approved continuous objective ends at STOP.
+L1-UX07, PROD-08R, RF-FRONTMATTEROCR01, RF-TRANSFER01, PROD-09, and PROD-09A are complete. Production runs exact immutable release `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a` at unchanged schema v21/history 001–021; the previous release is `9d2fc9b08e2e02c821ef357f149ed928510c2825`, and rollback was not used. RF-METASUGGEST-HARDEN01 is the sole active task. It preserves the exact first-15/last-5/no-automatic-write boundary while adding bounded Range-backed large-PDF inspection, independent evidence fallbacks, realistic fixtures/smoke, and a conditional no-migration release. RF-SEARCH01 and later Pre-OCR cards remain parked.
 
 ### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
 
@@ -319,7 +321,9 @@ PROD-08R truth preserved
 → RF-TRANSFER01 development complete
 → PROD-09 exact Linux x64 / Node 24 release-local OCR artifact
 → bounded final production deployment and reconciliation complete
-→ STOP
+→ PROD-09A receiver/error-boundary hotfix complete
+→ RF-METASUGGEST-HARDEN01 audit/hardening/exact-artifact private smoke/conditional no-migration release
+→ STOP before RF-SEARCH01
 ```
 
-RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, RF-TRANSFER01 development, PROD-09, and PROD-09A are complete. Exact release `a5e2bc21…` runs at unchanged v21/history 001–021; metadata-suggestion generation/error redaction, integrity, foreign keys, health, readiness, OCR runtime, multipart transfer, and Range acceptance are green. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, RF-SEARCH01, remaining Pre-OCR work, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited without new explicit Owner authorization. Next action: STOP.
+RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01, RF-TRANSFER01, PROD-09, and PROD-09A are complete. Exact release `a5e2bc21…` currently runs at unchanged v21/history 001–021. RF-METASUGGEST-HARDEN01 is active and is limited to the authorized real-world pipeline hardening, exact-artifact/private-smoke gates, and conditional same-schema release. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, RF-SEARCH01, remaining Pre-OCR work, whole-document extraction/OCR, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited. Next action after closure: STOP.

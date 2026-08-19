@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**PROD-09A is PASS/CLOSED. Production runs exact immutable hotfix release `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at unchanged schema v21/history 001–021. The exact metadata-suggestion receiver regression and suggestion-specific internal-error leak are repaired; authenticated non-mutating production acceptance is green. STOP. RF-SEARCH01 remains parked until a new explicit Owner continuation.**
+**RF-METASUGGEST-HARDEN01 is ACTIVE at clean checkpoint `a163018e5df778ea78614caf964318fbb0a76751` on `codex/project-memory-reconcile-20260817`. Production remains exact immutable hotfix `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at unchanged schema v21/history 001–021. The sole authorized objective is a structural end-to-end real-world PDF metadata-suggestion hardening pass, exact-artifact private no-persistence smoke, and conditional same-schema release; a required migration stops for Owner approval. RF-SEARCH01 remains parked.**
 
 The governing product rule remains ADR-022:
 
@@ -73,8 +73,8 @@ Never select `f62766c…` against the live v21 database; restore the paired v19 
 
 ## Safety Boundaries
 
-PROD-09A authority is exhausted. No further production contact, mutation, migration, deployment, or product task is authorized. Broad database or unrelated resource inspection, real permanent deletion, `PROD-03C2`, reboot/autostart, infrastructure-policy changes, credentials, paid infrastructure, main merge, RF-SEARCH01, remaining Pre-OCR cards, whole-document extraction, full-text search/indexing, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, and unrelated work remain parked or prohibited.
+RF-METASUGGEST-HARDEN01 authorizes only its bounded pipeline diagnosis/implementation, committed realistic fixtures, exact-artifact verification, read-only/no-persistence smoke on at most five anonymized Owner-authorized PDFs, and conditional no-migration production release/acceptance. It does not authorize candidate acceptance, canonical metadata mutation, corpus-wide scanning, whole-document download/OCR, broad database or unrelated resource inspection, real permanent deletion, `PROD-03C2`, reboot/autostart, infrastructure-policy changes, credentials, paid infrastructure, main merge, RF-SEARCH01, remaining Pre-OCR cards, full-text search/indexing, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, or unrelated work.
 
 ## Next Action
 
-STOP. Resume RF-SEARCH01 only after Owner review and new explicit authorization.
+Complete the whole-pipeline audit before implementation; proceed through exact-artifact and private realistic smoke gates, deploy only if all gates pass without a migration, reconcile evidence, then STOP before RF-SEARCH01.

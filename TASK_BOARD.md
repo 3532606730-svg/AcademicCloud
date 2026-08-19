@@ -4,11 +4,13 @@
 
 ## Current Phase
 
-**PROD-09A is PASS/CLOSED. Production runs exact immutable hotfix release `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at unchanged schema v21/history 001–021. STOP. No further production or product work is authorized; RF-SEARCH01 remains parked until Owner review.**
+**RF-METASUGGEST-HARDEN01 is the sole active task at clean checkpoint `a163018e5df778ea78614caf964318fbb0a76751`. Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at schema v21/history 001–021. Complete the structural audit/hardening, exact-artifact private smoke, conditional no-migration release, evidence reconciliation, then STOP. RF-SEARCH01 remains parked.**
 
 ## Doing
 
-None.
+| Task | Task card | Bounded objective |
+|---|---|---|
+| RF-METASUGGEST-HARDEN01 | `tasks/doing/RF-METASUGGEST-HARDEN01.md` | End-to-end real-world PDF suggestion hardening, realistic fixture/artifact gates, private no-persistence smoke, and conditional same-schema release |
 
 ## Done
 
@@ -47,18 +49,20 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 → immutable no-migration cutover at unchanged v21 / 001–021
 → authenticated suggestion POST 200, no `.anonymous`/raw-error exposure, canonical metadata unchanged
 → PROD-09A PASS / CLOSED
-→ STOP
+→ RF-METASUGGEST-HARDEN01 whole-pipeline hardening and conditional same-schema release — ACTIVE
+→ STOP before RF-SEARCH01
 ```
 
 ## Authorized Next / Parked
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | STOP | Current required state after PROD-09A closure |
-| 2 | RF-SEARCH01 | Preserved metadata/name search card; resume only after Owner review and new explicit authorization |
-| 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
-| 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited without new explicit authorization |
-| 5 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
+| 1 | RF-METASUGGEST-HARDEN01 | Active; finish audit, implementation, gates, conditional release, and reconciliation |
+| 2 | STOP | Required immediately after RF-METASUGGEST-HARDEN01 closure |
+| 3 | RF-SEARCH01 | Preserved metadata/name search card; resume only after later Owner review and new explicit authorization |
+| 4 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
+| 5 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited without new explicit authorization |
+| 6 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
 
 RF-FRONTMATTEROCR01 authorizes only the completed bounded local/offline fallback. RF-TRANSFER01 is closed in development and adds no production authority. RF-SEARCH01, the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
 
@@ -123,8 +127,8 @@ Production integrity is `ok`, foreign-key violations are zero, loopback/public h
 
 The immediate same-schema rollback target is exact prior application `9d2fc9b08e2e02c821ef357f149ed928510c2825` against unchanged v21; PROD-09A rollback was not used. The older deep rollback remains exact application `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` plus fresh schema-v19 backup `academiccloud-pre-prod09-20260819T061155Z.sqlite` (SHA-256 `21af5882483c21cfa65854fa592a7805b029b4f31c06c598114d161412c36436`), encrypted off-host in private commit `702695ee9bfd65ee69c2f8cb6c8f105bd4320755`; never run that application against live v21.
 
-`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. PROD-09A authority is exhausted and did not authorize destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup. Any further production or product work requires a new explicit Owner authorization.
+`PROD-03C2` remains parked. RF-METASUGGEST-HARDEN01 permits bounded no-persistence reads of at most five anonymized Owner-authorized PDFs and a conditional exact-artifact same-schema release only after all gates pass. It does not authorize destructive use of pre-existing resources, candidate acceptance, canonical metadata mutation, corpus-wide scans, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction/OCR, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup.
 
 ## Next Action
 
-STOP. Resume RF-SEARCH01 only after Owner review and new explicit authorization.
+Complete and close RF-METASUGGEST-HARDEN01, reconcile/publish/synchronize its evidence, then STOP. Do not start RF-SEARCH01.
