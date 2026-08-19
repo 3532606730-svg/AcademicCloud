@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. PROD-09 is active under ADR-030: build and independently verify the exact combined Linux x64 / Node 24 artifact with release-local Tesseract 5.5.3/tessdata_fast 4.1.0 before any production contact. Production remains unchanged at the closed PROD-08R v19 checkpoint.**
+**RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. PROD-09's exact combined Linux x64 / Node 24 artifact is independently green from source `9d2fc9b08e2e02c821ef357f149ed928510c2825`; the bounded final production preflight/deployment gate is next. Production remains unchanged at the closed PROD-08R v19 checkpoint.**
 
 The governing product rule remains ADR-022:
 
@@ -51,6 +51,10 @@ Never select `bc578863…` against the live v19 database; restore the paired v18
 - archive SHA-256 is `6438e5235ce1290d450f1beae28bed19c342a5258717f9fd321bc339f06aee32`; manifest SHA-256 is `488c445a9f4677787803c9dbcc9737347d95793ac17cd83e9582b6500fe8bb23`;
 - synthetic destructive acceptance was skipped for safety because the deployment created no uniquely owned run target; no task-owned synthetic residue exists and no pre-existing production resource was used;
 - the Owner confirmed the observed folder-count delta resulted from intentional Owner deletions, so it is not an incident and requires no comparison, audit investigation, restore, cleanup, or mutation.
+- final PROD-09 workflow `32218607374` passed on exact source `9d2fc9b08e2e02c821ef357f149ed928510c2825`: primary job `95964718499` and independent fresh-runner job `95966983161` are green;
+- the deterministic archive SHA-256 is `91d9493938ca4611baa1132acea6e051aa96eec5995962ef48f9ba0a47957ddd`; manifest SHA-256 is `03eeb5c95803152a46a7ebc2ade63c1429bf5833cb26169d6afda36ed194d4bf`; the manifest contains 5,384 files / 125,816,418 bytes;
+- Actions artifact `9353425023`, `academiccloud-linux-x64-node24-9d2fc9b08e2e02c821ef357f149ed928510c2825`, has bundle digest `sha256:90ecb9bd837532d99008f1fb09d0a01ec7fdcab86cde24624e8988a84af762ba` and was independently downloaded and verified without rebuilding;
+- same-path reproducibility, extracted Linux x64 runtime checks, Tesseract 5.5.3 exact closure/models/offline synthetic probe, PDF.js/canvas, Argon2id, better-sqlite3, and compiled acceptance all passed; production was not contacted.
 
 ## Development Truth
 
@@ -62,12 +66,12 @@ Never select `bc578863…` against the live v19 database; restore the paired v18
 - full backend 335/335, full frontend 211/211, both typechecks/builds, and compiled acceptance are green; migration, transfer, OCR, storage, HTTP, contribution, and byte-path focused suites are green;
 - the PROD-08R exact PDF.js/canvas native runtime allowlist and ELF64 x86-64 verification boundary remain intact;
 - the workflow now distinguishes structural deployment invariants from ordinary mutable business-state drift, while preserving migration, authorization, corruption, destructive-data, and backup/rollback gates;
-- `tasks/done/PROD-08R.md`, `tasks/done/RF-FRONTMATTEROCR01.md`, and `tasks/done/RF-TRANSFER01.md` preserve bounded evidence; no task is currently Doing.
+- `tasks/done/PROD-08R.md`, `tasks/done/RF-FRONTMATTEROCR01.md`, and `tasks/done/RF-TRANSFER01.md` preserve bounded evidence; PROD-09 remains Doing until the bounded final deployment and reconciliation finish.
 
 ## Safety Boundaries
 
-No production contact or mutation is authorized during the remaining development checkpoints. The later final production gate is bounded to the exact green combined artifact, exact pending migrations, fresh verified rollback backup, cutover, and changed-risk acceptance. Incident-database inspection, real permanent deletion, `PROD-03C2`, reboot/autostart, infrastructure-policy changes, credentials, paid infrastructure, main merge, RF-SEARCH01, whole-document extraction, full-text search, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, and unrelated work remain prohibited.
+Production remains untouched after the completed development and artifact checkpoints. The authorized final production gate is bounded to exact artifact source `9d2fc9b08e2e02c821ef357f149ed928510c2825`, exact pending migrations, a fresh verified rollback backup, immutable cutover, and changed-risk acceptance. Incident-database inspection, real permanent deletion, `PROD-03C2`, reboot/autostart, infrastructure-policy changes, credentials, paid infrastructure, main merge, RF-SEARCH01, whole-document extraction, full-text search, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, and unrelated work remain prohibited.
 
 ## Next Action
 
-Implement ADR-030's release-local Tesseract runtime, produce the exact combined artifact, and require both the primary and independent fresh-runner artifact jobs to pass. Do not contact production first.
+Publish and synchronize the exact artifact evidence checkpoint, then begin the bounded PROD-09 production preflight against the unchanged `f62766c…` / v19 / 001–019 structural state using only the green `9d2fc9b…` artifact.

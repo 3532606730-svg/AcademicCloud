@@ -4,13 +4,13 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. PROD-09 is active under ADR-030. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019 and remains untouched until both final combined artifact jobs pass.**
+**RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. PROD-09's final combined artifact and independent verification are green from exact source `9d2fc9b08e2e02c821ef357f149ed928510c2825`. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019 and is untouched; bounded final preflight/deployment is next.**
 
 ## Doing
 
 | Task | Task card | State |
 |---|---|---|
-| PROD-09 | `tasks/doing/PROD-09.md` | Active; release-local Tesseract artifact gate first, then bounded final deployment only after both artifact jobs pass |
+| PROD-09 | `tasks/doing/PROD-09.md` | Active; exact artifact gate PASS, bounded final production preflight/deployment and reconciliation next |
 
 ## Done
 
@@ -37,7 +37,7 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 → RF-FRONTMATTEROCR01 PASS / CLOSED in development; production unchanged
 → workflow proportionality clarification PASS
 → RF-TRANSFER01 PASS / CLOSED in development
-→ exact combined artifact gate
+→ exact combined artifact gate PASS (`32218607374`, source `9d2fc9b…`)
 → bounded final deployment and reconciliation
 → STOP
 ```
@@ -46,7 +46,7 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | PROD-09 final combined artifact/deployment | Active; artifact implementation/build first, production only after both jobs are green |
+| 1 | PROD-09 final combined artifact/deployment | Active; both artifact jobs green, bounded production preflight/deployment next |
 | 2 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
 | 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
 | 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
@@ -113,8 +113,8 @@ Production integrity is `ok`, foreign-key violations are zero, loopback/public h
 
 The rollback pair is exact prior application `bc5788633e0295744905b4ae2dcdfcc5d97635bf` plus schema-v18 backup `academiccloud-pre-prod08r-20260818T184801Z.sqlite` (SHA-256 `338d245d0e0aeb7fec063df069e0750bf3830aceedf32a0f4aad716fb868453b`), encrypted off-host in private commit `a7369933f31af7839bc833d3d24d30688504276d`. Application rollback without the paired database restore is prohibited.
 
-`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. No production contact is authorized during development. The later bounded final deployment may apply only the exact combined release and repository-authorized pending migrations after all artifact gates pass; it does not authorize destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup.
+`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. Production remained untouched throughout development and both artifact jobs. The bounded final deployment may apply only the exact green combined release and repository-authorized pending migrations; it does not authorize destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup.
 
 ## Next Action
 
-Implement ADR-030 and pass both exact combined artifact jobs. Do not contact production first.
+Publish and synchronize the exact green artifact evidence, then execute only the bounded PROD-09 production preflight/deployment and final reconciliation.
