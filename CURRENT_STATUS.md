@@ -1,10 +1,10 @@
 # AcademicCloud Current Status
 
-**Last updated:** 2026-08-19
+**Last updated:** 2026-08-20
 
 ## Current Phase
 
-**RF-METASUGGEST-HARDEN01 is ACTIVE. The recovered first hardening slice is committed, published, and synchronized at `9e0414e2997feffe90189d7cae788bb8e083238e` on `codex/project-memory-reconcile-20260817` (local/tracking/remote equal, clean worktree); the task base is `a163018e…`. Production remains exact immutable hotfix `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at unchanged schema v21/history 001–021. The sole authorized objective is a structural end-to-end real-world PDF metadata-suggestion hardening pass, exact-artifact private no-persistence smoke, and conditional same-schema release; a required migration stops for Owner approval. RF-SEARCH01 remains parked.**
+**RF-METASUGGEST-HARDEN01 is PASS/CLOSED. Production now runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; no migration ran and rollback was not used. The committed A–L realistic fixture matrix, release-local real-Tesseract E2E, no-persistence private smoke on five anonymized PDFs, and post-cutover acceptance are green. Per Owner Round 2, RF-SEARCH01 is the next authorized task (development only, no production).**
 
 The governing product rule remains ADR-022:
 
@@ -15,11 +15,11 @@ ADR-028 remains authoritative for permanent deletion: only the authenticated glo
 ## Production Truth
 
 ```text
-PRODUCTION=a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a
-PREVIOUS_RELEASE=9d2fc9b08e2e02c821ef357f149ed928510c2825
+PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
+PREVIOUS_RELEASE=a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a
 PRODUCTION_SCHEMA=v21 / migrations 001–021
 PROD09A_CLOSED=true
-RF_METASUGGEST_DEPLOYED=true
+RF_METASUGGEST_HARDENED=true
 L1_UX07_DEPLOYED=true
 OCR_DEPLOYED=true
 RF_TRANSFER_DEPLOYED=true
@@ -78,4 +78,4 @@ RF-METASUGGEST-HARDEN01 authorizes only its bounded pipeline diagnosis/implement
 
 ## Next Action
 
-The recovered first slice is already checkpointed and pushed at `9e0414e…`. Next: complete the whole-pipeline audit/measurements and the committed A–L realistic fixture matrix; proceed through exact-artifact and private realistic smoke gates, deploy only if all gates pass without a migration, reconcile evidence, then STOP before RF-SEARCH01.
+The recovered first slice is checkpointed at `9e0414e…`; the A–L realistic corpus and parser hardening at `604cb8d…`; the private smoke harness at `c6d3101…`. Production is the exact independently verified artifact from `604cb8d…` (same schema v21/001–021). Next: begin RF-SEARCH01 (development only) per Owner Round 2, without touching production.

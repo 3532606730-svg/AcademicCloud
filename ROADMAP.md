@@ -71,11 +71,12 @@ L1-UX06
 → RF-TRANSFER01 true resumable transfer development — complete
 → PROD-09 exact release-local OCR artifact and bounded final production deployment — complete
 → PROD-09A metadata-suggestion receiver/error-boundary hotfix — complete
-→ RF-METASUGGEST-HARDEN01 real-world PDF pipeline hardening and conditional same-schema release — active
-→ STOP before RF-SEARCH01
+→ RF-METASUGGEST-HARDEN01 real-world PDF pipeline hardening and same-schema release — complete
+→ RF-SEARCH01 authority-scoped metadata/name catalogue search — next (development only, Owner Round 2)
+→ STOP before RF-SEARCH01 production
 ```
 
-L1-UX07, PROD-08R, RF-FRONTMATTEROCR01, RF-TRANSFER01, PROD-09, and PROD-09A are complete. Production runs exact immutable release `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a` at unchanged schema v21/history 001–021; the previous release is `9d2fc9b08e2e02c821ef357f149ed928510c2825`, and rollback was not used. RF-METASUGGEST-HARDEN01 is the sole active task. It preserves the exact first-15/last-5/no-automatic-write boundary while adding bounded Range-backed large-PDF inspection, independent evidence fallbacks, realistic fixtures/smoke, and a conditional no-migration release. RF-SEARCH01 and later Pre-OCR cards remain parked.
+L1-UX07, PROD-08R, RF-FRONTMATTEROCR01, RF-TRANSFER01, PROD-09, PROD-09A, and RF-METASUGGEST-HARDEN01 are complete. Production runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` at unchanged schema v21/history 001–021; the previous release is `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, and rollback was not used. RF-SEARCH01 is the next authorized task (development only) and preserves the exact first-15/last-5/no-automatic-write boundary while adding one bounded authority-safe metadata/name catalogue search path; remaining Pre-OCR cards stay parked.
 
 ### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
 
@@ -322,8 +323,8 @@ PROD-08R truth preserved
 → PROD-09 exact Linux x64 / Node 24 release-local OCR artifact
 → bounded final production deployment and reconciliation complete
 → PROD-09A receiver/error-boundary hotfix complete
-→ RF-METASUGGEST-HARDEN01 audit/hardening/exact-artifact private smoke/conditional no-migration release
-→ STOP before RF-SEARCH01
+→ RF-METASUGGEST-HARDEN01 audit/hardening/exact-artifact private smoke/same-schema release — complete
+→ RF-SEARCH01 authority-scoped metadata/name catalogue search — development only, then STOP for Owner review
 ```
 
-RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01, RF-TRANSFER01, PROD-09, and PROD-09A are complete. Exact release `a5e2bc21…` currently runs at unchanged v21/history 001–021. RF-METASUGGEST-HARDEN01 is active and is limited to the authorized real-world pipeline hardening, exact-artifact/private-smoke gates, and conditional same-schema release. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, RF-SEARCH01, remaining Pre-OCR work, whole-document extraction/OCR, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited. Next action after closure: STOP.
+RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01, RF-TRANSFER01, PROD-09, PROD-09A, and RF-METASUGGEST-HARDEN01 are complete. Exact release `604cb8d21…` runs at unchanged v21/history 001–021; the previous release is `a5e2bc21…`. RF-SEARCH01 is the next authorized development-only task: one bounded, authority-safe metadata/name catalogue search path over the accessible Library corpus, with no production deployment, migration, index server, full-text/OCR search, query history, or AI extraction. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, remaining Pre-OCR work, whole-document extraction/OCR, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, and unrelated work remain prohibited. Next action after the RF-SEARCH01 development checkpoint: STOP for Owner review.

@@ -4,18 +4,19 @@
 
 ## Current Phase
 
-**RF-METASUGGEST-HARDEN01 is the sole active task; its recovered first hardening slice is committed, published, and synchronized at `9e0414e2997feffe90189d7cae788bb8e083238e` (local/tracking/remote equal, clean worktree). Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at schema v21/history 001–021. Complete the structural audit/hardening, exact-artifact private smoke, conditional no-migration release, evidence reconciliation, then STOP. RF-SEARCH01 remains parked.**
+**RF-METASUGGEST-HARDEN01 is PASS/CLOSED. Production runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; no migration, rollback unused. RF-SEARCH01 is the next authorized task (development only, no production) per Owner Round 2.**
 
 ## Doing
 
 | Task | Task card | Bounded objective |
 |---|---|---|
-| RF-METASUGGEST-HARDEN01 | `tasks/doing/RF-METASUGGEST-HARDEN01.md` | End-to-end real-world PDF suggestion hardening, realistic fixture/artifact gates, private no-persistence smoke, and conditional same-schema release |
+| _(none active; RF-SEARCH01 starts next)_ | — | — |
 
 ## Done
 
 | Task | Task card | Bounded result |
 |---|---|---|
+| RF-METASUGGEST-HARDEN01 | `tasks/done/RF-METASUGGEST-HARDEN01.md` | A–L realistic fixture corpus, bounded random-access PDF reading, parser hardening, release-local Tesseract E2E, no-persistence private smoke, and same-schema release `604cb8d…` |
 | RF-META01 | `tasks/done/RF-META01.md` | Canonical metadata, templates, minimal authorities, exact holding-scoped CAS, and ordinary `资料详情` |
 | RF-METASUGGEST01 | `tasks/done/RF-METASUGGEST01.md` | Deterministic bounded bilingual text-layer suggestions with explicit manager acceptance; deployed by PROD-08R |
 | PROD-07A | `tasks/done/PROD-07A.md` | Exact RF-META01 release and migration 018 deployed to production |
@@ -57,14 +58,13 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | RF-METASUGGEST-HARDEN01 | Active; finish audit, implementation, gates, conditional release, and reconciliation |
-| 2 | STOP | Required immediately after RF-METASUGGEST-HARDEN01 closure |
-| 3 | RF-SEARCH01 | Preserved metadata/name search card; resume only after later Owner review and new explicit authorization |
-| 4 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
-| 5 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited without new explicit authorization |
-| 6 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
+| 1 | RF-SEARCH01 | Authorized next (Owner Round 2); development only, no production |
+| 2 | STOP | Required after the RF-SEARCH01 development checkpoint, before any search production |
+| 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
+| 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited without new explicit authorization |
+| 5 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
 
-RF-FRONTMATTEROCR01 authorizes only the completed bounded local/offline fallback. RF-TRANSFER01 is closed in development and adds no production authority. RF-SEARCH01, the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
+RF-METASUGGEST-HARDEN01 is PASS/CLOSED. RF-SEARCH01 is the next authorized task (development only, no production deployment, no migration, no index server). RF-FRONTMATTEROCR01 and RF-TRANSFER01 remain closed; the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
 
 ## Product Model — Authoritative Short Form
 
@@ -112,23 +112,23 @@ Starting any parked card requires a new Owner decision.
 ## Production State and Gates
 
 ```text
-PRODUCTION=a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a
-PREVIOUS_RELEASE=9d2fc9b08e2e02c821ef357f149ed928510c2825
+PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
+PREVIOUS_RELEASE=a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a
 PRODUCTION_SCHEMA=v21 / migrations 001–021
 PROD09A_CLOSED=true
-RF_METASUGGEST_DEPLOYED=true
+RF_METASUGGEST_HARDENED=true
 L1_UX07_DEPLOYED=true
 OCR_DEPLOYED=true
 RF_TRANSFER_DEPLOYED=true
 ROLLBACK_USED=false
 ```
 
-Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, and public assets match the immutable release. Exact migrations 020–021 are applied; release-local Tesseract 5.5.3 with `chi_sim`, `chi_tra`, and `eng`, true multipart upload/resume, and Range download resume passed bounded acceptance. Synthetic destructive acceptance was skipped safely because no uniquely owned run-created target existed; no task-owned synthetic residue exists.
+Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, and public assets match the immutable release. Exact migrations 001–021 are applied with unchanged checksums; release-local Tesseract 5.5.3 with `chi_sim`, `chi_tra`, and `eng`, bounded random-access PDF inspection, true multipart upload/resume, and Range download resume passed. The A–L fixture corpus, release-local real-Tesseract E2E, and no-persistence private smoke are green; no candidate was accepted and canonical metadata was not mutated.
 
-The immediate same-schema rollback target is exact prior application `9d2fc9b08e2e02c821ef357f149ed928510c2825` against unchanged v21; PROD-09A rollback was not used. The older deep rollback remains exact application `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` plus fresh schema-v19 backup `academiccloud-pre-prod09-20260819T061155Z.sqlite` (SHA-256 `21af5882483c21cfa65854fa592a7805b029b4f31c06c598114d161412c36436`), encrypted off-host in private commit `702695ee9bfd65ee69c2f8cb6c8f105bd4320755`; never run that application against live v21.
+The immediate same-schema rollback target is exact prior application `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a` against unchanged v21; RF-METASUGGEST-HARDEN01 rollback was not used. The older deep rollback remains exact application `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` plus fresh schema-v19 backup `academiccloud-pre-prod09-20260819T061155Z.sqlite` (SHA-256 `21af5882483c21cfa65854fa592a7805b029b4f31c06c598114d161412c36436`), encrypted off-host in private commit `702695ee9bfd65ee69c2f8cb6c8f105bd4320755`; never run that application against live v21.
 
-`PROD-03C2` remains parked. RF-METASUGGEST-HARDEN01 permits bounded no-persistence reads of at most five anonymized Owner-authorized PDFs and a conditional exact-artifact same-schema release only after all gates pass. It does not authorize destructive use of pre-existing resources, candidate acceptance, canonical metadata mutation, corpus-wide scans, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction/OCR, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup.
+`PROD-03C2` remains parked. RF-SEARCH01 (Owner Round 2) authorizes only a development-only bounded metadata/name catalogue search path; it does not authorize production deployment, migrations, index servers, full-text/OCR search, query history, external lookup, or AI extraction.
 
 ## Next Action
 
-Complete and close RF-METASUGGEST-HARDEN01, reconcile/publish/synchronize its evidence, then STOP. Do not start RF-SEARCH01.
+Begin RF-SEARCH01 (development only): move `tasks/ready/RF-SEARCH01.md` to `tasks/doing/`, implement the bounded authority-safe metadata/name catalogue search, reach a green development checkpoint, push, and STOP FOR OWNER REVIEW before any search production.

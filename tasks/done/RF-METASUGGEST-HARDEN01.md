@@ -53,7 +53,7 @@ Complete one structural hardening pass of the bounded metadata-suggestion pipeli
 - `AGENTS.md`, `CURRENT_STATUS.md`, `TASK_BOARD.md`, `ROADMAP.md`, and this task card.
 
 ## Current State
-First hardening slice recovered, verified, committed, and published at `RECOVERED_FIRST_SLICE_CHECKPOINT = 9e0414e2997feffe90189d7cae788bb8e083238e` (`feat(suggestions): bounded range PDF inspection and evidence-source hardening`, on top of task-authorization docs `cf0bd68…` and base `a163018e…`) on `codex/project-memory-reconcile-20260817`; local/tracking/remote heads are identical and the worktree is clean. Production remains exact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, schema v21/history 001–021, and has not been touched. Bounded random-access PDF reading, independent evidence branches, structured filename parsing, native-text quality, embedded-metadata author splitting, authority-resolve UX, and product copy are implemented and typecheck/tested; the deeper remaining work (A–L realistic fixtures, measured OCR/parser tuning, exact-artifact and private smoke gates, conditional release) is still outstanding.
+PASS/CLOSED. The recovered first slice (`9e0414e…`), the A–L realistic corpus + parser hardening (`604cb8d…`), and the private smoke harness (`c6d3101…`) are committed, published, and synchronized on `codex/project-memory-reconcile-20260817`. Production now runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; no migration ran and rollback was not used. RF-SEARCH01 remains parked.
 
 ## Completed
 - Recovered the existing uncommitted first slice (storage range contract, in-memory + Aliyun range reads, PDF.js range transport, evidence independence, native-text quality, structured filename, embedded authors, authority UX, product copy) and repaired its task-caused regressions.
@@ -67,18 +67,48 @@ First hardening slice recovered, verified, committed, and published at `RECOVERE
 - Fixed three real parser defects the corpus exposed: (1) explicit bibliographic labels on a title page after page 4 were dropped — now classified as `title_page` anywhere in the exact window while unlabeled inference stays limited to the first four pages; (2) the `出版发行：北京：…出版社` shape emitted a spurious `publication_place` of `出版发行` — now suppressed; (3) embedded multi-author split was silently truncating authors because `.map(clean)` bound the array index to `clean`'s `max` argument — fixed, and multiple person authorities no longer mark a run `ambiguous`.
 - Measured OCR/parser budget decisions are recorded in `SUGGESTION_LIMITS` and exercised by the corpus: per-page and total text/OCR character caps, per-page OCR timeout (5 s), total request timeout (25 s), one concurrent OCR request, render pixel/bitmap/image caps, and `minimumOcrConfidence` 55. The oversized fixture proves the whole object is never buffered and every range read stays ≤ 1 MiB.
 - Added the no-persistence pre-cutover smoke harness (`scripts/private-suggestion-smoke.mjs`): it reads at most five Owner-authorized object keys through the exact staged release's compiled pipeline and reports only `metadata_mutated`/`crash`/`raw_error` plus per-object size/status/candidate counts, without opening SQLite, persisting runs, accepting candidates, or emitting titles/excerpts/keys.
+- Passed all local gates: backend 358/358 (+1 real-Tesseract E2E skip), frontend 221/221, both typechecks, both production builds, compiled acceptance (`firstMigrationCount=21`, `redeployMigrationCount=0`), and `git diff --check` clean.
+- Built the exact immutable Linux x64 / Node 24 artifact via workflow `32286643640` on source `604cb8d…`; both the primary job (including the new release-local Tesseract E2E step) and the independent fresh-runner download/verify job passed. GitHub artifact digest `sha256:859182edf9dd26d9f88f453357b6396e1fed8c62cb47d5f0f641470e011d95a1`; archive SHA-256 `2e90ab225c234826a1dd471dcfb8673f3003dcd9f449b699536fb54fa822df13`; manifest/runtime evidence verified locally and on-host (5,384 files / 125,846,980 bytes).
+- Ran the no-persistence private pre-cutover smoke on five anonymized Owner-authorized production PDFs (`REAL-01`…`REAL-05`) against the staged release: `metadata_mutated=false`, `crash=false`, `raw_error=false`; two real scanned PDFs produced `ready` suggestions with bounded OCR evidence, and three larger scans (76–240 MiB) failed closed inside the 25 s bounded budget (`timeout`) without whole-object download, crash, mutation, or raw-error exposure.
+- Staged the verified artifact as root-owned read-only `/opt/academiccloud/releases/604cb8d…`, completed the guarded same-schema cutover, and passed post-cutover acceptance: exact release/process CWD, schema v21/history 001–021/checksums, integrity `ok`, zero FK violations, active service with `NRestarts=0` and one loopback listener, byte-identical public assets, release-local Tesseract 5.5.3, unauthenticated suggestion probes denied, and zero new service errors. Task-owned staging/diagnostic files were removed.
 
 ## Remaining
-- Pass changed-risk, build, deterministic-artifact, independent-runner, and private pre-cutover smoke gates.
-- Conditionally deploy the exact artifact, complete post-cutover acceptance, reconcile/publish/synchronize, and stop.
+None.
 
 ## Blockers
-None. A necessary schema migration or any failed exact-artifact/private-smoke gate is a mandatory stop before production.
+None.
 
 ## Last Verification
-- Backend `tsc --noEmit` green; full backend test suite 342/342 pass (incl. storage range, Aliyun Range, PDF.js range transport, request/byte bounds, large-object inspection, no whole-object buffering, range failure, evidence independence, filename/embedded fallback).
-- Frontend `tsc --noEmit` green; frontend suite 221/221 pass (incl. updated product-copy and authority-resolve UX expectations).
-- `git diff --check` clean. Production was not contacted.
+- Backend `tsc --noEmit` green; full backend suite 358/358 pass plus one release-local-Tesseract E2E skip; frontend suite 221/221 pass; both production builds pass; compiled acceptance green; `git diff --check` clean.
+- Artifact workflow `32286643640` green (primary + independent runner); archive/manifest/runtime evidence and SHA-256 verified locally and on the host.
+- Private pre-cutover smoke on `REAL-01`…`REAL-05`: `metadata_mutated=false`, `crash=false`, `raw_error=false`.
+- Production release `604cb8d…`, previous `a5e2bc21…`; schema v21/history 001–021 unchanged; no migration; rollback not used.
+- Post-cutover: health `ok`, readiness `ready`, exact public assets, release-local Tesseract 5.5.3, authorization guards fail closed, no new service errors.
 
 ## Next Action
-Complete and record the structural pipeline audit/measurements, then add the committed A–L realistic fixture matrix and the measured OCR/parser budget decisions before the exact-artifact and private smoke gates.
+Reconcile and publish the final evidence checkpoint, synchronize the accessible local checkout, then STOP. Resume RF-SEARCH01 only after Owner review and new explicit authorization.
+
+## Closure Evidence
+
+```text
+TASK=RF-METASUGGEST-HARDEN01
+VERDICT=PASS/CLOSED
+PRODUCTION_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
+PREVIOUS_RELEASE=a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a
+SCHEMA=v21 / migrations 001–021
+MIGRATIONS=none (same-schema application-only)
+REALISTIC_MATRIX=PASS (A–L, 12 fixtures + full-pipeline test)
+PRIVATE_REALISTIC_SMOKE=PASS (REAL-01…REAL-05; metadata_mutated=false; crash=false; raw_error=false)
+BROWSER_ACCEPTANCE=PASS (post-cutover health/readiness/assets/guard/tesseract/no-errors)
+RAW_INTERNAL_ERROR_EXPOSED=false
+AUTO_METADATA_MUTATION=false
+ROLLBACK_USED=false
+ARTIFACT_WORKFLOW=32286643640
+ARTIFACT_DIGEST=sha256:859182edf9dd26d9f88f453357b6396e1fed8c62cb47d5f0f641470e011d95a1
+ARCHIVE_SHA256=2e90ab225c234826a1dd471dcfb8673f3003dcd9f449b699536fb54fa822df13
+EVIDENCE_COMMIT=604cb8d (artifact source) + c6d3101 (smoke harness)
+LOCAL_HEAD=
+TRACKING_HEAD=
+REMOTE_HEAD=
+WORKTREE_CLEAN=true
+```
