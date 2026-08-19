@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-METASUGGEST-HARDEN01 is PASS/CLOSED, and RF-SEARCH01 development is complete and green. Production remains exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; production was NOT touched for search. RF-SEARCH01 adds one bounded authority-safe metadata/name catalogue search path (backend `search.ts` + `LibraryService.searchHoldings` + HTTP route, frontend `library-search.tsx`), with authority filtering before ranking/counting/pagination, no query persistence/logging, deterministic ranking/cursor pagination, and zero migration/dependency. STOP FOR OWNER REVIEW before any RF-SEARCH01 production.**
+**RF-METASUGGEST-HARDEN01 is PASS/CLOSED, and RF-SEARCH01 development (including the Owner-review bounded repair pass) is complete and green. Production remains exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; production was NOT touched for search. RF-SEARCH01 adds one bounded authority-safe metadata/name catalogue search path (backend `search.ts` + `LibraryService.searchHoldings` + HTTP route, frontend `library-search.tsx`) with authority filtering before ranking/counting/pagination, keyset-paginated whole-corpus enumeration (no silent truncation), deterministic ranking/cursor pagination, and zero migration/dependency. STOP FOR OWNER REVIEW before any RF-SEARCH01 production.**
 
 The governing product rule remains ADR-022:
 

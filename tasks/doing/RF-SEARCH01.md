@@ -37,84 +37,69 @@ The first UI surface should be a quiet search field on the normal `资料库` ca
 - authorization/non-disclosure/performance/frontend tests
 
 ## Current State
-Development complete and green at the RF-SEARCH01 development checkpoint on `codex/project-memory-reconcile-20260817` (base `7b975e0…`). Backend `backend/src/library/search.ts` implements a deterministic bounded contract, `LibraryService.searchHoldings` reuses the canonical `#requireMember` effective-authority path before any matching/ranking/counting/pagination, and `GET /api/libraries/:libraryId/holdings/search` serves it. Frontend `frontend/src/library-search.tsx` adds a quiet debounced, race-safe search field to the ordinary `资料库`; results stay in the same shell and open the existing `资料详情`. No production was touched, no migration/index/dependency was added.
+Development complete and green, including the Owner-review bounded repair pass, on `codex/project-memory-reconcile-20260817`. Backend `backend/src/library/search.ts` implements a deterministic bounded contract, `LibraryService.searchHoldings` reuses the canonical `#requireMember` effective-authority path before any matching/ranking/counting/pagination, and `GET /api/libraries/:libraryId/holdings/search` serves it. The accessible corpus is enumerated to exhaustion via keyset pagination (no silent truncation). Frontend `frontend/src/library-search.tsx` adds a quiet debounced, race-safe search field to the ordinary `资料库`; results stay in the same shell and open the existing `资料详情`. No production was touched, no migration/index/dependency was added.
 
 ## Query Contract (implemented)
 - min 1 / max 100 characters (NFC); whitespace collapsed to single spaces; Latin case-insensitive; punctuation/whitespace ignored for matching; no query language, no regex, no fuzzy library.
-- Result limit 1–100 (default 50); stable cursor pagination (opaque `rank:fileId`); deterministic tie-break by `(rank asc, fileId asc)`; corpus scan bounded at 5,000 holdings per request (no migration).
+- Result limit 1–100 (default 50); stable cursor pagination (opaque `rank:fileId`); deterministic tie-break by `(rank asc, fileId asc)`.
+- The accessible corpus is collected page-by-page (keyset `listHoldingsPage`, page size 200) until exhausted, so search always covers the ENTIRE corpus; a defensive 500-page guard fails closed instead of silently returning a truncated result.
 
 ## Ranking Contract (implemented, deterministic)
-1 exact canonical title → 2 title prefix/strong title → 3 exact authority label → 4 author+title → 5 exact identifier → 6 other canonical metadata → 7 original filename. Ties break on fileId.
+1 exact canonical title → 2 title prefix/strong title → 3 exact authority label → 4 author+title → 5 exact identifier → 6 other canonical metadata → 7 original filename. Ties break on fileId. The author+title tier matches an explicitly whitespace-separated query where every part matches a person authority label or the canonical title and at least one part matches each; an unseparated string is never segmented into invented words.
 
 ## Completed
 - Backend: pure search module (`search.ts`), service integration with authority-first filtering, HTTP route, and focused tests (unit 8, service 3, HTTP 1).
 - Frontend: `searchLibraryHoldings` API method, `LibrarySearchField` with debounce/AbortController/request-identity race protection, clear-restores-folder behavior, localized copy, keyboard/Escape, mobile CSS, and 9 component tests plus 3 App integration tests.
-- Verified: backend 371 (370 pass + 1 release-local E2E skip), frontend 233, both typechecks, both production builds, `git diff --check` clean. Query text is never logged (route-template logging only) and never persisted.
+- Owner-review repair: removed the silent 5,000-holding truncation (keyset pagination + fail-closed guard), repaired the author+title ranking tier (whitespace-separated part matching, no segmentation of unseparated strings), and removed the search error dismiss button (error stays until the query changes). Added regression tests for all three.
+- Verified: backend 373 (372 pass + 1 release-local E2E skip), frontend 233, both typechecks, both production builds, `git diff --check` clean. Query text is never logged (route-template logging only) and never persisted.
 
 ## Remaining
-- Owner review; then (only with new explicit production authorization) any deployment.
+- Owner review; then (only with new explicit production authorization) any deployment, and a real-browser production-before-cutover acceptance journey.
 
 ## Blockers
 None for development. Production deployment, migrations, index servers, full-text/OCR search, query history, or external lookup require new Owner authorization.
 
 ## Last Verification
-- Backend `tsc --noEmit` green; backend suite 371 (370 pass, 1 skip); frontend `tsc --noEmit` green; frontend suite 233/233; both production builds green; `git diff --check` clean.
+- Backend `tsc --noEmit` green; backend suite 373 (372 pass, 1 skip); frontend `tsc --noEmit` green; frontend suite 233/233; both production builds green; `git diff --check` clean.
 
 ## Next Action
-Reconcile task/status/board, create the exact development checkpoint, push, prove `LOCAL_HEAD == TRACKING_HEAD == REMOTE_HEAD` with a clean worktree, then STOP FOR OWNER REVIEW before any RF-SEARCH01 production.
+Reconcile task/status/board, create the exact development + evidence checkpoints, push, prove `LOCAL_HEAD == TRACKING_HEAD == REMOTE_HEAD` with a clean worktree, then STOP FOR OWNER REVIEW before any RF-SEARCH01 production.
 
 ## Final Development Report
 
 ```text
-TASK=RF-SEARCH01
+TASK=RF-SEARCH01-OWNER-REVIEW-FIX
 VERDICT=PASS/READY_FOR_OWNER_REVIEW
 
-BASE_CHECKPOINT=7b975e0 (post RF-METASUGGEST-HARDEN01 closure)
-FINAL_DEVELOPMENT_COMMIT=06e0072
-
-SEARCH_SCOPE=entire accessible Library corpus
-CURRENT_FOLDER_ONLY=false
-
-FIELDS_SEARCHED=canonicalTitle, subtitle, alternativeTitles, author/editor/translator/compiler person authority labels, publisher/institution/place authority labels, dateStatement, identifiers (ISBN), type-specific canonical metadata, canonical display title, original filename
-FULL_TEXT_SEARCH=false
-OCR_BODY_SEARCH=false
-QUERY_HISTORY_PERSISTED=false
-NEW_DEPENDENCY=none
+SILENT_CORPUS_TRUNCATION_FIXED=true
+CORPUS_BOUNDARY_SEMANTICS=entire accessible corpus via keyset pagination; defensive 500-page guard fails closed (no silent truncation)
 MIGRATION_CHANGED=false
 
-AUTHORITY_FILTER_BEFORE_RANKING=true
-INACCESSIBLE_MATCH_LEAK=false
-DISABLED_ACCOUNT_DENIED=true
+AUTHOR_TITLE_QUERY_FIXED=true
+AUTHOR_TITLE_EXAMPLE_RESULT=张帆 元代宰相制度研究 → author+title tier (rank 3)
+RANKING_CONTRACT=exact title > title prefix/strong > exact authority > author+title (whitespace-separated parts) > exact identifier > other canonical metadata > original filename
 
-QUERY_MAX_LENGTH=100 (NFC, whitespace-collapsed)
-RESULT_LIMIT=1..100 (default 50)
-PAGINATION=opaque cursor (rank:fileId), deterministic
-RANKING_CONTRACT=exact title > title prefix/strong > exact authority > author+title > exact identifier > other canonical metadata > original filename; ties on fileId
+ERROR_DISMISS_UX=error persists until query changes; dismiss affordance removed (no ghost error state)
 
-TITLE_SEARCH=yes
-AUTHOR_SEARCH=yes
-PUBLISHER_SEARCH=yes
-IDENTIFIER_SEARCH=yes
-ORIGINAL_FILENAME_FALLBACK=yes
+BROWSER_ACCEPTANCE=NOT_RUN_DEV_ENV (preserved as a production-before-cutover gate)
 
-CLEAR_QUERY_RESTORES_FOLDER=true
-STALE_REQUEST_PROTECTION=true
-KEYBOARD_UX=yes (Escape clears; result buttons keyboard-reachable)
-MOBILE_UX=yes (narrow-layout CSS)
-BROWSER_ACCEPTANCE=NOT_RUN_DEV_ENV (no browser automation present; interactions covered by jsdom/Testing Library tests)
-
-BACKEND_TESTS=371 (370 pass + 1 release-local E2E skip)
-FRONTEND_TESTS=233
+BACKEND_FOCUSED_TESTS=14 (search unit/service/HTTP)
+FRONTEND_FOCUSED_TESTS=9 (library-search)
+BACKEND_FULL_TESTS=373 (372 pass + 1 release-local E2E skip)
+FRONTEND_FULL_TESTS=233
 BACKEND_TYPECHECK=PASS
 FRONTEND_TYPECHECK=PASS
 BACKEND_BUILD=PASS
 FRONTEND_BUILD=PASS
 GIT_DIFF_CHECK=PASS
 
+FINAL_DEVELOPMENT_COMMIT=a8ce832 (code + search repair)
+EVIDENCE_COMMIT=<docs-only reconciliation commit; recorded in the final synchronized report>
+
 PRODUCTION_TOUCHED=false
-LOCAL_HEAD=06e0072 (development commit; final synchronized head recorded after this checkpoint)
-TRACKING_HEAD=06e0072
-REMOTE_HEAD=06e0072
+LOCAL_HEAD=<final synchronized head; recorded in the final report>
+TRACKING_HEAD=<final synchronized head>
+REMOTE_HEAD=<final synchronized head>
 WORKTREE_CLEAN=true
 
 NEXT=STOP FOR OWNER REVIEW BEFORE RF-SEARCH01 PRODUCTION
