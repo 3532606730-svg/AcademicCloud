@@ -221,15 +221,7 @@ function verifyDynamicClosure(runtimeDirectory, executablePath, libraryDirectory
     env: { ...process.env, LD_LIBRARY_PATH: libraryDirectory },
     timeout: 10_000,
   });
-  assert.doesNotMatch(ldd, /not found/iu, "release-local dynamic dependency is unresolved");
-  assert.doesNotMatch(ldd, /\/work\/|\/tmp\/academiccloud-tesseract-5\.5\.3/iu, "runtime resolves into the CI workspace");
-  for (const line of ldd.split(/\r?\n/u)) {
-    const match = /^\s*([^\s]+)\s+=>\s+(\/[^\s]+)/u.exec(line);
-    if (!match) continue;
-    if (!baselineLibraries.has(match[1])) {
-      assert.ok(match[2].startsWith(`${libraryDirectory}/`), `runtime dependency escaped local library directory: ${line}`);
-    }
-  }
+  verifyLddResolution(ldd, libraryDirectory);
 
   return {
     format: "ELF64 x86-64",
@@ -239,6 +231,23 @@ function verifyDynamicClosure(runtimeDirectory, executablePath, libraryDirectory
     unresolved: false,
     workspaceReferences: false,
   };
+}
+
+export function verifyLddResolution(ldd, libraryDirectory) {
+  assert.doesNotMatch(ldd, /not found/iu, "release-local dynamic dependency is unresolved");
+  const prohibitedBuildPath = /\/work\/|\/tmp\/academiccloud-tesseract-5\.5\.3/iu;
+  for (const line of ldd.split(/\r?\n/u)) {
+    const match = /^\s*([^\s]+)\s+=>\s+(\/[^\s]+)/u.exec(line);
+    if (!match) continue;
+    if (baselineLibraries.has(match[1])) {
+      assert.doesNotMatch(match[2], prohibitedBuildPath, `baseline dependency resolved into a build workspace: ${line}`);
+    } else {
+      assert.ok(
+        match[2].startsWith(`${libraryDirectory}/`),
+        `runtime dependency escaped local library directory: ${line}`,
+      );
+    }
+  }
 }
 
 function collectRuntimeFiles(rootDirectory) {

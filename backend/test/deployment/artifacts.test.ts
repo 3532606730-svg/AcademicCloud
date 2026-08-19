@@ -139,7 +139,9 @@ test("production artifact builds and independently verifies the exact release-lo
   assert.match(runtime, /chi_sim: "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730"/u);
   assert.match(runtime, /chi_tra: "529c5b5797d64b126065cd55f2bb4c7fd7b15790798091b1ff259941a829330b"/u);
   assert.match(runtime, /verifyDynamicClosure/u);
+  assert.match(runtime, /verifyLddResolution/u);
   assert.doesNotMatch(runtime, /\.map\(basename\)/u);
+  assert.equal(runtime.includes("assert.doesNotMatch(ldd, /\\/work\\/"), false);
   assert.match(runtime, /synthetic OCR probe/u);
   assert.match(builder, /APT::Snapshot/u);
   assert.match(builder, /signed InRelease metadata still authenticates this first snapshot-only/u);
