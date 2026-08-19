@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**RF-METASUGGEST-HARDEN01 is PASS/CLOSED. Production now runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; no migration ran and rollback was not used. The committed A–L realistic fixture matrix, release-local real-Tesseract E2E, no-persistence private smoke on five anonymized PDFs, and post-cutover acceptance are green. Per Owner Round 2, RF-SEARCH01 is the next authorized task (development only, no production).**
+**RF-METASUGGEST-HARDEN01 is PASS/CLOSED, and RF-SEARCH01 development is complete and green. Production remains exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; production was NOT touched for search. RF-SEARCH01 adds one bounded authority-safe metadata/name catalogue search path (backend `search.ts` + `LibraryService.searchHoldings` + HTTP route, frontend `library-search.tsx`), with authority filtering before ranking/counting/pagination, no query persistence/logging, deterministic ranking/cursor pagination, and zero migration/dependency. STOP FOR OWNER REVIEW before any RF-SEARCH01 production.**
 
 The governing product rule remains ADR-022:
 
@@ -78,4 +78,4 @@ RF-METASUGGEST-HARDEN01 authorizes only its bounded pipeline diagnosis/implement
 
 ## Next Action
 
-The recovered first slice is checkpointed at `9e0414e…`; the A–L realistic corpus and parser hardening at `604cb8d…`; the private smoke harness at `c6d3101…`. Production is the exact independently verified artifact from `604cb8d…` (same schema v21/001–021). Next: begin RF-SEARCH01 (development only) per Owner Round 2, without touching production.
+RF-SEARCH01 development is complete and green (backend + frontend). Reconcile the development checkpoint, push, prove `LOCAL_HEAD == TRACKING_HEAD == REMOTE_HEAD` with a clean worktree, then STOP FOR OWNER REVIEW before any RF-SEARCH01 production.

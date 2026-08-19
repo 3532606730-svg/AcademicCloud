@@ -219,6 +219,21 @@ export interface LibraryHolding {
   };
 }
 
+export interface LibrarySearchResult {
+  fileId: string;
+  canonicalTitle: string | null;
+  authorLabels: string[];
+  date: string | null;
+  publisher: string | null;
+  materialType: MaterialType | null;
+  displayName: string;
+}
+
+export interface LibrarySearchPage {
+  results: LibrarySearchResult[];
+  nextCursor: string | null;
+}
+
 export type MaterialType = "book" | "article" | "manuscript" | "inscription" | "archival_document";
 export type AuthorityType = "person" | "place" | "language" | "work" | "institution";
 export type AuthorityRole =
@@ -525,6 +540,7 @@ export interface AcademicCloudApi {
   changeLibraryMemberRole(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember>;
   removeLibraryMember(libraryId: string, accountId: string): Promise<void>;
   listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]>;
+  searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number): Promise<LibrarySearchPage>;
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
   updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails>;
   /** Metadata suggestions are optional for compatibility with older API fakes. */
@@ -875,6 +891,16 @@ export class ApiClient implements AcademicCloudApi {
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings`,
       signal ? { signal } : {},
     )).holdings;
+  }
+
+  async searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number): Promise<LibrarySearchPage> {
+    const params = new URLSearchParams({ q: query });
+    if (cursor) params.set("cursor", cursor);
+    if (limit !== undefined) params.set("limit", String(limit));
+    return this.#request<LibrarySearchPage>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/search?${params.toString()}`,
+      signal ? { signal } : {},
+    );
   }
 
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails> {

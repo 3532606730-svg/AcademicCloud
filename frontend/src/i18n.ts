@@ -286,6 +286,13 @@ const EN = {
   "sharedLibrary.chooseLibrary": "Choose a shared library",
   "sharedLibrary.submitted": "Submitted",
   "sharedLibrary.reviewed": "Reviewed",
+  // library search
+  "librarySearch.label": "Search Library",
+  "librarySearch.placeholder": "Search title, author, publisher…",
+  "librarySearch.clear": "Clear search",
+  "librarySearch.loading": "Searching…",
+  "librarySearch.noResults": "No matching resources",
+  "librarySearch.resultsAria": "Search results",
   // workspace
   "workspace.uploadFiles": "Upload files",
   "workspace.uploadResources": "Upload resources",
@@ -754,6 +761,13 @@ const ZH_CN: Record<MessageKey, string> = {
   "sharedLibrary.chooseLibrary": "选择共享资料库",
   "sharedLibrary.submitted": "已提交",
   "sharedLibrary.reviewed": "已审核",
+  // 资料库搜索
+  "librarySearch.label": "搜索资料库",
+  "librarySearch.placeholder": "搜索资料、作者、出版信息…",
+  "librarySearch.clear": "清除搜索",
+  "librarySearch.loading": "正在搜索…",
+  "librarySearch.noResults": "未找到匹配的资料",
+  "librarySearch.resultsAria": "搜索结果",
   "workspace.uploadFiles": "上传文件",
   "workspace.uploadResources": "上传资料",
   "workspace.itemSummary": "{files} 个文件 · {folders} 个文件夹",

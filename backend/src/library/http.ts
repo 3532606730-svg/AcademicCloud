@@ -5,6 +5,7 @@ import { AuthorizationDeniedError } from "../auth/authorization.js";
 import { DriveError } from "../drive/drive-service.js";
 import { LIBRARY_ROLES, type LibraryRole } from "./library.js";
 import { LibraryError, type LibraryService } from "./library-service.js";
+import { SearchInputError } from "./search.js";
 
 const ID_PATTERN = "^[A-Za-z0-9_-]{1,128}$";
 const idSchema = { type: "string", pattern: ID_PATTERN, minLength: 1, maxLength: 128 } as const;
@@ -20,6 +21,7 @@ interface DownloadQuery { disposition?: "attachment" | "inline"; }
 interface ContributionParams extends LibraryParams { contributionId: string; }
 interface ContributionBody { artifactId: string; }
 interface HoldingVersionBody { version: string; }
+interface SearchQuery { q: string; limit?: number; cursor?: string; }
 
 function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
   if (!account) throw new LibraryError("not_found");
@@ -29,6 +31,9 @@ function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccoun
 function sendLibraryError(reply: FastifyReply, error: unknown) {
   if (error instanceof AuthorizationDeniedError) {
     return reply.code(404).send({ error: "not_found" });
+  }
+  if (error instanceof SearchInputError) {
+    return reply.code(400).send({ error: "invalid_input" });
   }
   if (error instanceof LibraryError) {
     const status = error.code === "invalid_input"
@@ -194,6 +199,39 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
         return {
           holdings: service.listHoldings(requireActor(request.authAccount).id, request.params.libraryId, request.query.limit),
         };
+      } catch (error: unknown) {
+        return sendLibraryError(reply, error);
+      }
+    },
+  );
+
+  app.get<{ Params: LibraryParams; Querystring: SearchQuery }>(
+    "/api/libraries/:libraryId/holdings/search",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: { type: "object", required: ["libraryId"], properties: { libraryId: idSchema } },
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          required: ["q"],
+          properties: {
+            q: { type: "string", minLength: 1, maxLength: 100 },
+            limit: { type: "integer", minimum: 1, maximum: 100 },
+            cursor: { type: "string", minLength: 1, maxLength: 200 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return service.searchHoldings(
+          requireActor(request.authAccount).id,
+          request.params.libraryId,
+          request.query.q,
+          request.query.limit ?? 50,
+          request.query.cursor ?? null,
+        );
       } catch (error: unknown) {
         return sendLibraryError(reply, error);
       }

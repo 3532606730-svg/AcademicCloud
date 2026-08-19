@@ -17,6 +17,13 @@ import type {
   LibraryRole,
 } from "./library.js";
 import { libraryHoldingView, type LibraryHoldingView } from "./holding-view.js";
+import {
+  searchHoldings,
+  SEARCH_MAX_CORPUS_SCAN,
+  type LibrarySearchPage,
+  type SearchableAuthority,
+  type SearchableHolding,
+} from "./search.js";
 import type { ContributionCandidate, ContributionState, LibraryContribution } from "./contribution.js";
 
 export type LibraryErrorCode =
@@ -460,6 +467,53 @@ export class LibraryService {
     const repositories = this.#persistence.repositories;
     this.#requireMember(accountId, libraryId, repositories);
     return repositories.libraries.listHoldings(libraryId, limit).map(libraryHoldingView);
+  }
+
+  searchHoldings(
+    accountId: string,
+    libraryId: string,
+    rawQuery: string,
+    limit: number,
+    cursor: string | null,
+  ): LibrarySearchPage {
+    // Effective-authority filtering is the first step: a non-member, a
+    // disabled account, or a guessed library id throws not_found before any
+    // matching, counting, ranking, or pagination can observe the corpus.
+    return this.#persistence.runInTransaction((repositories) => {
+      const library = this.#requireMember(accountId, libraryId, repositories);
+      const holdings = repositories.libraries.listHoldings(library.id, SEARCH_MAX_CORPUS_SCAN);
+      const searchable = holdings.map((holding) => this.#searchableHolding(library.ownerDomainId, holding, repositories));
+      return searchHoldings(searchable, rawQuery, limit, cursor);
+    });
+  }
+
+  #searchableHolding(
+    ownerDomainId: string,
+    holding: LibraryHolding,
+    repositories: RepositorySet,
+  ): SearchableHolding {
+    const metadata = repositories.metadata.findMetadata(ownerDomainId, holding.recordId);
+    const authorities: SearchableAuthority[] = [];
+    if (metadata) {
+      for (const link of metadata.authorityLinks) {
+        const authority = repositories.metadata.findAuthority(ownerDomainId, link.authorityId);
+        if (!authority) continue;
+        authorities.push({
+          type: authority.type,
+          role: link.role,
+          label: authority.canonicalLabel,
+          aliases: [...authority.aliases],
+        });
+      }
+    }
+    return {
+      fileId: holding.file.id,
+      displayName: holding.file.displayName,
+      canonicalTitle: holding.canonicalTitle,
+      metadata,
+      authorLabels: [...holding.authorLabels],
+      authorities,
+    };
   }
 
   recycleHolding(actor: AuthenticatedAccount, libraryId: string, fileId: string, expectedVersion: string): void {

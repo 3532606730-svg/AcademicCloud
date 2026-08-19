@@ -4,13 +4,13 @@
 
 ## Current Phase
 
-**RF-METASUGGEST-HARDEN01 is PASS/CLOSED. Production runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; no migration, rollback unused. RF-SEARCH01 is the next authorized task (development only, no production) per Owner Round 2.**
+**RF-METASUGGEST-HARDEN01 is PASS/CLOSED. Production runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; production was NOT touched for search. RF-SEARCH01 development is complete and green (development only); STOP FOR OWNER REVIEW before any search production.**
 
 ## Doing
 
 | Task | Task card | Bounded objective |
 |---|---|---|
-| _(none active; RF-SEARCH01 starts next)_ | — | — |
+| RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | Bounded authority-safe metadata/name catalogue search; development complete, awaiting Owner review |
 
 ## Done
 
@@ -58,13 +58,13 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | RF-SEARCH01 | Authorized next (Owner Round 2); development only, no production |
-| 2 | STOP | Required after the RF-SEARCH01 development checkpoint, before any search production |
+| 1 | STOP | Required now: RF-SEARCH01 development is complete; await Owner review before any search production |
+| 2 | RF-SEARCH01 production | Requires a new explicit Owner production authorization (not granted by Round 2) |
 | 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
 | 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited without new explicit authorization |
 | 5 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
 
-RF-METASUGGEST-HARDEN01 is PASS/CLOSED. RF-SEARCH01 is the next authorized task (development only, no production deployment, no migration, no index server). RF-FRONTMATTEROCR01 and RF-TRANSFER01 remain closed; the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
+RF-METASUGGEST-HARDEN01 is PASS/CLOSED. RF-SEARCH01 development is complete and green; production for search remains a later explicit decision. RF-FRONTMATTEROCR01 and RF-TRANSFER01 remain closed; the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
 
 ## Product Model — Authoritative Short Form
 
@@ -131,4 +131,4 @@ The immediate same-schema rollback target is exact prior application `a5e2bc21f2
 
 ## Next Action
 
-Begin RF-SEARCH01 (development only): move `tasks/ready/RF-SEARCH01.md` to `tasks/doing/`, implement the bounded authority-safe metadata/name catalogue search, reach a green development checkpoint, push, and STOP FOR OWNER REVIEW before any search production.
+RF-SEARCH01 development is complete and green. Reconcile the development checkpoint, push, prove local/tracking/remote equality with a clean worktree, then STOP FOR OWNER REVIEW before any RF-SEARCH01 production.

@@ -72,7 +72,7 @@ L1-UX06
 → PROD-09 exact release-local OCR artifact and bounded final production deployment — complete
 → PROD-09A metadata-suggestion receiver/error-boundary hotfix — complete
 → RF-METASUGGEST-HARDEN01 real-world PDF pipeline hardening and same-schema release — complete
-→ RF-SEARCH01 authority-scoped metadata/name catalogue search — next (development only, Owner Round 2)
+→ RF-SEARCH01 authority-scoped metadata/name catalogue search — development complete; STOP FOR OWNER REVIEW
 → STOP before RF-SEARCH01 production
 ```
 
@@ -324,7 +324,7 @@ PROD-08R truth preserved
 → bounded final production deployment and reconciliation complete
 → PROD-09A receiver/error-boundary hotfix complete
 → RF-METASUGGEST-HARDEN01 audit/hardening/exact-artifact private smoke/same-schema release — complete
-→ RF-SEARCH01 authority-scoped metadata/name catalogue search — development only, then STOP for Owner review
+→ RF-SEARCH01 authority-scoped metadata/name catalogue search — development complete, then STOP for Owner review
 ```
 
-RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01, RF-TRANSFER01, PROD-09, PROD-09A, and RF-METASUGGEST-HARDEN01 are complete. Exact release `604cb8d21…` runs at unchanged v21/history 001–021; the previous release is `a5e2bc21…`. RF-SEARCH01 is the next authorized development-only task: one bounded, authority-safe metadata/name catalogue search path over the accessible Library corpus, with no production deployment, migration, index server, full-text/OCR search, query history, or AI extraction. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, remaining Pre-OCR work, whole-document extraction/OCR, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, and unrelated work remain prohibited. Next action after the RF-SEARCH01 development checkpoint: STOP for Owner review.
+RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01, RF-TRANSFER01, PROD-09, PROD-09A, RF-METASUGGEST-HARDEN01, and the RF-SEARCH01 development checkpoint are complete. Exact release `604cb8d21…` runs at unchanged v21/history 001–021; the previous release is `a5e2bc21…`. RF-SEARCH01 development added one bounded authority-safe metadata/name catalogue search path with authority filtering before ranking/counting/pagination, no query persistence/logging, deterministic ranking/cursor pagination, and zero migration/dependency; production was not touched. Next action: STOP for Owner review before any search production. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, remaining Pre-OCR work, whole-document extraction/OCR, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, and unrelated work remain prohibited.

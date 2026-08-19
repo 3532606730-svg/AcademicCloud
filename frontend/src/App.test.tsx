@@ -152,6 +152,7 @@ function fakeApi(overrides: Partial<AcademicCloudApi> = {}): AcademicCloudApi {
     changeLibraryMemberRole: vi.fn(),
     removeLibraryMember: vi.fn().mockResolvedValue(undefined),
     listLibraryHoldings: vi.fn().mockResolvedValue([]),
+    searchLibraryHoldings: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
     getLibraryHoldingDetails: vi.fn(),
     updateLibraryHoldingMetadata: vi.fn(),
     listLibraryAuthorities: vi.fn().mockResolvedValue([]),
@@ -3334,5 +3335,83 @@ describe("row menu focus safety", () => {
     fireEvent.resize(window);
     expect(screen.queryByRole("menu", { name: "Actions for paper.pdf" })).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+});
+
+describe("library search", () => {
+  const searchResult = {
+    fileId: "library-file-0",
+    canonicalTitle: "Searchable title",
+    authorLabels: [],
+    date: null,
+    publisher: null,
+    materialType: null,
+    displayName: "book.pdf",
+  };
+
+  it("keeps the normal folder catalogue when the search field is empty", async () => {
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraries: vi.fn().mockResolvedValue([DEFAULT_LIBRARY]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+
+    expect(await screen.findByLabelText("Search Library")).toBeInTheDocument();
+    expect(await screen.findByRole("table", { name: "Catalogue" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
+    expect(screen.queryByText("No matching resources")).not.toBeInTheDocument();
+  });
+
+  it("searches the whole library, hides the folder table, and restores it on clear", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraries: vi.fn().mockResolvedValue([DEFAULT_LIBRARY]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+      searchLibraryHoldings: vi.fn().mockResolvedValue({ results: [searchResult], nextCursor: null }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    const input = await screen.findByLabelText("Search Library");
+    expect(await screen.findByRole("table", { name: "Catalogue" })).toBeInTheDocument();
+
+    await user.type(input, "search");
+    expect(await screen.findByRole("list", { name: "Search results" })).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Catalogue" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(await screen.findByRole("table", { name: "Catalogue" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
+    expect(input).toHaveValue("");
+  });
+
+  it("opens the existing resource details dialog from a search result", async () => {
+    const user = userEvent.setup();
+    const getLibraryHoldingDetails = vi.fn().mockResolvedValue({
+      displayTitle: "Searchable title",
+      originalFilename: "book.pdf",
+      metadataVersion: "v".repeat(43),
+      metadata: null,
+      canEditMetadata: true,
+      file: { id: "library-file-0", mediaType: "application/pdf", sizeBytes: 12, updatedAt: "2026-08-18T00:00:00.000Z" },
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraries: vi.fn().mockResolvedValue([DEFAULT_LIBRARY]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+      searchLibraryHoldings: vi.fn().mockResolvedValue({ results: [searchResult], nextCursor: null }),
+      getLibraryHoldingDetails,
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { name: "Library" });
+    const input = await screen.findByLabelText("Search Library");
+
+    await user.type(input, "search");
+    await user.click(await screen.findByRole("button", { name: "Searchable title" }));
+
+    await waitFor(() => expect(getLibraryHoldingDetails).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, "library-file-0"));
+    expect(await screen.findByRole("dialog", { name: "Searchable title" })).toBeInTheDocument();
   });
 });

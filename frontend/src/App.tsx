@@ -47,6 +47,7 @@ import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
 import { ResourceDetailsDialog } from "./resource-details.tsx";
 import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
+import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
 
 type AuthState =
   | { phase: "checking" }
@@ -619,6 +620,7 @@ function DriveView({
     library: LibrarySummary | null;
     holdings: LibraryHolding[];
   }>({ library: null, holdings: [] });
+  const [librarySearchActive, setLibrarySearchActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState<unknown>(null);
@@ -1883,7 +1885,17 @@ function DriveView({
                 return (
                   <section aria-labelledby="contents-title">
                     <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
-                    {selectedEntries.length > 0 && (
+                    {library && (
+                      <LibrarySearchField
+                        api={api}
+                        library={library}
+                        language={language}
+                        t={t}
+                        onActiveChange={setLibrarySearchActive}
+                        onOpenResult={(result) => openResourceDetails(library, librarySearchResultToHolding(result))}
+                      />
+                    )}
+                    {!librarySearchActive && selectedEntries.length > 0 && (
                       <BulkToolbar
                         mode="library"
                         selectedCount={selectedEntries.length}
@@ -1899,7 +1911,7 @@ function DriveView({
                         {...(selectionCapabilities.favoriteRemove ? { onFavoriteRemove: () => void runFavoriteSelection(false) } : {})}
                       />
                     )}
-                    {catalogueLoading ? <LoadingRows /> : !library ? (
+                    {librarySearchActive ? null : catalogueLoading ? <LoadingRows /> : !library ? (
                       <EmptyState title={t("sharedLibrary.empty")} />
                     ) : catalogueEmpty ? (
                       <EmptyState title={t("folder.emptyTitle")} />
