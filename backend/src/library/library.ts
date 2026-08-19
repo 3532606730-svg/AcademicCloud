@@ -28,6 +28,8 @@ export interface LibraryHolding {
   recordId: string;
   recordLabel: string;
   canonicalTitle: string | null;
+  /** Ordered labels projected from normalized author authority links. */
+  authorLabels: string[];
   artifactId: string;
   artifactCreatedAt: Date;
   versionId: string;

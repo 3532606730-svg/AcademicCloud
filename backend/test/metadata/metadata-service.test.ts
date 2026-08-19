@@ -156,7 +156,9 @@ test("manager canonical edits preserve physical identity, lineage, filename, pro
   const saved = metadata.updateMetadata(OWNER, library.id, fileId, initial.metadataVersion, update);
 
   assert.equal(saved.displayTitle, "元西域人华化考");
-  assert.equal(persistence.repositories.libraries.listHoldings(library.id, 10)[0]?.canonicalTitle, "元西域人华化考");
+  const projectedHolding = persistence.repositories.libraries.listHoldings(library.id, 10)[0];
+  assert.equal(projectedHolding?.canonicalTitle, "元西域人华化考");
+  assert.deepEqual(projectedHolding?.authorLabels, ["陈垣"]);
   assert.equal(saved.originalFilename, `${fileId.replace("-file", "")} -- acquisition filename.pdf`);
   assert.equal(saved.metadata?.authorityLinks[0]?.canonicalLabel, "陈垣");
   assert.equal("ownerDomainId" in (saved.metadata ?? {}), false);

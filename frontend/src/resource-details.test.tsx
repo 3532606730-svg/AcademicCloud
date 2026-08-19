@@ -27,6 +27,7 @@ const HOLDING: LibraryHolding = {
   recordId: "record-internal",
   recordLabel: "legacy label",
   canonicalTitle: "元西域人华化考",
+  authorLabels: ["陈垣"],
   artifactId: "artifact-internal",
   versionId: "version-internal",
   version: "f".repeat(43),
@@ -195,6 +196,8 @@ describe("Resource details", () => {
     await waitFor(() => expect(api.updateLibraryHoldingMetadata).toHaveBeenCalledTimes(1));
     const payload = vi.mocked(api.updateLibraryHoldingMetadata).mock.calls[0]![2];
     expect(payload).toMatchObject({ metadataVersion: "m".repeat(43), materialType: "book", canonicalTitle: "元西域人华化考（修订）" });
+    expect(payload.authorityLinks).toEqual([{ authorityId: "authority-secret-id", role: "author" }]);
+    expect(payload.canonicalTitle).not.toContain("陈垣");
     expect(payload).not.toHaveProperty("recordId");
     expect(payload).not.toHaveProperty("ownerDomainId");
     expect(payload).not.toHaveProperty("actorAccountId");

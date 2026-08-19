@@ -5,6 +5,7 @@ import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { AuthorizationDeniedError } from "../../src/auth/authorization.js";
 import { DriveService } from "../../src/drive/drive-service.js";
 import { LibraryError, LibraryService } from "../../src/library/library-service.js";
+import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createTestPersistence } from "../persistence/helpers.js";
 
@@ -39,7 +40,9 @@ function fixture(context: TestContext) {
     let next = 0;
     return () => `library-${++next}`;
   })());
-  return { database, persistence, storage, drive, libraries };
+  let authorityId = 0;
+  const metadata = new CanonicalMetadataService(persistence, () => NOW, () => `library-authority-${++authorityId}`);
+  return { database, persistence, storage, drive, libraries, metadata };
 }
 
 function addLibraryHolding(database: ReturnType<typeof fixture>["database"], libraryId: string, ownerDomainId: string): string {
@@ -102,8 +105,8 @@ test("creates an explicit Library, scopes membership, and protects the last effe
   assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_memberships").get()?.count, 4);
 });
 
-test("Library holdings are non-disclosing and reuse scoped storage download/preview authorization", async (context) => {
-  const { database, persistence, storage, libraries } = fixture(context);
+test("Library holdings project ordered author labels without denormalizing canonical metadata", async (context) => {
+  const { database, persistence, storage, libraries, metadata } = fixture(context);
   const library = libraries.createLibrary(OWNER, "Shared Sources");
   const fileId = addLibraryHolding(database, library.id, `library:${library.id}`);
   storage.putObject({
@@ -119,10 +122,32 @@ test("Library holdings are non-disclosing and reuse scoped storage download/prev
   const holdings = libraries.listHoldings(OWNER.id, library.id);
   assert.equal(holdings.length, 1);
   assert.equal(holdings[0]?.file.id, fileId);
+  assert.equal(holdings[0]?.canonicalTitle, null);
+  assert.deepEqual(holdings[0]?.authorLabels, []);
   assert.equal("objectKey" in (holdings[0]?.file ?? {}), false);
 
+  const authorA = metadata.createAuthority(OWNER, library.id, { type: "person", canonicalLabel: "作者甲", aliases: [] });
+  const authorB = metadata.createAuthority(OWNER, library.id, { type: "person", canonicalLabel: "作者乙", aliases: [] });
+  const current = metadata.getDetails(OWNER, library.id, fileId);
+  metadata.updateMetadata(OWNER, library.id, fileId, current.metadataVersion, {
+    materialType: "book",
+    canonicalTitle: "书名",
+    subtitle: null,
+    alternativeTitles: [],
+    dateStatement: null,
+    identifiers: [],
+    typeFields: {},
+    authorityLinks: [
+      { authorityId: authorA.id, role: "author" },
+      { authorityId: authorB.id, role: "author" },
+    ],
+  });
+  const catalogued = libraries.listHoldings(OWNER.id, library.id)[0]!;
+  assert.equal(catalogued.canonicalTitle, "书名");
+  assert.deepEqual(catalogued.authorLabels, ["作者甲", "作者乙"]);
+
   libraries.addMember(OWNER, library.id, MEMBER.id, "member");
-  assert.equal(libraries.listHoldings(MEMBER.id, library.id).length, 1);
+  assert.deepEqual(libraries.listHoldings(MEMBER.id, library.id)[0]?.authorLabels, ["作者甲", "作者乙"]);
   const download = await libraries.createDownload(MEMBER.id, library.id, fileId);
   assert.match(download.url, /objects%2Faa%2F/);
   const preview = await libraries.createDownload(MEMBER.id, library.id, fileId, "inline");

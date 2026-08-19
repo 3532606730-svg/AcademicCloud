@@ -98,6 +98,7 @@ const LIBRARY_HOLDINGS: LibraryHolding[] = ([
   recordId: `record-${index}`,
   recordLabel: displayName,
   canonicalTitle: null,
+  authorLabels: [],
   artifactId: `artifact-${index}`,
   versionId: `version-${index}`,
   version: `${String.fromCharCode(118 + index)}`.repeat(43),
@@ -2302,7 +2303,7 @@ describe("App", () => {
 describe("resource-scope catalogue interactions", () => {
   it("selects a real Library checkbox and limits a mixed account/Library toolbar to shared capabilities", async () => {
     const user = userEvent.setup();
-    const holding = { ...LIBRARY_HOLDINGS[0], canonicalTitle: "Canonical book" };
+    const holding = { ...LIBRARY_HOLDINGS[0], canonicalTitle: "Canonical book", authorLabels: ["Author A", "Author B"] };
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [] }),
@@ -2311,7 +2312,7 @@ describe("resource-scope catalogue interactions", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
-    const libraryCheckbox = await screen.findByRole("checkbox", { name: "Select Canonical book" });
+    const libraryCheckbox = await screen.findByRole("checkbox", { name: "Select Author A, Author B · Canonical book" });
     await user.click(libraryCheckbox);
     expect(libraryCheckbox).toBeChecked();
     let toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
@@ -2377,9 +2378,9 @@ describe("resource-scope catalogue interactions", () => {
     expect(within(toolbar).queryByRole("button", { name: "Move" })).not.toBeInTheDocument();
   });
 
-  it("keeps Library Favorites on canonical title and Library Preview/Download routes", async () => {
+  it("keeps Library Favorites on the composed catalogue title and Library Preview/Download routes", async () => {
     const user = userEvent.setup();
-    const holding = { ...LIBRARY_HOLDINGS[0]!, canonicalTitle: "Canonical favorite title" };
+    const holding = { ...LIBRARY_HOLDINGS[0]!, canonicalTitle: "Canonical favorite title", authorLabels: ["Favorite Author"] };
     const createLibraryDownload = vi.fn().mockResolvedValue({
       method: "GET", url: "https://storage.invalid/library", expiresAt: "2026-08-19T00:00:00.000Z",
     });
@@ -2394,14 +2395,15 @@ describe("resource-scope catalogue interactions", () => {
     });
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: "Favorites" }));
-    expect(await screen.findByText("Canonical favorite title")).toBeInTheDocument();
+    expect(await screen.findByText("Favorite Author · Canonical favorite title")).toBeInTheDocument();
     expect(screen.queryByText("book.pdf")).not.toBeInTheDocument();
-    let menu = await openRowMenu("Canonical favorite title");
+    let menu = await openRowMenu("Favorite Author · Canonical favorite title");
     await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
     await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id, "inline"));
+    expect(await screen.findByRole("heading", { name: "Favorite Author · Canonical favorite title" })).toBeInTheDocument();
     expect(createDownload).not.toHaveBeenCalled();
     await user.click(await screen.findByRole("button", { name: "Close preview" }));
-    menu = await openRowMenu("Canonical favorite title");
+    menu = await openRowMenu("Favorite Author · Canonical favorite title");
     await user.click(within(menu).getByRole("menuitem", { name: "Download" }));
     await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id));
     expect(createDownload).not.toHaveBeenCalled();

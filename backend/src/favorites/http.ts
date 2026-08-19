@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { fileDto, folderDto } from "../drive/http.js";
-import { driveEntryVersion } from "../drive/bulk.js";
+import { libraryHoldingView } from "../library/holding-view.js";
 import { FavoriteError } from "./favorite.js";
 import type { FavoriteService } from "./favorite-service.js";
 
@@ -38,21 +38,7 @@ export async function registerFavoritesHttp(app: FastifyInstance, favoriteServic
           isDefault: library.isDefault,
           createdAt: library.createdAt.toISOString(),
         },
-        holding: {
-          recordId: holding.recordId,
-          recordLabel: holding.recordLabel,
-          canonicalTitle: holding.canonicalTitle,
-          artifactId: holding.artifactId,
-          versionId: holding.versionId,
-          version: driveEntryVersion(holding.file),
-          file: {
-            id: holding.file.id,
-            displayName: holding.file.displayName,
-            mediaType: holding.file.mediaType,
-            sizeBytes: holding.file.sizeBytes,
-            updatedAt: holding.file.updatedAt.toISOString(),
-          },
-        },
+        holding: libraryHoldingView(holding),
       })),
       folders: snapshot.folders.map((entry) => ({
         ...folderDto(entry.folder),

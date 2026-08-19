@@ -46,6 +46,7 @@ import { calculateFileMd5 } from "./md5.ts";
 import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
 import { ResourceDetailsDialog } from "./resource-details.tsx";
+import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
 
 type AuthState =
   | { phase: "checking" }
@@ -1617,7 +1618,7 @@ function DriveView({
       const authorization = await api.createLibraryDownload(library.id, holding.file.id, "inline");
       setPreview({
         file: {
-          displayName: holding.canonicalTitle?.trim() || holding.file.displayName,
+          displayName: libraryHoldingDisplayTitle(holding, language),
           mediaType: holding.file.mediaType ?? "application/octet-stream",
         },
         url: authorization.url,
@@ -1640,7 +1641,7 @@ function DriveView({
   }
 
   function recycleLibraryHolding(library: LibrarySummary, holding: LibraryHolding) {
-    const displayTitle = holding.canonicalTitle?.trim() || holding.file.displayName;
+    const displayTitle = libraryHoldingDisplayTitle(holding, language);
     if (!window.confirm(t("file.recycleConfirm", { name: displayTitle }))) return;
     void (async () => {
       setBusyId(holding.file.id);
@@ -3254,7 +3255,7 @@ function EntryTable({
         </div>
       ))}
       {libraryHoldings.map(({ library, holding }) => {
-        const displayTitle = holding.canonicalTitle?.trim() || holding.file.displayName;
+        const displayTitle = libraryHoldingDisplayTitle(holding, language);
         const key = selectionKey("library_holding", holding.file.id, library.id);
         return (
         <div className={selectedKeys.has(key) ? "entry-row is-selected" : "entry-row"} role="row" key={`${library.id}:${holding.artifactId}`} data-entry-kind="library-holding">

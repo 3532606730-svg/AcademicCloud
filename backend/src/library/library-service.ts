@@ -16,6 +16,7 @@ import type {
   LibraryRecycledHolding,
   LibraryRole,
 } from "./library.js";
+import { libraryHoldingView, type LibraryHoldingView } from "./holding-view.js";
 import type { ContributionCandidate, ContributionState, LibraryContribution } from "./contribution.js";
 
 export type LibraryErrorCode =
@@ -48,22 +49,6 @@ export interface LibraryMemberView {
   state: "active" | "disabled" | "archived" | "missing";
   createdAt: string;
   updatedAt: string;
-}
-
-export interface LibraryHoldingView {
-  recordId: string;
-  recordLabel: string;
-  canonicalTitle: string | null;
-  artifactId: string;
-  versionId: string;
-  version: string;
-  file: {
-    id: string;
-    displayName: string;
-    mediaType: string | null;
-    sizeBytes: number;
-    updatedAt: string;
-  };
 }
 
 export interface LibraryRecycleFileView {
@@ -104,24 +89,6 @@ function normalizeName(value: string): string {
     throw new LibraryError("invalid_input");
   }
   return normalized;
-}
-
-function mapHolding(holding: LibraryHolding): LibraryHoldingView {
-  return {
-    recordId: holding.recordId,
-    recordLabel: holding.recordLabel,
-    canonicalTitle: holding.canonicalTitle,
-    artifactId: holding.artifactId,
-    versionId: holding.versionId,
-    version: driveEntryVersion(holding.file),
-    file: {
-      id: holding.file.id,
-      displayName: holding.file.displayName,
-      mediaType: holding.file.mediaType,
-      sizeBytes: holding.file.sizeBytes,
-      updatedAt: holding.file.updatedAt.toISOString(),
-    },
-  };
 }
 
 function mapRecycleFile(holding: LibraryRecycledHolding, file: StoredFile): LibraryRecycleFileView {
@@ -492,7 +459,7 @@ export class LibraryService {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new LibraryError("invalid_input");
     const repositories = this.#persistence.repositories;
     this.#requireMember(accountId, libraryId, repositories);
-    return repositories.libraries.listHoldings(libraryId, limit).map(mapHolding);
+    return repositories.libraries.listHoldings(libraryId, limit).map(libraryHoldingView);
   }
 
   recycleHolding(actor: AuthenticatedAccount, libraryId: string, fileId: string, expectedVersion: string): void {

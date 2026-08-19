@@ -206,6 +206,7 @@ export interface LibraryHolding {
   recordId: string;
   recordLabel: string;
   canonicalTitle: string | null;
+  authorLabels: string[];
   artifactId: string;
   versionId: string;
   version: string;

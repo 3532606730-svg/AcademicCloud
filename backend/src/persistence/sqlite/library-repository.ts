@@ -44,6 +44,7 @@ interface HoldingRow {
   record_id: string;
   record_label: string;
   canonical_title: string | null;
+  author_labels_json: string;
   artifact_id: string;
   artifact_created_at: string;
   version_id: string;
@@ -102,11 +103,16 @@ function toMembership(row: MembershipRow): LibraryMembership {
 }
 
 function toHolding(row: HoldingRow): LibraryHolding {
+  const authorLabels = JSON.parse(row.author_labels_json) as unknown;
+  if (!Array.isArray(authorLabels) || authorLabels.some((label) => typeof label !== "string")) {
+    throw new TypeError("invalid Library author-label projection");
+  }
   return {
     libraryId: row.library_id,
     recordId: row.record_id,
     recordLabel: row.record_label,
     canonicalTitle: row.canonical_title,
+    authorLabels,
     artifactId: row.artifact_id,
     artifactCreatedAt: fromDatabaseTimestamp(row.artifact_created_at)!,
     versionId: row.version_id,
@@ -173,6 +179,20 @@ const holdingColumns = `
   scholarly_records.id AS record_id,
   scholarly_records.label AS record_label,
   scholarly_record_metadata.canonical_title,
+  (
+    SELECT json_group_array(ordered_author.canonical_label)
+    FROM (
+      SELECT scholarly_authorities.canonical_label
+      FROM scholarly_record_authority_links
+      JOIN scholarly_authorities
+        ON scholarly_authorities.id = scholarly_record_authority_links.authority_id
+       AND scholarly_authorities.owner_domain_id = scholarly_record_authority_links.owner_domain_id
+      WHERE scholarly_record_authority_links.record_id = scholarly_records.id
+        AND scholarly_record_authority_links.owner_domain_id = scholarly_records.owner_domain_id
+        AND scholarly_record_authority_links.role = 'author'
+      ORDER BY scholarly_record_authority_links.position
+    ) AS ordered_author
+  ) AS author_labels_json,
   scholarly_artifacts.id AS artifact_id,
   scholarly_artifacts.created_at AS artifact_created_at,
   scholarly_artifact_versions.id AS version_id,

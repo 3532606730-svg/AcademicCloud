@@ -6,6 +6,7 @@ import { AuthService } from "../../src/auth/auth-service.js";
 import type { PasswordHasher } from "../../src/auth/password-hasher.js";
 import { DriveService } from "../../src/drive/drive-service.js";
 import { FavoriteService } from "../../src/favorites/favorite-service.js";
+import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
 import { createApp, type CreateAppOptions } from "../../src/platform/app.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createTestPersistence } from "../persistence/helpers.js";
@@ -248,6 +249,28 @@ test("favorites listing preserves Library scope and holding identity instead of 
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(versionId, library.ownerDomainId, artifactId, fileId, timestamp, timestamp);
   database.prepare("UPDATE scholarly_artifacts SET attachment_state = 'attached' WHERE id = ?").run(artifactId);
+  let authorityId = 0;
+  const metadata = new CanonicalMetadataService(persistence, () => NOW, () => `favorite-authority-${++authorityId}`);
+  const authorA = metadata.createAuthority({ id: "owner-1", loginName: "owner-1", role: "owner" }, library.id, {
+    type: "person", canonicalLabel: "Author A", aliases: [],
+  });
+  const authorB = metadata.createAuthority({ id: "owner-1", loginName: "owner-1", role: "owner" }, library.id, {
+    type: "person", canonicalLabel: "Author B", aliases: [],
+  });
+  const detail = metadata.getDetails({ id: "owner-1", loginName: "owner-1", role: "owner" }, library.id, fileId);
+  metadata.updateMetadata({ id: "owner-1", loginName: "owner-1", role: "owner" }, library.id, fileId, detail.metadataVersion, {
+    materialType: "book",
+    canonicalTitle: "Canonical favorite title",
+    subtitle: null,
+    alternativeTitles: [],
+    dateStatement: null,
+    identifiers: [],
+    typeFields: {},
+    authorityLinks: [
+      { authorityId: authorA.id, role: "author" },
+      { authorityId: authorB.id, role: "author" },
+    ],
+  });
 
   const add = await app.inject({
     method: "PUT",
@@ -265,6 +288,7 @@ test("favorites listing preserves Library scope and holding identity instead of 
         recordId: string;
         recordLabel: string;
         canonicalTitle: string | null;
+        authorLabels: string[];
         artifactId: string;
         versionId: string;
         version: string;
@@ -279,7 +303,8 @@ test("favorites listing preserves Library scope and holding identity instead of 
   assert.deepEqual(body.libraryHoldings[0]?.holding, {
     recordId,
     recordLabel: "Canonical favorite record",
-    canonicalTitle: null,
+    canonicalTitle: "Canonical favorite title",
+    authorLabels: ["Author A", "Author B"],
     artifactId,
     versionId,
     version: body.libraryHoldings[0]?.holding.version,

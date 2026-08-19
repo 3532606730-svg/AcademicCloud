@@ -434,5 +434,11 @@ test("authority suggestions require an existing same-domain authority and never 
       authorityLinks: [{ authorityId: authority.id, role: "author" }],
     },
   });
+  assert.equal(accepted.detail.metadata?.canonicalTitle, "The Mongols and the West, 1221-1410");
   assert.equal(accepted.detail.metadata?.authorityLinks[0]?.canonicalLabel, author.value);
+  assert.notEqual(
+    accepted.detail.metadata?.canonicalTitle,
+    `${author.value} · The Mongols and the West, 1221-1410`,
+    "suggestion acceptance must keep the author out of canonicalTitle",
+  );
 });
