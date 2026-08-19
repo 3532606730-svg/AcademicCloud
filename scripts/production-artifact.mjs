@@ -21,6 +21,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
+import { verifyTesseractRuntime } from "./tesseract-runtime.mjs";
+
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryDirectory = resolve(scriptDirectory, "..");
 const repositoryOutputDirectory = join(repositoryDirectory, "output");
@@ -57,7 +59,17 @@ const requiredRuntimePaths = [
   "node_modules/pdfjs-dist",
   "node_modules/@napi-rs/canvas",
   "node_modules/@napi-rs/canvas-linux-x64-gnu",
+  "runtime/tesseract/bin/tesseract",
+  "runtime/tesseract/lib",
+  "runtime/tesseract/tessdata/eng.traineddata",
+  "runtime/tesseract/tessdata/chi_sim.traineddata",
+  "runtime/tesseract/tessdata/chi_tra.traineddata",
+  "runtime/tesseract/licenses/tesseract-LICENSE",
+  "runtime/tesseract/licenses/tessdata_fast-LICENSE",
+  "runtime/tesseract/BUILD-EVIDENCE.json",
+  "scripts/build-tesseract-runtime.sh",
   "scripts/production-artifact.mjs",
+  "scripts/tesseract-runtime.mjs",
   "scripts/production-readiness-audit.mjs",
   "scripts/lib/production-readiness",
 ];
@@ -144,6 +156,8 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     "deployment/logrotate",
     "deployment/journald",
     "scripts/production-artifact.mjs",
+    "scripts/build-tesseract-runtime.sh",
+    "scripts/tesseract-runtime.mjs",
     "scripts/production-readiness-audit.mjs",
     "scripts/lib/production-readiness",
   ]) {
@@ -155,9 +169,10 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
   pruneNonTargetNativeModules(releaseDirectory);
   validateReleasePolicy(releaseDirectory);
   const postPrunePdfJsRuntime = verifyPdfJsRuntime(releaseDirectory, "post-prune");
+  const tesseractRuntime = verifyTesseractRuntime(releaseDirectory);
   const files = collectManifestEntries(releaseDirectory);
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     product: "AcademicCloud",
     sourceCommit: commit,
     platform: process.platform,
@@ -165,6 +180,7 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     nodeVersion: process.version,
     npmVersion: commandOutput("npm", ["--version"]),
     requiredRuntimePaths,
+    tesseractRuntime,
     files,
   };
   const manifestText = `${JSON.stringify(manifest, null, 2)}\n`;
@@ -181,6 +197,13 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
       prePrune: prePrunePdfJsRuntime.status,
       postPrune: postPrunePdfJsRuntime.status,
       nativeModulePath: postPrunePdfJsRuntime.nativeModulePath,
+    },
+    tesseractRuntime: {
+      status: tesseractRuntime.status,
+      engine: tesseractRuntime.engine,
+      sourceCommit: tesseractRuntime.source.commit,
+      packagedLibraryCount: tesseractRuntime.dynamicClosure.packagedLibraries.length,
+      languages: tesseractRuntime.languages,
     },
     manifestPath,
   })}\n`);
@@ -303,6 +326,7 @@ async function verifyRuntime(releaseDirectory) {
   assert.deepEqual(nativeModules, expectedNativeModulePaths, "unexpected production native module set");
   for (const nativeModule of nativeModules) verifyElfX64(join(releaseDirectory, ...nativeModule.split("/")));
   const pdfJsRuntime = verifyPdfJsRuntime(releaseDirectory, "extracted");
+  const tesseractRuntime = verifyTesseractRuntime(releaseDirectory);
 
   const acceptance = spawnSync(
     process.execPath,
@@ -326,6 +350,7 @@ async function verifyRuntime(releaseDirectory) {
     argon2id: { status: "ok", parameters: "m=65536,t=3,p=1", verified: true },
     nativeModules: { status: "ok", format: "ELF64 x86-64", paths: nativeModules },
     pdfJsRuntime,
+    tesseractRuntime,
     compiledAcceptance,
   };
 }
@@ -453,13 +478,14 @@ function collectNativeModulePaths(releaseDirectory) {
 }
 
 function verifyManifest(releaseDirectory, manifest) {
-  assert.equal(manifest.schemaVersion, 1);
+  assert.equal(manifest.schemaVersion, 2);
   assert.equal(manifest.product, "AcademicCloud");
   assert.equal(manifest.platform, "linux");
   assert.equal(manifest.architecture, "x64");
   assert.match(manifest.nodeVersion, /^v24\./u);
   assert.match(manifest.sourceCommit, /^[0-9a-f]{40}$/u);
   assert.deepEqual(manifest.requiredRuntimePaths, requiredRuntimePaths);
+  assert.deepEqual(manifest.tesseractRuntime, verifyTesseractRuntime(releaseDirectory));
   const actualEntries = collectManifestEntries(releaseDirectory);
   assert.deepEqual(actualEntries, manifest.files, "artifact contents do not match manifest");
 }

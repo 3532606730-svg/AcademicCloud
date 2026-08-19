@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/production-build.yml"
       - "scripts/production-artifact.mjs"
+      - "scripts/tesseract-runtime.mjs"
+      - "scripts/build-tesseract-runtime.sh"
       - "backend/**"
       - "frontend/**"
       - "database/migrations/**"
@@ -26,7 +28,7 @@ jobs:
   linux-production-artifact:
     name: Linux x64 / Node 24 production artifact
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     outputs:
       source_commit: ${{ steps.identity.outputs.source_commit }}
       archive_basename: ${{ steps.identity.outputs.archive_basename }}
@@ -35,6 +37,7 @@ jobs:
     env:
       SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       ARCHIVE_BASENAME: academiccloud-linux-x64-node24-${{ github.event.pull_request.head.sha || github.sha }}
+      TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
 
     steps:
       - name: Check out the exact source commit
@@ -59,6 +62,8 @@ jobs:
           node --version | grep -E '^v24\.'
           npm --version
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          test "$ImageOS" = "ubuntu24"
+          test -n "$ImageVersion"
 
       - name: Install the clean development dependency tree
         run: npm ci
@@ -93,6 +98,19 @@ jobs:
         working-directory: output/release
         run: npm ci --omit=dev --workspace @academiccloud/backend --include-workspace-root=false
 
+      - name: Build the pinned release-local Tesseract runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$TESSERACT_BUILDER_IMAGE"
+          test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
+          docker run --rm --platform linux/amd64 \
+            --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
+            --volume "$GITHUB_WORKSPACE:/work" \
+            --workdir /work \
+            "$TESSERACT_BUILDER_IMAGE" \
+            bash scripts/build-tesseract-runtime.sh output/release/runtime/tesseract
+
       - name: Finalize the release tree and manifest
         run: >-
           node scripts/production-artifact.mjs finalize
@@ -106,6 +124,37 @@ jobs:
           --release=output/release
           --archive=output/${ARCHIVE_BASENAME}.tar.gz
           --checksum=output/${ARCHIVE_BASENAME}.tar.gz.sha256
+
+      - name: Rebuild cleanly and prove deterministic archive and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/production-artifact.mjs prepare \
+            --release=output/repro-release
+          npm ci --omit=dev --workspace @academiccloud/backend --include-workspace-root=false \
+            --prefix output/repro-release
+          docker run --rm --platform linux/amd64 \
+            --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
+            --volume "$GITHUB_WORKSPACE:/work" \
+            --workdir /work \
+            "$TESSERACT_BUILDER_IMAGE" \
+            bash scripts/build-tesseract-runtime.sh output/repro-release/runtime/tesseract
+          node scripts/production-artifact.mjs finalize \
+            --release=output/repro-release \
+            --manifest=output/${ARCHIVE_BASENAME}.repro.manifest.json \
+            --commit=${SOURCE_COMMIT}
+          node scripts/production-artifact.mjs pack \
+            --release=output/repro-release \
+            --archive=output/${ARCHIVE_BASENAME}.repro.tar.gz \
+            --checksum=output/${ARCHIVE_BASENAME}.repro.tar.gz.sha256
+          cmp --silent \
+            "output/${ARCHIVE_BASENAME}.manifest.json" \
+            "output/${ARCHIVE_BASENAME}.repro.manifest.json"
+          test "$(cut -d' ' -f1 "output/${ARCHIVE_BASENAME}.tar.gz.sha256")" = \
+            "$(cut -d' ' -f1 "output/${ARCHIVE_BASENAME}.repro.tar.gz.sha256")"
+          cmp --silent \
+            "output/${ARCHIVE_BASENAME}.tar.gz" \
+            "output/${ARCHIVE_BASENAME}.repro.tar.gz"
 
       - name: Verify extracted production runtime artifact
         run: >-
@@ -147,6 +196,8 @@ jobs:
             echo "- Runner: \`$(uname -s) $(uname -m)\`"
             echo "- Node: \`$(node --version)\`"
             echo "- npm: \`$(npm --version)\`"
+            echo "- Runner image: \`$ImageOS / $ImageVersion\`"
+            echo "- Tesseract builder: \`$TESSERACT_BUILDER_IMAGE\`"
             echo "- Artifact ID: \`$ARTIFACT_ID\`"
             echo "- GitHub artifact SHA-256: \`$ARTIFACT_DIGEST\`"
             echo "- Artifact URL: $ARTIFACT_URL"
@@ -213,5 +264,5 @@ jobs:
             echo "- Fresh runner: \`$(uname -s) $(uname -m)\`"
             echo "- Node: \`$(node --version)\`"
             echo "- GitHub artifact SHA-256: \`$ARTIFACT_DIGEST\`"
-            echo "- Result: downloaded bundle, release SHA-256, manifest, native modules, runtime checks, and compiled acceptance all verified"
+            echo "- Result: downloaded bundle, release SHA-256, manifest, release-local Tesseract closure/models/synthetic OCR, native modules, PDF.js/canvas, and compiled acceptance all verified"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import { SUGGESTION_LIMITS } from "./suggestion.js";
 
@@ -47,6 +48,7 @@ export interface OcrAdapter {
 export interface TesseractCliConfig {
   executablePath: string;
   tessdataPath?: string;
+  libraryPath?: string;
   expectedVersion: typeof TESSERACT_VERSION;
   languages: readonly ["chi_sim", "chi_tra", "eng"];
   engineId: typeof TESSERACT_ENGINE_ID;
@@ -64,11 +66,31 @@ function boundedPath(name: string, value: string | undefined, fallback?: string)
 }
 
 export function loadTesseractCliConfig(environment: NodeJS.ProcessEnv = process.env): TesseractCliConfig {
-  const executablePath = boundedPath("OCR_TESSERACT_PATH", environment.OCR_TESSERACT_PATH, "tesseract")!;
-  const tessdataPath = boundedPath("OCR_TESSDATA_PATH", environment.OCR_TESSDATA_PATH);
+  const production = environment.NODE_ENV === "production";
+  const releaseExecutable = fileURLToPath(new URL("../../../runtime/tesseract/bin/tesseract", import.meta.url));
+  const releaseTessdata = fileURLToPath(new URL("../../../runtime/tesseract/tessdata", import.meta.url));
+  const releaseLibrary = fileURLToPath(new URL("../../../runtime/tesseract/lib", import.meta.url));
+  if (production && [environment.OCR_TESSERACT_PATH, environment.OCR_TESSDATA_PATH, environment.OCR_TESSERACT_LIBRARY_PATH]
+    .some((value) => value !== undefined)) {
+    throw new Error("production OCR runtime paths are release-local and cannot be overridden");
+  }
+  const executablePath = boundedPath(
+    "OCR_TESSERACT_PATH",
+    production ? releaseExecutable : environment.OCR_TESSERACT_PATH,
+    "tesseract",
+  )!;
+  const tessdataPath = boundedPath(
+    "OCR_TESSDATA_PATH",
+    production ? releaseTessdata : environment.OCR_TESSDATA_PATH,
+  );
+  const libraryPath = boundedPath(
+    "OCR_TESSERACT_LIBRARY_PATH",
+    production ? releaseLibrary : environment.OCR_TESSERACT_LIBRARY_PATH,
+  );
   return {
     executablePath,
     ...(tessdataPath === undefined ? {} : { tessdataPath }),
+    ...(libraryPath === undefined ? {} : { libraryPath }),
     expectedVersion: TESSERACT_VERSION,
     languages: OCR_LANGUAGES,
     engineId: TESSERACT_ENGINE_ID,
@@ -86,6 +108,7 @@ function runBoundedProcess(options: {
   timeoutMilliseconds: number;
   maxOutputBytes: number;
   signal?: AbortSignal;
+  environment?: NodeJS.ProcessEnv;
 }): Promise<ProcessResult> {
   if (options.signal?.aborted) return Promise.reject(new OcrError("aborted"));
   return new Promise<ProcessResult>((resolve, reject) => {
@@ -93,6 +116,7 @@ function runBoundedProcess(options: {
       shell: false,
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
+      ...(options.environment === undefined ? {} : { env: options.environment }),
     });
     const chunks: Uint8Array[] = [];
     let outputBytes = 0;
@@ -204,6 +228,7 @@ export class TesseractCliOcrAdapter implements OcrAdapter {
     const tessdataArguments = this.#config.tessdataPath === undefined
       ? []
       : ["--tessdata-dir", this.#config.tessdataPath];
+    const environment = this.#childEnvironment();
     const result = await runBoundedProcess({
       executablePath: this.#config.executablePath,
       args: [
@@ -222,6 +247,7 @@ export class TesseractCliOcrAdapter implements OcrAdapter {
       input: input.imageBytes,
       timeoutMilliseconds: SUGGESTION_LIMITS.perPageOcrTimeoutMilliseconds,
       maxOutputBytes: SUGGESTION_LIMITS.maxOcrProcessOutputBytes,
+      ...(environment === undefined ? {} : { environment }),
       ...(signal === undefined ? {} : { signal }),
     });
     const parsed = parseTsv(result.stdout);
@@ -259,11 +285,13 @@ export class TesseractCliOcrAdapter implements OcrAdapter {
 
   async #probe(): Promise<void> {
     const prefix = this.#config.executableArguments ?? [];
+    const environment = this.#childEnvironment();
     const version = await runBoundedProcess({
       executablePath: this.#config.executablePath,
       args: [...prefix, "--version"],
       timeoutMilliseconds: 2_000,
       maxOutputBytes: 64 * 1024,
+      ...(environment === undefined ? {} : { environment }),
     });
     const versionText = new TextDecoder().decode(version.stdout);
     if (!new RegExp(`^tesseract\\s+${this.#config.expectedVersion.replaceAll(".", "\\.")}(?:\\s|$)`, "iu").test(versionText)) {
@@ -277,10 +305,22 @@ export class TesseractCliOcrAdapter implements OcrAdapter {
       args: [...prefix, ...tessdataArguments, "--list-langs"],
       timeoutMilliseconds: 2_000,
       maxOutputBytes: 64 * 1024,
+      ...(environment === undefined ? {} : { environment }),
     });
     const installed = new Set(new TextDecoder().decode(languages.stdout).split(/\s+/u).filter(Boolean));
     if (this.#config.languages.some((language) => !installed.has(language))) {
       throw new OcrError("language_data_unavailable");
     }
+  }
+
+  #childEnvironment(): NodeJS.ProcessEnv | undefined {
+    if (this.#config.libraryPath === undefined && this.#config.tessdataPath === undefined) return undefined;
+    return {
+      PATH: "/usr/bin:/bin",
+      LANG: "C.UTF-8",
+      LC_ALL: "C.UTF-8",
+      ...(this.#config.libraryPath === undefined ? {} : { LD_LIBRARY_PATH: this.#config.libraryPath }),
+      ...(this.#config.tessdataPath === undefined ? {} : { TESSDATA_PREFIX: this.#config.tessdataPath }),
+    };
   }
 }

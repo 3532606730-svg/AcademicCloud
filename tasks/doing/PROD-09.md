@@ -48,10 +48,12 @@ Active on clean synchronized authoritative branch `codex/project-memory-reconcil
 ## Completed
 - Owner authorized the exact release-local Tesseract build/package/deployment boundary.
 - Recovered the existing artifact/runtime repair, task state, production truth, and final continuous-objective boundary.
+- Reconciled and published ADR-030/task activation at checkpoint `3f54bc843f872107091e9b9d503ebd2599e9b702` with local/tracking/remote equality.
+- Added a digest-pinned Ubuntu 24.04 amd64 builder, fixed Ubuntu archive snapshot, exact signed-tag/commit/archive/model identities and hashes, bounded source build, release-local dynamic dependency closure, upstream/package notices, and deterministic build evidence.
+- Made production OCR resolve only the release-local binary/models/libraries with child-scoped environment and reject production path overrides.
+- Extended artifact manifest/runtime verification for ELF64 x86-64, readelf/ldd closure, no CI workspace resolution, exact models, offline synthetic OCR, two clean-build reproducibility, and independent fresh-runner re-verification while retaining PDF.js/canvas/argon2/better-sqlite3 checks.
 
 ## Remaining
-- Reconcile and publish ADR-030/task activation.
-- Implement and verify deterministic release-local OCR build/package/runtime evidence.
 - Produce two green artifact jobs from the exact final source commit.
 - Execute bounded production preflight/backup/migrations/cutover/acceptance only after the artifact gate.
 - Reconcile/publish final evidence and stop.
@@ -62,7 +64,8 @@ None. Ordinary build/link/package details are authorized; any inability to produ
 ## Last Verification
 - RF-TRANSFER01 checkpoint `6491022a7e3da11278a30fed809c55dd235beee0`: backend 335/335, frontend 211/211, both typechecks/builds, compiled acceptance, migration head 21, and diff check PASS.
 - Publication evidence checkpoint `f02930748fc488f09336ec043561f0c3989adac8`: local/tracking/remote equal and clean.
+- Local implementation verification: backend 337/337 PASS; backend typecheck/build PASS; build shell syntax, Node syntax, and `git diff --check` PASS. Linux runtime build/ELF/determinism evidence remains pending the exact CI jobs.
 - Production touched: false.
 
 ## Next Action
-Publish the Owner decision/PROD-09 activation checkpoint, implement the bounded release-local runtime and artifact evidence, and run the two-job artifact gate. Do not contact production first.
+Commit/publish the artifact implementation and run the exact two-job GitHub Actions gate. Repair only artifact-gate failures; do not contact production until both jobs pass.

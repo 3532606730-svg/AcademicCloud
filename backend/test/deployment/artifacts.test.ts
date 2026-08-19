@@ -114,3 +114,37 @@ test("production artifact pins and verifies the exact PDF.js Linux native runtim
   assert.match(artifact, /typeof pdfjs\.getDocument !== 'function'/u);
   assert.match(artifact, /typeof canvas\.DOMMatrix !== 'function'/u);
 });
+
+test("production artifact builds and independently verifies the exact release-local Tesseract boundary", () => {
+  const artifact = read("scripts/production-artifact.mjs");
+  const runtime = read("scripts/tesseract-runtime.mjs");
+  const builder = read("scripts/build-tesseract-runtime.sh");
+  const workflow = read(".github/workflows/production-build.yml");
+
+  for (const runtimePath of [
+    "runtime/tesseract/bin/tesseract",
+    "runtime/tesseract/lib",
+    "runtime/tesseract/tessdata/eng.traineddata",
+    "runtime/tesseract/tessdata/chi_sim.traineddata",
+    "runtime/tesseract/tessdata/chi_tra.traineddata",
+    "runtime/tesseract/BUILD-EVIDENCE.json",
+  ]) {
+    assert.ok(artifact.includes(runtimePath), `missing artifact OCR runtime policy for ${runtimePath}`);
+  }
+  assert.match(runtime, /version: "5\.5\.3"/u);
+  assert.match(runtime, /sourceCommit: "db0ec62f81b0737fbbe184d8fea40af5738f8eef"/u);
+  assert.match(runtime, /sourceArchiveSha256: "9218e62793116d42a9f6d14cd9348518b27f382096eea3d0f2d1a24616bb5884"/u);
+  assert.match(runtime, /tessdataVersion: "4\.1\.0"/u);
+  assert.match(runtime, /eng: "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"/u);
+  assert.match(runtime, /chi_sim: "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730"/u);
+  assert.match(runtime, /chi_tra: "529c5b5797d64b126065cd55f2bb4c7fd7b15790798091b1ff259941a829330b"/u);
+  assert.match(runtime, /verifyDynamicClosure/u);
+  assert.match(runtime, /synthetic OCR probe/u);
+  assert.match(builder, /APT::Snapshot/u);
+  assert.match(builder, /tagSignatureVerified/u);
+  assert.match(builder, /patchelf --set-rpath '\$ORIGIN\/\.\.\/lib'/u);
+  assert.match(workflow, /ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316/u);
+  assert.match(workflow, /Rebuild cleanly and prove deterministic archive and manifest/u);
+  assert.match(workflow, /verify-downloaded-artifact/u);
+  assert.doesNotMatch(workflow, /apt(?:-get)? install tesseract/u);
+});

@@ -10,6 +10,7 @@ import {
   TESSERACT_ENGINE_ID,
   TESSERACT_VERSION,
   TesseractCliOcrAdapter,
+  loadTesseractCliConfig,
   type TesseractCliConfig,
 } from "../../src/suggestions/ocr.js";
 
@@ -35,6 +36,17 @@ test("local Tesseract adapter pins engine/languages and returns bounded TSV conf
     confidence: 88,
     engine: TESSERACT_ENGINE_ID,
   });
+});
+
+test("production OCR resolves only the release-local runtime and rejects path overrides", () => {
+  const config = loadTesseractCliConfig({ NODE_ENV: "production" });
+  assert.match(config.executablePath.replaceAll("\\", "/"), /\/runtime\/tesseract\/bin\/tesseract$/u);
+  assert.match(config.tessdataPath!.replaceAll("\\", "/"), /\/runtime\/tesseract\/tessdata$/u);
+  assert.match(config.libraryPath!.replaceAll("\\", "/"), /\/runtime\/tesseract\/lib$/u);
+  assert.throws(
+    () => loadTesseractCliConfig({ NODE_ENV: "production", OCR_TESSERACT_PATH: "/usr/bin/tesseract" }),
+    /release-local and cannot be overridden/u,
+  );
 });
 
 test("low-confidence and unsupported-script OCR never becomes usable evidence", async () => {
