@@ -241,6 +241,31 @@ function fixedInspector(pages: PdfTextPage[]): BoundedPdfTextSource {
   };
 }
 
+test("unexpected inspection failures escape without persisting a partial suggestion run", async (context) => {
+  const { database, persistence, library, fileId, storage, metadata } = fixture(context);
+  const inspector: BoundedPdfTextSource = {
+    async inspect() {
+      throw new TypeError("unexpected dependency failure");
+    },
+  };
+  const service = new SuggestionService({
+    persistence,
+    storage,
+    metadata,
+    inspector,
+    now: () => NOW,
+    createId: () => "run-unexpected",
+  });
+
+  await assert.rejects(
+    () => service.generate(OWNER, library.id, fileId),
+    (error: unknown) => error instanceof TypeError && error.message === "unexpected dependency failure",
+  );
+  assert.equal(database.prepare<[], { count: number }>(
+    "SELECT count(*) AS count FROM scholarly_metadata_suggestion_runs",
+  ).get()?.count, 0);
+});
+
 test("English OCR evidence reaches the existing classifier/extractor without canonical writes", async (context) => {
   const { persistence, library, fileId, storage, metadata } = fixture(context);
   const service = new SuggestionService({

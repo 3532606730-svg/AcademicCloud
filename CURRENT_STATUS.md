@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**PROD-09 is PASS/CLOSED. Production runs the independently verified combined Linux x64 / Node 24 release `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021, with release-local Tesseract 5.5.3, bounded OCR metadata suggestions, true multipart upload/resume, and Range download resume deployed. The approved continuous objective is complete; next action is STOP.**
+**PROD-09A is the sole active Owner-authorized bounded production hotfix for the real metadata-suggestion `.anonymous` regression. Production is expected to remain on exact PROD-09 release `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021 until a new exact green Linux x64 / Node 24 artifact is ready. Diagnose from the exact request/stack, fix the narrow root cause and suggestion-specific raw-error leak, deploy with no migrations, run bounded non-mutating acceptance, reconcile evidence, then STOP. RF-SEARCH01 remains parked.**
 
 The governing product rule remains ADR-022:
 
@@ -67,8 +67,8 @@ Never select `f62766c…` against the live v21 database; restore the paired v19 
 
 ## Safety Boundaries
 
-The bounded PROD-09 production authority is exhausted. Incident-database inspection, real permanent deletion, `PROD-03C2`, reboot/autostart, infrastructure-policy changes, credentials, paid infrastructure, main merge, RF-SEARCH01, remaining Pre-OCR cards, whole-document extraction, full-text search/indexing, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, and unrelated work remain parked or prohibited without a new explicit Owner authorization.
+PROD-09A authorizes only request-specific production diagnostics, the bounded hotfix/artifact/deployment path, and non-mutating acceptance described in `tasks/doing/PROD-09A.md`. Broad database or unrelated resource inspection, real permanent deletion, `PROD-03C2`, reboot/autostart, infrastructure-policy changes, credentials, paid infrastructure, main merge, RF-SEARCH01, remaining Pre-OCR cards, whole-document extraction, full-text search/indexing, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, and unrelated work remain parked or prohibited.
 
 ## Next Action
 
-STOP. The approved continuous objective is complete.
+Complete and close PROD-09A, publish and synchronize its exact evidence checkpoint, then STOP. Resume RF-SEARCH01 only after Owner review.

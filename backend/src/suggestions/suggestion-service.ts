@@ -414,9 +414,9 @@ export class SuggestionService {
             ? "unsupported"
             : "unsupported";
         } else {
-          // Do not expose provider/parser diagnostics or continue with a
-          // partial guess when a bounded read fails unexpectedly.
-          status = "unsupported";
+          // Unexpected failures belong to the suggestion-specific HTTP
+          // diagnostic boundary. Do not persist a misleading unsupported run.
+          throw error;
         }
         window = emptyWindow();
         candidates = [];

@@ -142,6 +142,27 @@ const SUGGESTION_ORIGIN_KEYS: Record<MetadataSuggestionEvidenceOrigin, MessageKe
   filename: "metadata.suggestions.origin.filename",
 };
 
+const EXPECTED_SUGGESTION_ERROR_CODES = new Set([
+  "authentication_required",
+  "invalid_origin",
+  "invalid_request",
+  "unsupported_media_type",
+  "payload_too_large",
+  "rate_limit_exceeded",
+  "invalid_input",
+  "conflict",
+  "concurrent_change",
+  "stale",
+  "unsupported",
+  "not_found",
+  "metadata_suggestion_internal_error",
+]);
+
+function safeSuggestionError(error: unknown): ApiError {
+  if (error instanceof ApiError && EXPECTED_SUGGESTION_ERROR_CODES.has(error.code)) return error;
+  return new ApiError(500, "metadata_suggestion_internal_error");
+}
+
 function suggestionSourceLabel(value: MetadataSuggestionSourceType, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_SOURCE_KEYS[value]);
 }
@@ -300,8 +321,7 @@ export function ResourceDetailsDialog({
   useEffect(() => { void loadDetails(); }, [api, library.id, holding.file.id]);
 
   useEffect(() => {
-    const getSuggestions = api.getLibraryMetadataSuggestions;
-    if (!getSuggestions || holding.file.mediaType !== "application/pdf") {
+    if (!api.getLibraryMetadataSuggestions || holding.file.mediaType !== "application/pdf") {
       setSuggestionRun(null);
       setSuggestionsError(null);
       setSelectedSuggestionIds(new Set());
@@ -310,13 +330,13 @@ export function ResourceDetailsDialog({
     const controller = new AbortController();
     setSuggestionsLoading(true);
     setSuggestionsError(null);
-    getSuggestions(library.id, holding.file.id, controller.signal)
+    api.getLibraryMetadataSuggestions(library.id, holding.file.id, controller.signal)
       .then((run) => {
         setSuggestionRun(run);
         setSelectedSuggestionIds(new Set());
       })
       .catch((caught: unknown) => {
-        if (!(caught instanceof DOMException && caught.name === "AbortError")) setSuggestionsError(caught);
+        if (!(caught instanceof DOMException && caught.name === "AbortError")) setSuggestionsError(safeSuggestionError(caught));
       })
       .finally(() => setSuggestionsLoading(false));
     return () => controller.abort();
@@ -333,17 +353,16 @@ export function ResourceDetailsDialog({
   }, [api, editing, library.id, library.role]);
 
   async function generateSuggestions() {
-    const generate = api.generateLibraryMetadataSuggestions;
-    if (!generate || library.role !== "manager") return;
+    if (!api.generateLibraryMetadataSuggestions || library.role !== "manager") return;
     setSuggestionsGenerating(true);
     setSuggestionsError(null);
     setNotice("");
     try {
-      const run = await generate(library.id, holding.file.id);
+      const run = await api.generateLibraryMetadataSuggestions(library.id, holding.file.id);
       setSuggestionRun(run);
       setSelectedSuggestionIds(new Set());
     } catch (caught) {
-      setSuggestionsError(caught);
+      setSuggestionsError(safeSuggestionError(caught));
     } finally {
       setSuggestionsGenerating(false);
     }
@@ -364,8 +383,7 @@ export function ResourceDetailsDialog({
   }
 
   async function acceptSuggestions() {
-    const accept = api.acceptLibraryMetadataSuggestions;
-    if (!accept || !detail || !suggestionRun || library.role !== "manager" || selectedSuggestionIds.size === 0) return;
+    if (!api.acceptLibraryMetadataSuggestions || !detail || !suggestionRun || library.role !== "manager" || selectedSuggestionIds.size === 0) return;
     setSuggestionsAccepting(true);
     setSuggestionsError(null);
     setNotice("");
@@ -382,7 +400,7 @@ export function ResourceDetailsDialog({
         const acceptedMetadata = metadataForSuggestionAcceptance();
         if (acceptedMetadata) acceptance.metadata = acceptedMetadata;
       }
-      const response = await accept(library.id, holding.file.id, suggestionRun.id, acceptance);
+      const response = await api.acceptLibraryMetadataSuggestions(library.id, holding.file.id, suggestionRun.id, acceptance);
       const nextDetail = response.detail;
       if (nextDetail) {
         setDetail(nextDetail);
@@ -410,10 +428,10 @@ export function ResourceDetailsDialog({
           setSelectedSuggestionIds(new Set());
           setNotice(t("metadata.conflictRefreshed"));
         } catch (refreshError) {
-          setSuggestionsError(refreshError);
+          setSuggestionsError(safeSuggestionError(refreshError));
         }
       } else {
-        setSuggestionsError(caught);
+        setSuggestionsError(safeSuggestionError(caught));
       }
     } finally {
       setSuggestionsAccepting(false);

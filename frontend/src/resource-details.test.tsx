@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ApiClient,
   ApiError,
   type AcademicCloudApi,
   type LibraryHolding,
@@ -106,9 +107,10 @@ function renderDetails(options: {
   library?: LibrarySummary;
   initial?: LibraryHoldingDetails;
   api?: Partial<AcademicCloudApi>;
+  client?: AcademicCloudApi;
 } = {}) {
   const initial = options.initial ?? detail();
-  const api = {
+  const api = options.client ?? {
     getLibraryHoldingDetails: vi.fn().mockResolvedValue(initial),
     updateLibraryHoldingMetadata: vi.fn().mockResolvedValue({ ...initial, metadataVersion: "n".repeat(43) }),
     listLibraryAuthorities: vi.fn().mockResolvedValue([]),
@@ -243,6 +245,78 @@ describe("Resource details", () => {
     expect(screen.getByText(/Local OCR · 88%/)).toBeInTheDocument();
     expect(screen.getByText("Evidence-backed suggestions")).toBeInTheDocument();
     expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
+  });
+
+  it("preserves the ApiClient receiver for the exact suggestion get, generate, and accept failure shape", async () => {
+    const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+      const path = String(input);
+      const method = init?.method ?? "GET";
+      if (path.endsWith("/details")) {
+        return new Response(JSON.stringify(detail()), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (path.endsWith("/metadata/suggestions") && method === "GET") {
+        return new Response(JSON.stringify({ run: null }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (path.endsWith("/metadata/suggestions") && method === "POST") {
+        return new Response(JSON.stringify({ run: SUGGESTION_RUN }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (path.endsWith("/metadata/suggestions/run-1/accept") && method === "POST") {
+        return new Response(JSON.stringify({ detail: detail(), run: { ...SUGGESTION_RUN, status: "accepted" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+    });
+    renderDetails({ client: new ApiClient({ fetcher }) });
+    const user = userEvent.setup();
+    await screen.findByRole("dialog", { name: "元西域人华化考" });
+    await waitFor(() => expect(fetcher.mock.calls.some(([input, init]) =>
+      String(input) === "/api/libraries/canonical-library/holdings/file-1/metadata/suggestions"
+      && (init?.method ?? "GET") === "GET",
+    )).toBe(true));
+
+    await user.click(screen.getByRole("button", { name: "Find metadata suggestions" }));
+    await screen.findByText("Evidence-backed suggestions");
+    await user.click(screen.getByRole("checkbox", { name: /Canonical title/ }));
+    await user.click(screen.getByRole("button", { name: "Accept selected" }));
+
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
+      "/api/libraries/canonical-library/holdings/file-1/metadata/suggestions",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
+      "/api/libraries/canonical-library/holdings/file-1/metadata/suggestions/run-1/accept",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    expect(screen.queryByText(/Cannot read properties of undefined/u)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["en", "Could not find resource information. Try again."],
+    ["zh-CN", "无法查找资料信息，请重试。"],
+  ] as const)("redacts an unexpected suggestion exception in %s", async (language, expected) => {
+    window.localStorage.setItem("academiccloud.language", language);
+    renderDetails({ api: {
+      getLibraryMetadataSuggestions: vi.fn().mockResolvedValue(null),
+      generateLibraryMetadataSuggestions: vi.fn().mockRejectedValue(
+        new TypeError("Cannot read properties of undefined (reading 'anonymous')"),
+      ),
+    } });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: language === "en" ? "Find metadata suggestions" : "查找资料信息建议" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(expected);
+    expect(screen.queryByText(/Cannot read properties of undefined/u)).not.toBeInTheDocument();
+  });
+
+  it("preserves existing actionable suggestion API errors", async () => {
+    renderDetails({ api: {
+      getLibraryMetadataSuggestions: vi.fn().mockResolvedValue(null),
+      generateLibraryMetadataSuggestions: vi.fn().mockRejectedValue(new ApiError(404, "not_found")),
+    } });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Find metadata suggestions" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The item no longer exists or is not available to this account.");
   });
 
   it("keeps Members read-only and exposes OCR deferred state without an accept control", async () => {

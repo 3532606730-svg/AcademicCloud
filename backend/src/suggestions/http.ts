@@ -16,6 +16,31 @@ function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccoun
   if (!account) throw new SuggestionError("not_found");
   return account;
 }
+
+function safeErrorType(error: unknown): string {
+  if (!(error instanceof Error) || !/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/u.test(error.name)) return "Error";
+  return error.name;
+}
+
+/**
+ * Keep real call frames for server-side diagnosis without retaining the error
+ * message, cause, request parameters, or dependency-provided free-form text.
+ */
+function safeErrorStack(error: unknown): string | undefined {
+  if (!(error instanceof Error) || typeof error.stack !== "string") return undefined;
+  const safeFrame = /^at\s+(?:(?:async\s+)?[A-Za-z0-9_.$<>\[\] /\\-]+\s+\()?((?:file:\/\/\/|\/|[A-Za-z]:[\\/])[A-Za-z0-9_@.\/\\: -]+\.(?:[cm]?[jt]sx?):[0-9]+:[0-9]+|node:[A-Za-z0-9_.\/-]+:[0-9]+:[0-9]+)\)?$/u;
+  const frames = error.stack
+    .split(/\r?\n/u)
+    .slice(1)
+    .map((line) => line.trim())
+    .filter((line) => safeFrame.test(line))
+    .map((line) => line.replace(/[\u0000-\u001f\u007f-\u009f]/gu, "").slice(0, 512))
+    .filter((line) => line.length > 3)
+    .slice(0, 24);
+  if (frames.length === 0) return undefined;
+  return frames.join("\n").slice(0, 8_192);
+}
+
 function sendSuggestionError(reply: FastifyReply, error: unknown) {
   if (error instanceof SuggestionError) {
     const status = error.code === "invalid_input"
@@ -28,6 +53,20 @@ function sendSuggestionError(reply: FastifyReply, error: unknown) {
     return reply.code(status).send({ error: error.code });
   }
   throw error;
+}
+
+function sendSuggestionGenerationError(request: FastifyRequest, reply: FastifyReply, error: unknown) {
+  if (error instanceof SuggestionError) return sendSuggestionError(reply, error);
+  const errorStack = safeErrorStack(error);
+  request.log.error(
+    {
+      event: "metadata_suggestion.generation_failed",
+      errorType: safeErrorType(error),
+      ...(errorStack === undefined ? {} : { errorStack }),
+    },
+    "metadata suggestion generation failed",
+  );
+  return reply.code(500).send({ error: "metadata_suggestion_internal_error" });
 }
 
 async function requireJson(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -62,7 +101,7 @@ export async function registerSuggestionHttp(app: FastifyInstance, service: Sugg
           ),
         };
       } catch (error: unknown) {
-        return sendSuggestionError(reply, error);
+        return sendSuggestionGenerationError(request, reply, error);
       } finally {
         request.raw.removeListener("aborted", onAborted);
       }

@@ -96,6 +96,8 @@ describe("describeError", () => {
     expect(describeError(error, "en")).toBe("Online preview is currently unavailable. You can download the file instead.");
     expect(describeError(error, "zh-CN")).toBe("在线预览暂不可用，可下载后查看。");
     expect(describeError(new ApiError(401, "invalid_credentials"), "zh-CN")).toBe("登录名或密码不正确。");
+    expect(describeError(new ApiError(500, "metadata_suggestion_internal_error"), "zh-CN")).toBe("无法查找资料信息，请重试。");
+    expect(describeError(new ApiError(500, "metadata_suggestion_internal_error"), "en")).toBe("Could not find resource information. Try again.");
   });
 
   it("explains upload name conflicts without implying that a duplicate was created", () => {

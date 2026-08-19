@@ -4,11 +4,13 @@
 
 ## Current Phase
 
-**PROD-09 is PASS/CLOSED. Production runs exact immutable release `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021 with release-local Tesseract 5.5.3, bounded OCR metadata suggestions, true multipart upload/resume, and Range download resume deployed. The approved continuous objective is complete; next action is STOP.**
+**PROD-09A is the sole active Owner-authorized bounded production hotfix for the metadata-suggestion `.anonymous` regression. Production is expected to remain on exact PROD-09 release `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021 until the exact new green artifact is ready. No migration or unrelated product work is authorized.**
 
 ## Doing
 
-None.
+| Task | Task card | Bounded objective |
+|---|---|---|
+| PROD-09A | `tasks/doing/PROD-09A.md` | Diagnose and hotfix the exact metadata-suggestion runtime failure and raw internal-error leak; deploy a new exact artifact without migrations; reconcile evidence; STOP |
 
 ## Done
 
@@ -48,8 +50,9 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | STOP | Required; the approved continuous objective is complete |
-| 2 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
+| 1 | PROD-09A | Active bounded production hotfix |
+| 2 | STOP | Required after PROD-09A evidence is closed and synchronized |
+| 3 | RF-SEARCH01 | Preserved metadata/name search card; resume only after Owner review |
 | 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
 | 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
 | 5 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
@@ -120,4 +123,4 @@ The rollback pair is exact prior application `f62766cd96c3f1e07bd32e5c1ced99a3eb
 
 ## Next Action
 
-STOP. The approved continuous objective is complete.
+Complete and close PROD-09A, publish and synchronize its exact evidence checkpoint, then STOP. Resume RF-SEARCH01 only after Owner review.
