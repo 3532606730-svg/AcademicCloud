@@ -4,13 +4,11 @@
 
 ## Current Phase
 
-**RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 are complete and green at development schema v21/history 001–021. PROD-09's final combined artifact and independent verification are green from exact source `9d2fc9b08e2e02c821ef357f149ed928510c2825`. Production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019 and is untouched; bounded final preflight/deployment is next.**
+**PROD-09 is PASS/CLOSED. Production runs exact immutable release `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021 with release-local Tesseract 5.5.3, bounded OCR metadata suggestions, true multipart upload/resume, and Range download resume deployed. The approved continuous objective is complete; next action is STOP.**
 
 ## Doing
 
-| Task | Task card | State |
-|---|---|---|
-| PROD-09 | `tasks/doing/PROD-09.md` | Active; exact artifact gate PASS, bounded final production preflight/deployment and reconciliation next |
+None.
 
 ## Done
 
@@ -24,6 +22,7 @@
 | PROD-08R | `tasks/done/PROD-08R.md` | Repaired the PDF.js Linux artifact runtime, independently verified the immutable package, deployed v19/001–019 with fresh off-host rollback protection, and completed changed-risk acceptance |
 | RF-FRONTMATTEROCR01 | `tasks/done/RF-FRONTMATTEROCR01.md` | Exact first-15/last-5 native-text-first local OCR fallback with migration-020 provenance, bounded Tesseract adapter, review-only metadata evidence, and preserved PROD-08R runtime repair |
 | RF-TRANSFER01 | `tasks/done/RF-TRANSFER01.md` | Provider-backed 8 MiB/640-part multipart resume with server CAS state, completed-part reuse, exact abandonment, legacy compatibility, and browser-native Range download resume; development schema v21/history 001–021 |
+| PROD-09 | `tasks/done/PROD-09.md` | Independently verified release-local Tesseract artifact, fresh encrypted off-host v19 rollback backup, exact migrations 020–021, immutable v21 cutover, and bounded production acceptance |
 
 Current execution boundary:
 
@@ -38,7 +37,10 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 → workflow proportionality clarification PASS
 → RF-TRANSFER01 PASS / CLOSED in development
 → exact combined artifact gate PASS (`32218607374`, source `9d2fc9b…`)
-→ bounded final deployment and reconciliation
+→ fresh schema-v19 rollback backup and independent off-host verification
+→ exact migrations 020–021 and immutable cutover to `9d2fc9b…` / v21 / 001–021
+→ OCR/transfer/Range/health/readiness changed-risk acceptance PASS
+→ PROD-09 PASS / CLOSED
 → STOP
 ```
 
@@ -46,12 +48,11 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | PROD-09 final combined artifact/deployment | Active; both artifact jobs green, bounded production preflight/deployment next |
+| 1 | STOP | Required; the approved continuous objective is complete |
 | 2 | RF-SEARCH01 | Preserved metadata/name search card; not authorized |
 | 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
 | 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
 | 5 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
-| 6 | STOP | Required after final production reconciliation |
 
 RF-FRONTMATTEROCR01 authorizes only the completed bounded local/offline fallback. RF-TRANSFER01 is closed in development and adds no production authority. RF-SEARCH01, the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
 
@@ -101,20 +102,22 @@ Starting any parked card requires a new Owner decision.
 ## Production State and Gates
 
 ```text
-PRODUCTION=f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7
-PREVIOUS_RELEASE=bc5788633e0295744905b4ae2dcdfcc5d97635bf
-PRODUCTION_SCHEMA=v19 / migrations 001–019
+PRODUCTION=9d2fc9b08e2e02c821ef357f149ed928510c2825
+PREVIOUS_RELEASE=f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7
+PRODUCTION_SCHEMA=v21 / migrations 001–021
 RF_METASUGGEST_DEPLOYED=true
 L1_UX07_DEPLOYED=true
-ROLLBACK_USED=true
+OCR_DEPLOYED=true
+RF_TRANSFER_DEPLOYED=true
+ROLLBACK_USED=false
 ```
 
-Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, public assets match the immutable release, and migration 020/OCR/search/RAG residue is absent. This remains the durable starting production truth; development migrations 020–021 have not been applied. Synthetic destructive acceptance was skipped safely because no uniquely owned run-created target existed; no task-owned synthetic residue exists.
+Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, and public assets match the immutable release. Exact migrations 020–021 are applied; release-local Tesseract 5.5.3 with `chi_sim`, `chi_tra`, and `eng`, true multipart upload/resume, and Range download resume passed bounded acceptance. Synthetic destructive acceptance was skipped safely because no uniquely owned run-created target existed; no task-owned synthetic residue exists.
 
-The rollback pair is exact prior application `bc5788633e0295744905b4ae2dcdfcc5d97635bf` plus schema-v18 backup `academiccloud-pre-prod08r-20260818T184801Z.sqlite` (SHA-256 `338d245d0e0aeb7fec063df069e0750bf3830aceedf32a0f4aad716fb868453b`), encrypted off-host in private commit `a7369933f31af7839bc833d3d24d30688504276d`. Application rollback without the paired database restore is prohibited.
+The rollback pair is exact prior application `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` plus fresh schema-v19 backup `academiccloud-pre-prod09-20260819T061155Z.sqlite` (SHA-256 `21af5882483c21cfa65854fa592a7805b029b4f31c06c598114d161412c36436`), encrypted off-host in private commit `702695ee9bfd65ee69c2f8cb6c8f105bd4320755`. Application rollback without the paired database restore is prohibited.
 
-`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. Production remained untouched throughout development and both artifact jobs. The bounded final deployment may apply only the exact green combined release and repository-authorized pending migrations; it does not authorize destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup.
+`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. PROD-09 did not authorize destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup. Any further production or product work requires a new explicit Owner authorization.
 
 ## Next Action
 
-Publish and synchronize the exact green artifact evidence, then execute only the bounded PROD-09 production preflight/deployment and final reconciliation.
+STOP. The approved continuous objective is complete.

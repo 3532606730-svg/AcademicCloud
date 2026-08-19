@@ -69,11 +69,11 @@ L1-UX06
 → RF-FRONTMATTEROCR01 bounded local OCR development
 → workflow proportionality clarification
 → RF-TRANSFER01 true resumable transfer development — complete
-→ PROD-09 exact release-local OCR artifact and bounded final production deployment — active
+→ PROD-09 exact release-local OCR artifact and bounded final production deployment — complete
 → STOP
 ```
 
-L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, and RF-TRANSFER01 development are complete. Development is schema v21/history 001–021; production remains exact repaired release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019, with RF-METASUGGEST01/L1-UX07 deployed and PROD-07B behavior preserved. The previous release remains `bc5788633e0295744905b4ae2dcdfcc5d97635bf`; rollback was used during fail-closed PROD-08R attempts before final success. PROD-09's exact release-local Tesseract artifact gate is independently green from source `9d2fc9b08e2e02c821ef357f149ed928510c2825`; bounded final production preflight/deployment and reconciliation are next. RF-SEARCH01 and the later Pre-OCR cards remain parked.
+L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, RF-TRANSFER01 development, and PROD-09 are complete. Production runs exact immutable release `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021, with RF-METASUGGEST01/L1-UX07, bounded local OCR, and resumable transfer deployed while PROD-07B behavior and the PROD-08R runtime repair remain preserved. The previous release is `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`; PROD-09 rollback was not used. RF-SEARCH01 and the later Pre-OCR cards remain parked, and the approved continuous objective ends at STOP.
 
 ### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
 
@@ -287,14 +287,14 @@ Verification is proportionate, not performative. Run checks that materially cove
 
 ## Production Track
 
-PROD-08R repaired the Linux x64 / Node 24 PDF.js runtime artifact boundary and deployed exact release `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` at schema v19/history 001–019. The previous release is `bc5788633e0295744905b4ae2dcdfcc5d97635bf`. RF-METASUGGEST01 and L1-UX07 are deployed, and PROD-07B destructive-lifecycle behavior remains preserved. Rollback was used during two fail-closed post-migration verification attempts; the final app-plus-database cutover and changed-risk acceptance passed.
+PROD-09 deployed the independently verified combined Linux x64 / Node 24 artifact from exact source `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021. Release-local Tesseract 5.5.3 with exact `tessdata_fast` 4.1.0 `chi_sim`, `chi_tra`, and `eng`, bounded local OCR metadata suggestions, true multipart upload/resume, and Range download resume are deployed. RF-METASUGGEST01, L1-UX07, PROD-07B destructive-lifecycle behavior, and the PROD-08R PDF.js/canvas runtime repair remain preserved. PROD-09 rollback was not used.
 
 Current rollback pair:
-- previous application `bc5788633e0295744905b4ae2dcdfcc5d97635bf`;
-- schema-v18 backup `academiccloud-pre-prod08r-20260818T184801Z.sqlite`, SHA-256 `338d245d0e0aeb7fec063df069e0750bf3830aceedf32a0f4aad716fb868453b`;
-- encrypted off-host evidence in private backup commit `a7369933f31af7839bc833d3d24d30688504276d`.
+- previous application `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`;
+- fresh schema-v19 backup `academiccloud-pre-prod09-20260819T061155Z.sqlite`, SHA-256 `21af5882483c21cfa65854fa592a7805b029b4f31c06c598114d161412c36436`;
+- encrypted off-host evidence in private backup commit `702695ee9bfd65ee69c2f8cb6c8f105bd4320755`.
 
-Because production schema advanced to v19, the existing rollback is an inseparable application-plus-database operation: never select `bc578863…` while leaving the v19 database in place. The new continuous objective authorizes one later bounded combined deployment only after OCR/transfer development and exact artifact gates are green; development work does not itself authorize production contact.
+Because production schema advanced to v21, rollback is an inseparable application-plus-database operation: never select `f62766c…` while leaving the v21 database in place. The bounded PROD-09 production authority is exhausted.
 
 PROD-07B consumed the product authority/implementation decision for global-Owner-only account/Library permanent deletion. `PROD-03C2` remains separately parked only for any future real production disposable-object confirmation and the other explicit operations gates.
 
@@ -318,8 +318,8 @@ PROD-08R truth preserved
 → workflow proportionality clarification
 → RF-TRANSFER01 development complete
 → PROD-09 exact Linux x64 / Node 24 release-local OCR artifact
-→ bounded final production deployment and reconciliation
+→ bounded final production deployment and reconciliation complete
 → STOP
 ```
 
-RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, and RF-TRANSFER01 development are complete. RF-METASUGGEST01 and L1-UX07 remain deployed in exact production release `f62766c…`; bounded OCR and development migrations 020–021 remain undeployed. PROD-09 is active under ADR-030; both exact artifact jobs are green from source `9d2fc9b…`, and production remains untouched pending the bounded final gate. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited.
+RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, RF-TRANSFER01 development, and PROD-09 are complete. Exact release `9d2fc9b…` and migrations 020–021 are deployed; integrity, foreign keys, health, readiness, OCR runtime, multipart transfer, and Range acceptance are green. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, RF-SEARCH01, remaining Pre-OCR work, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited without new explicit Owner authorization. Next action: STOP.
