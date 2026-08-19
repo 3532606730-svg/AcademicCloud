@@ -45,7 +45,7 @@ Reproduce and locate the exact production failure in `POST /api/libraries/:libra
 - authoritative project/task/evidence records
 
 ## Current State
-Active; implementation and local verification are green, independent review is PASS, and the exact source checkpoint/artifact remain pending. Repository/local/tracking/remote began clean and equal at `55f4c700316415a460417bcf1d01bab41df480ec`. Production remains exact PROD-09 release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, schema v21/history 001–021. RF-SEARCH01 has not started and remains parked.
+PASS/CLOSED. Exact hotfix source/artifact `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a` is deployed in production at unchanged schema v21/history 001–021. The `.anonymous` receiver regression and suggestion-specific raw-error leak are repaired; authenticated non-mutating acceptance, OCR/runtime, transfer/Range, schema/integrity, health/readiness, protected-hash, and no-new-error/OOM evidence are green. Rollback was not used. RF-SEARCH01 remains parked.
 
 ## Completed
 - Owner authorized the exact bounded diagnosis, implementation, verification, artifact, production hotfix, evidence publication, and synchronization objective.
@@ -57,11 +57,18 @@ Active; implementation and local verification are green, independent review is P
 - Unexpected inspector/storage/dependency exceptions no longer create a misleading partial `unsupported` run. The generation route now returns only the stable internal code and logs a validated error type plus bounded real call frames with the message/cause/request/resource content excluded.
 - Added real-`ApiClient` receiver coverage for suggestion GET/generate/accept, exact `.anonymous` UI-redaction coverage in both languages, expected-code mapping coverage, sanitized diagnostic coverage with sensitive sentinels, and no-partial-run service coverage.
 - Independent read-only review returned PASS with no material finding and confirmed no migration/schema/dependency/artifact-workflow/transfer/Range/Favorites/authorization/permanent-delete or unrelated feature delta.
+- Committed and published exact green source `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`; local/tracking/remote equality and a clean worktree were verified before artifact execution.
+- Artifact workflow `32234343552` passed. The primary build/runtime job and fresh-runner independent download/runtime verification are green; the initial independent attempt was cancelled runnerless with zero executed steps and only that job was rerun against the same uploaded bundle.
+- Verified Actions artifact `9358788301`, bundle digest `sha256:ea3549fe6fd3f08210a2e109c8b7c696324e7a06323e285b1914ee06e8b0e924`; archive SHA-256 `0fe94a30d9ba77810c822c6f5a9ee7c5f4f41dacdcd8ffe5678b7db553d6b7a2`; manifest SHA-256 `ec1b4d14f13e76f001166c124e9838776ffe3eaa01664c71e53520e0542ec1c4`; runtime-evidence SHA-256 `1c15752aa7bfc43b80f57c009bf40b474aa2dd129668b3e52511afbf94399936`; 5,384 files / 125,820,107 bytes.
+- Read-only production preflight proved exact baseline/process `9d2fc9b…`, v21/history 001–021/checksums, integrity `ok`, zero foreign-key violations, unchanged protected hashes, active/disabled service with `NRestarts=0`, one loopback-only listener, green loopback/public health/readiness, and root-owned non-writable rollback release.
+- Verified and installed only the exact four-file bundle as immutable root-owned release `a5e2bc21…`; archive paths/internal-external manifest/all entries, migrations 001–021, Linux x64 native modules, PDF.js/canvas, and release-local offline Tesseract passed. The service account cannot write the release.
+- Completed guarded no-migration cutover from `9d2fc9b…` to exact `a5e2bc21…`; stop/listener guard passed, process CWD matches the new release, no migration runner executed, and rollback was not used.
+- Post-cutover acceptance proved exact release/process, schema/history/checksums/integrity/FK, active/disabled/zero-restart/loopback-listener state, byte-identical public assets, unchanged protected hashes, Tesseract 5.5.3 with exact languages/18 libraries/offline synthetic OCR, PDF.js/canvas/native modules, 401 suggestion/multipart/Range guards, exact one-byte 206 Range response, and zero new app/OOM/cgroup events.
+- Authenticated Owner acceptance issued exactly one bodyless suggestion POST. It completed 200 in 95 ms with an expected `unsupported` run; `.anonymous`, raw internal error, generic internal error, and error alert were absent; no candidate was selected or accepted; canonical metadata remained unchanged. No sensitive resource identity/content was retained in evidence.
+- Removed the exact task-owned staging directory and verified final public health `ok` and readiness `ready`.
 
 ## Remaining
-- Create/publish the exact source checkpoint and build/independently verify its immutable Linux x64 / Node 24 artifact.
-- Verify the exact unchanged production baseline/rollback boundary, deploy without migrations, and complete bounded production acceptance.
-- Reconcile final evidence, close the card, publish, synchronize, and stop.
+None.
 
 ## Blockers
 None.
@@ -72,7 +79,10 @@ None.
 - Full backend PASS 339/339; full frontend PASS 221/221; backend/frontend typechecks and production builds PASS.
 - Compiled acceptance PASS at migration head 21 with `redeployMigrationCount=0`, health/readiness/restart/backup/restore/canonical-metadata evidence green; release-local Tesseract verifier PASS; `git diff --check` PASS.
 - Independent read-only hotfix review PASS with no material finding.
-- Production contact was read-only and limited to release/service identity, exact suggestion-route journal matches, and the exact deployed frontend asset/hash; no database, resource record, object, scholarly content, credential, or unrelated log was inspected or mutated.
+- Artifact workflow `32234343552` / exact source `a5e2bc21…`: PASS; archive/manifest/runtime evidence and independent verification PASS.
+- Production release/process `a5e2bc21…`; schema v21/history 001–021/checksums exact; integrity `ok`; foreign keys 0; no migration; rollback not used.
+- Health `ok`; readiness `ready`; public assets exact; protected hashes unchanged; OCR/native runtime PASS; transfer/Range authorization/206 semantics PASS; app/OOM/cgroup events zero.
+- Authenticated suggestion regression PASS: one POST 200, expected `unsupported`, no raw/internal error, no acceptance or canonical-metadata mutation, sensitive evidence excluded.
 
 ## Next Action
-Commit and publish the exact green hotfix source, verify local/tracking/remote equality, then run the existing immutable artifact workflow against only that source.
+Publish and synchronize this final evidence checkpoint, verify local/tracking/remote equality and clean worktree, then STOP. Resume RF-SEARCH01 only after Owner review and new explicit authorization.

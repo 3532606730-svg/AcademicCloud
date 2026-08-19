@@ -4,13 +4,11 @@
 
 ## Current Phase
 
-**PROD-09A is the sole active Owner-authorized bounded production hotfix for the metadata-suggestion `.anonymous` regression. Production is expected to remain on exact PROD-09 release `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021 until the exact new green artifact is ready. No migration or unrelated product work is authorized.**
+**PROD-09A is PASS/CLOSED. Production runs exact immutable hotfix release `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, previous release `9d2fc9b08e2e02c821ef357f149ed928510c2825`, at unchanged schema v21/history 001–021. STOP. No further production or product work is authorized; RF-SEARCH01 remains parked until Owner review.**
 
 ## Doing
 
-| Task | Task card | Bounded objective |
-|---|---|---|
-| PROD-09A | `tasks/doing/PROD-09A.md` | Diagnose and hotfix the exact metadata-suggestion runtime failure and raw internal-error leak; deploy a new exact artifact without migrations; reconcile evidence; STOP |
+None.
 
 ## Done
 
@@ -25,6 +23,7 @@
 | RF-FRONTMATTEROCR01 | `tasks/done/RF-FRONTMATTEROCR01.md` | Exact first-15/last-5 native-text-first local OCR fallback with migration-020 provenance, bounded Tesseract adapter, review-only metadata evidence, and preserved PROD-08R runtime repair |
 | RF-TRANSFER01 | `tasks/done/RF-TRANSFER01.md` | Provider-backed 8 MiB/640-part multipart resume with server CAS state, completed-part reuse, exact abandonment, legacy compatibility, and browser-native Range download resume; development schema v21/history 001–021 |
 | PROD-09 | `tasks/done/PROD-09.md` | Independently verified release-local Tesseract artifact, fresh encrypted off-host v19 rollback backup, exact migrations 020–021, immutable v21 cutover, and bounded production acceptance |
+| PROD-09A | `tasks/done/PROD-09A.md` | Repaired the exact metadata-suggestion receiver/runtime error and raw-error leak, deployed exact same-schema artifact `a5e2bc21…` without migrations, and completed non-mutating acceptance |
 
 Current execution boundary:
 
@@ -43,6 +42,11 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 → exact migrations 020–021 and immutable cutover to `9d2fc9b…` / v21 / 001–021
 → OCR/transfer/Range/health/readiness changed-risk acceptance PASS
 → PROD-09 PASS / CLOSED
+→ exact receiver/error-boundary hotfix `a5e2bc21…`
+→ artifact run `32234343552` independently green
+→ immutable no-migration cutover at unchanged v21 / 001–021
+→ authenticated suggestion POST 200, no `.anonymous`/raw-error exposure, canonical metadata unchanged
+→ PROD-09A PASS / CLOSED
 → STOP
 ```
 
@@ -50,11 +54,10 @@ Failed artifact run 32168164654   ← FAILED CLOSED BEFORE UPLOAD / PRODUCTION
 
 | Order | Task / direction | State |
 |---:|---|---|
-| 1 | PROD-09A | Active bounded production hotfix |
-| 2 | STOP | Required after PROD-09A evidence is closed and synchronized |
-| 3 | RF-SEARCH01 | Preserved metadata/name search card; resume only after Owner review |
+| 1 | STOP | Current required state after PROD-09A closure |
+| 2 | RF-SEARCH01 | Preserved metadata/name search card; resume only after Owner review and new explicit authorization |
 | 3 | Remaining Pre-OCR queue | Preserved cards; requires a new Owner continuation |
-| 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited in this objective |
+| 4 | Whole-document extraction / full-text / retrieval / RAG | Future; prohibited without new explicit authorization |
 | 5 | Infrastructure-policy repair | Separate production/operations gate; not authorized |
 
 RF-FRONTMATTEROCR01 authorizes only the completed bounded local/offline fallback. RF-TRANSFER01 is closed in development and adds no production authority. RF-SEARCH01, the later Pre-OCR queue, whole-document OCR/extraction, external lookup, and AI extraction remain durable future scope.
@@ -105,9 +108,10 @@ Starting any parked card requires a new Owner decision.
 ## Production State and Gates
 
 ```text
-PRODUCTION=9d2fc9b08e2e02c821ef357f149ed928510c2825
-PREVIOUS_RELEASE=f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7
+PRODUCTION=a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a
+PREVIOUS_RELEASE=9d2fc9b08e2e02c821ef357f149ed928510c2825
 PRODUCTION_SCHEMA=v21 / migrations 001–021
+PROD09A_CLOSED=true
 RF_METASUGGEST_DEPLOYED=true
 L1_UX07_DEPLOYED=true
 OCR_DEPLOYED=true
@@ -117,10 +121,10 @@ ROLLBACK_USED=false
 
 Production integrity is `ok`, foreign-key violations are zero, loopback/public health and readiness are green, one loopback-only API listener is present, service restart count is stable at zero, and public assets match the immutable release. Exact migrations 020–021 are applied; release-local Tesseract 5.5.3 with `chi_sim`, `chi_tra`, and `eng`, true multipart upload/resume, and Range download resume passed bounded acceptance. Synthetic destructive acceptance was skipped safely because no uniquely owned run-created target existed; no task-owned synthetic residue exists.
 
-The rollback pair is exact prior application `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` plus fresh schema-v19 backup `academiccloud-pre-prod09-20260819T061155Z.sqlite` (SHA-256 `21af5882483c21cfa65854fa592a7805b029b4f31c06c598114d161412c36436`), encrypted off-host in private commit `702695ee9bfd65ee69c2f8cb6c8f105bd4320755`. Application rollback without the paired database restore is prohibited.
+The immediate same-schema rollback target is exact prior application `9d2fc9b08e2e02c821ef357f149ed928510c2825` against unchanged v21; PROD-09A rollback was not used. The older deep rollback remains exact application `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` plus fresh schema-v19 backup `academiccloud-pre-prod09-20260819T061155Z.sqlite` (SHA-256 `21af5882483c21cfa65854fa592a7805b029b4f31c06c598114d161412c36436`), encrypted off-host in private commit `702695ee9bfd65ee69c2f8cb6c8f105bd4320755`; never run that application against live v21.
 
-`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. PROD-09 did not authorize destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup. Any further production or product work requires a new explicit Owner authorization.
+`PROD-03C2` remains parked only as a possible future real production confirmation/operations window. PROD-09A authority is exhausted and did not authorize destructive use of pre-existing resources, incident-database inspection, infrastructure-policy changes, main merge, RF-SEARCH01, whole-document extraction, full-text indexing/search, embeddings, retrieval, RAG, external metadata services, ISBN APIs, web lookup, AI extraction, or unrelated cleanup. Any further production or product work requires a new explicit Owner authorization.
 
 ## Next Action
 
-Complete and close PROD-09A, publish and synchronize its exact evidence checkpoint, then STOP. Resume RF-SEARCH01 only after Owner review.
+STOP. Resume RF-SEARCH01 only after Owner review and new explicit authorization.

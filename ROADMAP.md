@@ -73,7 +73,7 @@ L1-UX06
 → STOP
 ```
 
-L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, RF-TRANSFER01 development, and PROD-09 are complete. Production runs exact immutable release `9d2fc9b08e2e02c821ef357f149ed928510c2825` at schema v21/history 001–021, with RF-METASUGGEST01/L1-UX07, bounded local OCR, and resumable transfer deployed while PROD-07B behavior and the PROD-08R runtime repair remain preserved. The previous release is `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`; PROD-09 rollback was not used. RF-SEARCH01 and the later Pre-OCR cards remain parked, and the approved continuous objective ends at STOP.
+L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, RF-TRANSFER01 development, PROD-09, and PROD-09A are complete. Production runs exact immutable release `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a` at unchanged schema v21/history 001–021, with the metadata-suggestion receiver/error-leak hotfix, RF-METASUGGEST01/L1-UX07, bounded local OCR, and resumable transfer deployed while PROD-07B behavior and the PROD-08R runtime repair remain preserved. The previous release is `9d2fc9b08e2e02c821ef357f149ed928510c2825`; PROD-09A rollback was not used. RF-SEARCH01 and the later Pre-OCR cards remain parked, and the approved continuous objective ends at STOP.
 
 ### L1-UX07 — Catalogue Interaction Consistency and State Reconciliation — Complete
 
@@ -322,4 +322,4 @@ PROD-08R truth preserved
 → STOP
 ```
 
-RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, RF-TRANSFER01 development, and PROD-09 are complete. Exact release `9d2fc9b…` and migrations 020–021 are deployed; integrity, foreign keys, health, readiness, OCR runtime, multipart transfer, and Range acceptance are green. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, RF-SEARCH01, remaining Pre-OCR work, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited without new explicit Owner authorization. Next action: STOP.
+RF-META01, RF-METASUGGEST01, L1-UX07, PROD-08R, RF-FRONTMATTEROCR01 development, the workflow proportionality clarification, RF-TRANSFER01 development, PROD-09, and PROD-09A are complete. Exact release `a5e2bc21…` runs at unchanged v21/history 001–021; metadata-suggestion generation/error redaction, integrity, foreign keys, health, readiness, OCR runtime, multipart transfer, and Range acceptance are green. Incident-database inspection, main merge, real permanent deletion, real-data cleanup, unrelated infrastructure repair, RF-SEARCH01, remaining Pre-OCR work, whole-document extraction, full-text indexing/search, semantic retrieval, RAG, external metadata services, ISBN/web lookup, web search, AI extraction, and unrelated work remain prohibited without new explicit Owner authorization. Next action: STOP.
