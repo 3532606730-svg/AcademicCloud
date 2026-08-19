@@ -184,7 +184,7 @@ function verifyBuildEvidence(evidence) {
 }
 
 function verifyDynamicClosure(runtimeDirectory, executablePath, libraryDirectory, elfFiles) {
-  const packagedNames = new Set(elfFiles.filter((path) => path.startsWith("lib/")).map(basename));
+  const packagedNames = new Set(elfFiles.filter((path) => path.startsWith("lib/")).map((path) => basename(path)));
   for (const name of packagedNames) assert.equal(baselineLibraries.has(name), false, `baseline library was packaged: ${name}`);
   const neededByFile = new Map();
   for (const path of elfFiles) {

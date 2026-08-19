@@ -43,7 +43,7 @@ Produce an independently verified immutable Linux x64 / Node 24 artifact with a 
 - authoritative project/task/evidence records
 
 ## Current State
-Active on authoritative branch `codex/project-memory-reconcile-20260817`. Release-local Tesseract implementation checkpoint `85227a28733c90f7874528e7dccd93d1b518ff1d` and post-cleanup checkpoint `776188e17642af709be496350030c1781b781881` remain intact. Owner-paused pre-cleanup artifact run `32212570141` was cancelled before finalization/upload. First post-cleanup run `32213527270` failed closed before finalization/upload because the digest-pinned minimal Ubuntu image lacked a CA bundle for its first HTTPS snapshot fetch; the repair in this checkpoint bootstraps the exact snapshot `ca-certificates` package through signed InRelease metadata, then deletes bootstrap indexes and requires a normal certificate-verified snapshot refresh before any build dependency is installed. RF-FRONTMATTEROCR01 and RF-TRANSFER01 remain closed at schema v21/history 001–021. Production remains untouched at exact `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`, schema v19/history 001–019.
+Active on authoritative branch `codex/project-memory-reconcile-20260817`. Release-local Tesseract implementation checkpoint `85227a28733c90f7874528e7dccd93d1b518ff1d` and post-cleanup checkpoint `776188e17642af709be496350030c1781b781881` remain intact. Owner-paused pre-cleanup artifact run `32212570141` was cancelled before finalization/upload. First post-cleanup run `32213527270` failed closed on the missing minimal-builder CA bootstrap. Repair run `32213936555` then built exact Tesseract 5.5.3 and discovered the verifier's direct `Array.map(basename)` callback incorrectly supplied the array index as `basename`'s suffix; this checkpoint uses an explicit one-argument callback and keeps every closure check intact. RF-FRONTMATTEROCR01 and RF-TRANSFER01 remain closed at schema v21/history 001–021. Production remains untouched at exact `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`, schema v19/history 001–019.
 
 ## Completed
 - Owner authorized the exact release-local Tesseract build/package/deployment boundary.
@@ -55,6 +55,7 @@ Active on authoritative branch `codex/project-memory-reconcile-20260817`. Releas
 - Cancelled pre-cleanup run `32212570141` against old source `85227a2…` before it finalized or uploaded an artifact; its independent job did not run.
 - Replaced zh-CN/English implementation-facing UI copy with shared user states and actionable localized errors, preserving pause/continue/reselect/abandon behavior, destructive warnings, accessibility names, and transfer implementation compatibility without changing schema, APIs, or OCR runtime work.
 - Diagnosed post-cleanup run `32213527270` as a missing builder CA bootstrap, retained the fixed image/snapshot/source/model identities, and added a snapshot-signed one-time CA bootstrap followed by a clean certificate-verified snapshot refresh.
+- Proved the repaired snapshot path and complete pinned Tesseract source build in run `32213936555`, then repaired the manifest verifier's `Array.map` callback without weakening dynamic-closure validation.
 
 ## Remaining
 - Produce two green artifact jobs from the exact post-cleanup source commit containing this record; do not reuse or resume run `32212570141`.
@@ -72,7 +73,9 @@ None. Ordinary build/link/package details are authorized; any inability to produ
 - Bounded UI cleanup: frontend 212/212 PASS; focused copy/transfer/error tests 160/160 PASS plus final direct-upload/i18n focus 33/33 PASS; frontend typecheck and production build PASS; `git diff --check` PASS.
 - Post-cleanup artifact run `32213527270` on exact `776188e17642af709be496350030c1781b781881`: tests/typechecks/builds/compiled acceptance/audits/Argon2/package preparation PASS; Tesseract build failed at the first snapshot package fetch; finalization/archive/reproducibility/extracted verification/upload skipped and independent verification skipped; production untouched.
 - Builder CA-bootstrap repair: backend 337/337 PASS including artifact policy; build script syntax PASS; `git diff --check` PASS. Real Linux snapshot/build/closure evidence remains pending a fresh exact CI run.
+- Builder repair run `32213936555` on exact `47a91083174d33df948ae92bd35737b0e15e545d`: prerequisites and full pinned Tesseract build PASS; manifest finalization failed on the verifier callback before archive/upload; independent job skipped; production untouched.
+- Verifier callback repair: deployment-artifact tests 6/6 PASS; Node syntax and `git diff --check` PASS. Full finalization/closure/reproducibility/extracted runtime evidence remains pending a fresh exact CI run.
 - Production touched: false.
 
 ## Next Action
-Publish the exact builder-repair checkpoint containing this record, verify local/tracking/remote equality, then dispatch a fresh two-job GitHub Actions gate from that new HEAD. Repair only artifact-gate failures; do not contact production until both jobs pass.
+Publish the exact verifier-repair checkpoint containing this record, verify local/tracking/remote equality, then dispatch a fresh two-job GitHub Actions gate from that new HEAD. Repair only artifact-gate failures; do not contact production until both jobs pass.
