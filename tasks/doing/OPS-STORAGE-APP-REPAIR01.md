@@ -53,20 +53,24 @@ ACTIVE on isolated branch `codex/storage-runtime-contract-repair-20260820`, base
 
 The provider permission repair is already complete: raw production `ListParts` now returns HTTP 200. Initial runtime evidence proved string `isTruncated`/marker fields. A read-only inspection of the already-verified frozen RF-SEARCH01 artifact then established the complete packaged `ali-oss@6.23.0` behavior: `listParts` forwards XML scalar values directly; the XML parser uses non-array singletons; therefore a single `Part` is an object and `PartNumber`/`Size` are strings as well. This changed the repair from two-field normalization to normalization of the complete proven `ListParts` representation only; no other OSS API entered scope.
 
+The old production adapter path was reproduced locally against the exact packaged SDK without network I/O: a one-part response fails with `TypeError: (result.parts ?? []).map is not a function`, while an empty non-truncated response with string marker fields fails with `OSS returned an invalid multipart part marker`. The new normalization path makes both canonical before the existing adapter validation.
+
 Metadata Suggestion remains separate. Incident evidence ties the recorded suggestion failures to the overdue-payment disabled window at `HeadObject` and shows zero suggestion-generation failures after 13:00, so no suggestion implementation change is justified without a new current reproduction.
 
 ## Completed
 - Created isolated repair branch from the exact authoritative branch head.
 - Inspected the exact packaged `ali-oss@6.23.0` from the frozen, independently verified RF-SEARCH01 artifact without modifying that candidate.
 - Proved from exact dependency source/runtime that `listParts` returns string paging fields, string `PartNumber`/`Size`, and an object rather than an array for one `<Part>`.
+- Reproduced the pre-fix adapter failures against the exact packaged SDK without network I/O.
 - Implemented a native-client `listParts` wrapper in `backend/src/storage/aliyun/client.ts`; every other SDK method remains on the original client instance and unchanged.
+- Kept the normalization helper internal to the Aliyun client module so the repair does not create a new public module API.
 - Added bounded normalization for the exact provider representation: singleton/array part container, integer string fields, boolean string field, and safe marker handling.
 - Kept canonical range/count/order/duplicate validation in the existing `AliyunOssStorageAdapter`.
-- Added focused regression tests in `backend/test/storage/aliyun-client-normalization.test.ts`, including a no-network test that drives the real `ali-oss` `listParts` method through `createAliyunOssClient`.
+- Added focused regression tests in `backend/test/storage/aliyun-client-normalization.test.ts`; all cases drive the real installed `ali-oss` `listParts` method through `createAliyunOssClient` with deterministic no-network responses.
 - Strict TypeScript compile of the changed boundary with local stubs: PASS.
-- Exact-dependency no-network runtime smoke: PASS for single-Part and multi-Part XML shapes.
+- Exact-dependency no-network runtime smoke: PASS for single-Part and multi-Part XML shapes plus malformed-value fail-closed matrix.
 - Existing compiled `AliyunOssStorageAdapter` + exact `ali-oss@6.23.0` + new normalization logic: PASS for both single-Part non-truncated and multi-Part truncated results.
-- Current implementation checkpoint: `50a4ae5`; current focused-test checkpoint: `db7b884`.
+- Current implementation checkpoint: `cc1bb44`; current focused-test checkpoint: `367332d`.
 
 ## Remaining
 - Run repository-native focused storage tests on the exact branch.
@@ -82,9 +86,11 @@ The current environment can read/write GitHub and inspect the already-built arti
 - Base commit: `281263be7f6248a4d18e099b59cf49028ec277ca`.
 - Exact dependency: packaged `ali-oss@6.23.0` from the frozen verified RF-SEARCH01 artifact.
 - Exact-dependency raw ListParts shape: PROVEN (singleton object + string boolean/integer fields).
+- Exact pre-fix failure reproduction: PASS (one-part `.map` TypeError; empty non-truncated invalid marker).
 - Local strict TypeScript check of changed boundary: PASS.
 - Exact ali-oss single-Part wrapper smoke: PASS.
 - Exact ali-oss multi-Part wrapper smoke: PASS.
+- Exact ali-oss malformed-value matrix: PASS.
 - Existing compiled adapter consuming normalized single/multi results: PASS.
 - Production touched: false.
 - Schema/migrations changed: false.
