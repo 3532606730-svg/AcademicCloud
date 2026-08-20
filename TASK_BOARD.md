@@ -8,9 +8,11 @@ The board is the executable priority view. `CURRENT_STATE.json` holds compact cu
 
 | Order | Task | Task card | State |
 |---:|---|---|---|
-| 1 | OPS-STORAGE-APP-REPAIR01 | `tasks/doing/OPS-STORAGE-APP-REPAIR01.md` | DEPLOYMENT FAILED CLOSED / ROLLBACK PASS — exact artifact contains frozen Search UI/API and violates the explicit no-Search scope; STOP for Owner review |
-| 2 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER REPAIR VERIFIED — incident remains open pending a compatible app deployment + Owner Continue/Abandon/metadata browser acceptance |
-| 3 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — candidate remains frozen and is not currently live; brief exposure during the rolled-back repair deployment is recorded |
+| 1 | OPS-STORAGE-HOTFIX01 | `tasks/doing/OPS-STORAGE-HOTFIX01.md` | ARTIFACT VERIFIED — exact hotfix is based directly on production `604cb8d…`, changes only Aliyun `ListParts` normalization + its regression test, and excludes RF-SEARCH01; STOP for Owner production-deployment decision |
+| 2 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER REPAIR VERIFIED — incident remains open pending compatible hotfix deployment + Owner Continue/Abandon/metadata browser acceptance |
+| 3 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — candidate remains frozen and is not currently live; brief exposure during the rolled-back incompatible repair deployment is recorded |
+
+`OPS-STORAGE-APP-REPAIR01` remains the technical diagnosis/source-repair record. Its original artifact ID `9405764771` is **not a valid production candidate under the no-Search boundary** because source `8d289702…` includes RF-SEARCH01. It must not be redeployed.
 
 ## Reliability / Usability Interlock — Ready but do not auto-start
 
@@ -64,31 +66,38 @@ Completed cards under `tasks/done/` remain authoritative for implementation/rele
 ```text
 DECLARED_PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
 SCHEMA=v21 / 001-021
-STORAGE_REPAIR_VERIFIED_SOURCE=8d28970209c2e7b41b5d9486bea570a2a8e6c7e6
-STORAGE_REPAIR_SOURCE_CI=32365460608 PASS
-STORAGE_REPAIR_ARTIFACT_WORKFLOW=32366397645 PASS
-STORAGE_REPAIR_ARTIFACT_ID=9405764771
-STORAGE_REPAIR_ARCHIVE_SHA256=03edbbe0f8b506bb7d3fbb9b929e90f89b8b6948b4256865fcd44d9c62e8bbe4
-STORAGE_REPAIR_MANIFEST_SHA256=76e902496f3255293b670f09248cf73f5e8d665a77e0e7a2446e49b7fe05eeb4
-STORAGE_REPAIR_INDEPENDENT_VERIFICATION=PASS
-STORAGE_REPAIR_DEPLOYMENT=FAIL_CLOSED
-STORAGE_REPAIR_FIRST_FAILED_GATE=AUTHORIZED_SOURCE_CONTAINS_FORBIDDEN_RF_SEARCH01_DEPLOYMENT
-STORAGE_REPAIR_ROLLBACK=PASS
+
+OLD_STORAGE_REPAIR_SOURCE=8d28970209c2e7b41b5d9486bea570a2a8e6c7e6
+OLD_STORAGE_REPAIR_ARTIFACT_ID=9405764771
+OLD_STORAGE_REPAIR_PRODUCTION_SCOPE=INVALID_NO_SEARCH
+OLD_STORAGE_REPAIR_DEPLOYMENT=FAIL_CLOSED
+OLD_STORAGE_REPAIR_ROLLBACK=PASS
+
+STORAGE_HOTFIX_BASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
+STORAGE_HOTFIX_SOURCE=988bdbf052de1a39b47a1e22ac761c977eec72c8
+STORAGE_HOTFIX_DIFF=2_COMMITS__2_FILES_ONLY
+STORAGE_HOTFIX_ARTIFACT_WORKFLOW=32376005391 PASS
+STORAGE_HOTFIX_ARTIFACT_ID=9409511861
+STORAGE_HOTFIX_ARTIFACT_SHA256=dec7ef47249e8d148aa7d31b8e0ddf3861dbceb2319dec4aaaa83b94c612b150
+STORAGE_HOTFIX_ARCHIVE_SHA256=79cea866533e9da1b7d00fb0b3e62a3a3123a90bc20138b8c4d9d40141ed5f33
+STORAGE_HOTFIX_MANIFEST_SHA256=d6d8b22077d79e9018c6e3eef2cb4454e452995dbc3c1127e574257914e8ce30
+STORAGE_HOTFIX_INDEPENDENT_VERIFICATION=PASS
+STORAGE_HOTFIX_RF_SEARCH_INCLUDED=false
+
 SEARCH_ARTIFACT_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION=NOT_CUT_OVER
 ACTIVE_INCIDENT=OPS-STORAGE-INCIDENT01
-ACTIVE_SOURCE_REPAIR=OPS-STORAGE-APP-REPAIR01
-REPAIR_BRANCH=codex/storage-runtime-contract-repair-20260820
+ACTIVE_RELEASE_TASK=OPS-STORAGE-HOTFIX01
 ```
 
 ## Stop Rules
 
 - The exact provider permission repair is complete; no further RAM/OSS policy churn is authorized.
-- The bounded source repair and immutable production artifact are technically verified, but the artifact also contains the frozen Search candidate.
-- The authorized deployment failed closed on that exact release-scope mismatch and rolled back to `604cb8d…`; do not redeploy artifact ID `9405764771` while the no-Search boundary remains in force.
-- A repair-only source/artifact or an explicit revision of the Search boundary requires new Owner authorization and exact-source verification.
+- Do not redeploy source `8d289702…` / artifact `9405764771` under the no-Search boundary.
+- The only verified compatible storage candidate is source `988bdbf…` / artifact `9409511861`, built directly from production `604cb8d…` and differing by exactly two files.
+- Production deployment of the hotfix remains an explicit Owner gate; artifact verification itself does not authorize deployment.
 - No migration, credential/config change, pending-upload mutation, manual complete/abort, or metadata mutation is authorized now.
-- Do not close `OPS-STORAGE-INCIDENT01` until the verified repair is deployed and Continue, Abandon, and metadata-suggestion real-browser journeys pass.
+- Do not close `OPS-STORAGE-INCIDENT01` until the hotfix is deployed and Continue, Abandon, and metadata-suggestion real-browser journeys pass.
 - Search remains frozen; do not rebuild or modify the exact RF-SEARCH01 release candidate unless a concrete defect requires it.
 - No new research feature begins while the production storage incident is unresolved.
 - Paid storage backup/provider choice, credentials, further RAM/OSS policy, migrations, destructive repair, production deployment, and infrastructure changes remain explicit Owner gates.
