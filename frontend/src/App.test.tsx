@@ -2427,9 +2427,9 @@ describe("App", () => {
     expect(screen.getByText("Calculating checksum")).toBeInTheDocument();
   });
 
-  it("offers the standard picker when an embedded browser cancels the enhanced picker", async () => {
+  it("offers the standard picker while an embedded browser leaves the enhanced picker pending", async () => {
     const user = userEvent.setup();
-    const picker = vi.fn().mockRejectedValue(new DOMException("Picker unavailable", "AbortError"));
+    const picker = vi.fn(() => new Promise(() => undefined));
     Object.defineProperty(window, "showOpenFilePicker", { configurable: true, value: picker });
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
     render(<App api={api} />);

@@ -1348,6 +1348,7 @@ function DriveView({
       uploadInputRef.current?.click();
       return;
     }
+    setUploadPickerFallbackAvailable(true);
     try {
       const handles = await picker({ multiple: true });
       setUploadPickerFallbackAvailable(false);
@@ -1356,7 +1357,6 @@ function DriveView({
         enqueueFile(file, undefined, undefined, handle);
       }
     } catch (caught) {
-      setUploadPickerFallbackAvailable(true);
       if (!(caught instanceof DOMException && caught.name === "AbortError")) setError(caught);
     }
   }
