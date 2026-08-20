@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T19:17:00+08:00",
+  "updatedAt": "2026-08-20T19:50:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
   "production": {
@@ -28,9 +28,18 @@
     "task": "OPS-STORAGE-APP-REPAIR01",
     "branch": "codex/storage-runtime-contract-repair-20260820",
     "baseCommit": "281263be7f6248a4d18e099b59cf49028ec277ca",
+    "verifiedSource": "8d28970209c2e7b41b5d9486bea570a2a8e6c7e6",
     "scope": "normalize only the complete proven ali-oss ListParts runtime representation before the canonical storage adapter boundary",
     "exactDependencyVerification": "pass",
-    "repositoryVerification": "pending",
+    "repositoryVerification": "pass",
+    "verificationRun": 32365460608,
+    "focusedStorage": "20/20 pass",
+    "backend": "376 pass / 0 fail / 1 expected skip",
+    "frontend": "241/241 pass",
+    "typecheck": "pass",
+    "build": "pass",
+    "diffCheck": "pass",
+    "artifactBuilt": false,
     "productionTouched": false,
     "deploymentAuthorized": false
   },
@@ -43,12 +52,12 @@
     "independentVerification": "pass",
     "productionCutover": "blocked",
     "blockers": [
-      "OPS-STORAGE-APP-REPAIR01 must pass repository verification and the storage incident must close",
+      "storage application repair must be safely released and OPS-STORAGE-INCIDENT01 must close",
       "mandatory real-browser pre-cutover acceptance"
     ]
   },
   "currentPriorityOrder": [
-    "OPS-STORAGE-APP-REPAIR01",
+    "OPS-STORAGE-APP-REPAIR01 release",
     "OPS-STORAGE-INCIDENT01 closure",
     "RF-SEARCH01 production closure",
     "L1-UX08",
@@ -67,7 +76,7 @@
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
     "The exact Owner-authorized RAM v2 repair is complete; no further provider-policy mutation is authorized.",
-    "The Owner authorized only the bounded source repair recorded in OPS-STORAGE-APP-REPAIR01; production deployment remains a separate gate.",
+    "The bounded application source repair is repository-verified; production artifact construction and deployment remain separate gates.",
     "The frozen RF-SEARCH01 artifact was inspected read-only to prove the exact packaged ali-oss behavior; the candidate itself was not modified or rebuilt.",
     "Metadata Suggestion code must not be changed unless a current post-repair browser attempt proves a new failure boundary.",
     "RF-SEARCH01 remains frozen and untouched until storage repair/incident closure and its mandatory browser gate."
