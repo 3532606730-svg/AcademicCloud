@@ -34,77 +34,15 @@ function Invoke-HeaderProbe {
     return [pscustomobject]@{ Status = $status; Headers = @($output | Where-Object { $_ -ne '' }) }
 }
 
-function Get-HeaderValues {
-    param(
-        [Parameter(Mandatory)][string[]]$Headers,
-        [Parameter(Mandatory)][string]$Name
-    )
-
-    $prefix = "${Name}:"
-    return @($Headers | Where-Object { $_.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { $_.Substring($prefix.Length).Trim() })
-}
-
 $anonymousHead = Invoke-HeaderProbe -Uri "$bucketOrigin/objects/prod03b-anonymous-probe-must-not-exist" -CurlArguments @('-I')
 $anonymousList = Invoke-HeaderProbe -Uri "$bucketOrigin/?list-type=2" -CurlArguments @('-X', 'GET')
 if ($anonymousHead.Status -ne 403 -or $anonymousList.Status -ne 403) {
     throw 'Anonymous bucket access or listing is not denied exactly as required.'
 }
 
-$positiveCors = Invoke-HeaderProbe -Uri "$bucketOrigin/" -CurlArguments @(
-    '-X', 'OPTIONS',
-    '-H', "Origin: $applicationOrigin",
-    '-H', 'Access-Control-Request-Method: POST'
-)
-$allowedOrigin = @(Get-HeaderValues -Headers $positiveCors.Headers -Name 'Access-Control-Allow-Origin')
-$allowedMethods = @(Get-HeaderValues -Headers $positiveCors.Headers -Name 'Access-Control-Allow-Methods')
-$allowedHeaders = @(Get-HeaderValues -Headers $positiveCors.Headers -Name 'Access-Control-Allow-Headers' | Where-Object { $_ -ne '' })
-$exposedHeaders = @(Get-HeaderValues -Headers $positiveCors.Headers -Name 'Access-Control-Expose-Headers' | Where-Object { $_ -ne '' })
-$allowedCredentials = @(Get-HeaderValues -Headers $positiveCors.Headers -Name 'Access-Control-Allow-Credentials' | Where-Object { $_ -ne '' })
-$maxAge = @(Get-HeaderValues -Headers $positiveCors.Headers -Name 'Access-Control-Max-Age')
-if (
-    $positiveCors.Status -ne 200 -or
-    $allowedOrigin.Count -ne 1 -or $allowedOrigin[0] -cne $applicationOrigin -or
-    $allowedMethods.Count -ne 1 -or $allowedMethods[0] -cne 'POST' -or
-    $allowedHeaders.Count -ne 0 -or $exposedHeaders.Count -ne 0 -or
-    $allowedCredentials.Count -gt 1 -or
-    ($allowedCredentials.Count -eq 1 -and $allowedCredentials[0] -ne 'true') -or
-    $maxAge.Count -ne 1 -or $maxAge[0] -cne '300'
-) {
-    throw 'The exact production OSS CORS rule is absent or broader than approved: Access-Control-Allow-Credentials must be absent or exactly one case-insensitive true.'
-}
-
-foreach ($deniedOrigin in @('https://evil.invalid', 'http://cloud.ajtlab.top', 'http://localhost:5173')) {
-    $negativeCors = Invoke-HeaderProbe -Uri "$bucketOrigin/" -CurlArguments @(
-        '-X', 'OPTIONS',
-        '-H', "Origin: $deniedOrigin",
-        '-H', 'Access-Control-Request-Method: POST'
-    )
-    $negativeAllowedOrigins = @(Get-HeaderValues -Headers $negativeCors.Headers -Name 'Access-Control-Allow-Origin' | Where-Object { $_ -ne '' })
-    if ($negativeCors.Status -ne 403 -or $negativeAllowedOrigins.Count -ne 0) {
-        throw 'An unapproved origin was not rejected by OSS CORS.'
-    }
-}
-
-$unapprovedHeaderCors = Invoke-HeaderProbe -Uri "$bucketOrigin/" -CurlArguments @(
-    '-X', 'OPTIONS',
-    '-H', "Origin: $applicationOrigin",
-    '-H', 'Access-Control-Request-Method: POST',
-    '-H', 'Access-Control-Request-Headers: x-academiccloud-unapproved'
-)
-$unapprovedHeaderOrigins = @(Get-HeaderValues -Headers $unapprovedHeaderCors.Headers -Name 'Access-Control-Allow-Origin' | Where-Object { $_ -ne '' })
-$unapprovedAllowedHeaders = @(Get-HeaderValues -Headers $unapprovedHeaderCors.Headers -Name 'Access-Control-Allow-Headers' | Where-Object { $_ -ne '' })
-if ($unapprovedHeaderCors.Status -ne 403 -or $unapprovedHeaderOrigins.Count -ne 0 -or $unapprovedAllowedHeaders.Count -ne 0) {
-    throw 'OSS CORS accepted an unapproved HTTP request header.'
-}
-
-$unapprovedMethodCors = Invoke-HeaderProbe -Uri "$bucketOrigin/" -CurlArguments @(
-    '-X', 'OPTIONS',
-    '-H', "Origin: $applicationOrigin",
-    '-H', 'Access-Control-Request-Method: GET'
-)
-$unapprovedMethodOrigins = @(Get-HeaderValues -Headers $unapprovedMethodCors.Headers -Name 'Access-Control-Allow-Origin' | Where-Object { $_ -ne '' })
-if ($unapprovedMethodCors.Status -ne 403 -or $unapprovedMethodOrigins.Count -ne 0) {
-    throw 'OSS CORS accepted an unapproved HTTP method.'
+& node.exe (Join-Path $PSScriptRoot 'oss-cors-contract.mjs')
+if ($LASTEXITCODE -ne 0) {
+    throw 'The exact POST plus multipart PUT Content-MD5 OSS CORS contract is absent or broader than approved.'
 }
 
 Write-Host 'Read-only OSS anonymous-access and exact CORS probes passed.'

@@ -143,9 +143,11 @@ function normalizeAliyunMultipartListResult(value: unknown): AliyunMultipartList
   const candidate = value as Record<string, unknown>;
   const parts = asRawMultipartParts(candidate.parts).map(normalizeMultipartPart);
   const isTruncated = parseProviderBoolean(candidate.isTruncated, "multipart truncation flag");
-  const nextPartNumberMarker = candidate.nextPartNumberMarker === undefined
-    ? (isTruncated ? parseProviderInteger(undefined, "multipart part marker") : 0)
-    : parseProviderInteger(candidate.nextPartNumberMarker, "multipart part marker");
+  const rawNextPartNumberMarker = candidate.nextPartNumberMarker;
+  const nextPartNumberMarker = !isTruncated
+    && (rawNextPartNumberMarker === undefined || rawNextPartNumberMarker === "")
+    ? 0
+    : parseProviderInteger(rawNextPartNumberMarker, "multipart part marker");
   return { parts, isTruncated, nextPartNumberMarker };
 }
 

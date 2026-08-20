@@ -160,6 +160,31 @@ test("abandon and bounded stale cleanup abort only the exact multipart upload", 
   assert.equal(persistence.repositories.files.findById("owner-1", second.file.id), null);
 });
 
+test("a successful multipart abandon invokes the provider abort path exactly once", async (context) => {
+  class CountingAbortStorage extends InMemoryStorageAdapter {
+    abortCalls = 0;
+
+    override async abortMultipartUpload(input: Parameters<InMemoryStorageAdapter["abortMultipartUpload"]>[0]) {
+      this.abortCalls += 1;
+      await super.abortMultipartUpload(input);
+    }
+  }
+
+  const storage = new CountingAbortStorage(() => NOW);
+  const { persistence, service } = fixture(context, storage);
+  const created = await service.createMultipartUpload("owner-1", {
+    folderId: null, displayName: "abandon-once.pdf", mediaType: "application/pdf", sizeBytes: 3,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  const upload = persistence.repositories.multipartUploads!.findByFileId("owner-1", created.file.id)!;
+
+  await service.abandonUpload("owner-1", created.file.id, multipartUploadVersion(upload));
+
+  assert.equal(storage.abortCalls, 1);
+  assert.equal(storage.hasMultipartUpload(upload.providerUploadId), false);
+  assert.equal(persistence.repositories.files.findById("owner-1", created.file.id), null);
+});
+
 test("expired sessions fail closed for transfer work but remain exactly abandonable", async (context) => {
   let now = NOW;
   const storage = new InMemoryStorageAdapter(() => now);

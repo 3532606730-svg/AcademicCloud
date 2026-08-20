@@ -1183,10 +1183,24 @@ function DriveView({
     if (!window.confirm(t("upload.abandonConfirm", { name: job.file.name }))) return;
     job.controller.abort();
     try {
-      if (job.fileId && job.transfer && api.abandonMultipartUpload) {
-        await api.abandonMultipartUpload(job.fileId, job.transfer.version);
-      } else if (job.fileId && api.abandonLegacyUpload) {
+      if (!job.fileId) throw new Error(t("upload.abandonUnavailable"));
+      const uploadKind = job.existing?.uploadKind ?? (job.transfer ? "multipart" : undefined);
+      if (uploadKind === "multipart") {
+        if (!api.abandonMultipartUpload) throw new Error(t("upload.abandonUnavailable"));
+        let transfer = job.transfer;
+        if (!transfer) {
+          if (!api.getUploadStatus) throw new Error(t("upload.abandonUnavailable"));
+          const status = await api.getUploadStatus(job.fileId);
+          if (status.kind !== "multipart") throw new Error(t("upload.abandonUnavailable"));
+          transfer = status;
+          patchJob(job.id, { transfer });
+        }
+        await api.abandonMultipartUpload(job.fileId, transfer.version);
+      } else if (uploadKind === "legacy") {
+        if (!api.abandonLegacyUpload) throw new Error(t("upload.abandonUnavailable"));
         await api.abandonLegacyUpload(job.fileId);
+      } else {
+        throw new Error(t("upload.abandonUnavailable"));
       }
       patchJob(job.id, { phase: "abandoned" });
       setJobs((current) => current.filter((item) => item.id !== job.id));

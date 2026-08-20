@@ -120,6 +120,34 @@ test("real ali-oss ListParts allows an omitted marker only when not truncated", 
   );
 });
 
+test("real ali-oss ListParts normalizes the observed empty non-truncated marker only", async () => {
+  assert.deepEqual(
+    await listParts(clientFor({
+      Bucket: config.bucket,
+      Key: objectKey,
+      UploadId: uploadId,
+      PartNumberMarker: "0",
+      NextPartNumberMarker: "",
+      MaxParts: "1000",
+      IsTruncated: "false",
+    })),
+    { parts: [], isTruncated: false, nextPartNumberMarker: 0 },
+  );
+
+  await assert.rejects(
+    listParts(clientFor({
+      Bucket: config.bucket,
+      Key: objectKey,
+      UploadId: uploadId,
+      PartNumberMarker: "0",
+      NextPartNumberMarker: "",
+      MaxParts: "1000",
+      IsTruncated: "true",
+    })),
+    /invalid multipart part marker/u,
+  );
+});
+
 test("real ali-oss ListParts rejects malformed provider values instead of guessing", async () => {
   await assert.rejects(
     listParts(clientFor({ IsTruncated: "not-a-boolean", NextPartNumberMarker: "0" })),
