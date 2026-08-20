@@ -2427,6 +2427,19 @@ describe("App", () => {
     expect(screen.getByText("Calculating checksum")).toBeInTheDocument();
   });
 
+  it("offers the standard picker when an embedded browser cancels the enhanced picker", async () => {
+    const user = userEvent.setup();
+    const picker = vi.fn().mockRejectedValue(new DOMException("Picker unavailable", "AbortError"));
+    Object.defineProperty(window, "showOpenFilePicker", { configurable: true, value: picker });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole("button", { name: "Upload resources" }));
+
+    await waitFor(() => expect(picker).toHaveBeenCalledWith({ multiple: true }));
+    expect(await screen.findByRole("button", { name: "Use standard file selection" })).toBeInTheDocument();
+  });
+
   it("reveals manual source selection only after automatic pending recovery is unavailable", async () => {
     const user = userEvent.setup();
     const api = fakeApi({

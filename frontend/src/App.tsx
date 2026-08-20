@@ -670,6 +670,7 @@ function DriveView({
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [metadataActivities, setMetadataActivities] = useState<MetadataActivity[]>([]);
   const [downloadActivities, setDownloadActivities] = useState<DownloadActivity[]>([]);
+  const [uploadPickerFallbackAvailable, setUploadPickerFallbackAvailable] = useState(false);
   const [sourceRecoveryFallbacks, setSourceRecoveryFallbacks] = useState<Record<string, string>>({});
   const [recoveringSourceId, setRecoveringSourceId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
@@ -1343,16 +1344,19 @@ function DriveView({
   async function chooseFreshFiles() {
     const picker = (window as FilePickerWindow).showOpenFilePicker;
     if (!picker) {
+      setUploadPickerFallbackAvailable(false);
       uploadInputRef.current?.click();
       return;
     }
     try {
       const handles = await picker({ multiple: true });
+      setUploadPickerFallbackAvailable(false);
       for (const handle of handles) {
         const file = await handle.getFile();
         enqueueFile(file, undefined, undefined, handle);
       }
     } catch (caught) {
+      setUploadPickerFallbackAvailable(true);
       if (!(caught instanceof DOMException && caught.name === "AbortError")) setError(caught);
     }
   }
@@ -2146,6 +2150,18 @@ function DriveView({
               <button className="button button--primary upload-button" type="button" onClick={() => void chooseFreshFiles()}>
                 {t("workspace.uploadResources")}
               </button>
+              {uploadPickerFallbackAvailable && (
+                <button
+                  className="button button--quiet"
+                  type="button"
+                  onClick={() => {
+                    setUploadPickerFallbackAvailable(false);
+                    uploadInputRef.current?.click();
+                  }}
+                >
+                  {t("workspace.uploadFallback")}
+                </button>
+              )}
               <input
                 ref={uploadInputRef}
                 className="visually-hidden"
@@ -2153,6 +2169,7 @@ function DriveView({
                 multiple
                 aria-label={t("workspace.uploadFiles")}
                 onChange={(event) => {
+                  setUploadPickerFallbackAvailable(false);
                   for (const file of Array.from(event.target.files ?? [])) enqueueFile(file);
                   event.target.value = "";
                 }}

@@ -301,6 +301,7 @@ const EN = {
   // workspace
   "workspace.uploadFiles": "Upload files",
   "workspace.uploadResources": "Upload resources",
+  "workspace.uploadFallback": "Use standard file selection",
   "workspace.itemSummary": "{files} files · {folders} folders",
   "workspace.newFolder": "New folder",
   "records.open": "Scholarly records",
@@ -798,6 +799,7 @@ const ZH_CN: Record<MessageKey, string> = {
   "librarySearch.loadMore": "加载更多",
   "workspace.uploadFiles": "上传文件",
   "workspace.uploadResources": "上传资料",
+  "workspace.uploadFallback": "改用普通文件选择",
   "workspace.itemSummary": "{files} 个文件 · {folders} 个文件夹",
   "workspace.newFolder": "新建文件夹",
   "records.open": "学术记录",
