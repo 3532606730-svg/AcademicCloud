@@ -19,7 +19,7 @@
     "policyName": "AcademicCloudProdOSS",
     "defaultPolicyVersion": "v2",
     "providerVerification": "pass",
-    "applicationRuntimeMismatch": "ali-oss ListParts isTruncated/nextPartNumberMarker XML scalars returned as strings",
+    "applicationRuntimeMismatch": "ali-oss 6.23.0 ListParts forwards XML singleton Part objects and boolean/integer fields as strings while AcademicCloud expects canonical arrays/booleans/numbers",
     "ownerProductAcceptance": "pending",
     "pendingMultipartRows": 5,
     "pendingFileRows": 6
@@ -28,7 +28,8 @@
     "task": "OPS-STORAGE-APP-REPAIR01",
     "branch": "codex/storage-runtime-contract-repair-20260820",
     "baseCommit": "281263be7f6248a4d18e099b59cf49028ec277ca",
-    "scope": "normalize proven ListParts top-level scalar mismatch only",
+    "scope": "normalize only the complete proven ali-oss ListParts runtime representation before the canonical storage adapter boundary",
+    "exactDependencyVerification": "pass",
     "repositoryVerification": "pending",
     "productionTouched": false,
     "deploymentAuthorized": false
@@ -67,6 +68,7 @@
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
     "The exact Owner-authorized RAM v2 repair is complete; no further provider-policy mutation is authorized.",
     "The Owner authorized only the bounded source repair recorded in OPS-STORAGE-APP-REPAIR01; production deployment remains a separate gate.",
+    "The frozen RF-SEARCH01 artifact was inspected read-only to prove the exact packaged ali-oss behavior; the candidate itself was not modified or rebuilt.",
     "Metadata Suggestion code must not be changed unless a current post-repair browser attempt proves a new failure boundary.",
     "RF-SEARCH01 remains frozen and untouched until storage repair/incident closure and its mandatory browser gate."
   ]
