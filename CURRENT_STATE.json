@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T02:15:00+08:00",
+  "updatedAt": "2026-08-21T02:42:37+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
   "production": {
@@ -169,7 +169,7 @@
     "program": "ARCH-COMPUTE01",
     "baseCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
     "tasks": ["JOB-CORE01", "COMPUTE-GHA01", "OCR-METADATA-GHA01"],
-    "developmentStatus": "complete and verified; stop for Owner review",
+    "developmentStatus": "complete; final hosted qualification run passed, but the 512 MiB Node RSS gate was not reproducible across clean runners and production cutover remains blocked",
     "developmentSchema": 22,
     "developmentMigrationHistory": "001-022",
     "productionMigrationApplied": false,
@@ -186,11 +186,45 @@
       "runOneToFivePostRssDriftBytes": 1134592,
       "localOcrMode": "deterministic fixture; protected Linux workflow requires release-local Tesseract and encompassing GNU time evidence"
     },
+    "hostedQualification": {
+      "task": "COMPUTE-GHA02",
+      "baseSource": "7389fc3d5c8b94ffce8a1a2aaf3d29fbcbcaa106",
+      "workflowSource": "19e4d047b50263536f46d11bb5075698c479d73f",
+      "workflowRun": 32403834659,
+      "jobId": 96538104436,
+      "runnerImage": "ubuntu-24.04",
+      "finalRunConclusion": "success",
+      "contracts": "typecheck/test/build pass",
+      "compute": "typecheck/test/build pass; 52 pass, 0 fail, 1 expected pre-runtime skip",
+      "realTesseractE2e": "pass; 1 pass, 0 skipped",
+      "memory": {
+        "ocrMode": "release_local_tesseract",
+        "cleanStartRssBytes": 267780096,
+        "peakRssBytes": 533995520,
+        "postJobRssBytes": 504348672,
+        "repeatRuns": 5,
+        "runOneToFivePostRssDriftBytes": 4247552,
+        "gnuTimeMaxRssKiB": 521480,
+        "gnuTimeMaxRssBytes": 533995520,
+        "nodePeakGateBytes": 536870912,
+        "finalRunHeadroomBytes": 2875392,
+        "finalRunGate": "pass",
+        "priorCleanRunPeakFailuresBytes": [547672064, 549146624],
+        "reproducibility": "fail; identical Compute code crossed the fixed gate on two immediately preceding clean hosted runs"
+      },
+      "logScan": "pass; zero unmasked secrets, signed private source URLs, structured source/callback/candidate payloads, production bootstrap-secret mentions, or runtime fixture-text matches",
+      "artifactCount": 0,
+      "privatePdfProcessed": false,
+      "productionJobExecuted": false,
+      "temporaryDraftPr": 8,
+      "temporaryDraftPrMerged": false,
+      "productionQualification": "blocked pending separately authorized memory-reproducibility investigation or implementation repair"
+    },
     "remainingProductionSecrets": [
       "least-scoped GitHub workflow-dispatch token held by Core",
       "one shared bootstrap secret installed in Core and the protected GitHub environment"
     ],
-    "next": "Owner review; any backup/migration/secrets/environment/artifact/cutover is a new explicit production gate"
+    "next": "STOP; Owner must separately authorize bounded memory-reproducibility investigation or repair before any production backup/migration/secrets/environment/artifact/cutover task"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -207,7 +241,7 @@
     ]
   },
   "currentPriorityOrder": [
-    "ARCH-COMPUTE01 Owner review and separately authorized production cutover decision",
+    "COMPUTE-GHA02 memory-headroom reproducibility decision before any ARCH-COMPUTE01 production cutover",
     "RF-SEARCH01 production closure",
     "L1-UX08",
     "OPS-DEPENDENCY01",
@@ -231,6 +265,8 @@
     "Production now runs exact 08657727 with previous release 988bdbf; schema/history, RAM v2, credentials, protected configuration, SQLite contents, all seven pending files, and all six multipart rows were preserved, rollback was not required, and RF-SEARCH01 is not deployed.",
     "The exact OSS CORS rule now retains POST and adds only PUT plus Content-MD5 for the exact AcademicCloud Origin; no further CORS/provider policy churn is authorized.",
     "The later Metadata Suggestion stall is a separate Core memory-reclaim incident, not a reopened storage incident; ARCH-COMPUTE01 implements a development-only asynchronous Compute boundary without production mutation.",
+    "COMPUTE-GHA02 final hosted run 32403834659 passed contracts, Compute, pinned Tesseract 5.5.3, real OCR, exact five-run memory gate, output safety, and zero-artifact checks; production job execution was skipped and no private PDF was processed.",
+    "Hosted memory headroom is not reproducible: two clean runs peaked at 547672064 and 549146624 bytes above the fixed 512 MiB Node gate, while the final run peaked at 533995520 bytes with only 2875392 bytes of headroom; do not authorize cutover from the isolated final pass alone.",
     "Production remains on schema v21/history 001-021; migration 022, Compute secrets/environment, and cutover remain explicit Owner gates.",
     "RF-SEARCH01 remains frozen and blocked from production until a new explicit Owner decision and its mandatory browser gate."
   ]

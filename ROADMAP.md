@@ -49,10 +49,20 @@ the browser uses durable queued/processing/succeeded/failed state. Core retains
 all Auth, Library, SQLite, storage, suggestion-review, and canonical metadata
 authority. Production remains v21 and unchanged pending a separate Owner gate.
 
+`COMPUTE-GHA02` qualified the exact workflow-only checkpoint on a real
+GitHub-hosted `ubuntu-24.04` runner. Its final exact run passed contracts,
+Compute, pinned Tesseract 5.5.3, real OCR, the unchanged five-run memory gate,
+log/output safety, quoted shell inputs, and zero-artifact checks. The memory gate
+is not reproducible enough for cutover: two clean runs peaked above 512 MiB and
+the final green run retained only 2,875,392 bytes of headroom. Production
+qualification therefore remains blocked pending a separately authorized bounded
+memory investigation or repair.
+
 This creates a temporary mandatory interlock before broad new scholarly features:
 
 ```text
-ARCH-COMPUTE01 Owner review / production cutover decision (STOP)
+COMPUTE-GHA02 hosted memory reproducibility decision (STOP)
+→ ARCH-COMPUTE01 production cutover planning only after an explicit repair gate
 → RF-SEARCH01 production closure only after a later explicit decision
 → L1-UX08 Upload Activity & Source Recovery
 → OPS-DEPENDENCY01 Dependency Health
@@ -107,8 +117,12 @@ acceptance passed. The later Metadata Suggestion memory stall is separate.
 Core-owned job abstraction and one clean GitHub Actions worker. The existing
 front-matter OCR/metadata behavior is migrated rather than redesigned. Core no
 longer depends on PDF.js/canvas/Tesseract for the migrated path; Compute owns
-those runtime checks and returns candidates only. Stop for Owner review before
-any production migration, secrets, environment, artifact, or cutover action.
+those runtime checks and returns candidates only. `COMPUTE-GHA02` proved the
+runtime on real hosted Linux, but also proved the 512 MiB Node gate is sensitive
+to clean-runner variation: peaks of 547,672,064 and 549,146,624 bytes failed,
+while the final 533,995,520-byte peak passed narrowly. Stop for Owner review
+before any memory remediation, production migration, secrets, environment,
+artifact, or cutover action.
 
 ### RF-SEARCH01 — implementation/artifact complete
 Metadata/name catalogue search is green in development. Final source `7bba7b869fd1234c1e7c67002cb93368c299209b`; exact artifact is built and independently verified. Production remains blocked until the storage incident is closed and a real-browser pre-cutover journey passes.
@@ -206,8 +220,10 @@ Database metadata and object bytes are separate recovery domains. A verified SQL
 Repository-declared production remains exact bounded R3 release
 `08657727a17a7ea766ad0d74cc663fa40f91eee1`, previous release
 `988bdbf052de1a39b47a1e22ac761c977eec72c8`, at unchanged schema v21/history
-001-021. ARCH-COMPUTE01 is a development checkpoint at schema v22; no production
-migration or cutover is implied.
+001-021. ARCH-COMPUTE01 is a development checkpoint at schema v22;
+COMPUTE-GHA02 changed only its GitHub workflow qualification path. No production
+migration or cutover is implied, and the hosted memory gate remains a cutover
+blocker despite the final exact-run pass.
 
 RF-SEARCH01 release candidate remains frozen at `7bba7b869fd1234c1e7c67002cb93368c299209b`; documentation/planning reconciliation does not require rebuilding that artifact.
 

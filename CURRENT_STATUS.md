@@ -8,8 +8,10 @@ evidence without duplicating it here.
 
 ## Current situation
 
-The first Core/Compute separation vertical slice is complete in development and
-is stopped for Owner review. No production cutover is authorized.
+The first Core/Compute separation vertical slice is complete in development.
+Its exact final GitHub-hosted qualification run is green, but the fixed 512 MiB
+Node RSS gate was not reproducible across clean runners, so production cutover
+remains technically blocked and unauthorized.
 
 Production remains unchanged:
 
@@ -109,14 +111,48 @@ PDF/native runtime load is substantial, so
 clean process-per-job isolation, concurrency one, and the workflow memory
 assertion remain part of the contract.
 
+## COMPUTE-GHA02 hosted qualification
+
+Exact base `7389fc3d5c8b94ffce8a1a2aaf3d29fbcbcaa106` was qualified through
+workflow-only source `19e4d047b50263536f46d11bb5075698c479d73f` on GitHub-hosted
+`ubuntu-24.04`. Final run `32403834659`, job `96538104436`, passed exact
+source/ref verification, Compute contracts typecheck/test/build, Compute
+typecheck/test/build, the pinned Tesseract 5.5.3 runtime build, real OCR E2E
+with zero skips, the existing five-run memory assertion, and the independent
+output/production-shell safety step. The protected production Compute job was
+skipped, no artifact was uploaded, no production secret was supplied, and only
+repository fixtures/synthetic pages were processed.
+
+Final exact-run memory evidence was:
+
+```text
+CLEAN_START_RSS_BYTES=267780096
+PEAK_RSS_BYTES=533995520
+POST_JOB_RSS_BYTES=504348672
+RUN1_TO_RUN5_POST_RSS_DRIFT_BYTES=4247552
+GNU_TIME_MAX_RSS_KIB=521480
+NODE_PEAK_GATE_BYTES=536870912
+FINAL_RUN_HEADROOM_BYTES=2875392
+```
+
+This one pass is not a reproducible cutover qualification. Two immediately
+preceding clean hosted probes of the unchanged Compute code peaked at
+547,672,064 and 549,146,624 bytes and failed the same fixed gate. The only
+change between the last failed source and the green source emits the already
+collected GNU RSS line after probe completion; it cannot explain the measured
+spread. No threshold, memory limit, or Compute code was changed. The durable
+evidence is `tasks/done/COMPUTE-GHA02.md`.
+
 ADR-031 is authoritative for the architecture, security, timeout, release, and
 production migration consequences.
 
 ## Production cutover gate
 
-This checkpoint did not contact or mutate production. Before a future cutover,
-the Owner must separately authorize an exact backup/migration/artifact/secrets/
-protected-environment/deployment plan. The minimal new secret values are:
+This checkpoint did not contact or mutate production. Before even planning a
+future cutover, the Owner must separately authorize a bounded investigation or
+implementation repair for the non-reproducible hosted memory headroom. A later
+cutover still requires a separate exact backup/migration/artifact/secrets/
+protected-environment/deployment plan. The minimal new secret values remain:
 
 1. a least-scoped GitHub workflow-dispatch token held by Core;
 2. one strong bootstrap secret installed in Core and the protected GitHub
@@ -139,7 +175,8 @@ artifact, deployment, or acceptance work was performed by ARCH-COMPUTE01.
 
 ## Next action
 
-**STOP FOR OWNER REVIEW.** Do not deploy, restart production, change memory
-limits, create/rotate/install production credentials, apply migration 022, mutate
-production SQLite/OSS/RAM/CORS/pending uploads, or progress RF-SEARCH01 under the
-current authorization.
+**STOP FOR OWNER REVIEW.** Do not infer production qualification from the one
+narrow green hosted memory run. Do not deploy, restart production, change memory
+limits, create/rotate/install production credentials, apply migration 022,
+mutate production SQLite/OSS/RAM/CORS/pending uploads, or progress RF-SEARCH01
+under the current authorization.
