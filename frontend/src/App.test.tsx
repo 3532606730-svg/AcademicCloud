@@ -1517,6 +1517,108 @@ describe("App", () => {
     expect(screen.queryByText("abandon.pdf")).not.toBeInTheDocument();
   });
 
+  it("hydrates authoritative status before abandoning a recovered multipart job with no transfer", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: "hydrate-abandon.pdf" };
+    const selected = new File(["abcdef"], pending.displayName, { type: "application/pdf" });
+    const authoritative = multipartTransfer({ file: pending, version: "a".repeat(43) }, pending);
+    const getUploadStatus = vi.fn()
+      .mockRejectedValueOnce(new ApiError(503, "storage_unavailable"))
+      .mockResolvedValueOnce(authoritative);
+    const abandonMultipartUpload = vi.fn().mockResolvedValue(undefined);
+    const abandonLegacyUpload = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listPending: vi.fn().mockResolvedValue([pending]),
+      getUploadStatus,
+      abandonMultipartUpload,
+      abandonLegacyUpload,
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} />);
+
+    await user.click(await screen.findByRole("button", { name: "Pending" }));
+    await user.upload(await screen.findByLabelText(`Choose the original file and continue ${pending.displayName}`), selected);
+    await waitFor(() => expect(getUploadStatus).toHaveBeenCalledOnce());
+    const job = document.querySelector(".upload-job");
+    expect(job).toBeInstanceOf(HTMLElement);
+    await user.click(within(job as HTMLElement).getByRole("button", { name: `Abandon ${pending.displayName} upload` }));
+
+    await waitFor(() => expect(abandonMultipartUpload).toHaveBeenCalledWith(pending.id, authoritative.version));
+    expect(getUploadStatus).toHaveBeenCalledTimes(2);
+    expect(abandonLegacyUpload).not.toHaveBeenCalled();
+  });
+
+  it("never falls through to legacy abandon when recovered multipart status hydration fails", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: "failed-hydration.pdf" };
+    const selected = new File(["abcdef"], pending.displayName, { type: "application/pdf" });
+    const getUploadStatus = vi.fn().mockRejectedValue(new ApiError(503, "storage_unavailable"));
+    const abandonMultipartUpload = vi.fn().mockResolvedValue(undefined);
+    const abandonLegacyUpload = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listPending: vi.fn().mockResolvedValue([pending]),
+      getUploadStatus,
+      abandonMultipartUpload,
+      abandonLegacyUpload,
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} />);
+
+    await user.click(await screen.findByRole("button", { name: "Pending" }));
+    await user.upload(await screen.findByLabelText(`Choose the original file and continue ${pending.displayName}`), selected);
+    await waitFor(() => expect(getUploadStatus).toHaveBeenCalledOnce());
+    const job = document.querySelector(".upload-job");
+    expect(job).toBeInstanceOf(HTMLElement);
+    await user.click(within(job as HTMLElement).getByRole("button", { name: `Abandon ${pending.displayName} upload` }));
+
+    await waitFor(() => expect(getUploadStatus).toHaveBeenCalledTimes(2));
+    expect(abandonMultipartUpload).not.toHaveBeenCalled();
+    expect(abandonLegacyUpload).not.toHaveBeenCalled();
+    expect(within(job as HTMLElement).getByRole("alert")).toHaveTextContent("Uploads are temporarily unavailable");
+  });
+
+  it("uses legacy abandon only for a durably classified legacy upload", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const pending = {
+      ...PENDING_MULTIPART_FILE,
+      id: "legacy-pending-1",
+      displayName: "legacy-abandon.pdf",
+      uploadKind: "legacy" as const,
+    };
+    const selected = new File(["abcdef"], pending.displayName, { type: "application/pdf" });
+    const abandonLegacyUpload = vi.fn().mockResolvedValue(undefined);
+    const abandonMultipartUpload = vi.fn().mockResolvedValue(undefined);
+    const directUpload = vi.fn((_authorization: unknown, _bytes: Blob, options?: { signal?: AbortSignal }) => new Promise<void>((_resolve, reject) => {
+      options?.signal?.addEventListener("abort", () => reject(new DOMException("paused", "AbortError")), { once: true });
+    }));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listPending: vi.fn().mockResolvedValue([pending]),
+      renewUpload: vi.fn().mockResolvedValue({
+        method: "POST",
+        url: "https://storage.invalid",
+        fields: {},
+        expiresAt: "2026-08-20T23:59:00.000Z",
+      }),
+      abandonLegacyUpload,
+      abandonMultipartUpload,
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directUpload={directUpload} />);
+
+    await user.click(await screen.findByRole("button", { name: "Pending" }));
+    await user.upload(await screen.findByLabelText(`Choose the original file and continue ${pending.displayName}`), selected);
+    await waitFor(() => expect(directUpload).toHaveBeenCalledOnce());
+    const job = document.querySelector(".upload-job");
+    expect(job).toBeInstanceOf(HTMLElement);
+    await user.click(within(job as HTMLElement).getByRole("button", { name: `Abandon ${pending.displayName} upload` }));
+
+    await waitFor(() => expect(abandonLegacyUpload).toHaveBeenCalledWith(pending.id));
+    expect(abandonMultipartUpload).not.toHaveBeenCalled();
+  });
+
   it("opens authorized downloads through a native anchor without fetch or Blob buffering", async () => {
     const user = userEvent.setup();
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
