@@ -216,15 +216,16 @@
       "artifactCount": 0,
       "privatePdfProcessed": false,
       "productionJobExecuted": false,
+      "productionJobRuntimeStaging": "pre-existing blocker; protected job still requests runtime/tesseract although the pinned builder accepts only normalized repository output paths; not repaired or executed under qualification-only authority",
       "temporaryDraftPr": 8,
       "temporaryDraftPrMerged": false,
-      "productionQualification": "blocked pending separately authorized memory-reproducibility investigation or implementation repair"
+      "productionQualification": "blocked pending separately authorized memory-reproducibility investigation or implementation repair plus the smallest protected-job runtime staging repair"
     },
     "remainingProductionSecrets": [
       "least-scoped GitHub workflow-dispatch token held by Core",
       "one shared bootstrap secret installed in Core and the protected GitHub environment"
     ],
-    "next": "STOP; Owner must separately authorize bounded memory-reproducibility investigation or repair before any production backup/migration/secrets/environment/artifact/cutover task"
+    "next": "STOP; Owner must separately authorize bounded memory-reproducibility investigation or repair and protected-job runtime staging repair before any production backup/migration/secrets/environment/artifact/cutover task"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -267,6 +268,7 @@
     "The later Metadata Suggestion stall is a separate Core memory-reclaim incident, not a reopened storage incident; ARCH-COMPUTE01 implements a development-only asynchronous Compute boundary without production mutation.",
     "COMPUTE-GHA02 final hosted run 32403834659 passed contracts, Compute, pinned Tesseract 5.5.3, real OCR, exact five-run memory gate, output safety, and zero-artifact checks; production job execution was skipped and no private PDF was processed.",
     "Hosted memory headroom is not reproducible: two clean runs peaked at 547672064 and 549146624 bytes above the fixed 512 MiB Node gate, while the final run peaked at 533995520 bytes with only 2875392 bytes of headroom; do not authorize cutover from the isolated final pass alone.",
+    "The protected production Compute job was deliberately not executed or repaired; its pre-existing runtime/tesseract build target conflicts with the pinned builder's repository-output-only contract and remains a separate pre-cutover workflow blocker.",
     "Production remains on schema v21/history 001-021; migration 022, Compute secrets/environment, and cutover remain explicit Owner gates.",
     "RF-SEARCH01 remains frozen and blocked from production until a new explicit Owner decision and its mandatory browser gate."
   ]

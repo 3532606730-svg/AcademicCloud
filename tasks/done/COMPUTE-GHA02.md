@@ -41,6 +41,16 @@ production environment and no production bootstrap secret. The existing
 secret, quoted environment-variable arguments, timeout, and callback step, and
 is explicitly skipped for pull-request qualification.
 
+The first hosted failure also proved a pre-existing production-workflow staging
+mismatch: `scripts/build-tesseract-runtime.sh` accepts only normalized paths
+below repository `output/`, while the untouched production job still requests
+`runtime/tesseract`. Qualification correctly uses
+`output/qualification/runtime/tesseract`; repairing the protected production
+job's build/stage/promote sequence was not necessary for safe qualification and
+was not authorized or attempted. That exact workflow mismatch is a separate
+pre-cutover blocker, not a reason to expose the production callback or secret in
+this task.
+
 The qualification job:
 
 - checks out the exact pull-request head SHA and verifies the exact branch,
@@ -162,11 +172,13 @@ PRODUCTION_CALLBACK_EXECUTED=false
 ## Decision and next gate
 
 STOP. The exact final hosted run is green, but production cutover remains
-unauthorized and technically blocked by non-reproducible Node RSS headroom.
-Before any backup/migration/secrets/environment/artifact/cutover task, the Owner
-must separately authorize a bounded memory-reproducibility investigation or
-implementation repair. That follow-up must not merely raise the gate or change
-production memory limits without a new evidence-backed decision.
+unauthorized and technically blocked by non-reproducible Node RSS headroom plus
+the untouched protected-job runtime staging mismatch. Before any
+backup/migration/secrets/environment/artifact/cutover task, the Owner must
+separately authorize a bounded memory-reproducibility investigation or
+implementation repair and the smallest production-workflow staging repair. That
+follow-up must not merely raise the gate or change production memory limits
+without a new evidence-backed decision.
 
 ## Rollback
 

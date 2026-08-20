@@ -9,7 +9,7 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
-| COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / FINAL RUN GREEN / MEMORY GATE NOT REPRODUCIBLE | Owner must separately authorize bounded memory-headroom investigation or repair before any cutover plan |
+| COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / FINAL RUN GREEN / CUTOVER BLOCKERS PROVEN | Owner must separately authorize bounded memory-headroom investigation or repair plus the smallest protected-job runtime staging repair before any cutover plan |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | DEVELOPMENT COMPLETE / PRODUCTION CUTOVER BLOCKED | Final hosted run passed, but two clean probes exceeded the fixed 512 MiB Node gate; backup, migration 022, Compute secrets/environment, artifact, and cutover remain unauthorized |
 | OPS-METADATA-MEMORY01 | DIAGNOSIS COMPLETE / PRODUCTION RISK NOT CUT OVER | Addressed by the development Compute boundary; production remains on the old release until an authorized cutover |
 
@@ -100,6 +100,9 @@ The full storage hotfix/R3 artifact identities and hashes remain in
 
 - Stop for Owner review of the Core/Compute hosted memory-headroom variability;
   do not treat the isolated narrow green run as reproducible cutover evidence.
+- The untouched protected Compute job's `runtime/tesseract` builder target is
+  incompatible with the builder's `output/`-only contract and requires a new
+  explicit workflow-repair gate before production execution.
 - Do not deploy, restart production, change `MemoryHigh`/`MemoryMax`, install or
   rotate credentials, or apply migration 022 without a new explicit gate.
 - Do not mutate OSS RAM/CORS/bucket policy, production SQLite, pending uploads,

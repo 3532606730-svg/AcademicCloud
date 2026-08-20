@@ -143,6 +143,14 @@ collected GNU RSS line after probe completion; it cannot explain the measured
 spread. No threshold, memory limit, or Compute code was changed. The durable
 evidence is `tasks/done/COMPUTE-GHA02.md`.
 
+The first hosted failure also exposed an untouched production-workflow staging
+mismatch: the pinned builder rejects targets outside repository `output/`, while
+the protected production job still requests `runtime/tesseract`. The
+qualification job uses its own valid `output/qualification` staging path. The
+protected job was skipped and remained unmodified, so the smallest safe
+build/stage/promote repair for that production path is also required before
+cutover planning.
+
 ADR-031 is authoritative for the architecture, security, timeout, release, and
 production migration consequences.
 
@@ -150,9 +158,10 @@ production migration consequences.
 
 This checkpoint did not contact or mutate production. Before even planning a
 future cutover, the Owner must separately authorize a bounded investigation or
-implementation repair for the non-reproducible hosted memory headroom. A later
-cutover still requires a separate exact backup/migration/artifact/secrets/
-protected-environment/deployment plan. The minimal new secret values remain:
+implementation repair for the non-reproducible hosted memory headroom and the
+smallest protected-job runtime staging repair. A later cutover still requires a
+separate exact backup/migration/artifact/secrets/protected-environment/deployment
+plan. The minimal new secret values remain:
 
 1. a least-scoped GitHub workflow-dispatch token held by Core;
 2. one strong bootstrap secret installed in Core and the protected GitHub

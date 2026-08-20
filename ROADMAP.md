@@ -56,7 +56,10 @@ log/output safety, quoted shell inputs, and zero-artifact checks. The memory gat
 is not reproducible enough for cutover: two clean runs peaked above 512 MiB and
 the final green run retained only 2,875,392 bytes of headroom. Production
 qualification therefore remains blocked pending a separately authorized bounded
-memory investigation or repair.
+memory investigation or repair. The protected production job also retains a
+pre-existing staging mismatch (`runtime/tesseract` versus the pinned builder's
+repository-`output/`-only contract); qualification did not execute or repair
+that path, so it is a second explicit pre-cutover workflow gate.
 
 This creates a temporary mandatory interlock before broad new scholarly features:
 
@@ -121,8 +124,8 @@ those runtime checks and returns candidates only. `COMPUTE-GHA02` proved the
 runtime on real hosted Linux, but also proved the 512 MiB Node gate is sensitive
 to clean-runner variation: peaks of 547,672,064 and 549,146,624 bytes failed,
 while the final 533,995,520-byte peak passed narrowly. Stop for Owner review
-before any memory remediation, production migration, secrets, environment,
-artifact, or cutover action.
+before any memory remediation, protected-job runtime staging repair, production
+migration, secrets, environment, artifact, or cutover action.
 
 ### RF-SEARCH01 — implementation/artifact complete
 Metadata/name catalogue search is green in development. Final source `7bba7b869fd1234c1e7c67002cb93368c299209b`; exact artifact is built and independently verified. Production remains blocked until the storage incident is closed and a real-browser pre-cutover journey passes.
