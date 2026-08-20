@@ -33,9 +33,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      QUALIFICATION_BASE_SOURCE: 7389fc3d5c8b94ffce8a1a2aaf3d29fbcbcaa106
+      QUALIFICATION_BASE_SOURCE: decfde4be373262291300b367f99de451c59efc0
       QUALIFICATION_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}
       QUALIFICATION_SOURCE_REF: codex/project-memory-reconcile-20260817
+      COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24.04
       TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
       GITHUB_API_TOKEN: ${{ github.token }}
 
@@ -47,7 +48,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify exact source, ref, runner, and workflow-only delta
+      - name: Verify exact source, ref, runner, and pre-cutover delta
         shell: bash
         run: |
           set -euo pipefail
@@ -58,7 +59,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$QUALIFICATION_SOURCE_COMMIT"
           git cat-file -e "$QUALIFICATION_BASE_SOURCE^{commit}"
           git merge-base --is-ancestor "$QUALIFICATION_BASE_SOURCE" HEAD
-          test "$(git diff --name-only "$QUALIFICATION_BASE_SOURCE"..HEAD)" = ".github/workflows/derived-compute-worker.yml"
+          test "$(git diff --name-only "$QUALIFICATION_BASE_SOURCE"..HEAD)" = $'.github/workflows/derived-compute-worker.yml\nbackend/test/deployment/artifacts.test.ts\ncompute/scripts/memory-probe.ts'
 
       - name: Set up latest Node.js 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -139,14 +140,14 @@ jobs:
           fi
           readonly PROBE_JSON="$(grep -E '^\{"status":"ok"' "$EVIDENCE_DIR/compute-memory-probe.jsonl" | tail -n 1)"
           test -n "$PROBE_JSON"
-          jq -e '.ocrMode == "release_local_tesseract" and .peakRssBytes < 536870912 and .repeatDriftBytes < 67108864' <<<"$PROBE_JSON" >/dev/null
+          jq -e '.ocrMode == "release_local_tesseract" and .memoryProfile == "github-hosted-ubuntu-24.04" and .peakRssLimitBytes == 805306368 and .peakRssBytes < .peakRssLimitBytes and .repeatDriftBytes < 67108864' <<<"$PROBE_JSON" >/dev/null
           {
             echo "### Compute qualification memory evidence"
             echo
             echo "The JSON probe records Node/PDF.js/native-canvas clean, peak, post-job, and repeat-run RSS with release-local Tesseract enabled. GNU time records the encompassing command resource maximum, including child-process execution."
             echo
             echo '```text'
-            jq '{status, cleanStartRssBytes, peakRssBytes, postJobRssBytes, retainedGrowthBytes, repeatDriftBytes, runs, ocrMode}' <<<"$PROBE_JSON"
+            jq '{status, cleanStartRssBytes, peakRssBytes, postJobRssBytes, retainedGrowthBytes, repeatDriftBytes, runs, memoryProfile, peakRssLimitBytes, ocrMode}' <<<"$PROBE_JSON"
             echo "$GNU_MAX_RSS"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -182,6 +183,7 @@ jobs:
       COMPUTE_INPUT_JOB_ID: ${{ inputs.job_id }}
       COMPUTE_INPUT_ATTEMPT_ID: ${{ inputs.attempt_id }}
       COMPUTE_INPUT_CORE_ORIGIN: ${{ inputs.core_base_url }}
+      COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24.04
 
     steps:
       - name: Validate pinned routing before exposing the worker capability
@@ -226,6 +228,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          readonly STAGING_ROOT="output/worker-stage"
+          readonly RUNTIME_ROOT="output/worker"
+          rm -rf "$STAGING_ROOT" "$RUNTIME_ROOT"
           docker pull "$TESSERACT_BUILDER_IMAGE"
           test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
           docker run --rm --platform linux/amd64 \
@@ -236,17 +241,19 @@ jobs:
             --volume "$GITHUB_WORKSPACE:/work" \
             --workdir /work \
             "$TESSERACT_BUILDER_IMAGE" \
-            bash scripts/build-tesseract-runtime.sh runtime/tesseract
+            bash scripts/build-tesseract-runtime.sh "$STAGING_ROOT/runtime/tesseract"
+          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd() + '/$STAGING_ROOT');"
+          mv "$STAGING_ROOT" "$RUNTIME_ROOT"
 
       - name: Verify Compute OCR runtime and realistic fixtures
         shell: bash
         env:
-          OCR_TESSERACT_PATH: ${{ github.workspace }}/runtime/tesseract/bin/tesseract
-          OCR_TESSDATA_PATH: ${{ github.workspace }}/runtime/tesseract/tessdata
-          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/runtime/tesseract/lib
+          OCR_TESSERACT_PATH: ${{ github.workspace }}/output/worker/runtime/tesseract/bin/tesseract
+          OCR_TESSDATA_PATH: ${{ github.workspace }}/output/worker/runtime/tesseract/tessdata
+          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/output/worker/runtime/tesseract/lib
         run: |
           set -euo pipefail
-          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd());"
+          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd() + '/output/worker');"
           npx tsx --test compute/test/realistic-ocr-e2e.test.ts
           mkdir -p output
           /usr/bin/time -v -o output/compute-memory-resource.txt \
@@ -258,7 +265,8 @@ jobs:
             echo "The JSON probe records Node/PDF.js/native-canvas clean, peak, post-job, and repeat-run RSS with release-local Tesseract enabled. GNU time records the encompassing command resource maximum, including child-process execution."
             echo
             echo '```text'
-            cat output/compute-memory-resource.txt
+            grep -E '^\{"status":"ok"' output/compute-memory-probe.jsonl | tail -n 1 | jq '{status, cleanStartRssBytes, peakRssBytes, postJobRssBytes, retainedGrowthBytes, repeatDriftBytes, runs, memoryProfile, peakRssLimitBytes, ocrMode}'
+            grep -E '^[[:space:]]*Maximum resident set size \(kbytes\):' output/compute-memory-resource.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

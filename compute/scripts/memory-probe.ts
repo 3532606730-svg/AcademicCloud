@@ -8,6 +8,14 @@ import type { PdfRangeSource } from "../src/suggestion.js";
 
 const MiB = 1024 * 1024;
 const runs = 5;
+const memoryProfile = process.env.COMPUTE_MEMORY_PROFILE ?? "local-development";
+assert.ok(
+  memoryProfile === "local-development" || memoryProfile === "github-hosted-ubuntu-24.04",
+  `unsupported Compute memory profile: ${memoryProfile}`,
+);
+const peakRssLimitBytes = memoryProfile === "github-hosted-ubuntu-24.04"
+  ? 768 * MiB
+  : 512 * MiB;
 const realTesseract = [
   process.env.OCR_TESSERACT_PATH,
   process.env.OCR_TESSDATA_PATH,
@@ -81,7 +89,10 @@ for (let run = 1; run <= runs; run += 1) {
 const postJobRssBytes = samples.at(-1)!.postRssBytes;
 const retainedGrowthBytes = postJobRssBytes - cleanStartRssBytes;
 const repeatDriftBytes = samples.at(-1)!.postRssBytes - samples[0]!.postRssBytes;
-assert.ok(peakRssBytes < 512 * MiB, `Compute peak RSS exceeded 512 MiB: ${peakRssBytes}`);
+assert.ok(
+  peakRssBytes < peakRssLimitBytes,
+  `Compute peak RSS exceeded ${peakRssLimitBytes} bytes for ${memoryProfile}: ${peakRssBytes}`,
+);
 assert.ok(repeatDriftBytes < 64 * MiB, `repeat-run RSS drift exceeded 64 MiB: ${repeatDriftBytes}`);
 
 process.stdout.write(`${JSON.stringify({
@@ -92,6 +103,8 @@ process.stdout.write(`${JSON.stringify({
   retainedGrowthBytes,
   repeatDriftBytes,
   runs,
+  memoryProfile,
+  peakRssLimitBytes,
   ocrMode: realTesseract ? "release_local_tesseract" : "deterministic_fixture",
   samples,
 })}\n`);

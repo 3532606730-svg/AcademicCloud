@@ -150,4 +150,17 @@ test("Compute workflow owns the exact release-local OCR boundary and bounded wor
   assert.doesNotMatch(workflow, /--(?:core-base-url|job-id|attempt-id)=\$\{\{ inputs\./u);
   assert.match(workflow, /compute\/test\/realistic-ocr-e2e\.test\.ts/u);
   assert.doesNotMatch(workflow, /apt(?:-get)? install tesseract/u);
+  assert.equal(workflow.match(/COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24\.04/gu)?.length, 2);
+  assert.match(workflow, /\.peakRssLimitBytes == 805306368/u);
+  assert.match(workflow, /\.repeatDriftBytes < 67108864/u);
+  assert.doesNotMatch(workflow, /build-tesseract-runtime\.sh runtime\/tesseract/u);
+
+  const protectedJob = workflow.split("\n  metadata-suggestion:")[1] ?? "";
+  assert.match(protectedJob, /readonly STAGING_ROOT="output\/worker-stage"/u);
+  assert.match(protectedJob, /readonly RUNTIME_ROOT="output\/worker"/u);
+  assert.match(protectedJob, /build-tesseract-runtime\.sh "\$STAGING_ROOT\/runtime\/tesseract"/u);
+  assert.match(protectedJob, /verifyTesseractRuntime\(process\.cwd\(\) \+ '\/\$STAGING_ROOT'\)/u);
+  assert.match(protectedJob, /mv "\$STAGING_ROOT" "\$RUNTIME_ROOT"/u);
+  assert.equal(protectedJob.match(/\$\{\{ github\.workspace \}\}\/output\/worker\/runtime\/tesseract/gu)?.length, 3);
+  assert.match(protectedJob, /verifyTesseractRuntime\(process\.cwd\(\) \+ '\/output\/worker'\)/u);
 });
