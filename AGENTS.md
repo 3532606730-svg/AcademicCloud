@@ -4,9 +4,9 @@
 
 **AcademicCloud** is long-term academic digital infrastructure.
 
-**Current execution phase:** Core Drive, Accounts, the canonical shared Library, catalogue/metadata/suggestion hardening, bounded front-matter OCR, resumable multipart transfer, and the first durable Core/Compute vertical slice are complete in development. Production remains exact immutable R3 repair release `08657727a17a7ea766ad0d74cc663fa40f91eee1`, previous release `988bdbf052de1a39b47a1e22ac761c977eec72c8`, at unchanged schema v21/history 001–021. Owner-reported R3 browser storage acceptance passed and `OPS-STORAGE-INCIDENT01` is closed. The later Metadata Suggestion stall is separate: heavy PDF rendering/OCR in the Core process drove the constrained cgroup into memory reclaim and blocked the Node event loop without OOM or restart. `ARCH-COMPUTE01` now implements development-only migration 022, a provider-neutral durable job boundary, a clean GitHub Actions Compute adapter/worker, bounded one-page-at-a-time OCR memory lifecycle, asynchronous Metadata Suggestion UI states, and a Core artifact without PDF.js/native canvas/Tesseract for that path. `COMPUTE-GHA02` completed real `ubuntu-24.04` verification: the final exact run passed, but two clean hosted probes exceeded the fixed 512 MiB Node RSS gate and the final pass retained only 2,875,392 bytes of headroom. The checkpoint is therefore not reproducibly memory-qualified for production cutover. No production change or migration occurred. `RF-SEARCH01` remains frozen and absent from production.
+**Current execution phase:** Core Drive, Accounts, the canonical shared Library, catalogue/metadata/suggestion hardening, bounded front-matter OCR, resumable multipart transfer, and the first durable Core/Compute vertical slice are complete in development. Production remains exact immutable R3 repair release `08657727a17a7ea766ad0d74cc663fa40f91eee1`, previous release `988bdbf052de1a39b47a1e22ac761c977eec72c8`, at unchanged schema v21/history 001–021. Owner-reported R3 browser storage acceptance passed and `OPS-STORAGE-INCIDENT01` is closed. The later Metadata Suggestion stall is separate: heavy PDF rendering/OCR in the Core process drove the constrained cgroup into memory reclaim and blocked the Node event loop without OOM or restart. `ARCH-COMPUTE01` implements development-only migration 022, a provider-neutral durable job boundary, a clean GitHub Actions Compute adapter/worker, bounded one-page-at-a-time OCR memory lifecycle, asynchronous Metadata Suggestion UI states, and a Core artifact without PDF.js/native canvas/Tesseract for that path. `COMPUTE-GHA02` completed real `ubuntu-24.04` verification: the final exact run passed, but two clean hosted probes exceeded the historical fixed 512 MiB Node RSS gate and the final pass retained only 2,875,392 bytes of headroom. The protected production job also still has the proven `runtime/tesseract` versus repository-`output/` staging mismatch. No production change or migration occurred. `RF-SEARCH01` remains absent from production. The Owner has now authorized `GOAL-BETA-PREP01` as the bounded continuous program to resolve these two pre-cutover blockers, safely cut over Core/Compute, recompose and deploy Search on the latest baseline, deliver beta-minimum Activity Center/Source Recovery, pass the real-browser golden journey, and STOP at `INTERNAL_BETA_READY` before inviting users.
 
-**Approved continuous objective:** STOP after the completed `COMPUTE-GHA02` hosted qualification evidence and repository publication. The Owner next reviews the non-reproducible Compute memory headroom and the untouched protected-job staging mismatch (`runtime/tesseract` versus the pinned builder's repository-`output/`-only contract), then decides whether to authorize a bounded investigation/implementation repair and the smallest workflow staging repair. Do not infer cutover readiness from the isolated final green run. Do not execute the protected production job, deploy, restart production, change memory limits, install or rotate credentials, apply migration 022, create a protected production environment, mutate production SQLite/OSS/RAM/CORS/pending uploads, or rebuild/deploy `RF-SEARCH01` under this objective. Artifact `9405764771` / source `8d289702…` remains permanently disallowed under the no-Search boundary.
+**Approved continuous objective:** Execute `tasks/doing/GOAL-BETA-PREP01.md` in mandatory phase order. Codex Goal Mode may autonomously progress across green checkpoints without routine Owner round-trips: (1) evidence-backed GitHub-hosted memory-contract decision plus smallest protected-job Tesseract staging repair; (2) exact Core/Compute production cutover with verified backup, migration 022, minimum least-privilege Compute credentials/environment, exact artifact/deployment, and one bounded canary; (3) compose the already-green RF-SEARCH01 behavior onto the latest post-Compute baseline, build a new exact artifact, pass its browser gate, and deploy it; (4) implement beta-minimum unified Activity Center v0.1 plus safe source recovery; (5) run QA-GOLDEN01 against the exact final release. When all acceptance criteria in GOAL-BETA-PREP01 are green, reconcile durable state, set `INTERNAL_BETA_READY=true`, checkpoint/push/synchronize where actually possible, then STOP before starting internal beta. Early STOP only for the hard boundaries in GOAL-BETA-PREP01: missing compliant least-scoped credential requiring Owner interaction, new paid cost, uncertain production data integrity/migration safety, security/privacy weakening, newly required OSS/RAM/CORS/provider mutation outside scope, product-scope expansion, or an unsafe/unrecoverable production failure. Artifact `9405764771` / source `8d289702…` remains permanently disallowed; the historical RF-SEARCH01 artifact must not be deployed directly onto the newer baseline.
 
 ## Engineering Workflow
 
@@ -22,7 +22,7 @@ Ordinary AcademicCloud engineering follows `.agents/skills/academiccloud-workflo
 6. **Data safety outranks feature count.** Never silently overwrite, destroy, resurrect, misattribute, or expose academic data.
 7. **External services stay abstracted.** File bytes remain behind storage adapters; compute-heavy OCR/RAG/AI stays isolated from Core Drive.
 8. **Server authority is mandatory.** Never trust client-provided owner, role, membership, privacy, or authorization claims.
-9. **Production is a separate gate.** Repository implementation never authorizes SSH, live migration, DNS/TLS/OSS mutation, deployment, destructive production tests, or main merge.
+9. **Production is a separate gate.** Repository implementation alone never authorizes SSH, live migration, DNS/TLS/OSS mutation, deployment, destructive production tests, or main merge. GOAL-BETA-PREP01 is the current explicit Owner production authorization only for its bounded cutover/search/activity/golden sequence and hard boundaries.
 10. **Every Epic ends at an evidence-backed checkpoint.** Applicable tests, risk-appropriate review, task-state reconciliation, and Git checkpoint precede autonomous progression.
 11. **Shared resource does not imply shared research activity.** ADR-014 governs private research-state boundaries; ADR-022 defines the canonical shared-corpus default.
 12. **AI authority never exceeds the requesting user's effective authority.** There is no AI super-admin research view.
@@ -69,7 +69,7 @@ Additional invariants:
 
 ### Layer 1 — Core Drive / Resource Handling
 
-**Foundation complete, including the L1-UX06 catalogue repair.** Authentication, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, deployment/recovery foundation, canonical shared `资料库`, and the unified catalogue presentation/lifecycle are green. Repository execution is stopped for Owner review.
+**Foundation complete, including the L1-UX06 catalogue repair.** Authentication, folders, browser-direct upload/download, listing/move/rename, Favorites, recycle/restore, Preview, mobile/desktop UI, security/reliability, deployment/recovery foundation, canonical shared `资料库`, and the unified catalogue presentation/lifecycle are green. GOAL-BETA-PREP01 may now make only the bounded beta-prep changes explicitly authorized in its phases.
 
 ### Layer 2 — Accounts & Governance
 
@@ -87,7 +87,7 @@ Owner-approved Pre-OCR direction includes:
 - Research Inbox/intake;
 - sidecar annotations, citations, page-level evidence, Evidence Bundles, Research Questions, structured export foundations.
 
-`RF-META01` is complete: canonical information is surfaced through normal `资料详情`, not a standalone `学术记录` browser. `RF-METASUGGEST01` and RF-FRONTMATTEROCR01 remain semantically complete; ADR-031 now moves their heavy PDF/render/OCR execution into a durable asynchronous Compute job while Core retains authorization, filename rules, candidate persistence/review, and canonical CAS writes. Usable native text remains preferred; provenance-rich proposals remain reviewable and may never silently write canonical metadata. No raw OCR page text or rendered page image is persisted. `RF-SEARCH01` and the remaining Pre-OCR queue remain parked.
+`RF-META01` is complete: canonical information is surfaced through normal `资料详情`, not a standalone `学术记录` browser. `RF-METASUGGEST01` and RF-FRONTMATTEROCR01 remain semantically complete; ADR-031 moves their heavy PDF/render/OCR execution into a durable asynchronous Compute job while Core retains authorization, filename rules, candidate persistence/review, and canonical CAS writes. Usable native text remains preferred; provenance-rich proposals remain reviewable and may never silently write canonical metadata. No raw OCR page text or rendered page image is persisted. `RF-SEARCH01` production closure is now authorized only inside GOAL-BETA-PREP01 Phase 3; the remaining Personal Research / pre-intelligence queue stays parked.
 
 ### Layer 4 — Shared Academic Library
 
@@ -112,11 +112,11 @@ Owner-approved final pre-OCR foundation remains parked:
 
 ### Layer 6 — Intelligence
 
-**Future / not authorized by the current program:** whole-document OCR/text extraction, full-text indexing/search, embeddings/retrieval, RAG, evidence-grounded assistance. The completed bounded local front-matter OCR fallback does not authorize any of those capabilities.
+**Future / not authorized by the current program:** whole-document OCR/text extraction, full-text indexing/search, embeddings/retrieval, RAG, evidence-grounded assistance. The completed bounded front-matter OCR fallback does not authorize any of those capabilities.
 
 ### Operations Track
 
-Operations is cross-cutting. OPS01A repository/local preparation and the development-only `JOB-CORE01` / `COMPUTE-GHA01` / `OCR-METADATA-GHA01` vertical slice are complete. `COMPUTE-GHA02` proved the exact final workflow source on hosted Linux without a production secret, callback, artifact, or private PDF, but its 512 MiB Node memory gate varied across clean runs and remains a production-cutover blocker. GitHub Actions is only the first adapter behind the provider-neutral Compute contract. Any memory remediation, live activation, protected-environment/secret installation, migration, scheduling, restore, pruning, certificate action, or production mutation remains separately Owner-gated.
+Operations is cross-cutting. OPS01A repository/local preparation and the development-only `JOB-CORE01` / `COMPUTE-GHA01` / `OCR-METADATA-GHA01` vertical slice are complete. `COMPUTE-GHA02` proved the exact final workflow source on hosted Linux without a production secret, callback, artifact, or private PDF, and proved both the historical 512 MiB headroom variability and protected-job staging mismatch. GitHub Actions is only the first adapter behind the provider-neutral Compute contract. GOAL-BETA-PREP01 now authorizes the bounded provider-specific memory-contract decision, staging repair, exact production backup/migration 022/minimum-secret cutover, one canary, Search production closure, Activity Center v0.1, and final golden journey. Paid infrastructure, broad credentials, unrelated provider mutation, and work outside that card remain separately Owner-gated.
 
 ## Architecture Principles
 
@@ -166,7 +166,7 @@ After implementation or an Owner-approved durable planning decision:
 5. Review diff and create a task/decision-level Git checkpoint.
 6. Push only to the authorized non-main branch when publication is within scope.
 7. If the active local checkout is accessible, synchronize it non-destructively to the intended remote branch and verify local HEAD == remote HEAD. If local access is unavailable, report synchronization as outstanding rather than guessing.
-8. Continue only to the next task inside the approved continuous objective; otherwise stop.
+8. Continue only to the next phase inside GOAL-BETA-PREP01 when its preceding checkpoint is green; otherwise follow its early-stop rules.
 
 When relevant checks are green and no material finding remains, record/commit instead of continuing to search for hypothetical issues.
 
@@ -178,7 +178,7 @@ Project files, tests, task cards, ADRs, and Git history are persistent memory. C
 - `CURRENT_STATUS.md` defines concise project-level truth.
 - `TASK_BOARD.md` defines the executable queue.
 - `tasks/ready/` stores approved future Epic specs.
-- `tasks/doing/` stores the active Epic.
+- `tasks/doing/` stores the active Epic/program.
 - `tasks/done/` stores completed Epic records.
 - accepted durable workflow/product/architecture/security decisions must be reconciled into their authoritative files per ADR-023.
 - after an authorized push, remote publication and local synchronization are separate states; verify the accessible local checkout instead of assuming it followed the remote.
