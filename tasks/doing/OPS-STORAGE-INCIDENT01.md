@@ -1,7 +1,7 @@
 # OPS-STORAGE-INCIDENT01 — Post-Billing Storage/API Incident Diagnosis
 
 ## State
-PROVIDER REPAIR VERIFIED + COMPATIBLE HOTFIX DEPLOYED / PRODUCTION VERIFICATION PASS — incident remains open only for Owner real-browser Continue, disposable Abandon, and Metadata Suggestion acceptance.
+R3 FINAL BOUNDED REPAIR DEPLOYED / PRODUCTION VERIFICATION PASS — incident remains open only for Owner real-browser existing Resume, new multipart upload, disposable multipart Abandon, file open/preview/download, and Metadata Suggestion acceptance.
 
 ## Trigger
 Owner observed a real production outage pattern:
@@ -31,12 +31,12 @@ The Owner subsequently authorized one exact provider-side correction: create
 existing action/resource scope, and add only `oss:ListParts` and
 `oss:AbortMultipartUpload`.
 
-After real-browser acceptance exposed the remaining Continue failure, the Owner separately authorized the bounded source-only `OPS-STORAGE-APP-REPAIR01`. That repair and its immutable production artifact are now fully verified; production deployment remains a separate explicit gate.
+After real-browser acceptance exposed the remaining Continue failure, the Owner separately authorized the bounded source-only `OPS-STORAGE-APP-REPAIR01`, followed by the production-baseline `OPS-STORAGE-HOTFIX01`. R2 then proved the final three independent boundaries without reopening the accepted diagnosis. The Owner authorized R3 to repair only the valid empty `ListParts` marker, authoritative multipart-abandon routing/hydration, and the exact existing bucket CORS rule. Exact R3 artifact `9413295334` / source `08657727…` is now deployed and verified.
 
 ## Forbidden After the Provider Repair
 
 - unapproved code/config/credential changes;
-- any further RAM/OSS policy mutation or policy-version churn;
+- any further RAM/OSS/CORS policy mutation or policy-version churn;
 - service/Nginx restart merely to try fixes;
 - migration/database edits;
 - manual multipart complete/abort;
@@ -58,7 +58,7 @@ Provider-safe diagnosis may record stable classes such as `AccessDenied`, `Inval
 - provider repair verified with `HeadObject`, bounded `GetObject`, and raw `ListParts` from the exact production runtime;
 - bounded application repair passes repository verification and immutable artifact verification before any deployment decision;
 - preserve schema, credentials, configuration, and RF-SEARCH01;
-- after an explicit Owner-authorized deployment, verify release identity/health/readiness and run Owner real-browser Continue, disposable Abandon, and metadata-suggestion acceptance.
+- after the explicit Owner-authorized deployment, verify release identity/health/readiness and stop for Owner real-browser existing Resume, new multipart upload, disposable multipart Abandon, file open/preview/download, and metadata-suggestion acceptance.
 
 ## Diagnosis Findings (2026-08-20, read-only, no mutation)
 
@@ -200,7 +200,74 @@ At that checkpoint the incident remained open and browser acceptance was blocked
 
 The Owner separately authorized exact artifact ID `9409511861`, source `988bdbf052de1a39b47a1e22ac761c977eec72c8`, built directly from production `604cb8d…`. The mandatory scope gate passed: exactly two commits and two changed files (`backend/src/storage/aliyun/client.ts` and its regression test), with no Search/frontend/database/migration/configuration/dependency or unrelated product delta. Exact artifact, archive, and manifest hashes matched the authorized values; local, host-side, compiled-runtime, native-dependency, OCR, and independent downloaded-artifact verification passed.
 
-The new immutable release was installed and selected atomically. Only `academiccloud.service` was restarted. Production now runs exact `988bdbf…`, process CWD matches its immutable backend, service is active/running with `NRestarts=0`, one loopback listener is present, and loopback/public health/readiness all return 200. Schema remains v21/history 001–021 with the exact pre-deploy fingerprint; no migration ran. Protected environment/systemd/Nginx hashes and Nginx process identity are unchanged. All five multipart rows remain `uploading` and all six pending file rows remain `pending_upload`. Fresh RAM readback returned 200 and reconfirmed default v2 with the exact five-action, exact-resource policy and no `ListMultipartUploads`. No RAM, credential, configuration, SQLite, metadata, OSS object/part, pending-upload, or Search mutation occurred. Rollback was not required.
+The new immutable release was installed and selected atomically. Only `academiccloud.service` was restarted. At that checkpoint production ran exact `988bdbf…`, process CWD matched its immutable backend, service was active/running with `NRestarts=0`, one loopback listener was present, and loopback/public health/readiness all returned 200. Schema remained v21/history 001–021 with the exact pre-deploy fingerprint; no migration ran. Protected environment/systemd/Nginx hashes and Nginx process identity were unchanged. All five multipart rows remained `uploading` and all six pending file rows remained `pending_upload`. Fresh RAM readback returned 200 and reconfirmed default v2 with the exact five-action, exact-resource policy and no `ListMultipartUploads`. No RAM, credential, configuration, SQLite, metadata, OSS object/part, pending-upload, or Search mutation occurred. Rollback was not required.
+
+## R3 Final Bounded Repair and Deployment (2026-08-20)
+
+The accepted R2 evidence proved three later independent failures:
+
+1. OSS returned a valid empty/non-truncated `ListParts` response with `nextPartNumberMarker=""`; `988bdbf…` rejected the empty marker after the provider had returned 200.
+2. The existing exact-Origin CORS rule allowed POST but lacked multipart PUT and `Content-MD5`, so the browser suppressed the real PUT.
+3. A recovered durable multipart UploadJob with `transfer=null` used hydration success as the upload-kind discriminator; a failed hydration incorrectly fell through to legacy abandon and produced `concurrent_change` before the provider abort path.
+
+The exact R3 source was built from current production, not from the frozen Search-bearing development line:
+
+```text
+BRANCH=codex/storage-r3-from-prod-20260820
+BASE=988bdbf052de1a39b47a1e22ac761c977eec72c8
+SOURCE=08657727a17a7ea766ad0d74cc663fa40f91eee1
+COMMITS_AHEAD=1
+FILES_CHANGED=10
+RUNTIME_FILES_CHANGED=backend/src/storage/aliyun/client.ts,frontend/src/App.tsx
+RF_SEARCH01_INCLUDED=false
+MIGRATION_022_PRESENT=false
+```
+
+The ListParts boundary maps only `isTruncated=false` plus an omitted/empty marker to canonical `0`; valid decimals remain numeric, while a truncated missing/empty/invalid marker and every other malformed value fail closed. Abandon classification now comes from durable `uploadKind`: a multipart job with a transfer uses its version; a multipart job without one hydrates authoritative status/version; hydration failure surfaces and never calls legacy; only a durable legacy job uses legacy abandon. CAS/version checks and the provider-abort-once path remain intact.
+
+Focused and full verification:
+
+```text
+FOCUSED_LISTPARTS_AND_MULTIPART=14/14 PASS
+FOCUSED_FRONTEND_APP=117/117 PASS
+CORS_CONTRACT=3/3 PASS
+BACKEND=364 PASS / 0 FAIL / 1 EXPECTED SKIP
+FRONTEND=224/224 PASS
+BACKEND_TYPECHECK=PASS
+FRONTEND_TYPECHECK=PASS
+BACKEND_PRODUCTION_BUILD=PASS
+FRONTEND_PRODUCTION_BUILD=PASS
+TESSERACT_RUNTIME=1/1 PASS
+POWERSHELL_PARSE=PASS
+NODE_SYNTAX=PASS
+GIT_DIFF_CHECK=PASS
+```
+
+Immutable artifact evidence:
+
+```text
+ARTIFACT_WORKFLOW=32385758471
+ARTIFACT_BUILD_JOB=96479723115 PASS
+ARTIFACT_INDEPENDENT_VERIFY_JOB=96483835775 PASS
+ARTIFACT_ID=9413295334
+ARTIFACT_NAME=academiccloud-linux-x64-node24-08657727a17a7ea766ad0d74cc663fa40f91eee1
+ARTIFACT_SIZE_BYTES=43380297
+GITHUB_ARTIFACT_SHA256=e72c5c5ef29029dc0d60bedcaf32402e8eaebd416c8a6479024483f7f2dca767
+RELEASE_ARCHIVE_SHA256=f18b3068fbcced6816b267c569e4c2080abe589e7fdef37cb812fdc2e2fc33be
+MANIFEST_SHA256=a4d51fc043a2b9d830401a8c55e0e7df318fa331e5f87ad2b6376e45f4c2aedf
+MANIFEST_FILES=5384
+MANIFEST_BYTES=125854201
+COMPILED_ACCEPTANCE=PASS
+DETERMINISTIC_REBUILD=PASS
+INDEPENDENT_ARTIFACT_VERIFICATION=PASS
+PRODUCTION_HOST_ARTIFACT_VERIFICATION=PASS
+```
+
+The only provider mutation edited the existing CORS rule. The exact Origin `https://cloud.ajtlab.top`, POST, empty exposed headers, and max age 300 were retained. Only PUT and allowed header `Content-MD5` were added. No wildcard, GET/HEAD/DELETE, unrelated header, RAM action, credential, bucket ACL/ownership, bucket/endpoint, custom-domain binding, or application-environment change was made. Safe live OPTIONS verification passed the exact PUT/Content-MD5 request and rejected GET, an unapproved request header, and foreign/HTTP/local Origins. No synthetic object was uploaded.
+
+Pre-deploy production was exact `988bdbf…`, active/running and healthy at v21/history 001–021. The pre-cutover read-only database snapshot recorded seven pending files: six multipart rows, all `uploading` at revision 0, plus one legacy pending file. After local and production-host artifact verification, the root-owned immutable release was installed and selected atomically. Only `academiccloud.service` restarted. Nginx retained PID 863 and the same protected configuration hashes.
+
+Post-cutover production runs exact `08657727…`; process CWD matches its immutable backend; service is active/running with `NRestarts=0`; loopback/public health/readiness are 200; and the new invocation has zero error-priority events. Schema/history fingerprint remains `573fe6fb8b16cd644a41e48e12b8e1dfa416a9e551762849ae1864393b46ef63`, integrity is `ok`, and foreign-key violations are zero. The pre/post database snapshots match exactly: seven pending files, six `uploading` multipart rows at revision 0, and one legacy pending file. No migration command, RAM/credential/application-environment change, SQLite/metadata mutation, manual complete/abort, or OSS object/part deletion occurred. RF-SEARCH01 is absent. Rollback was not required; exact `988bdbf…` remains the immediate same-schema application rollback.
 
 ## Next Action
-STOP FOR OWNER REAL-BROWSER STORAGE ACCEPTANCE. The Owner next tests: (1) Continue the existing resumable upload; (2) Abandon one disposable resumable upload; (3) Metadata Suggestion on an existing suitable document. Do not close this incident until all three journeys pass. Do not redeploy artifact ID `9405764771`, run migrations, change RAM/config/credentials, mutate pending uploads, modify Metadata Suggestion, or deploy RF-SEARCH01.
+STOP FOR OWNER REAL-BROWSER STORAGE ACCEPTANCE. The Owner next tests: (1) the current existing resumable upload through completion with completed parts reused; (2) one new real multipart PDF upload through completion; (3) one disposable multipart Abandon; (4) file open, preview, and download; and (5) one current Metadata Suggestion attempt. Do not close this incident until all five journeys pass. Do not redeploy artifact ID `9405764771`, run migrations, change RAM/OSS/CORS/config/credentials, mutate pending uploads, modify Metadata Suggestion, or deploy RF-SEARCH01.

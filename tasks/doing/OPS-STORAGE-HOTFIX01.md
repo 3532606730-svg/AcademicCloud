@@ -1,7 +1,7 @@
 # OPS-STORAGE-HOTFIX01 — Production-Baseline ListParts Hotfix
 
 ## State
-PRODUCTION DEPLOYMENT PASS — exact artifact `9409511861` / source `988bdbf052de1a39b47a1e22ac761c977eec72c8` is live and provider/production verification is green. Rollback was not required. STOP for Owner real-browser storage acceptance.
+HISTORICAL PREREQUISITE PASS — exact artifact `9409511861` / source `988bdbf052de1a39b47a1e22ac761c977eec72c8` was safely deployed and verified without Search. R3 now runs `08657727…`; `988bdbf…` is the immediate same-schema application rollback release.
 
 ## Why this task exists
 The first storage-repair artifact (`9405764771`, source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6`) was technically valid but release-scope invalid: that source was 50 commits ahead of production and contained the frozen RF-SEARCH01 UI/API. The Owner-authorized deployment correctly failed closed and rolled back to `604cb8d…`.
@@ -79,7 +79,7 @@ INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 
 ```text
 PRE_DEPLOY_PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
-CURRENT_PRODUCTION=988bdbf052de1a39b47a1e22ac761c977eec72c8
+DEPLOYED_AT_THAT_CHECKPOINT=988bdbf052de1a39b47a1e22ac761c977eec72c8
 PREVIOUS_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
 SCHEMA=v21
 MIGRATIONS=001-021
@@ -114,4 +114,4 @@ The downloaded artifact passed local and host-side archive/manifest/runtime veri
 Post-cutover verification passed exact release and process CWD identity, active/running service with `NRestarts=0`, one `127.0.0.1:3000` listener, and loopback/public health/readiness 200. Nginx remained untouched with the same PID/start identity. Environment, systemd, Nginx site, and security-header hashes remained exact. Schema remained v21/history 001–021 with fingerprint `573fe6fb8b16cd644a41e48e12b8e1dfa416a9e551762849ae1864393b46ef63`; no migration command ran. Five multipart rows remain `uploading` and six file rows remain `pending_upload`. A fresh provider API readback returned status 200 and confirmed `AcademicCloudProdOSS` v2 remains default with exactly Put/Get/Delete/ListParts/AbortMultipartUpload on the same `objects/*` resource and no `ListMultipartUploads`. The new service invocation contains zero warning-or-higher journal entries. No RAM, credential, configuration, SQLite, metadata, OSS object/part, pending-upload, or RF-SEARCH01 mutation occurred.
 
 ## Next action
-STOP FOR OWNER REAL-BROWSER STORAGE ACCEPTANCE. The Owner next tests Continue on the existing resumable upload, Abandon on one disposable resumable upload, and Metadata Suggestion on an existing suitable document. Do not perform those journeys for the Owner, close the incident, modify Metadata Suggestion, churn RAM/OSS policy, or progress to RF-SEARCH01 without new explicit authorization and acceptance evidence.
+This historical hotfix requires no further action. `OPS-STORAGE-INCIDENT01` R3 deployed exact `08657727…` after the later empty-marker, CORS, and abandon-routing evidence. Stop for the five Owner R3 real-browser journeys recorded in the incident card. Do not reselect or mutate this hotfix, close the incident, churn RAM/OSS/CORS policy, or progress to RF-SEARCH01 without new explicit authorization and acceptance evidence.

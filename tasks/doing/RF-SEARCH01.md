@@ -6,7 +6,7 @@ Add one quiet metadata/name search path to the normal `资料库`, preserving ef
 ## Current State
 Development is complete and green, including Owner-review repairs and frontend pagination completeness. Exact immutable Linux x64 / Node 24 artifact is built and independently verified.
 
-RF-SEARCH01 is not currently in production. The 2026-08-20 `OPS-STORAGE-APP-REPAIR01` deployment attempt nevertheless proved that repair source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` descends from this frozen candidate and ships its Search UI/API. That incompatible repair artifact briefly exposed Search before an application-only rollback restored release `604cb8daf310696353e99c30ce7a924dc71ef9d2`. The later compatible storage-only hotfix deployed exact `988bdbf052de1a39b47a1e22ac761c977eec72c8` and explicitly excluded Search. No RF-SEARCH01 source or artifact was modified or rebuilt, but durable state must not describe the failed attempt as untouched.
+RF-SEARCH01 is not currently in production. The 2026-08-20 `OPS-STORAGE-APP-REPAIR01` deployment attempt nevertheless proved that repair source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` descends from this frozen candidate and ships its Search UI/API. That incompatible repair artifact briefly exposed Search before an application-only rollback restored release `604cb8daf310696353e99c30ce7a924dc71ef9d2`. The later compatible storage-only hotfix deployed exact `988bdbf052de1a39b47a1e22ac761c977eec72c8`, and final R3 deployed exact `08657727a17a7ea766ad0d74cc663fa40f91eee1`; both explicitly exclude Search. No RF-SEARCH01 source or artifact was modified or rebuilt, but durable state must not describe the failed attempt as untouched.
 
 ```text
 FINAL_SEARCH_SOURCE_COMMIT=7bba7b869fd1234c1e7c67002cb93368c299209b

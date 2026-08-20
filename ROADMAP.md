@@ -34,15 +34,19 @@ interruption caused `UserDisableError`; after billing restoration, ordinary
 object reads recovered while ListParts returned AccessDenied. Effective-policy
 inspection proved missing RAM allows on the correct production principal and
 resource. The exact Owner-authorized policy v2 repair is green at the raw
-provider boundary. The separate `ali-oss@6.23.0` runtime-shape mismatch is also
-repaired through exact storage-only production release `988bdbf…`. The incident
-remains open only for Owner real-browser product acceptance.
+provider boundary. The separate `ali-oss@6.23.0` runtime-shape mismatch was
+first bounded in `988bdbf…`; final R3 production release `08657727…` now also
+accepts the valid non-truncated empty marker, repairs recovered-multipart
+abandon routing, and pairs the browser with the exact POST+PUT/Content-MD5 OSS
+CORS rule. The incident remains open only for Owner real-browser acceptance.
 
 Exact-runtime verification exposed and bounded the response-normalization defect:
 OSS can return a singleton Part object and string boolean/integer fields while
 the canonical adapter expects arrays/booleans/numbers. The compatible hotfix
-normalizes only that provider representation. Continue/Abandon acceptance must
-still prove the user-visible journeys before the incident can close.
+normalizes only that provider representation. Durable upload kind now controls
+abandon routing, and multipart status hydration may never fall through to the
+legacy destructive endpoint. The five R3 Owner journeys must still prove the
+user-visible result before the incident can close.
 
 This creates a temporary mandatory interlock before broad new scholarly features:
 
@@ -91,12 +95,13 @@ The weak points exposed by real use are different:
 ## Near-Term Cards
 
 ### OPS-STORAGE-INCIDENT01 — active, pending Owner acceptance
-Diagnosis proved both boundaries. The bounded RAM repair restored raw stat,
-Range-read, and ListParts access, and exact production-baseline hotfix
-`988bdbf…` deployed the compatible ListParts normalization without changing
-schema, credentials, protected configuration, RAM, SQLite, or pending uploads.
-Preserve all pending state and stop for Owner Continue, disposable Abandon, and
-metadata-suggestion journeys.
+Diagnosis proved every boundary. The bounded RAM repair restored raw stat,
+Range-read, and ListParts access. Exact R3 source `08657727…`, built from
+production `988bdbf…`, deployed only the remaining empty-marker and authoritative
+abandon-routing repairs, while the existing exact bucket rule gained only PUT
+and Content-MD5 alongside its retained Origin and POST. Schema, RAM, credentials,
+protected configuration, SQLite, and all seven pending files were preserved.
+Stop for the five Owner R3 journeys.
 
 ### RF-SEARCH01 — implementation/artifact complete
 Metadata/name catalogue search is green in development. Final source `7bba7b869fd1234c1e7c67002cb93368c299209b`; exact artifact is built and independently verified. Production remains blocked until the storage incident is closed and a real-browser pre-cutover journey passes.
@@ -188,9 +193,9 @@ Database metadata and object bytes are separate recovery domains. A verified SQL
 
 ## Production Track
 
-Repository-declared and live-verified production is exact storage-only release
-`988bdbf052de1a39b47a1e22ac761c977eec72c8`, previous release
-`604cb8daf310696353e99c30ce7a924dc71ef9d2`, at unchanged schema v21/history
+Repository-declared and live-verified production is exact bounded R3 release
+`08657727a17a7ea766ad0d74cc663fa40f91eee1`, previous release
+`988bdbf052de1a39b47a1e22ac761c977eec72c8`, at unchanged schema v21/history
 001-021. The active incident requires Owner product acceptance before any
 subsequent production cutover.
 

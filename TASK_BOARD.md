@@ -8,8 +8,8 @@ The board is the executable priority view. `CURRENT_STATE.json` holds compact cu
 
 | Order | Task | Task card | State |
 |---:|---|---|---|
-| 1 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER + COMPATIBLE HOTFIX VERIFIED — production runs exact `988bdbf…`; incident remains open only for Owner Continue/disposable Abandon/Metadata Suggestion browser acceptance |
-| 2 | OPS-STORAGE-HOTFIX01 | `tasks/doing/OPS-STORAGE-HOTFIX01.md` | PRODUCTION DEPLOYMENT PASS — exact artifact `9409511861` deployed with unchanged schema/config/RAM/credentials/SQLite/pending state, Search absent, rollback not required; STOP for Owner product acceptance |
+| 1 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | R3 DEPLOYMENT PASS — exact `08657727…` is live; CORS is exact POST+PUT/Content-MD5; seven pending files are preserved; incident remains open only for the five Owner R3 browser journeys |
+| 2 | OPS-STORAGE-HOTFIX01 | `tasks/doing/OPS-STORAGE-HOTFIX01.md` | HISTORICAL PREREQUISITE PASS — `988bdbf…` was safely deployed without Search and is now the immediate rollback release for R3 |
 | 3 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — candidate remains frozen and is not currently live; brief exposure during the rolled-back incompatible repair deployment is recorded |
 
 `OPS-STORAGE-APP-REPAIR01` remains the technical diagnosis/source-repair record. Its original artifact ID `9405764771` is **not a valid production candidate under the no-Search boundary** because source `8d289702…` includes RF-SEARCH01. It must not be redeployed.
@@ -64,8 +64,8 @@ Completed cards under `tasks/done/` remain authoritative for implementation/rele
 ## Current Release Boundary
 
 ```text
-DECLARED_PRODUCTION=988bdbf052de1a39b47a1e22ac761c977eec72c8
-PREVIOUS_PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
+DECLARED_PRODUCTION=08657727a17a7ea766ad0d74cc663fa40f91eee1
+PREVIOUS_PRODUCTION=988bdbf052de1a39b47a1e22ac761c977eec72c8
 SCHEMA=v21 / 001-021
 
 OLD_STORAGE_REPAIR_SOURCE=8d28970209c2e7b41b5d9486bea570a2a8e6c7e6
@@ -88,22 +88,40 @@ STORAGE_HOTFIX_RELEASE_SWITCH=PASS
 STORAGE_HOTFIX_PROCESS_IDENTITY=PASS
 STORAGE_HOTFIX_HEALTH_READINESS=PASS
 STORAGE_HOTFIX_ROLLBACK_REQUIRED=false
-STORAGE_HOTFIX_OWNER_BROWSER_ACCEPTANCE=PENDING
+STORAGE_HOTFIX_OWNER_BROWSER_ACCEPTANCE=SUPERSEDED_BY_R3_ACCEPTANCE
+
+STORAGE_R3_BASE=988bdbf052de1a39b47a1e22ac761c977eec72c8
+STORAGE_R3_SOURCE=08657727a17a7ea766ad0d74cc663fa40f91eee1
+STORAGE_R3_DIFF=1_COMMIT__10_FILES__2_RUNTIME_FILES
+STORAGE_R3_ARTIFACT_WORKFLOW=32385758471 PASS
+STORAGE_R3_ARTIFACT_ID=9413295334
+STORAGE_R3_ARTIFACT_SHA256=e72c5c5ef29029dc0d60bedcaf32402e8eaebd416c8a6479024483f7f2dca767
+STORAGE_R3_ARCHIVE_SHA256=f18b3068fbcced6816b267c569e4c2080abe589e7fdef37cb812fdc2e2fc33be
+STORAGE_R3_MANIFEST_SHA256=a4d51fc043a2b9d830401a8c55e0e7df318fa331e5f87ad2b6376e45f4c2aedf
+STORAGE_R3_INDEPENDENT_AND_HOST_VERIFICATION=PASS
+STORAGE_R3_CORS=EXACT_ORIGIN__POST_PLUS_PUT__CONTENT_MD5_ONLY
+STORAGE_R3_RF_SEARCH_INCLUDED=false
+STORAGE_R3_RELEASE_SWITCH=PASS
+STORAGE_R3_PENDING_FILES=7
+STORAGE_R3_MULTIPART_ROWS=6
+STORAGE_R3_ROLLBACK_REQUIRED=false
+STORAGE_R3_OWNER_BROWSER_ACCEPTANCE=PENDING_FIVE_JOURNEYS
 
 SEARCH_ARTIFACT_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION=NOT_CUT_OVER
 ACTIVE_INCIDENT=OPS-STORAGE-INCIDENT01
-ACTIVE_RELEASE_TASK=OPS-STORAGE-HOTFIX01
+ACTIVE_RELEASE_TASK=OPS-STORAGE-INCIDENT01-R3-REPAIR
 ```
 
 ## Stop Rules
 
 - The exact provider permission repair is complete; no further RAM/OSS policy churn is authorized.
 - Do not redeploy source `8d289702…` / artifact `9405764771` under the no-Search boundary.
-- Production runs exact compatible storage source `988bdbf…` / artifact `9409511861`, built directly from previous production `604cb8d…` and differing by exactly two files.
-- The hotfix deployment authority is exhausted; no rebuild, substitute deployment, or additional production mutation is authorized.
+- Production runs exact R3 source `08657727…` / artifact `9413295334`, built directly from previous production `988bdbf…`; RF-SEARCH01 is absent.
+- The R3 deployment and exact CORS mutation authority are exhausted; no rebuild, substitute deployment, policy churn, or additional production mutation is authorized.
 - No migration, credential/config change, pending-upload mutation, manual complete/abort, or metadata mutation is authorized now.
-- Do not close `OPS-STORAGE-INCIDENT01` until Continue, disposable Abandon, and metadata-suggestion real-browser journeys pass.
+- Preserve all seven pending files, including all six multipart rows and the one legacy row.
+- Do not close `OPS-STORAGE-INCIDENT01` until existing Resume, new multipart upload, disposable multipart Abandon, file open/preview/download, and Metadata Suggestion real-browser journeys all pass.
 - Search remains frozen; do not rebuild or modify the exact RF-SEARCH01 release candidate unless a concrete defect requires it.
 - No new research feature begins while the production storage incident is unresolved.
 - Paid storage backup/provider choice, credentials, further RAM/OSS policy, migrations, destructive repair, production deployment, and infrastructure changes remain explicit Owner gates.
