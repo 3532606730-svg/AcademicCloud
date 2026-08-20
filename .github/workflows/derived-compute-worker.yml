@@ -98,18 +98,18 @@ jobs:
             --volume "$GITHUB_WORKSPACE:/work" \
             --workdir /work \
             "$TESSERACT_BUILDER_IMAGE" \
-            bash scripts/build-tesseract-runtime.sh runtime/tesseract
+            bash scripts/build-tesseract-runtime.sh output/qualification/runtime/tesseract
 
       - name: Verify real Tesseract OCR and Linux memory
         shell: bash
         env:
-          OCR_TESSERACT_PATH: ${{ github.workspace }}/runtime/tesseract/bin/tesseract
-          OCR_TESSDATA_PATH: ${{ github.workspace }}/runtime/tesseract/tessdata
-          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/runtime/tesseract/lib
+          OCR_TESSERACT_PATH: ${{ github.workspace }}/output/qualification/runtime/tesseract/bin/tesseract
+          OCR_TESSDATA_PATH: ${{ github.workspace }}/output/qualification/runtime/tesseract/tessdata
+          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/output/qualification/runtime/tesseract/lib
         run: |
           set -euo pipefail
           mkdir -p output
-          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd());"
+          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd() + '/output/qualification');"
           npx tsx --test compute/test/realistic-ocr-e2e.test.ts | tee output/realistic-ocr-e2e.tap
           ! grep -Eq '^# skipped [1-9][0-9]*$|# SKIP' output/realistic-ocr-e2e.tap
           /usr/bin/time -v -o output/compute-memory-resource.txt \
