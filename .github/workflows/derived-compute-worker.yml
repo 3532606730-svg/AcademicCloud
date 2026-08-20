@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      QUALIFICATION_BASE_SOURCE: decfde4be373262291300b367f99de451c59efc0
+      QUALIFICATION_BASE_SOURCE: decfde4d06d359f0cb9873682293ff828bac5ab9
       QUALIFICATION_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}
       QUALIFICATION_SOURCE_REF: codex/project-memory-reconcile-20260817
       COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24.04
