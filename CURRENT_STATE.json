@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T18:42:57+08:00",
+  "updatedAt": "2026-08-20T19:17:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
   "production": {
@@ -12,16 +12,26 @@
     "liveProcessIdentityNeedsIncidentReverification": false
   },
   "activeIncidents": ["OPS-STORAGE-INCIDENT01"],
-  "activeTasks": ["OPS-STORAGE-INCIDENT01", "RF-SEARCH01"],
+  "activeTasks": ["OPS-STORAGE-APP-REPAIR01", "OPS-STORAGE-INCIDENT01", "RF-SEARCH01"],
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
     "principalType": "RAMUser",
     "policyName": "AcademicCloudProdOSS",
     "defaultPolicyVersion": "v2",
     "providerVerification": "pass",
+    "applicationRuntimeMismatch": "ali-oss ListParts isTruncated/nextPartNumberMarker XML scalars returned as strings",
     "ownerProductAcceptance": "pending",
     "pendingMultipartRows": 5,
     "pendingFileRows": 6
+  },
+  "storageApplicationRepair": {
+    "task": "OPS-STORAGE-APP-REPAIR01",
+    "branch": "codex/storage-runtime-contract-repair-20260820",
+    "baseCommit": "281263be7f6248a4d18e099b59cf49028ec277ca",
+    "scope": "normalize proven ListParts top-level scalar mismatch only",
+    "repositoryVerification": "pending",
+    "productionTouched": false,
+    "deploymentAuthorized": false
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -32,12 +42,13 @@
     "independentVerification": "pass",
     "productionCutover": "blocked",
     "blockers": [
-      "Owner product acceptance must pass and OPS-STORAGE-INCIDENT01 must close",
+      "OPS-STORAGE-APP-REPAIR01 must pass repository verification and the storage incident must close",
       "mandatory real-browser pre-cutover acceptance"
     ]
   },
   "currentPriorityOrder": [
-    "OPS-STORAGE-INCIDENT01",
+    "OPS-STORAGE-APP-REPAIR01",
+    "OPS-STORAGE-INCIDENT01 closure",
     "RF-SEARCH01 production closure",
     "L1-UX08",
     "OPS-DEPENDENCY01",
@@ -54,7 +65,9 @@
   "notes": [
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
-    "The exact Owner-authorized RAM v2 repair is complete; no further production mutation is authorized.",
-    "RF-SEARCH01 remains frozen and untouched until incident closure and its mandatory browser gate."
+    "The exact Owner-authorized RAM v2 repair is complete; no further provider-policy mutation is authorized.",
+    "The Owner authorized only the bounded source repair recorded in OPS-STORAGE-APP-REPAIR01; production deployment remains a separate gate.",
+    "Metadata Suggestion code must not be changed unless a current post-repair browser attempt proves a new failure boundary.",
+    "RF-SEARCH01 remains frozen and untouched until storage repair/incident closure and its mandatory browser gate."
   ]
 }
