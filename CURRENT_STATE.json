@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T20:57:27+08:00",
+  "updatedAt": "2026-08-20T22:00:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
   "production": {
@@ -12,7 +12,7 @@
     "liveProcessIdentityNeedsIncidentReverification": false
   },
   "activeIncidents": ["OPS-STORAGE-INCIDENT01"],
-  "activeTasks": ["OPS-STORAGE-APP-REPAIR01", "OPS-STORAGE-INCIDENT01", "RF-SEARCH01"],
+  "activeTasks": ["OPS-STORAGE-HOTFIX01", "OPS-STORAGE-INCIDENT01", "RF-SEARCH01"],
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
     "principalType": "RAMUser",
@@ -20,42 +20,23 @@
     "defaultPolicyVersion": "v2",
     "providerVerification": "pass",
     "applicationRuntimeMismatch": "ali-oss 6.23.0 ListParts forwards XML singleton Part objects and boolean/integer fields as strings while AcademicCloud expects canonical arrays/booleans/numbers",
-    "ownerProductAcceptance": "pending",
+    "ownerProductAcceptance": "pending compatible hotfix deployment",
     "pendingMultipartRows": 5,
     "pendingFileRows": 6
   },
   "storageApplicationRepair": {
     "task": "OPS-STORAGE-APP-REPAIR01",
-    "branch": "codex/storage-runtime-contract-repair-20260820",
-    "baseCommit": "281263be7f6248a4d18e099b59cf49028ec277ca",
-    "verifiedSource": "8d28970209c2e7b41b5d9486bea570a2a8e6c7e6",
+    "originalBranch": "codex/storage-runtime-contract-repair-20260820",
+    "originalVerifiedSource": "8d28970209c2e7b41b5d9486bea570a2a8e6c7e6",
     "scope": "normalize only the complete proven ali-oss ListParts runtime representation before the canonical storage adapter boundary",
-    "exactDependencyVerification": "pass",
-    "repositoryVerification": "pass",
-    "verificationRun": 32365460608,
-    "focusedStorage": "20/20 pass",
-    "backend": "376 pass / 0 fail / 1 expected skip",
-    "frontend": "241/241 pass",
-    "typecheck": "pass",
-    "build": "pass",
-    "diffCheck": "pass",
-    "artifactBuilt": true,
-    "artifactWorkflow": 32366397645,
-    "artifactBuildJob": 96416730271,
-    "artifactIndependentVerifyJob": 96419650061,
-    "artifactId": 9405764771,
-    "artifactName": "academiccloud-linux-x64-node24-8d28970209c2e7b41b5d9486bea570a2a8e6c7e6",
-    "artifactDigestSha256": "24858d7eab8003606a78a440d474ca549cca9904d984f04d777f60daf414b3ea",
-    "archiveSha256": "03edbbe0f8b506bb7d3fbb9b929e90f89b8b6948b4256865fcd44d9c62e8bbe4",
-    "manifestSha256": "76e902496f3255293b670f09248cf73f5e8d665a77e0e7a2446e49b7fe05eeb4",
-    "compiledAcceptance": "pass",
-    "dependencyAudit": "pass",
-    "deterministicRebuild": "pass",
-    "independentArtifactVerification": "pass",
-    "productionTouched": true,
-    "deploymentAuthorized": true,
+    "technicalVerification": "pass",
+    "originalArtifactId": 9405764771,
+    "originalArtifactWorkflow": 32366397645,
+    "originalArtifactVerification": "pass",
+    "originalArtifactProductionScope": "invalid_under_no_search_boundary",
+    "originalArtifactDoNotRedeploy": true,
     "deploymentAttemptStatus": "rolled_back_scope_mismatch",
-    "firstFailedGate": "authorized source contains and exposes frozen RF-SEARCH01 despite the explicit no-Search deployment boundary",
+    "firstFailedGate": "authorized release source contained and exposed frozen RF-SEARCH01 despite the explicit no-Search deployment boundary",
     "rollback": "pass",
     "liveReleaseAfterRollback": "604cb8daf310696353e99c30ce7a924dc71ef9d2",
     "installedInactiveRelease": "8d28970209c2e7b41b5d9486bea570a2a8e6c7e6",
@@ -64,8 +45,35 @@
     "configurationChanged": false,
     "ramChanged": false,
     "databaseMutated": false,
-    "pendingUploadsManuallyMutated": false,
-    "ownerBrowserAcceptance": "blocked"
+    "pendingUploadsManuallyMutated": false
+  },
+  "storageHotfixRelease": {
+    "task": "OPS-STORAGE-HOTFIX01",
+    "branch": "hotfix/storage-listparts-from-prod-20260820",
+    "baseCommit": "604cb8daf310696353e99c30ce7a924dc71ef9d2",
+    "sourceCommit": "988bdbf052de1a39b47a1e22ac761c977eec72c8",
+    "commitsAheadOfProduction": 2,
+    "changedFiles": [
+      "backend/src/storage/aliyun/client.ts",
+      "backend/test/storage/aliyun-client-normalization.test.ts"
+    ],
+    "rfSearchIncludedInDelta": false,
+    "productionBuildWorkflow": 32376005391,
+    "artifactBuildJob": 96447439723,
+    "artifactIndependentVerifyJob": 96451515693,
+    "artifactId": 9409511861,
+    "artifactName": "academiccloud-linux-x64-node24-988bdbf052de1a39b47a1e22ac761c977eec72c8",
+    "artifactDigestSha256": "dec7ef47249e8d148aa7d31b8e0ddf3861dbceb2319dec4aaaa83b94c612b150",
+    "archiveSha256": "79cea866533e9da1b7d00fb0b3e62a3a3123a90bc20138b8c4d9d40141ed5f33",
+    "manifestSha256": "d6d8b22077d79e9018c6e3eef2cb4454e452995dbc3c1127e574257914e8ce30",
+    "manifestFileCount": 5384,
+    "manifestTotalBytes": 125853632,
+    "fullProductionBuild": "pass",
+    "deterministicRebuild": "pass",
+    "independentArtifactVerification": "pass",
+    "productionTouchedByConstruction": false,
+    "deploymentAuthorized": false,
+    "ownerBrowserAcceptance": "blocked_until_deployment"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -78,14 +86,13 @@
     "currentlyLive": false,
     "briefExposureDuringRolledBackRepairDeployment": true,
     "blockers": [
-      "the authorized storage-repair artifact contains the frozen Search candidate and cannot be redeployed under the explicit no-Search boundary",
-      "OPS-STORAGE-INCIDENT01 must close after a compatible storage-repair deployment and Owner browser acceptance",
-      "mandatory real-browser pre-cutover acceptance"
+      "production-baseline storage hotfix must be safely deployed and OPS-STORAGE-INCIDENT01 must close",
+      "mandatory real-browser Search pre-cutover acceptance"
     ]
   },
   "currentPriorityOrder": [
-    "OPS-STORAGE-APP-REPAIR01 failed-closed release-scope review",
-    "OPS-STORAGE-INCIDENT01 closure",
+    "OPS-STORAGE-HOTFIX01 Owner deployment decision",
+    "OPS-STORAGE-INCIDENT01 browser acceptance and closure",
     "RF-SEARCH01 production closure",
     "L1-UX08",
     "OPS-DEPENDENCY01",
@@ -103,10 +110,10 @@
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
     "The exact Owner-authorized RAM v2 repair is complete; no further provider-policy mutation is authorized.",
-    "The bounded application source repair and immutable artifact are technically verified, but exact source 8d289702 contains the frozen RF-SEARCH01 implementation and is incompatible with the explicit no-Search deployment boundary.",
-    "The 2026-08-20 deployment attempt switched briefly to 8d289702, detected the release-scope mismatch, and rolled back successfully to 604cb8da without schema, configuration, RAM, credential, or pending-upload mutation.",
-    "RF-SEARCH01 was briefly exposed by the incompatible repair artifact during the rolled-back attempt; it is not currently live and its frozen candidate was not modified or rebuilt.",
-    "Metadata Suggestion code must not be changed unless a current post-deployment browser attempt proves a new failure boundary.",
-    "RF-SEARCH01 remains frozen and blocked from production until storage repair deployment/incident closure and its mandatory browser gate; do not claim it was untouched by the failed deployment attempt."
+    "Original artifact 9405764771 / source 8d289702 is technically verified but production-scope invalid under the no-Search boundary and must not be redeployed.",
+    "The failed deployment attempt briefly exposed RF-SEARCH01 and rolled back successfully to 604cb8d without schema, RAM, credential, configuration, database, or pending-upload mutation.",
+    "The replacement hotfix source 988bdbf is based directly on production 604cb8d and differs by exactly two storage repair/test files; its production artifact 9409511861 passed deterministic build and fresh-runner independent verification.",
+    "Metadata Suggestion code must not be changed unless a current post-hotfix browser attempt proves a new failure boundary.",
+    "RF-SEARCH01 remains frozen and blocked from production until storage hotfix deployment/incident closure and its own mandatory browser gate."
   ]
 }
