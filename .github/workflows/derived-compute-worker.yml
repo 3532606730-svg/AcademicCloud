@@ -231,6 +231,7 @@ jobs:
           readonly STAGING_ROOT="output/worker-stage"
           readonly RUNTIME_ROOT="output/worker"
           rm -rf "$STAGING_ROOT" "$RUNTIME_ROOT"
+          mkdir -p "$STAGING_ROOT/runtime"
           docker pull "$TESSERACT_BUILDER_IMAGE"
           test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
           docker run --rm --platform linux/amd64 \
