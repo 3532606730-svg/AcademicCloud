@@ -1,0 +1,60 @@
+name: Storage repair isolated verification
+
+on:
+  pull_request:
+    branches:
+      - ci/storage-repair-validation-base-20260820
+
+permissions:
+  contents: read
+
+jobs:
+  verify-storage-repair:
+    name: Verify storage runtime contract repair
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      REPAIR_BASE_SHA: 281263be7f6248a4d18e099b59cf49028ec277ca
+    steps:
+      - name: Check out exact repair head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$(git merge-base HEAD "$REPAIR_BASE_SHA")" = "$REPAIR_BASE_SHA"
+          node --version | grep -E '^v24\.'
+
+      - name: Install clean dependencies
+        run: npm ci
+
+      - name: Run focused Aliyun storage regressions
+        run: npx tsx --test backend/test/storage/aliyun-client-normalization.test.ts backend/test/storage/aliyun-oss-adapter.test.ts
+
+      - name: Run full repository tests
+        run: npm test
+
+      - name: Run repository typechecks
+        run: npm run typecheck
+
+      - name: Build production outputs
+        run: npm run build
+
+      - name: Check repair diff whitespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check "$REPAIR_BASE_SHA"...HEAD
