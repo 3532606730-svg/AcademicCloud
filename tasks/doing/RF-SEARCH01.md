@@ -37,7 +37,7 @@ The first UI surface should be a quiet search field on the normal `资料库` ca
 - authorization/non-disclosure/performance/frontend tests
 
 ## Current State
-Development complete and green, including the Owner-review bounded repair pass, on `codex/project-memory-reconcile-20260817`. Backend `backend/src/library/search.ts` implements a deterministic bounded contract, `LibraryService.searchHoldings` reuses the canonical `#requireMember` effective-authority path before any matching/ranking/counting/pagination, and `GET /api/libraries/:libraryId/holdings/search` serves it. The accessible corpus is enumerated to exhaustion via keyset pagination (no silent truncation). Frontend `frontend/src/library-search.tsx` adds a quiet debounced, race-safe search field to the ordinary `资料库`; results stay in the same shell and open the existing `资料详情`. No production was touched, no migration/index/dependency was added.
+Development (including the Owner-review repair and the pagination completeness fix) is complete and green, and the exact immutable Linux x64 / Node 24 artifact is built and independently verified from `FINAL_SEARCH_SOURCE_COMMIT = 7bba7b8…`. Production release is BLOCKED at the mandatory real-browser pre-cutover acceptance gate (B4): no browser-control path exists in the current environment, and installing a new browser-automation stack to bypass the gate is prohibited. Production remains `604cb8d…` at schema v21/001–021 and was not touched. Frontend now consumes `nextCursor` via a quiet `加载更多`/`Load more` flow.
 
 ## Query Contract (implemented)
 - min 1 / max 100 characters (NFC); whitespace collapsed to single spaces; Latin case-insensitive; punctuation/whitespace ignored for matching; no query language, no regex, no fuzzy library.
@@ -51,56 +51,79 @@ Development complete and green, including the Owner-review bounded repair pass, 
 - Backend: pure search module (`search.ts`), service integration with authority-first filtering, HTTP route, and focused tests (unit 8, service 3, HTTP 1).
 - Frontend: `searchLibraryHoldings` API method, `LibrarySearchField` with debounce/AbortController/request-identity race protection, clear-restores-folder behavior, localized copy, keyboard/Escape, mobile CSS, and 9 component tests plus 3 App integration tests.
 - Owner-review repair: removed the silent 5,000-holding truncation (keyset pagination + fail-closed guard), repaired the author+title ranking tier (whitespace-separated part matching, no segmentation of unseparated strings), and removed the search error dismiss button (error stays until the query changes). Added regression tests for all three.
-- Verified: backend 373 (372 pass + 1 release-local E2E skip), frontend 233, both typechecks, both production builds, `git diff --check` clean. Query text is never logged (route-template logging only) and never persisted.
+- Pagination completeness fix: frontend now stores and consumes `nextCursor` with a quiet `加载更多`/`Load more` flow; second pages append (deduped by fileId), final pages hide the control, query change/clear resets pagination, stale load-more responses are discarded, and load-more errors preserve already-loaded results. Added 8 focused frontend pagination tests.
+- Built and independently verified the exact artifact from `7bba7b8…`: workflow `32331172274` (primary `96311949546` + independent fresh-runner `96313884316`) green; artifact `9393280984`, digest `sha256:6b130b0c…`; archive SHA-256 `4b720627…`; manifest SHA-256 `beb15507…`; 5,386 files / 125,879,561 bytes.
+- Verified: backend 373 (372 pass + 1 release-local E2E skip), frontend 241, both typechecks, both production builds, `git diff --check` clean. Query text is never logged (route-template logging only) and never persisted.
 
 ## Remaining
-- Owner review; then (only with new explicit production authorization) any deployment, and a real-browser production-before-cutover acceptance journey.
+- Real-browser pre-cutover acceptance (mandatory before cutover; no browser-control path exists in this environment).
+- Production preflight, same-schema cutover, and post-cutover acceptance (only after the browser gate is satisfied).
 
 ## Blockers
-None for development. Production deployment, migrations, index servers, full-text/OCR search, query history, or external lookup require new Owner authorization.
+Production release is blocked at the mandatory real-browser pre-cutover acceptance gate (B4): no browser-control path is available, and installing a new browser-automation stack is not authorized. Production deployment, migrations, index servers, full-text/OCR search, query history, or external lookup additionally require Owner authorization.
 
 ## Last Verification
-- Backend `tsc --noEmit` green; backend suite 373 (372 pass, 1 skip); frontend `tsc --noEmit` green; frontend suite 233/233; both production builds green; `git diff --check` clean.
+- Backend `tsc --noEmit` green; backend suite 373 (372 pass, 1 skip); frontend `tsc --noEmit` green; frontend suite 241/241; both production builds green; `git diff --check` clean.
+- Artifact workflow `32331172274` green (primary + independent runner); archive/manifest/runtime evidence and SHA-256 verified locally.
 
 ## Next Action
-Reconcile task/status/board, create the exact development + evidence checkpoints, push, prove `LOCAL_HEAD == TRACKING_HEAD == REMOTE_HEAD` with a clean worktree, then STOP FOR OWNER REVIEW before any RF-SEARCH01 production.
+Reconcile task/status/board, push, prove `LOCAL_HEAD == TRACKING_HEAD == REMOTE_HEAD` with a clean worktree, then STOP BEFORE CUTOVER — the real-browser pre-cutover acceptance gate is unsatisfied.
 
 ## Final Development Report
 
 ```text
-TASK=RF-SEARCH01-OWNER-REVIEW-FIX
-VERDICT=PASS/READY_FOR_OWNER_REVIEW
+TASK=RF-SEARCH01-FINAL-COMPLETENESS-AND-RELEASE
+VERDICT=PASS/PHASE_A_GREEN; PRODUCTION_BLOCKED_AT_BROWSER_GATE
 
-SILENT_CORPUS_TRUNCATION_FIXED=true
-CORPUS_BOUNDARY_SEMANTICS=entire accessible corpus via keyset pagination; defensive 500-page guard fails closed (no silent truncation)
-MIGRATION_CHANGED=false
+PHASE_A_PAGINATION_FIX=done
+LOAD_MORE_IMPLEMENTED=true
+NEXT_CURSOR_CONSUMED=true
+SECOND_PAGE_APPENDS=true
+STALE_PAGINATION_PROTECTED=true
+CLEAR_RESETS_PAGINATION=true
+LOAD_MORE_ERROR_PRESERVES_RESULTS=true
 
-AUTHOR_TITLE_QUERY_FIXED=true
-AUTHOR_TITLE_EXAMPLE_RESULT=张帆 元代宰相制度研究 → author+title tier (rank 3)
-RANKING_CONTRACT=exact title > title prefix/strong > exact authority > author+title (whitespace-separated parts) > exact identifier > other canonical metadata > original filename
-
-ERROR_DISMISS_UX=error persists until query changes; dismiss affordance removed (no ghost error state)
-
-BROWSER_ACCEPTANCE=NOT_RUN_DEV_ENV (preserved as a production-before-cutover gate)
-
-BACKEND_FOCUSED_TESTS=14 (search unit/service/HTTP)
-FRONTEND_FOCUSED_TESTS=9 (library-search)
-BACKEND_FULL_TESTS=373 (372 pass + 1 release-local E2E skip)
-FRONTEND_FULL_TESTS=233
-BACKEND_TYPECHECK=PASS
+PHASE_A_FOCUSED_TESTS=17 (library-search)
+PHASE_A_FRONTEND_FULL_TESTS=241
 FRONTEND_TYPECHECK=PASS
-BACKEND_BUILD=PASS
 FRONTEND_BUILD=PASS
 GIT_DIFF_CHECK=PASS
 
-FINAL_DEVELOPMENT_COMMIT=a8ce832 (code + search repair)
-EVIDENCE_COMMIT=<docs-only reconciliation commit; recorded in the final synchronized report>
+PREVIOUS_SEARCH_CODE_SOURCE=a8ce832d986b97d881c578ee2424435d6b027045
+FINAL_SEARCH_SOURCE_COMMIT=7bba7b869fd1234c1e7c67002cb93368c299209b
 
-PRODUCTION_TOUCHED=false
+ARTIFACT_SOURCE_COMMIT=7bba7b869fd1234c1e7c67002cb93368c299209b
+ARTIFACT_WORKFLOW=32331172274
+ARTIFACT_ID=9393280984
+ARTIFACT_SHA256=4b72062734fa941ea4bd48019713a4fbb8951a7793a04f625a3680d7c8e1a15b
+MANIFEST_SHA256=beb15507b20c99679fb48cfe772c29d1d92a930b2adcd337202d88f0cff49458
+INDEPENDENT_ARTIFACT_VERIFICATION=PASS (fresh runner 96313884316)
+
+BROWSER_PRE_CUTOVER=BLOCKED (no browser-control path available; installing one is not authorized)
+PAGINATION_BROWSER_ACCEPTANCE=NOT_RUN
+
+PRODUCTION_PREVIOUS_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
+PRODUCTION_RELEASE=<not cut over; blocked at browser gate>
+SCHEMA=v21 / migrations 001–021
+MIGRATION_HISTORY=001–021 unchanged
+MIGRATIONS_RUN=false
+ROLLBACK_TARGET=604cb8daf310696353e99c30ce7a924dc71ef9d2
+ROLLBACK_USED=false
+
+POST_CUTOVER_BROWSER_ACCEPTANCE=NOT_RUN
+
+QUERY_PERSISTED=false
+INACCESSIBLE_MATCH_LEAK=false
+PRODUCTION_METADATA_MUTATED=false
+RAW_INTERNAL_ERROR_EXPOSED=false
+
+PRE_PRODUCTION_EVIDENCE_COMMIT=c2c15ed52430f41b03a79b99defbf43fe04cb110
+FINAL_PRODUCTION_EVIDENCE_COMMIT=<recorded only after a future cutover>
+
 LOCAL_HEAD=<final synchronized head; recorded in the final report>
 TRACKING_HEAD=<final synchronized head>
 REMOTE_HEAD=<final synchronized head>
 WORKTREE_CLEAN=true
 
-NEXT=STOP FOR OWNER REVIEW BEFORE RF-SEARCH01 PRODUCTION
+NEXT=STOP BEFORE CUTOVER (real-browser pre-cutover acceptance gate unsatisfied)
 ```

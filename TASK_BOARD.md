@@ -4,13 +4,13 @@
 
 ## Current Phase
 
-**RF-METASUGGEST-HARDEN01 is PASS/CLOSED. Production runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; production was NOT touched for search. RF-SEARCH01 development and its Owner-review bounded repair pass (no silent corpus truncation, repaired author+title ranking, consistent error UX) are complete and green; STOP FOR OWNER REVIEW before any search production.**
+**RF-METASUGGEST-HARDEN01 is PASS/CLOSED. Production runs exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; production was NOT touched for search. RF-SEARCH01 development (including the Owner-review repair and the Load-more pagination completeness fix) is complete and green, and the exact artifact is built from `7bba7b8…`; the production release is BLOCKED at the mandatory real-browser pre-cutover acceptance gate (no browser-control path). STOP BEFORE CUTOVER.**
 
 ## Doing
 
 | Task | Task card | Bounded objective |
 |---|---|---|
-| RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | Bounded authority-safe metadata/name catalogue search; development + Owner-review repair complete, awaiting Owner review |
+| RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | Bounded authority-safe metadata/name catalogue search; development + artifact complete, production blocked at the real-browser gate |
 
 ## Done
 
@@ -131,4 +131,4 @@ The immediate same-schema rollback target is exact prior application `a5e2bc21f2
 
 ## Next Action
 
-RF-SEARCH01 development is complete and green. Reconcile the development checkpoint, push, prove local/tracking/remote equality with a clean worktree, then STOP FOR OWNER REVIEW before any RF-SEARCH01 production.
+RF-SEARCH01 development and the exact artifact are complete and green. Reconcile the checkpoint, push, prove local/tracking/remote equality with a clean worktree, then STOP BEFORE CUTOVER — the mandatory real-browser pre-cutover acceptance gate is unsatisfied.
