@@ -17,11 +17,20 @@ import { SqlitePersistence } from "../persistence/sqlite/persistence.js";
 import type { StorageAdapter } from "../storage/storage-adapter.js";
 import { createApp } from "./app.js";
 import type { AppConfig } from "./config.js";
+import {
+  UnavailableDerivedComputeDispatcher,
+  type DerivedComputeRuntime,
+} from "../compute/github-actions-dispatcher.js";
 
 export async function createApplication(
   config: AppConfig,
   sqliteConfig: SqliteConfig,
   storage: StorageAdapter,
+  computeRuntime: DerivedComputeRuntime = {
+    dispatcher: new UnavailableDerivedComputeDispatcher(),
+    bootstrapSecret: null,
+    coreBaseUrl: config.appOrigin,
+  },
 ) {
   const database = openSqliteDatabase(sqliteConfig.databasePath);
 
@@ -54,6 +63,8 @@ export async function createApplication(
       persistence,
       storage,
       metadata: canonicalMetadataService,
+      dispatcher: computeRuntime.dispatcher,
+      coreBaseUrl: computeRuntime.coreBaseUrl,
     });
     const app = await createApp({
       logger: { level: config.logLevel },
@@ -76,12 +87,24 @@ export async function createApplication(
       audit: { service: auditService },
       research: { service: scholarlyRecordService },
       metadata: { service: canonicalMetadataService },
-      suggestions: { service: suggestionService },
+      suggestions: { service: suggestionService, bootstrapSecret: computeRuntime.bootstrapSecret },
       libraries: { service: libraryService },
       readinessCheck: () => persistence.isReady(),
     });
 
+    const jobDeadlineSweep = setInterval(() => {
+      try {
+        suggestionService.expireDueJobs();
+      } catch {
+        // A maintenance sweep must never become a Core availability boundary.
+        // Per-request reads run the same durable expiry transition, so a later
+        // healthy database interaction safely converges stale jobs.
+      }
+    }, 60_000);
+    jobDeadlineSweep.unref();
+
     app.addHook("onClose", () => {
+      clearInterval(jobDeadlineSweep);
       persistence.close();
     });
 

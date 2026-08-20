@@ -1,7 +1,7 @@
 # ADR-030 — Release-Local Tesseract Runtime
 
 **Date:** 2026-08-19
-**Status:** Accepted by Owner for the final combined release
+**Status:** Accepted runtime provenance; Metadata Suggestion packaging location amended in development by ADR-031
 
 ## Context
 
@@ -55,6 +55,15 @@ tag and package the verified runtime release-locally.
   service, or infrastructure-policy authority.
 - The previous application plus the fresh pre-final schema-v19 backup remains
   the inseparable rollback pair after migrations 020–021 begin.
+
+## ADR-031 packaging amendment — 2026-08-21
+
+For the migrated Metadata Suggestion path, the exact source/model/version and
+verification contract above remains mandatory but moves from the Core production
+artifact workflow to the dedicated clean Compute worker workflow. Core no longer
+packages or verifies Tesseract, trained data, PDF.js, native canvas, or OCR E2E
+solely for this path. This development amendment does not authorize a production
+deployment, runtime download, host installation, or weaker provenance gate.
 
 ## Alternatives Rejected
 

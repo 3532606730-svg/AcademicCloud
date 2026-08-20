@@ -13,6 +13,7 @@ import type { CredentialResetRepository } from "../auth/credential-reset-reposit
 import type { CanonicalMetadataRepository } from "../metadata/repositories.js";
 import type { SuggestionRepository } from "../suggestions/repositories.js";
 import type { MultipartUploadRepository } from "../transfer/multipart-transfer.js";
+import type { DerivedJobRepository } from "../jobs/repositories.js";
 
 export interface RepositorySet {
   accounts: AccountRepository;
@@ -31,6 +32,7 @@ export interface RepositorySet {
   metadata: CanonicalMetadataRepository;
   suggestions: SuggestionRepository;
   multipartUploads?: MultipartUploadRepository;
+  derivedJobs: DerivedJobRepository;
 }
 
 export interface Persistence {

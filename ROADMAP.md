@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-08-20
+**Last reconciled:** 2026-08-21
 
 ## Product Direction
 
@@ -29,30 +29,31 @@ The current reliability interlock changes sequencing, not this model.
 ## Current Reality — Operational Maturity Interlock
 
 Real use on 2026-08-20 exposed a gap between strong repository/unit/artifact
-evidence and end-to-end product operability. An Alibaba OSS overdue-payment
-interruption caused `UserDisableError`; after billing restoration, ordinary
-object reads recovered while ListParts returned AccessDenied. Effective-policy
-inspection proved missing RAM allows on the correct production principal and
-resource. The exact Owner-authorized policy v2 repair is green at the raw
-provider boundary. The separate `ali-oss@6.23.0` runtime-shape mismatch was
-first bounded in `988bdbf…`; final R3 production release `08657727…` now also
-accepts the valid non-truncated empty marker, repairs recovered-multipart
-abandon routing, and pairs the browser with the exact POST+PUT/Content-MD5 OSS
-CORS rule. The incident remains open only for Owner real-browser acceptance.
+evidence and end-to-end product operability. The exact RAM, provider-runtime,
+CORS, and R3 application repairs are deployed as `08657727…`; Owner-reported
+browser storage acceptance passed and `OPS-STORAGE-INCIDENT01` is closed. Its
+complete evidence remains in the completed incident and repair cards.
 
-Exact-runtime verification exposed and bounded the response-normalization defect:
-OSS can return a singleton Part object and string boolean/integer fields while
-the canonical adapter expects arrays/booleans/numbers. The compatible hotfix
-normalizes only that provider representation. Durable upload kind now controls
-abandon routing, and multipart status hydration may never fall through to the
-legacy destructive endpoint. The five R3 Owner journeys must still prove the
-user-visible result before the incident can close.
+A later, independent Metadata Suggestion attempt exposed the next operational
+boundary: PDF.js rendering, native canvas/PNG, and Tesseract inside the Core Node
+request process pushed its constrained cgroup into memory reclaim. The process
+did not OOM or restart, but the event loop stalled and therefore blocked Auth,
+Library, health, and unrelated requests. The Owner authorized the first gradual
+Core/Compute separation rather than a memory-limit-only workaround.
+
+`ARCH-COMPUTE01` is now complete in development. Migration 022 supplies durable
+job authority in Core; GitHub Actions is the first adapter behind a
+provider-neutral Compute interface; the existing bounded front-matter OCR and
+Metadata Suggestion heavy path runs one page at a time in one clean worker; and
+the browser uses durable queued/processing/succeeded/failed state. Core retains
+all Auth, Library, SQLite, storage, suggestion-review, and canonical metadata
+authority. Production remains v21 and unchanged pending a separate Owner gate.
 
 This creates a temporary mandatory interlock before broad new scholarly features:
 
 ```text
-OPS-STORAGE-INCIDENT01
-→ RF-SEARCH01 production closure
+ARCH-COMPUTE01 Owner review / production cutover decision (STOP)
+→ RF-SEARCH01 production closure only after a later explicit decision
 → L1-UX08 Upload Activity & Source Recovery
 → OPS-DEPENDENCY01 Dependency Health
 → QA-GOLDEN01 Real-Browser Golden Journeys
@@ -60,7 +61,6 @@ OPS-STORAGE-INCIDENT01
 → DOC-TRUTH01 Repository Truth Hygiene
 → RF-INTEGRITY01 Storage/Metadata Integrity & Reconciliation
 → OPS-OBJECTBACKUP01 Independent Object-Byte Backup
-→ JOB-CORE01 Durable Background Jobs
 → FE-DECOMP01 Frontend Decomposition
 → CONTRACT-CORE01 Shared API Contracts
 → resume Personal Research Workspace
@@ -87,21 +87,28 @@ The weak points exposed by real use are different:
 - raw network errors can leak to the product UI;
 - current upload state is not globally visible;
 - browser source-file recovery is weaker than server multipart recovery;
-- long-running extraction/OCR is still tied too closely to request lifetimes;
+- production long-running extraction/OCR remains tied to request lifetimes until
+  the separately gated ARCH-COMPUTE01 cutover;
 - SQLite metadata backup is stronger than object-byte redundancy;
 - repository current-state facts have drifted across Markdown files;
 - frontend orchestration has grown too concentrated in `App.tsx`.
 
 ## Near-Term Cards
 
-### OPS-STORAGE-INCIDENT01 — active, pending Owner acceptance
+### OPS-STORAGE-INCIDENT01 — complete
 Diagnosis proved every boundary. The bounded RAM repair restored raw stat,
-Range-read, and ListParts access. Exact R3 source `08657727…`, built from
-production `988bdbf…`, deployed only the remaining empty-marker and authoritative
-abandon-routing repairs, while the existing exact bucket rule gained only PUT
-and Content-MD5 alongside its retained Origin and POST. Schema, RAM, credentials,
-protected configuration, SQLite, and all seven pending files were preserved.
-Stop for the five Owner R3 journeys.
+Range-read, and ListParts access. Exact R3 source `08657727…` deployed the
+remaining empty-marker/abandon-routing repair and exact CORS delta. Production
+invariants and pending state were preserved, and Owner-reported browser storage
+acceptance passed. The later Metadata Suggestion memory stall is separate.
+
+### ARCH-COMPUTE01 — development complete, production gated
+`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01` implement the smallest durable
+Core-owned job abstraction and one clean GitHub Actions worker. The existing
+front-matter OCR/metadata behavior is migrated rather than redesigned. Core no
+longer depends on PDF.js/canvas/Tesseract for the migrated path; Compute owns
+those runtime checks and returns candidates only. Stop for Owner review before
+any production migration, secrets, environment, artifact, or cutover action.
 
 ### RF-SEARCH01 — implementation/artifact complete
 Metadata/name catalogue search is green in development. Final source `7bba7b869fd1234c1e7c67002cb93368c299209b`; exact artifact is built and independently verified. Production remains blocked until the storage incident is closed and a real-browser pre-cutover journey passes.
@@ -127,8 +134,11 @@ Promoted from the later Pre-OCR queue. Detect missing objects, metadata/provider
 ### OPS-OBJECTBACKUP01 — Independent Object-Byte Backup
 Design and then, only after Owner cost/provider approval, establish a second independent copy of authoritative object bytes. Database backup alone is insufficient because original PDFs are the primary asset.
 
-### JOB-CORE01 — Durable Background Jobs
-Introduce a small SQLite-backed job abstraction (`queued/running/succeeded/failed/cancelled`, progress, attempts, timestamps, stable error code) before moving longer metadata/OCR work off request lifetimes. Start with one bounded worker; no Redis/Celery requirement.
+### JOB-CORE01 — complete within ARCH-COMPUTE01
+Development migration 022 now provides `queued/running/succeeded/failed`,
+progress, attempts, timestamps, idempotency/attempt correlation, result digest,
+stable error code, and durable deadline classification. No Redis/Celery or
+production migration was introduced.
 
 ### FE-DECOMP01 — Frontend Decomposition
 Behavior-preserving decomposition of `App.tsx` orchestration into focused shell/workspace/upload/activity/preview/admin boundaries. No React rewrite, router rewrite, state-library migration or visual redesign.
@@ -193,11 +203,11 @@ Database metadata and object bytes are separate recovery domains. A verified SQL
 
 ## Production Track
 
-Repository-declared and live-verified production is exact bounded R3 release
+Repository-declared production remains exact bounded R3 release
 `08657727a17a7ea766ad0d74cc663fa40f91eee1`, previous release
 `988bdbf052de1a39b47a1e22ac761c977eec72c8`, at unchanged schema v21/history
-001-021. The active incident requires Owner product acceptance before any
-subsequent production cutover.
+001-021. ARCH-COMPUTE01 is a development checkpoint at schema v22; no production
+migration or cutover is implied.
 
 RF-SEARCH01 release candidate remains frozen at `7bba7b869fd1234c1e7c67002cb93368c299209b`; documentation/planning reconciliation does not require rebuilding that artifact.
 

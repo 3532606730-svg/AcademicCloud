@@ -1,7 +1,7 @@
 # ADR-027 — Bounded Bibliographic Suggestion Implementation
 
 **Date:** 2026-08-18
-**Status:** Accepted through RF-METASUGGEST01; bounded local OCR amendment completed by RF-FRONTMATTEROCR01
+**Status:** Accepted through RF-METASUGGEST01/RF-FRONTMATTEROCR01; execution boundary amended in development by ADR-031
 
 ## Context
 
@@ -143,3 +143,14 @@ Raw page text, rendered images, PDF bytes, object keys, and whole-document
 derived text remain absent from persistence. Generation revalidates active
 manager authority and exact Library domain/source identity after inspection,
 and acceptance still uses the unchanged RF-META01 CAS boundary.
+
+## ADR-031 asynchronous Compute amendment — 2026-08-21
+
+The old synchronous request-lifetime execution and in-Core PDF.js/canvas/
+Tesseract runtime are superseded for the migrated development path. The same
+bounded inspection/extraction/provenance rules now execute in a clean
+concurrency-one Compute worker behind a Core-owned durable job. Compute returns
+candidates only; Core repeats authority/source validation, persists the existing
+reviewable suggestion shape, and remains the only canonical metadata writer.
+Production remains on the historical synchronous release until a separately
+authorized migration/cutover.

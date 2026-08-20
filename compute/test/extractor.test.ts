@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { extractSuggestions } from "../../src/suggestions/extractor.js";
+import { extractSuggestions } from "../src/extractor.js";
 
 test("Chinese title/CIP evidence produces bounded canonical and publication suggestions", () => {
   const result = extractSuggestions({

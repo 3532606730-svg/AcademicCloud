@@ -21,20 +21,10 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
-import { verifyTesseractRuntime } from "./tesseract-runtime.mjs";
-
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryDirectory = resolve(scriptDirectory, "..");
 const repositoryOutputDirectory = join(repositoryDirectory, "output");
 const manifestName = "ARTIFACT-MANIFEST.json";
-const pdfJsRuntimePolicy = Object.freeze({
-  entrypoint: "pdfjs-dist/legacy/build/pdf.mjs",
-  version: "6.2.108",
-  canvasPackage: "@napi-rs/canvas",
-  canvasVersion: "1.0.7",
-  canvasNativePackage: "@napi-rs/canvas-linux-x64-gnu",
-  canvasNativeModulePath: "node_modules/@napi-rs/canvas-linux-x64-gnu/skia.linux-x64-gnu.node",
-});
 const requiredRuntimePaths = [
   "package.json",
   "package-lock.json",
@@ -46,6 +36,8 @@ const requiredRuntimePaths = [
   "backend/dist/operations/recovery-main.js",
   "backend/dist/maintenance/main.js",
   "backend/scripts/compiled-acceptance.mjs",
+  "compute-contracts/package.json",
+  "compute-contracts/dist/index.js",
   "frontend/dist/index.html",
   "database/migrations",
   "deployment/env/academiccloud.env.example",
@@ -56,20 +48,7 @@ const requiredRuntimePaths = [
   "deployment/journald/90-academiccloud-retention.conf",
   "node_modules/argon2",
   "node_modules/better-sqlite3",
-  "node_modules/pdfjs-dist",
-  "node_modules/@napi-rs/canvas",
-  "node_modules/@napi-rs/canvas-linux-x64-gnu",
-  "runtime/tesseract/bin/tesseract",
-  "runtime/tesseract/lib",
-  "runtime/tesseract/tessdata/eng.traineddata",
-  "runtime/tesseract/tessdata/chi_sim.traineddata",
-  "runtime/tesseract/tessdata/chi_tra.traineddata",
-  "runtime/tesseract/licenses/tesseract-LICENSE",
-  "runtime/tesseract/licenses/tessdata_fast-LICENSE",
-  "runtime/tesseract/BUILD-EVIDENCE.json",
-  "scripts/build-tesseract-runtime.sh",
   "scripts/production-artifact.mjs",
-  "scripts/tesseract-runtime.mjs",
   "scripts/production-readiness-audit.mjs",
   "scripts/lib/production-readiness",
 ];
@@ -78,14 +57,16 @@ const forbiddenProductionModules = [
   "@types",
   "concurrently",
   "jsdom",
+  "pdfjs-dist",
   "react",
   "tsx",
   "typescript",
   "vite",
   "vitest",
+  "@napi-rs/canvas",
+  "@napi-rs/canvas-linux-x64-gnu",
 ];
 const expectedNativeModulePaths = [
-  pdfJsRuntimePolicy.canvasNativeModulePath,
   "node_modules/argon2/prebuilds/linux-x64/argon2.glibc.node",
   "node_modules/better-sqlite3/prebuilds/linux-x64.node",
 ];
@@ -129,12 +110,18 @@ function prepareRelease(releaseOption) {
   rmSync(releaseDirectory, { recursive: true, force: true });
   mkdirSync(join(releaseDirectory, "backend"), { recursive: true });
   mkdirSync(join(releaseDirectory, "frontend"), { recursive: true });
-  mkdirSync(join(releaseDirectory, "runtime"), { recursive: true });
+  mkdirSync(join(releaseDirectory, "compute-contracts"), { recursive: true });
+  // npm validates every workspace named by the root lockfile. The Compute
+  // manifest exists only during dependency installation and is removed from
+  // the Core release before the artifact is finalized.
+  mkdirSync(join(releaseDirectory, "compute"), { recursive: true });
 
   copyRequired("package.json", releaseDirectory);
   copyRequired("package-lock.json", releaseDirectory);
   copyRequired("backend/package.json", releaseDirectory);
   copyRequired("frontend/package.json", releaseDirectory);
+  copyRequired("compute-contracts/package.json", releaseDirectory);
+  copyRequired("compute/package.json", releaseDirectory);
 
   process.stdout.write(`${JSON.stringify({ status: "prepared", releaseDirectory })}\n`);
 }
@@ -149,6 +136,7 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
   for (const source of [
     "backend/dist",
     "backend/scripts/compiled-acceptance.mjs",
+    "compute-contracts/dist",
     "frontend/dist",
     "database/migrations",
     "deployment/env/academiccloud.env.example",
@@ -157,23 +145,31 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     "deployment/logrotate",
     "deployment/journald",
     "scripts/production-artifact.mjs",
-    "scripts/build-tesseract-runtime.sh",
-    "scripts/tesseract-runtime.mjs",
     "scripts/production-readiness-audit.mjs",
     "scripts/lib/production-readiness",
   ]) {
     copyRequired(source, releaseDirectory);
   }
 
-  const prePrunePdfJsRuntime = verifyPdfJsRuntime(releaseDirectory, "pre-prune");
+  rmSync(join(releaseDirectory, "compute"), { recursive: true, force: true });
+  for (const computeOnlyModule of [
+    "node_modules/pdfjs-dist",
+    "node_modules/@napi-rs/canvas",
+    "node_modules/@napi-rs/canvas-linux-x64-gnu",
+    "node_modules/@academiccloud/compute",
+  ]) {
+    rmSync(join(releaseDirectory, ...computeOnlyModule.split("/")), { recursive: true, force: true });
+  }
+  const rootPackagePath = join(releaseDirectory, "package.json");
+  const rootPackage = JSON.parse(readFileSync(rootPackagePath, "utf8"));
+  rootPackage.workspaces = ["backend", "frontend", "compute-contracts"];
+  writeFileSync(rootPackagePath, `${JSON.stringify(rootPackage, null, 2)}\n`, { encoding: "utf8", mode: 0o644 });
   pruneNonRuntimePackageFiles(releaseDirectory);
   pruneNonTargetNativeModules(releaseDirectory);
   validateReleasePolicy(releaseDirectory);
-  const postPrunePdfJsRuntime = verifyPdfJsRuntime(releaseDirectory, "post-prune");
-  const tesseractRuntime = verifyTesseractRuntime(releaseDirectory);
   const files = collectManifestEntries(releaseDirectory);
   const manifest = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     product: "AcademicCloud",
     sourceCommit: commit,
     platform: process.platform,
@@ -181,7 +177,11 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     nodeVersion: process.version,
     npmVersion: commandOutput("npm", ["--version"]),
     requiredRuntimePaths,
-    tesseractRuntime,
+    computeBoundary: {
+      coreOcrRuntime: false,
+      corePdfRenderRuntime: false,
+      providerNeutralContract: "@academiccloud/compute-contracts",
+    },
     files,
   };
   const manifestText = `${JSON.stringify(manifest, null, 2)}\n`;
@@ -194,18 +194,8 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     sourceCommit: commit,
     fileCount: files.length,
     totalBytes: files.reduce((sum, file) => sum + (file.size ?? 0), 0),
-    pdfJsRuntime: {
-      prePrune: prePrunePdfJsRuntime.status,
-      postPrune: postPrunePdfJsRuntime.status,
-      nativeModulePath: postPrunePdfJsRuntime.nativeModulePath,
-    },
-    tesseractRuntime: {
-      status: tesseractRuntime.status,
-      engine: tesseractRuntime.engine,
-      sourceCommit: tesseractRuntime.source.commit,
-      packagedLibraryCount: tesseractRuntime.dynamicClosure.packagedLibraries.length,
-      languages: tesseractRuntime.languages,
-    },
+    coreOcrRuntime: false,
+    corePdfRenderRuntime: false,
     manifestPath,
   })}\n`);
 }
@@ -326,8 +316,6 @@ async function verifyRuntime(releaseDirectory) {
   const nativeModules = collectNativeModulePaths(releaseDirectory);
   assert.deepEqual(nativeModules, expectedNativeModulePaths, "unexpected production native module set");
   for (const nativeModule of nativeModules) verifyElfX64(join(releaseDirectory, ...nativeModule.split("/")));
-  const pdfJsRuntime = verifyPdfJsRuntime(releaseDirectory, "extracted");
-  const tesseractRuntime = verifyTesseractRuntime(releaseDirectory);
 
   const acceptance = spawnSync(
     process.execPath,
@@ -350,67 +338,13 @@ async function verifyRuntime(releaseDirectory) {
     betterSqlite3: { status: "ok", sqliteVersion },
     argon2id: { status: "ok", parameters: "m=65536,t=3,p=1", verified: true },
     nativeModules: { status: "ok", format: "ELF64 x86-64", paths: nativeModules },
-    pdfJsRuntime,
-    tesseractRuntime,
-    compiledAcceptance,
-  };
-}
-
-function verifyPdfJsRuntime(releaseDirectory, stage) {
-  assert.ok(["pre-prune", "post-prune", "extracted"].includes(stage), "invalid PDF.js runtime stage");
-  const pdfJsPackage = JSON.parse(readFileSync(join(releaseDirectory, "node_modules", "pdfjs-dist", "package.json"), "utf8"));
-  const canvasPackage = JSON.parse(readFileSync(join(releaseDirectory, "node_modules", "@napi-rs", "canvas", "package.json"), "utf8"));
-  const canvasNativePackage = JSON.parse(readFileSync(
-    join(releaseDirectory, "node_modules", "@napi-rs", "canvas-linux-x64-gnu", "package.json"),
-    "utf8",
-  ));
-  assert.equal(pdfJsPackage.name, "pdfjs-dist");
-  assert.equal(pdfJsPackage.version, pdfJsRuntimePolicy.version);
-  assert.equal(pdfJsPackage.optionalDependencies?.[pdfJsRuntimePolicy.canvasPackage], "^1.0.0");
-  assert.equal(canvasPackage.name, pdfJsRuntimePolicy.canvasPackage);
-  assert.equal(canvasPackage.version, pdfJsRuntimePolicy.canvasVersion);
-  assert.equal(canvasPackage.optionalDependencies?.[pdfJsRuntimePolicy.canvasNativePackage], pdfJsRuntimePolicy.canvasVersion);
-  assert.equal(canvasNativePackage.name, pdfJsRuntimePolicy.canvasNativePackage);
-  assert.equal(canvasNativePackage.version, pdfJsRuntimePolicy.canvasVersion);
-  assert.deepEqual(canvasNativePackage.os, ["linux"]);
-  assert.deepEqual(canvasNativePackage.cpu, ["x64"]);
-  assert.deepEqual(canvasNativePackage.libc, ["glibc"]);
-  verifyElfX64(join(releaseDirectory, ...pdfJsRuntimePolicy.canvasNativeModulePath.split("/")));
-
-  const probe = spawnSync(
-    process.execPath,
-    [
-      "--input-type=module",
-      "--eval",
-      [
-        "import { createRequire } from 'node:module';",
-        "const require = createRequire(import.meta.url);",
-        `const canvas = require(${JSON.stringify(pdfJsRuntimePolicy.canvasPackage)});`,
-        "if (typeof canvas.DOMMatrix !== 'function') throw new Error('PDF.js DOMMatrix provider is unavailable');",
-        `const pdfjs = await import(${JSON.stringify(pdfJsRuntimePolicy.entrypoint)});`,
-        "if (typeof pdfjs.getDocument !== 'function') throw new Error('PDF.js getDocument export is unavailable');",
-      ].join(" "),
-    ],
-    {
-      cwd: releaseDirectory,
-      encoding: "utf8",
-      env: { ...process.env, NODE_ENV: "production" },
-      timeout: 30_000,
-      windowsHide: true,
+    computeBoundary: {
+      status: "ok",
+      coreOcrRuntime: false,
+      corePdfRenderRuntime: false,
+      providerNeutralContract: "@academiccloud/compute-contracts",
     },
-  );
-  assert.equal(probe.signal, null, `PDF.js ${stage} runtime probe was terminated`);
-  assert.equal(probe.status, 0, `PDF.js ${stage} runtime probe failed`);
-
-  return {
-    status: "ok",
-    stage,
-    entrypoint: pdfJsRuntimePolicy.entrypoint,
-    version: pdfJsRuntimePolicy.version,
-    getDocument: true,
-    domMatrixProvider: `${pdfJsRuntimePolicy.canvasPackage}@${pdfJsRuntimePolicy.canvasVersion}`,
-    nativePackage: `${pdfJsRuntimePolicy.canvasNativePackage}@${pdfJsRuntimePolicy.canvasVersion}`,
-    nativeModulePath: pdfJsRuntimePolicy.canvasNativeModulePath,
+    compiledAcceptance,
   };
 }
 
@@ -479,14 +413,18 @@ function collectNativeModulePaths(releaseDirectory) {
 }
 
 function verifyManifest(releaseDirectory, manifest) {
-  assert.equal(manifest.schemaVersion, 2);
+  assert.equal(manifest.schemaVersion, 3);
   assert.equal(manifest.product, "AcademicCloud");
   assert.equal(manifest.platform, "linux");
   assert.equal(manifest.architecture, "x64");
   assert.match(manifest.nodeVersion, /^v24\./u);
   assert.match(manifest.sourceCommit, /^[0-9a-f]{40}$/u);
   assert.deepEqual(manifest.requiredRuntimePaths, requiredRuntimePaths);
-  assert.deepEqual(manifest.tesseractRuntime, verifyTesseractRuntime(releaseDirectory));
+  assert.deepEqual(manifest.computeBoundary, {
+    coreOcrRuntime: false,
+    corePdfRenderRuntime: false,
+    providerNeutralContract: "@academiccloud/compute-contracts",
+  });
   const actualEntries = collectManifestEntries(releaseDirectory);
   assert.deepEqual(actualEntries, manifest.files, "artifact contents do not match manifest");
 }

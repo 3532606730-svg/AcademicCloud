@@ -7,7 +7,9 @@
   },
   "workspaces": [
     "backend",
-    "frontend"
+    "frontend",
+    "compute-contracts",
+    "compute"
   ],
   "scripts": {
     "dev": "concurrently --kill-others-on-fail --names api,web --prefix-colors blue,green \"npm run dev --workspace @academiccloud/backend\" \"npm run dev --workspace @academiccloud/frontend\"",
@@ -30,7 +32,7 @@
     "acceptance:compiled": "npm run acceptance:compiled --workspace @academiccloud/backend",
     "test:acceptance-tools": "node --test scripts/production-e2e-acceptance.test.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present && node --test scripts/oss-cors-contract.test.mjs && node --test scripts/tesseract-runtime.test.mjs",
+    "test": "npm run test --workspaces --if-present && node --test scripts/oss-cors-contract.test.mjs",
     "build": "npm run build --workspaces --if-present"
   },
   "devDependencies": {

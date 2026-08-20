@@ -245,3 +245,26 @@ AcademicCloud invokes the release-local engine with child-scoped library/model
 paths. Production receives no package installation, host-library replacement,
 global environment change, daemon, cloud OCR, runtime download, or unrelated
 infrastructure authority.
+
+## ADR-031 — Core Authority and Ephemeral Derived Compute
+
+**Date:** 2026-08-21
+**Status:** Accepted by Owner; development implementation complete, production cutover separately gated
+**Full record:** `docs/decisions/ADR-031-core-derived-compute-boundary.md`
+
+The first physical Core/Compute separation migrates only the existing heavy
+front-matter PDF rendering/OCR and Metadata Suggestion recognition path.
+SQLite-backed durable jobs, authorization, source identity, candidate
+persistence/review, and canonical metadata CAS remain in Core. GitHub Actions is
+the first adapter behind a provider-neutral contract and receives only opaque
+job/attempt routing before claiming one short-lived exact source capability.
+
+Compute runs one clean process/job at concurrency one, preserves the existing
+bounded page-selection/OCR/extraction semantics, releases page/canvas/buffer
+state sequentially, and returns strictly validated candidates only. Metadata
+Suggestion becomes asynchronous with queued/processing/succeeded/failed state.
+The Core release artifact no longer packages PDF.js, native canvas, Tesseract,
+or OCR E2E for this path; the dedicated Compute workflow inherits ADR-030's
+exact pinned runtime verification. Development migration 022 is not applied to
+production, and all production secrets, environment, artifact, backup/migration,
+deployment, and rollback work remains a separate Owner gate.

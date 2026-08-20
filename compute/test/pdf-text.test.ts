@@ -6,9 +6,9 @@ import {
   inspectPdfFrontMatterRange,
   inspectPdfText,
   PdfTextInspectionError,
-} from "../../src/suggestions/pdf-text.js";
-import { OcrError, type OcrAdapter, type OcrRecognition } from "../../src/suggestions/ocr.js";
-import { SUGGESTION_LIMITS, type SuggestionLimits } from "../../src/suggestions/suggestion.js";
+} from "../src/pdf-text.js";
+import { OcrError, type OcrAdapter, type OcrRecognition } from "../src/ocr.js";
+import { SUGGESTION_LIMITS, type SuggestionLimits } from "../src/suggestion.js";
 
 function makePdf(pages: string[], mediaBox = "0 0 612 792"): Uint8Array {
   const objects: string[] = [

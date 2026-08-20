@@ -93,44 +93,27 @@ test("production environment example binds Fastify to loopback and contains no r
   assert.doesNotMatch(environment, /BEGIN PRIVATE KEY|ac_session=/);
 });
 
-test("production artifact pins and verifies the exact PDF.js Linux native runtime boundary", () => {
+test("Core production artifact excludes OCR/PDF-render runtime and retains only the shared Compute contract", () => {
   const artifact = read("scripts/production-artifact.mjs");
+  const workflow = read(".github/workflows/production-build.yml");
+  const backendPackage = read("backend/package.json");
 
-  for (const runtimePath of [
-    "node_modules/pdfjs-dist",
-    "node_modules/@napi-rs/canvas",
-    "node_modules/@napi-rs/canvas-linux-x64-gnu",
-    "node_modules/@napi-rs/canvas-linux-x64-gnu/skia.linux-x64-gnu.node",
-  ]) {
-    assert.ok(artifact.includes(runtimePath), `missing artifact runtime policy for ${runtimePath}`);
-  }
-  assert.match(artifact, /entrypoint: "pdfjs-dist\/legacy\/build\/pdf\.mjs"/u);
-  assert.match(artifact, /version: "6\.2\.108"/u);
-  assert.match(artifact, /canvasVersion: "1\.0\.7"/u);
-  assert.match(artifact, /verifyPdfJsRuntime\(releaseDirectory, "pre-prune"\)/u);
-  assert.match(artifact, /verifyPdfJsRuntime\(releaseDirectory, "post-prune"\)/u);
-  assert.match(artifact, /verifyPdfJsRuntime\(releaseDirectory, "extracted"\)/u);
-  assert.match(artifact, /verifyElfX64\(join\(releaseDirectory, \.\.\.pdfJsRuntimePolicy\.canvasNativeModulePath/u);
-  assert.match(artifact, /typeof pdfjs\.getDocument !== 'function'/u);
-  assert.match(artifact, /typeof canvas\.DOMMatrix !== 'function'/u);
+  assert.match(artifact, /"compute-contracts\/dist\/index\.js"/u);
+  assert.match(artifact, /schemaVersion: 3/u);
+  assert.match(artifact, /coreOcrRuntime: false/u);
+  assert.match(artifact, /corePdfRenderRuntime: false/u);
+  assert.doesNotMatch(artifact, /verifyTesseractRuntime|verifyPdfJsRuntime|runtime\/tesseract/u);
+  assert.doesNotMatch(backendPackage, /pdfjs-dist|@napi-rs\/canvas|tesseract/iu);
+  assert.doesNotMatch(workflow, /build-tesseract-runtime|realistic-ocr-e2e|runtime\/tesseract/iu);
+  assert.match(workflow, /--workspace @academiccloud\/backend --workspace @academiccloud\/compute-contracts/u);
+  assert.match(workflow, /Core OCR\/PDF-render runtime/u);
 });
 
-test("production artifact builds and independently verifies the exact release-local Tesseract boundary", () => {
-  const artifact = read("scripts/production-artifact.mjs");
+test("Compute workflow owns the exact release-local OCR boundary and bounded worker controls", () => {
   const runtime = read("scripts/tesseract-runtime.mjs");
   const builder = read("scripts/build-tesseract-runtime.sh");
-  const workflow = read(".github/workflows/production-build.yml");
+  const workflow = read(".github/workflows/derived-compute-worker.yml");
 
-  for (const runtimePath of [
-    "runtime/tesseract/bin/tesseract",
-    "runtime/tesseract/lib",
-    "runtime/tesseract/tessdata/eng.traineddata",
-    "runtime/tesseract/tessdata/chi_sim.traineddata",
-    "runtime/tesseract/tessdata/chi_tra.traineddata",
-    "runtime/tesseract/BUILD-EVIDENCE.json",
-  ]) {
-    assert.ok(artifact.includes(runtimePath), `missing artifact OCR runtime policy for ${runtimePath}`);
-  }
   assert.match(runtime, /version: "5\.5\.3"/u);
   assert.match(runtime, /sourceCommit: "db0ec62f81b0737fbbe184d8fea40af5738f8eef"/u);
   assert.match(runtime, /sourceArchiveSha256: "9218e62793116d42a9f6d14cd9348518b27f382096eea3d0f2d1a24616bb5884"/u);
@@ -150,17 +133,21 @@ test("production artifact builds and independently verifies the exact release-lo
   assert.match(builder, /Authorization: Bearer \$\{GITHUB_API_TOKEN\}/u);
   assert.match(builder, /--retry 4 --retry-all-errors --retry-delay 2/u);
   assert.match(builder, /chown -R "\$\{ARTIFACT_OUTPUT_UID\}:\$\{ARTIFACT_OUTPUT_GID\}" "\$\{OUTPUT_ROOT\}"/u);
-  assert.match(artifact, /mkdirSync\(join\(releaseDirectory, "runtime"\), \{ recursive: true \}\)/u);
   assert.match(builder, /tagSignatureVerified/u);
   assert.match(builder, /patchelf --set-rpath '\$ORIGIN\/\.\.\/lib'/u);
   assert.match(workflow, /ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316/u);
-  assert.equal(workflow.match(/--env "GITHUB_API_TOKEN=\$GITHUB_API_TOKEN"/gu)?.length, 2);
-  assert.equal(workflow.match(/--env "ARTIFACT_OUTPUT_UID=\$\(id -u\)"/gu)?.length, 2);
-  assert.equal(workflow.match(/--env "ARTIFACT_OUTPUT_GID=\$\(id -g\)"/gu)?.length, 2);
-  assert.match(workflow, /Rebuild cleanly and prove deterministic archive and manifest/u);
-  assert.doesNotMatch(workflow, /output\/repro-release/u);
-  assert.doesNotMatch(workflow, /--prefix output\/release/u);
-  assert.match(workflow, /diff --unified=3/u);
-  assert.match(workflow, /verify-downloaded-artifact/u);
+  assert.equal(workflow.match(/--env "GITHUB_API_TOKEN=\$GITHUB_API_TOKEN"/gu)?.length, 1);
+  assert.match(workflow, /timeout-minutes: 5/u);
+  assert.match(workflow, /group: derived-compute-\$\{\{ inputs\.job_id \}\}/u);
+  assert.match(workflow, /ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET/u);
+  assert.match(workflow, /ACADEMICCLOUD_COMPUTE_CORE_ORIGIN/u);
+  assert.match(workflow, /memory:probe/u);
+  assert.match(workflow, /\/usr\/bin\/time -v/u);
+  assert.match(workflow, /node --expose-gc compute\/dist\/main\.js/u);
+  assert.match(workflow, /--core-base-url="\$COMPUTE_INPUT_CORE_ORIGIN"/u);
+  assert.match(workflow, /--job-id="\$COMPUTE_INPUT_JOB_ID"/u);
+  assert.match(workflow, /--attempt-id="\$COMPUTE_INPUT_ATTEMPT_ID"/u);
+  assert.doesNotMatch(workflow, /--(?:core-base-url|job-id|attempt-id)=\$\{\{ inputs\./u);
+  assert.match(workflow, /compute\/test\/realistic-ocr-e2e\.test\.ts/u);
   assert.doesNotMatch(workflow, /apt(?:-get)? install tesseract/u);
 });

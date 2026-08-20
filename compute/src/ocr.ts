@@ -67,9 +67,9 @@ function boundedPath(name: string, value: string | undefined, fallback?: string)
 
 export function loadTesseractCliConfig(environment: NodeJS.ProcessEnv = process.env): TesseractCliConfig {
   const production = environment.NODE_ENV === "production";
-  const releaseExecutable = fileURLToPath(new URL("../../../runtime/tesseract/bin/tesseract", import.meta.url));
-  const releaseTessdata = fileURLToPath(new URL("../../../runtime/tesseract/tessdata", import.meta.url));
-  const releaseLibrary = fileURLToPath(new URL("../../../runtime/tesseract/lib", import.meta.url));
+  const releaseExecutable = fileURLToPath(new URL("../../runtime/tesseract/bin/tesseract", import.meta.url));
+  const releaseTessdata = fileURLToPath(new URL("../../runtime/tesseract/tessdata", import.meta.url));
+  const releaseLibrary = fileURLToPath(new URL("../../runtime/tesseract/lib", import.meta.url));
   if (production && [environment.OCR_TESSERACT_PATH, environment.OCR_TESSDATA_PATH, environment.OCR_TESSERACT_LIBRARY_PATH]
     .some((value) => value !== undefined)) {
     throw new Error("production OCR runtime paths are release-local and cannot be overridden");
@@ -118,7 +118,7 @@ function runBoundedProcess(options: {
       windowsHide: true,
       ...(options.environment === undefined ? {} : { env: options.environment }),
     });
-    const chunks: Uint8Array[] = [];
+    const chunks: Buffer[] = [];
     let outputBytes = 0;
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -146,7 +146,7 @@ function runBoundedProcess(options: {
         fail(new OcrError("output_limit"));
         return;
       }
-      chunks.push(new Uint8Array(chunk));
+      chunks.push(chunk);
     });
     // Diagnostics may contain local paths or OCR internals. Drain without
     // retaining or logging them so a child process cannot block on stderr.
@@ -159,7 +159,7 @@ function runBoundedProcess(options: {
         reject(new OcrError("engine_failure"));
         return;
       }
-      resolve({ stdout: new Uint8Array(Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)))) });
+      resolve({ stdout: Buffer.concat(chunks, outputBytes) });
     });
     child.stdin.once("error", () => fail(new OcrError("engine_failure")));
     child.stdin.end(options.input);

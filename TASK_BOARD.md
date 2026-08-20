@@ -1,39 +1,57 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-20
+**Last reconciled:** 2026-08-21
 
-The board is the executable priority view. `CURRENT_STATE.json` holds compact current pointers; task cards define bounded contracts; ADRs/done cards preserve history.
+The board is the executable priority view. `CURRENT_STATE.json` holds compact
+current pointers; task cards and ADRs preserve complete contracts and evidence.
 
-## Doing
+## Current stop / Owner gate
+
+| Task | State | Next authority |
+|---|---|---|
+| ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | DEVELOPMENT COMPLETE / VERIFIED | Owner review; production backup, migration 022, Compute secrets/environment, artifact, and cutover require a new explicit authorization |
+| OPS-METADATA-MEMORY01 | DIAGNOSIS COMPLETE / PRODUCTION RISK NOT CUT OVER | Addressed by the development Compute boundary; production remains on the old release until an authorized cutover |
+
+No implementation task should auto-start from this checkpoint.
+
+## Doing / frozen
 
 | Order | Task | Task card | State |
 |---:|---|---|---|
-| 1 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | R3 DEPLOYMENT PASS — exact `08657727…` is live; CORS is exact POST+PUT/Content-MD5; seven pending files are preserved; incident remains open only for the five Owner R3 browser journeys |
-| 2 | OPS-STORAGE-HOTFIX01 | `tasks/doing/OPS-STORAGE-HOTFIX01.md` | HISTORICAL PREREQUISITE PASS — `988bdbf…` was safely deployed without Search and is now the immediate rollback release for R3 |
-| 3 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — candidate remains frozen and is not currently live; brief exposure during the rolled-back incompatible repair deployment is recorded |
+| 1 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN BUT FROZEN — exact candidate `7bba7b…` remains unchanged and absent from production; no Search work was authorized by ARCH-COMPUTE01 |
 
-`OPS-STORAGE-APP-REPAIR01` remains the technical diagnosis/source-repair record. Its original artifact ID `9405764771` is **not a valid production candidate under the no-Search boundary** because source `8d289702…` includes RF-SEARCH01. It must not be redeployed.
+## Completed operational and Compute work
 
-## Reliability / Usability Interlock — Ready but do not auto-start
+| Task | Card | Result |
+|---|---|---|
+| OPS-STORAGE-INCIDENT01 | `tasks/done/OPS-STORAGE-INCIDENT01.md` | CLOSED after exact least-privilege/R3 repair and Owner-reported browser storage acceptance |
+| OPS-STORAGE-APP-REPAIR01 | `tasks/done/OPS-STORAGE-APP-REPAIR01.md` | Historical runtime-contract repair and failed-closed artifact/rollback evidence preserved |
+| OPS-STORAGE-HOTFIX01 | `tasks/done/OPS-STORAGE-HOTFIX01.md` | Historical production-baseline prerequisite; superseded live by R3 |
+| OPS-METADATA-MEMORY01-DIAGNOSIS | `tasks/done/OPS-METADATA-MEMORY01-DIAGNOSIS.md` | Core stall classified as cgroup reclaim from in-process PDF/render/OCR working set |
+| JOB-CORE01 | `tasks/done/JOB-CORE01.md` | Development migration 022 and durable job authority complete |
+| COMPUTE-GHA01 | `tasks/done/COMPUTE-GHA01.md` | Provider-neutral boundary plus GitHub Actions adapter complete in development |
+| OCR-METADATA-GHA01 | `tasks/done/OCR-METADATA-GHA01.md` | Existing bounded OCR/Metadata Suggestion migrated to asynchronous Compute in development |
+
+ADR-031 is the authoritative combined architecture/security/cutover record.
+
+## Reliability / usability queue — ready but do not auto-start
 
 | Order | Task | Task card | Objective |
 |---:|---|---|---|
 | 1 | L1-UX08 | `tasks/ready/L1-UX08.md` | Global upload Activity Center + source-file recovery |
-| 2 | OPS-DEPENDENCY01 | `tasks/ready/OPS-DEPENDENCY01.md` | Owner-visible OSS/core-dependency health and safe diagnostics |
+| 2 | OPS-DEPENDENCY01 | `tasks/ready/OPS-DEPENDENCY01.md` | Owner-visible OSS/Core dependency health and safe diagnostics |
 | 3 | QA-GOLDEN01 | `tasks/ready/QA-GOLDEN01.md` | Real-browser golden journeys as release evidence |
 | 4 | ERR-BOUNDARY01 | `tasks/ready/ERR-BOUNDARY01.md` | Stable user errors + request correlation; no raw browser/provider exceptions |
-| 5 | DOC-TRUTH01 | `tasks/ready/DOC-TRUTH01.md` | Eliminate current-state drift; machine-check authoritative pointers |
+| 5 | DOC-TRUTH01 | `tasks/ready/DOC-TRUTH01.md` | Prevent authoritative-state drift |
 | 6 | RF-INTEGRITY01 | `tasks/ready/RF-INTEGRITY01.md` | DB↔storage inventory reconciliation and rolling fixity evidence |
 | 7 | OPS-OBJECTBACKUP01 | `tasks/ready/OPS-OBJECTBACKUP01.md` | Independent second copy of authoritative object bytes; cost/provider gate |
-| 8 | JOB-CORE01 | `tasks/ready/JOB-CORE01.md` | Lightweight durable background-job abstraction before heavier OCR/extraction |
-| 9 | FE-DECOMP01 | `tasks/ready/FE-DECOMP01.md` | Behavior-preserving decomposition of oversized frontend orchestration |
-| 10 | CONTRACT-CORE01 | `tasks/ready/CONTRACT-CORE01.md` | Shared API/error contract source without framework churn |
+| 8 | FE-DECOMP01 | `tasks/ready/FE-DECOMP01.md` | Behavior-preserving frontend orchestration decomposition |
+| 9 | CONTRACT-CORE01 | `tasks/ready/CONTRACT-CORE01.md` | Shared API/error contract source without framework churn |
 
-These cards are sequenced planning contracts. They do not authorize paid infrastructure, production mutation, migrations, destructive cleanup, or automatic progression.
+These cards do not authorize paid infrastructure, production mutation,
+migrations, destructive cleanup, credentials, or automatic progression.
 
-## Preserved Personal Research / Pre-Intelligence Queue
-
-After the interlock is deliberately cleared, preserve the existing scholarly sequence rather than discarding it:
+## Preserved personal research / pre-intelligence queue
 
 ```text
 RF-PROV01
@@ -55,73 +73,37 @@ RF-PROV01
 → STOP BEFORE broader OCR/full-text/retrieval/RAG
 ```
 
-`RF-INTEGRITY01` is intentionally promoted into the reliability interlock and therefore is no longer blocked behind `RF-LIBRARY04`.
-
-## Completed foundation (summary)
-
-Completed cards under `tasks/done/` remain authoritative for implementation/release evidence, including shared-default corpus semantics, credential reset, catalogue UX, canonical metadata, metadata suggestions, front-matter OCR, multipart/Range transfer, destructive lifecycle authority, and releases through RF-METASUGGEST-HARDEN01.
-
-## Current Release Boundary
+## Current release boundary
 
 ```text
 DECLARED_PRODUCTION=08657727a17a7ea766ad0d74cc663fa40f91eee1
 PREVIOUS_PRODUCTION=988bdbf052de1a39b47a1e22ac761c977eec72c8
-SCHEMA=v21 / 001-021
+PRODUCTION_SCHEMA=v21 / 001-021
+DEVELOPMENT_SCHEMA=v22 / 001-022
+MIGRATION_022_PRODUCTION_APPLIED=false
 
-OLD_STORAGE_REPAIR_SOURCE=8d28970209c2e7b41b5d9486bea570a2a8e6c7e6
-OLD_STORAGE_REPAIR_ARTIFACT_ID=9405764771
-OLD_STORAGE_REPAIR_PRODUCTION_SCOPE=INVALID_NO_SEARCH
-OLD_STORAGE_REPAIR_DEPLOYMENT=FAIL_CLOSED
-OLD_STORAGE_REPAIR_ROLLBACK=PASS
-
-STORAGE_HOTFIX_BASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
-STORAGE_HOTFIX_SOURCE=988bdbf052de1a39b47a1e22ac761c977eec72c8
-STORAGE_HOTFIX_DIFF=2_COMMITS__2_FILES_ONLY
-STORAGE_HOTFIX_ARTIFACT_WORKFLOW=32376005391 PASS
-STORAGE_HOTFIX_ARTIFACT_ID=9409511861
-STORAGE_HOTFIX_ARTIFACT_SHA256=dec7ef47249e8d148aa7d31b8e0ddf3861dbceb2319dec4aaaa83b94c612b150
-STORAGE_HOTFIX_ARCHIVE_SHA256=79cea866533e9da1b7d00fb0b3e62a3a3123a90bc20138b8c4d9d40141ed5f33
-STORAGE_HOTFIX_MANIFEST_SHA256=d6d8b22077d79e9018c6e3eef2cb4454e452995dbc3c1127e574257914e8ce30
-STORAGE_HOTFIX_INDEPENDENT_VERIFICATION=PASS
-STORAGE_HOTFIX_RF_SEARCH_INCLUDED=false
-STORAGE_HOTFIX_RELEASE_SWITCH=PASS
-STORAGE_HOTFIX_PROCESS_IDENTITY=PASS
-STORAGE_HOTFIX_HEALTH_READINESS=PASS
-STORAGE_HOTFIX_ROLLBACK_REQUIRED=false
-STORAGE_HOTFIX_OWNER_BROWSER_ACCEPTANCE=SUPERSEDED_BY_R3_ACCEPTANCE
-
-STORAGE_R3_BASE=988bdbf052de1a39b47a1e22ac761c977eec72c8
-STORAGE_R3_SOURCE=08657727a17a7ea766ad0d74cc663fa40f91eee1
-STORAGE_R3_DIFF=1_COMMIT__10_FILES__2_RUNTIME_FILES
-STORAGE_R3_ARTIFACT_WORKFLOW=32385758471 PASS
-STORAGE_R3_ARTIFACT_ID=9413295334
-STORAGE_R3_ARTIFACT_SHA256=e72c5c5ef29029dc0d60bedcaf32402e8eaebd416c8a6479024483f7f2dca767
-STORAGE_R3_ARCHIVE_SHA256=f18b3068fbcced6816b267c569e4c2080abe589e7fdef37cb812fdc2e2fc33be
-STORAGE_R3_MANIFEST_SHA256=a4d51fc043a2b9d830401a8c55e0e7df318fa331e5f87ad2b6376e45f4c2aedf
-STORAGE_R3_INDEPENDENT_AND_HOST_VERIFICATION=PASS
-STORAGE_R3_CORS=EXACT_ORIGIN__POST_PLUS_PUT__CONTENT_MD5_ONLY
-STORAGE_R3_RF_SEARCH_INCLUDED=false
-STORAGE_R3_RELEASE_SWITCH=PASS
-STORAGE_R3_PENDING_FILES=7
-STORAGE_R3_MULTIPART_ROWS=6
-STORAGE_R3_ROLLBACK_REQUIRED=false
-STORAGE_R3_OWNER_BROWSER_ACCEPTANCE=PENDING_FIVE_JOURNEYS
+ARCH_COMPUTE01_PRODUCTION_CHANGED=false
+ARCH_COMPUTE01_PRODUCTION_CREDENTIALS_CHANGED=false
+ARCH_COMPUTE01_OSS_CHANGED=false
+ARCH_COMPUTE01_SEARCH_CHANGED=false
 
 SEARCH_ARTIFACT_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION=NOT_CUT_OVER
-ACTIVE_INCIDENT=OPS-STORAGE-INCIDENT01
-ACTIVE_RELEASE_TASK=OPS-STORAGE-INCIDENT01-R3-REPAIR
 ```
 
-## Stop Rules
+The full storage hotfix/R3 artifact identities and hashes remain in
+`CURRENT_STATE.json` and the completed storage task cards.
 
-- The exact provider permission repair is complete; no further RAM/OSS policy churn is authorized.
-- Do not redeploy source `8d289702…` / artifact `9405764771` under the no-Search boundary.
-- Production runs exact R3 source `08657727…` / artifact `9413295334`, built directly from previous production `988bdbf…`; RF-SEARCH01 is absent.
-- The R3 deployment and exact CORS mutation authority are exhausted; no rebuild, substitute deployment, policy churn, or additional production mutation is authorized.
-- No migration, credential/config change, pending-upload mutation, manual complete/abort, or metadata mutation is authorized now.
-- Preserve all seven pending files, including all six multipart rows and the one legacy row.
-- Do not close `OPS-STORAGE-INCIDENT01` until existing Resume, new multipart upload, disposable multipart Abandon, file open/preview/download, and Metadata Suggestion real-browser journeys all pass.
-- Search remains frozen; do not rebuild or modify the exact RF-SEARCH01 release candidate unless a concrete defect requires it.
-- No new research feature begins while the production storage incident is unresolved.
-- Paid storage backup/provider choice, credentials, further RAM/OSS policy, migrations, destructive repair, production deployment, and infrastructure changes remain explicit Owner gates.
+## Stop rules
+
+- Stop for Owner review of the Core/Compute development checkpoint.
+- Do not deploy, restart production, change `MemoryHigh`/`MemoryMax`, install or
+  rotate credentials, or apply migration 022 without a new explicit gate.
+- Do not mutate OSS RAM/CORS/bucket policy, production SQLite, pending uploads,
+  or object/part state.
+- The worker may return candidates only; Core remains sole authority for result
+  identity, persistence, Library scope, and canonical metadata application.
+- Keep RF-SEARCH01 frozen; do not rebuild, modify, or deploy it under the current
+  objective.
+- Do not begin full Activity Center, whole-document OCR, indexing, embeddings,
+  retrieval, RAG, or unrelated product work automatically.

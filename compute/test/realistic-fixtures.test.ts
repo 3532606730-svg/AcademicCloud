@@ -1,19 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { extractSuggestions } from "../../src/suggestions/extractor.js";
-import type { OcrAdapter, OcrRecognition } from "../../src/suggestions/ocr.js";
+import { extractSuggestions } from "../src/extractor.js";
+import type { OcrAdapter, OcrRecognition } from "../src/ocr.js";
 import {
   inspectPdfFrontMatter,
   inspectPdfFrontMatterRange,
   PdfTextInspectionError,
-} from "../../src/suggestions/pdf-text.js";
-import type { SuggestionCandidate } from "../../src/suggestions/suggestion.js";
+} from "../src/pdf-text.js";
+import type { SuggestionCandidate } from "../src/suggestion.js";
 import {
   REALISTIC_FIXTURES,
   type OcrScriptEntry,
   type RealisticFixture,
-} from "../fixtures/realistic-fixtures.js";
+} from "./fixtures/realistic-fixtures.js";
 
 type ExtractedCandidate = Omit<SuggestionCandidate, "id">;
 

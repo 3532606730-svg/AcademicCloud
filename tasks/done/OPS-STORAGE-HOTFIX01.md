@@ -114,4 +114,8 @@ The downloaded artifact passed local and host-side archive/manifest/runtime veri
 Post-cutover verification passed exact release and process CWD identity, active/running service with `NRestarts=0`, one `127.0.0.1:3000` listener, and loopback/public health/readiness 200. Nginx remained untouched with the same PID/start identity. Environment, systemd, Nginx site, and security-header hashes remained exact. Schema remained v21/history 001–021 with fingerprint `573fe6fb8b16cd644a41e48e12b8e1dfa416a9e551762849ae1864393b46ef63`; no migration command ran. Five multipart rows remain `uploading` and six file rows remain `pending_upload`. A fresh provider API readback returned status 200 and confirmed `AcademicCloudProdOSS` v2 remains default with exactly Put/Get/Delete/ListParts/AbortMultipartUpload on the same `objects/*` resource and no `ListMultipartUploads`. The new service invocation contains zero warning-or-higher journal entries. No RAM, credential, configuration, SQLite, metadata, OSS object/part, pending-upload, or RF-SEARCH01 mutation occurred.
 
 ## Next action
-This historical hotfix requires no further action. `OPS-STORAGE-INCIDENT01` R3 deployed exact `08657727…` after the later empty-marker, CORS, and abandon-routing evidence. Stop for the five Owner R3 real-browser journeys recorded in the incident card. Do not reselect or mutate this hotfix, close the incident, churn RAM/OSS/CORS policy, or progress to RF-SEARCH01 without new explicit authorization and acceptance evidence.
+This historical hotfix requires no further action. `OPS-STORAGE-INCIDENT01` R3
+deployed exact `08657727…` after the later empty-marker, CORS, and
+abandon-routing evidence; Owner-reported browser storage acceptance subsequently
+passed and the incident is closed. Do not reselect or mutate this hotfix, churn
+RAM/OSS/CORS policy, or progress RF-SEARCH01 without new explicit authorization.

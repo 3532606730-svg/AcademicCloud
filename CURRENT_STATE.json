@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T23:50:43+08:00",
+  "updatedAt": "2026-08-21T02:15:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
-  "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
+  "planningBaselineCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
   "production": {
     "declaredRelease": "08657727a17a7ea766ad0d74cc663fa40f91eee1",
     "previousRelease": "988bdbf052de1a39b47a1e22ac761c977eec72c8",
@@ -11,8 +11,8 @@
     "migrationHistory": "001-021",
     "liveProcessIdentityNeedsIncidentReverification": false
   },
-  "activeIncidents": ["OPS-STORAGE-INCIDENT01"],
-  "activeTasks": ["OPS-STORAGE-HOTFIX01", "OPS-STORAGE-INCIDENT01", "RF-SEARCH01"],
+  "activeIncidents": ["OPS-METADATA-MEMORY01"],
+  "activeTasks": ["RF-SEARCH01"],
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
     "principalType": "RAMUser",
@@ -22,7 +22,8 @@
     "applicationRuntimeMismatch": "ali-oss 6.23.0 ListParts forwards XML singleton Part objects and boolean/integer fields as strings, including a valid empty nextPartNumberMarker on a non-truncated empty result",
     "browserCorsMismatch": "the exact AcademicCloud bucket rule retained POST but lacked multipart PUT and Content-MD5",
     "abandonRoutingMismatch": "a recovered durable multipart upload with null in-memory transfer incorrectly fell through to the legacy abandon route when status hydration failed",
-    "ownerProductAcceptance": "pending Owner real-browser existing resume, new multipart upload, disposable multipart abandon, file open/preview/download, and Metadata Suggestion",
+    "status": "closed after Owner-reported R3 real-browser storage acceptance; later Metadata Suggestion memory reclaim is separate",
+    "ownerProductAcceptance": "pass for the R3 storage repair boundaries",
     "pendingMultipartRows": 6,
     "pendingFileRows": 7,
     "pendingLegacyRows": 1
@@ -149,7 +150,47 @@
     "pendingLegacyRows": 1,
     "rfSearchDeployed": false,
     "rollbackRequired": false,
-    "ownerBrowserAcceptance": "pending five R3 journeys"
+    "ownerBrowserAcceptance": "pass; storage incident closed, later metadata-memory incident tracked separately"
+  },
+  "metadataMemoryIncident": {
+    "task": "OPS-METADATA-MEMORY01-DIAGNOSIS",
+    "status": "diagnosis complete; production remediation not cut over",
+    "trigger": "POST metadata suggestions heavy PDF/render/OCR path",
+    "firstFailureBoundary": "Core Node event loop blocked by cgroup memory reclaim",
+    "memoryHigh": "320MiB",
+    "memoryMax": "384MiB",
+    "memoryCurrentObserved": "approximately 328MiB",
+    "oom": 0,
+    "oomKill": 0,
+    "processRestarted": false,
+    "classification": "single-document working-set spike against insufficient Core runtime limit; no repeating leak established; concurrency amplification latent"
+  },
+  "derivedComputeDevelopment": {
+    "program": "ARCH-COMPUTE01",
+    "baseCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
+    "tasks": ["JOB-CORE01", "COMPUTE-GHA01", "OCR-METADATA-GHA01"],
+    "developmentStatus": "complete and verified; stop for Owner review",
+    "developmentSchema": 22,
+    "developmentMigrationHistory": "001-022",
+    "productionMigrationApplied": false,
+    "productionChanged": false,
+    "coreOcrRuntimeDependency": false,
+    "coreNativeCanvasRequestPath": false,
+    "computeProvider": "GitHub Actions adapter behind provider-neutral contract",
+    "workerConcurrency": 1,
+    "memoryEvidence": {
+      "cleanStartRssBytes": 248520704,
+      "peakRssBytes": 501194752,
+      "postJobRssBytes": 476028928,
+      "repeatRuns": 5,
+      "runOneToFivePostRssDriftBytes": 1134592,
+      "localOcrMode": "deterministic fixture; protected Linux workflow requires release-local Tesseract and encompassing GNU time evidence"
+    },
+    "remainingProductionSecrets": [
+      "least-scoped GitHub workflow-dispatch token held by Core",
+      "one shared bootstrap secret installed in Core and the protected GitHub environment"
+    ],
+    "next": "Owner review; any backup/migration/secrets/environment/artifact/cutover is a new explicit production gate"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -162,12 +203,11 @@
     "currentlyLive": false,
     "briefExposureDuringRolledBackRepairDeployment": true,
     "blockers": [
-      "OPS-STORAGE-INCIDENT01 must close through the five Owner R3 browser journeys",
       "mandatory real-browser Search pre-cutover acceptance"
     ]
   },
   "currentPriorityOrder": [
-    "OPS-STORAGE-INCIDENT01 Owner browser acceptance and closure",
+    "ARCH-COMPUTE01 Owner review and separately authorized production cutover decision",
     "RF-SEARCH01 production closure",
     "L1-UX08",
     "OPS-DEPENDENCY01",
@@ -176,7 +216,6 @@
     "DOC-TRUTH01",
     "RF-INTEGRITY01",
     "OPS-OBJECTBACKUP01",
-    "JOB-CORE01",
     "FE-DECOMP01",
     "CONTRACT-CORE01",
     "Personal Research Workspace"
@@ -184,14 +223,15 @@
   "notes": [
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
-    "The exact Owner-authorized RAM v2 repair is complete; no further provider-policy mutation is authorized.",
+    "The exact Owner-authorized RAM v2 repair and R3 Owner browser storage acceptance are complete; OPS-STORAGE-INCIDENT01 is closed and no further provider-policy mutation is authorized.",
     "Original artifact 9405764771 / source 8d289702 is technically verified but production-scope invalid under the no-Search boundary and must not be redeployed.",
     "The failed deployment attempt briefly exposed RF-SEARCH01 and rolled back successfully to 604cb8d without schema, RAM, credential, configuration, database, or pending-upload mutation.",
     "The replacement hotfix source 988bdbf was based directly on previous production 604cb8d and restored the first bounded ListParts normalization without Search.",
     "The final bounded R3 source 08657727 is based directly on production 988bdbf and changes only two runtime files plus focused tests and the exact CORS readiness contract; artifact 9413295334 passed deterministic Linux build and independent/host verification.",
     "Production now runs exact 08657727 with previous release 988bdbf; schema/history, RAM v2, credentials, protected configuration, SQLite contents, all seven pending files, and all six multipart rows were preserved, rollback was not required, and RF-SEARCH01 is not deployed.",
     "The exact OSS CORS rule now retains POST and adds only PUT plus Content-MD5 for the exact AcademicCloud Origin; no further CORS/provider policy churn is authorized.",
-    "Metadata Suggestion code must not be changed unless a current post-R3 browser attempt proves a new failure boundary.",
-    "RF-SEARCH01 remains frozen and blocked from production until storage incident closure and its own mandatory browser gate."
+    "The later Metadata Suggestion stall is a separate Core memory-reclaim incident, not a reopened storage incident; ARCH-COMPUTE01 implements a development-only asynchronous Compute boundary without production mutation.",
+    "Production remains on schema v21/history 001-021; migration 022, Compute secrets/environment, and cutover remain explicit Owner gates.",
+    "RF-SEARCH01 remains frozen and blocked from production until a new explicit Owner decision and its mandatory browser gate."
   ]
 }

@@ -26,7 +26,7 @@ test("unexpected suggestion generation failures keep a safe response and a bound
   let failure: unknown = "unexpected";
   const authService = { resolveSession: () => ACTOR } as unknown as AuthService;
   const suggestionService = {
-    async generate() {
+    async requestGeneration() {
       if (failure instanceof Error) throw failure;
       return unexpectedSuggestionFailure();
     },

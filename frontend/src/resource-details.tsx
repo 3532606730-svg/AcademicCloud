@@ -5,6 +5,7 @@ import {
   type AcademicCloudApi,
   type AuthorityRole,
   type AuthorityType,
+  type DerivedMetadataJob,
   type LibraryAuthority,
   type LibraryHolding,
   type LibraryHoldingDetails,
@@ -305,6 +306,7 @@ export function ResourceDetailsDialog({
   const [pendingAuthorityRole, setPendingAuthorityRole] = useState<AuthorityRole | null>(null);
   const [pendingAuthorityCandidateId, setPendingAuthorityCandidateId] = useState<string | null>(null);
   const [suggestionRun, setSuggestionRun] = useState<MetadataSuggestionRun | null>(null);
+  const [suggestionJob, setSuggestionJob] = useState<DerivedMetadataJob | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsGenerating, setSuggestionsGenerating] = useState(false);
   const [suggestionsAccepting, setSuggestionsAccepting] = useState(false);
@@ -357,6 +359,57 @@ export function ResourceDetailsDialog({
   }, [api, library.id, holding.file.id]);
 
   useEffect(() => {
+    if (!api.getLatestLibraryMetadataSuggestionJob) {
+      setSuggestionJob(null);
+      return;
+    }
+    const controller = new AbortController();
+    api.getLatestLibraryMetadataSuggestionJob(library.id, holding.file.id, controller.signal)
+      .then(setSuggestionJob)
+      .catch((caught: unknown) => {
+        if (!(caught instanceof DOMException && caught.name === "AbortError")) setSuggestionsError(safeSuggestionError(caught));
+      });
+    return () => controller.abort();
+  }, [api, library.id, holding.file.id]);
+
+  useEffect(() => {
+    if (!suggestionJob || !api.getLibraryMetadataSuggestionJob) return;
+    const controller = new AbortController();
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async (job: DerivedMetadataJob) => {
+      if (stopped) return;
+      try {
+        const next = job.state === "queued" || job.state === "running"
+          ? await api.getLibraryMetadataSuggestionJob!(library.id, holding.file.id, job.id, controller.signal)
+          : job;
+        if (stopped) return;
+        setSuggestionJob(next);
+        if (next.state === "succeeded") {
+          const run = await api.getLibraryMetadataSuggestions?.(library.id, holding.file.id, controller.signal);
+          if (!stopped && run !== undefined) {
+            setSuggestionRun(run);
+            setSelectedSuggestionIds(new Set());
+          }
+          return;
+        }
+        if (next.state === "failed") return;
+        timer = setTimeout(() => void poll(next), 2_000);
+      } catch (caught) {
+        if (stopped || (caught instanceof DOMException && caught.name === "AbortError")) return;
+        setSuggestionsError(safeSuggestionError(caught));
+        timer = setTimeout(() => void poll(job), 5_000);
+      }
+    };
+    timer = setTimeout(() => void poll(suggestionJob), suggestionJob.state === "succeeded" ? 0 : 1_000);
+    return () => {
+      stopped = true;
+      controller.abort();
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [api, library.id, holding.file.id, suggestionJob?.id]);
+
+  useEffect(() => {
     if (!editing || library.role !== "manager") return;
     const controller = new AbortController();
     Promise.all(AUTHORITY_TYPES.map((type) => api.listLibraryAuthorities(library.id, type, controller.signal)))
@@ -372,8 +425,9 @@ export function ResourceDetailsDialog({
     setSuggestionsError(null);
     setNotice("");
     try {
-      const run = await api.generateLibraryMetadataSuggestions(library.id, holding.file.id);
-      setSuggestionRun(run);
+      const job = await api.generateLibraryMetadataSuggestions(library.id, holding.file.id);
+      setSuggestionJob(job);
+      setSuggestionRun(null);
       setSelectedSuggestionIds(new Set());
     } catch (caught) {
       setSuggestionsError(safeSuggestionError(caught));
@@ -605,6 +659,7 @@ export function ResourceDetailsDialog({
               {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
                 <MetadataSuggestionsPanel
                   run={suggestionRun}
+                  job={suggestionJob}
                   loading={suggestionsLoading}
                   generating={suggestionsGenerating}
                   accepting={suggestionsAccepting}
@@ -636,6 +691,7 @@ export function ResourceDetailsDialog({
               {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
                 <MetadataSuggestionsPanel
                   run={suggestionRun}
+                  job={suggestionJob}
                   loading={suggestionsLoading}
                   generating={suggestionsGenerating}
                   accepting={suggestionsAccepting}
@@ -719,6 +775,7 @@ function suggestionFieldLabel(candidate: MetadataSuggestionCandidate, t: ReturnT
 
 function MetadataSuggestionsPanel({
   run,
+  job,
   loading,
   generating,
   accepting,
@@ -734,6 +791,7 @@ function MetadataSuggestionsPanel({
   language,
 }: {
   run: MetadataSuggestionRun | null;
+  job: DerivedMetadataJob | null;
   loading: boolean;
   generating: boolean;
   accepting: boolean;
@@ -748,7 +806,8 @@ function MetadataSuggestionsPanel({
   t: ReturnType<typeof useLanguage>["t"];
   language: Parameters<typeof describeError>[1];
 }) {
-  const busy = loading || generating || accepting;
+  const jobActive = job?.state === "queued" || job?.state === "running";
+  const busy = loading || generating || accepting || jobActive;
   const reviewable = run?.status === "ready" || run?.status === "ambiguous";
   return (
     <section className="metadata-suggestions" aria-labelledby="metadata-suggestions-title">
@@ -760,7 +819,16 @@ function MetadataSuggestionsPanel({
       </header>
       {loading && <p className="muted" role="status">{t("metadata.suggestions.loading")}</p>}
       {error !== null && <div className="alert alert--error" role="alert">{suggestionErrorLabel(error, t)}</div>}
-      {!loading && !run && <p className="muted">{t("metadata.suggestions.none")}</p>}
+      {!loading && job && !run && <p className={`metadata-suggestions-status metadata-suggestions-job--${job.state}`} role="status">
+        {job.state === "queued"
+          ? t("metadata.suggestions.job.queued")
+          : job.state === "running"
+            ? t("metadata.suggestions.job.processing")
+            : job.state === "succeeded"
+              ? t("metadata.suggestions.job.succeeded")
+              : t("metadata.suggestions.job.failed")}
+      </p>}
+      {!loading && !job && !run && <p className="muted">{t("metadata.suggestions.none")}</p>}
       {run && (
         <>
           <p className={`metadata-suggestions-status metadata-suggestions-status--${run.status}`} role="status">

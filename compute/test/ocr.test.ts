@@ -12,9 +12,9 @@ import {
   TesseractCliOcrAdapter,
   loadTesseractCliConfig,
   type TesseractCliConfig,
-} from "../../src/suggestions/ocr.js";
+} from "../src/ocr.js";
 
-const FIXTURE = fileURLToPath(new URL("../fixtures/fake-tesseract.mjs", import.meta.url));
+const FIXTURE = fileURLToPath(new URL("./fixtures/fake-tesseract.mjs", import.meta.url));
 const IMAGE = new Uint8Array(createCanvas(8, 8).toBuffer("image/png"));
 
 function adapter(mode: string): TesseractCliOcrAdapter {

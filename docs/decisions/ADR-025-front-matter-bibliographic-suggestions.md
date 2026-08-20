@@ -1,7 +1,7 @@
 # ADR-025 — Front-Matter Bibliographic Suggestions and OCR Boundary
 
 **Date:** 2026-08-18  
-**Status:** Accepted by Owner; bounded local OCR amendment completed by RF-FRONTMATTEROCR01
+**Status:** Accepted by Owner; bounded OCR semantics preserved, heavy execution migrated in development by ADR-031
 
 ## Context
 
@@ -125,6 +125,11 @@ front/back-matter evidence into the existing classifier and manager-review
 contract without redesigning the bibliographic model.
 
 No whole-book OCR is implied by metadata discovery. A later OCR design should prefer bounded candidate pages rather than processing hundreds of pages merely to find title/copyright information.
+
+ADR-031 now supplies that physical execution boundary for the existing bounded
+path: the same page-selection/recognition/candidate semantics run in ephemeral
+Compute, while Core retains authorization, review, persistence, and canonical
+metadata authority. This is not a whole-document OCR expansion.
 
 ## Non-goals
 

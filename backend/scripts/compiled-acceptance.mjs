@@ -353,7 +353,7 @@ try {
       && restoredMetadata.metadata?.identifiers?.[0]?.value === "compiled-1",
     redeployMigrationCount: redeployMigration.appliedVersions.length,
   };
-  assert.equal(result.firstMigrationCount, 21);
+  assert.equal(result.firstMigrationCount, 22);
   assert.equal(result.provisionedLogin, "CompiledAcceptance");
   assert.equal(result.health, "ok");
   assert.equal(result.readiness, "ready");

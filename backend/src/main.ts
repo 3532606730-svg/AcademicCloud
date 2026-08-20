@@ -2,9 +2,15 @@ import { loadSqliteConfig } from "./persistence/sqlite/config.js";
 import { createApplication } from "./platform/application.js";
 import { loadConfig } from "./platform/config.js";
 import { loadStorageAdapter } from "./storage/config.js";
+import { loadDerivedComputeRuntime } from "./compute/github-actions-dispatcher.js";
 
 const config = loadConfig();
-const app = await createApplication(config, loadSqliteConfig(), loadStorageAdapter(process.env, config.environment));
+const app = await createApplication(
+  config,
+  loadSqliteConfig(),
+  loadStorageAdapter(process.env, config.environment),
+  loadDerivedComputeRuntime(process.env, config.appOrigin),
+);
 
 function stableErrorType(error: unknown): string {
   if (!(error instanceof Error) || !/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(error.name)) {

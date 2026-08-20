@@ -1,9 +1,16 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+
+import type {
+  DerivedComputeDispatcher,
+  DerivedComputeResult,
+  DerivedMetadataCandidate,
+} from "@academiccloud/compute-contracts";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import type { StoredFile } from "../drive/file.js";
 import type { Library, LibraryHolding, LibraryMembership } from "../library/library.js";
+import { publicDerivedJob, type DerivedJobRecord, type DerivedJobSummary } from "../jobs/job.js";
 import {
   CanonicalMetadataService,
   MetadataError,
@@ -14,28 +21,13 @@ import type {
   MaterialType,
   TypeFieldName,
 } from "../metadata/metadata.js";
+import type { StorageAdapter } from "../storage/storage-adapter.js";
+import { extractLightweightSuggestions, mergeSuggestionCandidates } from "./lightweight-extractor.js";
 import {
-  StorageObjectContentUnavailableError,
-  StorageObjectReadLimitError,
-  type StorageAdapter,
-} from "../storage/storage-adapter.js";
-import {
-  PdfJsFrontMatterInspector,
-  PdfTextInspectionError,
-} from "./pdf-text.js";
-import type { BoundedPdfTextSource, PdfRangeSource } from "./suggestion.js";
-import { extractBibliographicSuggestions } from "./extractor.js";
-import type { SuggestionRepository } from "./repositories.js";
-import {
-  SUGGESTION_LIMITS,
-  SUGGESTION_RULESET_VERSION,
-  SUGGESTION_WINDOW,
   type NewSuggestionRun,
   type SuggestionCandidate,
   type SuggestionRunRecord,
   type SuggestionRunSummary,
-  type SuggestionStatus,
-  type SuggestionWindow,
 } from "./suggestion.js";
 
 export type SuggestionErrorCode =
@@ -75,6 +67,7 @@ export interface SuggestionAcceptanceResult {
 const VERSION_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 
 const PDF_MEDIA_TYPE = "application/pdf";
+const JOB_DEADLINE_MILLISECONDS = 2 * 60 * 60_000;
 
 function sourceFingerprint(file: StoredFile): {
   value: string;
@@ -96,16 +89,6 @@ function sourceFingerprint(file: StoredFile): {
     fileRevision: file.revision,
     checksumAlgorithm: file.checksumAlgorithm,
     checksum: file.checksum,
-  };
-}
-
-function emptyWindow(): SuggestionWindow {
-  return {
-    firstPages: SUGGESTION_WINDOW.firstPages,
-    lastPages: SUGGESTION_WINDOW.lastPages,
-    pageCount: null,
-    pageIndices: [],
-    complete: false,
   };
 }
 
@@ -160,16 +143,6 @@ function sourceMatches(run: SuggestionRunRecord, file: StoredFile): boolean {
     && current.fileRevision === run.sourceFingerprint.fileRevision
     && current.checksumAlgorithm === run.sourceFingerprint.checksumAlgorithm
     && current.checksum === run.sourceFingerprint.checksum;
-}
-
-function sameSourceFingerprint(
-  left: ReturnType<typeof sourceFingerprint>,
-  right: ReturnType<typeof sourceFingerprint>,
-): boolean {
-  return left.value === right.value
-    && left.fileRevision === right.fileRevision
-    && left.checksumAlgorithm === right.checksumAlgorithm
-    && left.checksum === right.checksum;
 }
 
 function objectMatchesFile(
@@ -283,33 +256,76 @@ function assertAuthorityCandidatesResolved(
   }
 }
 
+export interface SuggestionComputeClaim {
+  job: { id: string; attemptId: string; kind: "metadata_suggestion" };
+  capability: { token: string; expiresAt: string };
+  source: { method: "GET"; url: string; sizeBytes: number; mediaType: "application/pdf"; expiresAt: string };
+  callbackUrl: string;
+}
+
+function jobActor(job: DerivedJobRecord, repositories: RepositorySet): AuthenticatedAccount | null {
+  const account = repositories.accounts.findById(job.createdByAccountId);
+  if (!account || account.state !== "active") return null;
+  return { id: account.id, loginName: account.loginName, role: account.role };
+}
+
+function tokenDigest(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function sameDigest(expected: string | null, token: string): boolean {
+  if (!expected) return false;
+  const actual = tokenDigest(token);
+  const left = Buffer.from(expected, "hex");
+  const right = Buffer.from(actual, "hex");
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function derivedCandidate(candidate: DerivedMetadataCandidate): Omit<SuggestionCandidate, "id"> {
+  return {
+    ...candidate,
+    typeFieldName: candidate.typeFieldName,
+    authorityType: candidate.authorityType,
+    authorityRole: candidate.authorityRole,
+  };
+}
+
 /**
- * Bounded, local-only bibliographic suggestion service.  Storage bytes are
- * read only after Library/holding authorization, and the service never writes
- * canonical metadata during generation or review.
+ * Core authority for asynchronous bibliographic suggestion jobs. Core never
+ * renders PDF pages or invokes OCR; it authorizes source access, dispatches an
+ * opaque job identity, validates derived candidates, and preserves the
+ * existing review/CAS metadata boundary.
  */
 export class SuggestionService {
   readonly #persistence: Persistence;
   readonly #storage: StorageAdapter;
   readonly #metadata: CanonicalMetadataService;
-  readonly #inspector: BoundedPdfTextSource;
+  readonly #dispatcher: DerivedComputeDispatcher;
+  readonly #coreBaseUrl: string;
   readonly #now: () => Date;
   readonly #createId: () => string;
+  readonly #createToken: () => string;
 
   constructor(options: {
     persistence: Persistence;
     storage: StorageAdapter;
     metadata: CanonicalMetadataService;
-    inspector?: BoundedPdfTextSource;
+    dispatcher: DerivedComputeDispatcher;
+    coreBaseUrl: string;
     now?: () => Date;
     createId?: () => string;
+    createToken?: () => string;
   }) {
     this.#persistence = options.persistence;
     this.#storage = options.storage;
     this.#metadata = options.metadata;
-    this.#inspector = options.inspector ?? new PdfJsFrontMatterInspector();
+    this.#dispatcher = options.dispatcher;
+    const core = new URL(options.coreBaseUrl);
+    if (core.origin !== options.coreBaseUrl) throw new Error("compute Core URL must be an exact origin");
+    this.#coreBaseUrl = options.coreBaseUrl;
     this.#now = options.now ?? (() => new Date());
     this.#createId = options.createId ?? randomUUID;
+    this.#createToken = options.createToken ?? (() => randomBytes(32).toString("base64url"));
   }
 
   getLatest(actor: AuthenticatedAccount, libraryId: string, fileId: string): SuggestionRunSummary | null {
@@ -340,137 +356,232 @@ export class SuggestionService {
     });
   }
 
-  async generate(
+  expireDueJobs(): number {
+    return this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.expireDue(this.#now()));
+  }
+
+  getLatestJob(actor: AuthenticatedAccount, libraryId: string, fileId: string): DerivedJobSummary | null {
+    return this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(this.#now());
+      resolveHolding(actor, libraryId, fileId, repositories);
+      const job = repositories.derivedJobs.findLatest("metadata_suggestion", libraryId, fileId);
+      return job ? publicDerivedJob(job) : null;
+    });
+  }
+
+  getJob(actor: AuthenticatedAccount, libraryId: string, fileId: string, jobId: string): DerivedJobSummary {
+    return this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(this.#now());
+      resolveHolding(actor, libraryId, fileId, repositories);
+      const job = repositories.derivedJobs.findById(jobId);
+      if (!job || job.kind !== "metadata_suggestion" || job.scopeId !== libraryId || job.resourceId !== fileId) {
+        throw new SuggestionError("not_found");
+      }
+      return publicDerivedJob(job);
+    });
+  }
+
+  async requestGeneration(
     actor: AuthenticatedAccount,
     libraryId: string,
     fileId: string,
-    signal?: AbortSignal,
-  ): Promise<SuggestionRunSummary> {
-    const context = this.#persistence.runInTransaction((repositories) => resolveHolding(actor, libraryId, fileId, repositories));
-    if (context.membership.role !== "manager") throw new SuggestionError("not_found");
-
-    const fingerprint = sourceFingerprint(context.file);
+  ): Promise<DerivedJobSummary> {
     const now = this.#now();
-    let status: SuggestionStatus = "unsupported";
-    let window = emptyWindow();
-    let candidates: Omit<SuggestionCandidate, "id">[] = [];
-    let observedObject: Awaited<ReturnType<StorageAdapter["statObject"]>> = null;
-
-    if (context.file.mediaType?.toLowerCase() === PDF_MEDIA_TYPE) {
-      try {
-        const metadata = await this.#storage.statObject(context.file.objectKey);
-        observedObject = metadata;
-        if (!metadata || !objectMatchesFile(metadata, context.file)) {
-          status = "stale";
-        } else {
-          let pdfHeader: Uint8Array | null = null;
-          if (this.#storage.readObjectRange) {
-            const header = await this.#storage.readObjectRange(context.file.objectKey, 0, Math.min(5, metadata.sizeBytes));
-            pdfHeader = header?.bytes ?? null;
-          } else if (metadata.sizeBytes <= SUGGESTION_LIMITS.maxObjectBytes) {
-            const bytes = await this.#storage.readObject(context.file.objectKey, SUGGESTION_LIMITS.maxObjectBytes);
-            pdfHeader = bytes?.subarray(0, 5) ?? null;
-          }
-          if (!pdfHeader || new TextDecoder("ascii").decode(pdfHeader) !== "%PDF-") {
-            status = "unsupported";
-          } else {
-            let inspection: Awaited<ReturnType<NonNullable<BoundedPdfTextSource["inspect"]>>> | null = null;
-            if (metadata && this.#inspector.inspectRange && this.#storage.readObjectRange) {
-              const source: PdfRangeSource = {
-                length: metadata.sizeBytes,
-                read: async (begin, end, rangeSignal) => {
-                  const result = await this.#storage.readObjectRange!(context.file.objectKey, begin, end);
-                  if (!result || result.end < end) throw new StorageObjectContentUnavailableError(context.file.objectKey);
-                  if (rangeSignal?.aborted) throw new PdfTextInspectionError("aborted");
-                  return result.bytes;
-                },
-              };
-              inspection = await this.#inspector.inspectRange(source, SUGGESTION_LIMITS, signal);
-            } else {
-              const bytes = await this.#storage.readObject(context.file.objectKey, SUGGESTION_LIMITS.maxObjectBytes);
-              if (bytes) inspection = await this.#inspector.inspect(bytes, SUGGESTION_LIMITS, signal);
-            }
-            if (inspection) {
-              window = {
-                firstPages: SUGGESTION_WINDOW.firstPages,
-                lastPages: SUGGESTION_WINDOW.lastPages,
-                pageCount: inspection.pageCount,
-                pageIndices: [...inspection.pageIndices],
-                complete: inspection.complete,
-              };
-              const extracted = extractBibliographicSuggestions({
-                pages: inspection.pages,
-                embeddedMetadata: inspection.embeddedMetadata,
-                filename: context.file.displayName,
-                hasUsableTextLayer: inspection.hasUsableTextLayer,
-              });
-              status = extracted.status;
-              candidates = extracted.candidates;
-              if (candidates.length === 0 && !inspection.complete && status === "ocr_deferred") status = "unsupported";
-            } else {
-              const extracted = extractBibliographicSuggestions({ pages: [], embeddedMetadata: {}, filename: context.file.displayName });
-              status = extracted.status === "ocr_deferred" ? "unsupported" : extracted.status;
-              candidates = extracted.candidates;
-            }
-          }
-        }
-        if (status !== "stale" && observedObject) {
-          const afterRead = await this.#storage.statObject(context.file.objectKey);
-          if (!objectMatchesFile(afterRead, context.file)
-            || afterRead?.sizeBytes !== observedObject.sizeBytes
-            || afterRead?.checksum !== observedObject.checksum
-            || afterRead?.checksumAlgorithm !== observedObject.checksumAlgorithm) {
-            status = "stale";
-            window = emptyWindow();
-            candidates = [];
-          }
-        }
-      } catch (error: unknown) {
-        if (error instanceof PdfTextInspectionError && error.code === "aborted") {
-          throw new SuggestionError("unsupported", { cause: error });
-        }
-        if (error instanceof StorageObjectReadLimitError
-          || error instanceof StorageObjectContentUnavailableError
-          || error instanceof PdfTextInspectionError) {
-          window = emptyWindow();
-          const extracted = extractBibliographicSuggestions({ pages: [], embeddedMetadata: {}, filename: context.file.displayName });
-          status = extracted.status === "ocr_deferred" ? "unsupported" : extracted.status;
-          candidates = extracted.candidates;
-        } else {
-          // Unexpected failures belong to the suggestion-specific HTTP
-          // diagnostic boundary. Do not persist a misleading unsupported run.
-          throw error;
-        }
+    const attemptId = this.#createId();
+    const prepared = this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(now);
+      const context = resolveHolding(actor, libraryId, fileId, repositories);
+      if (context.membership.role !== "manager" || context.file.mediaType?.toLowerCase() !== PDF_MEDIA_TYPE) {
+        throw new SuggestionError("not_found");
       }
-    }
-
-    const currentContext = this.#persistence.runInTransaction((repositories) => {
-      const current = resolveHolding(actor, libraryId, fileId, repositories);
-      if (current.membership.role !== "manager") throw new SuggestionError("not_found");
-      return { fingerprint: sourceFingerprint(current.file), ownerDomainId: current.library.ownerDomainId };
+      const fingerprint = sourceFingerprint(context.file);
+      const idempotencyKey = createHash("sha256")
+        .update(JSON.stringify(["metadata_suggestion", libraryId, fileId, fingerprint.value]))
+        .digest("hex");
+      const existing = repositories.derivedJobs.findByIdempotencyKey(idempotencyKey);
+      if (existing && ["queued", "running", "succeeded"].includes(existing.state)) {
+        return { job: existing, dispatch: false };
+      }
+      // GitHub may queue a clean runner and build/verify its pinned OCR
+      // runtime before claiming the source. The worker capability is minted
+      // only at claim time; this durable deadline bounds the entire provider
+      // journey without coupling Core availability to an event-loop timer.
+      const deadlineAt = new Date(now.getTime() + JOB_DEADLINE_MILLISECONDS);
+      if (existing?.state === "failed" && existing.activeAttemptId) {
+        const retried = repositories.derivedJobs.retry(existing.id, existing.activeAttemptId, attemptId, now, deadlineAt);
+        if (!retried) throw new SuggestionError("concurrent_change");
+        return { job: retried, dispatch: true };
+      }
+      const created = repositories.derivedJobs.create({
+        id: this.#createId(),
+        kind: "metadata_suggestion",
+        scopeId: libraryId,
+        resourceId: fileId,
+        inputVersion: fingerprint.value,
+        idempotencyKey,
+        attemptId,
+        createdByAccountId: actor.id,
+        createdAt: now,
+        deadlineAt,
+      });
+      return { job: created, dispatch: true };
     });
-    if (currentContext.ownerDomainId !== context.library.ownerDomainId
-      || !sameSourceFingerprint(fingerprint, currentContext.fingerprint)) {
-      status = "stale";
-      window = emptyWindow();
-      candidates = [];
+    if (!prepared.dispatch || !prepared.job.activeAttemptId) return publicDerivedJob(prepared.job);
+    try {
+      const receipt = await this.#dispatcher.dispatch({
+        id: prepared.job.id,
+        kind: prepared.job.kind,
+        resourceId: prepared.job.resourceId,
+        attemptId: prepared.job.activeAttemptId,
+        coreBaseUrl: this.#coreBaseUrl,
+      });
+      const recorded = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.recordDispatch(
+        prepared.job.id,
+        prepared.job.activeAttemptId!,
+        receipt.provider,
+        receipt.providerJobId,
+        this.#now(),
+      ));
+      return publicDerivedJob(recorded ?? prepared.job);
+    } catch {
+      const failed = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
+        prepared.job.id,
+        prepared.job.activeAttemptId!,
+        "compute_dispatch_failed",
+        this.#now(),
+      ));
+      return publicDerivedJob(failed ?? prepared.job);
     }
+  }
 
-    const run: NewSuggestionRun = {
-      id: this.#createId(),
-      ownerDomainId: context.library.ownerDomainId,
-      libraryId,
-      recordId: context.holding.recordId,
-      fileId,
-      sourceFingerprint: fingerprint,
-      status,
-      window,
-      createdByAccountId: actor.id,
-      createdAt: now,
-      candidates: candidates.slice(0, 256).map((candidate, position) => ({ ...candidate, position })),
+  async claimJob(jobId: string, attemptId: string): Promise<SuggestionComputeClaim> {
+    const now = this.#now();
+    const snapshot = this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(now);
+      const job = repositories.derivedJobs.findById(jobId);
+      if (!job || job.state !== "queued" || job.activeAttemptId !== attemptId || job.deadlineAt <= now) {
+        throw new SuggestionError("not_found");
+      }
+      const actor = jobActor(job, repositories);
+      if (!actor) throw new SuggestionError("not_found");
+      const context = resolveHolding(actor, job.scopeId, job.resourceId, repositories);
+      if (context.membership.role !== "manager" || sourceFingerprint(context.file).value !== job.inputVersion
+        || context.file.mediaType?.toLowerCase() !== PDF_MEDIA_TYPE) throw new SuggestionError("stale");
+      return { job, context };
+    });
+    const metadata = await this.#storage.statObject(snapshot.context.file.objectKey);
+    if (!objectMatchesFile(metadata, snapshot.context.file)) {
+      this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(jobId, attemptId, "compute_source_stale", this.#now()));
+      throw new SuggestionError("stale");
+    }
+    const download = await this.#storage.createDownloadAuthorization({
+      objectKey: snapshot.context.file.objectKey,
+      downloadFilename: "academiccloud-compute-source.pdf",
+      disposition: "inline",
+      expiresInSeconds: 300,
+    });
+    const token = this.#createToken();
+    const capabilityExpiresAt = new Date(Math.min(snapshot.job.deadlineAt.getTime(), now.getTime() + 10 * 60_000));
+    const claimed = this.#persistence.runInTransaction((repositories) => {
+      const actor = jobActor(snapshot.job, repositories);
+      if (!actor) return null;
+      const context = resolveHolding(actor, snapshot.job.scopeId, snapshot.job.resourceId, repositories);
+      if (sourceFingerprint(context.file).value !== snapshot.job.inputVersion) return null;
+      return repositories.derivedJobs.claim(jobId, attemptId, tokenDigest(token), capabilityExpiresAt, now);
+    });
+    if (!claimed) throw new SuggestionError("concurrent_change");
+    return {
+      job: { id: claimed.id, attemptId, kind: "metadata_suggestion" },
+      capability: { token, expiresAt: capabilityExpiresAt.toISOString() },
+      source: {
+        method: "GET",
+        url: download.url,
+        sizeBytes: metadata!.sizeBytes,
+        mediaType: "application/pdf",
+        expiresAt: download.expiresAt.toISOString(),
+      },
+      callbackUrl: `${this.#coreBaseUrl}/api/internal/compute/jobs/${encodeURIComponent(jobId)}/result`,
     };
-    const saved = this.#persistence.runInTransaction((repositories) => repositories.suggestions.createRun(run));
-    return publicRun(saved);
+  }
+
+  async applyComputeResult(result: DerivedComputeResult, capabilityToken: string): Promise<DerivedJobSummary> {
+    const now = this.#now();
+    const snapshot = this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(now);
+      const job = repositories.derivedJobs.findById(result.jobId);
+      if (!job || job.kind !== result.kind || job.activeAttemptId !== result.attemptId
+        || !job.capabilityExpiresAt || job.capabilityExpiresAt <= now
+        || !sameDigest(job.capabilityTokenHash, capabilityToken)) throw new SuggestionError("not_found");
+      return job;
+    });
+    if (result.state === "failed") {
+      const failed = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
+        result.jobId, result.attemptId, result.errorCode, now,
+      ));
+      if (!failed) throw new SuggestionError("concurrent_change");
+      return publicDerivedJob(failed);
+    }
+    const digest = createHash("sha256").update(JSON.stringify(result)).digest("hex");
+    if (snapshot.state === "succeeded") {
+      if (snapshot.resultDigest !== digest) throw new SuggestionError("concurrent_change");
+      return publicDerivedJob(snapshot);
+    }
+    const objectSnapshot = this.#persistence.runInTransaction((repositories) => {
+      const job = repositories.derivedJobs.findById(result.jobId)!;
+      const actor = jobActor(job, repositories);
+      if (!actor) return null;
+      const context = resolveHolding(actor, job.scopeId, job.resourceId, repositories);
+      if (context.membership.role !== "manager" || sourceFingerprint(context.file).value !== job.inputVersion) return null;
+      return { job, actor, context };
+    });
+    if (!objectSnapshot) {
+      const failed = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
+        result.jobId, result.attemptId, "compute_authorization_changed", now,
+      ));
+      if (!failed) throw new SuggestionError("concurrent_change");
+      return publicDerivedJob(failed);
+    }
+    const object = await this.#storage.statObject(objectSnapshot.context.file.objectKey);
+    if (!objectMatchesFile(object, objectSnapshot.context.file)) {
+      const failed = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
+        result.jobId, result.attemptId, "compute_source_stale", now,
+      ));
+      if (!failed) throw new SuggestionError("concurrent_change");
+      return publicDerivedJob(failed);
+    }
+    const completed = this.#persistence.runInTransaction((repositories) => {
+      const job = repositories.derivedJobs.findById(result.jobId);
+      if (!job || job.state !== "running" || job.activeAttemptId !== result.attemptId) throw new SuggestionError("concurrent_change");
+      const actor = jobActor(job, repositories);
+      if (!actor) throw new SuggestionError("not_found");
+      const context = resolveHolding(actor, job.scopeId, job.resourceId, repositories);
+      const fingerprint = sourceFingerprint(context.file);
+      if (context.membership.role !== "manager" || fingerprint.value !== job.inputVersion) throw new SuggestionError("stale");
+      const merged = mergeSuggestionCandidates(
+        result.output.candidates.map(derivedCandidate),
+        extractLightweightSuggestions(context.file.displayName),
+        result.output.status,
+      );
+      const runId = `suggestion-${job.id}`;
+      const run: NewSuggestionRun = {
+        id: runId,
+        ownerDomainId: context.library.ownerDomainId,
+        libraryId: job.scopeId,
+        recordId: context.holding.recordId,
+        fileId: job.resourceId,
+        sourceFingerprint: fingerprint,
+        status: merged.status,
+        window: { ...result.output.window, pageIndices: [...result.output.window.pageIndices] },
+        createdByAccountId: job.createdByAccountId,
+        createdAt: now,
+        candidates: merged.candidates.slice(0, 256).map((candidate, position) => ({ ...candidate, position })),
+      };
+      const saved = repositories.suggestions.createRun(run);
+      const succeeded = repositories.derivedJobs.succeed(job.id, result.attemptId, saved.id, digest, now);
+      if (!succeeded) throw new SuggestionError("concurrent_change");
+      return succeeded;
+    });
+    return publicDerivedJob(completed);
   }
 
   async accept(

@@ -3,6 +3,14 @@
 ## Task ID
 OPS-STORAGE-APP-REPAIR01 — Aliyun Runtime Contract Repair
 
+## Closure reconciliation (2026-08-21)
+
+HISTORICAL REPAIR RECORD COMPLETE. The later production-baseline hotfix and R3
+release superseded the blocked source/artifact described below; R3 production
+and Owner-reported browser storage acceptance passed. The failed-closed attempt,
+rollback, and incompatible artifact evidence remain preserved rather than
+rewritten. No further action belongs to this card.
+
 ## Goal
 Repair the production-proven `ali-oss` `ListParts` runtime-shape mismatch at the narrowest correct boundary so a successful provider response is not converted into `storage_unavailable`, while preserving existing multipart, authorization, persistence, and production semantics.
 

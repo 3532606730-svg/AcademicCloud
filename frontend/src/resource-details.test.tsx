@@ -6,6 +6,7 @@ import {
   ApiClient,
   ApiError,
   type AcademicCloudApi,
+  type DerivedMetadataJob,
   type LibraryHolding,
   type LibraryHoldingDetails,
   type LibrarySummary,
@@ -101,6 +102,21 @@ const SUGGESTION_RUN: MetadataSuggestionRun = {
     },
   ],
   createdAt: "2026-08-18T00:00:00.000Z",
+};
+
+const SUCCEEDED_JOB: DerivedMetadataJob = {
+  id: "job-1",
+  kind: "metadata_suggestion",
+  resourceId: HOLDING.file.id,
+  state: "succeeded",
+  progress: 100,
+  attempts: 1,
+  resultRef: SUGGESTION_RUN.id,
+  errorCode: null,
+  createdAt: "2026-08-18T00:00:00.000Z",
+  startedAt: "2026-08-18T00:00:01.000Z",
+  finishedAt: "2026-08-18T00:00:02.000Z",
+  deadlineAt: "2026-08-18T00:15:00.000Z",
 };
 
 function renderDetails(options: {
@@ -232,9 +248,13 @@ describe("Resource details", () => {
   });
 
   it("shows bounded source/page/confidence evidence without writing canonical metadata during generation", async () => {
-    const generate = vi.fn().mockResolvedValue(SUGGESTION_RUN);
-    const getSuggestions = vi.fn().mockResolvedValue(null);
-    const { api } = renderDetails({ api: { generateLibraryMetadataSuggestions: generate, getLibraryMetadataSuggestions: getSuggestions } });
+    const generate = vi.fn().mockResolvedValue(SUCCEEDED_JOB);
+    const getSuggestions = vi.fn().mockResolvedValueOnce(null).mockResolvedValue(SUGGESTION_RUN);
+    const { api } = renderDetails({ api: {
+      generateLibraryMetadataSuggestions: generate,
+      getLibraryMetadataSuggestions: getSuggestions,
+      getLibraryMetadataSuggestionJob: vi.fn().mockResolvedValue(SUCCEEDED_JOB),
+    } });
     const user = userEvent.setup();
     await screen.findByRole("dialog", { name: "元西域人华化考" });
     expect(screen.getByRole("button", { name: "Find metadata suggestions" })).toBeInTheDocument();
@@ -247,7 +267,30 @@ describe("Resource details", () => {
     expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["queued", "Metadata suggestion job queued"],
+    ["running", "Finding resource information in Compute…"],
+    ["failed", "Could not find resource information. Try again."],
+  ] as const)("renders durable asynchronous %s state without keeping the request open", async (state, label) => {
+    const job: DerivedMetadataJob = {
+      ...SUCCEEDED_JOB,
+      state,
+      progress: state === "running" ? 5 : 0,
+      resultRef: null,
+      errorCode: state === "failed" ? "compute_timeout" : null,
+      finishedAt: state === "failed" ? SUCCEEDED_JOB.finishedAt : null,
+    };
+    renderDetails({ api: {
+      getLibraryMetadataSuggestions: vi.fn().mockResolvedValue(null),
+      getLatestLibraryMetadataSuggestionJob: vi.fn().mockResolvedValue(job),
+      getLibraryMetadataSuggestionJob: vi.fn(() => new Promise<DerivedMetadataJob>(() => undefined)),
+    } });
+    expect(await screen.findByText(label)).toBeInTheDocument();
+    expect(screen.queryByText("The Mongols and the West, 1221–1410")).not.toBeInTheDocument();
+  });
+
   it("preserves the ApiClient receiver for the exact suggestion get, generate, and accept failure shape", async () => {
+    let suggestionReads = 0;
     const fetcher = vi.fn<typeof fetch>(async (input, init) => {
       const path = String(input);
       const method = init?.method ?? "GET";
@@ -255,10 +298,17 @@ describe("Resource details", () => {
         return new Response(JSON.stringify(detail()), { status: 200, headers: { "content-type": "application/json" } });
       }
       if (path.endsWith("/metadata/suggestions") && method === "GET") {
-        return new Response(JSON.stringify({ run: null }), { status: 200, headers: { "content-type": "application/json" } });
+        const run = suggestionReads++ === 0 ? null : SUGGESTION_RUN;
+        return new Response(JSON.stringify({ run }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (path.endsWith("/metadata/suggestion-jobs/latest") && method === "GET") {
+        return new Response(JSON.stringify({ job: null }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (path.endsWith("/metadata/suggestion-jobs/job-1") && method === "GET") {
+        return new Response(JSON.stringify({ job: SUCCEEDED_JOB }), { status: 200, headers: { "content-type": "application/json" } });
       }
       if (path.endsWith("/metadata/suggestions") && method === "POST") {
-        return new Response(JSON.stringify({ run: SUGGESTION_RUN }), { status: 200, headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify({ job: SUCCEEDED_JOB }), { status: 202, headers: { "content-type": "application/json" } });
       }
       if (path.endsWith("/metadata/suggestions/run-1/accept") && method === "POST") {
         return new Response(JSON.stringify({ detail: detail(), run: { ...SUGGESTION_RUN, status: "accepted" } }), {
@@ -277,8 +327,7 @@ describe("Resource details", () => {
     )).toBe(true));
 
     await user.click(screen.getByRole("button", { name: "Find metadata suggestions" }));
-    await screen.findByText("Resource information suggestions");
-    await user.click(screen.getByRole("checkbox", { name: /Canonical title/ }));
+    await user.click(await screen.findByRole("checkbox", { name: /Canonical title/ }));
     await user.click(screen.getByRole("button", { name: "Accept selected" }));
 
     await waitFor(() => expect(fetcher).toHaveBeenCalledWith(

@@ -4,17 +4,42 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
+import type { DerivedComputeDispatchJob, DerivedComputeDispatcher } from "@academiccloud/compute-contracts";
+import { runComputeWorker } from "../../../compute/src/worker.js";
+import type { BoundedPdfTextSource } from "../../../compute/src/suggestion.js";
+
 import { Argon2idPasswordHasher } from "../../src/auth/password-hasher.js";
 import { openSqliteDatabase } from "../../src/persistence/sqlite/database.js";
 import { runMigrations } from "../../src/persistence/sqlite/migrations.js";
 import { SqlitePersistence } from "../../src/persistence/sqlite/persistence.js";
 import { createApplication } from "../../src/platform/application.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
+import type { BrowserDownloadAuthorization, CreateDownloadAuthorizationInput } from "../../src/storage/storage-adapter.js";
 import { INITIAL_MIGRATIONS_DIRECTORY } from "../persistence/helpers.js";
 
 const ORIGIN = "http://127.0.0.1";
 const PASSWORD = "suggestions-http-password-123";
 const NOW = new Date("2026-08-18T12:00:00.000Z");
+const BOOTSTRAP_SECRET = "test-compute-bootstrap-secret-long-enough";
+
+class CapturingDispatcher implements DerivedComputeDispatcher {
+  readonly jobs: DerivedComputeDispatchJob[] = [];
+
+  async dispatch(job: DerivedComputeDispatchJob): Promise<{ provider: string; providerJobId: string }> {
+    this.jobs.push({ ...job });
+    return { provider: "test", providerJobId: `provider-${job.attemptId}` };
+  }
+}
+
+class WorkerTestStorage extends InMemoryStorageAdapter {
+  override async createDownloadAuthorization(_input: CreateDownloadAuthorizationInput): Promise<BrowserDownloadAuthorization> {
+    return {
+      method: "GET",
+      url: "https://storage.example/opaque-signed-source",
+      expiresAt: new Date(NOW.getTime() + 5 * 60_000),
+    };
+  }
+}
 
 function makePdf(title: string, author: string): Uint8Array {
   const pageObject = 3;
@@ -89,12 +114,14 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
   database.prepare("UPDATE scholarly_artifacts SET attachment_state = 'attached' WHERE id = ?").run("suggest-http-artifact");
   persistence.close();
 
-  const storage = new InMemoryStorageAdapter(() => NOW);
+  const storage = new WorkerTestStorage(() => NOW);
   storage.putObject({ objectKey, sizeBytes: bytes.byteLength, etag: null, checksumAlgorithm: "md5", checksum, mediaType: "application/pdf", modifiedAt: NOW }, bytes);
+  const dispatcher = new CapturingDispatcher();
   const app = await createApplication(
     { host: "127.0.0.1", port: 0, logLevel: "silent", environment: "test", appOrigin: ORIGIN },
     { databasePath, migrationsDirectory: INITIAL_MIGRATIONS_DIRECTORY },
     storage,
+    { dispatcher, bootstrapSecret: BOOTSTRAP_SECRET, coreBaseUrl: ORIGIN },
   );
 
   function cookieFrom(response: { headers: Record<string, unknown> }): string {
@@ -121,8 +148,66 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
     assert.equal(memberGenerate.statusCode, 404);
 
     const generated = await app.inject({ method: "POST", url: base, headers: { ...headers(ownerCookie), "content-type": "application/json" }, payload: {} });
-    assert.equal(generated.statusCode, 200);
-    const run = (generated.json() as { run: { id: string; status: string; candidates: Array<Record<string, unknown>> } }).run;
+    assert.equal(generated.statusCode, 202);
+    const job = (generated.json() as { job: { id: string; state: string } }).job;
+    assert.equal(job.state, "queued");
+    assert.equal(dispatcher.jobs.length, 1);
+    const dispatched = dispatcher.jobs[0]!;
+
+    const memberJob = await app.inject({
+      method: "GET",
+      url: `${base.replace(/\/suggestions$/u, "/suggestion-jobs")}/${job.id}`,
+      headers: headers(memberCookie),
+    });
+    assert.equal(memberJob.statusCode, 200);
+    assert.equal((memberJob.json() as { job: { state: string } }).job.state, "queued");
+
+    const inspector: BoundedPdfTextSource = {
+      async inspect() { throw new Error("whole-object worker reads are forbidden"); },
+      async inspectRange(source) {
+        assert.equal(new TextDecoder("ascii").decode(await source.read(0, 5)), "%PDF-");
+        return {
+          pageCount: 1,
+          pageIndices: [1],
+          pages: [{ pageIndex: 1, text: "HTTP suggestion title\nby\nPeter Jackson", evidenceOrigin: "native_text" }],
+          embeddedMetadata: {},
+          complete: true,
+          hasUsableTextLayer: true,
+        };
+      },
+    };
+    const workerFetch: typeof fetch = async (input, init = {}) => {
+      const url = new URL(String(input));
+      if (url.origin === "https://storage.example") {
+        const range = new Headers(init.headers).get("range")?.match(/^bytes=(\d+)-(\d+)$/u);
+        if (!range) return new Response(null, { status: 400 });
+        const begin = Number(range[1]);
+        const end = Number(range[2]) + 1;
+        return new Response(bytes.subarray(begin, end), { status: 206 });
+      }
+      if (url.origin !== ORIGIN) return new Response(null, { status: 404 });
+      const response = await app.inject({
+        method: (init.method ?? "GET") as "GET" | "POST",
+        url: `${url.pathname}${url.search}`,
+        headers: Object.fromEntries(new Headers(init.headers).entries()),
+        ...(typeof init.body === "string" ? { payload: init.body } : {}),
+      });
+      return new Response(response.body, {
+        status: response.statusCode,
+        headers: { "content-type": response.headers["content-type"] ?? "application/json" },
+      });
+    };
+    const worker = await runComputeWorker({
+      coreBaseUrl: ORIGIN,
+      jobId: job.id,
+      attemptId: dispatched.attemptId,
+      bootstrapSecret: BOOTSTRAP_SECRET,
+    }, { fetchImplementation: workerFetch, inspector });
+    assert.equal(worker.result.state, "succeeded");
+
+    const latest = await app.inject({ method: "GET", url: base, headers: headers(ownerCookie) });
+    assert.equal(latest.statusCode, 200);
+    const run = (latest.json() as { run: { id: string; status: string; candidates: Array<Record<string, unknown>> } }).run;
     assert.equal(run.status, "ready");
     assert.equal(run.candidates.some((candidate) => "objectKey" in candidate || "checksum" in candidate || "favorites" in candidate), false);
 

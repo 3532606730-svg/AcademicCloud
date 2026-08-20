@@ -9,8 +9,10 @@ import {
   type SuggestionFieldPath,
   type SuggestionSourceType,
   type SuggestionStatus,
+  type AuthorityRole,
+  type AuthorityType,
+  type TypeFieldName,
 } from "./suggestion.js";
-import type { AuthorityRole, AuthorityType, TypeFieldName } from "../metadata/metadata.js";
 
 export interface SuggestionExtractionInput {
   pages: readonly PdfTextPage[];

@@ -76,6 +76,10 @@ export const LOGGER_REDACT_PATHS = [
   "upload.fields",
   "authorization.url",
   "authorization.headers",
+  "capability.token",
+  "*.capability.token",
+  "source.url",
+  "*.source.url",
   "fields.policy",
   "fields.Signature",
   "fields.signature",
@@ -136,7 +140,7 @@ export interface CreateAppOptions {
   research?: { service: ScholarlyRecordService };
   libraries?: { service: LibraryService };
   metadata?: { service: CanonicalMetadataService };
-  suggestions?: { service: SuggestionService };
+  suggestions?: { service: SuggestionService; bootstrapSecret?: string | null };
   readinessCheck?: () => boolean;
 }
 
@@ -301,7 +305,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
 
   if (options.suggestions) {
     if (!options.auth) throw new Error("suggestion routes require authentication composition");
-    await registerSuggestionHttp(app, options.suggestions.service);
+    await registerSuggestionHttp(app, options.suggestions.service, {
+      bootstrapSecret: options.suggestions.bootstrapSecret ?? null,
+    });
   }
 
   return app;

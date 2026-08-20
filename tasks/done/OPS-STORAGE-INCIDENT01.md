@@ -1,7 +1,10 @@
 # OPS-STORAGE-INCIDENT01 — Post-Billing Storage/API Incident Diagnosis
 
 ## State
-R3 FINAL BOUNDED REPAIR DEPLOYED / PRODUCTION VERIFICATION PASS — incident remains open only for Owner real-browser existing Resume, new multipart upload, disposable multipart Abandon, file open/preview/download, and Metadata Suggestion acceptance.
+CLOSED 2026-08-21 — R3 final bounded repair, production verification, and
+Owner-reported real-browser storage acceptance are complete. The later
+Metadata Suggestion memory-reclaim/Core-stall incident is separate and is
+recorded in `OPS-METADATA-MEMORY01-DIAGNOSIS` and ADR-031.
 
 ## Trigger
 Owner observed a real production outage pattern:
@@ -269,5 +272,26 @@ Pre-deploy production was exact `988bdbf…`, active/running and healthy at v21/
 
 Post-cutover production runs exact `08657727…`; process CWD matches its immutable backend; service is active/running with `NRestarts=0`; loopback/public health/readiness are 200; and the new invocation has zero error-priority events. Schema/history fingerprint remains `573fe6fb8b16cd644a41e48e12b8e1dfa416a9e551762849ae1864393b46ef63`, integrity is `ok`, and foreign-key violations are zero. The pre/post database snapshots match exactly: seven pending files, six `uploading` multipart rows at revision 0, and one legacy pending file. No migration command, RAM/credential/application-environment change, SQLite/metadata mutation, manual complete/abort, or OSS object/part deletion occurred. RF-SEARCH01 is absent. Rollback was not required; exact `988bdbf…` remains the immediate same-schema application rollback.
 
+## Owner real-browser acceptance and closure (2026-08-21)
+
+The Owner reported the R3 browser storage acceptance complete after deployment.
+The repaired multipart Continue/new-upload/Abandon and ordinary file-access
+boundaries are therefore accepted as historical storage-incident evidence.
+
+The Metadata Suggestion journey reached a later independent runtime boundary:
+heavy PDF rendering/OCR in the Core process drove the constrained cgroup into
+memory reclaim and blocked the Node event loop without OOM or restart. That is
+not a renewed OSS permission, ListParts, CORS, or multipart defect. It is tracked
+separately in `tasks/done/OPS-METADATA-MEMORY01-DIAGNOSIS.md` and motivated the
+Owner-authorized Core/Compute separation. Closing this storage incident does not
+claim that the old synchronous Metadata Suggestion implementation was healthy.
+
+Historical production evidence above is unchanged. Production remains exact
+`08657727a17a7ea766ad0d74cc663fa40f91eee1` at schema v21/history 001–021;
+RF-SEARCH01 remains frozen and absent from production.
+
 ## Next Action
-STOP FOR OWNER REAL-BROWSER STORAGE ACCEPTANCE. The Owner next tests: (1) the current existing resumable upload through completion with completed parts reused; (2) one new real multipart PDF upload through completion; (3) one disposable multipart Abandon; (4) file open, preview, and download; and (5) one current Metadata Suggestion attempt. Do not close this incident until all five journeys pass. Do not redeploy artifact ID `9405764771`, run migrations, change RAM/OSS/CORS/config/credentials, mutate pending uploads, modify Metadata Suggestion, or deploy RF-SEARCH01.
+
+No further storage action. Do not churn RAM/OSS/CORS policy, mutate pending
+uploads, or reselect the incompatible Search-bearing repair artifact. Any later
+production Compute cutover requires its own explicit Owner authorization.

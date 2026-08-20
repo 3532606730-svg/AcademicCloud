@@ -3,13 +3,13 @@ import { test } from "node:test";
 
 import { createCanvas } from "@napi-rs/canvas";
 
-import { extractSuggestions } from "../../src/suggestions/extractor.js";
+import { extractSuggestions } from "../src/extractor.js";
 import {
   OcrError,
   TesseractCliOcrAdapter,
   loadTesseractCliConfig,
   type OcrRecognition,
-} from "../../src/suggestions/ocr.js";
+} from "../src/ocr.js";
 
 /**
  * Real-Tesseract E2E.  This is the "actual Tesseract E2E" gate: it drives the

@@ -6,9 +6,8 @@ on:
     paths:
       - ".github/workflows/production-build.yml"
       - "scripts/production-artifact.mjs"
-      - "scripts/tesseract-runtime.mjs"
-      - "scripts/build-tesseract-runtime.sh"
       - "backend/**"
+      - "compute-contracts/**"
       - "frontend/**"
       - "database/migrations/**"
       - "deployment/**"
@@ -37,8 +36,6 @@ jobs:
     env:
       SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       ARCHIVE_BASENAME: academiccloud-linux-x64-node24-${{ github.event.pull_request.head.sha || github.sha }}
-      TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
-      GITHUB_API_TOKEN: ${{ github.token }}
 
     steps:
       - name: Check out the exact source commit
@@ -69,14 +66,24 @@ jobs:
       - name: Install the clean development dependency tree
         run: npm ci
 
-      - name: Run backend and frontend tests
-        run: npm test
+      - name: Run Core and shared-contract tests
+        run: |
+          npm test --workspace @academiccloud/compute-contracts
+          npm test --workspace @academiccloud/backend
+          npm test --workspace @academiccloud/frontend
+          node --test scripts/oss-cors-contract.test.mjs
 
-      - name: Run repository type-checks
-        run: npm run typecheck
+      - name: Run Core and shared-contract type-checks
+        run: |
+          npm run typecheck --workspace @academiccloud/compute-contracts
+          npm run typecheck --workspace @academiccloud/backend
+          npm run typecheck --workspace @academiccloud/frontend
 
-      - name: Build backend and frontend production outputs
-        run: npm run build
+      - name: Build Core production outputs
+        run: |
+          npm run build --workspace @academiccloud/compute-contracts
+          npm run build --workspace @academiccloud/backend
+          npm run build --workspace @academiccloud/frontend
 
       - name: Run compiled application acceptance
         run: npm run acceptance:compiled
@@ -95,35 +102,9 @@ jobs:
           node scripts/production-artifact.mjs prepare
           --release=output/release
 
-      - name: Install backend production dependencies into the artifact
+      - name: Install Core production dependencies into the artifact
         working-directory: output/release
-        run: npm ci --omit=dev --workspace @academiccloud/backend --include-workspace-root=false
-
-      - name: Build the pinned release-local Tesseract runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          docker pull "$TESSERACT_BUILDER_IMAGE"
-          test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
-          docker run --rm --platform linux/amd64 \
-            --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
-            --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
-            --env "ARTIFACT_OUTPUT_UID=$(id -u)" \
-            --env "ARTIFACT_OUTPUT_GID=$(id -g)" \
-            --volume "$GITHUB_WORKSPACE:/work" \
-            --workdir /work \
-            "$TESSERACT_BUILDER_IMAGE" \
-            bash scripts/build-tesseract-runtime.sh output/release/runtime/tesseract
-
-      - name: Realistic fixture OCR E2E (release-local Tesseract)
-        shell: bash
-        env:
-          OCR_TESSERACT_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/bin/tesseract
-          OCR_TESSDATA_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/tessdata
-          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/lib
-        run: |
-          set -euo pipefail
-          npx tsx --test backend/test/suggestions/realistic-ocr-e2e.test.ts
+        run: npm ci --omit=dev --workspace @academiccloud/backend --workspace @academiccloud/compute-contracts --include-workspace-root=false
 
       - name: Finalize the release tree and manifest
         run: >-
@@ -147,17 +128,8 @@ jobs:
             --release=output/release
           (
             cd output/release
-            npm ci --omit=dev --workspace @academiccloud/backend --include-workspace-root=false
+            npm ci --omit=dev --workspace @academiccloud/backend --workspace @academiccloud/compute-contracts --include-workspace-root=false
           )
-          docker run --rm --platform linux/amd64 \
-            --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
-            --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
-            --env "ARTIFACT_OUTPUT_UID=$(id -u)" \
-            --env "ARTIFACT_OUTPUT_GID=$(id -g)" \
-            --volume "$GITHUB_WORKSPACE:/work" \
-            --workdir /work \
-            "$TESSERACT_BUILDER_IMAGE" \
-            bash scripts/build-tesseract-runtime.sh output/release/runtime/tesseract
           node scripts/production-artifact.mjs finalize \
             --release=output/release \
             --manifest=output/${ARCHIVE_BASENAME}.repro.manifest.json \
@@ -216,7 +188,7 @@ jobs:
             echo "- Node: \`$(node --version)\`"
             echo "- npm: \`$(npm --version)\`"
             echo "- Runner image: \`$ImageOS / $ImageVersion\`"
-            echo "- Tesseract builder: \`$TESSERACT_BUILDER_IMAGE\`"
+            echo "- Core OCR/PDF-render runtime: \`absent by contract\`"
             echo "- Artifact ID: \`$ARTIFACT_ID\`"
             echo "- GitHub artifact SHA-256: \`$ARTIFACT_DIGEST\`"
             echo "- Artifact URL: $ARTIFACT_URL"
@@ -283,5 +255,5 @@ jobs:
             echo "- Fresh runner: \`$(uname -s) $(uname -m)\`"
             echo "- Node: \`$(node --version)\`"
             echo "- GitHub artifact SHA-256: \`$ARTIFACT_DIGEST\`"
-            echo "- Result: downloaded bundle, release SHA-256, manifest, release-local Tesseract closure/models/synthetic OCR, native modules, PDF.js/canvas, and compiled acceptance all verified"
+            echo "- Result: downloaded bundle, release SHA-256, Core-only native modules, absence of OCR/PDF-render runtime, shared compute contract, and compiled Core acceptance all verified"
           } >> "$GITHUB_STEP_SUMMARY"

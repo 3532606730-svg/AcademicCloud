@@ -12,7 +12,8 @@ Prioritize:
 - metadata/suggestion contracts;
 - upload/multipart state;
 - stable error envelopes/codes;
-- job/activity contracts when JOB-CORE01 exists.
+- the completed JOB-CORE01 durable job/activity contracts without changing
+  their provider-neutral authority boundary.
 
 ## Boundaries
 No broad API redesign, no public API commitment, no GraphQL migration, no new service boundary solely for contract sharing.

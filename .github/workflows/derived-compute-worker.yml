@@ -1,0 +1,129 @@
+name: Derived compute worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: Opaque Core job identity
+        required: true
+        type: string
+      attempt_id:
+        description: Opaque Core attempt identity
+        required: true
+        type: string
+      core_base_url:
+        description: Exact public Core HTTPS origin
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: derived-compute-${{ inputs.job_id }}
+  cancel-in-progress: false
+
+jobs:
+  metadata-suggestion:
+    name: Metadata suggestion / clean Linux worker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: academiccloud-compute-production
+    env:
+      TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
+      GITHUB_API_TOKEN: ${{ github.token }}
+      COMPUTE_INPUT_JOB_ID: ${{ inputs.job_id }}
+      COMPUTE_INPUT_ATTEMPT_ID: ${{ inputs.attempt_id }}
+      COMPUTE_INPUT_CORE_ORIGIN: ${{ inputs.core_base_url }}
+
+    steps:
+      - name: Validate pinned routing before exposing the worker capability
+        shell: bash
+        env:
+          EXPECTED_CORE_ORIGIN: ${{ vars.ACADEMICCLOUD_COMPUTE_CORE_ORIGIN }}
+          EXPECTED_COMPUTE_REF: ${{ vars.ACADEMICCLOUD_COMPUTE_REF }}
+        run: |
+          set -euo pipefail
+          test -n "$EXPECTED_CORE_ORIGIN"
+          test -n "$EXPECTED_COMPUTE_REF"
+          test "$COMPUTE_INPUT_CORE_ORIGIN" = "$EXPECTED_CORE_ORIGIN"
+          test "$GITHUB_REF" = "$EXPECTED_COMPUTE_REF"
+          [[ "$COMPUTE_INPUT_JOB_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]
+          [[ "$COMPUTE_INPUT_ATTEMPT_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]
+
+      - name: Check out the exact dispatched ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up latest Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Install only Compute and shared-contract development dependencies
+        run: npm ci --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute --include-workspace-root=false
+
+      - name: Verify shared contract and Compute source
+        run: |
+          npm run typecheck --workspace @academiccloud/compute-contracts
+          npm test --workspace @academiccloud/compute-contracts
+          npm run typecheck --workspace @academiccloud/compute
+          npm test --workspace @academiccloud/compute
+          npm run build --workspace @academiccloud/compute-contracts
+          npm run build --workspace @academiccloud/compute
+
+      - name: Build the pinned worker-local Tesseract runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$TESSERACT_BUILDER_IMAGE"
+          test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
+          docker run --rm --platform linux/amd64 \
+            --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
+            --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
+            --env "ARTIFACT_OUTPUT_UID=$(id -u)" \
+            --env "ARTIFACT_OUTPUT_GID=$(id -g)" \
+            --volume "$GITHUB_WORKSPACE:/work" \
+            --workdir /work \
+            "$TESSERACT_BUILDER_IMAGE" \
+            bash scripts/build-tesseract-runtime.sh runtime/tesseract
+
+      - name: Verify Compute OCR runtime and realistic fixtures
+        shell: bash
+        env:
+          OCR_TESSERACT_PATH: ${{ github.workspace }}/runtime/tesseract/bin/tesseract
+          OCR_TESSDATA_PATH: ${{ github.workspace }}/runtime/tesseract/tessdata
+          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/runtime/tesseract/lib
+        run: |
+          set -euo pipefail
+          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd());"
+          npx tsx --test compute/test/realistic-ocr-e2e.test.ts
+          mkdir -p output
+          /usr/bin/time -v -o output/compute-memory-resource.txt \
+            npm run memory:probe --workspace @academiccloud/compute \
+            | tee output/compute-memory-probe.jsonl
+          {
+            echo "### Compute memory evidence"
+            echo
+            echo "The JSON probe records Node/PDF.js/native-canvas clean, peak, post-job, and repeat-run RSS with release-local Tesseract enabled. GNU time records the encompassing command resource maximum, including child-process execution."
+            echo
+            echo '```text'
+            cat output/compute-memory-resource.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Claim, compute, and return bounded candidates
+        timeout-minutes: 5
+        shell: bash
+        env:
+          NODE_ENV: production
+          ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET: ${{ secrets.ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET }}
+        run: |
+          set -euo pipefail
+          node --expose-gc compute/dist/main.js \
+            --core-base-url="$COMPUTE_INPUT_CORE_ORIGIN" \
+            --job-id="$COMPUTE_INPUT_JOB_ID" \
+            --attempt-id="$COMPUTE_INPUT_ATTEMPT_ID"

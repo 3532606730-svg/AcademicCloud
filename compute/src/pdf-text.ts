@@ -1,4 +1,3 @@
-import { createCanvas } from "@napi-rs/canvas";
 import type { PDFPageProxy } from "pdfjs-dist";
 import { getDocument, PDFDataRangeTransport } from "pdfjs-dist/legacy/build/pdf.mjs";
 
@@ -372,17 +371,17 @@ async function inspectPdf(options: {
       throw new PdfTextInspectionError("limit_exceeded");
     }
     const pageIndices = selectedPageIndices(pageCount, limits);
-    const inspectedPages: Array<{
-      pageIndex: number;
-      page: PDFPageProxy;
-      nativeText: string;
-    }> = [];
+    // Retain only bounded derived text between phases. PDFPageProxy objects
+    // own parser/font/image caches and must not accumulate across the exact
+    // first-15/last-5 window.
+    const inspectedPages: Array<{ pageIndex: number; nativeText: string }> = [];
     let decodedTextCharacters = 0;
     let complete = true;
     for (const pageIndex of pageIndices) {
       throwIfAborted(signal);
+      let page: PDFPageProxy | undefined;
       try {
-        const page = await withTimeout(
+        page = await withTimeout(
           document.getPage(pageIndex),
           operationBudget(parserDeadline, limits.timeoutMilliseconds),
           signal,
@@ -400,7 +399,7 @@ async function inspectPdf(options: {
           signal,
         );
         decodedTextCharacters += nativeText.length;
-        inspectedPages.push({ pageIndex, page, nativeText });
+        inspectedPages.push({ pageIndex, nativeText });
       } catch (error: unknown) {
         if (error instanceof PdfTextInspectionError && ["aborted", "timeout", "limit_exceeded"].includes(error.code)) {
           if (error.code === "aborted") throw error;
@@ -408,6 +407,12 @@ async function inspectPdf(options: {
           break;
         }
         complete = false;
+      } finally {
+        try {
+          page?.cleanup();
+        } catch {
+          // The document-level destroy remains the final cleanup boundary.
+        }
       }
     }
 
@@ -431,7 +436,7 @@ async function inspectPdf(options: {
     let nativePageCount = 0;
     let ocrPageCount = 0;
 
-    for (const { pageIndex, page, nativeText } of inspectedPages) {
+    for (const { pageIndex, nativeText } of inspectedPages) {
       throwIfAborted(signal);
       if (isUsableNativeText(nativeText)) {
         nativePageCount += 1;
@@ -449,48 +454,74 @@ async function inspectPdf(options: {
         releaseOcrRequest = release;
       }
       if (limits.maxConcurrentPageOcrJobs !== 1) throw new PdfTextInspectionError("limit_exceeded");
-      const dimensions = renderedDimensions(page, limits);
-      const canvas = createCanvas(dimensions.width, dimensions.height);
-      const context = canvas.getContext("2d");
-      let renderTask: ReturnType<typeof page.render> | undefined;
+      let page: PDFPageProxy | undefined;
       try {
-        renderTask = page.render({
-          canvas: canvas as never,
-          canvasContext: context as never,
-          viewport: dimensions.viewport as never,
-        });
-        await withTimeout(renderTask.promise, operationBudget(requestDeadline, limits.timeoutMilliseconds), signal);
-      } catch (error: unknown) {
-        renderTask?.cancel();
-        if (error instanceof PdfTextInspectionError) throw error;
-        throw new PdfTextInspectionError("render_failure");
+        page = await withTimeout(
+          document.getPage(pageIndex),
+          operationBudget(requestDeadline, limits.timeoutMilliseconds),
+          signal,
+        );
+        const dimensions = renderedDimensions(page, limits);
+        // Native canvas is an OCR-only dependency. Native-text PDFs never
+        // load its backing runtime into the clean worker process.
+        const { createCanvas } = await import("@napi-rs/canvas");
+        const canvas = createCanvas(dimensions.width, dimensions.height);
+        const context = canvas.getContext("2d");
+        let renderTask: ReturnType<typeof page.render> | undefined;
+        try {
+          renderTask = page.render({
+            canvas: canvas as never,
+            canvasContext: context as never,
+            viewport: dimensions.viewport as never,
+          });
+          await withTimeout(renderTask.promise, operationBudget(requestDeadline, limits.timeoutMilliseconds), signal);
+        } catch (error: unknown) {
+          renderTask?.cancel();
+          if (error instanceof PdfTextInspectionError) throw error;
+          throw new PdfTextInspectionError("render_failure");
+        }
+        try {
+          // Buffer is already a Uint8Array. Passing it directly avoids the
+          // former full encoded-image copy.
+          const imageBytes: Uint8Array = canvas.toBuffer("image/png");
+          if (imageBytes.byteLength > limits.maxEncodedPageImageBytes) throw new PdfTextInspectionError("limit_exceeded");
+          ocrPageCount += 1;
+          const recognized = await recognizeWithDeadline({
+            ocr,
+            imageBytes,
+            pageIndex,
+            deadline: requestDeadline,
+            limits,
+            ...(signal === undefined ? {} : { signal }),
+          });
+          const text = recognized.status === "recognized"
+            ? asBoundedText(recognized.text, limits.maxOcrOutputCharactersPerPage)
+            : "";
+          totalOcrCharacters += text.length;
+          totalCharacters += text.length;
+          if (totalOcrCharacters > limits.maxTotalOcrOutputCharacters || totalCharacters > limits.maxTotalTextCharacters) {
+            throw new PdfTextInspectionError("limit_exceeded");
+          }
+          pages.push({
+            pageIndex,
+            text,
+            evidenceOrigin: "ocr",
+            ocrEngine: recognized.engine,
+            ocrConfidence: recognized.confidence,
+          });
+        } finally {
+          // @napi-rs/canvas has no explicit dispose method. Resizing drops the
+          // backing surface deterministically before the next page.
+          canvas.width = 1;
+          canvas.height = 1;
+        }
+      } finally {
+        try {
+          page?.cleanup();
+        } catch {
+          // The document-level destroy remains the final cleanup boundary.
+        }
       }
-      const imageBytes = new Uint8Array(canvas.toBuffer("image/png"));
-      if (imageBytes.byteLength > limits.maxEncodedPageImageBytes) throw new PdfTextInspectionError("limit_exceeded");
-      ocrPageCount += 1;
-      const recognized = await recognizeWithDeadline({
-        ocr,
-        imageBytes,
-        pageIndex,
-        deadline: requestDeadline,
-        limits,
-        ...(signal === undefined ? {} : { signal }),
-      });
-      const text = recognized.status === "recognized"
-        ? asBoundedText(recognized.text, limits.maxOcrOutputCharactersPerPage)
-        : "";
-      totalOcrCharacters += text.length;
-      totalCharacters += text.length;
-      if (totalOcrCharacters > limits.maxTotalOcrOutputCharacters || totalCharacters > limits.maxTotalTextCharacters) {
-        throw new PdfTextInspectionError("limit_exceeded");
-      }
-      pages.push({
-        pageIndex,
-        text,
-        evidenceOrigin: "ocr",
-        ocrEngine: recognized.engine,
-        ocrConfidence: recognized.confidence,
-      });
     }
     await loadingTask.destroy();
     return {

@@ -373,6 +373,33 @@ export interface MetadataSuggestionRun {
 export interface MetadataSuggestionResponse {
   run: MetadataSuggestionRun | null;
 }
+export type DerivedMetadataJobState = "queued" | "running" | "succeeded" | "failed";
+export type DerivedMetadataJobErrorCode =
+  | "compute_dispatch_failed"
+  | "compute_source_stale"
+  | "compute_source_unavailable"
+  | "compute_timeout"
+  | "compute_limit_exceeded"
+  | "compute_invalid_pdf"
+  | "compute_unsupported"
+  | "compute_ocr_unavailable"
+  | "compute_invalid_result"
+  | "compute_authorization_changed"
+  | "compute_internal_error";
+export interface DerivedMetadataJob {
+  id: string;
+  kind: "metadata_suggestion";
+  resourceId: string;
+  state: DerivedMetadataJobState;
+  progress: number;
+  attempts: number;
+  resultRef: string | null;
+  errorCode: DerivedMetadataJobErrorCode | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  deadlineAt: string;
+}
 export type LibraryMetadataWithoutVersion = Omit<LibraryMetadataInput, "metadataVersion">;
 export interface MetadataSuggestionAcceptInput {
   acceptedCandidateIds: string[];
@@ -544,7 +571,18 @@ export interface AcademicCloudApi {
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
   updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails>;
   /** Metadata suggestions are optional for compatibility with older API fakes. */
-  generateLibraryMetadataSuggestions?(libraryId: string, fileId: string): Promise<MetadataSuggestionRun>;
+  generateLibraryMetadataSuggestions?(libraryId: string, fileId: string): Promise<DerivedMetadataJob>;
+  getLatestLibraryMetadataSuggestionJob?(
+    libraryId: string,
+    fileId: string,
+    signal?: AbortSignal,
+  ): Promise<DerivedMetadataJob | null>;
+  getLibraryMetadataSuggestionJob?(
+    libraryId: string,
+    fileId: string,
+    jobId: string,
+    signal?: AbortSignal,
+  ): Promise<DerivedMetadataJob>;
   getLibraryMetadataSuggestions?(libraryId: string, fileId: string, signal?: AbortSignal): Promise<MetadataSuggestionRun | null>;
   acceptLibraryMetadataSuggestions?(
     libraryId: string,
@@ -918,14 +956,35 @@ export class ApiClient implements AcademicCloudApi {
     );
   }
 
-  async generateLibraryMetadataSuggestions(libraryId: string, fileId: string): Promise<MetadataSuggestionRun> {
-    const response = await this.#action<MetadataSuggestionRun | MetadataSuggestionResponse>(
+  async generateLibraryMetadataSuggestions(libraryId: string, fileId: string): Promise<DerivedMetadataJob> {
+    const response = await this.#action<{ job: DerivedMetadataJob }>(
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata/suggestions`,
       "POST",
     );
-    const run = "run" in response ? response.run : response;
-    if (!run) throw new ApiError(404, "not_found");
-    return run;
+    return response.job;
+  }
+
+  async getLatestLibraryMetadataSuggestionJob(
+    libraryId: string,
+    fileId: string,
+    signal?: AbortSignal,
+  ): Promise<DerivedMetadataJob | null> {
+    return (await this.#request<{ job: DerivedMetadataJob | null }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata/suggestion-jobs/latest`,
+      signal ? { signal } : {},
+    )).job;
+  }
+
+  async getLibraryMetadataSuggestionJob(
+    libraryId: string,
+    fileId: string,
+    jobId: string,
+    signal?: AbortSignal,
+  ): Promise<DerivedMetadataJob> {
+    return (await this.#request<{ job: DerivedMetadataJob }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata/suggestion-jobs/${encodeURIComponent(jobId)}`,
+      signal ? { signal } : {},
+    )).job;
   }
 
   async getLibraryMetadataSuggestions(
