@@ -67,20 +67,13 @@ export interface AliyunOssClientPort {
   delete(objectKey: string): Promise<unknown>;
 }
 
-interface RawAliyunOssClientPort {
-  signatureUrlV4: AliyunOssClientPort["signatureUrlV4"];
-  initMultipartUpload?: AliyunOssClientPort["initMultipartUpload"];
+interface RawAliyunListPartsPort {
   listParts?(
     objectKey: string,
     uploadId: string,
     query?: Record<string, number | string>,
     options?: object,
   ): Promise<unknown>;
-  completeMultipartUpload?: AliyunOssClientPort["completeMultipartUpload"];
-  abortMultipartUpload?: AliyunOssClientPort["abortMultipartUpload"];
-  head: AliyunOssClientPort["head"];
-  get: AliyunOssClientPort["get"];
-  delete: AliyunOssClientPort["delete"];
 }
 
 function parseProviderInteger(value: unknown, fieldName: string): number {
@@ -105,8 +98,7 @@ function parseProviderBoolean(value: unknown, fieldName: string): boolean {
 
 /**
  * Normalize only the production-observed XML scalar mismatch at the ali-oss
- * boundary. Multipart part rows remain validated by AliyunOssStorageAdapter,
- * so this incident repair does not introduce a second part-metadata parser.
+ * boundary. Multipart part rows remain validated by AliyunOssStorageAdapter.
  */
 export function normalizeAliyunMultipartListResult(value: unknown): AliyunMultipartListResult {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -124,28 +116,17 @@ export function normalizeAliyunMultipartListResult(value: unknown): AliyunMultip
   return { parts, isTruncated, nextPartNumberMarker };
 }
 
-function adaptAliyunOssClient(client: OSS): AliyunOssClientPort {
-  const raw = client as unknown as RawAliyunOssClientPort;
-  const initMultipartUpload = raw.initMultipartUpload?.bind(raw);
-  const rawListParts = raw.listParts?.bind(raw);
-  const completeMultipartUpload = raw.completeMultipartUpload?.bind(raw);
-  const abortMultipartUpload = raw.abortMultipartUpload?.bind(raw);
+function normalizeNativeListParts(client: OSS): AliyunOssClientPort {
+  const canonical = client as unknown as AliyunOssClientPort;
+  const raw = client as unknown as RawAliyunListPartsPort;
+  const listParts = raw.listParts?.bind(client);
 
-  return {
-    signatureUrlV4: raw.signatureUrlV4.bind(raw),
-    ...(initMultipartUpload ? { initMultipartUpload } : {}),
-    ...(rawListParts
-      ? {
-          listParts: async (...args: Parameters<NonNullable<AliyunOssClientPort["listParts"]>>) =>
-            normalizeAliyunMultipartListResult(await rawListParts(...args)),
-        }
-      : {}),
-    ...(completeMultipartUpload ? { completeMultipartUpload } : {}),
-    ...(abortMultipartUpload ? { abortMultipartUpload } : {}),
-    head: raw.head.bind(raw),
-    get: raw.get.bind(raw),
-    delete: raw.delete.bind(raw),
-  };
+  if (listParts) {
+    canonical.listParts = async (...args: Parameters<NonNullable<AliyunOssClientPort["listParts"]>>) =>
+      normalizeAliyunMultipartListResult(await listParts(...args));
+  }
+
+  return canonical;
 }
 
 function baseOptions(config: AliyunOssConfig) {
@@ -161,10 +142,10 @@ function baseOptions(config: AliyunOssConfig) {
 }
 
 // Native OSS service client: HEAD/stat, DeleteObject, and every server-side
-// OSS API call continue to use the native regional bucket endpoint. Raw SDK
-// ListParts scalars are normalized before they reach the storage adapter.
+// OSS API call continue to use the native regional bucket endpoint. Only the
+// runtime ListParts scalar shape is normalized before the client is exposed.
 export function createAliyunOssClient(config: AliyunOssConfig): AliyunOssClientPort {
-  return adaptAliyunOssClient(new OSS({
+  return normalizeNativeListParts(new OSS({
     ...baseOptions(config),
     endpoint: config.endpoint,
     secure: new URL(config.endpoint).protocol === "https:",
@@ -180,10 +161,10 @@ export function createAliyunBrowserClient(
   config: AliyunOssConfig,
   browserEndpoint: string,
 ): AliyunOssClientPort {
-  return adaptAliyunOssClient(new OSS({
+  return new OSS({
     ...baseOptions(config),
     endpoint: browserEndpoint,
     cname: true,
     secure: new URL(browserEndpoint).protocol === "https:",
-  }));
+  }) as unknown as AliyunOssClientPort;
 }
