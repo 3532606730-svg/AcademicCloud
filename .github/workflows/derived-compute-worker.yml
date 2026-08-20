@@ -1,6 +1,9 @@
 name: Derived compute worker
 
 on:
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       job_id:
@@ -24,8 +27,125 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  qualification:
+    name: Compute qualification / clean Linux worker
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      QUALIFICATION_BASE_SOURCE: 7389fc3d5c8b94ffce8a1a2aaf3d29fbcbcaa106
+      QUALIFICATION_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}
+      QUALIFICATION_SOURCE_REF: codex/project-memory-reconcile-20260817
+      TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
+      GITHUB_API_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out the exact qualification source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source, ref, runner, and workflow-only delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = "pull_request"
+          test "$GITHUB_HEAD_REF" = "$QUALIFICATION_SOURCE_REF"
+          test "$RUNNER_OS" = "Linux"
+          test "$(uname -m)" = "x86_64"
+          test "$(git rev-parse HEAD)" = "$QUALIFICATION_SOURCE_COMMIT"
+          git cat-file -e "$QUALIFICATION_BASE_SOURCE^{commit}"
+          git merge-base --is-ancestor "$QUALIFICATION_BASE_SOURCE" HEAD
+          test "$(git diff --name-only "$QUALIFICATION_BASE_SOURCE"..HEAD)" = ".github/workflows/derived-compute-worker.yml"
+
+      - name: Set up latest Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Install only Compute and shared-contract development dependencies
+        run: npm ci --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute --include-workspace-root=false
+
+      - name: Verify shared Compute contracts
+        run: |
+          npm run typecheck --workspace @academiccloud/compute-contracts
+          npm test --workspace @academiccloud/compute-contracts
+          npm run build --workspace @academiccloud/compute-contracts
+
+      - name: Verify Compute source
+        run: |
+          npm run typecheck --workspace @academiccloud/compute
+          npm test --workspace @academiccloud/compute
+          npm run build --workspace @academiccloud/compute
+
+      - name: Build the pinned worker-local Tesseract runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          readonly OUTPUT_UID="$(id -u)"
+          readonly OUTPUT_GID="$(id -g)"
+          docker pull "$TESSERACT_BUILDER_IMAGE"
+          test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
+          docker run --rm --platform linux/amd64 \
+            --env TESSERACT_BUILDER_IMAGE \
+            --env GITHUB_API_TOKEN \
+            --env "ARTIFACT_OUTPUT_UID=$OUTPUT_UID" \
+            --env "ARTIFACT_OUTPUT_GID=$OUTPUT_GID" \
+            --volume "$GITHUB_WORKSPACE:/work" \
+            --workdir /work \
+            "$TESSERACT_BUILDER_IMAGE" \
+            bash scripts/build-tesseract-runtime.sh runtime/tesseract
+
+      - name: Verify real Tesseract OCR and Linux memory
+        shell: bash
+        env:
+          OCR_TESSERACT_PATH: ${{ github.workspace }}/runtime/tesseract/bin/tesseract
+          OCR_TESSDATA_PATH: ${{ github.workspace }}/runtime/tesseract/tessdata
+          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/runtime/tesseract/lib
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd());"
+          npx tsx --test compute/test/realistic-ocr-e2e.test.ts | tee output/realistic-ocr-e2e.tap
+          ! grep -Eq '^# skipped [1-9][0-9]*$|# SKIP' output/realistic-ocr-e2e.tap
+          /usr/bin/time -v -o output/compute-memory-resource.txt \
+            npm run memory:probe --workspace @academiccloud/compute \
+            | tee output/compute-memory-probe.jsonl
+          readonly PROBE_JSON="$(grep -E '^\{"status":"ok"' output/compute-memory-probe.jsonl | tail -n 1)"
+          test -n "$PROBE_JSON"
+          jq -e '.ocrMode == "release_local_tesseract" and .peakRssBytes < 536870912 and .repeatDriftBytes < 67108864' <<<"$PROBE_JSON" >/dev/null
+          {
+            echo "### Compute qualification memory evidence"
+            echo
+            echo "The JSON probe records Node/PDF.js/native-canvas clean, peak, post-job, and repeat-run RSS with release-local Tesseract enabled. GNU time records the encompassing command resource maximum, including child-process execution."
+            echo
+            echo '```text'
+            jq '{status, cleanStartRssBytes, peakRssBytes, postJobRssBytes, retainedGrowthBytes, repeatDriftBytes, runs, ocrMode}' <<<"$PROBE_JSON"
+            grep -E '^[[:space:]]*Maximum resident set size \(kbytes\):' output/compute-memory-resource.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify qualification output and production-shell safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(find output -type f -empty -print -quit)"
+          ! grep -ERniE \
+            'Authorization:[[:space:]]*(Bearer|Basic)|[?&](X-Amz-|x-oss-|Signature=|security-token=)|"(sourceUrl|callbackUrl|capability|candidates|evidenceExcerpt)"[[:space:]]*:|A Durable Compute Memory Probe|Copyright 2026 AcademicCloud Press|978-0-306-40615-7' \
+            output
+          ! grep -Eq -- '--(core-base-url|job-id|attempt-id)=\$\{\{ inputs\.' .github/workflows/derived-compute-worker.yml
+          grep -Fq -- '--core-base-url="$COMPUTE_INPUT_CORE_ORIGIN"' .github/workflows/derived-compute-worker.yml
+          grep -Fq -- '--job-id="$COMPUTE_INPUT_JOB_ID"' .github/workflows/derived-compute-worker.yml
+          grep -Fq -- '--attempt-id="$COMPUTE_INPUT_ATTEMPT_ID"' .github/workflows/derived-compute-worker.yml
+          ! grep -q "actions/upload""-artifact" .github/workflows/derived-compute-worker.yml
+
   metadata-suggestion:
     name: Metadata suggestion / clean Linux worker
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: academiccloud-compute-production
