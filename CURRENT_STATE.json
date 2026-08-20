@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T22:00:00+08:00",
+  "updatedAt": "2026-08-20T22:32:48+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
   "production": {
-    "declaredRelease": "604cb8daf310696353e99c30ce7a924dc71ef9d2",
-    "previousRelease": "a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a",
+    "declaredRelease": "988bdbf052de1a39b47a1e22ac761c977eec72c8",
+    "previousRelease": "604cb8daf310696353e99c30ce7a924dc71ef9d2",
     "schema": 21,
     "migrationHead": 21,
     "migrationHistory": "001-021",
@@ -20,7 +20,7 @@
     "defaultPolicyVersion": "v2",
     "providerVerification": "pass",
     "applicationRuntimeMismatch": "ali-oss 6.23.0 ListParts forwards XML singleton Part objects and boolean/integer fields as strings while AcademicCloud expects canonical arrays/booleans/numbers",
-    "ownerProductAcceptance": "pending compatible hotfix deployment",
+    "ownerProductAcceptance": "pending Owner real-browser Continue, disposable Abandon, and Metadata Suggestion",
     "pendingMultipartRows": 5,
     "pendingFileRows": 6
   },
@@ -72,8 +72,25 @@
     "deterministicRebuild": "pass",
     "independentArtifactVerification": "pass",
     "productionTouchedByConstruction": false,
-    "deploymentAuthorized": false,
-    "ownerBrowserAcceptance": "blocked_until_deployment"
+    "deploymentAuthorized": true,
+    "deploymentStatus": "pass",
+    "preDeployRelease": "604cb8daf310696353e99c30ce7a924dc71ef9d2",
+    "deployedRelease": "988bdbf052de1a39b47a1e22ac761c977eec72c8",
+    "releaseScopeCheck": "pass",
+    "processReleaseIdentity": "pass",
+    "serviceVerification": "pass",
+    "loopbackHealthReadiness": "pass",
+    "publicHealthReadiness": "pass",
+    "schemaAfterDeployment": 21,
+    "migrationsRun": false,
+    "configurationChanged": false,
+    "ramChanged": false,
+    "credentialsChanged": false,
+    "databaseMutated": false,
+    "pendingUploadsManuallyMutated": false,
+    "rfSearchDeployed": false,
+    "rollbackRequired": false,
+    "ownerBrowserAcceptance": "pending"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -91,8 +108,7 @@
     ]
   },
   "currentPriorityOrder": [
-    "OPS-STORAGE-HOTFIX01 Owner deployment decision",
-    "OPS-STORAGE-INCIDENT01 browser acceptance and closure",
+    "OPS-STORAGE-INCIDENT01 Owner browser acceptance and closure",
     "RF-SEARCH01 production closure",
     "L1-UX08",
     "OPS-DEPENDENCY01",
@@ -112,8 +128,9 @@
     "The exact Owner-authorized RAM v2 repair is complete; no further provider-policy mutation is authorized.",
     "Original artifact 9405764771 / source 8d289702 is technically verified but production-scope invalid under the no-Search boundary and must not be redeployed.",
     "The failed deployment attempt briefly exposed RF-SEARCH01 and rolled back successfully to 604cb8d without schema, RAM, credential, configuration, database, or pending-upload mutation.",
-    "The replacement hotfix source 988bdbf is based directly on production 604cb8d and differs by exactly two storage repair/test files; its production artifact 9409511861 passed deterministic build and fresh-runner independent verification.",
+    "The replacement hotfix source 988bdbf is based directly on previous production 604cb8d and differs by exactly two storage repair/test files; exact artifact 9409511861 passed deterministic build, fresh-runner independent verification, immutable installation, and healthy application-only cutover.",
+    "Production now runs exact 988bdbf with previous release 604cb8d; schema/history, RAM v2, credentials, protected configuration, SQLite contents, and pending uploads were preserved, rollback was not required, and RF-SEARCH01 is not deployed.",
     "Metadata Suggestion code must not be changed unless a current post-hotfix browser attempt proves a new failure boundary.",
-    "RF-SEARCH01 remains frozen and blocked from production until storage hotfix deployment/incident closure and its own mandatory browser gate."
+    "RF-SEARCH01 remains frozen and blocked from production until storage incident closure and its own mandatory browser gate."
   ]
 }

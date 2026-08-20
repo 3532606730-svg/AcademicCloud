@@ -1,7 +1,7 @@
 # OPS-STORAGE-INCIDENT01 — Post-Billing Storage/API Incident Diagnosis
 
 ## State
-PROVIDER REPAIR VERIFIED + APPLICATION DEPLOYMENT FAILED CLOSED / ROLLBACK PASS — incident remains open; STOP FOR OWNER RELEASE-SCOPE REVIEW.
+PROVIDER REPAIR VERIFIED + COMPATIBLE HOTFIX DEPLOYED / PRODUCTION VERIFICATION PASS — incident remains open only for Owner real-browser Continue, disposable Abandon, and Metadata Suggestion acceptance.
 
 ## Trigger
 Owner observed a real production outage pattern:
@@ -194,7 +194,13 @@ The Owner-authorized deployment of exact artifact ID `9405764771` / source `8d28
 
 The deployment failed closed and used the already-established same-schema application-only rollback. Production is restored to exact release `604cb8daf310696353e99c30ce7a924dc71ef9d2`, process CWD matches that immutable release, service is active/running with `NRestarts=0`, one loopback listener is present, and loopback/public health/readiness all return 200. Schema remains v21/history 001–021; no migration ran. Protected environment/systemd/Nginx hashes and RAM v2 are unchanged. All five multipart rows remain `uploading`, six file rows remain `pending_upload`, and no upload, OSS object/part, metadata, credential, configuration, RAM, or SQLite state was manually mutated.
 
-The incident remains open. Owner browser Continue/Abandon/Metadata Suggestion acceptance is blocked until a compatible storage-repair release is explicitly authorized and deployed. Artifact `8d289702…` must not be reselected while the no-Search boundary remains in force.
+At that checkpoint the incident remained open and browser acceptance was blocked until a compatible storage-repair release could be authorized and deployed. Artifact `8d289702…` must not be reselected while the no-Search boundary remains in force.
+
+## Compatible Production-Baseline Hotfix Deployment (2026-08-20)
+
+The Owner separately authorized exact artifact ID `9409511861`, source `988bdbf052de1a39b47a1e22ac761c977eec72c8`, built directly from production `604cb8d…`. The mandatory scope gate passed: exactly two commits and two changed files (`backend/src/storage/aliyun/client.ts` and its regression test), with no Search/frontend/database/migration/configuration/dependency or unrelated product delta. Exact artifact, archive, and manifest hashes matched the authorized values; local, host-side, compiled-runtime, native-dependency, OCR, and independent downloaded-artifact verification passed.
+
+The new immutable release was installed and selected atomically. Only `academiccloud.service` was restarted. Production now runs exact `988bdbf…`, process CWD matches its immutable backend, service is active/running with `NRestarts=0`, one loopback listener is present, and loopback/public health/readiness all return 200. Schema remains v21/history 001–021 with the exact pre-deploy fingerprint; no migration ran. Protected environment/systemd/Nginx hashes and Nginx process identity are unchanged. All five multipart rows remain `uploading` and all six pending file rows remain `pending_upload`. Fresh RAM readback returned 200 and reconfirmed default v2 with the exact five-action, exact-resource policy and no `ListMultipartUploads`. No RAM, credential, configuration, SQLite, metadata, OSS object/part, pending-upload, or Search mutation occurred. Rollback was not required.
 
 ## Next Action
-STOP FOR OWNER REVIEW OF THE FAILED-CLOSED RELEASE-SCOPE GATE. Do not redeploy artifact ID `9405764771` under the no-Search boundary and do not run Owner browser acceptance yet. A compatible repair-only artifact or an explicit boundary revision requires new Owner authorization and exact-source evidence. Do not run migrations, change RAM/config/credentials, mutate pending uploads, or close this incident.
+STOP FOR OWNER REAL-BROWSER STORAGE ACCEPTANCE. The Owner next tests: (1) Continue the existing resumable upload; (2) Abandon one disposable resumable upload; (3) Metadata Suggestion on an existing suitable document. Do not close this incident until all three journeys pass. Do not redeploy artifact ID `9405764771`, run migrations, change RAM/config/credentials, mutate pending uploads, modify Metadata Suggestion, or deploy RF-SEARCH01.

@@ -1,7 +1,7 @@
 # OPS-STORAGE-HOTFIX01 — Production-Baseline ListParts Hotfix
 
 ## State
-ARTIFACT VERIFIED — exact production-baseline repair candidate ready for a separate Owner deployment decision. Production is currently restored to `604cb8daf310696353e99c30ce7a924dc71ef9d2` and was not touched by this hotfix construction/verification pass.
+PRODUCTION DEPLOYMENT PASS — exact artifact `9409511861` / source `988bdbf052de1a39b47a1e22ac761c977eec72c8` is live and provider/production verification is green. Rollback was not required. STOP for Owner real-browser storage acceptance.
 
 ## Why this task exists
 The first storage-repair artifact (`9405764771`, source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6`) was technically valid but release-scope invalid: that source was 50 commits ahead of production and contained the frozen RF-SEARCH01 UI/API. The Owner-authorized deployment correctly failed closed and rolled back to `604cb8d…`.
@@ -78,7 +78,9 @@ INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 ## Production safety state
 
 ```text
-CURRENT_PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
+PRE_DEPLOY_PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
+CURRENT_PRODUCTION=988bdbf052de1a39b47a1e22ac761c977eec72c8
+PREVIOUS_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
 SCHEMA=v21
 MIGRATIONS=001-021
 MIGRATIONS_RUN=false
@@ -89,9 +91,27 @@ DATABASE_MUTATED=false
 PENDING_UPLOADS_MANUALLY_MUTATED=false
 RF_SEARCH01_INCLUDED_IN_HOTFIX_DELTA=false
 PRODUCTION_TOUCHED_BY_HOTFIX_BUILD=false
+RELEASE_SCOPE_CHECK=PASS
+RELEASE_SWITCH=PASS
+PROCESS_RELEASE_IDENTITY=PASS
+SERVICE=PASS
+LOOPBACK_HEALTH=PASS
+LOOPBACK_READINESS=PASS
+PUBLIC_HEALTH=PASS
+PUBLIC_READINESS=PASS
+ROLLBACK_REQUIRED=false
+RF_SEARCH01_DEPLOYED=false
 ```
 
 The previous rolled-back release directory `8d289702…` may remain installed inactive, but it must not be selected under the current no-Search deployment boundary.
 
+## Production deployment evidence (2026-08-20)
+
+The Owner explicitly authorized deployment of only the existing immutable artifact above. Before mutation, live production was re-proven at exact `604cb8d…`, schema v21/history 001–021. The exact Git compare to `988bdbf…` remained two commits and two files, with no Search/frontend/database/migration/configuration/dependency/unrelated product delta. GitHub workflow/artifact identity and all three supplied SHA-256 values matched.
+
+The downloaded artifact passed local and host-side archive/manifest/runtime verification. It was installed as root-owned immutable `/opt/academiccloud/releases/988bdbf052de1a39b47a1e22ac761c977eec72c8`; direct old/new manifest comparison proved that only the compiled Aliyun client JavaScript and source map differ in the payload. The release pointer was switched atomically and only `academiccloud.service` was restarted.
+
+Post-cutover verification passed exact release and process CWD identity, active/running service with `NRestarts=0`, one `127.0.0.1:3000` listener, and loopback/public health/readiness 200. Nginx remained untouched with the same PID/start identity. Environment, systemd, Nginx site, and security-header hashes remained exact. Schema remained v21/history 001–021 with fingerprint `573fe6fb8b16cd644a41e48e12b8e1dfa416a9e551762849ae1864393b46ef63`; no migration command ran. Five multipart rows remain `uploading` and six file rows remain `pending_upload`. A fresh provider API readback returned status 200 and confirmed `AcademicCloudProdOSS` v2 remains default with exactly Put/Get/Delete/ListParts/AbortMultipartUpload on the same `objects/*` resource and no `ListMultipartUploads`. The new service invocation contains zero warning-or-higher journal entries. No RAM, credential, configuration, SQLite, metadata, OSS object/part, pending-upload, or RF-SEARCH01 mutation occurred.
+
 ## Next action
-STOP FOR OWNER PRODUCTION DEPLOYMENT DECISION. If authorized, deploy **only** artifact ID `9409511861` / source `988bdbf052de1a39b47a1e22ac761c977eec72c8`, after re-proving the live baseline remains exactly `604cb8d…`. Do not rebuild, substitute another source, run migrations, modify RAM/config/credentials/database, or deploy Search. After a healthy cutover, stop for Owner real-browser Continue -> disposable Abandon -> Metadata Suggestion acceptance.
+STOP FOR OWNER REAL-BROWSER STORAGE ACCEPTANCE. The Owner next tests Continue on the existing resumable upload, Abandon on one disposable resumable upload, and Metadata Suggestion on an existing suitable document. Do not perform those journeys for the Owner, close the incident, modify Metadata Suggestion, churn RAM/OSS policy, or progress to RF-SEARCH01 without new explicit authorization and acceptance evidence.

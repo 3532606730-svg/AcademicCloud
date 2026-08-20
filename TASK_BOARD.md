@@ -8,8 +8,8 @@ The board is the executable priority view. `CURRENT_STATE.json` holds compact cu
 
 | Order | Task | Task card | State |
 |---:|---|---|---|
-| 1 | OPS-STORAGE-HOTFIX01 | `tasks/doing/OPS-STORAGE-HOTFIX01.md` | ARTIFACT VERIFIED — exact hotfix is based directly on production `604cb8d…`, changes only Aliyun `ListParts` normalization + its regression test, and excludes RF-SEARCH01; STOP for Owner production-deployment decision |
-| 2 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER REPAIR VERIFIED — incident remains open pending compatible hotfix deployment + Owner Continue/Abandon/metadata browser acceptance |
+| 1 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER + COMPATIBLE HOTFIX VERIFIED — production runs exact `988bdbf…`; incident remains open only for Owner Continue/disposable Abandon/Metadata Suggestion browser acceptance |
+| 2 | OPS-STORAGE-HOTFIX01 | `tasks/doing/OPS-STORAGE-HOTFIX01.md` | PRODUCTION DEPLOYMENT PASS — exact artifact `9409511861` deployed with unchanged schema/config/RAM/credentials/SQLite/pending state, Search absent, rollback not required; STOP for Owner product acceptance |
 | 3 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — candidate remains frozen and is not currently live; brief exposure during the rolled-back incompatible repair deployment is recorded |
 
 `OPS-STORAGE-APP-REPAIR01` remains the technical diagnosis/source-repair record. Its original artifact ID `9405764771` is **not a valid production candidate under the no-Search boundary** because source `8d289702…` includes RF-SEARCH01. It must not be redeployed.
@@ -64,7 +64,8 @@ Completed cards under `tasks/done/` remain authoritative for implementation/rele
 ## Current Release Boundary
 
 ```text
-DECLARED_PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
+DECLARED_PRODUCTION=988bdbf052de1a39b47a1e22ac761c977eec72c8
+PREVIOUS_PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
 SCHEMA=v21 / 001-021
 
 OLD_STORAGE_REPAIR_SOURCE=8d28970209c2e7b41b5d9486bea570a2a8e6c7e6
@@ -83,6 +84,11 @@ STORAGE_HOTFIX_ARCHIVE_SHA256=79cea866533e9da1b7d00fb0b3e62a3a3123a90bc20138b8c4
 STORAGE_HOTFIX_MANIFEST_SHA256=d6d8b22077d79e9018c6e3eef2cb4454e452995dbc3c1127e574257914e8ce30
 STORAGE_HOTFIX_INDEPENDENT_VERIFICATION=PASS
 STORAGE_HOTFIX_RF_SEARCH_INCLUDED=false
+STORAGE_HOTFIX_RELEASE_SWITCH=PASS
+STORAGE_HOTFIX_PROCESS_IDENTITY=PASS
+STORAGE_HOTFIX_HEALTH_READINESS=PASS
+STORAGE_HOTFIX_ROLLBACK_REQUIRED=false
+STORAGE_HOTFIX_OWNER_BROWSER_ACCEPTANCE=PENDING
 
 SEARCH_ARTIFACT_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION=NOT_CUT_OVER
@@ -94,10 +100,10 @@ ACTIVE_RELEASE_TASK=OPS-STORAGE-HOTFIX01
 
 - The exact provider permission repair is complete; no further RAM/OSS policy churn is authorized.
 - Do not redeploy source `8d289702…` / artifact `9405764771` under the no-Search boundary.
-- The only verified compatible storage candidate is source `988bdbf…` / artifact `9409511861`, built directly from production `604cb8d…` and differing by exactly two files.
-- Production deployment of the hotfix remains an explicit Owner gate; artifact verification itself does not authorize deployment.
+- Production runs exact compatible storage source `988bdbf…` / artifact `9409511861`, built directly from previous production `604cb8d…` and differing by exactly two files.
+- The hotfix deployment authority is exhausted; no rebuild, substitute deployment, or additional production mutation is authorized.
 - No migration, credential/config change, pending-upload mutation, manual complete/abort, or metadata mutation is authorized now.
-- Do not close `OPS-STORAGE-INCIDENT01` until the hotfix is deployed and Continue, Abandon, and metadata-suggestion real-browser journeys pass.
+- Do not close `OPS-STORAGE-INCIDENT01` until Continue, disposable Abandon, and metadata-suggestion real-browser journeys pass.
 - Search remains frozen; do not rebuild or modify the exact RF-SEARCH01 release candidate unless a concrete defect requires it.
 - No new research feature begins while the production storage incident is unresolved.
 - Paid storage backup/provider choice, credentials, further RAM/OSS policy, migrations, destructive repair, production deployment, and infrastructure changes remain explicit Owner gates.

@@ -8,20 +8,20 @@
 
 AcademicCloud's immediate problem is still the storage incident, not a product-model rewrite.
 
-`OPS-STORAGE-INCIDENT01` remains ACTIVE. The provider-side RAM repair is complete and verified. The application-side `ali-oss@6.23.0` `ListParts` runtime mismatch is also proven and repaired. The first production artifact for that repair was technically valid but **release-scope invalid** because its source also contained RF-SEARCH01; that deployment failed closed and rolled back successfully. A new production-baseline hotfix artifact has now been built and independently verified.
+`OPS-STORAGE-INCIDENT01` remains ACTIVE only for Owner product acceptance. The provider-side RAM repair is complete and verified. The application-side `ali-oss@6.23.0` `ListParts` runtime mismatch is proven, repaired, and now deployed through the exact production-baseline hotfix. The first production artifact remains permanently disallowed under the no-Search boundary; its failed-closed attempt and successful rollback remain historical evidence.
 
 ## Production Declaration
 
-Production is currently restored to the exact pre-attempt release:
+Production now runs the exact compatible storage-only hotfix:
 
 ```text
-PRODUCTION_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
-PREVIOUS_RELEASE=a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a
+PRODUCTION_RELEASE=988bdbf052de1a39b47a1e22ac761c977eec72c8
+PREVIOUS_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
 SCHEMA=v21
 MIGRATIONS=001-021
 ```
 
-The failed deployment attempt briefly selected `8d289702…`, detected the forbidden Search scope, and rolled back to `604cb8d…`. Post-rollback service/process/health/readiness checks passed. No migration, RAM change, credential/config change, SQLite mutation, pending-upload mutation, OSS object/part deletion, or metadata mutation occurred.
+The authorized `988bdbf…` deployment passed exact release-scope, artifact/hash, immutable-install, process-identity, service, loopback/public health/readiness, schema/history, protected-configuration, RAM-readback, and pending-state gates. Only `academiccloud.service` restarted; Nginx was untouched. Rollback was not required. No migration, RAM change, credential/config change, SQLite mutation, pending-upload mutation, OSS object/part deletion, metadata mutation, or Search deployment occurred.
 
 ## Storage Incident Root Causes
 
@@ -54,7 +54,7 @@ That artifact passed technical verification but is **INVALID_FOR_PRODUCTION_SCOP
 
 ## Production-Baseline Storage Hotfix
 
-A replacement hotfix was created directly from the exact current production release:
+A replacement hotfix was created directly from the exact then-current production release:
 
 ```text
 HOTFIX_BRANCH=hotfix/storage-listparts-from-prod-20260820
@@ -90,6 +90,12 @@ INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 
 The workflow passed clean install, backend/frontend tests, typechecks, production builds, compiled acceptance, dependency audits, Argon2 benchmark, pinned release-local Tesseract build, realistic OCR E2E, deterministic rebuild, extracted-runtime verification, artifact upload, and fresh-runner independent downloaded-artifact verification.
 
+## Storage Hotfix Production Deployment
+
+The Owner authorized only the exact existing artifact above. Live preconditions re-proved production at `604cb8d…`, schema v21/history 001–021, and the exact two-commit/two-file no-Search delta. All authorized artifact identities and hashes matched. Host-side full packaged verification passed before immutable installation.
+
+The release pointer switched atomically to `988bdbf…`, and only the AcademicCloud service restarted. Exact process CWD, active/running state, `NRestarts=0`, one loopback listener, and all four loopback/public health/readiness probes passed. Protected environment/systemd/Nginx hashes and Nginx runtime identity remained unchanged. Schema/history retained fingerprint `573fe6fb8b16cd644a41e48e12b8e1dfa416a9e551762849ae1864393b46ef63`; no migration command ran. Five multipart rows remain `uploading`, six files remain `pending_upload`, and the new service invocation has zero warning-or-higher events. A fresh RAM API readback returned 200 and reconfirmed default policy v2 with exactly Put/Get/Delete/ListParts/AbortMultipartUpload on the same `objects/*` resource; `ListMultipartUploads` remains absent. Rollback was not required.
+
 ## RF-SEARCH01
 
 RF-SEARCH01 remains frozen and is not currently live. Its own release candidate remains:
@@ -108,9 +114,7 @@ It was briefly exposed during the rolled-back incompatible repair deployment, bu
 ## Current Priority
 
 ```text
-OPS-STORAGE-HOTFIX01 Owner deployment decision
-→ compatible storage hotfix deployment
-→ Owner Continue / disposable Abandon / Metadata Suggestion acceptance
+Owner Continue / disposable Abandon / Metadata Suggestion acceptance
 → OPS-STORAGE-INCIDENT01 closure
 → RF-SEARCH01 production closure
 → L1-UX08
@@ -123,7 +127,7 @@ OPS-STORAGE-HOTFIX01 Owner deployment decision
 ## Safety Boundaries
 
 - Do not redeploy source `8d289702…` / artifact `9405764771` under the no-Search boundary.
-- The only verified compatible storage release candidate is source `988bdbf…` / artifact `9409511861`.
+- Production runs exact compatible storage release `988bdbf…` / artifact `9409511861`; no further storage deployment action is authorized.
 - No further RAM/OSS policy mutation is authorized.
 - No migration, credential change, config change, SQLite mutation, manual multipart complete/abort, pending-upload deletion, or metadata mutation is authorized.
 - Do not change Metadata Suggestion implementation without a current post-hotfix browser reproduction and proven failure boundary.
@@ -131,4 +135,4 @@ OPS-STORAGE-HOTFIX01 Owner deployment decision
 
 ## Next Action
 
-**STOP FOR OWNER PRODUCTION DEPLOYMENT DECISION for the production-baseline hotfix only.** If authorized, deploy exact artifact ID `9409511861` / source `988bdbf052de1a39b47a1e22ac761c977eec72c8` after re-proving live production is still exactly `604cb8d…`. Do not rebuild or substitute another source. After healthy cutover, stop for Owner real-browser storage acceptance.
+**STOP FOR OWNER REAL-BROWSER STORAGE ACCEPTANCE.** The Owner next tests Continue on the existing resumable upload, Abandon on one disposable resumable upload, and Metadata Suggestion on an existing suitable document. Do not close the incident or progress to RF-SEARCH01 until those journeys pass.
