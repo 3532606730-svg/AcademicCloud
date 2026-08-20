@@ -293,6 +293,7 @@ const EN = {
   "librarySearch.loading": "Searching…",
   "librarySearch.noResults": "No matching resources",
   "librarySearch.resultsAria": "Search results",
+  "librarySearch.loadMore": "Load more",
   // workspace
   "workspace.uploadFiles": "Upload files",
   "workspace.uploadResources": "Upload resources",
@@ -768,6 +769,7 @@ const ZH_CN: Record<MessageKey, string> = {
   "librarySearch.loading": "正在搜索…",
   "librarySearch.noResults": "未找到匹配的资料",
   "librarySearch.resultsAria": "搜索结果",
+  "librarySearch.loadMore": "加载更多",
   "workspace.uploadFiles": "上传文件",
   "workspace.uploadResources": "上传资料",
   "workspace.itemSummary": "{files} 个文件 · {folders} 个文件夹",

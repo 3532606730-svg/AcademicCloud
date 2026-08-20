@@ -362,6 +362,8 @@ input:hover { border-color: #a7b2a8; }
 .library-search-clear:hover { color: var(--ink); background: #eceee9; }
 .library-search-results { margin-top: 0.6rem; }
 .library-search-results > .muted { margin: 0.25rem 0; }
+.library-search-more { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.6rem; }
+.library-search-more-error { color: var(--error, #9a2f2f); font-size: 0.8125rem; }
 .library-search-list { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
 .library-search-result {
   display: grid;

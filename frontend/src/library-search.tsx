@@ -72,8 +72,12 @@ export function LibrarySearchField({
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [results, setResults] = useState<LibrarySearchResult[]>([]);
   const [error, setError] = useState<unknown>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<unknown>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  const loadMoreAbortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
   const onActiveChangeRef = useRef(onActiveChange);
@@ -85,12 +89,13 @@ export function LibrarySearchField({
     onActiveChangeRef.current?.(active);
   }, [active]);
 
-  // Cancel any in-flight search and release the parent's "search active"
-  // flag when this field leaves the catalogue (unmount).
+  // Cancel any in-flight search/load-more and release the parent's "search
+  // active" flag when this field leaves the catalogue (unmount).
   useEffect(() => {
     return () => {
       onActiveChangeRef.current?.(false);
       abortRef.current?.abort();
+      loadMoreAbortRef.current?.abort();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
@@ -102,6 +107,8 @@ export function LibrarySearchField({
     if (!libraryId || !trimmed) {
       abortRef.current?.abort();
       abortRef.current = null;
+      loadMoreAbortRef.current?.abort();
+      loadMoreAbortRef.current = null;
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
@@ -110,11 +117,19 @@ export function LibrarySearchField({
       setStatus("idle");
       setResults([]);
       setError(null);
+      setNextCursor(null);
+      setLoadingMore(false);
+      setLoadMoreError(null);
       return;
     }
 
     setStatus("loading");
     setError(null);
+    setNextCursor(null);
+    setLoadingMore(false);
+    setLoadMoreError(null);
+    loadMoreAbortRef.current?.abort();
+    loadMoreAbortRef.current = null;
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     const requestId = requestIdRef.current + 1;
@@ -129,6 +144,7 @@ export function LibrarySearchField({
         (page) => {
           if (requestIdRef.current !== requestId || controller.signal.aborted) return;
           setResults(page.results);
+          setNextCursor(page.nextCursor);
           setStatus("success");
         },
         (caught: unknown) => {
@@ -146,6 +162,41 @@ export function LibrarySearchField({
       }
     };
   }, [api, library, query]);
+
+  function loadMore() {
+    const libraryId = library?.id;
+    const trimmed = query.trim();
+    if (!libraryId || !trimmed || !nextCursor || loadingMore) return;
+    const requestId = requestIdRef.current;
+    loadMoreAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadMoreAbortRef.current = controller;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor).then(
+      (page) => {
+        if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+        setResults((current) => {
+          const seen = new Set(current.map((item) => item.fileId));
+          const appended: LibrarySearchResult[] = [...current];
+          for (const item of page.results) {
+            if (!seen.has(item.fileId)) {
+              seen.add(item.fileId);
+              appended.push(item);
+            }
+          }
+          return appended;
+        });
+        setNextCursor(page.nextCursor);
+      },
+      (caught: unknown) => {
+        if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+        setLoadMoreError(caught);
+      },
+    ).finally(() => {
+      if (requestIdRef.current === requestId) setLoadingMore(false);
+    });
+  }
 
   return (
     <div className="library-search">
@@ -186,31 +237,48 @@ export function LibrarySearchField({
             <p className="muted">{t("librarySearch.noResults")}</p>
           )}
           {status === "success" && results.length > 0 && (
-            <ul className="library-search-list" aria-label={t("librarySearch.resultsAria")}>
-              {results.map((result) => {
-                const title = composeLibraryDisplayTitle(
-                  {
-                    canonicalTitle: result.canonicalTitle,
-                    authorLabels: result.authorLabels,
-                    fallbackDisplayName: result.displayName,
-                  },
-                  language,
-                );
-                const meta = secondaryLine(result, t);
-                return (
-                  <li key={result.fileId}>
-                    <button
-                      type="button"
-                      className="library-search-result"
-                      onClick={() => onOpenResult(result)}
-                    >
-                      <span className="library-search-result-title">{title}</span>
-                      {meta && <span className="library-search-result-meta">{meta}</span>}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <>
+              <ul className="library-search-list" aria-label={t("librarySearch.resultsAria")}>
+                {results.map((result) => {
+                  const title = composeLibraryDisplayTitle(
+                    {
+                      canonicalTitle: result.canonicalTitle,
+                      authorLabels: result.authorLabels,
+                      fallbackDisplayName: result.displayName,
+                    },
+                    language,
+                  );
+                  const meta = secondaryLine(result, t);
+                  return (
+                    <li key={result.fileId}>
+                      <button
+                        type="button"
+                        className="library-search-result"
+                        onClick={() => onOpenResult(result)}
+                      >
+                        <span className="library-search-result-title">{title}</span>
+                        {meta && <span className="library-search-result-meta">{meta}</span>}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {nextCursor !== null && (
+                <div className="library-search-more">
+                  <button
+                    type="button"
+                    className="button button--small"
+                    disabled={loadingMore}
+                    onClick={loadMore}
+                  >
+                    {loadingMore ? t("librarySearch.loading") : t("librarySearch.loadMore")}
+                  </button>
+                  {loadMoreError !== null && (
+                    <span className="library-search-more-error" role="alert">{describeError(loadMoreError, language)}</span>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

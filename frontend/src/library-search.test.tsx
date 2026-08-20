@@ -218,6 +218,134 @@ describe("LibrarySearchField", () => {
     expect(await screen.findByRole("button", { name: "Narrow" })).toBeInTheDocument();
   });
 
+  it("shows Load more when the first page returns a next cursor", async () => {
+    const user = userEvent.setup();
+    const api = {
+      searchLibraryHoldings: vi.fn().mockResolvedValue({
+        results: [result({ fileId: "a1", canonicalTitle: "One", displayName: "1.pdf" })],
+        nextCursor: "cursor-1",
+      }),
+    } as unknown as AcademicCloudApi;
+    const input = renderField(api);
+    await user.type(input, "x");
+    expect(await screen.findByRole("button", { name: "Load more" })).toBeInTheDocument();
+  });
+
+  it("Load more requests the next page with the current cursor", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn()
+      .mockResolvedValueOnce({ results: [result({ fileId: "a1", canonicalTitle: "One", displayName: "1.pdf" })], nextCursor: "cursor-1" })
+      .mockResolvedValueOnce({ results: [result({ fileId: "a2", canonicalTitle: "Two", displayName: "2.pdf" })], nextCursor: null });
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    const input = renderField(api);
+    await user.type(input, "x");
+    await screen.findByRole("button", { name: "Load more" });
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(searchLibraryHoldings).toHaveBeenCalledWith(LIBRARY.id, "x", expect.any(AbortSignal), "cursor-1"));
+  });
+
+  it("Load more appends the second page instead of replacing the first", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn()
+      .mockResolvedValueOnce({ results: [result({ fileId: "a1", canonicalTitle: "One", displayName: "1.pdf" })], nextCursor: "cursor-1" })
+      .mockResolvedValueOnce({ results: [result({ fileId: "a2", canonicalTitle: "Two", displayName: "2.pdf" })], nextCursor: null });
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    const input = renderField(api);
+    await user.type(input, "x");
+    await screen.findByText("One");
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Two")).toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+  });
+
+  it("hides Load more once the final page returns a null cursor", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn()
+      .mockResolvedValueOnce({ results: [result({ fileId: "a1", canonicalTitle: "One", displayName: "1.pdf" })], nextCursor: "cursor-1" })
+      .mockResolvedValueOnce({ results: [result({ fileId: "a2", canonicalTitle: "Two", displayName: "2.pdf" })], nextCursor: null });
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    const input = renderField(api);
+    await user.type(input, "x");
+    await screen.findByRole("button", { name: "Load more" });
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Two");
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+
+  it("a stale Load more response cannot append into a newer query", async () => {
+    const user = userEvent.setup();
+    let resolveOldMore!: (page: LibrarySearchPage) => void;
+    const searchLibraryHoldings = vi.fn()
+      .mockImplementationOnce(() => Promise.resolve({
+        results: [result({ fileId: "a1", canonicalTitle: "First query", displayName: "1.pdf" })],
+        nextCursor: "cursor-1",
+      }))
+      .mockImplementationOnce(() => new Promise<LibrarySearchPage>((resolve) => { resolveOldMore = resolve; }))
+      .mockImplementationOnce(() => Promise.resolve({
+        results: [result({ fileId: "b1", canonicalTitle: "New query result", displayName: "b1.pdf" })],
+        nextCursor: null,
+      }));
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    const input = renderField(api);
+    await user.type(input, "old");
+    await screen.findByText("First query");
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await user.clear(input);
+    await user.type(input, "new");
+    await screen.findByText("New query result");
+    resolveOldMore({ results: [result({ fileId: "stale", canonicalTitle: "Stale page", displayName: "stale.pdf" })], nextCursor: null });
+    await waitFor(() => expect(screen.queryByText("Stale page")).not.toBeInTheDocument());
+    expect(screen.queryByText("First query")).not.toBeInTheDocument();
+  });
+
+  it("clearing the query after multiple pages resets results and pagination", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn()
+      .mockResolvedValueOnce({ results: [result({ fileId: "a1", canonicalTitle: "One", displayName: "1.pdf" })], nextCursor: "cursor-1" })
+      .mockResolvedValueOnce({ results: [result({ fileId: "a2", canonicalTitle: "Two", displayName: "2.pdf" })], nextCursor: null });
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    const input = renderField(api);
+    await user.type(input, "x");
+    await screen.findByText("One");
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Two");
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(input).toHaveValue("");
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+
+  it("a Load more failure preserves already loaded results and stays retryable", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn()
+      .mockResolvedValueOnce({ results: [result({ fileId: "a1", canonicalTitle: "One", displayName: "1.pdf" })], nextCursor: "cursor-1" })
+      .mockRejectedValueOnce(new ApiError(500, "internal_error"));
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    const input = renderField(api);
+    await user.type(input, "x");
+    await screen.findByText("One");
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("AcademicCloud encountered an unexpected error.");
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Load more" })).toBeInTheDocument();
+  });
+
+  it("Load more is keyboard-activatable", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn()
+      .mockResolvedValueOnce({ results: [result({ fileId: "a1", canonicalTitle: "One", displayName: "1.pdf" })], nextCursor: "cursor-1" })
+      .mockResolvedValueOnce({ results: [result({ fileId: "a2", canonicalTitle: "Two", displayName: "2.pdf" })], nextCursor: null });
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    const input = renderField(api);
+    await user.type(input, "x");
+    const loadMore = await screen.findByRole("button", { name: "Load more" });
+    loadMore.focus();
+    await user.keyboard("{Enter}");
+    await screen.findByText("Two");
+    expect(screen.getByText("One")).toBeInTheDocument();
+  });
+
   it("converts a search result to the minimal holding the details dialog needs", () => {
     expect(librarySearchResultToHolding(
       result({ fileId: "f", canonicalTitle: "Title", authorLabels: ["Author"], displayName: "d.pdf" }),
