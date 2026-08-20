@@ -88,6 +88,7 @@ jobs:
           set -euo pipefail
           readonly OUTPUT_UID="$(id -u)"
           readonly OUTPUT_GID="$(id -g)"
+          mkdir -p output
           docker pull "$TESSERACT_BUILDER_IMAGE"
           test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
           docker run --rm --platform linux/amd64 \
