@@ -13,9 +13,10 @@ Repair the production-proven `ali-oss` `ListParts` runtime-shape mismatch at the
 - Preserve the existing SDK instance and all non-`listParts` SDK method paths unchanged.
 - Keep range/count/order/part-number bounds, duplicate detection, and marker-progression validation in `AliyunOssStorageAdapter`.
 - Cover the real installed `ali-oss` method with deterministic no-network tests rather than relying only on a fake client.
+- Build and independently verify one immutable Linux x64 / Node 24 production artifact from the exact verified repair source without contacting production.
 
 ## Non-goals
-- No production deployment, service/Nginx restart, RAM/OSS policy mutation, credential change, migration, SQLite write, pending-upload mutation, manual multipart complete/abort, or metadata mutation.
+- No production deployment, release-symlink change, service/Nginx restart, RAM/OSS policy mutation, credential change, migration, SQLite write, pending-upload mutation, manual multipart complete/abort, or metadata mutation.
 - No RF-SEARCH01 modification or rebuild; its frozen artifact was used read-only only to inspect the exact packaged dependency behavior.
 - No broad storage-adapter refactor, transfer-policy change, authorization change, or product-UX change.
 - No normalization of unrelated OSS API responses.
@@ -29,7 +30,8 @@ Repair the production-proven `ali-oss` `ListParts` runtime-shape mismatch at the
 - `signatureUrlV4`, `head`, `get`, `delete`, multipart init/complete/abort, and browser custom-domain signing remain on their existing SDK implementation paths.
 - Focused real-SDK storage regression tests pass.
 - Full backend/frontend tests, both typechecks, both production builds, and `git diff --check` pass on the exact verified repair source.
-- No migration or production mutation occurs during source repair and verification.
+- The immutable production artifact passes compiled acceptance, dependency audits, release-local Tesseract/OCR verification, deterministic rebuild, manifest/archive verification, and fresh-runner independent verification.
+- No migration or production mutation occurs during source repair, verification, or artifact construction.
 
 ## Relevant ADRs
 - ADR-023 — durable decision reconciliation and local/remote synchronization.
@@ -43,9 +45,13 @@ Repair the production-proven `ali-oss` `ListParts` runtime-shape mismatch at the
 - `tasks/doing/OPS-STORAGE-INCIDENT01.md`
 
 ## Current State
-SOURCE REPAIR VERIFIED — production release decision pending Owner gate.
+SOURCE REPAIR AND PRODUCTION ARTIFACT VERIFIED — STOP FOR OWNER PRODUCTION DEPLOYMENT DECISION.
 
-Exact repository-native verification ran on repair source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` through isolated GitHub Actions run `32365460608` / job `96413882821`. The temporary draft PR used only to trigger the isolated workflow was closed unmerged after success. Production remains release `604cb8daf310696353e99c30ce7a924dc71ef9d2`, schema v21/history 001–021, and was not contacted or changed by this source repair.
+Exact repository-native source verification ran on repair source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` through isolated GitHub Actions run `32365460608` / job `96413882821`. The temporary draft PR used only to trigger that source-verification workflow was closed unmerged after success.
+
+An immutable production artifact was then built from exactly the same source commit through isolated Actions run `32366397645`. Build job `96416730271` passed every production-artifact gate; fresh-runner job `96419650061` independently downloaded and verified the uploaded bundle. The artifact is `academiccloud-linux-x64-node24-8d28970209c2e7b41b5d9486bea570a2a8e6c7e6`, artifact ID `9405764771`, GitHub artifact digest `sha256:24858d7eab8003606a78a440d474ca549cca9904d984f04d777f60daf414b3ea`, release archive SHA-256 `03edbbe0f8b506bb7d3fbb9b929e90f89b8b6948b4256865fcd44d9c62e8bbe4`, and manifest SHA-256 `76e902496f3255293b670f09248cf73f5e8d665a77e0e7a2446e49b7fe05eeb4`.
+
+Production remains release `604cb8daf310696353e99c30ce7a924dc71ef9d2`, schema v21/history 001–021. Artifact construction and verification did not contact or mutate production.
 
 The provider-side permission gate is already green: raw production `ListParts` returns HTTP 200 after the exact least-privilege RAM v2 repair. The remaining upload failure was reproduced against the exact packaged `ali-oss@6.23.0`: one Part produced a singleton object and string scalar fields, causing the old adapter path to fail with `.map is not a function`; an empty non-truncated response with string paging fields caused the old path to reject the marker. The repaired client boundary converts only that real SDK representation into the already-declared canonical port representation.
 
@@ -59,32 +65,33 @@ Metadata Suggestion remains separate. Existing incident evidence ties recorded s
 - Implemented a narrow native-client `listParts` wrapper; all other SDK method paths remain unchanged.
 - Kept the normalization helper internal to the Aliyun client module and retained semantic validation in `AliyunOssStorageAdapter`.
 - Added real-SDK no-network regression tests for single-Part, multi-Part/truncated, omitted non-truncated marker, and malformed values.
-- Isolated exact-dependency runtime smoke and compiled-adapter integration smoke: PASS.
 - Repository-native focused Aliyun storage regressions: 20/20 PASS.
-- Full backend suite: 376 PASS, 0 FAIL, 1 expected skip (release-local Tesseract E2E not configured in this source-verification job), 377 total.
+- Full backend suite: 376 PASS, 0 FAIL, 1 expected skip (377 total).
 - Full frontend suite: 241/241 PASS across 11 files.
-- Root Tesseract runtime verifier test: 1/1 PASS.
+- Root Tesseract runtime verifier: 1/1 PASS.
 - Backend and frontend typechecks: PASS.
 - Backend and frontend production builds: PASS.
 - `git diff --check` against exact authoritative base: PASS.
-- Clean dependency install reported 0 vulnerabilities in 306 audited packages.
-- Final read-only scope review: only Aliyun client normalization, its regression test, and incident/current-state documentation are changed; no migration, adapter business semantics, Search implementation, production config, or production state changed.
+- Production artifact workflow: PASS, including clean install, full tests, typechecks/builds, compiled acceptance, full/production dependency audits, Argon2 benchmark, pinned release-local Tesseract construction, realistic OCR E2E, deterministic archive reproduction, manifest/runtime verification, and immutable upload.
+- Fresh-runner independent artifact verification: PASS for exact source commit, downloaded artifact digest, release archive checksum, manifest, native modules, PDF.js/canvas, release-local Tesseract closure/models/synthetic OCR, and compiled acceptance.
+- Direct post-workflow artifact download independently re-hashed the release archive and manifest and matched the workflow verification evidence.
+- Production, schema, migrations, RAM, credentials, configuration, pending uploads, metadata, and RF-SEARCH01 remained untouched by the application-repair/artifact pass.
 
 ## Remaining
-- Build an immutable production artifact from the verified repair source only if separately authorized as the next release-preparation gate.
-- If that artifact and independent verification pass, stop again for explicit Owner production-deployment authorization.
-- After any authorized deployment, run real-browser Continue upload first, then a disposable Abandon upload, then Metadata Suggestion; close `OPS-STORAGE-INCIDENT01` only if the relevant journeys pass or any remaining failure is independently proven and repaired.
-- Reconcile the repair back into the authoritative working branch only through the approved release/reconciliation workflow; do not merge to `main` as part of this incident repair.
+- Only after explicit Owner production-deployment authorization, deploy exactly artifact ID `9405764771` / source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` through the existing production runbook; do not rebuild or substitute another source.
+- After any authorized deployment, verify release identity/health/readiness and run real-browser Continue upload first, then a disposable Abandon upload, then Metadata Suggestion.
+- Close `OPS-STORAGE-INCIDENT01` only if the relevant journeys pass or any remaining failure is independently proven and repaired.
+- Reconcile the accepted repair into the authoritative working branch through the approved release/reconciliation workflow; do not merge to `main` merely to close this incident.
 
 ## Blockers
-No source-code verification blocker remains. Production deployment is intentionally blocked on a separate Owner gate.
+Production deployment is intentionally blocked on an explicit Owner gate. No source or artifact verification blocker remains.
 
 ## Last Verification
 ```text
 VERIFIED_SOURCE=8d28970209c2e7b41b5d9486bea570a2a8e6c7e6
 BASE=281263be7f6248a4d18e099b59cf49028ec277ca
-CI_RUN=32365460608
-CI_JOB=96413882821
+SOURCE_CI_RUN=32365460608
+SOURCE_CI_JOB=96413882821
 FOCUSED_STORAGE=20/20 PASS
 BACKEND=376 PASS / 0 FAIL / 1 EXPECTED SKIP (377 total)
 FRONTEND=241/241 PASS
@@ -92,13 +99,29 @@ TESSERACT_RUNTIME_TEST=1/1 PASS
 TYPECHECK=PASS
 BUILD=PASS
 GIT_DIFF_CHECK=PASS
+ARTIFACT_WORKFLOW=32366397645
+ARTIFACT_BUILD_JOB=96416730271 PASS
+ARTIFACT_INDEPENDENT_VERIFY_JOB=96419650061 PASS
+ARTIFACT_ID=9405764771
+ARTIFACT_NAME=academiccloud-linux-x64-node24-8d28970209c2e7b41b5d9486bea570a2a8e6c7e6
+GITHUB_ARTIFACT_SHA256=24858d7eab8003606a78a440d474ca549cca9904d984f04d777f60daf414b3ea
+RELEASE_ARCHIVE_SHA256=03edbbe0f8b506bb7d3fbb9b929e90f89b8b6948b4256865fcd44d9c62e8bbe4
+MANIFEST_SHA256=76e902496f3255293b670f09248cf73f5e8d665a77e0e7a2446e49b7fe05eeb4
+COMPILED_ACCEPTANCE=PASS
+DEPENDENCY_AUDIT=PASS
+DETERMINISTIC_REBUILD=PASS
+INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 PRODUCTION_TOUCHED=false
+PRODUCTION_RELEASE_CHANGED=false
 SCHEMA_CHANGED=false
 MIGRATIONS_RUN=false
 RAM_CHANGED_IN_APP_REPAIR=false
+CREDENTIALS_CHANGED=false
+CONFIG_CHANGED=false
+DATABASE_MUTATED=false
+PENDING_UPLOADS_MUTATED=false
 RF_SEARCH01_CHANGED=false
-TEMP_CI_PR=4 CLOSED_UNMERGED
 ```
 
 ## Next Action
-STOP FOR OWNER RELEASE-PREPARATION GATE. The safe next step is to build and independently verify an immutable Linux x64 / Node 24 production artifact from the verified repair source. Artifact construction itself must not contact or mutate production. Deployment remains a separate explicit gate after artifact verification.
+STOP FOR OWNER PRODUCTION DEPLOYMENT DECISION. No further source change, rebuild, provider-policy change, migration, data mutation, or deployment is authorized by this task state.
