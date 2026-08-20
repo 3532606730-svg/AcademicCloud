@@ -109,14 +109,34 @@ jobs:
           OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/output/qualification/runtime/tesseract/lib
         run: |
           set -euo pipefail
-          mkdir -p output
+          readonly EVIDENCE_DIR="output/qualification-evidence"
+          mkdir -p "$EVIDENCE_DIR"
           node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd() + '/output/qualification');"
-          npx tsx --test compute/test/realistic-ocr-e2e.test.ts | tee output/realistic-ocr-e2e.tap
-          ! grep -Eq '^# skipped [1-9][0-9]*$|# SKIP' output/realistic-ocr-e2e.tap
-          /usr/bin/time -v -o output/compute-memory-resource.txt \
+          npx tsx --test compute/test/realistic-ocr-e2e.test.ts | tee "$EVIDENCE_DIR/realistic-ocr-e2e.tap"
+          ! grep -Eq '^# skipped [1-9][0-9]*$|# SKIP' "$EVIDENCE_DIR/realistic-ocr-e2e.tap"
+          set +e
+          /usr/bin/time -v -o "$EVIDENCE_DIR/compute-memory-resource.txt" \
             npm run memory:probe --workspace @academiccloud/compute \
-            | tee output/compute-memory-probe.jsonl
-          readonly PROBE_JSON="$(grep -E '^\{"status":"ok"' output/compute-memory-probe.jsonl | tail -n 1)"
+            2> >(tee "$EVIDENCE_DIR/compute-memory-probe.stderr" >&2) \
+            | tee "$EVIDENCE_DIR/compute-memory-probe.jsonl"
+          readonly PROBE_EXIT="${PIPESTATUS[0]}"
+          set -e
+          readonly GNU_MAX_RSS="$(grep -E '^[[:space:]]*Maximum resident set size \(kbytes\):' "$EVIDENCE_DIR/compute-memory-resource.txt")"
+          test -n "$GNU_MAX_RSS"
+          if (( PROBE_EXIT != 0 )); then
+            {
+              echo "### Compute qualification memory evidence"
+              echo
+              echo "The exact memory gate failed. GNU time still records the encompassing command resource maximum, including child-process execution."
+              echo
+              echo '```text'
+              grep -E 'Compute peak RSS exceeded|repeat-run RSS drift exceeded' "$EVIDENCE_DIR/compute-memory-probe.stderr"
+              echo "$GNU_MAX_RSS"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit "$PROBE_EXIT"
+          fi
+          readonly PROBE_JSON="$(grep -E '^\{"status":"ok"' "$EVIDENCE_DIR/compute-memory-probe.jsonl" | tail -n 1)"
           test -n "$PROBE_JSON"
           jq -e '.ocrMode == "release_local_tesseract" and .peakRssBytes < 536870912 and .repeatDriftBytes < 67108864' <<<"$PROBE_JSON" >/dev/null
           {
@@ -126,18 +146,23 @@ jobs:
             echo
             echo '```text'
             jq '{status, cleanStartRssBytes, peakRssBytes, postJobRssBytes, retainedGrowthBytes, repeatDriftBytes, runs, ocrMode}' <<<"$PROBE_JSON"
-            grep -E '^[[:space:]]*Maximum resident set size \(kbytes\):' output/compute-memory-resource.txt
+            echo "$GNU_MAX_RSS"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify qualification output and production-shell safety
+        if: always() && github.event_name == 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
-          test -z "$(find output -type f -empty -print -quit)"
+          readonly EVIDENCE_DIR="output/qualification-evidence"
+          test -s "$EVIDENCE_DIR/realistic-ocr-e2e.tap"
+          test -s "$EVIDENCE_DIR/compute-memory-resource.txt"
+          test -s "$EVIDENCE_DIR/compute-memory-probe.jsonl"
+          test -f "$EVIDENCE_DIR/compute-memory-probe.stderr"
           ! grep -ERniE \
             'Authorization:[[:space:]]*(Bearer|Basic)|[?&](X-Amz-|x-oss-|Signature=|security-token=)|"(sourceUrl|callbackUrl|capability|candidates|evidenceExcerpt)"[[:space:]]*:|A Durable Compute Memory Probe|Copyright 2026 AcademicCloud Press|978-0-306-40615-7' \
-            output
+            "$EVIDENCE_DIR"
           ! grep -Eq -- '--(core-base-url|job-id|attempt-id)=\$\{\{ inputs\.' .github/workflows/derived-compute-worker.yml
           grep -Fq -- '--core-base-url="$COMPUTE_INPUT_CORE_ORIGIN"' .github/workflows/derived-compute-worker.yml
           grep -Fq -- '--job-id="$COMPUTE_INPUT_JOB_ID"' .github/workflows/derived-compute-worker.yml
