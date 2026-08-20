@@ -96,19 +96,52 @@ function parseProviderBoolean(value: unknown, fieldName: string): boolean {
   throw new Error(`OSS returned an invalid ${fieldName}`);
 }
 
+function asRawMultipartParts(value: unknown): unknown[] {
+  if (value === undefined || value === null) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "object") return [value];
+  throw new Error("OSS returned an invalid multipart parts container");
+}
+
+function normalizeMultipartPart(value: unknown): AliyunMultipartPartRow {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("OSS returned invalid multipart part metadata");
+  }
+  const candidate = value as Record<string, unknown>;
+  const partNumber = parseProviderInteger(candidate.PartNumber, "multipart part number");
+  const size = parseProviderInteger(candidate.Size ?? candidate.size, "multipart part size");
+  const etag = candidate.ETag;
+  const lastModified = candidate.LastModified;
+
+  if (
+    typeof etag !== "string"
+    || etag.length === 0
+    || (lastModified !== undefined && typeof lastModified !== "string" && !(lastModified instanceof Date))
+  ) {
+    throw new Error("OSS returned invalid multipart part metadata");
+  }
+
+  return {
+    PartNumber: partNumber,
+    ETag: etag,
+    Size: size,
+    ...(lastModified === undefined ? {} : { LastModified: lastModified }),
+  };
+}
+
 /**
- * Normalize only the production-observed XML scalar mismatch at the ali-oss
- * boundary. Multipart part rows remain validated by AliyunOssStorageAdapter.
+ * ali-oss 6.23.0 returns ListParts XML values without normalizing them:
+ * booleans/integers remain strings, and a single <Part> is an object rather
+ * than an array. Normalize that exact SDK boundary before business/storage
+ * code sees the response; AliyunOssStorageAdapter still owns range/count/order
+ * validation for the canonical values.
  */
 export function normalizeAliyunMultipartListResult(value: unknown): AliyunMultipartListResult {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error("OSS returned an invalid multipart list response");
   }
   const candidate = value as Record<string, unknown>;
-  if (candidate.parts !== undefined && !Array.isArray(candidate.parts)) {
-    throw new Error("OSS returned an invalid multipart list response");
-  }
-  const parts = (candidate.parts ?? []) as AliyunMultipartPartRow[];
+  const parts = asRawMultipartParts(candidate.parts).map(normalizeMultipartPart);
   const isTruncated = parseProviderBoolean(candidate.isTruncated, "multipart truncation flag");
   const nextPartNumberMarker = candidate.nextPartNumberMarker === undefined
     ? (isTruncated ? parseProviderInteger(undefined, "multipart part marker") : 0)
@@ -143,7 +176,7 @@ function baseOptions(config: AliyunOssConfig) {
 
 // Native OSS service client: HEAD/stat, DeleteObject, and every server-side
 // OSS API call continue to use the native regional bucket endpoint. Only the
-// runtime ListParts scalar shape is normalized before the client is exposed.
+// runtime ListParts response shape is normalized before the client is exposed.
 export function createAliyunOssClient(config: AliyunOssConfig): AliyunOssClientPort {
   return normalizeNativeListParts(new OSS({
     ...baseOptions(config),
