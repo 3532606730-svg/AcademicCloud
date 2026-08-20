@@ -68,13 +68,16 @@ COMPUTE-PRECUTOVER01 has since cleared both blockers on exact hosted run
 `32407660640`: source `1c3bb10…` passed real OCR, the explicit GitHub-hosted
 `<768 MiB` peak and retained `<64 MiB` drift contracts, verified `output/`
 stage/promote, privacy/output scanning, and zero-artifact checks without
-production execution. Phase 2 is active next.
+production execution. Phase 2 then built and independently verified exact Core
+artifact `9421010643` and passed read-only production preflight, but stopped
+before every mutation because GitHub requires Owner sudo-mode email verification
+before the required single-repository Actions-write credential can be created.
 
 ```text
 GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01 — COMPLETE
   hosted provider-specific memory-contract decision
   + smallest protected Tesseract staging repair
-→ GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover — ACTIVE
+→ GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover — HARD STOP AT CREDENTIAL GATE
   backup + migration 022 + minimum least-privilege Compute credentials/environment
   + exact artifact/deploy + one bounded canary
 → GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure
@@ -131,7 +134,7 @@ remaining empty-marker/abandon-routing repair and exact CORS delta. Production
 invariants and pending state were preserved, and Owner-reported browser storage
 acceptance passed. The later Metadata Suggestion memory stall is separate.
 
-### ARCH-COMPUTE01 — development/pre-cutover complete, production cutover active
+### ARCH-COMPUTE01 — development/pre-cutover complete, production cutover stopped at credential gate
 `JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01` implement the smallest durable
 Core-owned job abstraction and one clean GitHub Actions worker. The existing
 front-matter OCR/metadata behavior is migrated rather than redesigned. Core no
@@ -144,7 +147,15 @@ run-one-to-five post-RSS drift. COMPUTE-PRECUTOVER01 repaired both blockers:
 exact run `32407660640` passed at a 547,860,480-byte peak and 225,280-byte
 five-run drift under the explicit GitHub-hosted `<768 MiB` / `<64 MiB`
 contract, and the protected runtime now uses verified `output/worker-stage` →
-`output/worker` promotion. Phase 2 production cutover is now active.
+`output/worker` promotion. Exact Phase 2 artifact `9421010643` then passed build
+and independent verification, while read-only production preflight re-proved
+release `08657727…`, rollback `988bdbf…`, schema v21/history 001–021, SQLite
+integrity, and zero foreign-key violations. Production has no Compute keys, the
+repository has no protected Compute Environment, and the account has no
+fine-grained PAT. GitHub requires Owner sudo-mode email verification before the
+minimum repository-limited Actions-write token can be created, so the program
+stopped before backup, migration, credential, environment, deploy, restart, or
+canary mutation.
 
 ### RF-SEARCH01 — implementation/artifact complete, production closure authorized later in Goal Mode
 Metadata/name catalogue search is green in development. Final historical source

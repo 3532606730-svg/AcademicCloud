@@ -9,9 +9,9 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
-| GOAL-BETA-PREP01 | OWNER AUTHORIZED / ACTIVE PROGRAM | Codex Goal Mode may autonomously execute the bounded path through Compute pre-cutover repair → Compute production cutover → Search closure → Activity Center v0.1 → Golden Journey, then STOP at `INTERNAL_BETA_READY` before inviting users |
+| GOAL-BETA-PREP01 | OWNER AUTHORIZED / HARD STOP AT PHASE 2 CREDENTIAL GATE | Owner must complete GitHub sudo-mode email verification and approve one 30-day fine-grained token limited to only `AcademicCloud` with repository `Actions: write`; then Goal Mode resumes at the exact stopped gate |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
-| ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | DEVELOPMENT + PRE-CUTOVER COMPLETE / PRODUCTION CUTOVER ACTIVE | Phase 1 passed on exact hosted run `32407660640`; execute the bounded Phase 2 backup/migration/deploy/canary sequence |
+| ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | DEVELOPMENT + PRE-CUTOVER COMPLETE / HARD STOP BEFORE PRODUCTION MUTATION | Artifact `9421010643` and read-only production preflight are green; minimum dispatch credential requires Owner interaction before backup/migration/deploy/canary |
 | OPS-METADATA-MEMORY01 | DIAGNOSIS COMPLETE / PRODUCTION RISK NOT CUT OVER | Addressed by the Compute boundary; close only after safe production canary proves Core remains responsive |
 
 The detailed Owner authorization, boundaries, mandatory sequence, credential/privacy rules, and stop conditions are authoritative in `tasks/doing/GOAL-BETA-PREP01.md`.
@@ -21,7 +21,7 @@ The detailed Owner authorization, boundaries, mandatory sequence, credential/pri
 | Order | Task / phase | Task card | State |
 |---:|---|---|---|
 | 1 | COMPUTE-PRECUTOVER01 | `tasks/done/COMPUTE-PRECUTOVER01.md` | COMPLETE — exact source `1c3bb10…`, run `32407660640`; real OCR, provider-specific memory/drift, staging, privacy/output, and zero-artifact gates passed; production unchanged |
-| 2 | ARCH-COMPUTE01 production cutover | `tasks/doing/GOAL-BETA-PREP01.md` Phase 2 | ACTIVE NEXT — exact backup, migration 022, minimum Compute credentials/environment, release/deploy, one bounded canary |
+| 2 | ARCH-COMPUTE01 production cutover | `tasks/doing/GOAL-BETA-PREP01.md` Phase 2 | HARD STOP AT CREDENTIAL GATE — no production mutation; Owner sudo-mode verification and exact least-scoped token approval required before backup, migration 022, environment, deploy, or canary |
 | 3 | RF-SEARCH01 production closure | `tasks/doing/RF-SEARCH01.md` + Goal Phase 3 | AUTHORIZED AFTER COMPUTE CUTOVER GREEN — compose frozen Search behavior onto latest baseline; historical artifact must not be deployed directly |
 | 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/ready/L1-UX08.md` + Goal Phase 4 | AUTHORIZED AFTER SEARCH GREEN — upload + Metadata/Compute + reliable download states, source recovery; no full task-history platform |
 | 5 | QA-GOLDEN01 | `tasks/ready/QA-GOLDEN01.md` + Goal Phase 5 | AUTHORIZED FINAL BETA GATE — exact-build real-browser journey with safe fixtures and cleanup |
@@ -46,7 +46,7 @@ RF-SEARCH01 remains development/artifact green and absent from production. Its e
 | OCR-METADATA-GHA01 | `tasks/done/OCR-METADATA-GHA01.md` | Existing bounded OCR/Metadata Suggestion migrated to asynchronous Compute in development |
 | COMPUTE-GHA02 | `tasks/done/COMPUTE-GHA02.md` | Exact final Ubuntu run passed contracts, Compute, pinned Tesseract, real OCR, memory, leak, quoting, and zero-artifact gates; its two pre-cutover findings are preserved historically and resolved by COMPUTE-PRECUTOVER01 |
 
-ADR-031 remains the authoritative combined architecture/security/cutover record. COMPUTE-PRECUTOVER01 reconciled the explicit GitHub-hosted `<768 MiB` peak contract while retaining local `<512 MiB`, `<64 MiB` drift, concurrency one, and clean-process isolation. GOAL-BETA-PREP01 Phase 2 is now the bounded active production authority.
+ADR-031 remains the authoritative combined architecture/security/cutover record. COMPUTE-PRECUTOVER01 reconciled the explicit GitHub-hosted `<768 MiB` peak contract while retaining local `<512 MiB`, `<64 MiB` drift, concurrency one, and clean-process isolation. GOAL-BETA-PREP01 Phase 2 remains the bounded production authority but is stopped before mutation at its explicit least-scoped credential gate.
 
 ## Reliability / usability queue — outside the beta-prep critical path unless explicitly used by Goal Mode
 

@@ -18,8 +18,15 @@ gate remains `<512 MiB`. The protected runtime now builds under
 `output/worker-stage`, is verified, and is atomically promoted to
 `output/worker`; static deployment tests prevent those paths from diverging.
 
-GOAL-BETA-PREP01 Phase 2 is now active: exact Core/Compute production cutover
-with verified rollback/backup evidence, migration 022, only minimum
+GOAL-BETA-PREP01 Phase 2 reached its explicit least-scoped credential hard
+stop before any production mutation. The exact Core artifact is built and
+independently verified, and read-only production backup/rollback/schema
+preflight is green, but Core has no dispatch token, the repository has no
+protected Compute Environment, and the account has no fine-grained PAT.
+GitHub requires Owner sudo-mode email verification before a compliant token
+can be created. After that Owner interaction, the remaining authorized Phase 2
+sequence resumes with the exact Core/Compute production cutover: verified
+rollback/backup evidence, migration 022, only minimum
 least-privilege Compute routing/secret material, one exact deployment, and one
 bounded canary. Goal Mode continues through the remaining bounded beta-prep
 sequence and stops only at `INTERNAL_BETA_READY` or an explicit hard-stop
@@ -164,7 +171,7 @@ ADR-031 remains authoritative for the architecture/security/callback model.
 Codex Goal Mode is authorized to proceed in this exact order:
 
 1. **COMPUTE-PRECUTOVER01 — COMPLETE** — provider-specific GitHub-hosted memory contract and protected Tesseract staging repair passed without production mutation;
-2. **Core/Compute production cutover — ACTIVE NEXT** — exact artifact/rollback pair, verified production SQLite backup, migration 022, minimum least-privilege Compute credential/environment setup, deployment/restart, and one bounded production canary proving Core remains responsive while Compute runs;
+2. **Core/Compute production cutover — HARD STOP AT CREDENTIAL GATE** — exact artifact and read-only rollback/schema preflight are green; Owner sudo-mode email verification is required before creating the single-repository Actions-write dispatch token, after which backup, migration 022, environment setup, deployment/restart, and one bounded production canary remain;
 3. **RF-SEARCH01 production closure** — do not deploy the historical artifact; compose the already-green Search behavior onto the latest post-Compute baseline, run its mandatory browser gate, build/verify a new artifact, then deploy;
 4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery** — upload live states/recovery plus durable Metadata/Compute queued/processing/succeeded/failed and reliable download preparing/started/failed states; no broad notification/history platform;
 5. **QA-GOLDEN01** — exact-build real-browser journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
@@ -174,6 +181,26 @@ schema, rollback pointer and durable repository state, then STOP for the Owner's
 actual internal-beta decision.
 
 ## Credential/privacy/cost boundaries
+
+Phase 2 preflight evidence:
+
+```text
+REPOSITORY_HEAD=a3af736e36b3830f728e60e92cfb483e26a0b28f
+ARTIFACT_SOURCE=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
+PRODUCTION_BUILD_RUN=32407660568
+ARTIFACT_ID=9421010643
+ARTIFACT_DIGEST_SHA256=48abdc8b2ebfb5484358d6983f83d2f7c7dcb7956d9a2b028d484f668a9e7836
+ARCHIVE_SHA256=1b78cf47ea1938cbed5e1247f27dc5be392596287ae02eb0f4ec0475c5b78e1c
+MANIFEST_SHA256=7dfed78239ef60f012b0865715eb78a9a5e0553c7dee6017b68fbd1fa445df7e
+PRODUCTION_RELEASE=08657727a17a7ea766ad0d74cc663fa40f91eee1
+PRODUCTION_SCHEMA=v21 / 001-021
+SQLITE_INTEGRITY=ok
+FOREIGN_KEY_VIOLATIONS=0
+COMPUTE_ENV_KEYS=absent
+GITHUB_PROTECTED_ENVIRONMENT=absent
+FINE_GRAINED_PAT=absent
+PRODUCTION_MUTATION=false
+```
 
 - Codex may generate/install one strong bootstrap secret without printing or logging it.
 - A least-scoped workflow-dispatch credential may be used if already available/provisionable without broad account privilege. Do not repurpose/store a broad personal GitHub token on production. If a compliant dispatch credential requires Owner interaction, STOP only at that exact credential gate.
@@ -191,7 +218,9 @@ the latest post-Compute baseline with a new exact artifact and browser gate.
 
 ## Next action
 
-**CONTINUE IN GOAL MODE.** Recover `tasks/doing/GOAL-BETA-PREP01.md`, execute
-Phase 2, and continue autonomously across green checkpoints. Stop early only for
-the explicit hard boundaries in that card; otherwise stop only when
-`INTERNAL_BETA_READY=true`, before starting/inviting users into internal beta.
+**OWNER ACTION REQUIRED AT THE EXACT PHASE 2 CREDENTIAL GATE.** Complete the
+displayed GitHub sudo-mode email verification and approve creation of one
+30-day fine-grained token owned by `3532606730-svg`, limited to only the
+`AcademicCloud` repository, with only repository `Actions: write`. Do not
+create or paste a classic/broad `repo` token. Then resume Goal Mode from Phase
+2; do not repeat Phase 1 or begin internal beta.

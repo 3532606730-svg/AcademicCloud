@@ -4,6 +4,15 @@ This runbook prepares the approved Layer 1 single-host topology: Nginx serves th
 
 The checked-in files are templates, not authorization to mutate the server or cloud account. Real credentials, bucket/RAM/CORS/versioning changes, DNS, certificate issuance, firewall changes, package installation, service enablement, and production data operations require a separate approved deployment window.
 
+Current bounded authorization is recorded in `tasks/doing/GOAL-BETA-PREP01.md`.
+Its Phase 2 read-only preflight passed for exact artifact `9421010643`, live
+release `08657727…`, rollback `988bdbf…`, and schema v21/history 001–021, but
+execution stopped before backup or any mutation because GitHub requires Owner
+sudo-mode email verification before the minimum single-repository
+`Actions: write` dispatch credential can be created. Resume at that credential
+gate only after the recorded Owner interaction; do not substitute a classic or
+broad personal token.
+
 ## Approval-gated preflight
 
 Record the operator, maintenance window, domain, release commit, current release path, backup destination, and rollback release before change.

@@ -43,7 +43,7 @@ builds under `output/worker-stage`, verifies before atomic promotion to
 `output/worker`, and is locked by a static deployment contract. Production,
 credentials, schema, database, OSS/RAM/CORS, Search, and callback paths were
 unchanged. Durable evidence is in `tasks/done/COMPUTE-PRECUTOVER01.md` and
-ADR-031. Phase 2 is active next.
+ADR-031. Phase 2 subsequently reached the credential hard stop recorded below.
 
 ### Phase 2 — ARCH-COMPUTE01 production cutover
 
@@ -65,6 +65,39 @@ Required gates:
 Credential rule: Codex may generate/install a new strong bootstrap secret without printing/logging it. It may use an already-existing **least-scoped** workflow-dispatch credential if one is available. It must **not** repurpose/store a broad personal GitHub token on production or broaden account privileges. If no compliant least-scoped dispatch credential can be provisioned without Owner interaction, stop only at that exact minimal credential gate and report it; do not weaken the security model.
 
 Privacy authorization for this program: the Owner accepts that the one selected canary PDF may be transiently processed on a GitHub-hosted runner under the ADR-031 short-lived single-object capability model, provided no raw document bytes/text/candidates are uploaded as workflow artifacts or emitted to logs.
+
+**Phase 2 preflight result — HARD STOP AT MINIMUM CREDENTIAL GATE
+(2026-08-21).** Repository checkpoint `a3af736…` is clean and synchronized.
+Exact Core source `1c3bb10…` already produced artifact `9421010643` in run
+`32407660568`; build job `96550916880` and independent verification job
+`96551622641` passed. GitHub artifact SHA-256 is
+`48abdc8b2ebfb5484358d6983f83d2f7c7dcb7956d9a2b028d484f668a9e7836`,
+archive SHA-256 is
+`1b78cf47ea1938cbed5e1247f27dc5be392596287ae02eb0f4ec0475c5b78e1c`,
+and manifest SHA-256 is
+`7dfed78239ef60f012b0865715eb78a9a5e0553c7dee6017b68fbd1fa445df7e`.
+The artifact has 4,789 files / 34,151,198 bytes, contains neither Core OCR
+nor PDF-render runtime, and expires at `2026-08-27T19:19:09Z`.
+
+Read-only production preflight re-proved live release `08657727…`, existing
+rollback release `988bdbf…`, active service with zero restarts, exact
+v21/history 001–021, `integrity_check=ok`, and zero foreign-key violations.
+Production `/etc/academiccloud/academiccloud.env` has no Compute/GitHub keys.
+The repository has no `academiccloud-compute-production` Environment, and the
+GitHub account has no fine-grained personal access token. GitHub requires
+sudo-mode email identity verification before a new token can be created.
+Creating that persistent access credential requires Owner interaction, so the
+program stops exactly here under its credential rule. No backup, bootstrap
+secret, GitHub Environment, production environment, migration, release
+installation, restart, canary, database, OSS/RAM/CORS, Search, or academic-data
+mutation occurred.
+
+Required Owner action: complete the displayed GitHub sudo-mode email
+verification and approve creation of one 30-day fine-grained token owned by
+`3532606730-svg`, limited to the single `AcademicCloud` repository, with only
+repository `Actions: write`. Do not create or supply a classic/broad `repo`
+token. After that approval, Goal Mode can resume from this exact gate without
+repeating Phase 1.
 
 ### Phase 3 — RF-SEARCH01 compose and production closure
 
