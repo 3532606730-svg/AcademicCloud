@@ -104,3 +104,72 @@ test("worker maps bounded extraction failure to a stable failed callback", async
     errorCode: "compute_source_unavailable",
   });
 });
+
+test("worker bounds successful-result callback retries and reports a terminal failure instead of stranding running state", async () => {
+  const callbacks: unknown[] = [];
+  const fetchImplementation: typeof fetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith("/claim")) {
+      return Response.json({
+        job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
+      });
+    }
+    if (url === "https://storage.example/signed-source") {
+      return new Response(new Uint8Array([37, 80, 68, 70, 45]), { status: 206 });
+    }
+    if (url.endsWith("/result")) {
+      const callback = JSON.parse(String(init.body));
+      callbacks.push(callback);
+      if ((callback as { state?: string }).state === "failed") {
+        return Response.json({ job: { state: "failed" } });
+      }
+      return Response.json({ error: "internal_error" }, { status: 500 });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  await assert.rejects(
+    () => runComputeWorker(INPUT, { fetchImplementation, inspector: inspector() }),
+    /compute callback failed with status 500/u,
+  );
+  assert.equal(callbacks.filter((callback) => (callback as { state?: string }).state === "succeeded").length, 3);
+  assert.deepEqual(callbacks.at(-1), {
+    jobId: INPUT.jobId,
+    attemptId: INPUT.attemptId,
+    kind: "metadata_suggestion",
+    state: "failed",
+    errorCode: "compute_internal_error",
+  });
+});
+
+test("worker does not retry stable result validation responses", async () => {
+  const callbackStates: string[] = [];
+  const fetchImplementation: typeof fetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith("/claim")) {
+      return Response.json({
+        job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
+      });
+    }
+    if (url === "https://storage.example/signed-source") {
+      return new Response(new Uint8Array([37, 80, 68, 70, 45]), { status: 206 });
+    }
+    if (url.endsWith("/result")) {
+      callbackStates.push((JSON.parse(String(init.body)) as { state: string }).state);
+      return Response.json({ error: "invalid_compute_result" }, { status: 400 });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  await assert.rejects(
+    () => runComputeWorker(INPUT, { fetchImplementation, inspector: inspector() }),
+    /compute callback failed with status 400/u,
+  );
+  assert.deepEqual(callbackStates, ["succeeded", "failed"]);
+});

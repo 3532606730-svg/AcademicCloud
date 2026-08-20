@@ -1293,6 +1293,43 @@ describe("App", () => {
     expect(directPartUpload).toHaveBeenCalledTimes(3);
   });
 
+  it("claims one scheduler slot before a same-session multipart retry status request", async () => {
+    const user = userEvent.setup();
+    const selected = new File(["abcdef"], "single-retry.pdf", { type: "application/pdf" });
+    const pending = { ...PENDING_MULTIPART_FILE, displayName: selected.name };
+    const transfer = multipartTransfer({ partSizeBytes: 6, totalParts: 1 }, pending);
+    let resolveStatus: ((value: MultipartTransfer) => void) | undefined;
+    const getUploadStatus = vi.fn(() => new Promise<MultipartTransfer>((resolve) => {
+      resolveStatus = resolve;
+    }));
+    const directPartUpload = vi.fn().mockRejectedValue(new DirectUploadError("upload_unreachable", "unreachable"));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      createUpload: vi.fn().mockResolvedValue({ file: pending, transfer }),
+      getUploadStatus,
+      authorizeUploadPart: vi.fn().mockResolvedValue({ method: "PUT", url: "https://storage.invalid/part", headers: {}, expiresAt: "2026-08-13T00:05:00.000Z" }),
+      resumeUpload: vi.fn(),
+      completeMultipartUpload: vi.fn(),
+    });
+    render(<App api={api} checksumFile={vi.fn().mockResolvedValue(FILE.checksum)} directPartUpload={directPartUpload} />);
+
+    await user.upload(await screen.findByLabelText("Upload files"), selected);
+    await waitFor(() => expect(screen.getByText("Needs attention")).toBeInTheDocument());
+    expect(directPartUpload).toHaveBeenCalledTimes(3);
+
+    await user.click(screen.getByRole("button", { name: "Continue single-retry.pdf upload" }));
+    await waitFor(() => expect(getUploadStatus).toHaveBeenCalledOnce());
+    expect(screen.queryByText("Queued")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Pending" }));
+    await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "Library" }));
+    expect(getUploadStatus).toHaveBeenCalledOnce();
+
+    resolveStatus!(transfer);
+    await waitFor(() => expect(directPartUpload).toHaveBeenCalledTimes(6));
+    expect(getUploadStatus).toHaveBeenCalledOnce();
+  });
+
   it("pauses multipart work by aborting the in-flight PUT and retaining server state", async () => {
     const user = userEvent.setup();
     const selected = new File(["abcdef"], "pause-part.pdf", { type: "application/pdf" });

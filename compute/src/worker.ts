@@ -11,6 +11,7 @@ import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfRangeSource } fro
 
 const JOB_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 const MAX_HTTP_RANGE_BYTES = 2 * 1024 * 1024;
+const RESULT_CALLBACK_RETRY_DELAYS_MS = [100, 250] as const;
 
 export interface ComputeWorkerInput {
   coreBaseUrl: string;
@@ -166,6 +167,51 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
   return fetchImplementation(url, { method: "POST", headers, body: JSON.stringify(body) });
 }
 
+async function delay(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) throw new DOMException("The compute callback was cancelled.", "AbortError");
+  await new Promise<void>((resolve, reject) => {
+    const finish = (callback: () => void): void => {
+      signal?.removeEventListener("abort", onAbort);
+      callback();
+    };
+    const timer = setTimeout(() => finish(resolve), milliseconds);
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      finish(() => reject(new DOMException("The compute callback was cancelled.", "AbortError")));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function postResultWithRetry(
+  claim: WorkerClaim,
+  result: DerivedComputeResult,
+  fetchImplementation: typeof fetch,
+  signal?: AbortSignal,
+): Promise<void> {
+  const headers = { authorization: `Bearer ${claim.capability.token}`, "content-type": "application/json" };
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= RESULT_CALLBACK_RETRY_DELAYS_MS.length; attempt += 1) {
+    let response: Response | undefined;
+    try {
+      response = await postJson(claim.callbackUrl, headers, result, fetchImplementation);
+    } catch (error: unknown) {
+      lastError = error;
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+    }
+    if (response?.ok) return;
+    if (response) {
+      lastError = new Error(`compute callback failed with status ${response.status}`);
+      // Authentication, identity, and validation failures are stable for this
+      // exact payload. Only server/transient responses receive bounded retry.
+      if (response.status < 500 && response.status !== 429) throw lastError;
+    }
+    const retryDelay = RESULT_CALLBACK_RETRY_DELAYS_MS[attempt];
+    if (retryDelay !== undefined) await delay(retryDelay, signal);
+  }
+  throw lastError;
+}
+
 export async function runComputeWorker(
   input: ComputeWorkerInput,
   options: {
@@ -207,13 +253,30 @@ export async function runComputeWorker(
       };
     }
     sample();
-    const callbackResponse = await postJson(
-      claim.callbackUrl,
-      { authorization: `Bearer ${claim.capability.token}`, "content-type": "application/json" },
-      result,
-      fetchImplementation,
-    );
-    if (!callbackResponse.ok) throw new Error(`compute callback failed with status ${callbackResponse.status}`);
+    try {
+      await postResultWithRetry(claim, result, fetchImplementation, options.signal);
+    } catch (callbackError: unknown) {
+      // A successful extraction whose result cannot be durably committed must
+      // not strand the job in `running` until its two-hour deadline. After the
+      // exact result has exhausted bounded retry, report a stable failed
+      // terminal result through the same single-job capability. This update is
+      // best-effort: a fully unavailable Core still expires the job normally.
+      if (result.state === "succeeded") {
+        const failed: DerivedComputeResult = {
+          jobId: input.jobId,
+          attemptId: input.attemptId,
+          kind: "metadata_suggestion",
+          state: "failed",
+          errorCode: "compute_internal_error",
+        };
+        try {
+          await postResultWithRetry(claim, failed, fetchImplementation, options.signal);
+        } catch {
+          // Preserve the original callback failure for the provider log.
+        }
+      }
+      throw callbackError;
+    }
     await new Promise<void>((resolve) => setImmediate(resolve));
     globalThis.gc?.();
     sample();

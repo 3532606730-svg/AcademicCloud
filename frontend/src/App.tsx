@@ -1234,6 +1234,12 @@ function DriveView({
     const fileId = job.fileId!;
     try {
       if (job.transfer !== null) {
+        // Scheduler invariant: multipart retries must claim an ACTIVE phase
+        // before the first authoritative status request. Leaving the job in
+        // `queued` while that request is pending lets the React pump start the
+        // same retry again on every intervening render, multiplying signed
+        // part authorizations and direct PUTs for one user action.
+        patchJob(job.id, { phase: "reserving" });
         if (!api.getUploadStatus) throw new Error(t("upload.unavailable"));
         const status = await api.getUploadStatus(fileId);
         if (status.kind === "complete") {

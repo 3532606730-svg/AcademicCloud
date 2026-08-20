@@ -27,6 +27,12 @@ function safeErrorType(error: unknown): string {
   return error.name;
 }
 
+function safeSqliteCode(error: unknown): string | undefined {
+  if (!(error instanceof Error) || error.name !== "SqliteError") return undefined;
+  const code = (error as Error & { code?: unknown }).code;
+  return typeof code === "string" && /^SQLITE_[A-Z_]{1,64}$/u.test(code) ? code : undefined;
+}
+
 /**
  * Keep real call frames for server-side diagnosis without retaining the error
  * message, cause, request parameters, or dependency-provided free-form text.
@@ -261,7 +267,19 @@ export async function registerSuggestionHttp(
       try {
         return { job: await service.applyComputeResult(result, capability) };
       } catch (error: unknown) {
-        return sendSuggestionError(reply, error);
+        if (error instanceof SuggestionError) return sendSuggestionError(reply, error);
+        const errorStack = safeErrorStack(error);
+        const sqliteCode = safeSqliteCode(error);
+        request.log.error(
+          {
+            event: "metadata_suggestion.result_failed",
+            errorType: safeErrorType(error),
+            ...(sqliteCode === undefined ? {} : { sqliteCode }),
+            ...(errorStack === undefined ? {} : { errorStack }),
+          },
+          "metadata suggestion result persistence failed",
+        );
+        return reply.code(500).send({ error: "internal_error" });
       }
     },
   );
