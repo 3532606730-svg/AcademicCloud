@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-20T13:11:00+08:00",
+  "authoritativeBranch": "codex/project-memory-reconcile-20260817",
+  "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
+  "production": {
+    "declaredRelease": "604cb8daf310696353e99c30ce7a924dc71ef9d2",
+    "previousRelease": "a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a",
+    "schema": 21,
+    "migrationHead": 21,
+    "migrationHistory": "001-021",
+    "liveProcessIdentityNeedsIncidentReverification": true
+  },
+  "activeIncidents": ["OPS-STORAGE-INCIDENT01"],
+  "activeTasks": ["OPS-STORAGE-INCIDENT01", "RF-SEARCH01"],
+  "searchReleaseCandidate": {
+    "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
+    "artifactWorkflow": 32331172274,
+    "artifactId": 9393280984,
+    "archiveSha256": "4b72062734fa941ea4bd48019713a4fbb8951a7793a04f625a3680d7c8e1a15b",
+    "manifestSha256": "beb15507b20c99679fb48cfe772c29d1d92a930b2adcd337202d88f0cff49458",
+    "independentVerification": "pass",
+    "productionCutover": "blocked",
+    "blockers": [
+      "production storage incident must be resolved",
+      "mandatory real-browser pre-cutover acceptance"
+    ]
+  },
+  "currentPriorityOrder": [
+    "OPS-STORAGE-INCIDENT01",
+    "RF-SEARCH01 production closure",
+    "L1-UX08",
+    "OPS-DEPENDENCY01",
+    "QA-GOLDEN01",
+    "ERR-BOUNDARY01",
+    "DOC-TRUTH01",
+    "RF-INTEGRITY01",
+    "OPS-OBJECTBACKUP01",
+    "JOB-CORE01",
+    "FE-DECOMP01",
+    "CONTRACT-CORE01",
+    "Personal Research Workspace"
+  ],
+  "notes": [
+    "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
+    "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
+    "No production mutation is authorized by this planning reconciliation."
+  ]
+}
