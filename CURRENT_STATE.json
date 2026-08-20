@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T02:52:00+08:00",
+  "updatedAt": "2026-08-21T03:20:55+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
   "production": {
@@ -169,7 +169,7 @@
     "program": "ARCH-COMPUTE01",
     "baseCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
     "tasks": ["JOB-CORE01", "COMPUTE-GHA01", "OCR-METADATA-GHA01"],
-    "developmentStatus": "complete; GOAL-BETA-PREP01 now authorizes bounded pre-cutover blocker resolution and production cutover after Phase 1 is green",
+    "developmentStatus": "development and COMPUTE-PRECUTOVER01 complete; GOAL-BETA-PREP01 Phase 2 production cutover is active",
     "developmentSchema": 22,
     "developmentMigrationHistory": "001-022",
     "productionMigrationApplied": false,
@@ -219,13 +219,45 @@
       "productionJobRuntimeStaging": "pre-existing blocker; protected job still requests runtime/tesseract although the pinned builder accepts only normalized repository output paths; not repaired or executed under qualification-only authority",
       "temporaryDraftPr": 8,
       "temporaryDraftPrMerged": false,
-      "productionQualification": "historical checkpoint blocked; GOAL-BETA-PREP01 Phase 1 now authorizes an evidence-backed provider-specific memory contract decision plus the smallest protected-job staging repair"
+      "productionQualification": "historical checkpoint findings preserved; both were resolved by COMPUTE-PRECUTOVER01 exact run 32407660640"
+    },
+    "preCutover": {
+      "task": "COMPUTE-PRECUTOVER01",
+      "status": "complete; production cutover is the active next phase",
+      "baseSource": "decfde4d06d359f0cb9873682293ff828bac5ab9",
+      "qualifiedSource": "1c3bb10a48082995924a2d9ec41a48d6d3d34acd",
+      "workflowRun": 32407660640,
+      "qualificationJobId": 96550455191,
+      "temporaryDraftPr": 9,
+      "temporaryDraftPrMerged": false,
+      "runnerImage": "ubuntu-24.04",
+      "runnerImageVersion": "20260816.277.1",
+      "memoryContract": {
+        "localDevelopmentPeakRssLimitBytes": 536870912,
+        "githubHostedUbuntu2404PeakRssLimitBytes": 805306368,
+        "repeatRunDriftLimitBytes": 67108864,
+        "cleanStartRssBytes": 271077376,
+        "peakRssBytes": 547860480,
+        "postJobRssBytes": 538947584,
+        "repeatRuns": 5,
+        "runOneToFivePostRssDriftBytes": 225280,
+        "gnuTimeMaxRssKiB": 535796,
+        "classification": "bounded PDF.js/native-canvas/Tesseract first-use high-water with no repeating growth; clean process per job remains mandatory"
+      },
+      "protectedRuntimeStaging": "builder remains output-only; protected job builds under output/worker-stage, verifies the pinned runtime, atomically promotes to output/worker, and executes only from that verified output tree",
+      "staticContractTest": "pass; build, verify, promoted runtime, memory profile, peak gate, and drift gate are locked together",
+      "realTesseractE2e": "pass; 1 pass, 0 skipped",
+      "contractsAndCompute": "pass; contracts 1/1, Compute 52 pass / 0 fail / 1 expected pre-runtime skip",
+      "privacyOutputScan": "pass",
+      "artifactCount": 0,
+      "productionJobExecuted": false,
+      "productionChanged": false
     },
     "remainingProductionSecrets": [
       "least-scoped GitHub workflow-dispatch token held by Core",
       "one shared bootstrap secret installed in Core and the protected GitHub environment"
     ],
-    "next": "GOAL-BETA-PREP01 Phase 1: resolve hosted memory contract and protected-job staging; if green, proceed to the explicitly authorized bounded production cutover"
+    "next": "GOAL-BETA-PREP01 Phase 2: exact Core/Compute production cutover with verified backup, migration 022, minimum least-privilege credentials/environment, exact artifact/deployment, and one bounded canary"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -250,6 +282,8 @@
     "target": "INTERNAL_BETA_READY",
     "internalBetaReady": false,
     "stopBeforeStartingInternalBeta": true,
+    "currentPhase": "Phase 2 / ARCH-COMPUTE01 production cutover",
+    "completedPhases": ["COMPUTE-PRECUTOVER01"],
     "phases": [
       "COMPUTE-PRECUTOVER01: provider-specific hosted memory contract plus protected Tesseract staging repair",
       "ARCH-COMPUTE01 production cutover: backup + migration 022 + minimum credentials/environment + exact deploy + bounded canary",
@@ -257,7 +291,7 @@
       "L1-UX08 beta-minimum unified Activity Center v0.1 plus Source Recovery",
       "QA-GOLDEN01 exact-release real-browser final gate"
     ],
-    "productionCutoverAuthorization": "conditional on Phase 1 green; bounded by GOAL-BETA-PREP01",
+    "productionCutoverAuthorization": "active after Phase 1 green; bounded by GOAL-BETA-PREP01 Phase 2",
     "credentialRule": "bootstrap secret may be generated/installed without logging; broad personal GitHub token must not be stored on production; stop only if a compliant least-scoped dispatch credential requires Owner interaction",
     "privacyBoundary": "Owner accepts one bounded production canary PDF transiently processed on GitHub-hosted runner through ADR-031 single-object short-lived capability; no raw PDF/text/candidates/source URL/capability in logs or artifacts",
     "costBoundary": "no paid infrastructure, second server, or cost-bearing object-backup work",
@@ -265,7 +299,6 @@
     "finalStop": "when INTERNAL_BETA_READY=true, reconcile exact release/schema/rollback/durable state and STOP for Owner internal-beta decision"
   },
   "currentPriorityOrder": [
-    "GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01",
     "GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover",
     "GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure",
     "GOAL-BETA-PREP01 Phase 4 / L1-UX08 Activity Center v0.1 + Source Recovery",
@@ -286,11 +319,13 @@
     "The exact OSS CORS rule now retains POST and adds only PUT plus Content-MD5 for the exact AcademicCloud Origin; no further CORS/provider policy churn is authorized inside GOAL-BETA-PREP01 absent a newly proven regression.",
     "The later Metadata Suggestion stall is a separate Core memory-reclaim incident, not a reopened storage incident; ARCH-COMPUTE01 implements a development-only asynchronous Compute boundary without production mutation so far.",
     "COMPUTE-GHA02 final hosted run 32403834659 passed contracts, Compute, pinned Tesseract 5.5.3, real OCR, exact five-run memory gate, output safety, and zero-artifact checks; production job execution was skipped and no private PDF was processed.",
-    "Hosted memory headroom under the historical fixed 512 MiB gate is not reproducible: two clean runs peaked at 547672064 and 549146624 bytes while the final run peaked at 533995520 bytes with only 2875392 bytes of headroom; GOAL-BETA-PREP01 authorizes an evidence-backed GitHub-provider-specific contract decision rather than silent threshold tuning.",
-    "The protected production Compute job was deliberately not executed during qualification; its runtime/tesseract target conflicts with the pinned builder's repository-output-only contract and GOAL-BETA-PREP01 authorizes the smallest staging repair while preserving that safety boundary.",
+    "Hosted memory headroom under the historical fixed 512 MiB gate was not reproducible: two clean runs peaked at 547672064 and 549146624 bytes while the final run peaked at 533995520 bytes with only 2875392 bytes of headroom; COMPUTE-PRECUTOVER01 resolved this through an evidence-backed provider-specific contract rather than silent global threshold tuning.",
+    "COMPUTE-GHA02 deliberately did not execute the protected production job; COMPUTE-PRECUTOVER01 later repaired its runtime/tesseract versus repository-output-only mismatch while preserving the builder safety boundary.",
     "Production remains on schema v21/history 001-021 until GOAL-BETA-PREP01 Phase 2 actually passes its preflight and applies migration 022.",
     "RF-SEARCH01 behavior remains frozen; Goal Mode may only compose it onto the latest post-Compute baseline, satisfy the mandatory browser gate, build a new exact artifact, and then deploy within Phase 3.",
     "Owner authorization now permits autonomous progression through beta-prep phases; routine implementation choices do not require another Owner round-trip, but the explicit hard-stop conditions in tasks/doing/GOAL-BETA-PREP01.md remain binding.",
-    "Internal beta itself is not authorized to start automatically; STOP after INTERNAL_BETA_READY is proven and recorded."
+    "Internal beta itself is not authorized to start automatically; STOP after INTERNAL_BETA_READY is proven and recorded.",
+    "COMPUTE-PRECUTOVER01 qualified exact source 1c3bb10 on hosted run 32407660640: real Tesseract passed, peak RSS was 547860480 bytes under the provider-specific 805306368-byte gate, five-run drift was 225280 bytes under 64 MiB, privacy/output scan passed, and no artifact or production job was created.",
+    "The protected Compute job now preserves the builder output-only boundary by staging under output/worker-stage, verifying the pinned runtime, and promoting atomically to output/worker; static deployment tests prevent build/verify/runtime paths from diverging."
   ]
 }

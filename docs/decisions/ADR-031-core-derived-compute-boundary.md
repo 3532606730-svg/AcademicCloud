@@ -1,7 +1,7 @@
 # ADR-031 — Core Authority and Ephemeral Derived Compute
 
 **Date:** 2026-08-21
-**Status:** Accepted by Owner; development implementation complete, production cutover separately gated
+**Status:** Accepted by Owner; development and COMPUTE-PRECUTOVER01 complete, production cutover active under GOAL-BETA-PREP01 Phase 2
 
 ## Context
 
@@ -112,6 +112,21 @@ shows a substantial one-time PDF/native runtime residency but no proportional
 per-run accumulation. The production design nevertheless uses one clean process
 per job rather than depending on retained-runtime behavior.
 
+COMPUTE-PRECUTOVER01 preserves that 512 MiB limit for the local-development
+profile and adds one explicit provider-specific profile for GitHub-hosted
+`ubuntu-24.04`: peak Node RSS must remain below 768 MiB (805,306,368 bytes),
+while the five-run post-RSS drift remains below 64 MiB. This is not a Core
+service limit and does not change production `MemoryHigh` or `MemoryMax`.
+Historical unchanged-Compute hosted peaks of 547,672,064, 549,146,624, and
+533,995,520 bytes all fit the provider-specific bound but crossed the old
+512 MiB line inconsistently. Exact qualification source `1c3bb10…`, run
+`32407660640`, then passed real Tesseract OCR at a 547,860,480-byte Node peak,
+538,947,584-byte post-job RSS, and only 225,280 bytes of run-one-to-five
+post-RSS drift. The evidence therefore classifies the hosted behavior as
+bounded PDF.js/native-canvas/Tesseract first-use high-water rather than
+repeating growth. Concurrency one and one clean process per job remain hard
+requirements.
+
 ### Asynchronous product state
 
 The existing Metadata Suggestion POST now authorizes, persists, dispatches, and
@@ -149,13 +164,23 @@ does not weaken or replace the pinned runtime contract.
 
 ## Migration and production gate
 
+COMPUTE-PRECUTOVER01 is complete. The protected job now builds the pinned
+runtime under `output/worker-stage`, where the output-only builder permits it,
+verifies the runtime before use, atomically promotes the verified tree to
+`output/worker`, and executes OCR only from that promoted path. A static
+deployment contract ties builder, verification, runtime, memory-profile, peak,
+and drift paths together. The exact hosted qualification used no production
+secret or private PDF, uploaded no artifact, and kept the protected job
+skipped.
+
 Migration 022 is development-only at this checkpoint. Production remains exact
 release `08657727a17a7ea766ad0d74cc663fa40f91eee1` at schema v21/history 001–021.
 No production migration, deployment, restart, memory-limit change, provider
 policy change, credential installation, SQLite mutation, or RF-SEARCH01 change
-is authorized by this decision.
+occurred during pre-cutover qualification.
 
-A later Owner-authorized cutover must separately provide a pre-migration backup,
+GOAL-BETA-PREP01 Phase 2 is the current Owner-authorized cutover. It must provide
+a pre-migration backup,
 deploy one exact verified Core artifact, apply migration 022 through the existing
 explicit stopped-service procedure, configure only the minimal Compute routing
 and secrets, configure the protected GitHub environment, and then verify Auth,
@@ -180,9 +205,11 @@ needs the non-secret exact Core origin and Compute ref routing values.
   the attempt-scoped claim and callback boundaries make that safe, while the
   durable deadline prevents indefinite user state.
 - The local memory probe intentionally reveals a large one-time PDF/native
-  residency and has limited headroom below 512 MiB. Clean-process execution and
-  the workflow memory assertion are therefore part of the contract, not optional
-  diagnostics.
+  residency and keeps its 512 MiB local-development limit. GitHub-hosted
+  `ubuntu-24.04` has a separate `<768 MiB` peak contract because three clean
+  unchanged-Compute observations proved that the old hosted 512 MiB boundary was
+  not reproducible. Clean-process execution, concurrency one, and the workflow
+  drift assertion remain contract requirements rather than optional diagnostics.
 - The recorded local RSS numbers cover Node/PDF.js/native canvas with a
   deterministic OCR fixture, not the separate Linux Tesseract process. A real
   clean-runner whole-job peak remains mandatory cutover evidence.

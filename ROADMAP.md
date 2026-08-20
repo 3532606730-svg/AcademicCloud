@@ -64,11 +64,17 @@ that path.
 The Owner has now authorized `GOAL-BETA-PREP01` as the bounded autonomous
 program that clears these two blockers and proceeds to internal-beta readiness:
 
+COMPUTE-PRECUTOVER01 has since cleared both blockers on exact hosted run
+`32407660640`: source `1c3bb10…` passed real OCR, the explicit GitHub-hosted
+`<768 MiB` peak and retained `<64 MiB` drift contracts, verified `output/`
+stage/promote, privacy/output scanning, and zero-artifact checks without
+production execution. Phase 2 is active next.
+
 ```text
-GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01
+GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01 — COMPLETE
   hosted provider-specific memory-contract decision
   + smallest protected Tesseract staging repair
-→ GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover
+→ GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover — ACTIVE
   backup + migration 022 + minimum least-privilege Compute credentials/environment
   + exact artifact/deploy + one bounded canary
 → GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure
@@ -125,7 +131,7 @@ remaining empty-marker/abandon-routing repair and exact CORS delta. Production
 invariants and pending state were preserved, and Owner-reported browser storage
 acceptance passed. The later Metadata Suggestion memory stall is separate.
 
-### ARCH-COMPUTE01 — development complete, production cutover conditionally authorized
+### ARCH-COMPUTE01 — development/pre-cutover complete, production cutover active
 `JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01` implement the smallest durable
 Core-owned job abstraction and one clean GitHub Actions worker. The existing
 front-matter OCR/metadata behavior is migrated rather than redesigned. Core no
@@ -134,10 +140,11 @@ those runtime checks and returns candidates only. `COMPUTE-GHA02` proved the
 runtime on real hosted Linux and preserved the exact memory evidence: peaks of
 547,672,064 and 549,146,624 bytes failed the historical 512 MiB gate, while the
 final 533,995,520-byte peak passed narrowly with only 4,247,552 bytes of
-run-one-to-five post-RSS drift. GOAL-BETA-PREP01 Phase 1 now authorizes an
-evidence-backed GitHub-provider-specific memory-contract decision and the
-smallest protected-job staging repair. Phase 2 authorizes the production cutover
-only after those repairs are green.
+run-one-to-five post-RSS drift. COMPUTE-PRECUTOVER01 repaired both blockers:
+exact run `32407660640` passed at a 547,860,480-byte peak and 225,280-byte
+five-run drift under the explicit GitHub-hosted `<768 MiB` / `<64 MiB`
+contract, and the protected runtime now uses verified `output/worker-stage` →
+`output/worker` promotion. Phase 2 production cutover is now active.
 
 ### RF-SEARCH01 — implementation/artifact complete, production closure authorized later in Goal Mode
 Metadata/name catalogue search is green in development. Final historical source

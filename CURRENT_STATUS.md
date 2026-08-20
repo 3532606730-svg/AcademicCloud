@@ -8,18 +8,22 @@ evidence without duplicating it here.
 
 ## Current situation
 
-The first Core/Compute separation vertical slice is complete in development.
-`COMPUTE-GHA02` proved the real GitHub-hosted Linux runtime, real pinned
-Tesseract OCR, privacy/output boundaries, and the absence of repeating RSS
-drift, while also proving two pre-cutover blockers: the historical fixed
-512 MiB Node RSS gate is not reproducible across clean hosted runners, and the
-protected production job still requests `runtime/tesseract` although the pinned
-builder accepts normalized repository `output/` paths only.
+The first Core/Compute separation vertical slice and COMPUTE-PRECUTOVER01 are
+complete. Exact hosted run `32407660640` qualified source `1c3bb10…` with real
+pinned Tesseract OCR, a 547,860,480-byte peak under the explicit GitHub-hosted
+`<768 MiB` contract, only 225,280 bytes of five-run post-RSS drift under the
+unchanged `<64 MiB` drift contract, a passing privacy/output scan, zero
+artifacts, and no protected production execution. The local-development peak
+gate remains `<512 MiB`. The protected runtime now builds under
+`output/worker-stage`, is verified, and is atomically promoted to
+`output/worker`; static deployment tests prevent those paths from diverging.
 
-The Owner has now explicitly authorized `GOAL-BETA-PREP01` for Codex Goal Mode
-to continue autonomously through the bounded beta-prep sequence and STOP only at
-`INTERNAL_BETA_READY` (or an explicit hard-stop condition) before actually
-starting/inviting users into internal beta.
+GOAL-BETA-PREP01 Phase 2 is now active: exact Core/Compute production cutover
+with verified rollback/backup evidence, migration 022, only minimum
+least-privilege Compute routing/secret material, one exact deployment, and one
+bounded canary. Goal Mode continues through the remaining bounded beta-prep
+sequence and stops only at `INTERNAL_BETA_READY` or an explicit hard-stop
+condition, before actually starting/inviting users into internal beta.
 
 Production is still unchanged at the start of this program:
 
@@ -146,14 +150,21 @@ protected production job still requests `runtime/tesseract`. The qualification
 job uses a valid `output/qualification` staging path. That protected path was
 never executed or repaired during qualification.
 
+COMPUTE-PRECUTOVER01 has now superseded those two blockers without rewriting
+their history. ADR-031 records the provider-specific `<768 MiB` GitHub-hosted
+decision and first-use high-water classification. The protected job now uses
+verified `output/` staging/promotion, and exact run `32407660640` passed the
+real-runtime, memory, drift, privacy, output, and zero-artifact gates. Full
+evidence is in `tasks/done/COMPUTE-PRECUTOVER01.md`.
+
 ADR-031 remains authoritative for the architecture/security/callback model.
 
 ## Active Owner-authorized program — GOAL-BETA-PREP01
 
 Codex Goal Mode is authorized to proceed in this exact order:
 
-1. **COMPUTE-PRECUTOVER01** — make the GitHub-hosted memory contract evidence-backed/provider-specific and repair the protected Tesseract staging mismatch without touching production;
-2. **Core/Compute production cutover** — exact artifact/rollback pair, verified production SQLite backup, migration 022, minimum least-privilege Compute credential/environment setup, deployment/restart, and one bounded production canary proving Core remains responsive while Compute runs;
+1. **COMPUTE-PRECUTOVER01 — COMPLETE** — provider-specific GitHub-hosted memory contract and protected Tesseract staging repair passed without production mutation;
+2. **Core/Compute production cutover — ACTIVE NEXT** — exact artifact/rollback pair, verified production SQLite backup, migration 022, minimum least-privilege Compute credential/environment setup, deployment/restart, and one bounded production canary proving Core remains responsive while Compute runs;
 3. **RF-SEARCH01 production closure** — do not deploy the historical artifact; compose the already-green Search behavior onto the latest post-Compute baseline, run its mandatory browser gate, build/verify a new artifact, then deploy;
 4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery** — upload live states/recovery plus durable Metadata/Compute queued/processing/succeeded/failed and reliable download preparing/started/failed states; no broad notification/history platform;
 5. **QA-GOLDEN01** — exact-build real-browser journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
@@ -180,7 +191,7 @@ the latest post-Compute baseline with a new exact artifact and browser gate.
 
 ## Next action
 
-**CONTINUE IN GOAL MODE.** Recover `tasks/doing/GOAL-BETA-PREP01.md`, start
-Phase 1, and continue autonomously across green checkpoints. Stop early only for
+**CONTINUE IN GOAL MODE.** Recover `tasks/doing/GOAL-BETA-PREP01.md`, execute
+Phase 2, and continue autonomously across green checkpoints. Stop early only for
 the explicit hard boundaries in that card; otherwise stop only when
 `INTERNAL_BETA_READY=true`, before starting/inviting users into internal beta.

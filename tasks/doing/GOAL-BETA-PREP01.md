@@ -31,6 +31,20 @@ Resolve both proven pre-cutover blockers without touching production first:
 
 Phase 1 acceptance: hosted real Tesseract/OCR passes, memory contract is evidence-backed and reproducible under its new provider-specific bound, staging contract passes, privacy/output scan passes, no production mutation occurred.
 
+**Phase 1 result — COMPLETE (2026-08-21).** Exact source
+`1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, hosted run `32407660640`,
+job `96550455191` passed contracts, Compute, pinned Tesseract 5.5.3, real OCR
+with zero skip, the explicit GitHub-hosted `<768 MiB` peak contract, retained
+`<64 MiB` drift contract, and privacy/output scan. Exact peak was 547,860,480
+bytes, run-one-to-five post-RSS drift was 225,280 bytes, GNU `time` maximum was
+535,796 KiB, artifact count was zero, and the protected production job was
+skipped. The local-development gate remains `<512 MiB`. Protected staging now
+builds under `output/worker-stage`, verifies before atomic promotion to
+`output/worker`, and is locked by a static deployment contract. Production,
+credentials, schema, database, OSS/RAM/CORS, Search, and callback paths were
+unchanged. Durable evidence is in `tasks/done/COMPUTE-PRECUTOVER01.md` and
+ADR-031. Phase 2 is active next.
+
 ### Phase 2 — ARCH-COMPUTE01 production cutover
 
 After Phase 1 is green, autonomously perform the smallest safe production cutover for the already-completed Core/Compute architecture.
