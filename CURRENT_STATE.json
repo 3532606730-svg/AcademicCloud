@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T19:50:00+08:00",
+  "updatedAt": "2026-08-20T20:14:40+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
   "production": {
@@ -39,7 +39,19 @@
     "typecheck": "pass",
     "build": "pass",
     "diffCheck": "pass",
-    "artifactBuilt": false,
+    "artifactBuilt": true,
+    "artifactWorkflow": 32366397645,
+    "artifactBuildJob": 96416730271,
+    "artifactIndependentVerifyJob": 96419650061,
+    "artifactId": 9405764771,
+    "artifactName": "academiccloud-linux-x64-node24-8d28970209c2e7b41b5d9486bea570a2a8e6c7e6",
+    "artifactDigestSha256": "24858d7eab8003606a78a440d474ca549cca9904d984f04d777f60daf414b3ea",
+    "archiveSha256": "03edbbe0f8b506bb7d3fbb9b929e90f89b8b6948b4256865fcd44d9c62e8bbe4",
+    "manifestSha256": "76e902496f3255293b670f09248cf73f5e8d665a77e0e7a2446e49b7fe05eeb4",
+    "compiledAcceptance": "pass",
+    "dependencyAudit": "pass",
+    "deterministicRebuild": "pass",
+    "independentArtifactVerification": "pass",
     "productionTouched": false,
     "deploymentAuthorized": false
   },
@@ -52,12 +64,12 @@
     "independentVerification": "pass",
     "productionCutover": "blocked",
     "blockers": [
-      "storage application repair must be safely released and OPS-STORAGE-INCIDENT01 must close",
+      "verified storage repair artifact must receive explicit production deployment authorization and OPS-STORAGE-INCIDENT01 must close",
       "mandatory real-browser pre-cutover acceptance"
     ]
   },
   "currentPriorityOrder": [
-    "OPS-STORAGE-APP-REPAIR01 release",
+    "OPS-STORAGE-APP-REPAIR01 production deployment decision",
     "OPS-STORAGE-INCIDENT01 closure",
     "RF-SEARCH01 production closure",
     "L1-UX08",
@@ -76,9 +88,9 @@
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
     "The exact Owner-authorized RAM v2 repair is complete; no further provider-policy mutation is authorized.",
-    "The bounded application source repair is repository-verified; production artifact construction and deployment remain separate gates.",
+    "The bounded application source repair and immutable production artifact are fully verified; production deployment remains a separate explicit Owner gate.",
     "The frozen RF-SEARCH01 artifact was inspected read-only to prove the exact packaged ali-oss behavior; the candidate itself was not modified or rebuilt.",
-    "Metadata Suggestion code must not be changed unless a current post-repair browser attempt proves a new failure boundary.",
-    "RF-SEARCH01 remains frozen and untouched until storage repair/incident closure and its mandatory browser gate."
+    "Metadata Suggestion code must not be changed unless a current post-deployment browser attempt proves a new failure boundary.",
+    "RF-SEARCH01 remains frozen and untouched until storage repair deployment/incident closure and its mandatory browser gate."
   ]
 }
