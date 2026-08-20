@@ -231,7 +231,9 @@ jobs:
           readonly STAGING_ROOT="output/worker-stage"
           readonly RUNTIME_ROOT="output/worker"
           rm -rf "$STAGING_ROOT" "$RUNTIME_ROOT"
-          mkdir -p "$STAGING_ROOT/runtime"
+          mkdir -p "$STAGING_ROOT/compute" "$STAGING_ROOT/runtime"
+          cp -a compute/dist "$STAGING_ROOT/compute/dist"
+          cp compute/package.json "$STAGING_ROOT/compute/package.json"
           docker pull "$TESSERACT_BUILDER_IMAGE"
           test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
           docker run --rm --platform linux/amd64 \
@@ -244,6 +246,7 @@ jobs:
             "$TESSERACT_BUILDER_IMAGE" \
             bash scripts/build-tesseract-runtime.sh "$STAGING_ROOT/runtime/tesseract"
           node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd() + '/$STAGING_ROOT');"
+          node --check "$STAGING_ROOT/compute/dist/main.js"
           mv "$STAGING_ROOT" "$RUNTIME_ROOT"
 
       - name: Verify Compute OCR runtime and realistic fixtures
@@ -279,7 +282,7 @@ jobs:
           ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET: ${{ secrets.ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET }}
         run: |
           set -euo pipefail
-          node --expose-gc compute/dist/main.js \
+          node --expose-gc output/worker/compute/dist/main.js \
             --core-base-url="$COMPUTE_INPUT_CORE_ORIGIN" \
             --job-id="$COMPUTE_INPUT_JOB_ID" \
             --attempt-id="$COMPUTE_INPUT_ATTEMPT_ID"
