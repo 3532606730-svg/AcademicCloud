@@ -123,6 +123,7 @@ jobs:
           set -e
           readonly GNU_MAX_RSS="$(grep -E '^[[:space:]]*Maximum resident set size \(kbytes\):' "$EVIDENCE_DIR/compute-memory-resource.txt")"
           test -n "$GNU_MAX_RSS"
+          echo "$GNU_MAX_RSS"
           if (( PROBE_EXIT != 0 )); then
             {
               echo "### Compute qualification memory evidence"
