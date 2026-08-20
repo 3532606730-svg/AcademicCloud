@@ -1,81 +1,104 @@
 # AcademicCloud Current Status
 
-**Last updated:** 2026-08-20
+**Last reconciled:** 2026-08-20
 
-## Current Phase
+`CURRENT_STATE.json` is the compact machine-readable pointer for current production/task identity. ADRs and completed task cards remain the historical decision/evidence record.
 
-**RF-METASUGGEST-HARDEN01 is PASS/CLOSED, and RF-SEARCH01 development (including the Owner-review repair and the pagination completeness fix) is complete and green. Production remains exact immutable release `604cb8daf310696353e99c30ce7a924dc71ef9d2` (previous `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`) at unchanged schema v21/history 001–021; production was NOT touched for search. The exact RF-SEARCH01 artifact is built and independently verified from `7bba7b8…` (workflow `32331172274`), but the production release is BLOCKED at the mandatory real-browser pre-cutover acceptance gate (no browser-control path exists and installing one is not authorized). STOP BEFORE CUTOVER.**
+## Current Situation
 
-The governing product rule remains ADR-022:
+AcademicCloud's domain model and backend architecture remain accepted: one Owner-governed shared academic corpus, private per-account research activity, browser-direct object-storage transfer, explicit lifecycle/CAS boundaries, and provider-neutral storage abstraction.
 
-> **Academic resources are shared by default after Owner admission; personal research activity is private by default.**
+The immediate problem is operational, not a product-model rewrite.
 
-ADR-028 remains authoritative for permanent deletion: only the authenticated global `owner` may permanently delete eligible recycled account or Library resources; Library exclusivity is revalidated at the destructive transaction boundary; concurrent/shared state fails closed with storage and unrelated lineage untouched. PROD-09 preserved this PROD-07B behavior.
+### Active production incident
 
-## Production Truth
+`OPS-STORAGE-INCIDENT01` is ACTIVE.
+
+Owner-observed production symptoms after an Alibaba OSS overdue-payment interruption include:
+
+- multipart upload interrupted and entered resumable/pending state;
+- Continue upload still fails;
+- Abandon upload still fails;
+- metadata-suggestion generation fails for existing files;
+- a raw browser `Failed to fetch` error has also been observed;
+- Alibaba console now reports the OSS billing condition restored, but end-to-end AcademicCloud behavior has not yet recovered.
+
+The incident root cause after billing recovery is **not yet proven**. Do not guess-fix application code, rotate credentials, mutate OSS/RAM policy, restart services, or clean pending uploads before bounded diagnosis establishes the first failing boundary.
+
+## Production Declaration
+
+Repository-declared production baseline remains:
 
 ```text
-PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
+PRODUCTION_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
 PREVIOUS_RELEASE=a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a
-PRODUCTION_SCHEMA=v21 / migrations 001–021
-PROD09A_CLOSED=true
-RF_METASUGGEST_HARDENED=true
-L1_UX07_DEPLOYED=true
-OCR_DEPLOYED=true
-RF_TRANSFER_DEPLOYED=true
-ROLLBACK_USED=false
+SCHEMA=v21
+MIGRATIONS=001-021
 ```
 
-- migration history and repository checksums are exact 001–021; exactly migrations 020 and 021 were applied once, with SHA-256 `1a6d363d4ff5dd4325adfaac0b54ce64c8c071c0788ac45f98827504d22887eb` and `67b4699cbfae349c7397223fea9d3eaf36aacdcd9e0cec2daef9c4e130e7f01f` respectively;
-- SQLite integrity is `ok` and foreign-key violations are zero;
-- the service is active with autostart disabled, `NRestarts=0`, and exactly one API listener at `127.0.0.1:3000`;
-- loopback/public health is `ok` and readiness is `ready`;
-- the running process is rooted in exact immutable release `a5e2bc21…`, and public assets match that release byte-for-byte;
-- Tesseract 5.5.3 and exact `tessdata_fast` 4.1.0 languages `chi_sim`, `chi_tra`, and `eng` run from the immutable release without network access or production path overrides;
-- RF-METASUGGEST01, L1-UX07, RF-FRONTMATTEROCR01, and RF-TRANSFER01 are deployed; PROD-07B account/Library destructive-lifecycle behavior and PROD-08R PDF.js/canvas repair are preserved;
-- the Aliyun adapter supports true multipart upload/resume and the download path supports HTTP Range resume; unauthorized suggestion, multipart-status/resume, and Range probes fail closed with 401;
-- no systemd, Nginx, DNS, TLS, firewall, autostart, CSP, certificate, credential, or other infrastructure policy was changed.
+Because the live service is under incident diagnosis, exact running process/release identity, Nginx/backend path, and OSS control-plane behavior must be reverified rather than inferred from old documentation.
 
-The immediate PROD-09A rollback is application-only because the hotfix ran no migration:
+No search production cutover has occurred.
 
-- application `9d2fc9b08e2e02c821ef357f149ed928510c2825` against the unchanged live v21 database.
+## RF-SEARCH01
 
-The older deep rollback remains inseparable:
+Development is green and the release candidate is frozen:
 
-- application `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7`;
-- fresh schema-v19 backup `academiccloud-pre-prod09-20260819T061155Z.sqlite`, SHA-256 `21af5882483c21cfa65854fa592a7805b029b4f31c06c598114d161412c36436`;
-- encrypted off-host backup verified in private commit `702695ee9bfd65ee69c2f8cb6c8f105bd4320755`.
+```text
+ARTIFACT_SOURCE_COMMIT=7bba7b869fd1234c1e7c67002cb93368c299209b
+ARTIFACT_WORKFLOW=32331172274
+ARTIFACT_ID=9393280984
+ARTIFACT_SHA256=4b72062734fa941ea4bd48019713a4fbb8951a7793a04f625a3680d7c8e1a15b
+MANIFEST_SHA256=beb15507b20c99679fb48cfe772c29d1d92a930b2adcd337202d88f0cff49458
+INDEPENDENT_ARTIFACT_VERIFICATION=PASS
+```
 
-Never select `f62766c…` against the live v21 database; restore the paired v19 backup as part of any separately authorized deep rollback. PROD-09A and PROD-09 rollback guards were not used. PROD-08R's earlier rollback usage remains historical evidence only.
+RF-SEARCH01 production is blocked by two gates:
 
-## Artifact and Acceptance Evidence
+1. resolve `OPS-STORAGE-INCIDENT01` and prove core storage-backed journeys are healthy;
+2. complete mandatory real-browser pre-cutover acceptance.
 
-- PROD-09A workflow `32234343552` passed on exact source `a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`; the primary job and fresh-runner independent artifact download/runtime verification are green. The first independent attempt was cancelled without a runner or executed step and was rerun against the same uploaded bundle;
-- deterministic archive SHA-256 is `0fe94a30d9ba77810c822c6f5a9ee7c5f4f41dacdcd8ffe5678b7db553d6b7a2`; manifest SHA-256 is `ec1b4d14f13e76f001166c124e9838776ffe3eaa01664c71e53520e0542ec1c4`; runtime-evidence SHA-256 is `1c15752aa7bfc43b80f57c009bf40b474aa2dd129668b3e52511afbf94399936`; the manifest contains 5,384 files / 125,820,107 bytes;
-- Actions artifact `9358788301`, `academiccloud-linux-x64-node24-a5e2bc21f2ae8e38ad6ac33850ea8b4699a8f57a`, has bundle digest `sha256:ea3549fe6fd3f08210a2e109c8b7c696324e7a06323e285b1914ee06e8b0e924` and was independently downloaded and verified without rebuilding;
-- same-path reproducibility, extracted Linux x64 runtime checks, Tesseract 5.5.3 exact closure/models/offline synthetic probe, PDF.js/canvas, Argon2id, better-sqlite3, and compiled acceptance all passed;
-- no migration command ran and no new backup was required for the same-schema application-only rollback boundary;
-- post-cutover release/schema/history/checksums, integrity/FK, health/readiness, process identity, public assets, OCR runtime, transfer routes, Range semantics, protected hashes, and absence of new app/OOM/cgroup events all passed;
-- authenticated bounded suggestion generation completed with one bodyless POST returning 200 and an expected `unsupported` run. The `.anonymous` crash, raw internal error, and error alert were absent; no candidate was selected or accepted; canonical metadata remained unchanged; no sensitive resource identity/content was retained in evidence;
-- the exact staging directory was removed and final live health/readiness remained green.
+Do not rebuild or modify the search release candidate unless a concrete defect requires it.
 
-## Development Truth
+## Reliability / Product-Maturity Interlock
 
-- `codex/project-memory-reconcile-20260817` remains the single authoritative non-main line;
-- RF-FRONTMATTEROCR01 checkpoint `bcd8211c0b0a091ec8ff3b8f674eaf2c9be72427` was integrated non-destructively after exact PROD-08R evidence checkpoint `497f55a648a7d819e5e01909920781e66506c731`;
-- development schema is v21/history 001–021; migrations 001–020 remain byte-identical, migration 020 adds only immutable suggestion evidence provenance, and migration 021 adds only server-authoritative multipart transfer state;
-- bounded local/offline OCR preserves native-text preference, the exact deduplicated first-15/last-5 window, manager review and RF-META CAS acceptance, Library-domain non-disclosure, and no raw OCR/page-image persistence;
-- RF-TRANSFER01 preserves the provider-neutral storage boundary, uses an 8 MiB/640-part bounded multipart contract with CAS lifecycle, completed-part reuse, missing-part-only resume, exact abandonment, legacy compatibility, and browser-native Range downloads without backend large-file buffering;
-- repository implementation, focused OCR/transfer/catalogue suites, both typechecks/builds, compiled acceptance, final artifact verification, and bounded production acceptance are green;
-- the PROD-08R exact PDF.js/canvas native runtime allowlist and ELF64 x86-64 verification boundary remain intact;
-- the workflow now distinguishes structural deployment invariants from ordinary mutable business-state drift, while preserving migration, authorization, corruption, destructive-data, and backup/rollback gates;
-- the recovered RF-METASUGGEST-HARDEN01 first slice is implemented and verified locally: bounded random-access PDF reading (exact object stat + capped Range reads + fixed request/byte/memory/time budgets, no whole-object buffering), independent filename/embedded/native/OCR evidence branches, conservative structured filename parsing, native-text quality gating, embedded multi-author handling, authority-resolve-only UX, and ordinary localized product copy; backend (342) and frontend (221) suites and both typechecks are green at the recovered slice;
-- completed task cards under `tasks/done/` preserve the bounded evidence, including PROD-09A's exact hotfix source/artifact/deployment and PROD-09's deeper rollback pair.
+Before resuming broad Personal Research Workspace expansion, the new priority order is:
+
+```text
+OPS-STORAGE-INCIDENT01
+→ RF-SEARCH01 production closure
+→ L1-UX08 Upload Activity & Source Recovery
+→ OPS-DEPENDENCY01 Dependency Health
+→ QA-GOLDEN01 Real-Browser Golden Journeys
+→ ERR-BOUNDARY01 Unified Error Boundary
+→ DOC-TRUTH01 Repository Truth Hygiene
+→ RF-INTEGRITY01 Storage/Metadata Integrity & Reconciliation
+→ OPS-OBJECTBACKUP01 Independent Object-Byte Backup
+→ JOB-CORE01 Durable Background Jobs
+→ FE-DECOMP01 Frontend Decomposition
+→ CONTRACT-CORE01 Shared API Contracts
+→ Personal Research Workspace sequence
+```
+
+This is a reliability interlock, not a change to the long-term scholarly model.
+
+## Newly Accepted UX Direction
+
+`L1-UX08` will unify two upload UX gaps:
+
+- a global cross-page Activity Center showing queued/preparing/uploading/paused/resumable/completing/verifying/complete/error states, progress, bytes, speed and ETA;
+- source-file recovery that first reuses the in-memory `File`, then (where supported) a persisted `FileSystemFileHandle`/IndexedDB permission flow, and only falls back to `选择原文件继续` when automatic source recovery is unavailable.
+
+Server-authoritative checksum identity remains mandatory before reusing existing multipart parts.
 
 ## Safety Boundaries
 
-RF-METASUGGEST-HARDEN01 authorizes only its bounded pipeline diagnosis/implementation, committed realistic fixtures, exact-artifact verification, read-only/no-persistence smoke on at most five anonymized Owner-authorized PDFs, and conditional no-migration production release/acceptance. It does not authorize candidate acceptance, canonical metadata mutation, corpus-wide scanning, whole-document download/OCR, broad database or unrelated resource inspection, real permanent deletion, `PROD-03C2`, reboot/autostart, infrastructure-policy changes, credentials, paid infrastructure, main merge, RF-SEARCH01, remaining Pre-OCR cards, full-text search/indexing, embeddings, retrieval, RAG, external metadata/catalogue lookup, web search, AI extraction, or unrelated work.
+- No production mutation is authorized by this reconciliation.
+- No migration is authorized.
+- No Search cutover until incident + browser gates pass.
+- SQLite + modular monolith + browser-direct object storage remain the accepted near-term architecture.
+- No OCR/full-text/embeddings/RAG expansion until the reliability interlock is deliberately cleared.
 
 ## Next Action
 
-RF-SEARCH01 development and the exact artifact are complete and green. Reconcile the checkpoint, push, prove `LOCAL_HEAD == TRACKING_HEAD == REMOTE_HEAD` with a clean worktree, then STOP BEFORE CUTOVER — the mandatory real-browser pre-cutover acceptance gate is unsatisfied (no browser-control path exists).
+Run `OPS-STORAGE-INCIDENT01` bounded diagnosis first. Preserve the existing pending multipart upload. After the incident is proven and repaired through a separately authorized change, complete a real browser core journey, then resume RF-SEARCH01 production closure.
