@@ -67,6 +67,115 @@ export interface AliyunOssClientPort {
   delete(objectKey: string): Promise<unknown>;
 }
 
+interface RawAliyunOssClientPort {
+  signatureUrlV4: AliyunOssClientPort["signatureUrlV4"];
+  initMultipartUpload?: AliyunOssClientPort["initMultipartUpload"];
+  listParts?(
+    objectKey: string,
+    uploadId: string,
+    query?: Record<string, number | string>,
+    options?: object,
+  ): Promise<unknown>;
+  completeMultipartUpload?: AliyunOssClientPort["completeMultipartUpload"];
+  abortMultipartUpload?: AliyunOssClientPort["abortMultipartUpload"];
+  head: AliyunOssClientPort["head"];
+  get: AliyunOssClientPort["get"];
+  delete: AliyunOssClientPort["delete"];
+}
+
+function parseProviderInteger(value: unknown, fieldName: string): number {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return value;
+  if (typeof value === "string" && /^\d+$/u.test(value)) {
+    const parsed = Number(value);
+    if (Number.isSafeInteger(parsed)) return parsed;
+  }
+  throw new Error(`OSS returned an invalid ${fieldName}`);
+}
+
+function parseProviderBoolean(value: unknown, fieldName: string): boolean {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0) return false;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") return true;
+    if (normalized === "false" || normalized === "0") return false;
+  }
+  throw new Error(`OSS returned an invalid ${fieldName}`);
+}
+
+function normalizeMultipartPart(value: unknown): AliyunMultipartPartRow {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("OSS returned invalid multipart part metadata");
+  }
+  const candidate = value as Record<string, unknown>;
+  const partNumber = parseProviderInteger(candidate.PartNumber, "multipart part number");
+  const size = parseProviderInteger(candidate.Size ?? candidate.size, "multipart part size");
+  const etag = candidate.ETag;
+  const lastModified = candidate.LastModified;
+  if (
+    partNumber < 1
+    || partNumber > 10_000
+    || size < 1
+    || typeof etag !== "string"
+    || etag.length === 0
+    || (lastModified !== undefined && typeof lastModified !== "string" && !(lastModified instanceof Date))
+  ) {
+    throw new Error("OSS returned invalid multipart part metadata");
+  }
+  return {
+    PartNumber: partNumber,
+    ETag: etag,
+    Size: size,
+    ...(lastModified === undefined ? {} : { LastModified: lastModified }),
+  };
+}
+
+/**
+ * Normalize the XML-shaped ali-oss ListParts response at the SDK boundary.
+ * The provider/runtime may expose scalar XML values as strings (for example
+ * `"false"` and `"0"`); business/storage code receives one canonical shape.
+ */
+export function normalizeAliyunMultipartListResult(value: unknown): AliyunMultipartListResult {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("OSS returned an invalid multipart list response");
+  }
+  const candidate = value as Record<string, unknown>;
+  const rawParts = candidate.parts;
+  if (rawParts !== undefined && !Array.isArray(rawParts)) {
+    throw new Error("OSS returned an invalid multipart list response");
+  }
+  const parts = (rawParts ?? []).map(normalizeMultipartPart);
+  const isTruncated = parseProviderBoolean(candidate.isTruncated, "multipart truncation flag");
+  const nextPartNumberMarker = candidate.nextPartNumberMarker === undefined
+    ? (isTruncated ? parseProviderInteger(undefined, "multipart part marker") : 0)
+    : parseProviderInteger(candidate.nextPartNumberMarker, "multipart part marker");
+  return { parts, isTruncated, nextPartNumberMarker };
+}
+
+function adaptAliyunOssClient(client: OSS): AliyunOssClientPort {
+  const raw = client as unknown as RawAliyunOssClientPort;
+  const initMultipartUpload = raw.initMultipartUpload?.bind(raw);
+  const rawListParts = raw.listParts?.bind(raw);
+  const completeMultipartUpload = raw.completeMultipartUpload?.bind(raw);
+  const abortMultipartUpload = raw.abortMultipartUpload?.bind(raw);
+
+  return {
+    signatureUrlV4: raw.signatureUrlV4.bind(raw),
+    ...(initMultipartUpload ? { initMultipartUpload } : {}),
+    ...(rawListParts
+      ? {
+          listParts: async (...args: Parameters<NonNullable<AliyunOssClientPort["listParts"]>>) =>
+            normalizeAliyunMultipartListResult(await rawListParts(...args)),
+        }
+      : {}),
+    ...(completeMultipartUpload ? { completeMultipartUpload } : {}),
+    ...(abortMultipartUpload ? { abortMultipartUpload } : {}),
+    head: raw.head.bind(raw),
+    get: raw.get.bind(raw),
+    delete: raw.delete.bind(raw),
+  };
+}
+
 function baseOptions(config: AliyunOssConfig) {
   return {
     region: config.region,
@@ -80,13 +189,14 @@ function baseOptions(config: AliyunOssConfig) {
 }
 
 // Native OSS service client: HEAD/stat, DeleteObject, and every server-side
-// OSS API call continue to use the native regional bucket endpoint.
+// OSS API call continue to use the native regional bucket endpoint. Raw SDK
+// response shapes are normalized before they reach the storage adapter.
 export function createAliyunOssClient(config: AliyunOssConfig): AliyunOssClientPort {
-  return new OSS({
+  return adaptAliyunOssClient(new OSS({
     ...baseOptions(config),
     endpoint: config.endpoint,
     secure: new URL(config.endpoint).protocol === "https:",
-  }) as unknown as AliyunOssClientPort;
+  }));
 }
 
 // Browser GET signing client: a dedicated OSS custom domain mapped to the
@@ -98,10 +208,10 @@ export function createAliyunBrowserClient(
   config: AliyunOssConfig,
   browserEndpoint: string,
 ): AliyunOssClientPort {
-  return new OSS({
+  return adaptAliyunOssClient(new OSS({
     ...baseOptions(config),
     endpoint: browserEndpoint,
     cname: true,
     secure: new URL(browserEndpoint).protocol === "https:",
-  }) as unknown as AliyunOssClientPort;
+  }));
 }
