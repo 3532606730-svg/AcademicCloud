@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T02:42:37+08:00",
+  "updatedAt": "2026-08-21T02:52:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
   "production": {
@@ -12,7 +12,7 @@
     "liveProcessIdentityNeedsIncidentReverification": false
   },
   "activeIncidents": ["OPS-METADATA-MEMORY01"],
-  "activeTasks": ["RF-SEARCH01"],
+  "activeTasks": ["GOAL-BETA-PREP01", "RF-SEARCH01"],
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
     "principalType": "RAMUser",
@@ -169,7 +169,7 @@
     "program": "ARCH-COMPUTE01",
     "baseCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
     "tasks": ["JOB-CORE01", "COMPUTE-GHA01", "OCR-METADATA-GHA01"],
-    "developmentStatus": "complete; final hosted qualification run passed, but the 512 MiB Node RSS gate was not reproducible across clean runners and production cutover remains blocked",
+    "developmentStatus": "complete; GOAL-BETA-PREP01 now authorizes bounded pre-cutover blocker resolution and production cutover after Phase 1 is green",
     "developmentSchema": 22,
     "developmentMigrationHistory": "001-022",
     "productionMigrationApplied": false,
@@ -210,7 +210,7 @@
         "finalRunHeadroomBytes": 2875392,
         "finalRunGate": "pass",
         "priorCleanRunPeakFailuresBytes": [547672064, 549146624],
-        "reproducibility": "fail; identical Compute code crossed the fixed gate on two immediately preceding clean hosted runs"
+        "reproducibility": "fail under historical fixed 512 MiB gate; identical Compute code crossed that gate on two immediately preceding clean hosted runs"
       },
       "logScan": "pass; zero unmasked secrets, signed private source URLs, structured source/callback/candidate payloads, production bootstrap-secret mentions, or runtime fixture-text matches",
       "artifactCount": 0,
@@ -219,13 +219,13 @@
       "productionJobRuntimeStaging": "pre-existing blocker; protected job still requests runtime/tesseract although the pinned builder accepts only normalized repository output paths; not repaired or executed under qualification-only authority",
       "temporaryDraftPr": 8,
       "temporaryDraftPrMerged": false,
-      "productionQualification": "blocked pending separately authorized memory-reproducibility investigation or implementation repair plus the smallest protected-job runtime staging repair"
+      "productionQualification": "historical checkpoint blocked; GOAL-BETA-PREP01 Phase 1 now authorizes an evidence-backed provider-specific memory contract decision plus the smallest protected-job staging repair"
     },
     "remainingProductionSecrets": [
       "least-scoped GitHub workflow-dispatch token held by Core",
       "one shared bootstrap secret installed in Core and the protected GitHub environment"
     ],
-    "next": "STOP; Owner must separately authorize bounded memory-reproducibility investigation or repair and protected-job runtime staging repair before any production backup/migration/secrets/environment/artifact/cutover task"
+    "next": "GOAL-BETA-PREP01 Phase 1: resolve hosted memory contract and protected-job staging; if green, proceed to the explicitly authorized bounded production cutover"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -234,42 +234,63 @@
     "archiveSha256": "4b72062734fa941ea4bd48019713a4fbb8951a7793a04f625a3680d7c8e1a15b",
     "manifestSha256": "beb15507b20c99679fb48cfe772c29d1d92a930b2adcd337202d88f0cff49458",
     "independentVerification": "pass",
-    "productionCutover": "blocked",
+    "productionCutover": "authorized only in GOAL-BETA-PREP01 Phase 3 after Compute cutover; historical artifact must not be deployed directly",
     "currentlyLive": false,
     "briefExposureDuringRolledBackRepairDeployment": true,
     "blockers": [
-      "mandatory real-browser Search pre-cutover acceptance"
+      "compose already-green Search behavior onto the latest post-Compute production baseline",
+      "mandatory real-browser Search pre-cutover acceptance",
+      "new exact artifact build and independent verification"
     ]
   },
+  "goalBetaPrep": {
+    "task": "GOAL-BETA-PREP01",
+    "ownerAuthorizedAt": "2026-08-21T02:52:00+08:00",
+    "mode": "Codex Goal Mode autonomous bounded progression",
+    "target": "INTERNAL_BETA_READY",
+    "internalBetaReady": false,
+    "stopBeforeStartingInternalBeta": true,
+    "phases": [
+      "COMPUTE-PRECUTOVER01: provider-specific hosted memory contract plus protected Tesseract staging repair",
+      "ARCH-COMPUTE01 production cutover: backup + migration 022 + minimum credentials/environment + exact deploy + bounded canary",
+      "RF-SEARCH01 production closure: compose onto latest baseline + browser gate + new artifact + deploy",
+      "L1-UX08 beta-minimum unified Activity Center v0.1 plus Source Recovery",
+      "QA-GOLDEN01 exact-release real-browser final gate"
+    ],
+    "productionCutoverAuthorization": "conditional on Phase 1 green; bounded by GOAL-BETA-PREP01",
+    "credentialRule": "bootstrap secret may be generated/installed without logging; broad personal GitHub token must not be stored on production; stop only if a compliant least-scoped dispatch credential requires Owner interaction",
+    "privacyBoundary": "Owner accepts one bounded production canary PDF transiently processed on GitHub-hosted runner through ADR-031 single-object short-lived capability; no raw PDF/text/candidates/source URL/capability in logs or artifacts",
+    "costBoundary": "no paid infrastructure, second server, or cost-bearing object-backup work",
+    "providerMutationBoundary": "no new OSS/RAM/CORS/bucket-policy mutation unless a newly proven regression makes it strictly necessary; then stop for Owner review",
+    "finalStop": "when INTERNAL_BETA_READY=true, reconcile exact release/schema/rollback/durable state and STOP for Owner internal-beta decision"
+  },
   "currentPriorityOrder": [
-    "COMPUTE-GHA02 memory-headroom reproducibility decision before any ARCH-COMPUTE01 production cutover",
-    "RF-SEARCH01 production closure",
-    "L1-UX08",
-    "OPS-DEPENDENCY01",
-    "QA-GOLDEN01",
-    "ERR-BOUNDARY01",
-    "DOC-TRUTH01",
-    "RF-INTEGRITY01",
-    "OPS-OBJECTBACKUP01",
-    "FE-DECOMP01",
-    "CONTRACT-CORE01",
-    "Personal Research Workspace"
+    "GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01",
+    "GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover",
+    "GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure",
+    "GOAL-BETA-PREP01 Phase 4 / L1-UX08 Activity Center v0.1 + Source Recovery",
+    "GOAL-BETA-PREP01 Phase 5 / QA-GOLDEN01",
+    "STOP at INTERNAL_BETA_READY before inviting users",
+    "OPS-DEPENDENCY01 and remaining reliability queue after beta-prep unless newly required by a concrete blocker",
+    "Personal Research Workspace later"
   ],
   "notes": [
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
-    "The exact Owner-authorized RAM v2 repair and R3 Owner browser storage acceptance are complete; OPS-STORAGE-INCIDENT01 is closed and no further provider-policy mutation is authorized.",
-    "Original artifact 9405764771 / source 8d289702 is technically verified but production-scope invalid under the no-Search boundary and must not be redeployed.",
+    "The exact Owner-authorized RAM v2 repair and R3 Owner browser storage acceptance are complete; OPS-STORAGE-INCIDENT01 is closed and no further provider-policy mutation is authorized absent a newly proven regression.",
+    "Original artifact 9405764771 / source 8d289702 is technically verified but production-scope invalid and must not be redeployed.",
     "The failed deployment attempt briefly exposed RF-SEARCH01 and rolled back successfully to 604cb8d without schema, RAM, credential, configuration, database, or pending-upload mutation.",
     "The replacement hotfix source 988bdbf was based directly on previous production 604cb8d and restored the first bounded ListParts normalization without Search.",
     "The final bounded R3 source 08657727 is based directly on production 988bdbf and changes only two runtime files plus focused tests and the exact CORS readiness contract; artifact 9413295334 passed deterministic Linux build and independent/host verification.",
     "Production now runs exact 08657727 with previous release 988bdbf; schema/history, RAM v2, credentials, protected configuration, SQLite contents, all seven pending files, and all six multipart rows were preserved, rollback was not required, and RF-SEARCH01 is not deployed.",
-    "The exact OSS CORS rule now retains POST and adds only PUT plus Content-MD5 for the exact AcademicCloud Origin; no further CORS/provider policy churn is authorized.",
-    "The later Metadata Suggestion stall is a separate Core memory-reclaim incident, not a reopened storage incident; ARCH-COMPUTE01 implements a development-only asynchronous Compute boundary without production mutation.",
+    "The exact OSS CORS rule now retains POST and adds only PUT plus Content-MD5 for the exact AcademicCloud Origin; no further CORS/provider policy churn is authorized inside GOAL-BETA-PREP01 absent a newly proven regression.",
+    "The later Metadata Suggestion stall is a separate Core memory-reclaim incident, not a reopened storage incident; ARCH-COMPUTE01 implements a development-only asynchronous Compute boundary without production mutation so far.",
     "COMPUTE-GHA02 final hosted run 32403834659 passed contracts, Compute, pinned Tesseract 5.5.3, real OCR, exact five-run memory gate, output safety, and zero-artifact checks; production job execution was skipped and no private PDF was processed.",
-    "Hosted memory headroom is not reproducible: two clean runs peaked at 547672064 and 549146624 bytes above the fixed 512 MiB Node gate, while the final run peaked at 533995520 bytes with only 2875392 bytes of headroom; do not authorize cutover from the isolated final pass alone.",
-    "The protected production Compute job was deliberately not executed or repaired; its pre-existing runtime/tesseract build target conflicts with the pinned builder's repository-output-only contract and remains a separate pre-cutover workflow blocker.",
-    "Production remains on schema v21/history 001-021; migration 022, Compute secrets/environment, and cutover remain explicit Owner gates.",
-    "RF-SEARCH01 remains frozen and blocked from production until a new explicit Owner decision and its mandatory browser gate."
+    "Hosted memory headroom under the historical fixed 512 MiB gate is not reproducible: two clean runs peaked at 547672064 and 549146624 bytes while the final run peaked at 533995520 bytes with only 2875392 bytes of headroom; GOAL-BETA-PREP01 authorizes an evidence-backed GitHub-provider-specific contract decision rather than silent threshold tuning.",
+    "The protected production Compute job was deliberately not executed during qualification; its runtime/tesseract target conflicts with the pinned builder's repository-output-only contract and GOAL-BETA-PREP01 authorizes the smallest staging repair while preserving that safety boundary.",
+    "Production remains on schema v21/history 001-021 until GOAL-BETA-PREP01 Phase 2 actually passes its preflight and applies migration 022.",
+    "RF-SEARCH01 behavior remains frozen; Goal Mode may only compose it onto the latest post-Compute baseline, satisfy the mandatory browser gate, build a new exact artifact, and then deploy within Phase 3.",
+    "Owner authorization now permits autonomous progression through beta-prep phases; routine implementation choices do not require another Owner round-trip, but the explicit hard-stop conditions in tasks/doing/GOAL-BETA-PREP01.md remain binding.",
+    "Internal beta itself is not authorized to start automatically; STOP after INTERNAL_BETA_READY is proven and recorded."
   ]
 }
