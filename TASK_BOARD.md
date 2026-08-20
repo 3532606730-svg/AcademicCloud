@@ -22,7 +22,7 @@ The detailed Owner authorization, boundaries, mandatory sequence, credential/pri
 |---:|---|---|---|
 | 1 | COMPUTE-PRECUTOVER01 | `tasks/done/COMPUTE-PRECUTOVER01.md` | COMPLETE — exact source `1c3bb10…`, run `32407660640`; real OCR, provider-specific memory/drift, staging, privacy/output, and zero-artifact gates passed; production unchanged |
 | 2 | ARCH-COMPUTE01 production cutover | `tasks/doing/GOAL-BETA-PREP01.md` Phase 2 | COMPLETE — production `1c3bb10…`, schema v22/history 001–022, rollback `08657727…` + verified pre-migration DB, final canary run `32415058752` green |
-| 3 | RF-SEARCH01 production closure | `tasks/doing/RF-SEARCH01.md` + Goal Phase 3 | ACTIVE — compose frozen Search behavior onto latest baseline; historical artifact must not be deployed directly |
+| 3 | RF-SEARCH01 production closure | `tasks/doing/RF-SEARCH01.md` + Goal Phase 3 | ACTIVE — ancestry proves composition is already present and focused/browser evidence is green; historical artifact is forbidden; build/verify/deploy a new exact post-gate artifact |
 | 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/ready/L1-UX08.md` + Goal Phase 4 | AUTHORIZED AFTER SEARCH GREEN — upload + Metadata/Compute + reliable download states, source recovery; no full task-history platform |
 | 5 | QA-GOLDEN01 | `tasks/ready/QA-GOLDEN01.md` + Goal Phase 5 | AUTHORIZED FINAL BETA GATE — exact-build real-browser journey with safe fixtures and cleanup |
 | 6 | INTERNAL_BETA_READY | `tasks/doing/GOAL-BETA-PREP01.md` | STOP — Owner decides whether/when to start or invite users into internal beta |
@@ -31,7 +31,7 @@ Goal Mode should move between these checkpoints autonomously when the changed-ri
 
 ## RF-SEARCH01 preserved implementation state
 
-RF-SEARCH01 remains development/artifact green and absent from production. Its exact frozen candidate is `7bba7b869fd1234c1e7c67002cb93368c299209b`. The old artifact is evidence only: because production has advanced through storage and Compute work, Goal Mode must compose the already-green Search behavior onto the latest production/Compute baseline and build a new exact artifact rather than deploying the historical artifact directly.
+RF-SEARCH01 remains behavior-frozen at exact candidate `7bba7b869fd1234c1e7c67002cb93368c299209b`. Ancestry verification corrected the earlier absence claim: Phase 2 source `1c3bb10…` already descends the candidate, so Search is visible in production even though the historical artifact was never reused. Search-specific files remain identical and focused authority/ranking/pagination plus desktop production-browser gates are green. Phase 3 is still open until a new exact post-gate artifact is independently verified and deployed.
 
 ## Completed operational and Compute work
 
@@ -98,7 +98,7 @@ MIGRATION_022_PRODUCTION_APPLIED=true
 ARCH_COMPUTE01_PRODUCTION_CHANGED=true
 ARCH_COMPUTE01_PRODUCTION_CREDENTIALS_CHANGED=true_least_scoped
 ARCH_COMPUTE01_OSS_CHANGED=false
-ARCH_COMPUTE01_SEARCH_CHANGED=false
+ARCH_COMPUTE01_SEARCH_INCLUDED_BY_ANCESTRY=true
 
 SEARCH_ARTIFACT_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION=NOT_CUT_OVER

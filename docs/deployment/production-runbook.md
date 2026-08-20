@@ -243,7 +243,7 @@ Certbot 2.9.0 plus `python3-acme`, `python3-certbot`, `python3-configargparse`, 
 
 ## Current production state
 
-Production runs exact immutable Core/Compute source `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, previous application release `08657727a17a7ea766ad0d74cc663fa40f91eee1`, at schema v22/history 001–022. Exact release/process identity, active/running service with zero restarts, one loopback listener, loopback/public health/readiness, schema/history/checksum, SQLite integrity/FK, Core browser session/Library/details/preview/download, and the real asynchronous Compute canary are green. RF-SEARCH01 is not yet deployed.
+Production runs exact immutable Core/Compute source `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, previous application release `08657727a17a7ea766ad0d74cc663fa40f91eee1`, at schema v22/history 001–022. Exact release/process identity, active/running service with zero restarts, one loopback listener, loopback/public health/readiness, schema/history/checksum, SQLite integrity/FK, Core browser session/Library/details/preview/download, and the real asynchronous Compute canary are green. Ancestry verification later proved this source already descends frozen RF-SEARCH01 candidate `7bba7b8…`, so Search is visible; Phase 3 remains open until the post-gate exact Search release supersedes it.
 
 Owner-reported R3 browser storage acceptance passed on 2026-08-21 and
 `OPS-STORAGE-INCIDENT01` is closed. The separate Metadata Suggestion Core stall

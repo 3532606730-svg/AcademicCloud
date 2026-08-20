@@ -201,7 +201,10 @@ Core remained responsive; one candidate was reviewable but not accepted;
 canonical metadata and the source object remained unchanged. Workflow artifact
 count was zero and workflow/Core log scans found no signed source URL,
 capability, document/candidate payload, or secret. No `MemoryHigh`/`MemoryMax`,
-OSS, RAM, CORS, Nginx, paid-infrastructure, or RF-SEARCH01 change was required.
+OSS, RAM, CORS, Nginx, or paid-infrastructure change was required. Later
+ancestry verification proved the exact Core source already descended frozen
+RF-SEARCH01 candidate `7bba7b8…`; that sequencing fact is reconciled in
+GOAL-BETA-PREP01 and does not change this ADR's Compute authority boundary.
 
 ## Consequences and risks
 

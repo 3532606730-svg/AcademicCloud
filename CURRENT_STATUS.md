@@ -170,7 +170,7 @@ Codex Goal Mode is authorized to proceed in this exact order:
 
 1. **COMPUTE-PRECUTOVER01 — COMPLETE** — provider-specific GitHub-hosted memory contract and protected Tesseract staging repair passed without production mutation;
 2. **Core/Compute production cutover — COMPLETE** — exact artifact, verified backup/off-host copy, migration 022, least-scoped credentials/environment, exact deployment, Core invariants, and one bounded real canary passed;
-3. **RF-SEARCH01 production closure — ACTIVE** — do not deploy the historical artifact; compose the already-green Search behavior onto the latest post-Compute baseline, run its mandatory browser gate, build/verify a new artifact, then deploy;
+3. **RF-SEARCH01 production closure — ACTIVE** — ancestry proves composition is already present; do not deploy the historical artifact; finish the browser gate, build/verify a new exact integrated artifact, then deploy;
 4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery** — upload live states/recovery plus durable Metadata/Compute queued/processing/succeeded/failed and reliable download preparing/started/failed states; no broad notification/history platform;
 5. **QA-GOLDEN01** — exact-build real-browser journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
 
@@ -214,11 +214,22 @@ COST_CHANGED=false
 
 ## RF-SEARCH01
 
-RF-SEARCH01 remains frozen in behavior and absent from production until its
-GOAL-BETA-PREP01 Phase 3. Its exact historical candidate is
-`7bba7b869fd1234c1e7c67002cb93368c299209b`; that old artifact must not be
-deployed directly because production has advanced. Search must be recomposed on
-the latest post-Compute baseline with a new exact artifact and browser gate.
+RF-SEARCH01 remains frozen in behavior and its exact historical candidate is
+`7bba7b869fd1234c1e7c67002cb93368c299209b`. Post-checkpoint ancestry
+verification proved that Phase 2 source `1c3bb10…` already descends that
+candidate, and the production UI exposes Search. The historical artifact was
+not reused, but the prior durable claim that Search was absent was wrong and the
+required Phase 3 browser-before-final-release sequence is not yet complete.
+
+All Search-specific backend service/HTTP files and the dedicated frontend
+component/tests are byte-identical to the frozen candidate; newer shared
+`App`/API/i18n changes retain that behavior. Focused checks pass 14/14 backend
+and 137/137 frontend, plus all-workspace typecheck. The production desktop
+browser gate passes Chinese title, author, author+title, original-filename
+fallback, no result, Escape/clear folder restoration, rapid-query stale safety,
+and opening the existing details surface. Phase 3 remains active until a new
+exact post-gate artifact is independently verified and deployed; the historical
+artifact must still never be selected.
 
 ## Next action
 

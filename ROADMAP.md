@@ -161,15 +161,15 @@ five-run drift under the explicit GitHub-hosted `<768 MiB` / `<64 MiB`
   canary run `32415058752` passed real OCR/memory/callback/privacy/zero-artifact
   evidence with Core responsive and canonical metadata unchanged.
 
-### RF-SEARCH01 — implementation/artifact complete, production closure authorized later in Goal Mode
-Metadata/name catalogue search is green in development. Final historical source
-is `7bba7b869fd1234c1e7c67002cb93368c299209b`; its exact historical artifact is
-built and independently verified. Because production has advanced through
-storage and Compute work, that old artifact must **not** be deployed directly.
-GOAL-BETA-PREP01 Phase 3 must compose the already-green Search behavior onto the
-latest post-Compute production baseline, preserve its existing semantics, pass
-the mandatory real-browser Search journey, build/verify a new exact artifact,
-and only then deploy it.
+### RF-SEARCH01 — implementation complete, production closure active
+Metadata/name catalogue search is behavior-frozen at historical source
+`7bba7b869fd1234c1e7c67002cb93368c299209b`; its historical artifact must
+**not** be deployed directly. Ancestry verification corrected the earlier
+absence claim: the Phase 2 source already descends that candidate and therefore
+exposes Search. Search-specific files remain byte-identical, focused tests and
+the production desktop browser journey are green, and no rewrite/cherry-pick is
+needed. Phase 3 nevertheless remains open until the browser-gated integrated
+source receives a new independently verified exact artifact and deployment.
 
 ### L1-UX08 — beta-minimum unified Activity Center + Source Recovery
 The original upload Activity/Source-Recovery card remains the substrate. Under
@@ -303,9 +303,10 @@ one bounded canary are green. It introduced no paid infrastructure, broad
 credential, provider-policy change, or destructive data manipulation.
 
 RF-SEARCH01 release candidate remains historical evidence at
-`7bba7b869fd1234c1e7c67002cb93368c299209b`; documentation/planning
-reconciliation does not require rebuilding it, but the actual Phase 3 release
-must be recomposed on the latest baseline and receive a new exact artifact.
+`7bba7b869fd1234c1e7c67002cb93368c299209b`. It is already an ancestor of the
+latest baseline, so composition is an evidence-backed no-op rather than a
+cherry-pick; Phase 3 still requires a new exact artifact and deployment after
+its browser gate.
 
 ## Execution Rule
 

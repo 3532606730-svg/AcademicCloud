@@ -128,8 +128,19 @@ journal found no dispatch/bootstrap secret, signed source URL, capability,
 source/callback payload, document text, candidate payload, or selected filename;
 GitHub's one checkout Authorization value was platform-masked. No source/object,
 canonical metadata, Nginx, `MemoryHigh`/`MemoryMax`, OSS, RAM, CORS, bucket
-policy, paid infrastructure, or Search mutation occurred. Rollback was not
-required. Phase 2 is green and Phase 3 is authorized to proceed.
+policy, or paid infrastructure mutation occurred. Rollback was not required.
+
+Post-checkpoint ancestry verification corrected one Phase 2 scope statement:
+source `1c3bb10…` descends the exact frozen RF-SEARCH01 candidate `7bba7b8…`,
+and the production UI therefore exposes Search even though the historical
+Search artifact was never reused. The Search-specific service/HTTP/component/
+test files are byte-identical to the frozen candidate; newer shared frontend
+files retain the contract and focused tests remain green. This is a sequencing
+and durable-truth defect, not evidence of an authority or data-integrity
+failure. Phase 3 must not simply declare the already-visible runtime accepted:
+it must run the mandatory browser gate and then build, independently verify,
+and deploy a new exact post-gate artifact. Phase 2's Compute cutover remains
+green and Phase 3 is authorized to proceed.
 
 ### Phase 3 — RF-SEARCH01 compose and production closure
 
@@ -143,6 +154,20 @@ Do **not** deploy the historical Search artifact directly.
 6. verify clear-query folder restoration, Chinese title, author, author+title, original filename fallback, no-result, stale-request safety, details open, pagination, narrow/mobile, and Member path where safely available.
 
 No full-text/OCR-body search, embeddings, RAG, external lookup, query history, or new Search infrastructure.
+
+**Phase 3 integration recovery (2026-08-21):** no cherry-pick or code rewrite is
+required because `7bba7b8…` is already an ancestor of the latest baseline.
+Dedicated Search backend/component/test files are byte-identical; changed shared
+frontend files preserve integration and pass the frozen contract. Focused
+backend tests pass 14/14, focused frontend tests pass 137/137, and all-workspace
+typecheck passes. The production in-app-browser desktop journey passes normal
+Library browse, Chinese title, author, author+title, original-filename fallback,
+no result, Escape/clear folder restoration, rapid-query stale safety, and
+opening the existing details surface. The production corpus has fewer than 50
+safe rows and no safely available Member session, so no production metadata or
+account was manufactured for those optional data-dependent probes; deterministic
+pagination/Member non-disclosure remains covered by the frozen tests. A new
+exact artifact and final deployment are still required before Phase 3 closes.
 
 ### Phase 4 — L1-UX08 Activity Center v0.1 + Source Recovery
 

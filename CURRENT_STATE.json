@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T04:46:35+08:00",
+  "updatedAt": "2026-08-21T05:00:21+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
   "production": {
@@ -9,6 +9,8 @@
     "schema": 22,
     "migrationHead": 22,
     "migrationHistory": "001-022",
+    "rfSearchRuntimePresent": true,
+    "rfSearchPhase3Accepted": false,
     "liveProcessIdentityNeedsIncidentReverification": false
   },
   "activeIncidents": [],
@@ -338,6 +340,8 @@
       "ossRamCorsChanged": false,
       "costChanged": false,
       "rollbackRequired": false,
+      "rfSearchIncludedInArtifact": true,
+      "phaseSequenceReconciliation": "the Phase 2 source descends the frozen RF-SEARCH01 candidate and therefore exposed Search before its Phase 3 browser/deployment checkpoint; authority tests remain green, but Phase 3 must create and deploy a new exact artifact after the browser gate",
       "productionChanged": true
     },
     "remainingProductionSecrets": [
@@ -353,8 +357,9 @@
     "archiveSha256": "4b72062734fa941ea4bd48019713a4fbb8951a7793a04f625a3680d7c8e1a15b",
     "manifestSha256": "beb15507b20c99679fb48cfe772c29d1d92a930b2adcd337202d88f0cff49458",
     "independentVerification": "pass",
-    "productionCutover": "authorized only in GOAL-BETA-PREP01 Phase 3 after Compute cutover; historical artifact must not be deployed directly",
-    "currentlyLive": false,
+    "productionCutover": "Search code is already present in the Phase 2 release because exact source 1c3bb10 descends this frozen candidate; Phase 3 is active to pass the required browser gate and deploy a new exact integrated artifact rather than accept that sequencing error or reuse the historical artifact",
+    "currentlyLive": true,
+    "phase3Accepted": false,
     "briefExposureDuringRolledBackRepairDeployment": true,
     "blockers": [
       "compose already-green Search behavior onto the latest post-Compute production baseline",
@@ -417,6 +422,7 @@
     "Phase 2 exact Core artifact 9421010643 from source 1c3bb10 passed deterministic build, independent/local/host verification, and was installed as the immutable production release.",
     "Owner email verification and exact-scope approval allowed one 30-day single-repository Actions-write fine-grained token; production and the protected GitHub Environment received only the minimum routing/bootstrap material, with no secret value recorded in repository evidence.",
     "The single logical production canary job 2cb8a0b6-fb37-4b51-bd3b-f9330dbbbde7 succeeded on its second attempt in final run 32415058752 after two bounded workflow staging/runtime-path repairs; Core remained responsive, the candidate stayed reviewable, canonical metadata stayed unchanged, and GitHub artifacts plus sensitive log matches were zero.",
-    "No MemoryHigh/MemoryMax, Nginx, OSS, RAM, CORS, bucket-policy, source-object, canonical-metadata, or paid-infrastructure change occurred in Phase 2; RF-SEARCH01 is still absent and is now the active phase."
+    "No MemoryHigh/MemoryMax, Nginx, OSS, RAM, CORS, bucket-policy, source-object, canonical-metadata, or paid-infrastructure change occurred in Phase 2.",
+    "Post-checkpoint ancestry verification corrected one durable-state error: Phase 2 source 1c3bb10 descends RF-SEARCH01 candidate 7bba7b8, so Search is visible in production even though the historical Search artifact was not used. Focused authority/ranking/pagination tests and the desktop production browser journey are green; Phase 3 remains open until a new exact post-gate artifact is built, verified, and deployed."
   ]
 }
