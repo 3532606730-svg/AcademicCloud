@@ -8,8 +8,8 @@ The board is the executable priority view. `CURRENT_STATE.json` holds compact cu
 
 | Order | Task | Task card | State |
 |---:|---|---|---|
-| 1 | OPS-STORAGE-APP-REPAIR01 | `tasks/doing/OPS-STORAGE-APP-REPAIR01.md` | ACTIVE ON ISOLATED BRANCH — complete proven ali-oss 6.23.0 ListParts runtime-shape normalization implemented; exact-dependency smoke green; repository-native verification pending; production untouched |
-| 2 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER REPAIR VERIFIED — incident remains open pending app-repair verification and Owner real-browser acceptance |
+| 1 | OPS-STORAGE-APP-REPAIR01 | `tasks/doing/OPS-STORAGE-APP-REPAIR01.md` | SOURCE VERIFIED — real ali-oss ListParts runtime normalization green in isolated CI; STOP for Owner artifact-build/release-preparation gate; production untouched |
+| 2 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER REPAIR VERIFIED — incident remains open pending safe app release + Owner Continue/Abandon/metadata browser acceptance |
 | 3 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — exact release candidate frozen and untouched pending storage incident closure + real-browser gate |
 
 ## Reliability / Usability Interlock — Ready but do not auto-start
@@ -64,6 +64,9 @@ Completed cards under `tasks/done/` remain authoritative for implementation/rele
 ```text
 DECLARED_PRODUCTION=604cb8daf310696353e99c30ce7a924dc71ef9d2
 SCHEMA=v21 / 001-021
+STORAGE_REPAIR_VERIFIED_SOURCE=8d28970209c2e7b41b5d9486bea570a2a8e6c7e6
+STORAGE_REPAIR_CI=32365460608 PASS
+STORAGE_REPAIR_ARTIFACT=NOT_BUILT
 SEARCH_ARTIFACT_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION=NOT_CUT_OVER
 ACTIVE_INCIDENT=OPS-STORAGE-INCIDENT01
@@ -74,9 +77,10 @@ REPAIR_BRANCH=codex/storage-runtime-contract-repair-20260820
 ## Stop Rules
 
 - The exact provider permission repair is complete; no further RAM/OSS policy churn is authorized.
-- The Owner has authorized the bounded source repair in `OPS-STORAGE-APP-REPAIR01`; it is limited to the complete proven `ali-oss` `ListParts` runtime representation and repository verification.
-- No production deployment, service restart, migration, credential change, pending-upload mutation, manual complete/abort, or metadata mutation is authorized by the source-repair task.
-- Do not close `OPS-STORAGE-INCIDENT01` until the repair candidate is fully verified and Continue, Abandon, and metadata-suggestion real-browser journeys pass.
-- Search remains frozen; the existing artifact may be inspected read-only for dependency evidence, but do not rebuild or modify the exact RF-SEARCH01 release candidate unless a concrete defect requires it.
+- The bounded source repair is repository-verified; the next allowed action requires an Owner decision on immutable artifact construction/release preparation.
+- Artifact construction, if authorized, must not contact production; production deployment remains a further separate explicit gate.
+- No service restart, migration, credential change, pending-upload mutation, manual complete/abort, or metadata mutation is authorized now.
+- Do not close `OPS-STORAGE-INCIDENT01` until a safe repair release is deployed and Continue, Abandon, and metadata-suggestion real-browser journeys pass.
+- Search remains frozen; do not rebuild or modify the exact RF-SEARCH01 release candidate unless a concrete defect requires it.
 - No new research feature begins while the production storage incident is unresolved.
 - Paid storage backup/provider choice, credentials, further RAM/OSS policy, migrations, destructive repair, production deployment, and infrastructure changes remain explicit Owner gates.
