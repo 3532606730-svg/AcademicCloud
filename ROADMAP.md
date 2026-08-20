@@ -41,45 +41,51 @@ did not OOM or restart, but the event loop stalled and therefore blocked Auth,
 Library, health, and unrelated requests. The Owner authorized the first gradual
 Core/Compute separation rather than a memory-limit-only workaround.
 
-`ARCH-COMPUTE01` is now complete in development. Migration 022 supplies durable
+`ARCH-COMPUTE01` is complete in development. Migration 022 supplies durable
 job authority in Core; GitHub Actions is the first adapter behind a
 provider-neutral Compute interface; the existing bounded front-matter OCR and
 Metadata Suggestion heavy path runs one page at a time in one clean worker; and
 the browser uses durable queued/processing/succeeded/failed state. Core retains
 all Auth, Library, SQLite, storage, suggestion-review, and canonical metadata
-authority. Production remains v21 and unchanged pending a separate Owner gate.
+authority. Production remains v21 until the authorized cutover phase actually
+passes its preflight.
 
 `COMPUTE-GHA02` qualified the exact workflow-only checkpoint on a real
 GitHub-hosted `ubuntu-24.04` runner. Its final exact run passed contracts,
 Compute, pinned Tesseract 5.5.3, real OCR, the unchanged five-run memory gate,
-log/output safety, quoted shell inputs, and zero-artifact checks. The memory gate
-is not reproducible enough for cutover: two clean runs peaked above 512 MiB and
-the final green run retained only 2,875,392 bytes of headroom. Production
-qualification therefore remains blocked pending a separately authorized bounded
-memory investigation or repair. The protected production job also retains a
+log/output safety, quoted shell inputs, and zero-artifact checks. The historical
+fixed 512 MiB Node gate is not reproducible enough for a cutover decision by
+itself: two clean runs peaked above 512 MiB and the final green run retained only
+2,875,392 bytes of headroom. The protected production job also retains a
 pre-existing staging mismatch (`runtime/tesseract` versus the pinned builder's
 repository-`output/`-only contract); qualification did not execute or repair
-that path, so it is a second explicit pre-cutover workflow gate.
+that path.
 
-This creates a temporary mandatory interlock before broad new scholarly features:
+The Owner has now authorized `GOAL-BETA-PREP01` as the bounded autonomous
+program that clears these two blockers and proceeds to internal-beta readiness:
 
 ```text
-COMPUTE-GHA02 hosted memory reproducibility decision (STOP)
-→ ARCH-COMPUTE01 production cutover planning only after an explicit repair gate
-→ RF-SEARCH01 production closure only after a later explicit decision
-→ L1-UX08 Upload Activity & Source Recovery
-→ OPS-DEPENDENCY01 Dependency Health
-→ QA-GOLDEN01 Real-Browser Golden Journeys
-→ ERR-BOUNDARY01 Unified Error Boundary
-→ DOC-TRUTH01 Repository Truth Hygiene
-→ RF-INTEGRITY01 Storage/Metadata Integrity & Reconciliation
-→ OPS-OBJECTBACKUP01 Independent Object-Byte Backup
-→ FE-DECOMP01 Frontend Decomposition
-→ CONTRACT-CORE01 Shared API Contracts
-→ resume Personal Research Workspace
+GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01
+  hosted provider-specific memory-contract decision
+  + smallest protected Tesseract staging repair
+→ GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover
+  backup + migration 022 + minimum least-privilege Compute credentials/environment
+  + exact artifact/deploy + one bounded canary
+→ GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure
+  compose existing Search behavior onto latest baseline
+  + mandatory browser gate + new exact artifact + deploy
+→ GOAL-BETA-PREP01 Phase 4 / L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery
+→ GOAL-BETA-PREP01 Phase 5 / QA-GOLDEN01 exact-release real-browser final gate
+→ INTERNAL_BETA_READY
+→ STOP before starting/inviting users into internal beta
 ```
 
-No item in this sequence silently authorizes production mutation, paid infrastructure, credentials, migrations, destructive repair, or automatic progression.
+Routine implementation choices inside this exact program no longer require a
+separate Owner round-trip. The explicit hard-stop conditions in
+`tasks/doing/GOAL-BETA-PREP01.md` remain binding: no paid infrastructure, no
+broad personal token stored on production, no unproven data-integrity/migration
+risk, no security/privacy weakening, no provider-policy mutation outside scope,
+and no unrelated product/architecture expansion.
 
 ## Why this interlock exists
 
@@ -100,11 +106,15 @@ The weak points exposed by real use are different:
 - raw network errors can leak to the product UI;
 - current upload state is not globally visible;
 - browser source-file recovery is weaker than server multipart recovery;
-- production long-running extraction/OCR remains tied to request lifetimes until
-  the separately gated ARCH-COMPUTE01 cutover;
+- production long-running extraction/OCR still needs the authorized Core/Compute cutover;
 - SQLite metadata backup is stronger than object-byte redundancy;
 - repository current-state facts have drifted across Markdown files;
 - frontend orchestration has grown too concentrated in `App.tsx`.
+
+GOAL-BETA-PREP01 intentionally addresses only the beta-critical subset now:
+Compute isolation/cutover, Search closure, live activity/source recovery, and
+real-browser release evidence. The remaining reliability and scholarly queues
+stay preserved for later work unless a concrete blocker makes one unavoidable.
 
 ## Near-Term Cards
 
@@ -115,29 +125,67 @@ remaining empty-marker/abandon-routing repair and exact CORS delta. Production
 invariants and pending state were preserved, and Owner-reported browser storage
 acceptance passed. The later Metadata Suggestion memory stall is separate.
 
-### ARCH-COMPUTE01 — development complete, production gated
+### ARCH-COMPUTE01 — development complete, production cutover conditionally authorized
 `JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01` implement the smallest durable
 Core-owned job abstraction and one clean GitHub Actions worker. The existing
 front-matter OCR/metadata behavior is migrated rather than redesigned. Core no
 longer depends on PDF.js/canvas/Tesseract for the migrated path; Compute owns
 those runtime checks and returns candidates only. `COMPUTE-GHA02` proved the
-runtime on real hosted Linux, but also proved the 512 MiB Node gate is sensitive
-to clean-runner variation: peaks of 547,672,064 and 549,146,624 bytes failed,
-while the final 533,995,520-byte peak passed narrowly. Stop for Owner review
-before any memory remediation, protected-job runtime staging repair, production
-migration, secrets, environment, artifact, or cutover action.
+runtime on real hosted Linux and preserved the exact memory evidence: peaks of
+547,672,064 and 549,146,624 bytes failed the historical 512 MiB gate, while the
+final 533,995,520-byte peak passed narrowly with only 4,247,552 bytes of
+run-one-to-five post-RSS drift. GOAL-BETA-PREP01 Phase 1 now authorizes an
+evidence-backed GitHub-provider-specific memory-contract decision and the
+smallest protected-job staging repair. Phase 2 authorizes the production cutover
+only after those repairs are green.
 
-### RF-SEARCH01 — implementation/artifact complete
-Metadata/name catalogue search is green in development. Final source `7bba7b869fd1234c1e7c67002cb93368c299209b`; exact artifact is built and independently verified. Production remains blocked until the storage incident is closed and a real-browser pre-cutover journey passes.
+### RF-SEARCH01 — implementation/artifact complete, production closure authorized later in Goal Mode
+Metadata/name catalogue search is green in development. Final historical source
+is `7bba7b869fd1234c1e7c67002cb93368c299209b`; its exact historical artifact is
+built and independently verified. Because production has advanced through
+storage and Compute work, that old artifact must **not** be deployed directly.
+GOAL-BETA-PREP01 Phase 3 must compose the already-green Search behavior onto the
+latest post-Compute production baseline, preserve its existing semantics, pass
+the mandatory real-browser Search journey, build/verify a new exact artifact,
+and only then deploy it.
 
-### L1-UX08 — Upload Activity & Source Recovery
-Create a cross-page Activity Center for immediate upload feedback. Reuse the current `File` first; where supported, persist a `FileSystemFileHandle` via IndexedDB and revalidate file identity before resuming existing multipart parts. `选择原文件继续` is a fallback, not the default.
+### L1-UX08 — beta-minimum unified Activity Center + Source Recovery
+The original upload Activity/Source-Recovery card remains the substrate. Under
+GOAL-BETA-PREP01 Phase 4, beta v0.1 expands only enough to unify:
+
+- upload queued/preparing/uploading/completing/complete/failed and safe resume/retry/abandon;
+- same-session `File` reuse plus optional supported `FileSystemFileHandle` recovery with fail-closed source identity verification and `选择原文件继续` fallback;
+- Metadata/Compute queued/processing/succeeded/failed backed by durable Job Core state across reload;
+- download preparing/started/failed where reliably observable, without proxying bytes through Core merely to fabricate progress.
+
+Do not turn this phase into full task history, advanced filters, per-page OCR
+progress, a general notification platform, or unrelated UI redesign.
 
 ### OPS-DEPENDENCY01 — Dependency Health
-Add Owner-only health information for application, database, storage stat/range/multipart capability, backup freshness, disk/memory and other bounded critical dependencies. Do not turn readiness into expensive unbounded probes.
+Add Owner-only health information for application, database, storage stat/range/multipart capability, backup freshness, disk/memory and other bounded critical dependencies. Do not turn readiness into expensive unbounded probes. This remains outside the beta-prep critical path unless a concrete new blocker makes it necessary.
 
 ### QA-GOLDEN01 — Real-Browser Golden Journeys
-Make the actual product path part of release evidence: login → Library → upload → progress/complete → details → metadata suggestion → download/preview → search → favorite → recycle/restore, with safe fixtures and zero residue.
+Make the actual product path part of release evidence. GOAL-BETA-PREP01 Phase 5
+requires the exact final release journey to cover safe/run-owned fixtures for:
+
+```text
+login
+→ open Library
+→ Search
+→ upload + immediate Activity Center state
+→ upload complete
+→ details
+→ preview/download
+→ Metadata Suggestion 202/job state
+→ queued/processing
+→ GitHub Compute OCR/candidate callback
+→ reviewable candidate while Core health/auth/Library remain responsive
+→ favorite
+→ recycle/restore
+```
+
+Also cover one controlled resumable upload path where practical. The final
+release is not beta-ready merely because unit/CI/artifact evidence is green.
 
 ### ERR-BOUNDARY01 — Unified Error Boundary
 Map raw browser/provider/internal errors into stable user-actionable classes. Preserve safe provider/request correlation server-side; never expose secrets, signed URLs, object keys, raw stacks, or provider payloads.
@@ -149,19 +197,19 @@ Use `CURRENT_STATE.json` as the compact current pointer, remove duplicated stale
 Promoted from the later Pre-OCR queue. Detect missing objects, metadata/provider mismatch, stale multipart, incomplete purge, orphan/provider-only evidence where safely enumerable, and rolling fixity status. Detect/report first; no automatic repair.
 
 ### OPS-OBJECTBACKUP01 — Independent Object-Byte Backup
-Design and then, only after Owner cost/provider approval, establish a second independent copy of authoritative object bytes. Database backup alone is insufficient because original PDFs are the primary asset.
+Design and then, only after Owner cost/provider approval, establish a second independent copy of authoritative object bytes. Database backup alone is insufficient because original PDFs are the primary asset. This cost-bearing work is explicitly outside GOAL-BETA-PREP01.
 
 ### JOB-CORE01 — complete within ARCH-COMPUTE01
 Development migration 022 now provides `queued/running/succeeded/failed`,
 progress, attempts, timestamps, idempotency/attempt correlation, result digest,
 stable error code, and durable deadline classification. No Redis/Celery or
-production migration was introduced.
+production migration was introduced yet.
 
 ### FE-DECOMP01 — Frontend Decomposition
-Behavior-preserving decomposition of `App.tsx` orchestration into focused shell/workspace/upload/activity/preview/admin boundaries. No React rewrite, router rewrite, state-library migration or visual redesign.
+Behavior-preserving decomposition of `App.tsx` orchestration into focused shell/workspace/upload/activity/preview/admin boundaries. No React rewrite, router rewrite, state-library migration or visual redesign. Outside GOAL-BETA-PREP01 except for the smallest bounded edits strictly needed by Activity Center v0.1.
 
 ### CONTRACT-CORE01 — Shared API Contracts
-Reduce frontend/backend contract drift through a small shared schema/types/error-code source. Avoid broad framework replacement.
+Reduce frontend/backend contract drift through a small shared schema/types/error-code source. Avoid broad framework replacement. Outside GOAL-BETA-PREP01 unless a concrete beta-blocking contract defect makes the minimum repair unavoidable.
 
 ## Preserved Scholarly Roadmap
 
@@ -223,25 +271,38 @@ Database metadata and object bytes are separate recovery domains. A verified SQL
 Repository-declared production remains exact bounded R3 release
 `08657727a17a7ea766ad0d74cc663fa40f91eee1`, previous release
 `988bdbf052de1a39b47a1e22ac761c977eec72c8`, at unchanged schema v21/history
-001-021. ARCH-COMPUTE01 is a development checkpoint at schema v22;
-COMPUTE-GHA02 changed only its GitHub workflow qualification path. No production
-migration or cutover is implied, and the hosted memory gate remains a cutover
-blocker despite the final exact-run pass.
+001-021 **until GOAL-BETA-PREP01 Phase 2 actually passes preflight and performs
+the authorized cutover**. ARCH-COMPUTE01 is the development checkpoint at schema
+v22; COMPUTE-GHA02 changed only the GitHub qualification path and left
+production untouched.
 
-RF-SEARCH01 release candidate remains frozen at `7bba7b869fd1234c1e7c67002cb93368c299209b`; documentation/planning reconciliation does not require rebuilding that artifact.
+GOAL-BETA-PREP01 Phase 2 explicitly authorizes, after Phase 1 green, the smallest
+safe production backup verification, migration 022, minimum Compute
+credentials/environment, exact artifact/deployment/restart, and one bounded
+canary under the card's credential/privacy/rollback boundaries. This does not
+authorize paid infrastructure, broad credentials, unrelated provider policy
+changes, or destructive data manipulation.
+
+RF-SEARCH01 release candidate remains historical evidence at
+`7bba7b869fd1234c1e7c67002cb93368c299209b`; documentation/planning
+reconciliation does not require rebuilding it, but the actual Phase 3 release
+must be recomposed on the latest baseline and receive a new exact artifact.
 
 ## Execution Rule
 
 ```text
-recover repository truth
-→ select only the explicitly authorized task
-→ implement/diagnose within the bounded card
-→ focused verification
+recover repository truth + GOAL-BETA-PREP01 current phase
+→ implement/diagnose only that bounded phase
+→ focused changed-risk verification
 → real-browser/product journey where user-facing behavior changed
 → independent review when risk warrants
 → durable reconciliation
 → checkpoint/push
-→ STOP at production/cost/destructive/credential gates
+→ autonomously continue to the next green Goal phase
+→ STOP early only at GOAL-BETA-PREP01 hard boundaries
+→ otherwise STOP only at INTERNAL_BETA_READY before inviting users
 ```
 
-The purpose of the new sequence is not to slow feature work indefinitely. It is to make the core trustworthy enough that later Tags, Collections, Annotations, Citation, Evidence and source-grounded AI can rely on it.
+The purpose of the sequence is not to slow feature work indefinitely. It is to
+make the core trustworthy enough for a controlled internal beta, after which the
+preserved reliability and scholarly roadmap can resume deliberately.
