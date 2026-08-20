@@ -5,7 +5,7 @@ Every item is an approval-gated cloud/account change or verification. Record the
 ## Bucket gate
 
 - [ ] Bucket is in the approved region and its endpoint exactly matches server configuration, Nginx static CSP, and browser CORS expectations.
-- [ ] Bucket is dedicated to AcademicCloud, contains zero objects before acceptance, has no unknown historical data, and uses SSE-OSS/AES-256 rather than KMS; this keeps encryption at rest within the zero-additional-cost and three-action RAM boundary.
+- [ ] Bucket is dedicated to AcademicCloud, contains zero objects before acceptance, has no unknown historical data, and uses SSE-OSS/AES-256 rather than KMS; this keeps encryption at rest within the zero-additional-cost and bounded RAM action boundary.
 - [ ] Bucket ACL is private, Block Public Access is enabled, public website hosting is off, and no anonymous bucket/object policy or public object ACL exists.
 - [ ] Versioning status is exactly `Disabled`. `Enabled` and `Suspended` are both incompatible with the upload no-overwrite guarantee. A bucket that was ever enabled cannot return to Disabled; use a newly approved bucket instead.
 - [ ] No lifecycle rule can expire active `objects/*` unexpectedly.
@@ -14,7 +14,8 @@ Every item is an approval-gated cloud/account change or verification. Record the
 ## RAM gate
 
 - [ ] Dedicated service identity is limited to the exact bucket and application `objects/*` prefix.
-- [ ] Its action list is exactly `oss:PutObject`, `oss:GetObject` (which authorizes the HeadObject API), and `oss:DeleteObject`, and its resource is exactly `acs:oss:*:*:ajt-academiccloud-kl-8f3c/objects/*`; it has no bucket listing, ACL, public-access, CORS, versioning, website, policy, PutObjectAcl, KMS, or administrative permission.
+- [ ] Its action list is exactly `oss:PutObject`, `oss:GetObject` (which authorizes the HeadObject API), `oss:DeleteObject`, `oss:ListParts`, and `oss:AbortMultipartUpload`, and its resource is exactly `acs:oss:*:*:ajt-academiccloud-kl-8f3c/objects/*`. `PutObject` covers multipart initiate/upload-part/complete; `ListParts` covers server-authoritative resume state; `AbortMultipartUpload` covers abandon. The application does not enumerate all bucket uploads, so `oss:ListMultipartUploads` is not granted. The principal has no bucket listing, ACL, public-access, CORS, versioning, website, policy, PutObjectAcl, KMS, wildcard, or administrative permission.
+- [ ] Effective-policy verification checks direct RAM-user attachments, group inheritance, explicit denies, bucket-policy statements/denies, principal identity, and exact bucket/prefix scope before changing policy. If the exact action is already allowed and no deny/scope/principal mismatch exists, stop rather than churning versions and collect a provider-support evidence bundle.
 - [ ] AccessKey ID/secret are installed only in root-owned mode-0600 server environment configuration. They are absent from frontend bundles, Git, shell history, logs, database rows, and backups.
 - [ ] Static STS tokens are not used as permanent credentials. Credential rotation (install new credential, restart and verify, then revoke old) remains a separate production operation and must not be marked complete merely because initial activation passed.
 

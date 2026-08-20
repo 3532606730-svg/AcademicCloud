@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T13:11:00+08:00",
+  "updatedAt": "2026-08-20T18:42:57+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
   "production": {
@@ -9,10 +9,20 @@
     "schema": 21,
     "migrationHead": 21,
     "migrationHistory": "001-021",
-    "liveProcessIdentityNeedsIncidentReverification": true
+    "liveProcessIdentityNeedsIncidentReverification": false
   },
   "activeIncidents": ["OPS-STORAGE-INCIDENT01"],
   "activeTasks": ["OPS-STORAGE-INCIDENT01", "RF-SEARCH01"],
+  "storageIncident": {
+    "policyRootCause": "missing RAM allow",
+    "principalType": "RAMUser",
+    "policyName": "AcademicCloudProdOSS",
+    "defaultPolicyVersion": "v2",
+    "providerVerification": "pass",
+    "ownerProductAcceptance": "pending",
+    "pendingMultipartRows": 5,
+    "pendingFileRows": 6
+  },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
     "artifactWorkflow": 32331172274,
@@ -22,7 +32,7 @@
     "independentVerification": "pass",
     "productionCutover": "blocked",
     "blockers": [
-      "production storage incident must be resolved",
+      "Owner product acceptance must pass and OPS-STORAGE-INCIDENT01 must close",
       "mandatory real-browser pre-cutover acceptance"
     ]
   },
@@ -44,6 +54,7 @@
   "notes": [
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
-    "No production mutation is authorized by this planning reconciliation."
+    "The exact Owner-authorized RAM v2 repair is complete; no further production mutation is authorized.",
+    "RF-SEARCH01 remains frozen and untouched until incident closure and its mandatory browser gate."
   ]
 }

@@ -12,18 +12,33 @@ The immediate problem is operational, not a product-model rewrite.
 
 ### Active production incident
 
-`OPS-STORAGE-INCIDENT01` is ACTIVE.
+`OPS-STORAGE-INCIDENT01` is ACTIVE and remains open for Owner product
+acceptance. The bounded provider repair is complete and verified.
 
 Owner-observed production symptoms after an Alibaba OSS overdue-payment interruption include:
 
-- multipart upload interrupted and entered resumable/pending state;
-- Continue upload still fails;
-- Abandon upload still fails;
-- metadata-suggestion generation fails for existing files;
-- a raw browser `Failed to fetch` error has also been observed;
-- Alibaba console now reports the OSS billing condition restored, but end-to-end AcademicCloud behavior has not yet recovered.
+- the overdue-payment suspension caused historical `UserDisableError` failures;
+- after billing restoration, HeadObject/GetObject recovered but ListParts
+  returned AccessDenied 403;
+- effective-policy inspection proved the exact production RAM user had only
+  PutObject/GetObject/DeleteObject on the correct `objects/*` resource;
+- the Owner-authorized `AcademicCloudProdOSS` v2 added only ListParts and
+  AbortMultipartUpload, retained the exact prior scope, and is now default;
+- non-mutating production probes now pass stat, bounded Range read, and raw
+  ListParts (HTTP 200).
 
-The incident root cause after billing recovery is **not yet proven**. Do not guess-fix application code, rotate credentials, mutate OSS/RAM policy, restart services, or clean pending uploads before bounded diagnosis establishes the first failing boundary.
+The policy root cause is **missing RAM allow**, with no explicit deny, bucket
+policy, resource/prefix mismatch, principal mismatch, invalid AccessKey, or
+provider-residual AccessDenied after the exact policy correction. No credential,
+application code/config, service restart, migration, SQLite write, object/part
+mutation, or Search release action occurred.
+
+The exact runtime verification also found that OSS supplies ListParts
+truncation/marker fields as strings while the current adapter expects
+boolean/numeric values. The raw provider call is authorized and green, but this
+separate response-normalization finding makes the required Owner real-browser
+Continue/Abandon checks decisive. No application repair is authorized in this
+provider-only operation.
 
 ## Production Declaration
 
@@ -36,7 +51,11 @@ SCHEMA=v21
 MIGRATIONS=001-021
 ```
 
-Because the live service is under incident diagnosis, exact running process/release identity, Nginx/backend path, and OSS control-plane behavior must be reverified rather than inferred from old documentation.
+Live verification after the policy repair confirms the release symlink and
+process CWD are exact `604cb8d…`, schema is v21/history 001–021, service is
+active/running with `NRestarts=0`, and loopback/public health/readiness all
+return 200. Five multipart rows remain `uploading`; six file rows remain
+`pending_upload`.
 
 No search production cutover has occurred.
 
@@ -55,7 +74,7 @@ INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 
 RF-SEARCH01 production is blocked by two gates:
 
-1. resolve `OPS-STORAGE-INCIDENT01` and prove core storage-backed journeys are healthy;
+1. complete Owner product acceptance and close `OPS-STORAGE-INCIDENT01`;
 2. complete mandatory real-browser pre-cutover acceptance.
 
 Do not rebuild or modify the search release candidate unless a concrete defect requires it.
@@ -101,4 +120,7 @@ Server-authoritative checksum identity remains mandatory before reusing existing
 
 ## Next Action
 
-Run `OPS-STORAGE-INCIDENT01` bounded diagnosis first. Preserve the existing pending multipart upload. After the incident is proven and repaired through a separately authorized change, complete a real browser core journey, then resume RF-SEARCH01 production closure.
+STOP FOR OWNER PRODUCT ACCEPTANCE. The Owner manually tests Continue upload,
+Abandon upload, and Find metadata suggestions. Preserve every pending upload and
+do not close `OPS-STORAGE-INCIDENT01` until those real-browser journeys pass.
+RF-SEARCH01 remains frozen and untouched.

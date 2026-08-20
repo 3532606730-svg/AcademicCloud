@@ -28,7 +28,20 @@ The current reliability interlock changes sequencing, not this model.
 
 ## Current Reality — Operational Maturity Interlock
 
-Real use on 2026-08-20 exposed a gap between strong repository/unit/artifact evidence and end-to-end product operability. An Alibaba OSS overdue-payment interruption coincided with real upload/resume/abandon and metadata-suggestion failures; after billing restoration, the browser also surfaced a raw `Failed to fetch` error. The exact post-recovery failing boundary remains under bounded diagnosis.
+Real use on 2026-08-20 exposed a gap between strong repository/unit/artifact
+evidence and end-to-end product operability. An Alibaba OSS overdue-payment
+interruption caused `UserDisableError`; after billing restoration, ordinary
+object reads recovered while ListParts returned AccessDenied. Effective-policy
+inspection proved missing RAM allows on the correct production principal and
+resource. The exact Owner-authorized policy v2 repair is now green at the raw
+provider boundary, and the incident remains open for Owner real-browser product
+acceptance.
+
+Exact-runtime verification also exposed a separate response-normalization risk:
+OSS returned multipart truncation/marker fields as strings while the production
+adapter expects boolean/numeric values. No application change is authorized in
+the provider repair; Continue/Abandon acceptance must determine the user-visible
+effect before the incident can close.
 
 This creates a temporary mandatory interlock before broad new scholarly features:
 
@@ -76,8 +89,11 @@ The weak points exposed by real use are different:
 
 ## Near-Term Cards
 
-### OPS-STORAGE-INCIDENT01 — active
-Prove the first failing boundary across browser → Nginx → backend → OSS after billing recovery. Preserve the pending upload. Diagnosis first; repair only under a separate explicit change authorization.
+### OPS-STORAGE-INCIDENT01 — active, pending Owner acceptance
+Diagnosis proved the boundary and the bounded RAM repair restored raw stat,
+Range-read, and ListParts access without changing the release, schema,
+credentials, service, application, or pending uploads. Preserve all pending
+state and stop for Owner Continue, Abandon, and metadata-suggestion journeys.
 
 ### RF-SEARCH01 — implementation/artifact complete
 Metadata/name catalogue search is green in development. Final source `7bba7b869fd1234c1e7c67002cb93368c299209b`; exact artifact is built and independently verified. Production remains blocked until the storage incident is closed and a real-browser pre-cutover journey passes.
@@ -169,7 +185,10 @@ Database metadata and object bytes are separate recovery domains. A verified SQL
 
 ## Production Track
 
-Repository-declared baseline remains release `604cb8daf310696353e99c30ce7a924dc71ef9d2` at schema v21/history 001-021. The active incident requires live identity and provider behavior to be reverified before any subsequent production cutover.
+Repository-declared and live-verified baseline remains release
+`604cb8daf310696353e99c30ce7a924dc71ef9d2` at schema v21/history 001-021. The
+active incident requires Owner product acceptance before any subsequent
+production cutover.
 
 RF-SEARCH01 release candidate remains frozen at `7bba7b869fd1234c1e7c67002cb93368c299209b`; documentation/planning reconciliation does not require rebuilding that artifact.
 

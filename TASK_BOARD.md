@@ -8,8 +8,8 @@ The board is the executable priority view. `CURRENT_STATE.json` holds compact cu
 
 | Order | Task | Task card | State |
 |---:|---|---|---|
-| 1 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | ACTIVE — bounded read-only diagnosis; no guessed repair |
-| 2 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — production frozen pending incident resolution + real-browser gate |
+| 1 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER REPAIR VERIFIED — active pending Owner Continue/Abandon/metadata real-browser acceptance |
+| 2 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — exact release candidate frozen and untouched pending incident closure + real-browser gate |
 
 ## Reliability / Usability Interlock — Ready but do not auto-start
 
@@ -70,7 +70,10 @@ ACTIVE_INCIDENT=OPS-STORAGE-INCIDENT01
 
 ## Stop Rules
 
-- Incident diagnosis is read-only until the first failing boundary is proven.
+- The exact provider repair is complete; no further policy churn, app repair,
+  service restart, or pending-upload mutation is authorized.
+- Stop for Owner product acceptance; do not close the incident until Continue,
+  Abandon, and metadata-suggestion real-browser journeys pass.
 - Search remains frozen; do not rebuild for documentation-only changes.
 - No new research feature begins while the production storage incident is unresolved.
 - Paid storage backup/provider choice, credentials, RAM/OSS policy, migrations, destructive repair, production deployment, and infrastructure changes remain explicit Owner gates.

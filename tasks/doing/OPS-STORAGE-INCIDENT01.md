@@ -1,7 +1,7 @@
 # OPS-STORAGE-INCIDENT01 — Post-Billing Storage/API Incident Diagnosis
 
 ## State
-DIAGNOSED — root cause proven; STOP FOR OWNER REVIEW before any repair.
+PROVIDER REPAIR VERIFIED — incident remains open; STOP FOR OWNER PRODUCT ACCEPTANCE.
 
 ## Trigger
 Owner observed a real production outage pattern:
@@ -17,7 +17,7 @@ Owner observed a real production outage pattern:
 Prove the first failing boundary across browser → Nginx → backend → OSS and distinguish residual provider recovery, network/proxy failure, backend crash/reset, credentials/policy/configuration, or application bug.
 
 ## Authorized Scope
-Read-only diagnosis only:
+The original read-only diagnosis covered:
 
 - verify exact running release/process, service, Nginx, loopback/public health/readiness;
 - inspect a bounded recent Nginx/systemd journal window corresponding to Owner attempts;
@@ -26,10 +26,15 @@ Read-only diagnosis only:
 - correlate metadata-suggestion, continue-upload and abandon-upload failures with safe provider/backend error class/status/code;
 - preserve the pending multipart upload.
 
-## Forbidden Without New Owner Approval
+The Owner subsequently authorized one exact provider-side correction: create
+`AcademicCloudProdOSS` policy version `v2`, make it the default, retain the
+existing action/resource scope, and add only `oss:ListParts` and
+`oss:AbortMultipartUpload`.
+
+## Forbidden After the Provider Repair
 
 - code/config/credential changes;
-- RAM/OSS policy mutation;
+- any further RAM/OSS policy mutation or policy-version churn;
 - service/Nginx restart merely to try fixes;
 - migration/database edits;
 - manual multipart complete/abort;
@@ -49,10 +54,15 @@ Provider-safe diagnosis may record stable classes such as `AccessDenied`, `Inval
 - no production/data/config mutation;
 - minimal repair boundary identified;
 - report whether restart/config/credential/RAM/code change is actually required;
-- STOP for Owner approval before repair.
+- after the exact repair, verify `HeadObject`, bounded `GetObject`, and
+  `ListParts` non-mutatively from the exact production runtime;
+- preserve release, schema, service, configuration, credentials, and every
+  pending upload;
+- STOP for Owner real-browser Continue, Abandon, and metadata-suggestion tests.
 
 ## Next Action
-Run the bounded live diagnosis once, using the Owner's latest failure window; do not guess-fix.
+Owner performs the three real-browser product-acceptance journeys. Do not
+manually Continue, Abandon, or complete a pending upload on the Owner's behalf.
 
 ## Diagnosis Findings (2026-08-20, read-only, no mutation)
 
@@ -83,7 +93,64 @@ Correlation:
 
 Pending multipart uploads (4, state `uploading`, provider `aliyun-oss`) are preserved and untouched.
 
-Repair boundary (requires Owner approval — not performed): provider-side RAM/ACL re-grant for `oss:ListParts`/`oss:ListMultipartUploads`/`oss:AbortMultipartUpload` (or an Alibaba support case for the residual AccessDenied after billing restoration). No application code, config, credential, restart, migration, or DB change is required for diagnosis; any of those for repair remains a separate Owner gate.
+The later effective-policy inspection narrowed the repair boundary further:
+`oss:ListMultipartUploads` is not used by the AcademicCloud multipart contract.
+The application uses `PutObject` for initiate/upload-part/complete,
+`ListParts` for server-authoritative resume state, and
+`AbortMultipartUpload` for abandon.
 
-## Next Action (post-diagnosis)
-STOP FOR OWNER REVIEW before any repair that requires production mutation, credential/policy/config change, restart, deployment, or destructive action.
+## Provider Permission Repair (2026-08-20)
+
+Effective principal/policy evidence before mutation:
+
+- exact runtime `GetCallerIdentity`: RAM user `academiccloud-prod`; static
+  credential; no principal mismatch;
+- direct user attachment: one custom policy, `AcademicCloudProdOSS`; no system
+  policy and no group inheritance;
+- default version `v1`: Allow only `oss:PutObject`, `oss:GetObject`, and
+  `oss:DeleteObject` on
+  `acs:oss:*:*:ajt-academiccloud-kl-8f3c/objects/*`;
+- no RAM `Deny`; no bucket-policy statement or bucket-policy `Deny`; exact
+  bucket/prefix resource matched production configuration.
+
+Root cause was therefore **missing RAM allows** for `oss:ListParts` and
+`oss:AbortMultipartUpload`, not an explicit deny, resource mismatch, principal
+mismatch, invalid AccessKey, or provider-residual denial under a correct policy.
+
+Exact authorized mutation:
+
+- created `AcademicCloudProdOSS` version `v2` and made it default;
+- retained `oss:PutObject`, `oss:GetObject`, `oss:DeleteObject`, and the exact
+  resource unchanged;
+- added only `oss:ListParts` and `oss:AbortMultipartUpload`;
+- did not grant `oss:ListMultipartUploads`, `oss:*`, administrator access, any
+  other resource, or any other action;
+- retained version `v1` as non-default; did not rotate credentials.
+
+Readback and exact-runtime verification:
+
+- provider readback: `v2`, `IsDefaultVersion=true`, exact five-action document;
+- `OSS_STAT=PASS`;
+- `OSS_RANGE_READ=PASS` (bounded 8-byte read);
+- `OSS_LIST_PARTS=PASS` (HTTP 200 from the production `ali-oss` runtime);
+- release and process CWD remain exact
+  `604cb8daf310696353e99c30ce7a924dc71ef9d2`;
+- schema remains v21/history 001–021;
+- service active/running, `NRestarts=0`, one loopback listener;
+- loopback and public health/readiness all return 200;
+- five `uploading` multipart rows and six `pending_upload` file rows were
+  present after repair; none was completed, abandoned, deleted, or edited.
+
+The exact runtime also exposed a separate post-authorization compatibility
+finding: OSS returned `isTruncated` and `nextPartNumberMarker` as strings, while
+the current adapter's strict response parser expects boolean/numeric values and
+rejected that otherwise successful response as an invalid marker. No
+application code/config/release change is authorized in this repair. The raw
+provider permission gate is green, and the incident deliberately remains open
+for the Owner's real-browser journeys and disposition of any product-level
+failure they reproduce.
+
+## Next Action (post-repair)
+STOP FOR OWNER PRODUCT ACCEPTANCE: Continue upload, Abandon upload, then Find
+metadata suggestions. Do not close this incident until all three real-browser
+journeys pass.
