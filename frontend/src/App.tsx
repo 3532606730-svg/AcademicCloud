@@ -7,6 +7,7 @@ import {
   type Account,
   type BulkAction,
   type BulkItem,
+  type DerivedMetadataJob,
   type Invitation,
   type LibraryHolding,
   type LibraryHoldingDetails,
@@ -48,6 +49,12 @@ import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-m
 import { ResourceDetailsDialog } from "./resource-details.tsx";
 import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
+import {
+  forgetSourceHandle,
+  recoverRememberedSource,
+  rememberSourceHandle,
+  type RecoverableFileHandle,
+} from "./file-source-recovery.ts";
 
 type AuthState =
   | { phase: "checking" }
@@ -386,6 +393,8 @@ const MAX_CONCURRENT_UPLOADS = 2;
 const MAX_CONCURRENT_PARTS = 3;
 const MAX_PART_RETRIES = 3;
 const UPLOAD_METRICS_UPDATE_INTERVAL_MS = 500;
+const ACTIVITY_SUCCESS_DISMISS_MS = 8_000;
+const METADATA_ACTIVITY_RELOAD_WINDOW_MS = 15 * 60_000;
 
 interface UploadJob {
   id: string;
@@ -408,7 +417,25 @@ interface UploadJob {
   totalBytes: number;
   speedBytesPerSecond: number | null;
   etaSeconds: number | null;
+  sourceHandle: RecoverableFileHandle | null;
 }
+
+interface MetadataActivity {
+  library: LibrarySummary;
+  holding: LibraryHolding;
+  job: DerivedMetadataJob;
+}
+
+interface DownloadActivity {
+  id: string;
+  name: string;
+  phase: "preparing" | "started" | "failed";
+  error: string | null;
+}
+
+type FilePickerWindow = Window & {
+  showOpenFilePicker?: (options?: { multiple?: boolean }) => Promise<RecoverableFileHandle[]>;
+};
 
 interface PreviewState {
   file: Pick<FileEntry, "displayName" | "mediaType">;
@@ -555,23 +582,36 @@ function countDirectoryItems(dataTransfer: DataTransfer): number {
   return directories;
 }
 
-// Directory entries are NEVER traversed: directory items are skipped and
-// reported; only regular files flow into the existing upload queue.
-function regularFilesFrom(dataTransfer: DataTransfer): File[] {
-  const files: File[] = [];
+async function regularFileSourcesFrom(dataTransfer: DataTransfer): Promise<Array<{
+  file: File;
+  handle: RecoverableFileHandle | null;
+}>> {
   const items = dataTransfer.items;
-  if (items && items.length > 0) {
-    for (const item of Array.from(items)) {
-      if (item.kind !== "file") continue;
-      const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
-      if (entry && !entry.isFile) continue;
-      const file = item.getAsFile?.();
-      if (file) files.push(file);
-    }
-  } else {
-    files.push(...Array.from(dataTransfer.files ?? []));
+  if (!items || items.length === 0) {
+    return Array.from(dataTransfer.files ?? []).map((file) => ({ file, handle: null }));
   }
-  return files;
+  const sources: Array<{ file: File; handle: RecoverableFileHandle | null }> = [];
+  for (const item of Array.from(items)) {
+    if (item.kind !== "file") continue;
+    const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
+    if (entry && !entry.isFile) continue;
+    const file = item.getAsFile?.();
+    if (!file) continue;
+    let handle: RecoverableFileHandle | null = null;
+    const itemWithHandle = item as DataTransferItem & {
+      getAsFileSystemHandle?: () => Promise<{ kind: string } & Partial<RecoverableFileHandle>>;
+    };
+    try {
+      const candidate = await itemWithHandle.getAsFileSystemHandle?.();
+      if (candidate?.kind === "file" && typeof candidate.getFile === "function") {
+        handle = candidate as RecoverableFileHandle;
+      }
+    } catch {
+      // Drag handle retention is optional; the in-memory File remains usable.
+    }
+    sources.push({ file, handle });
+  }
+  return sources;
 }
 
 // During dragenter/dragover the browser's protected mode keeps
@@ -628,6 +668,10 @@ function DriveView({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [jobs, setJobs] = useState<UploadJob[]>([]);
+  const [metadataActivities, setMetadataActivities] = useState<MetadataActivity[]>([]);
+  const [downloadActivities, setDownloadActivities] = useState<DownloadActivity[]>([]);
+  const [sourceRecoveryFallbacks, setSourceRecoveryFallbacks] = useState<Record<string, string>>({});
+  const [recoveringSourceId, setRecoveringSourceId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [resourceDetailsRequest, setResourceDetailsRequest] = useState<ResourceDetailsRequest | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
@@ -643,6 +687,8 @@ function DriveView({
   const dragDepthRef = useRef(0);
   const preservedSelectionRef = useRef<ReadonlySet<string> | null>(null);
   const newFolderTriggerRef = useRef<HTMLButtonElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const pendingInputRefs = useRef(new Map<string, HTMLInputElement>());
   const workspaceRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
@@ -696,6 +742,117 @@ function DriveView({
     library: LibrarySummary | null;
     holdings: LibraryHolding[];
   }) => setLibraryCatalogue(state), []);
+  const recordMetadataActivity = useCallback((
+    library: LibrarySummary,
+    holding: LibraryHolding,
+    job: DerivedMetadataJob,
+  ) => {
+    setMetadataActivities((current) => [
+      { library, holding, job },
+      ...current.filter((activity) => activity.job.id !== job.id),
+    ]);
+  }, []);
+  const handleResourceSuggestionJobChange = useCallback((job: DerivedMetadataJob) => {
+    if (!resourceDetailsRequest) return;
+    recordMetadataActivity(resourceDetailsRequest.library, resourceDetailsRequest.holding, job);
+  }, [recordMetadataActivity, resourceDetailsRequest]);
+
+  // Reload-safe Job Core discovery. The existing per-resource endpoint
+  // performs the same Library authorization as Resource Details, so the
+  // Activity Center never gains a broader cross-account read surface.
+  useEffect(() => {
+    const library = libraryCatalogue.library;
+    if (!library || !api.getLatestLibraryMetadataSuggestionJob) return;
+    const controller = new AbortController();
+    void Promise.all(libraryCatalogue.holdings.map(async (holding) => {
+      try {
+        const job = await api.getLatestLibraryMetadataSuggestionJob!(library.id, holding.file.id, controller.signal);
+        if (!job) return null;
+        const terminalAt = job.finishedAt ? new Date(job.finishedAt).getTime() : 0;
+        const recent = terminalAt > 0 && Date.now() - terminalAt <= METADATA_ACTIVITY_RELOAD_WINDOW_MS;
+        return job.state === "queued" || job.state === "running" || recent
+          ? { library, holding, job }
+          : null;
+      } catch (caught) {
+        if (caught instanceof DOMException && caught.name === "AbortError") return null;
+        // Activity discovery is supplementary. Resource Details remains the
+        // explicit error surface for a resource-specific request failure.
+        return null;
+      }
+    })).then((activities) => {
+      if (controller.signal.aborted) return;
+      const visible = activities.filter((activity): activity is MetadataActivity => activity !== null);
+      setMetadataActivities((current) => {
+        const discoveredIds = new Set(visible.map((activity) => activity.job.id));
+        return [
+          ...visible,
+          ...current.filter((activity) => !discoveredIds.has(activity.job.id)),
+        ];
+      });
+    });
+    return () => controller.abort();
+  }, [api, libraryCatalogue]);
+
+  useEffect(() => {
+    if (!api.getLibraryMetadataSuggestionJob) return;
+    const active = metadataActivities.filter(({ job }) => job.state === "queued" || job.state === "running");
+    if (active.length === 0) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void Promise.all(active.map(async (activity) => {
+        try {
+          const job = await api.getLibraryMetadataSuggestionJob!(
+            activity.library.id,
+            activity.holding.file.id,
+            activity.job.id,
+            controller.signal,
+          );
+          return { ...activity, job };
+        } catch (caught) {
+          if (caught instanceof DOMException && caught.name === "AbortError") return activity;
+          return activity;
+        }
+      })).then((updates) => {
+        if (controller.signal.aborted) return;
+        setMetadataActivities((current) => current.map((activity) => (
+          updates.find((candidate) => candidate.job.id === activity.job.id) ?? activity
+        )));
+      });
+    }, 2_000);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [api, metadataActivities]);
+
+  useEffect(() => {
+    const completedIds = jobs.filter((job) => job.phase === "complete").map((job) => job.id);
+    if (completedIds.length === 0) return;
+    const timer = window.setTimeout(() => {
+      setJobs((current) => current.filter((job) => !completedIds.includes(job.id)));
+    }, ACTIVITY_SUCCESS_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [jobs]);
+
+  useEffect(() => {
+    const terminalIds = metadataActivities
+      .filter(({ job }) => job.state === "succeeded")
+      .map(({ job }) => job.id);
+    if (terminalIds.length === 0) return;
+    const timer = window.setTimeout(() => {
+      setMetadataActivities((current) => current.filter(({ job }) => !terminalIds.includes(job.id)));
+    }, ACTIVITY_SUCCESS_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [metadataActivities]);
+
+  useEffect(() => {
+    const startedIds = downloadActivities.filter((activity) => activity.phase === "started").map((activity) => activity.id);
+    if (startedIds.length === 0) return;
+    const timer = window.setTimeout(() => {
+      setDownloadActivities((current) => current.filter((activity) => !startedIds.includes(activity.id)));
+    }, ACTIVITY_SUCCESS_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [downloadActivities]);
 
   useEffect(() => {
     if (preservedSelectionRef.current) {
@@ -899,6 +1056,7 @@ function DriveView({
       bytesUploaded: transfer.completedBytes,
       progress: file.size > 0 ? Math.min(0.97, transfer.completedBytes / file.size) : 0,
     });
+    await rememberSourceHandle(transfer.file.id, job.sourceHandle);
 
     if (transfer.state !== "completing") {
       const completed = new Set(transfer.completedParts.map((part) => part.partNumber));
@@ -962,6 +1120,7 @@ function DriveView({
       const reconciled = await api.getUploadStatus(transfer.file.id);
       if (reconciled.kind === "complete") {
         patchJob(job.id, { phase: "complete", progress: 1, uploaded: true, bytesUploaded: file.size });
+        await forgetSourceHandle(transfer.file.id);
         setNotice(t("upload.uploaded", { name: file.name }));
         refresh();
         return;
@@ -981,6 +1140,7 @@ function DriveView({
       if (recovered.kind !== "complete") throw caught;
     }
     patchJob(job.id, { phase: "complete", progress: 1, uploaded: true, bytesUploaded: file.size });
+    await forgetSourceHandle(transfer.file.id);
     setNotice(t("upload.uploaded", { name: file.name }));
     refresh();
   }
@@ -1007,6 +1167,7 @@ function DriveView({
       if (existing && !isSameRecoveredFile(existing, file.name, file.size, checksum)) {
         throw new Error(t("upload.sameFileMismatch"));
       }
+      if (existing) await rememberSourceHandle(existing.id, job.sourceHandle);
 
       if (existing?.uploadKind === "multipart") {
         if (!api.getUploadStatus) throw new Error(t("upload.unavailable"));
@@ -1033,6 +1194,7 @@ function DriveView({
             sizeBytes: file.size,
             checksum: { algorithm: "md5", value: checksum },
           });
+      await rememberSourceHandle(reserved.file.id, job.sourceHandle);
       if ("transfer" in reserved) {
         await runMultipartWorkflow(job, file, reserved.transfer, controller);
         return;
@@ -1045,6 +1207,7 @@ function DriveView({
       patchJob(job.id, { phase: "verifying", uploaded: true, progress: 0.92, speedBytesPerSecond: null, etaSeconds: null });
       await api.completeUpload(reserved.file.id);
       patchJob(job.id, { phase: "complete", progress: 1 });
+      await forgetSourceHandle(reserved.file.id);
       setNotice(t("upload.uploaded", { name: file.name }));
       refresh();
     } catch (caught: unknown) {
@@ -1055,6 +1218,13 @@ function DriveView({
           ? t("upload.nameConflict", { name: job.file.name })
           : describeError(caught, language);
         patchJob(job.id, { phase: "error", error: message });
+        if (job.existing && message === t("upload.sameFileMismatch")) {
+          void forgetSourceHandle(job.existing.id);
+          setSourceRecoveryFallbacks((current) => ({
+            ...current,
+            [job.existing!.id]: t("pending.sourceStale"),
+          }));
+        }
       }
     }
   }
@@ -1067,6 +1237,7 @@ function DriveView({
         const status = await api.getUploadStatus(fileId);
         if (status.kind === "complete") {
           patchJob(job.id, { phase: "complete", uploaded: true, progress: 1 });
+          await forgetSourceHandle(fileId);
           refresh();
           return;
         }
@@ -1100,6 +1271,7 @@ function DriveView({
       }
       await api.completeUpload(fileId);
       patchJob(job.id, { phase: "complete", progress: 1 });
+      await forgetSourceHandle(fileId);
       setNotice(t("upload.uploaded", { name: job.file.name }));
       refresh();
     } catch (caught: unknown) {
@@ -1130,7 +1302,12 @@ function DriveView({
     if (next) startJob(next);
   }, [jobs, startJob]);
 
-  function enqueueFile(file: File, existing?: FileEntry, pinnedTargetFolderId?: string | null) {
+  function enqueueFile(
+    file: File,
+    existing?: FileEntry,
+    pinnedTargetFolderId?: string | null,
+    sourceHandle: RecoverableFileHandle | null = null,
+  ) {
     if (file.size < 1) {
       setError(new Error(t("upload.emptyFile")));
       return;
@@ -1157,9 +1334,81 @@ function DriveView({
       totalBytes: file.size,
       speedBytesPerSecond: null,
       etaSeconds: null,
+      sourceHandle,
     };
     setJobs((current) => [job, ...current.filter((item) => item.fileId !== existing?.id)]);
     setError(null);
+  }
+
+  async function chooseFreshFiles() {
+    const picker = (window as FilePickerWindow).showOpenFilePicker;
+    if (!picker) {
+      uploadInputRef.current?.click();
+      return;
+    }
+    try {
+      const handles = await picker({ multiple: true });
+      for (const handle of handles) {
+        const file = await handle.getFile();
+        enqueueFile(file, undefined, undefined, handle);
+      }
+    } catch (caught) {
+      if (!(caught instanceof DOMException && caught.name === "AbortError")) setError(caught);
+    }
+  }
+
+  async function chooseOriginalForPending(file: FileEntry) {
+    const picker = (window as FilePickerWindow).showOpenFilePicker;
+    if (!picker) {
+      pendingInputRefs.current.get(file.id)?.click();
+      return;
+    }
+    try {
+      const [handle] = await picker({ multiple: false });
+      if (!handle) return;
+      const selected = await handle.getFile();
+      setSourceRecoveryFallbacks((current) => {
+        const next = { ...current };
+        delete next[file.id];
+        return next;
+      });
+      enqueueFile(selected, file, undefined, handle);
+    } catch (caught) {
+      if (!(caught instanceof DOMException && caught.name === "AbortError")) {
+        setSourceRecoveryFallbacks((current) => ({ ...current, [file.id]: t("pending.sourceUnavailable") }));
+      }
+    }
+  }
+
+  async function resumePendingSource(file: FileEntry) {
+    const sameSessionJob = jobs.find((job) => job.fileId === file.id);
+    if (sameSessionJob) {
+      if (sameSessionJob.phase === "paused" || sameSessionJob.phase === "resumable" || sameSessionJob.phase === "error") {
+        retryJob(sameSessionJob);
+      }
+      return;
+    }
+    setRecoveringSourceId(file.id);
+    setSourceRecoveryFallbacks((current) => {
+      const next = { ...current };
+      delete next[file.id];
+      return next;
+    });
+    try {
+      const recovered = await recoverRememberedSource(file.id);
+      if (recovered.status === "available") {
+        enqueueFile(recovered.file, file, undefined, recovered.handle);
+        return;
+      }
+      const message = recovered.reason === "permission"
+        ? t("pending.sourcePermissionLost")
+        : recovered.reason === "stale"
+          ? t("pending.sourceStale")
+          : t("pending.sourceUnavailable");
+      setSourceRecoveryFallbacks((current) => ({ ...current, [file.id]: message }));
+    } finally {
+      setRecoveringSourceId(null);
+    }
   }
 
   function pauseJob(jobId: string) {
@@ -1203,6 +1452,7 @@ function DriveView({
         throw new Error(t("upload.abandonUnavailable"));
       }
       patchJob(job.id, { phase: "abandoned" });
+      await forgetSourceHandle(job.fileId);
       setJobs((current) => current.filter((item) => item.id !== job.id));
       refresh();
     } catch (caught: unknown) {
@@ -1577,15 +1827,43 @@ function DriveView({
     }
   }
 
-  async function downloadFile(file: FileEntry) {
-    await runAction(`download-${file.id}`, t("file.downloadOpened"), async () => {
-      const authorization = await api.createDownload(file.id);
+  async function performDownload(
+    fileId: string,
+    name: string,
+    authorize: () => Promise<{ url: string }>,
+  ) {
+    const activityId = `${fileId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setDownloadActivities((current) => [
+      { id: activityId, name, phase: "preparing", error: null },
+      ...current,
+    ]);
+    setBusyId(`download-${fileId}`);
+    setError(null);
+    setNotice("");
+    try {
+      const authorization = await authorize();
       const anchor = document.createElement("a");
       anchor.href = authorization.url;
-      anchor.download = file.displayName;
+      anchor.download = name;
       anchor.rel = "noopener noreferrer";
       anchor.click();
-    });
+      setDownloadActivities((current) => current.map((activity) => activity.id === activityId
+        ? { ...activity, phase: "started" }
+        : activity));
+      setNotice(t("file.downloadOpened"));
+    } catch (caught) {
+      const message = describeError(caught, language);
+      setDownloadActivities((current) => current.map((activity) => activity.id === activityId
+        ? { ...activity, phase: "failed", error: message }
+        : activity));
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function downloadFile(file: FileEntry) {
+    await performDownload(file.id, file.displayName, () => api.createDownload(file.id));
   }
 
   async function openPreview(file: FileEntry, returnFocus?: HTMLElement | null) {
@@ -1612,14 +1890,11 @@ function DriveView({
   }
 
   async function downloadLibraryHolding(library: LibrarySummary, holding: LibraryHolding) {
-    await runAction(`download-${holding.file.id}`, t("file.downloadOpened"), async () => {
-      const authorization = await api.createLibraryDownload(library.id, holding.file.id);
-      const anchor = document.createElement("a");
-      anchor.href = authorization.url;
-      anchor.download = holding.file.displayName;
-      anchor.rel = "noopener noreferrer";
-      anchor.click();
-    });
+    await performDownload(
+      holding.file.id,
+      libraryHoldingDisplayTitle(holding, language),
+      () => api.createLibraryDownload(library.id, holding.file.id),
+    );
   }
 
   async function openLibraryPreview(
@@ -1725,7 +2000,7 @@ function DriveView({
     if (dragDepthRef.current === 0) setDropOverlay(null);
   }
 
-  function onWorkspaceDrop(event: React.DragEvent<HTMLElement>) {
+  async function onWorkspaceDrop(event: React.DragEvent<HTMLElement>) {
     if (!hasFileDrag(event.dataTransfer)) return;
     event.preventDefault();
     dragDepthRef.current = 0;
@@ -1734,11 +2009,14 @@ function DriveView({
     // Snapshot the destination EXACTLY once: later navigation must never
     // redirect these uploads.
     const pinnedFolderId = currentFolderId;
-    const files = regularFilesFrom(dataTransfer);
+    const sources = await regularFileSourcesFrom(dataTransfer);
+    const files = sources.map(({ file }) => file);
     const directoryCount = countDirectoryItems(dataTransfer);
     const validFiles = files.filter((file) => file.size >= 1);
     if (validFiles.length > 0) {
-      for (const file of validFiles) enqueueFile(file, undefined, pinnedFolderId);
+      for (const { file, handle } of sources) {
+        if (file.size >= 1) enqueueFile(file, undefined, pinnedFolderId, handle);
+      }
       if (validFiles.length > 1) {
         setNotice(t("upload.enqueuedCount", { count: validFiles.length }));
       }
@@ -1752,7 +2030,8 @@ function DriveView({
     }
   }
 
-  const activeJobs = jobs.filter((job) => job.phase !== "complete");
+  const activityJobs = jobs.filter((job) => job.phase !== "abandoned");
+  const activityCount = activityJobs.length + metadataActivities.length + downloadActivities.length;
   const isLibraryEmpty = entries.folders.length === 0 && entries.files.length === 0;
   const workspaceTitle = view === "library"
     ? path.at(-1)?.name ?? t("nav.library")
@@ -1864,19 +2143,20 @@ function DriveView({
               {account.role === "owner" && <button className="button button--quiet" type="button" onClick={openNewFolderDialog}>
                 {t("workspace.newFolder")}
               </button>}
-              <label className="button button--primary upload-button">
+              <button className="button button--primary upload-button" type="button" onClick={() => void chooseFreshFiles()}>
                 {t("workspace.uploadResources")}
-                <input
-                  className="visually-hidden"
-                  type="file"
-                  multiple
-                  aria-label={t("workspace.uploadFiles")}
-                  onChange={(event) => {
-                    for (const file of Array.from(event.target.files ?? [])) enqueueFile(file);
-                    event.target.value = "";
-                  }}
-                />
-              </label>
+              </button>
+              <input
+                ref={uploadInputRef}
+                className="visually-hidden"
+                type="file"
+                multiple
+                aria-label={t("workspace.uploadFiles")}
+                onChange={(event) => {
+                  for (const file of Array.from(event.target.files ?? [])) enqueueFile(file);
+                  event.target.value = "";
+                }}
+              />
             </div>
           )}
         </header>
@@ -1966,17 +2246,18 @@ function DriveView({
           </>
         )}
 
-        {activeJobs.length > 0 && (
-          <section className="upload-queue" aria-labelledby="upload-queue-title">
-            <div className="section-heading">
-              <h2 id="upload-queue-title">{t("upload.queueTitle")}</h2>
-              <span>{t("upload.queueSummary", { count: activeJobs.length })}</span>
+        {activityCount > 0 && (
+          <section className="activity-center" aria-labelledby="activity-center-title" aria-live="polite">
+            <div className="activity-center-heading">
+              <h2 id="activity-center-title">{t("activity.title")}</h2>
+              <span>{t("activity.summary", { count: activityCount })}</span>
+              {activityJobs.length > 0 && <span className="visually-hidden">{t("upload.queueSummary", { count: activityJobs.length })}</span>}
             </div>
-            {activeJobs.map((job) => (
-              <div className="upload-job" key={job.id}>
+            {activityJobs.map((job) => (
+              <div className="activity-item upload-job" key={job.id}>
                 <div>
                   <strong>{job.file.name}</strong>
-                  <span>{t(uploadPhaseKey(job.phase))}</span>
+                  <span><span>{t("activity.upload")}</span><span aria-hidden="true"> · </span><span>{t(uploadPhaseKey(job.phase))}</span></span>
                 </div>
                 <progress value={job.progress} max={1} aria-label={t("upload.progressAria", { name: job.file.name })} />
                 <span className="upload-percent">{Math.round(job.progress * 100)}%</span>
@@ -1991,7 +2272,11 @@ function DriveView({
                     )}
                   </span>
                 )}
-                {job.phase === "error" || job.phase === "paused" || job.phase === "resumable" ? (
+                {job.phase === "complete" ? (
+                  <div className="job-actions">
+                    <button className="button button--small button--quiet" type="button" aria-label={t("upload.dismissAria", { name: job.file.name })} onClick={() => setJobs((current) => current.filter((item) => item.id !== job.id))}>{t("alert.dismiss")}</button>
+                  </div>
+                ) : job.phase === "error" || job.phase === "paused" || job.phase === "resumable" ? (
                   <div className="job-error">
                     {job.phase === "error" && <span role="alert">{job.error}</span>}
                     <button className="button button--small" type="button" aria-label={t("upload.continueAria", { name: job.file.name })} onClick={() => void retryJob(job)}>{t("upload.continue")}</button>
@@ -2002,6 +2287,34 @@ function DriveView({
                   <div className="job-actions">
                     <button className="button button--small button--quiet" type="button" aria-label={t("upload.pauseAria", { name: job.file.name })} onClick={() => pauseJob(job.id)}>{t("upload.pause")}</button>
                     <button className="button button--small button--danger" type="button" aria-label={t("upload.abandonAria", { name: job.file.name })} onClick={() => void abandonJob(job)}>{t("upload.abandon")}</button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {metadataActivities.map((activity) => (
+              <div className="activity-item activity-item--compact" key={activity.job.id}>
+                <div className="activity-copy">
+                  <strong>{libraryHoldingDisplayTitle(activity.holding, language)}</strong>
+                  <span><span>{t("activity.metadata")}</span><span aria-hidden="true"> · </span><span>{t(metadataActivityStateKey(activity.job.state))}</span></span>
+                </div>
+                <div className="job-actions">
+                  <button className="button button--small button--quiet" type="button" onClick={() => openResourceDetails(activity.library, activity.holding)}>{t("activity.review")}</button>
+                  {(activity.job.state === "succeeded" || activity.job.state === "failed") && (
+                    <button className="button button--small button--quiet" type="button" onClick={() => setMetadataActivities((current) => current.filter(({ job }) => job.id !== activity.job.id))}>{t("alert.dismiss")}</button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {downloadActivities.map((activity) => (
+              <div className="activity-item activity-item--compact" key={activity.id}>
+                <div className="activity-copy">
+                  <strong>{activity.name}</strong>
+                  <span><span>{t("activity.download")}</span><span aria-hidden="true"> · </span><span>{t(downloadActivityStateKey(activity.phase))}</span></span>
+                  {activity.error && <span className="activity-error" role="alert">{activity.error}</span>}
+                </div>
+                {activity.phase === "failed" && (
+                  <div className="job-actions">
+                    <button className="button button--small button--quiet" type="button" onClick={() => setDownloadActivities((current) => current.filter((item) => item.id !== activity.id))}>{t("alert.dismiss")}</button>
                   </div>
                 )}
               </div>
@@ -2062,18 +2375,49 @@ function DriveView({
               <EmptyState title={t("pending.emptyTitle")} />
             ) : (
               <div className="card-list">
-                {pending.map((file) => (
-                  <article className="pending-card" key={file.id}>
+                {pending.map((file) => {
+                  const sameSessionJob = jobs.find((job) => job.fileId === file.id);
+                  const fallback = sourceRecoveryFallbacks[file.id];
+                  const sameSessionActive = sameSessionJob && !["paused", "resumable", "error"].includes(sameSessionJob.phase);
+                  return <article className="pending-card" key={file.id}>
                     <FileBadge file={file} />
-                    <div className="entry-primary"><strong>{file.displayName}</strong><span>{formatBytes(file.sizeBytes)} · {t("pending.readyToContinue")}</span></div>
-                    <label className="button button--small" aria-label={t("pending.chooseOriginalAria", { name: file.displayName })}>
-                      {t("pending.chooseOriginal")}
-                      <input className="visually-hidden" type="file" onChange={(event) => {
+                    <div className="entry-primary">
+                      <strong>{file.displayName}</strong>
+                      <span>{formatBytes(file.sizeBytes)} · {sameSessionActive ? t("pending.inActivity") : t("pending.readyToContinue")}</span>
+                      {fallback && <span className="pending-source-fallback" role="alert">{fallback}</span>}
+                    </div>
+                    {!sameSessionActive && !fallback && (
+                      <button className="button button--small" type="button" disabled={recoveringSourceId === file.id} onClick={() => void resumePendingSource(file)}>
+                        {recoveringSourceId === file.id ? t("pending.recoveringSource") : t("upload.continue")}
+                      </button>
+                    )}
+                    {fallback && (
+                      <button className="button button--small" type="button" aria-label={t("pending.chooseOriginalAria", { name: file.displayName })} onClick={() => void chooseOriginalForPending(file)}>
+                        {t("pending.chooseOriginal")}
+                      </button>
+                    )}
+                    <input
+                      ref={(element) => {
+                        if (element) pendingInputRefs.current.set(file.id, element);
+                        else pendingInputRefs.current.delete(file.id);
+                      }}
+                      className="visually-hidden"
+                      type="file"
+                      aria-label={t("pending.chooseOriginalAria", { name: file.displayName })}
+                      onChange={(event) => {
                         const selected = event.target.files?.[0];
-                        if (selected) enqueueFile(selected, file);
+                        if (selected) {
+                          setSourceRecoveryFallbacks((current) => {
+                            const next = { ...current };
+                            delete next[file.id];
+                            return next;
+                          });
+                          enqueueFile(selected, file);
+                        }
                         event.target.value = "";
-                      }} />
-                    </label>
+                      }}
+                    />
+                    {!fallback && <span className="visually-hidden">{t("pending.chooseOriginal")}</span>}
                     <button className="button button--small button--danger" type="button" aria-label={t("upload.abandonAria", { name: file.displayName })} onClick={() => {
                       if (!window.confirm(t("upload.abandonConfirm", { name: file.displayName }))) return;
                       void runAction(file.id, t("upload.abandoned"), async () => {
@@ -2085,10 +2429,11 @@ function DriveView({
                           if (!api.abandonLegacyUpload) throw new Error(t("upload.abandonUnavailable"));
                           await api.abandonLegacyUpload(file.id);
                         }
+                        await forgetSourceHandle(file.id);
                       });
                     }}>{t("upload.abandon")}</button>
-                  </article>
-                ))}
+                  </article>;
+                })}
               </div>
             )}
           </section>
@@ -2312,6 +2657,7 @@ function DriveView({
             void openLibraryPreview(request.library, request.holding, request.returnFocus);
           }}
           onDownload={() => void downloadLibraryHolding(resourceDetailsRequest.library, resourceDetailsRequest.holding)}
+          onSuggestionJobChange={handleResourceSuggestionJobChange}
         />
       )}
       {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void preview.download()} />}
@@ -2358,6 +2704,23 @@ function uploadPhaseKey(phase: UploadPhase) {
     case "complete": return "phase.complete" as const;
     case "error": return "phase.error" as const;
     case "abandoned": return "phase.abandoned" as const;
+  }
+}
+
+function metadataActivityStateKey(state: DerivedMetadataJob["state"]) {
+  switch (state) {
+    case "queued": return "activity.metadataQueued" as const;
+    case "running": return "activity.metadataProcessing" as const;
+    case "succeeded": return "activity.metadataSucceeded" as const;
+    case "failed": return "activity.metadataFailed" as const;
+  }
+}
+
+function downloadActivityStateKey(state: DownloadActivity["phase"]) {
+  switch (state) {
+    case "preparing": return "activity.downloadPreparing" as const;
+    case "started": return "activity.downloadStarted" as const;
+    case "failed": return "activity.downloadFailed" as const;
   }
 }
 

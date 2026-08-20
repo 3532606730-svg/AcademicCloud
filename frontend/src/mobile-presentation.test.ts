@@ -115,6 +115,14 @@ describe("mobile presentation stylesheet", () => {
     expect(block).toContain("env(safe-area-inset-bottom)");
   });
 
+  it("places the responsive Activity Center above the mobile navigation", () => {
+    const block = mobileBlock();
+    expect(ruleHas(block, ".activity-center {", /bottom:\s*calc\(5\.5rem \+ env\(safe-area-inset-bottom\)\)/)).toBe(true);
+    expect(ruleHas(block, ".activity-center {", /left:\s*0\.75rem/)).toBe(true);
+    expect(ruleHas(block, ".activity-center {", /right:\s*0\.75rem/)).toBe(true);
+    expect(ruleHas(block, ".activity-center {", /max-height:\s*min\(55vh,\s*28rem\)/)).toBe(true);
+  });
+
   it("sizes the remaining compact controls (login submit, sign out, language switch) at the 44px floor", () => {
     const block = mobileBlock();
     expect(ruleHas(block, ".login-card form .button {", /min-height:\s*2\.75rem/)).toBe(true);

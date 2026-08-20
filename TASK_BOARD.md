@@ -23,7 +23,7 @@ The detailed Owner authorization, boundaries, mandatory sequence, credential/pri
 | 1 | COMPUTE-PRECUTOVER01 | `tasks/done/COMPUTE-PRECUTOVER01.md` | COMPLETE — exact source `1c3bb10…`, run `32407660640`; real OCR, provider-specific memory/drift, staging, privacy/output, and zero-artifact gates passed; production unchanged |
 | 2 | ARCH-COMPUTE01 production cutover | `tasks/doing/GOAL-BETA-PREP01.md` Phase 2 | COMPLETE — production `1c3bb10…`, schema v22/history 001–022, rollback `08657727…` + verified pre-migration DB, final canary run `32415058752` green |
 | 3 | RF-SEARCH01 production closure | `tasks/done/RF-SEARCH01.md` + Goal Phase 3 | COMPLETE — source `b19f9dc5…`, artifact `9424397852`, browser/build/independent/local/host/deploy gates green; historical artifact never used |
-| 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/ready/L1-UX08.md` + Goal Phase 4 | ACTIVE — upload + Metadata/Compute + reliable download states, source recovery; no full task-history platform |
+| 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/doing/L1-UX08.md` + Goal Phase 4 | ACTIVE — implementation and changed-risk tests are green; exact artifact/deploy plus real-browser acceptance remain |
 | 5 | QA-GOLDEN01 | `tasks/ready/QA-GOLDEN01.md` + Goal Phase 5 | AUTHORIZED FINAL BETA GATE — exact-build real-browser journey with safe fixtures and cleanup |
 | 6 | INTERNAL_BETA_READY | `tasks/doing/GOAL-BETA-PREP01.md` | STOP — Owner decides whether/when to start or invite users into internal beta |
 

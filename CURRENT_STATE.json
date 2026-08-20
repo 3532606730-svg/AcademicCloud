@@ -348,7 +348,7 @@
       "least-scoped GitHub workflow-dispatch token held by Core",
       "one shared bootstrap secret installed in Core and the protected GitHub environment"
     ],
-    "next": "GOAL-BETA-PREP01 Phase 4: implement beta-minimum unified Activity Center v0.1 plus safe Source Recovery"
+    "next": "GOAL-BETA-PREP01 Phase 4: checkpoint the completed Activity Center/Source Recovery implementation, build and deploy its exact artifact, then pass real-browser acceptance"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",

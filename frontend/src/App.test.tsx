@@ -24,6 +24,7 @@ afterEach(() => {
   window.sessionStorage.clear();
   window.history.replaceState(null, "", "/");
   document.documentElement.lang = "";
+  delete (window as Window & { showOpenFilePicker?: unknown }).showOpenFilePicker;
 });
 
 const EMPTY_ENTRIES: EntriesResponse = { folder: null, folders: [], files: [] };
@@ -2400,6 +2401,103 @@ describe("App", () => {
     await waitFor(() => expect(screen.queryByText("Verifying upload")).not.toBeInTheDocument());
     expect(completeUpload).toHaveBeenCalledTimes(2);
     expect(await screen.findByRole("status")).toHaveTextContent("Uploaded");
+  });
+
+  it("uses a supported file picker capability and shows upload activity immediately", async () => {
+    const user = userEvent.setup();
+    const selected = new File(["source"], "picker-source.pdf", { type: "application/pdf" });
+    const sourceHandle = {
+      kind: "file" as const,
+      name: selected.name,
+      getFile: vi.fn().mockResolvedValue(selected),
+      queryPermission: vi.fn().mockResolvedValue("granted" as PermissionState),
+      requestPermission: vi.fn().mockResolvedValue("granted" as PermissionState),
+    };
+    const picker = vi.fn().mockResolvedValue([sourceHandle]);
+    Object.defineProperty(window, "showOpenFilePicker", { configurable: true, value: picker });
+    const checksumFile = vi.fn(() => new Promise<string>(() => undefined));
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    render(<App api={api} checksumFile={checksumFile} />);
+
+    await user.click(await screen.findByRole("button", { name: "Upload resources" }));
+
+    await waitFor(() => expect(picker).toHaveBeenCalledWith({ multiple: true }));
+    expect(await screen.findByRole("heading", { name: "Activity Center" })).toBeInTheDocument();
+    expect(screen.getByText(selected.name)).toBeInTheDocument();
+    expect(screen.getByText("Calculating checksum")).toBeInTheDocument();
+  });
+
+  it("reveals manual source selection only after automatic pending recovery is unavailable", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listPending: vi.fn().mockResolvedValue([PENDING_MULTIPART_FILE]),
+    });
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole("button", { name: "Pending" }));
+    expect(screen.queryByRole("button", { name: "Choose the original file and continue resumable.pdf" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Continue upload" }));
+
+    expect(await screen.findByRole("button", { name: "Choose the original file and continue resumable.pdf" })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Automatic source access is unavailable");
+  });
+
+  it("restores server-authoritative metadata activity after an App reload", async () => {
+    const job = {
+      id: "job-activity-1",
+      kind: "metadata_suggestion" as const,
+      resourceId: LIBRARY_HOLDINGS[0]!.file.id,
+      state: "queued" as const,
+      progress: 0,
+      attempts: 1,
+      resultRef: null,
+      errorCode: null,
+      createdAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: null,
+      deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+    };
+    const getLatestLibraryMetadataSuggestionJob = vi.fn().mockResolvedValue(job);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+      getLatestLibraryMetadataSuggestionJob,
+    });
+
+    const first = render(<App api={api} />);
+    expect(await screen.findByText("Metadata suggestions")).toBeInTheDocument();
+    expect(screen.getByText("Queued")).toBeInTheDocument();
+    first.unmount();
+
+    render(<App api={api} />);
+    expect(await screen.findByText("Metadata suggestions")).toBeInTheDocument();
+    expect(screen.getByText("Queued")).toBeInTheDocument();
+    expect(getLatestLibraryMetadataSuggestionJob).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows only observable download preparing, started, and failed states", async () => {
+    const user = userEvent.setup();
+    let resolveDownload!: (authorization: { method: "GET"; url: string; expiresAt: string }) => void;
+    const createLibraryDownload = vi.fn()
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveDownload = resolve; }))
+      .mockRejectedValueOnce(new ApiError(503, "storage_unavailable"));
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+      createLibraryDownload,
+    });
+    render(<App api={api} />);
+
+    await user.click(within(await openRowMenu("book.pdf")).getByRole("menuitem", { name: "Download" }));
+    expect(await screen.findByText("Preparing")).toBeInTheDocument();
+    resolveDownload({ method: "GET", url: "https://storage.invalid/book", expiresAt: new Date().toISOString() });
+    expect(await screen.findByText("Started")).toBeInTheDocument();
+
+    await user.click(within(await openRowMenu("book.pdf")).getByRole("menuitem", { name: "Download" }));
+    expect(await screen.findByText("Failed")).toBeInTheDocument();
+    expect(screen.getAllByRole("alert")).toHaveLength(2);
   });
 });
 

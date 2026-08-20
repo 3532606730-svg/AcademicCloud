@@ -275,6 +275,7 @@ export function ResourceDetailsDialog({
   onSaved,
   onPreview,
   onDownload,
+  onSuggestionJobChange,
 }: {
   api: AcademicCloudApi;
   library: LibrarySummary;
@@ -284,6 +285,7 @@ export function ResourceDetailsDialog({
   onSaved: (detail: LibraryHoldingDetails) => void;
   onPreview: () => void;
   onDownload: () => void;
+  onSuggestionJobChange?: (job: DerivedMetadataJob) => void;
 }) {
   const { language, t } = useLanguage();
   const [detail, setDetail] = useState<LibraryHoldingDetails | null>(null);
@@ -365,12 +367,15 @@ export function ResourceDetailsDialog({
     }
     const controller = new AbortController();
     api.getLatestLibraryMetadataSuggestionJob(library.id, holding.file.id, controller.signal)
-      .then(setSuggestionJob)
+      .then((job) => {
+        setSuggestionJob(job);
+        if (job) onSuggestionJobChange?.(job);
+      })
       .catch((caught: unknown) => {
         if (!(caught instanceof DOMException && caught.name === "AbortError")) setSuggestionsError(safeSuggestionError(caught));
       });
     return () => controller.abort();
-  }, [api, library.id, holding.file.id]);
+  }, [api, library.id, holding.file.id, onSuggestionJobChange]);
 
   useEffect(() => {
     if (!suggestionJob || !api.getLibraryMetadataSuggestionJob) return;
@@ -385,6 +390,7 @@ export function ResourceDetailsDialog({
           : job;
         if (stopped) return;
         setSuggestionJob(next);
+        onSuggestionJobChange?.(next);
         if (next.state === "succeeded") {
           const run = await api.getLibraryMetadataSuggestions?.(library.id, holding.file.id, controller.signal);
           if (!stopped && run !== undefined) {
@@ -407,7 +413,7 @@ export function ResourceDetailsDialog({
       controller.abort();
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [api, library.id, holding.file.id, suggestionJob?.id]);
+  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionJob?.id]);
 
   useEffect(() => {
     if (!editing || library.role !== "manager") return;
@@ -427,6 +433,7 @@ export function ResourceDetailsDialog({
     try {
       const job = await api.generateLibraryMetadataSuggestions(library.id, holding.file.id);
       setSuggestionJob(job);
+      onSuggestionJobChange?.(job);
       setSuggestionRun(null);
       setSelectedSuggestionIds(new Set());
     } catch (caught) {

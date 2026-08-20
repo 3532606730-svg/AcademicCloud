@@ -239,8 +239,8 @@ The historical artifact remains permanently forbidden.
 
 ## Next action
 
-Continue autonomously with GOAL-BETA-PREP01 Phase 4: implement only the
-beta-minimum unified Activity Center v0.1 plus safe Source Recovery contract in
-`tasks/ready/L1-UX08.md`, then pass changed-risk and real-browser evidence. Do
-not broaden it into a notification/history platform and do not begin internal
-beta.
+Continue autonomously with GOAL-BETA-PREP01 Phase 4: checkpoint the completed
+beta-minimum Activity Center v0.1 plus safe Source Recovery implementation in
+`tasks/doing/L1-UX08.md`, then build/deploy that exact checkpoint and pass the
+remaining real-browser evidence. Do not broaden it into a
+notification/history platform and do not begin internal beta.
