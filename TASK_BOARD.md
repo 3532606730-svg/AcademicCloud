@@ -8,8 +8,9 @@ The board is the executable priority view. `CURRENT_STATE.json` holds compact cu
 
 | Order | Task | Task card | State |
 |---:|---|---|---|
-| 1 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER REPAIR VERIFIED — active pending Owner Continue/Abandon/metadata real-browser acceptance |
-| 2 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — exact release candidate frozen and untouched pending incident closure + real-browser gate |
+| 1 | OPS-STORAGE-APP-REPAIR01 | `tasks/doing/OPS-STORAGE-APP-REPAIR01.md` | ACTIVE ON ISOLATED BRANCH — proven ali-oss ListParts scalar mismatch repaired narrowly; repository-native verification pending; production untouched |
+| 2 | OPS-STORAGE-INCIDENT01 | `tasks/doing/OPS-STORAGE-INCIDENT01.md` | PROVIDER REPAIR VERIFIED — incident remains open pending app-repair verification and Owner real-browser acceptance |
+| 3 | RF-SEARCH01 | `tasks/doing/RF-SEARCH01.md` | DEV/ARTIFACT GREEN — exact release candidate frozen and untouched pending storage incident closure + real-browser gate |
 
 ## Reliability / Usability Interlock — Ready but do not auto-start
 
@@ -66,14 +67,16 @@ SCHEMA=v21 / 001-021
 SEARCH_ARTIFACT_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION=NOT_CUT_OVER
 ACTIVE_INCIDENT=OPS-STORAGE-INCIDENT01
+ACTIVE_SOURCE_REPAIR=OPS-STORAGE-APP-REPAIR01
+REPAIR_BRANCH=codex/storage-runtime-contract-repair-20260820
 ```
 
 ## Stop Rules
 
-- The exact provider repair is complete; no further policy churn, app repair,
-  service restart, or pending-upload mutation is authorized.
-- Stop for Owner product acceptance; do not close the incident until Continue,
-  Abandon, and metadata-suggestion real-browser journeys pass.
-- Search remains frozen; do not rebuild for documentation-only changes.
+- The exact provider permission repair is complete; no further RAM/OSS policy churn is authorized.
+- The Owner has authorized the bounded source repair in `OPS-STORAGE-APP-REPAIR01`; it is limited to the proven runtime contract mismatch and repository verification.
+- No production deployment, service restart, migration, credential change, pending-upload mutation, manual complete/abort, or metadata mutation is authorized by the source-repair task.
+- Do not close `OPS-STORAGE-INCIDENT01` until the repair candidate is fully verified and Continue, Abandon, and metadata-suggestion real-browser journeys pass.
+- Search remains frozen; do not rebuild or modify the exact RF-SEARCH01 release candidate unless a concrete defect requires it.
 - No new research feature begins while the production storage incident is unresolved.
-- Paid storage backup/provider choice, credentials, RAM/OSS policy, migrations, destructive repair, production deployment, and infrastructure changes remain explicit Owner gates.
+- Paid storage backup/provider choice, credentials, further RAM/OSS policy, migrations, destructive repair, production deployment, and infrastructure changes remain explicit Owner gates.
