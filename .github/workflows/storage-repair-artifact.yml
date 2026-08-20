@@ -1,0 +1,275 @@
+name: Storage repair production artifact
+
+on:
+  pull_request:
+    branches:
+      - ci/storage-repair-artifact-base-20260820
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storage-repair-artifact-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  linux-production-artifact:
+    name: Linux x64 / Node 24 production artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      source_commit: ${{ steps.identity.outputs.source_commit }}
+      archive_basename: ${{ steps.identity.outputs.archive_basename }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
+    env:
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}
+      ARCHIVE_BASENAME: academiccloud-linux-x64-node24-${{ github.event.pull_request.head.sha }}
+      TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
+      GITHUB_API_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out the exact source commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+
+      - name: Set up latest Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Verify Linux x86_64 and tool versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = "Linux"
+          test "$(uname -m)" = "x86_64"
+          node --version | grep -E '^v24\.'
+          npm --version
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          test "$ImageOS" = "ubuntu24"
+          test -n "$ImageVersion"
+
+      - name: Install the clean development dependency tree
+        run: npm ci
+
+      - name: Run backend and frontend tests
+        run: npm test
+
+      - name: Run repository type-checks
+        run: npm run typecheck
+
+      - name: Build backend and frontend production outputs
+        run: npm run build
+
+      - name: Run compiled application acceptance
+        run: npm run acceptance:compiled
+
+      - name: Audit the full dependency tree
+        run: npm audit --audit-level=high
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Benchmark the Linux Argon2id build
+        run: npm run auth:benchmark
+
+      - name: Prepare isolated production package metadata
+        run: >-
+          node scripts/production-artifact.mjs prepare
+          --release=output/release
+
+      - name: Install backend production dependencies into the artifact
+        working-directory: output/release
+        run: npm ci --omit=dev --workspace @academiccloud/backend --include-workspace-root=false
+
+      - name: Build the pinned release-local Tesseract runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$TESSERACT_BUILDER_IMAGE"
+          test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
+          docker run --rm --platform linux/amd64 \
+            --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
+            --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
+            --env "ARTIFACT_OUTPUT_UID=$(id -u)" \
+            --env "ARTIFACT_OUTPUT_GID=$(id -g)" \
+            --volume "$GITHUB_WORKSPACE:/work" \
+            --workdir /work \
+            "$TESSERACT_BUILDER_IMAGE" \
+            bash scripts/build-tesseract-runtime.sh output/release/runtime/tesseract
+
+      - name: Realistic fixture OCR E2E (release-local Tesseract)
+        shell: bash
+        env:
+          OCR_TESSERACT_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/bin/tesseract
+          OCR_TESSDATA_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/tessdata
+          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/output/release/runtime/tesseract/lib
+        run: |
+          set -euo pipefail
+          npx tsx --test backend/test/suggestions/realistic-ocr-e2e.test.ts
+
+      - name: Finalize the release tree and manifest
+        run: >-
+          node scripts/production-artifact.mjs finalize
+          --release=output/release
+          --manifest=output/${ARCHIVE_BASENAME}.manifest.json
+          --commit=${SOURCE_COMMIT}
+
+      - name: Create the deterministic archive and SHA-256
+        run: >-
+          node scripts/production-artifact.mjs pack
+          --release=output/release
+          --archive=output/${ARCHIVE_BASENAME}.tar.gz
+          --checksum=output/${ARCHIVE_BASENAME}.tar.gz.sha256
+
+      - name: Rebuild cleanly and prove deterministic archive and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/production-artifact.mjs prepare \
+            --release=output/release
+          (
+            cd output/release
+            npm ci --omit=dev --workspace @academiccloud/backend --include-workspace-root=false
+          )
+          docker run --rm --platform linux/amd64 \
+            --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
+            --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
+            --env "ARTIFACT_OUTPUT_UID=$(id -u)" \
+            --env "ARTIFACT_OUTPUT_GID=$(id -g)" \
+            --volume "$GITHUB_WORKSPACE:/work" \
+            --workdir /work \
+            "$TESSERACT_BUILDER_IMAGE" \
+            bash scripts/build-tesseract-runtime.sh output/release/runtime/tesseract
+          node scripts/production-artifact.mjs finalize \
+            --release=output/release \
+            --manifest=output/${ARCHIVE_BASENAME}.repro.manifest.json \
+            --commit=${SOURCE_COMMIT}
+          node scripts/production-artifact.mjs pack \
+            --release=output/release \
+            --archive=output/${ARCHIVE_BASENAME}.repro.tar.gz \
+            --checksum=output/${ARCHIVE_BASENAME}.repro.tar.gz.sha256
+          diff --unified=3 \
+            "output/${ARCHIVE_BASENAME}.manifest.json" \
+            "output/${ARCHIVE_BASENAME}.repro.manifest.json"
+          test "$(cut -d' ' -f1 "output/${ARCHIVE_BASENAME}.tar.gz.sha256")" = \
+            "$(cut -d' ' -f1 "output/${ARCHIVE_BASENAME}.repro.tar.gz.sha256")"
+          cmp --silent \
+            "output/${ARCHIVE_BASENAME}.tar.gz" \
+            "output/${ARCHIVE_BASENAME}.repro.tar.gz"
+
+      - name: Verify extracted production runtime artifact
+        run: >-
+          node scripts/production-artifact.mjs verify
+          --archive=output/${ARCHIVE_BASENAME}.tar.gz
+          --manifest=output/${ARCHIVE_BASENAME}.manifest.json
+          --checksum=output/${ARCHIVE_BASENAME}.tar.gz.sha256
+          --evidence=output/${ARCHIVE_BASENAME}.runtime-verification.json
+
+      - name: Upload immutable production artifact bundle
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.ARCHIVE_BASENAME }}
+          path: |
+            output/${{ env.ARCHIVE_BASENAME }}.tar.gz
+            output/${{ env.ARCHIVE_BASENAME }}.tar.gz.sha256
+            output/${{ env.ARCHIVE_BASENAME }}.manifest.json
+            output/${{ env.ARCHIVE_BASENAME }}.runtime-verification.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Record artifact identity
+        id: identity
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "source_commit=$SOURCE_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "archive_basename=$ARCHIVE_BASENAME" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Linux production artifact"
+            echo
+            echo "- Source commit: \`$SOURCE_COMMIT\`"
+            echo "- Runner: \`$(uname -s) $(uname -m)\`"
+            echo "- Node: \`$(node --version)\`"
+            echo "- npm: \`$(npm --version)\`"
+            echo "- Runner image: \`$ImageOS / $ImageVersion\`"
+            echo "- Tesseract builder: \`$TESSERACT_BUILDER_IMAGE\`"
+            echo "- Artifact ID: \`$ARTIFACT_ID\`"
+            echo "- GitHub artifact SHA-256: \`$ARTIFACT_DIGEST\`"
+            echo "- Artifact URL: $ARTIFACT_URL"
+            echo
+            echo "### Release archive SHA-256"
+            echo
+            echo '```text'
+            cat "output/${ARCHIVE_BASENAME}.tar.gz.sha256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  verify-downloaded-artifact:
+    name: Independently download and verify artifact
+    needs: linux-production-artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_COMMIT: ${{ needs.linux-production-artifact.outputs.source_commit }}
+      ARCHIVE_BASENAME: ${{ needs.linux-production-artifact.outputs.archive_basename }}
+      ARTIFACT_DIGEST: ${{ needs.linux-production-artifact.outputs.artifact_digest }}
+
+    steps:
+      - name: Check out the exact verifier source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+
+      - name: Set up latest Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Download the uploaded artifact onto a fresh runner
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: ${{ env.ARCHIVE_BASENAME }}
+          path: output/downloaded
+
+      - name: Verify the independently downloaded production runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = "Linux"
+          test "$(uname -m)" = "x86_64"
+          node --version | grep -E '^v24\.'
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          node scripts/production-artifact.mjs verify \
+            --archive="output/downloaded/${ARCHIVE_BASENAME}.tar.gz" \
+            --manifest="output/downloaded/${ARCHIVE_BASENAME}.manifest.json" \
+            --checksum="output/downloaded/${ARCHIVE_BASENAME}.tar.gz.sha256" \
+            --evidence="output/${ARCHIVE_BASENAME}.independent-runtime-verification.json"
+
+      - name: Record independent verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Independent artifact verification"
+            echo
+            echo "- Source commit: \`$SOURCE_COMMIT\`"
+            echo "- Fresh runner: \`$(uname -s) $(uname -m)\`"
+            echo "- Node: \`$(node --version)\`"
+            echo "- GitHub artifact SHA-256: \`$ARTIFACT_DIGEST\`"
+            echo "- Result: downloaded bundle, release SHA-256, manifest, release-local Tesseract closure/models/synthetic OCR, native modules, PDF.js/canvas, and compiled acceptance all verified"
+          } >> "$GITHUB_STEP_SUMMARY"
