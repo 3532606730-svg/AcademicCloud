@@ -6,6 +6,8 @@ Add one quiet metadata/name search path to the normal `资料库`, preserving ef
 ## Current State
 Development is complete and green, including Owner-review repairs and frontend pagination completeness. Exact immutable Linux x64 / Node 24 artifact is built and independently verified.
 
+RF-SEARCH01 is not currently in production. The 2026-08-20 `OPS-STORAGE-APP-REPAIR01` deployment attempt nevertheless proved that repair source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` descends from this frozen candidate and ships its Search UI/API. That incompatible repair artifact briefly exposed Search before an application-only rollback restored production release `604cb8daf310696353e99c30ce7a924dc71ef9d2`. No RF-SEARCH01 source or artifact was modified or rebuilt, but durable state must not describe the failed attempt as untouched.
+
 ```text
 FINAL_SEARCH_SOURCE_COMMIT=7bba7b869fd1234c1e7c67002cb93368c299209b
 ARTIFACT_WORKFLOW=32331172274
@@ -37,7 +39,7 @@ RF-SEARCH01 is frozen; do not modify/rebuild without a concrete defect.
 Production cutover is blocked by:
 
 1. `OPS-STORAGE-INCIDENT01` — current storage/API incident must be resolved and core storage-backed journeys proven healthy;
-2. mandatory real-browser pre-cutover acceptance — current agent environment has no browser-control path.
+2. mandatory real-browser pre-cutover acceptance — not performed or authorized during the failed storage-repair deployment.
 
 The existing artifact remains valid through docs/planning-only commits.
 

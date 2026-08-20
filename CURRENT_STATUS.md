@@ -12,7 +12,7 @@ The immediate problem is operational/runtime integration, not a product-model re
 
 ### Active production incident
 
-`OPS-STORAGE-INCIDENT01` remains ACTIVE. The bounded provider permission repair is complete and verified; the bounded application source repair and its immutable production artifact are also fully verified. The incident cannot close until an explicit Owner-authorized application deployment occurs and the Owner's real-browser Continue/Abandon/metadata journeys pass.
+`OPS-STORAGE-INCIDENT01` remains ACTIVE. The bounded provider permission repair is complete and verified; the bounded application source repair and its immutable artifact are also technically verified. The first Owner-authorized application deployment failed closed on a release-scope contradiction and rolled back successfully. The incident cannot close until a compatible repair release is explicitly authorized/deployed and the Owner's real-browser Continue/Abandon/metadata journeys pass.
 
 Owner-observed production symptoms after an Alibaba OSS overdue-payment interruption include:
 
@@ -28,7 +28,7 @@ The exact runtime investigation then proved a separate application defect in the
 
 Metadata Suggestion remains a separate acceptance item. Existing incident evidence tied the recorded suggestion failures to the overdue-payment disabled window (`UserDisableError` at `HeadObject`) and found no proven post-recovery suggestion implementation defect. No Metadata Range/OCR/parser change has been made.
 
-### Verified application repair and artifact
+### Verified application repair, incompatible artifact scope, and rollback
 
 `OPS-STORAGE-APP-REPAIR01` is verified on isolated branch `codex/storage-runtime-contract-repair-20260820`, based on authoritative base `281263be7f6248a4d18e099b59cf49028ec277ca`.
 
@@ -63,9 +63,11 @@ INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 
 A direct post-workflow download of artifact ID `9405764771` independently re-hashed the archive and manifest and matched the fresh-runner verification evidence.
 
+The 2026-08-20 production attempt passed artifact identity, manifest verification, immutable installation, release switch, exact process CWD, service, and loopback/public health/readiness. The required final Search-scope audit then proved that exact source `8d289702…` descends from frozen RF-SEARCH01 candidate `7bba7b869fd1234c1e7c67002cb93368c299209b` and ships the Search UI/API. This conflicts with the same deployment authorization's explicit no-Search boundary. The attempt therefore failed closed and performed the established same-schema application-only rollback.
+
 ## Production Declaration
 
-Production remains unchanged:
+Production is restored to the exact pre-attempt release:
 
 ```text
 PRODUCTION_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
@@ -74,11 +76,11 @@ SCHEMA=v21
 MIGRATIONS=001-021
 ```
 
-No application deployment, release switch, service restart, migration, credential/config change, SQLite write, manual multipart complete/abort, pending-upload mutation, metadata mutation, or RF-SEARCH01 cutover occurred during source repair or artifact construction.
+The deployment attempt briefly selected `8d289702…` and restarted only AcademicCloud, then restored `604cb8d…`. Post-rollback evidence proves exact old process CWD, active/running service, `NRestarts=0`, one loopback listener, loopback/public health/readiness 200, schema v21/history 001–021 with unchanged fingerprint, old-release tree SHA-256 `6fd8fd7d431d1ef38e2700a0c9fd5c66f5869af3008912ba837fbf5f50a38d31`, five preserved `uploading` multipart rows, and six preserved `pending_upload` file rows. No migration, credential/config/RAM/Nginx change, SQLite mutation, manual multipart complete/abort, pending-upload mutation, OSS object/part deletion, or metadata mutation occurred.
 
 ## RF-SEARCH01
 
-Development remains green and its exact release candidate remains frozen and untouched:
+Development remains green and its exact release candidate remains frozen. It is not currently live, but it was briefly exposed by the incompatible repair artifact during the rolled-back deployment attempt; durable state must not describe that attempt as `RF_SEARCH01_TOUCHED=false`.
 
 ```text
 ARTIFACT_SOURCE_COMMIT=7bba7b869fd1234c1e7c67002cb93368c299209b
@@ -89,12 +91,12 @@ MANIFEST_SHA256=beb15507b20c99679fb48cfe772c29d1d92a930b2adcd337202d88f0cff49458
 INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 ```
 
-RF-SEARCH01 production remains blocked until the storage repair is safely deployed, `OPS-STORAGE-INCIDENT01` closes through real-browser acceptance, and Search's own mandatory real-browser pre-cutover gate passes.
+RF-SEARCH01 production remains blocked until the storage repair is safely deployed, `OPS-STORAGE-INCIDENT01` closes through real-browser acceptance, and Search's own mandatory real-browser pre-cutover gate passes. No RF-SEARCH01 source or artifact was modified or rebuilt by the failed attempt.
 
 ## Reliability / Product-Maturity Interlock
 
 ```text
-OPS-STORAGE-APP-REPAIR01 production deployment decision
+OPS-STORAGE-APP-REPAIR01 failed-closed release-scope review
 → OPS-STORAGE-INCIDENT01 browser acceptance / closure
 → RF-SEARCH01 production closure
 → L1-UX08 Upload Activity & Source Recovery
@@ -123,13 +125,13 @@ Server-authoritative checksum identity remains mandatory before reusing existing
 
 ## Safety Boundaries
 
-- Source repair and immutable artifact verification are complete; **production deployment remains a separate explicit Owner gate**.
+- Source repair and immutable artifact verification are complete, but artifact `8d289702…` is incompatible with the explicit no-Search deployment boundary and must not be reselected under that boundary.
 - No further RAM/OSS policy mutation is authorized by this repair.
 - No migration, credential change, config change, SQLite mutation, manual multipart complete/abort, pending-upload deletion, or metadata mutation is authorized.
-- Do not rebuild or substitute another repair source for deployment without a concrete reason and renewed verification.
+- A repair-only source/artifact or an explicit revision of the no-Search boundary requires new Owner authorization and renewed exact-source verification.
 - No Metadata Suggestion implementation change without a current reproduced post-deployment failure boundary.
 - No Search cutover until the storage repair, incident closure, and browser gates pass.
 
 ## Next Action
 
-**STOP FOR OWNER PRODUCTION DEPLOYMENT DECISION.** If deployment is authorized, use exactly artifact ID `9405764771` / source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6`, verify release identity and health/readiness, then perform Owner real-browser Continue → disposable Abandon → Metadata Suggestion acceptance. Do not rebuild or modify RF-SEARCH01.
+**STOP FOR OWNER REVIEW OF THE FAILED-CLOSED RELEASE-SCOPE GATE.** Do not redeploy artifact ID `9405764771` while the no-Search boundary remains in force, and do not begin Owner browser storage acceptance. New authorization is required for either a repair-only artifact that excludes RF-SEARCH01 or an explicit revision of the Search boundary and acceptance sequence.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T20:14:40+08:00",
+  "updatedAt": "2026-08-20T20:57:27+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "f3f3454a0c68997dee8e27c1d1360aaa01c13451",
   "production": {
@@ -52,8 +52,20 @@
     "dependencyAudit": "pass",
     "deterministicRebuild": "pass",
     "independentArtifactVerification": "pass",
-    "productionTouched": false,
-    "deploymentAuthorized": false
+    "productionTouched": true,
+    "deploymentAuthorized": true,
+    "deploymentAttemptStatus": "rolled_back_scope_mismatch",
+    "firstFailedGate": "authorized source contains and exposes frozen RF-SEARCH01 despite the explicit no-Search deployment boundary",
+    "rollback": "pass",
+    "liveReleaseAfterRollback": "604cb8daf310696353e99c30ce7a924dc71ef9d2",
+    "installedInactiveRelease": "8d28970209c2e7b41b5d9486bea570a2a8e6c7e6",
+    "schemaAfterRollback": 21,
+    "migrationsRun": false,
+    "configurationChanged": false,
+    "ramChanged": false,
+    "databaseMutated": false,
+    "pendingUploadsManuallyMutated": false,
+    "ownerBrowserAcceptance": "blocked"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -63,13 +75,16 @@
     "manifestSha256": "beb15507b20c99679fb48cfe772c29d1d92a930b2adcd337202d88f0cff49458",
     "independentVerification": "pass",
     "productionCutover": "blocked",
+    "currentlyLive": false,
+    "briefExposureDuringRolledBackRepairDeployment": true,
     "blockers": [
-      "verified storage repair artifact must receive explicit production deployment authorization and OPS-STORAGE-INCIDENT01 must close",
+      "the authorized storage-repair artifact contains the frozen Search candidate and cannot be redeployed under the explicit no-Search boundary",
+      "OPS-STORAGE-INCIDENT01 must close after a compatible storage-repair deployment and Owner browser acceptance",
       "mandatory real-browser pre-cutover acceptance"
     ]
   },
   "currentPriorityOrder": [
-    "OPS-STORAGE-APP-REPAIR01 production deployment decision",
+    "OPS-STORAGE-APP-REPAIR01 failed-closed release-scope review",
     "OPS-STORAGE-INCIDENT01 closure",
     "RF-SEARCH01 production closure",
     "L1-UX08",
@@ -88,9 +103,10 @@
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
     "Repository task cards and ADRs preserve history; this file stores current operational/product pointers only.",
     "The exact Owner-authorized RAM v2 repair is complete; no further provider-policy mutation is authorized.",
-    "The bounded application source repair and immutable production artifact are fully verified; production deployment remains a separate explicit Owner gate.",
-    "The frozen RF-SEARCH01 artifact was inspected read-only to prove the exact packaged ali-oss behavior; the candidate itself was not modified or rebuilt.",
+    "The bounded application source repair and immutable artifact are technically verified, but exact source 8d289702 contains the frozen RF-SEARCH01 implementation and is incompatible with the explicit no-Search deployment boundary.",
+    "The 2026-08-20 deployment attempt switched briefly to 8d289702, detected the release-scope mismatch, and rolled back successfully to 604cb8da without schema, configuration, RAM, credential, or pending-upload mutation.",
+    "RF-SEARCH01 was briefly exposed by the incompatible repair artifact during the rolled-back attempt; it is not currently live and its frozen candidate was not modified or rebuilt.",
     "Metadata Suggestion code must not be changed unless a current post-deployment browser attempt proves a new failure boundary.",
-    "RF-SEARCH01 remains frozen and untouched until storage repair deployment/incident closure and its mandatory browser gate."
+    "RF-SEARCH01 remains frozen and blocked from production until storage repair deployment/incident closure and its mandatory browser gate; do not claim it was untouched by the failed deployment attempt."
   ]
 }

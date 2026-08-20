@@ -45,7 +45,7 @@ Repair the production-proven `ali-oss` `ListParts` runtime-shape mismatch at the
 - `tasks/doing/OPS-STORAGE-INCIDENT01.md`
 
 ## Current State
-SOURCE REPAIR AND PRODUCTION ARTIFACT VERIFIED — STOP FOR OWNER PRODUCTION DEPLOYMENT DECISION.
+PRODUCTION DEPLOYMENT FAILED CLOSED — RELEASE-SCOPE MISMATCH; APPLICATION-ONLY ROLLBACK PASS; STOP FOR OWNER REVIEW.
 
 Exact repository-native source verification ran on repair source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` through isolated GitHub Actions run `32365460608` / job `96413882821`. The temporary draft PR used only to trigger that source-verification workflow was closed unmerged after success.
 
@@ -56,6 +56,10 @@ Production remains release `604cb8daf310696353e99c30ce7a924dc71ef9d2`, schema v2
 The provider-side permission gate is already green: raw production `ListParts` returns HTTP 200 after the exact least-privilege RAM v2 repair. The remaining upload failure was reproduced against the exact packaged `ali-oss@6.23.0`: one Part produced a singleton object and string scalar fields, causing the old adapter path to fail with `.map is not a function`; an empty non-truncated response with string paging fields caused the old path to reject the marker. The repaired client boundary converts only that real SDK representation into the already-declared canonical port representation.
 
 Metadata Suggestion remains separate. Existing incident evidence ties recorded suggestion failures to the overdue-payment `UserDisableError` window at `HeadObject`; no suggestion implementation change has been made.
+
+The Owner-authorized 2026-08-20 deployment verified and installed the exact artifact, switched the live pointer to `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6`, restarted only AcademicCloud, and passed exact process identity plus loopback/public health/readiness. The required final `RF_SEARCH01_TOUCHED=false` scope audit then proved an incompatible fact: `8d289702…` descends from frozen Search candidate `7bba7b869fd1234c1e7c67002cb93368c299209b`, and its shipped frontend imports/exposes `LibrarySearchField` while its backend contains the Search implementation. This conflicts with the same authorization's explicit prohibition on Search deployment.
+
+The attempt therefore failed closed. The same-schema application-only rollback restored exact release `604cb8daf310696353e99c30ce7a924dc71ef9d2`. Post-rollback verification passed: exact process CWD; active/running service; `NRestarts=0`; one `127.0.0.1:3000` listener; loopback/public health/readiness 200; schema v21/history 001–021 with migration fingerprint `573fe6fb8b16cd644a41e48e12b8e1dfa416a9e551762849ae1864393b46ef63`; old release tree SHA-256 `6fd8fd7d431d1ef38e2700a0c9fd5c66f5869af3008912ba837fbf5f50a38d31`; five `uploading` multipart rows and six `pending_upload` file rows preserved. Environment, systemd, Nginx, RAM v2, credentials, SQLite content, metadata, and pending uploads were not changed. The verified `8d289702…` immutable directory remains installed but inactive; it must not be selected again under the no-Search boundary.
 
 ## Completed
 - Created isolated repair branch from exact authoritative base `281263be7f6248a4d18e099b59cf49028ec277ca`.
@@ -76,15 +80,20 @@ Metadata Suggestion remains separate. Existing incident evidence ties recorded s
 - Fresh-runner independent artifact verification: PASS for exact source commit, downloaded artifact digest, release archive checksum, manifest, native modules, PDF.js/canvas, release-local Tesseract closure/models/synthetic OCR, and compiled acceptance.
 - Direct post-workflow artifact download independently re-hashed the release archive and manifest and matched the workflow verification evidence.
 - Production, schema, migrations, RAM, credentials, configuration, pending uploads, metadata, and RF-SEARCH01 remained untouched by the application-repair/artifact pass.
+- Owner-authorized production artifact preflight, installation, and manifest verification: PASS.
+- Initial `8d289702…` release switch, exact process identity, service, and loopback/public health/readiness: PASS.
+- Final release-scope audit: FAIL — exact source contains and exposes frozen RF-SEARCH01 despite the explicit no-Search deployment boundary.
+- Same-schema application-only rollback to `604cb8d…`: PASS; all rollback invariants green.
 
 ## Remaining
-- Only after explicit Owner production-deployment authorization, deploy exactly artifact ID `9405764771` / source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` through the existing production runbook; do not rebuild or substitute another source.
-- After any authorized deployment, verify release identity/health/readiness and run real-browser Continue upload first, then a disposable Abandon upload, then Metadata Suggestion.
+- Owner must reconcile the contradictory release contract before any new deployment: authorize a repair-only source/artifact that excludes RF-SEARCH01, or explicitly revise the no-Search boundary and its acceptance sequence.
+- Do not redeploy artifact ID `9405764771` / source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` while the no-Search boundary remains in force.
+- After a compatible authorized deployment, verify release identity/health/readiness and let the Owner run real-browser Continue upload first, then a disposable Abandon upload, then Metadata Suggestion.
 - Close `OPS-STORAGE-INCIDENT01` only if the relevant journeys pass or any remaining failure is independently proven and repaired.
 - Reconcile the accepted repair into the authoritative working branch through the approved release/reconciliation workflow; do not merge to `main` merely to close this incident.
 
 ## Blockers
-Production deployment is intentionally blocked on an explicit Owner gate. No source or artifact verification blocker remains.
+The exact authorized artifact is incompatible with its deployment scope because it contains the frozen Search candidate. New Owner direction and new exact-source artifact evidence are required; no further production attempt is authorized.
 
 ## Last Verification
 ```text
@@ -111,7 +120,10 @@ COMPILED_ACCEPTANCE=PASS
 DEPENDENCY_AUDIT=PASS
 DETERMINISTIC_REBUILD=PASS
 INDEPENDENT_ARTIFACT_VERIFICATION=PASS
-PRODUCTION_TOUCHED=false
+PRODUCTION_DEPLOYMENT_ATTEMPTED=true
+FIRST_FAILED_GATE=AUTHORIZED_RELEASE_SCOPE_CONTAINS_FORBIDDEN_RF_SEARCH01_DEPLOYMENT
+ROLLBACK=PASS
+PRODUCTION_RELEASE=604cb8daf310696353e99c30ce7a924dc71ef9d2
 PRODUCTION_RELEASE_CHANGED=false
 SCHEMA_CHANGED=false
 MIGRATIONS_RUN=false
@@ -120,8 +132,10 @@ CREDENTIALS_CHANGED=false
 CONFIG_CHANGED=false
 DATABASE_MUTATED=false
 PENDING_UPLOADS_MUTATED=false
-RF_SEARCH01_CHANGED=false
+RF_SEARCH01_SOURCE_CHANGED=false
+RF_SEARCH01_CURRENTLY_LIVE=false
+RF_SEARCH01_BRIEFLY_EXPOSED_DURING_ROLLED_BACK_ATTEMPT=true
 ```
 
 ## Next Action
-STOP FOR OWNER PRODUCTION DEPLOYMENT DECISION. No further source change, rebuild, provider-policy change, migration, data mutation, or deployment is authorized by this task state.
+STOP FOR OWNER REVIEW. Do not redeploy the incompatible artifact or perform Owner browser storage acceptance. No further source change, rebuild, provider-policy change, migration, data mutation, or deployment is authorized by this task state.
