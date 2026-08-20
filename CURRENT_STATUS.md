@@ -30,14 +30,15 @@ then execution from the same staged release tree as the verified release-local
 Tesseract runtime. Final OCR/memory, callback, privacy, zero-artifact, and
 candidate-review gates passed. Core stayed responsive, the reviewable filename
 candidate was not accepted, and canonical metadata, source bytes, OSS/RAM/CORS,
-Nginx, and production memory limits remained unchanged. Phase 3 RF-SEARCH01 is
-now active.
+Nginx, and production memory limits remained unchanged. Phase 3 RF-SEARCH01
+subsequently closed on its own exact release; Phase 4 Activity Center v0.1
+plus Source Recovery is now active.
 
 Current production:
 
 ```text
-PRODUCTION_RELEASE=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
-PREVIOUS_RELEASE=08657727a17a7ea766ad0d74cc663fa40f91eee1
+PRODUCTION_RELEASE=b19f9dc5b48e1976127704712e08a8655b1fadd5
+PREVIOUS_RELEASE=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
 SCHEMA=v22
 MIGRATIONS=001-022
 INTERNAL_BETA_READY=false
@@ -170,8 +171,8 @@ Codex Goal Mode is authorized to proceed in this exact order:
 
 1. **COMPUTE-PRECUTOVER01 — COMPLETE** — provider-specific GitHub-hosted memory contract and protected Tesseract staging repair passed without production mutation;
 2. **Core/Compute production cutover — COMPLETE** — exact artifact, verified backup/off-host copy, migration 022, least-scoped credentials/environment, exact deployment, Core invariants, and one bounded real canary passed;
-3. **RF-SEARCH01 production closure — ACTIVE** — ancestry proves composition is already present; do not deploy the historical artifact; finish the browser gate, build/verify a new exact integrated artifact, then deploy;
-4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery** — upload live states/recovery plus durable Metadata/Compute queued/processing/succeeded/failed and reliable download preparing/started/failed states; no broad notification/history platform;
+3. **RF-SEARCH01 production closure — COMPLETE** — ancestry-backed composition, focused tests, production browser gate, new exact artifact `9424397852`, independent/local/host verification, and same-schema application cutover passed; historical artifact was not used;
+4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery — ACTIVE** — upload live states/recovery plus durable Metadata/Compute queued/processing/succeeded/failed and reliable download preparing/started/failed states; no broad notification/history platform;
 5. **QA-GOLDEN01** — exact-build real-browser journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
 
 When all are green, set `INTERNAL_BETA_READY=true`, reconcile exact release,
@@ -214,12 +215,13 @@ COST_CHANGED=false
 
 ## RF-SEARCH01
 
-RF-SEARCH01 remains frozen in behavior and its exact historical candidate is
+RF-SEARCH01 is complete and remains frozen in behavior. Its exact historical candidate is
 `7bba7b869fd1234c1e7c67002cb93368c299209b`. Post-checkpoint ancestry
 verification proved that Phase 2 source `1c3bb10…` already descends that
 candidate, and the production UI exposes Search. The historical artifact was
 not reused, but the prior durable claim that Search was absent was wrong and the
-required Phase 3 browser-before-final-release sequence is not yet complete.
+required Phase 3 browser-before-final-release sequence therefore had to be
+re-established on a new release.
 
 All Search-specific backend service/HTTP files and the dedicated frontend
 component/tests are byte-identical to the frozen candidate; newer shared
@@ -227,14 +229,18 @@ component/tests are byte-identical to the frozen candidate; newer shared
 and 137/137 frontend, plus all-workspace typecheck. The production desktop
 browser gate passes Chinese title, author, author+title, original-filename
 fallback, no result, Escape/clear folder restoration, rapid-query stale safety,
-and opening the existing details surface. Phase 3 remains active until a new
-exact post-gate artifact is independently verified and deployed; the historical
-artifact must still never be selected.
+and opening the existing details surface. Exact integrated source `b19f9dc5…`
+then produced artifact `9424397852` in run `32417182890`; its build and
+independent jobs, local hashes, and host verifier passed. The 4,789-file runtime
+tree is byte-identical to previous release `1c3bb10…` except artifact-manifest
+identity. Production now selects `b19f9dc5…`; health/readiness, process identity,
+schema v22, SQLite counts/integrity/FK, and the post-deploy browser journey pass.
+The historical artifact remains permanently forbidden.
 
 ## Next action
 
-Continue autonomously with GOAL-BETA-PREP01 Phase 3: compose the frozen,
-already-green RF-SEARCH01 behavior onto the post-Compute baseline, preserve its
-authority/ranking semantics, pass the mandatory real-browser Search gate, build
-and independently verify a new exact artifact, then deploy it. Do not reuse the
-historical Search artifact and do not begin internal beta.
+Continue autonomously with GOAL-BETA-PREP01 Phase 4: implement only the
+beta-minimum unified Activity Center v0.1 plus safe Source Recovery contract in
+`tasks/ready/L1-UX08.md`, then pass changed-risk and real-browser evidence. Do
+not broaden it into a notification/history platform and do not begin internal
+beta.

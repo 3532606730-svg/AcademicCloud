@@ -84,10 +84,10 @@ GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01 — COMPLETE
 → GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover — COMPLETE
   backup + migration 022 + minimum least-privilege Compute credentials/environment
   + exact artifact/deploy + one bounded canary
-→ GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure — ACTIVE
+→ GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure — COMPLETE
   compose existing Search behavior onto latest baseline
   + mandatory browser gate + new exact artifact + deploy
-→ GOAL-BETA-PREP01 Phase 4 / L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery
+→ GOAL-BETA-PREP01 Phase 4 / L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery — ACTIVE
 → GOAL-BETA-PREP01 Phase 5 / QA-GOLDEN01 exact-release real-browser final gate
 → INTERNAL_BETA_READY
 → STOP before starting/inviting users into internal beta
@@ -161,15 +161,17 @@ five-run drift under the explicit GitHub-hosted `<768 MiB` / `<64 MiB`
   canary run `32415058752` passed real OCR/memory/callback/privacy/zero-artifact
   evidence with Core responsive and canonical metadata unchanged.
 
-### RF-SEARCH01 — implementation complete, production closure active
+### RF-SEARCH01 — production closure complete
 Metadata/name catalogue search is behavior-frozen at historical source
 `7bba7b869fd1234c1e7c67002cb93368c299209b`; its historical artifact must
 **not** be deployed directly. Ancestry verification corrected the earlier
 absence claim: the Phase 2 source already descends that candidate and therefore
 exposes Search. Search-specific files remain byte-identical, focused tests and
 the production desktop browser journey are green, and no rewrite/cherry-pick is
-needed. Phase 3 nevertheless remains open until the browser-gated integrated
-source receives a new independently verified exact artifact and deployment.
+needed. Phase 3 closed on browser-gated integrated source `b19f9dc5…`, new
+artifact `9424397852`, independent/local/host verification, and a same-schema
+application cutover. Post-deploy process/health/readiness/SQLite/Search browser
+gates passed; the historical artifact was never used.
 
 ### L1-UX08 — beta-minimum unified Activity Center + Source Recovery
 The original upload Activity/Source-Recovery card remains the substrate. Under
@@ -290,11 +292,12 @@ Database metadata and object bytes are separate recovery domains. A verified SQL
 
 ## Production Track
 
-Repository-declared production now runs exact Core/Compute release
-`1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, previous application release
-`08657727a17a7ea766ad0d74cc663fa40f91eee1`, at schema v22/history 001–022.
-Rollback to the previous application is inseparable from the verified
-pre-migration backup `academiccloud-pre-compute-20260820T200600Z.sqlite`.
+Repository-declared production now runs exact Search-integrated Core/Compute
+release `b19f9dc5b48e1976127704712e08a8655b1fadd5`, previous application
+release `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, at schema v22/history
+001–022. Phase 3 rollback is application-only to `1c3bb10…`; the older Phase 2
+v21 rollback remains inseparable from verified pre-migration backup
+`academiccloud-pre-compute-20260820T200600Z.sqlite`.
 
 GOAL-BETA-PREP01 Phase 2 consumed its bounded authority successfully: stopped-
 service backup verification, off-host encrypted evidence, migration 022,
@@ -303,10 +306,10 @@ one bounded canary are green. It introduced no paid infrastructure, broad
 credential, provider-policy change, or destructive data manipulation.
 
 RF-SEARCH01 release candidate remains historical evidence at
-`7bba7b869fd1234c1e7c67002cb93368c299209b`. It is already an ancestor of the
-latest baseline, so composition is an evidence-backed no-op rather than a
-cherry-pick; Phase 3 still requires a new exact artifact and deployment after
-its browser gate.
+`7bba7b869fd1234c1e7c67002cb93368c299209b`. It is an ancestor of production
+source `b19f9dc5…`, so composition was an evidence-backed no-op rather than a
+cherry-pick; Phase 3's new exact artifact and browser-gated deployment are now
+complete.
 
 ## Execution Rule
 

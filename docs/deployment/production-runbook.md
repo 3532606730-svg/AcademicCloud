@@ -243,7 +243,19 @@ Certbot 2.9.0 plus `python3-acme`, `python3-certbot`, `python3-configargparse`, 
 
 ## Current production state
 
-Production runs exact immutable Core/Compute source `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, previous application release `08657727a17a7ea766ad0d74cc663fa40f91eee1`, at schema v22/history 001–022. Exact release/process identity, active/running service with zero restarts, one loopback listener, loopback/public health/readiness, schema/history/checksum, SQLite integrity/FK, Core browser session/Library/details/preview/download, and the real asynchronous Compute canary are green. Ancestry verification later proved this source already descends frozen RF-SEARCH01 candidate `7bba7b8…`, so Search is visible; Phase 3 remains open until the post-gate exact Search release supersedes it.
+Production runs exact immutable Search-integrated Core/Compute source `b19f9dc5b48e1976127704712e08a8655b1fadd5`, previous application release `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, at schema v22/history 001–022. Exact release/process identity, active/running service with zero restarts, one loopback listener, loopback/public health/readiness, schema/history/checksum, SQLite integrity/FK, Core browser session/Library/details/preview/download, the real asynchronous Compute canary, and pre/post-deploy Search browser journeys are green.
+
+RF-SEARCH01 Phase 3 used artifact `9424397852`, build run `32417182890`,
+source `b19f9dc5…`, archive SHA-256
+`e75f0f1c53e1f0861692db2d58c262d8772232e52610d8fc4bdb98d4dacca6a8`,
+and manifest SHA-256
+`e152e01b8cd4e9ecd4c4ef1a058c4b555e97a21d3404b0687c7d6ca70d8d8a4a`.
+Deterministic build, independent download, local hashes, and production-host
+verification passed. Its runtime tree is byte-identical to `1c3bb10…` except
+artifact-manifest source identity. The application-only atomic switch required
+no migration or database/config/provider change. `1c3bb10…` is the immediate
+same-schema rollback; the older Phase 2 v21 rollback remains inseparable from
+its recorded pre-migration database/config pair.
 
 Owner-reported R3 browser storage acceptance passed on 2026-08-21 and
 `OPS-STORAGE-INCIDENT01` is closed. The separate Metadata Suggestion Core stall

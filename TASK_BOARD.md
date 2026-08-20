@@ -9,7 +9,7 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
-| GOAL-BETA-PREP01 | OWNER AUTHORIZED / PHASE 3 ACTIVE | Phase 2 Core/Compute production cutover and bounded canary are green; autonomously close RF-SEARCH01 on the latest baseline |
+| GOAL-BETA-PREP01 | OWNER AUTHORIZED / PHASE 4 ACTIVE | Phases 1–3 are green; implement only beta-minimum L1-UX08 Activity Center v0.1 + Source Recovery |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
@@ -22,8 +22,8 @@ The detailed Owner authorization, boundaries, mandatory sequence, credential/pri
 |---:|---|---|---|
 | 1 | COMPUTE-PRECUTOVER01 | `tasks/done/COMPUTE-PRECUTOVER01.md` | COMPLETE — exact source `1c3bb10…`, run `32407660640`; real OCR, provider-specific memory/drift, staging, privacy/output, and zero-artifact gates passed; production unchanged |
 | 2 | ARCH-COMPUTE01 production cutover | `tasks/doing/GOAL-BETA-PREP01.md` Phase 2 | COMPLETE — production `1c3bb10…`, schema v22/history 001–022, rollback `08657727…` + verified pre-migration DB, final canary run `32415058752` green |
-| 3 | RF-SEARCH01 production closure | `tasks/doing/RF-SEARCH01.md` + Goal Phase 3 | ACTIVE — ancestry proves composition is already present and focused/browser evidence is green; historical artifact is forbidden; build/verify/deploy a new exact post-gate artifact |
-| 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/ready/L1-UX08.md` + Goal Phase 4 | AUTHORIZED AFTER SEARCH GREEN — upload + Metadata/Compute + reliable download states, source recovery; no full task-history platform |
+| 3 | RF-SEARCH01 production closure | `tasks/done/RF-SEARCH01.md` + Goal Phase 3 | COMPLETE — source `b19f9dc5…`, artifact `9424397852`, browser/build/independent/local/host/deploy gates green; historical artifact never used |
+| 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/ready/L1-UX08.md` + Goal Phase 4 | ACTIVE — upload + Metadata/Compute + reliable download states, source recovery; no full task-history platform |
 | 5 | QA-GOLDEN01 | `tasks/ready/QA-GOLDEN01.md` + Goal Phase 5 | AUTHORIZED FINAL BETA GATE — exact-build real-browser journey with safe fixtures and cleanup |
 | 6 | INTERNAL_BETA_READY | `tasks/doing/GOAL-BETA-PREP01.md` | STOP — Owner decides whether/when to start or invite users into internal beta |
 
@@ -31,7 +31,7 @@ Goal Mode should move between these checkpoints autonomously when the changed-ri
 
 ## RF-SEARCH01 preserved implementation state
 
-RF-SEARCH01 remains behavior-frozen at exact candidate `7bba7b869fd1234c1e7c67002cb93368c299209b`. Ancestry verification corrected the earlier absence claim: Phase 2 source `1c3bb10…` already descends the candidate, so Search is visible in production even though the historical artifact was never reused. Search-specific files remain identical and focused authority/ranking/pagination plus desktop production-browser gates are green. Phase 3 is still open until a new exact post-gate artifact is independently verified and deployed.
+RF-SEARCH01 remains behavior-frozen at exact candidate `7bba7b869fd1234c1e7c67002cb93368c299209b`. Ancestry verification corrected the earlier absence claim: Phase 2 source `1c3bb10…` already descended the candidate, so Search was visible even though the historical artifact was never reused. Phase 3 closed the sequence on exact source `b19f9dc5…` / new artifact `9424397852`; focused authority/ranking/pagination and pre/post-deploy production-browser gates are green.
 
 ## Completed operational and Compute work
 
@@ -89,8 +89,8 @@ None of this queue is authorized by GOAL-BETA-PREP01.
 ## Current release boundary
 
 ```text
-DECLARED_PRODUCTION=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
-PREVIOUS_PRODUCTION=08657727a17a7ea766ad0d74cc663fa40f91eee1
+DECLARED_PRODUCTION=b19f9dc5b48e1976127704712e08a8655b1fadd5
+PREVIOUS_PRODUCTION=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
 PRODUCTION_SCHEMA=v22 / 001-022
 DEVELOPMENT_SCHEMA=v22 / 001-022
 MIGRATION_022_PRODUCTION_APPLIED=true
@@ -100,8 +100,9 @@ ARCH_COMPUTE01_PRODUCTION_CREDENTIALS_CHANGED=true_least_scoped
 ARCH_COMPUTE01_OSS_CHANGED=false
 ARCH_COMPUTE01_SEARCH_INCLUDED_BY_ANCESTRY=true
 
-SEARCH_ARTIFACT_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
-SEARCH_PRODUCTION=NOT_CUT_OVER
+SEARCH_HISTORICAL_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
+SEARCH_PRODUCTION_SOURCE=b19f9dc5b48e1976127704712e08a8655b1fadd5
+SEARCH_PRODUCTION=PASS
 INTERNAL_BETA_READY=false
 ```
 

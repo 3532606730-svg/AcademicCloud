@@ -163,11 +163,37 @@ backend tests pass 14/14, focused frontend tests pass 137/137, and all-workspace
 typecheck passes. The production in-app-browser desktop journey passes normal
 Library browse, Chinese title, author, author+title, original-filename fallback,
 no result, Escape/clear folder restoration, rapid-query stale safety, and
-opening the existing details surface. The production corpus has fewer than 50
-safe rows and no safely available Member session, so no production metadata or
-account was manufactured for those optional data-dependent probes; deterministic
-pagination/Member non-disclosure remains covered by the frozen tests. A new
-exact artifact and final deployment are still required before Phase 3 closes.
+opening the existing details surface. A 390×844 real-browser viewport then
+proved the mobile breakpoint, fixed bottom navigation/workspace clearance,
+Search result, and clear-to-catalogue behavior before the viewport was reset.
+The production corpus has fewer than 50 safe rows and no safely available
+Member session, so no production metadata or account was manufactured for those
+data-dependent probes; deterministic pagination/Member non-disclosure remains
+covered by the frozen tests.
+
+**Phase 3 result — COMPLETE (2026-08-21).** Exact post-gate source
+`b19f9dc5b48e1976127704712e08a8655b1fadd5` produced artifact `9424397852`
+in run `32417182890`; build job `96580888945` and independent download/verify
+job `96581600694` passed. GitHub artifact SHA-256 is
+`594dea1b1f6743ca0ead3558215e7ea26ab057336475ae1908a373f24f9af26b`,
+archive SHA-256 is
+`e75f0f1c53e1f0861692db2d58c262d8772232e52610d8fc4bdb98d4dacca6a8`,
+and manifest SHA-256 is
+`e152e01b8cd4e9ecd4c4ef1a058c4b555e97a21d3404b0687c7d6ca70d8d8a4a`.
+The 4,789 files / 34,151,198 bytes passed deterministic rebuild,
+independent/local/production-host verification. Compared with release
+`1c3bb10…`, every runtime byte is identical except the artifact manifest's
+source identity.
+
+Production now selects immutable `b19f9dc5…`, previous release `1c3bb10…`,
+at unchanged schema v22/history 001–022. The application-only atomic switch and
+restart passed exact process CWD, active/zero-restart service, one loopback
+listener, loopback/public health/readiness, unchanged SQLite row counts,
+`integrity_check=ok`, zero foreign-key violations, and the complete post-deploy
+desktop Search journey. No migration, database/source-object/metadata,
+credential, Compute, OSS/RAM/CORS, Nginx, memory-limit, or cost mutation
+occurred; rollback was not required. The historical Search artifact was never
+used. Phase 4 is authorized to proceed.
 
 ### Phase 4 — L1-UX08 Activity Center v0.1 + Source Recovery
 

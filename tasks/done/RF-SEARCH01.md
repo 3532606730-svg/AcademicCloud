@@ -4,9 +4,17 @@
 Add one quiet metadata/name search path to the normal `资料库`, preserving effective authority before ranking/counting/serialization and keeping folder navigation as the normal cleared-query view.
 
 ## Current State
-Development is complete and green, including Owner-review repairs and frontend pagination completeness. Exact historical immutable Linux x64 / Node 24 artifact is built and independently verified.
+Complete in production. Owner-review repairs, pagination completeness, authority/
+ranking tests, desktop and 390×844 production-browser journeys, new exact
+artifact verification, and deployment are green. The historical artifact was
+never reused.
 
-RF-SEARCH01 is not currently in production. The 2026-08-20 `OPS-STORAGE-APP-REPAIR01` deployment attempt nevertheless proved that repair source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6` descends from this frozen candidate and ships its Search UI/API. That incompatible repair artifact briefly exposed Search before an application-only rollback restored release `604cb8daf310696353e99c30ce7a924dc71ef9d2`. The later compatible storage-only hotfix deployed exact `988bdbf052de1a39b47a1e22ac761c977eec72c8`, and final R3 deployed exact `08657727a17a7ea766ad0d74cc663fa40f91eee1`; both explicitly exclude Search. No RF-SEARCH01 behavior changed during those repairs, but the historical artifact is no longer a deployable production candidate because the baseline has advanced through storage and Core/Compute work.
+Post-Compute ancestry verification proved frozen candidate `7bba7b8…` was
+already an ancestor of Phase 2 source `1c3bb10…`; Search-specific files remained
+byte-identical and the newer shared frontend retained the contract. Phase 3
+therefore required no cherry-pick or redesign, but it did correct the earlier
+absence claim and re-established the required browser-before-final-release
+sequence on new exact source `b19f9dc5…`.
 
 ```text
 FINAL_SEARCH_SOURCE_COMMIT=7bba7b869fd1234c1e7c67002cb93368c299209b
@@ -18,7 +26,10 @@ INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 FRONTEND_FULL_TESTS=241
 BACKEND_FULL_TESTS=373 (372 pass + 1 release-local E2E skip)
 MIGRATION_CHANGED=false
-PRODUCTION=ABSENT
+PRODUCTION_SOURCE=b19f9dc5b48e1976127704712e08a8655b1fadd5
+PRODUCTION_ARTIFACT_ID=9424397852
+PRODUCTION_ARTIFACT_RUN=32417182890
+PRODUCTION=PASS
 ```
 
 ## Implemented Contract
@@ -75,4 +86,37 @@ No migration, full-text/OCR search, embeddings, RAG, query history, external loo
 
 ## Next Action
 
-Remain behavior-frozen until GOAL-BETA-PREP01 Phase 3. Then integrate the existing Search behavior onto the latest post-Compute baseline, satisfy the browser gate, build/verify a new exact artifact, deploy, reconcile durable state, and continue to L1-UX08 only if the changed-risk evidence is green.
+Complete. Preserve the behavior and historical-artifact prohibition. Continue
+GOAL-BETA-PREP01 Phase 4 with L1-UX08 only.
+
+## Phase 3 production evidence
+
+- Focused backend Search tests: 14/14 pass.
+- Focused frontend Search/App tests: 137/137 pass; all-workspace typecheck pass.
+- Pre-cutover production browser: Library browse, Chinese title, author,
+  author+title, original filename fallback, no result, rapid-query stale safety,
+  Escape/clear restoration, and details open pass.
+- 390×844 real-browser viewport: mobile breakpoint, fixed bottom navigation,
+  workspace clearance, Search result, and clear restoration pass; viewport reset.
+- Production corpus has fewer than 50 safe rows and no safely available Member
+  session. No metadata/account was manufactured; frozen deterministic tests
+  cover pagination and Member non-disclosure.
+- Exact source: `b19f9dc5b48e1976127704712e08a8655b1fadd5`.
+- Build run/jobs: `32417182890` / `96580888945` / `96581600694`.
+- Artifact `9424397852`; GitHub SHA-256
+  `594dea1b1f6743ca0ead3558215e7ea26ab057336475ae1908a373f24f9af26b`;
+  archive SHA-256
+  `e75f0f1c53e1f0861692db2d58c262d8772232e52610d8fc4bdb98d4dacca6a8`;
+  manifest SHA-256
+  `e152e01b8cd4e9ecd4c4ef1a058c4b555e97a21d3404b0687c7d6ca70d8d8a4a`.
+- Deterministic rebuild, independent runner, local hash, and production-host
+  verifier pass; 4,789 files / 34,151,198 bytes.
+- Runtime tree is byte-identical to previous `1c3bb10…` except manifest source
+  identity. Production now selects `b19f9dc5…`; previous `1c3bb10…` is the
+  same-schema application-only rollback.
+- Exact process CWD, active service/zero restarts, one loopback listener,
+  loopback/public health/readiness, unchanged schema v22/history 001–022,
+  unchanged SQLite counts, integrity `ok`, zero foreign-key violations, and the
+  post-deploy Search journey pass.
+- No migration, database/source-object/metadata, credential, Compute,
+  OSS/RAM/CORS, Nginx, memory-limit, or cost mutation; rollback not required.
