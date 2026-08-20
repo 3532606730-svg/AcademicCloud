@@ -136,7 +136,7 @@ function normalizeMultipartPart(value: unknown): AliyunMultipartPartRow {
  * code sees the response; AliyunOssStorageAdapter still owns range/count/order
  * validation for the canonical values.
  */
-export function normalizeAliyunMultipartListResult(value: unknown): AliyunMultipartListResult {
+function normalizeAliyunMultipartListResult(value: unknown): AliyunMultipartListResult {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error("OSS returned an invalid multipart list response");
   }
