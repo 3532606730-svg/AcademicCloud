@@ -8,37 +8,39 @@
 
 AcademicCloud's domain model and backend architecture remain accepted: one Owner-governed shared academic corpus, private per-account research activity, browser-direct object-storage transfer, explicit lifecycle/CAS boundaries, and provider-neutral storage abstraction.
 
-The immediate problem is operational, not a product-model rewrite.
+The immediate problem is operational/runtime integration, not a product-model rewrite.
 
 ### Active production incident
 
-`OPS-STORAGE-INCIDENT01` is ACTIVE and remains open for Owner product
-acceptance. The bounded provider repair is complete and verified.
+`OPS-STORAGE-INCIDENT01` remains ACTIVE. The bounded provider permission repair is complete and verified; the incident cannot close until the application repair candidate is verified and the Owner's real-browser Continue/Abandon/metadata journeys pass.
 
 Owner-observed production symptoms after an Alibaba OSS overdue-payment interruption include:
 
 - the overdue-payment suspension caused historical `UserDisableError` failures;
-- after billing restoration, HeadObject/GetObject recovered but ListParts
-  returned AccessDenied 403;
-- effective-policy inspection proved the exact production RAM user had only
-  PutObject/GetObject/DeleteObject on the correct `objects/*` resource;
-- the Owner-authorized `AcademicCloudProdOSS` v2 added only ListParts and
-  AbortMultipartUpload, retained the exact prior scope, and is now default;
-- non-mutating production probes now pass stat, bounded Range read, and raw
-  ListParts (HTTP 200).
+- after billing restoration, HeadObject/GetObject recovered but ListParts returned AccessDenied 403;
+- effective-policy inspection proved the exact production RAM user had only PutObject/GetObject/DeleteObject on the correct `objects/*` resource;
+- the Owner-authorized `AcademicCloudProdOSS` v2 added only ListParts and AbortMultipartUpload, retained the exact prior scope, and is now default;
+- non-mutating production probes now pass stat, bounded Range read, and raw ListParts (HTTP 200).
 
-The policy root cause is **missing RAM allow**, with no explicit deny, bucket
-policy, resource/prefix mismatch, principal mismatch, invalid AccessKey, or
-provider-residual AccessDenied after the exact policy correction. No credential,
-application code/config, service restart, migration, SQLite write, object/part
-mutation, or Search release action occurred.
+The policy root cause was **missing RAM allow**, with no explicit deny, bucket policy, resource/prefix mismatch, principal mismatch, invalid AccessKey, or provider-residual AccessDenied after the exact policy correction. No credential, service restart, migration, SQLite write, object/part mutation, or Search release action occurred.
 
-The exact runtime verification also found that OSS supplies ListParts
-truncation/marker fields as strings while the current adapter expects
-boolean/numeric values. The raw provider call is authorized and green, but this
-separate response-normalization finding makes the required Owner real-browser
-Continue/Abandon checks decisive. No application repair is authorized in this
-provider-only operation.
+The exact runtime verification then proved a separate application defect: the production `ali-oss` runtime supplies `ListParts` `isTruncated` and `nextPartNumberMarker` as strings (`"false"`, `"0"` observed), while `AliyunOssClientPort` declares boolean/numeric values. The existing adapter therefore treats `"false"` as truthy and rejects `"0"` as a non-integer marker, converting a successful provider response into `storage_unavailable`.
+
+Metadata Suggestion remains a separate acceptance item. The bounded incident evidence tied the recorded suggestion failures to the overdue-payment disabled window (`UserDisableError` at `HeadObject`) and found zero suggestion-generation failures after 13:00. Therefore no Metadata Range/OCR/parser patch is authorized or justified unless a current post-repair browser attempt reproduces a new failure boundary.
+
+### Active source repair
+
+`OPS-STORAGE-APP-REPAIR01` is ACTIVE on isolated branch `codex/storage-runtime-contract-repair-20260820`, based exactly on authoritative branch commit `281263be7f6248a4d18e099b59cf49028ec277ca`.
+
+The Owner has authorized this bounded source repair. Its current implementation normalizes only the proven `ListParts` top-level XML scalar mismatch before the native OSS client is exposed. It preserves the existing SDK instance and every other SDK method path, leaves part-row validation in `AliyunOssStorageAdapter`, does not modify Search, and does not touch production.
+
+Current local-in-environment verification for the changed boundary:
+
+- strict TypeScript compile with local module stubs: PASS;
+- fake-SDK runtime smoke for `{ isTruncated: "false", nextPartNumberMarker: "0" }`: PASS;
+- repository-native focused/full tests, typechecks, builds, and `git diff --check`: PENDING because this environment cannot clone the repository or dispatch its workflow.
+
+No repair artifact has been built and no production application change is authorized yet.
 
 ## Production Declaration
 
@@ -51,11 +53,7 @@ SCHEMA=v21
 MIGRATIONS=001-021
 ```
 
-Live verification after the policy repair confirms the release symlink and
-process CWD are exact `604cb8d…`, schema is v21/history 001–021, service is
-active/running with `NRestarts=0`, and loopback/public health/readiness all
-return 200. Five multipart rows remain `uploading`; six file rows remain
-`pending_upload`.
+Live verification after the policy repair confirms the release symlink and process CWD are exact `604cb8d…`, schema is v21/history 001–021, service is active/running with `NRestarts=0`, and loopback/public health/readiness all return 200. Five multipart rows remain `uploading`; six file rows remain `pending_upload`.
 
 No search production cutover has occurred.
 
@@ -74,17 +72,18 @@ INDEPENDENT_ARTIFACT_VERIFICATION=PASS
 
 RF-SEARCH01 production is blocked by two gates:
 
-1. complete Owner product acceptance and close `OPS-STORAGE-INCIDENT01`;
+1. complete `OPS-STORAGE-APP-REPAIR01`, then complete Owner product acceptance and close `OPS-STORAGE-INCIDENT01`;
 2. complete mandatory real-browser pre-cutover acceptance.
 
 Do not rebuild or modify the search release candidate unless a concrete defect requires it.
 
 ## Reliability / Product-Maturity Interlock
 
-Before resuming broad Personal Research Workspace expansion, the new priority order is:
+Before resuming broad Personal Research Workspace expansion, the priority order is:
 
 ```text
-OPS-STORAGE-INCIDENT01
+OPS-STORAGE-APP-REPAIR01
+→ OPS-STORAGE-INCIDENT01 closure
 → RF-SEARCH01 production closure
 → L1-UX08 Upload Activity & Source Recovery
 → OPS-DEPENDENCY01 Dependency Health
@@ -112,15 +111,14 @@ Server-authoritative checksum identity remains mandatory before reusing existing
 
 ## Safety Boundaries
 
-- No production mutation is authorized by this reconciliation.
-- No migration is authorized.
-- No Search cutover until incident + browser gates pass.
+- The current authorization covers source repair and repository verification only; no production deployment or service restart is authorized.
+- No further RAM/OSS policy mutation is authorized by this repair.
+- No migration, credential change, SQLite mutation, manual multipart complete/abort, pending-upload deletion, or metadata mutation is authorized.
+- No Metadata Suggestion implementation change without a current reproduced post-repair failure boundary.
+- No Search cutover until the storage repair, incident closure, and browser gates pass.
 - SQLite + modular monolith + browser-direct object storage remain the accepted near-term architecture.
 - No OCR/full-text/embeddings/RAG expansion until the reliability interlock is deliberately cleared.
 
 ## Next Action
 
-STOP FOR OWNER PRODUCT ACCEPTANCE. The Owner manually tests Continue upload,
-Abandon upload, and Find metadata suggestions. Preserve every pending upload and
-do not close `OPS-STORAGE-INCIDENT01` until those real-browser journeys pass.
-RF-SEARCH01 remains frozen and untouched.
+Run repository-native verification on exact branch `codex/storage-runtime-contract-repair-20260820`. If all required tests/typechecks/builds/diff checks pass, perform an independent diff review and then present a separate Owner-gated release decision. Production remains unchanged until that gate. Preserve every pending upload. RF-SEARCH01 remains frozen and untouched.
