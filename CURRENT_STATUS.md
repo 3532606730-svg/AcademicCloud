@@ -9,21 +9,31 @@ evidence without duplicating it here.
 ## Current situation
 
 The first Core/Compute separation vertical slice is complete in development.
-Its exact final GitHub-hosted qualification run is green, but the fixed 512 MiB
-Node RSS gate was not reproducible across clean runners, so production cutover
-remains technically blocked and unauthorized.
+`COMPUTE-GHA02` proved the real GitHub-hosted Linux runtime, real pinned
+Tesseract OCR, privacy/output boundaries, and the absence of repeating RSS
+drift, while also proving two pre-cutover blockers: the historical fixed
+512 MiB Node RSS gate is not reproducible across clean hosted runners, and the
+protected production job still requests `runtime/tesseract` although the pinned
+builder accepts normalized repository `output/` paths only.
 
-Production remains unchanged:
+The Owner has now explicitly authorized `GOAL-BETA-PREP01` for Codex Goal Mode
+to continue autonomously through the bounded beta-prep sequence and STOP only at
+`INTERNAL_BETA_READY` (or an explicit hard-stop condition) before actually
+starting/inviting users into internal beta.
+
+Production is still unchanged at the start of this program:
 
 ```text
 PRODUCTION_RELEASE=08657727a17a7ea766ad0d74cc663fa40f91eee1
 PREVIOUS_RELEASE=988bdbf052de1a39b47a1e22ac761c977eec72c8
 SCHEMA=v21
 MIGRATIONS=001-021
+INTERNAL_BETA_READY=false
 ```
 
-Development now has migration 022 and therefore exercises schema v22/history
-001–022 only in disposable local/test databases.
+Development has migration 022 and therefore exercises schema v22/history
+001–022 only in disposable local/test databases until the authorized production
+cutover phase actually begins.
 
 ## Storage incident closure
 
@@ -34,9 +44,9 @@ failed-closed deployment, rollback, CORS, pending-upload, and production
 verification evidence remains unchanged in the completed incident,
 application-repair, and hotfix cards.
 
-No further RAM/OSS/CORS policy mutation is authorized. The incompatible
-Search-bearing artifact `9405764771` / source `8d289702…` must never be selected
-under the no-Search boundary.
+No further RAM/OSS/CORS policy mutation is part of GOAL-BETA-PREP01. The
+incompatible Search-bearing artifact `9405764771` / source `8d289702…` must never
+be selected.
 
 ## Separate Metadata Suggestion memory incident
 
@@ -100,17 +110,6 @@ BUILD=PASS
 COMPILED_ACCEPTANCE=PASS
 ```
 
-Five identical 20-page/two-rendered-page memory-probe runs, using a deterministic
-OCR fixture to isolate the PDF.js/native-canvas lifecycle, recorded
-248,520,704-byte clean-start RSS, 501,194,752-byte peak RSS,
-476,028,928-byte final post-job RSS, and only 1,134,592 bytes of run-one to
-run-five post-run drift. These local Node RSS figures do not include a Linux
-Tesseract child process; the Compute workflow verifies real Tesseract, and a
-whole-clean-runner peak remains mandatory production-cutover evidence. The first
-PDF/native runtime load is substantial, so
-clean process-per-job isolation, concurrency one, and the workflow memory
-assertion remain part of the contract.
-
 ## COMPUTE-GHA02 hosted qualification
 
 Exact base `7389fc3d5c8b94ffce8a1a2aaf3d29fbcbcaa106` was qualified through
@@ -123,7 +122,7 @@ output/production-shell safety step. The protected production Compute job was
 skipped, no artifact was uploaded, no production secret was supplied, and only
 repository fixtures/synthetic pages were processed.
 
-Final exact-run memory evidence was:
+Final exact-run memory evidence:
 
 ```text
 CLEAN_START_RSS_BYTES=267780096
@@ -135,57 +134,53 @@ NODE_PEAK_GATE_BYTES=536870912
 FINAL_RUN_HEADROOM_BYTES=2875392
 ```
 
-This one pass is not a reproducible cutover qualification. Two immediately
+This one pass is not a reproducible 512 MiB qualification. Two immediately
 preceding clean hosted probes of the unchanged Compute code peaked at
-547,672,064 and 549,146,624 bytes and failed the same fixed gate. The only
-change between the last failed source and the green source emits the already
-collected GNU RSS line after probe completion; it cannot explain the measured
-spread. No threshold, memory limit, or Compute code was changed. The durable
-evidence is `tasks/done/COMPUTE-GHA02.md`.
+547,672,064 and 549,146,624 bytes and failed the same fixed gate. No threshold,
+memory limit, or Compute code was changed. The durable evidence is
+`tasks/done/COMPUTE-GHA02.md`.
 
-The first hosted failure also exposed an untouched production-workflow staging
-mismatch: the pinned builder rejects targets outside repository `output/`, while
-the protected production job still requests `runtime/tesseract`. The
-qualification job uses its own valid `output/qualification` staging path. The
-protected job was skipped and remained unmodified, so the smallest safe
-build/stage/promote repair for that production path is also required before
-cutover planning.
+The first hosted failure also exposed the protected production-workflow staging
+mismatch: the builder rejects targets outside repository `output/`, while the
+protected production job still requests `runtime/tesseract`. The qualification
+job uses a valid `output/qualification` staging path. That protected path was
+never executed or repaired during qualification.
 
-ADR-031 is authoritative for the architecture, security, timeout, release, and
-production migration consequences.
+ADR-031 remains authoritative for the architecture/security/callback model.
 
-## Production cutover gate
+## Active Owner-authorized program — GOAL-BETA-PREP01
 
-This checkpoint did not contact or mutate production. Before even planning a
-future cutover, the Owner must separately authorize a bounded investigation or
-implementation repair for the non-reproducible hosted memory headroom and the
-smallest protected-job runtime staging repair. A later cutover still requires a
-separate exact backup/migration/artifact/secrets/protected-environment/deployment
-plan. The minimal new secret values remain:
+Codex Goal Mode is authorized to proceed in this exact order:
 
-1. a least-scoped GitHub workflow-dispatch token held by Core;
-2. one strong bootstrap secret installed in Core and the protected GitHub
-   environment.
+1. **COMPUTE-PRECUTOVER01** — make the GitHub-hosted memory contract evidence-backed/provider-specific and repair the protected Tesseract staging mismatch without touching production;
+2. **Core/Compute production cutover** — exact artifact/rollback pair, verified production SQLite backup, migration 022, minimum least-privilege Compute credential/environment setup, deployment/restart, and one bounded production canary proving Core remains responsive while Compute runs;
+3. **RF-SEARCH01 production closure** — do not deploy the historical artifact; compose the already-green Search behavior onto the latest post-Compute baseline, run its mandatory browser gate, build/verify a new artifact, then deploy;
+4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery** — upload live states/recovery plus durable Metadata/Compute queued/processing/succeeded/failed and reliable download preparing/started/failed states; no broad notification/history platform;
+5. **QA-GOLDEN01** — exact-build real-browser journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
 
-Non-secret routing must pin the exact repository/workflow/ref and exact Core
-HTTPS origin. A later cutover must verify rollback pairing, migration 022,
-release identity, service and health/readiness, Auth and Library isolation,
-durable async state across reload, failed/stale job classification, candidate
-review, and unchanged canonical metadata authority. Because a GitHub-hosted
-runner transiently processes the selected private PDF, the Owner must also
-accept that provider/privacy boundary; the workflow must continue to emit no
-source URL, capability, document text, or candidate payload to logs/artifacts.
+When all are green, set `INTERNAL_BETA_READY=true`, reconcile exact release,
+schema, rollback pointer and durable repository state, then STOP for the Owner's
+actual internal-beta decision.
+
+## Credential/privacy/cost boundaries
+
+- Codex may generate/install one strong bootstrap secret without printing or logging it.
+- A least-scoped workflow-dispatch credential may be used if already available/provisionable without broad account privilege. Do not repurpose/store a broad personal GitHub token on production. If a compliant dispatch credential requires Owner interaction, STOP only at that exact credential gate.
+- The Owner accepts one bounded production canary PDF being transiently processed by a GitHub-hosted runner through the ADR-031 short-lived single-object capability model, with no raw PDF/text/candidates/source URL/capability in logs or workflow artifacts.
+- No paid infrastructure, second server, cost-bearing object-backup work, broad provider-policy mutation, or unrelated roadmap work is authorized.
+- Do not change production `MemoryHigh`/`MemoryMax` merely to hide a Compute defect.
 
 ## RF-SEARCH01
 
-RF-SEARCH01 remains frozen, unchanged, and absent from production. Its exact
-candidate remains `7bba7b869fd1234c1e7c67002cb93368c299209b`. No Search source,
-artifact, deployment, or acceptance work was performed by ARCH-COMPUTE01.
+RF-SEARCH01 remains frozen in behavior and absent from production until its
+GOAL-BETA-PREP01 Phase 3. Its exact historical candidate is
+`7bba7b869fd1234c1e7c67002cb93368c299209b`; that old artifact must not be
+deployed directly because production has advanced. Search must be recomposed on
+the latest post-Compute baseline with a new exact artifact and browser gate.
 
 ## Next action
 
-**STOP FOR OWNER REVIEW.** Do not infer production qualification from the one
-narrow green hosted memory run. Do not deploy, restart production, change memory
-limits, create/rotate/install production credentials, apply migration 022,
-mutate production SQLite/OSS/RAM/CORS/pending uploads, or progress RF-SEARCH01
-under the current authorization.
+**CONTINUE IN GOAL MODE.** Recover `tasks/doing/GOAL-BETA-PREP01.md`, start
+Phase 1, and continue autonomously across green checkpoints. Stop early only for
+the explicit hard boundaries in that card; otherwise stop only when
+`INTERNAL_BETA_READY=true`, before starting/inviting users into internal beta.
