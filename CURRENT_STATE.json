@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T03:37:48+08:00",
+  "updatedAt": "2026-08-21T04:46:35+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
   "production": {
-    "declaredRelease": "08657727a17a7ea766ad0d74cc663fa40f91eee1",
-    "previousRelease": "988bdbf052de1a39b47a1e22ac761c977eec72c8",
-    "schema": 21,
-    "migrationHead": 21,
-    "migrationHistory": "001-021",
+    "declaredRelease": "1c3bb10a48082995924a2d9ec41a48d6d3d34acd",
+    "previousRelease": "08657727a17a7ea766ad0d74cc663fa40f91eee1",
+    "schema": 22,
+    "migrationHead": 22,
+    "migrationHistory": "001-022",
     "liveProcessIdentityNeedsIncidentReverification": false
   },
-  "activeIncidents": ["OPS-METADATA-MEMORY01"],
+  "activeIncidents": [],
   "activeTasks": ["GOAL-BETA-PREP01", "RF-SEARCH01"],
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
@@ -154,7 +154,7 @@
   },
   "metadataMemoryIncident": {
     "task": "OPS-METADATA-MEMORY01-DIAGNOSIS",
-    "status": "diagnosis complete; production remediation not cut over",
+    "status": "closed by ARCH-COMPUTE01 production cutover and bounded canary; heavy work no longer executes in Core",
     "trigger": "POST metadata suggestions heavy PDF/render/OCR path",
     "firstFailureBoundary": "Core Node event loop blocked by cgroup memory reclaim",
     "memoryHigh": "320MiB",
@@ -169,11 +169,11 @@
     "program": "ARCH-COMPUTE01",
     "baseCommit": "67f6958401a9d826f44c67eba7e3f0c662b6d7c2",
     "tasks": ["JOB-CORE01", "COMPUTE-GHA01", "OCR-METADATA-GHA01"],
-    "developmentStatus": "development and COMPUTE-PRECUTOVER01 complete; GOAL-BETA-PREP01 Phase 2 is stopped before mutation at the least-scoped dispatch-credential gate",
+    "developmentStatus": "development, COMPUTE-PRECUTOVER01, and GOAL-BETA-PREP01 Phase 2 production cutover complete",
     "developmentSchema": 22,
     "developmentMigrationHistory": "001-022",
-    "productionMigrationApplied": false,
-    "productionChanged": false,
+    "productionMigrationApplied": true,
+    "productionChanged": true,
     "coreOcrRuntimeDependency": false,
     "coreNativeCanvasRequestPath": false,
     "computeProvider": "GitHub Actions adapter behind provider-neutral contract",
@@ -223,7 +223,7 @@
     },
     "preCutover": {
       "task": "COMPUTE-PRECUTOVER01",
-      "status": "complete; Phase 2 subsequently reached its explicit pre-mutation credential hard stop",
+      "status": "complete; Phase 2 subsequently completed the production cutover and one bounded canary",
       "baseSource": "decfde4d06d359f0cb9873682293ff828bac5ab9",
       "qualifiedSource": "1c3bb10a48082995924a2d9ec41a48d6d3d34acd",
       "workflowRun": 32407660640,
@@ -253,8 +253,8 @@
       "productionJobExecuted": false,
       "productionChanged": false
     },
-    "productionCutoverPreflight": {
-      "status": "hard stop at minimum least-scoped GitHub workflow-dispatch credential gate; production untouched",
+    "productionCutover": {
+      "status": "pass; exact cutover, migration 022, least-scoped credentials/environment, and one bounded canary complete",
       "repositoryCheckpoint": "a3af736e36b3830f728e60e92cfb483e26a0b28f",
       "artifactSource": "1c3bb10a48082995924a2d9ec41a48d6d3d34acd",
       "productionBuildRun": 32407660568,
@@ -269,6 +269,7 @@
       "manifestTotalBytes": 34151198,
       "artifactExpiresAt": "2026-08-27T19:19:09Z",
       "buildAndIndependentVerification": "pass",
+      "downloadedArtifactVerification": "pass; exact archive and manifest rehashed locally and verified again on the production host before installation",
       "coreOcrRuntime": false,
       "corePdfRenderRuntime": false,
       "productionReadOnlyPreflight": {
@@ -285,19 +286,65 @@
         "githubProtectedEnvironmentPresent": false,
         "fineGrainedPersonalAccessTokensPresent": false
       },
-      "credentialRequirement": "fine-grained token owned by 3532606730-svg, repository access limited to AcademicCloud, repository Actions permission write, bounded expiration; no classic/broad repo token",
-      "ownerInteractionRequired": "GitHub sudo-mode email identity verification is required before token creation; stop before clicking Verify via email or generating persistent access",
-      "backupCreated": false,
-      "migration022Applied": false,
-      "productionEnvironmentChanged": false,
-      "githubEnvironmentChanged": false,
-      "productionChanged": false
+      "credentialRequirement": "satisfied by a 30-day fine-grained token owned by 3532606730-svg, repository access limited to AcademicCloud, repository Actions permission write plus required read-only metadata; no classic/broad repo token",
+      "ownerInteractionRequired": false,
+      "credentialValuesRecorded": false,
+      "githubEnvironment": "academiccloud-compute-production; one protected bootstrap secret plus exact Core-origin and branch-ref variables",
+      "productionEnvironment": "seven root-only Compute routing/secret keys; no broad credential and no value recorded in repository evidence",
+      "backup": {
+        "stoppedServiceWriteFreeze": true,
+        "localFile": "academiccloud-pre-compute-20260820T200600Z.sqlite",
+        "bytes": 778240,
+        "sha256": "1c00b6bcb9fe7e5aaf30a28c9e0b797753626d0ec99f79d2ebe799d097a8609a",
+        "schema": 21,
+        "sqliteIntegrity": "ok",
+        "foreignKeyViolations": 0,
+        "offHostRepositoryCommit": "22b05321febe6bfceb7d1bd609b30b499937b7d2",
+        "offHostIndependentRehash": "pass",
+        "rollbackApplicationRelease": "08657727a17a7ea766ad0d74cc663fa40f91eee1"
+      },
+      "migration022Applied": true,
+      "migration022Sha256": "07dfe1147d830754dd16dce791dfae6bbe234eeea37985901f763575a4645574",
+      "productionEnvironmentChanged": true,
+      "githubEnvironmentChanged": true,
+      "productionRelease": "1c3bb10a48082995924a2d9ec41a48d6d3d34acd",
+      "productionSchema": 22,
+      "productionMigrationHistory": "001-022",
+      "sqliteIntegrityAfter": "ok",
+      "foreignKeyViolationsAfter": 0,
+      "service": "active; NRestarts=0; one loopback listener; loopback/public health ok and readiness ready",
+      "coreBrowserGate": "pass; existing Owner session, Library browse, details, preview, and download remained usable; prior Owner R3 upload acceptance remains valid",
+      "canary": {
+        "logicalJobId": "2cb8a0b6-fb37-4b51-bd3b-f9330dbbbde7",
+        "attempts": 2,
+        "finalWorkflowRun": 32415058752,
+        "finalWorkflowJob": 96574206668,
+        "workflowSource": "440b556ec6cdcfeab322985abe73b5a6a47d65d5",
+        "state": "succeeded",
+        "progress": 100,
+        "candidateCount": 1,
+        "canonicalMetadataChanged": false,
+        "sourceOrObjectMutated": false,
+        "coreResponsiveDuringCompute": true,
+        "githubArtifactCount": 0,
+        "githubLogPrivacyScan": "pass",
+        "coreJournalPrivacyScan": "pass"
+      },
+      "boundedRepairs": [
+        "runner-owned output promotion ancestor while retaining repository-output-only staging",
+        "execute the worker from the same staged release tree as its verified release-local Tesseract runtime"
+      ],
+      "ramChanged": false,
+      "ossRamCorsChanged": false,
+      "costChanged": false,
+      "rollbackRequired": false,
+      "productionChanged": true
     },
     "remainingProductionSecrets": [
       "least-scoped GitHub workflow-dispatch token held by Core",
       "one shared bootstrap secret installed in Core and the protected GitHub environment"
     ],
-    "next": "Owner completes GitHub sudo-mode email verification and authorizes the exact single-repository Actions-write fine-grained token; then resume GOAL-BETA-PREP01 Phase 2 at the credential gate"
+    "next": "GOAL-BETA-PREP01 Phase 3: compose frozen RF-SEARCH01 behavior onto the post-Compute baseline, pass its browser gate, build a new exact artifact, and deploy it"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -322,8 +369,8 @@
     "target": "INTERNAL_BETA_READY",
     "internalBetaReady": false,
     "stopBeforeStartingInternalBeta": true,
-    "currentPhase": "Phase 2 / ARCH-COMPUTE01 hard stop at least-scoped dispatch credential gate",
-    "completedPhases": ["COMPUTE-PRECUTOVER01"],
+    "currentPhase": "Phase 3 / RF-SEARCH01 production closure",
+    "completedPhases": ["COMPUTE-PRECUTOVER01", "ARCH-COMPUTE01 production cutover"],
     "phases": [
       "COMPUTE-PRECUTOVER01: provider-specific hosted memory contract plus protected Tesseract staging repair",
       "ARCH-COMPUTE01 production cutover: backup + migration 022 + minimum credentials/environment + exact deploy + bounded canary",
@@ -331,8 +378,8 @@
       "L1-UX08 beta-minimum unified Activity Center v0.1 plus Source Recovery",
       "QA-GOLDEN01 exact-release real-browser final gate"
     ],
-    "productionCutoverAuthorization": "active after Phase 1 green and bounded by GOAL-BETA-PREP01 Phase 2, but execution is stopped before mutation pending the required Owner credential interaction",
-    "hardStop": "Owner must complete GitHub sudo-mode email verification and authorize creation of one repository-limited fine-grained Actions-write dispatch token; no production mutation occurred",
+    "productionCutoverAuthorization": "consumed successfully within GOAL-BETA-PREP01 Phase 2; rollback pair, migration, exact artifact, minimum credentials/environment, service invariants, and bounded canary are green",
+    "hardStop": null,
     "credentialRule": "bootstrap secret may be generated/installed without logging; broad personal GitHub token must not be stored on production; stop only if a compliant least-scoped dispatch credential requires Owner interaction",
     "privacyBoundary": "Owner accepts one bounded production canary PDF transiently processed on GitHub-hosted runner through ADR-031 single-object short-lived capability; no raw PDF/text/candidates/source URL/capability in logs or artifacts",
     "costBoundary": "no paid infrastructure, second server, or cost-bearing object-backup work",
@@ -340,7 +387,6 @@
     "finalStop": "when INTERNAL_BETA_READY=true, reconcile exact release/schema/rollback/durable state and STOP for Owner internal-beta decision"
   },
   "currentPriorityOrder": [
-    "GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 — hard stop at least-scoped dispatch credential gate",
     "GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure",
     "GOAL-BETA-PREP01 Phase 4 / L1-UX08 Activity Center v0.1 + Source Recovery",
     "GOAL-BETA-PREP01 Phase 5 / QA-GOLDEN01",
@@ -362,13 +408,15 @@
     "COMPUTE-GHA02 final hosted run 32403834659 passed contracts, Compute, pinned Tesseract 5.5.3, real OCR, exact five-run memory gate, output safety, and zero-artifact checks; production job execution was skipped and no private PDF was processed.",
     "Hosted memory headroom under the historical fixed 512 MiB gate was not reproducible: two clean runs peaked at 547672064 and 549146624 bytes while the final run peaked at 533995520 bytes with only 2875392 bytes of headroom; COMPUTE-PRECUTOVER01 resolved this through an evidence-backed provider-specific contract rather than silent global threshold tuning.",
     "COMPUTE-GHA02 deliberately did not execute the protected production job; COMPUTE-PRECUTOVER01 later repaired its runtime/tesseract versus repository-output-only mismatch while preserving the builder safety boundary.",
-    "Production remains on schema v21/history 001-021 until GOAL-BETA-PREP01 Phase 2 actually passes its preflight and applies migration 022.",
+    "GOAL-BETA-PREP01 Phase 2 deployed exact Core source 1c3bb10 at schema v22/history 001-022 after a stopped-service verified backup; the immediate rollback pair is application release 08657727 plus academiccloud-pre-compute-20260820T200600Z.sqlite.",
     "RF-SEARCH01 behavior remains frozen; Goal Mode may only compose it onto the latest post-Compute baseline, satisfy the mandatory browser gate, build a new exact artifact, and then deploy within Phase 3.",
     "Owner authorization now permits autonomous progression through beta-prep phases; routine implementation choices do not require another Owner round-trip, but the explicit hard-stop conditions in tasks/doing/GOAL-BETA-PREP01.md remain binding.",
     "Internal beta itself is not authorized to start automatically; STOP after INTERNAL_BETA_READY is proven and recorded.",
     "COMPUTE-PRECUTOVER01 qualified exact source 1c3bb10 on hosted run 32407660640: real Tesseract passed, peak RSS was 547860480 bytes under the provider-specific 805306368-byte gate, five-run drift was 225280 bytes under 64 MiB, privacy/output scan passed, and no artifact or production job was created.",
     "The protected Compute job now preserves the builder output-only boundary by staging under output/worker-stage, verifying the pinned runtime, and promoting atomically to output/worker; static deployment tests prevent build/verify/runtime paths from diverging.",
-    "Phase 2 exact Core artifact 9421010643 from source 1c3bb10 passed deterministic build and independent verification; it expires at 2026-08-27T19:19:09Z and was not downloaded, installed, or selected on production.",
-    "Phase 2 stopped before backup, migration, credential, GitHub Environment, deployment, or canary mutation because production has no Compute keys, the repository has no protected Compute Environment, the account has no fine-grained PAT, and GitHub requires Owner sudo-mode email verification before creating the required persistent least-scoped credential."
+    "Phase 2 exact Core artifact 9421010643 from source 1c3bb10 passed deterministic build, independent/local/host verification, and was installed as the immutable production release.",
+    "Owner email verification and exact-scope approval allowed one 30-day single-repository Actions-write fine-grained token; production and the protected GitHub Environment received only the minimum routing/bootstrap material, with no secret value recorded in repository evidence.",
+    "The single logical production canary job 2cb8a0b6-fb37-4b51-bd3b-f9330dbbbde7 succeeded on its second attempt in final run 32415058752 after two bounded workflow staging/runtime-path repairs; Core remained responsive, the candidate stayed reviewable, canonical metadata stayed unchanged, and GitHub artifacts plus sensitive log matches were zero.",
+    "No MemoryHigh/MemoryMax, Nginx, OSS, RAM, CORS, bucket-policy, source-object, canonical-metadata, or paid-infrastructure change occurred in Phase 2; RF-SEARCH01 is still absent and is now the active phase."
   ]
 }

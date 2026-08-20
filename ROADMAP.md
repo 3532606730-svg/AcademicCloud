@@ -41,14 +41,14 @@ did not OOM or restart, but the event loop stalled and therefore blocked Auth,
 Library, health, and unrelated requests. The Owner authorized the first gradual
 Core/Compute separation rather than a memory-limit-only workaround.
 
-`ARCH-COMPUTE01` is complete in development. Migration 022 supplies durable
+`ARCH-COMPUTE01` is complete in production. Migration 022 supplies durable
 job authority in Core; GitHub Actions is the first adapter behind a
 provider-neutral Compute interface; the existing bounded front-matter OCR and
 Metadata Suggestion heavy path runs one page at a time in one clean worker; and
 the browser uses durable queued/processing/succeeded/failed state. Core retains
 all Auth, Library, SQLite, storage, suggestion-review, and canonical metadata
-authority. Production remains v21 until the authorized cutover phase actually
-passes its preflight.
+authority. The exact Core/Compute cutover now runs at schema v22/history
+001–022.
 
 `COMPUTE-GHA02` qualified the exact workflow-only checkpoint on a real
 GitHub-hosted `ubuntu-24.04` runner. Its final exact run passed contracts,
@@ -64,23 +64,27 @@ that path.
 The Owner has now authorized `GOAL-BETA-PREP01` as the bounded autonomous
 program that clears these two blockers and proceeds to internal-beta readiness:
 
-COMPUTE-PRECUTOVER01 has since cleared both blockers on exact hosted run
+COMPUTE-PRECUTOVER01 cleared both blockers on exact hosted run
 `32407660640`: source `1c3bb10…` passed real OCR, the explicit GitHub-hosted
 `<768 MiB` peak and retained `<64 MiB` drift contracts, verified `output/`
 stage/promote, privacy/output scanning, and zero-artifact checks without
 production execution. Phase 2 then built and independently verified exact Core
-artifact `9421010643` and passed read-only production preflight, but stopped
-before every mutation because GitHub requires Owner sudo-mode email verification
-before the required single-repository Actions-write credential can be created.
+artifact `9421010643`. After Owner email verification and exact-scope approval,
+it created only the minimum 30-day single-repository Actions-write credential
+and protected Compute Environment, took and independently verified the stopped-
+service/off-host backup, applied only migration 022, deployed exact `1c3bb10…`,
+and passed one bounded real canary in final run `32415058752`. Core remained
+responsive; canonical metadata, source bytes, OSS/RAM/CORS, memory limits, and
+cost remained unchanged.
 
 ```text
 GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01 — COMPLETE
   hosted provider-specific memory-contract decision
   + smallest protected Tesseract staging repair
-→ GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover — HARD STOP AT CREDENTIAL GATE
+→ GOAL-BETA-PREP01 Phase 2 / ARCH-COMPUTE01 production cutover — COMPLETE
   backup + migration 022 + minimum least-privilege Compute credentials/environment
   + exact artifact/deploy + one bounded canary
-→ GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure
+→ GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure — ACTIVE
   compose existing Search behavior onto latest baseline
   + mandatory browser gate + new exact artifact + deploy
 → GOAL-BETA-PREP01 Phase 4 / L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery
@@ -134,7 +138,7 @@ remaining empty-marker/abandon-routing repair and exact CORS delta. Production
 invariants and pending state were preserved, and Owner-reported browser storage
 acceptance passed. The later Metadata Suggestion memory stall is separate.
 
-### ARCH-COMPUTE01 — development/pre-cutover complete, production cutover stopped at credential gate
+### ARCH-COMPUTE01 — production cutover complete
 `JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01` implement the smallest durable
 Core-owned job abstraction and one clean GitHub Actions worker. The existing
 front-matter OCR/metadata behavior is migrated rather than redesigned. Core no
@@ -146,16 +150,16 @@ final 533,995,520-byte peak passed narrowly with only 4,247,552 bytes of
 run-one-to-five post-RSS drift. COMPUTE-PRECUTOVER01 repaired both blockers:
 exact run `32407660640` passed at a 547,860,480-byte peak and 225,280-byte
 five-run drift under the explicit GitHub-hosted `<768 MiB` / `<64 MiB`
-contract, and the protected runtime now uses verified `output/worker-stage` →
-`output/worker` promotion. Exact Phase 2 artifact `9421010643` then passed build
-and independent verification, while read-only production preflight re-proved
-release `08657727…`, rollback `988bdbf…`, schema v21/history 001–021, SQLite
-integrity, and zero foreign-key violations. Production has no Compute keys, the
-repository has no protected Compute Environment, and the account has no
-fine-grained PAT. GitHub requires Owner sudo-mode email verification before the
-minimum repository-limited Actions-write token can be created, so the program
-stopped before backup, migration, credential, environment, deploy, restart, or
-canary mutation.
+  contract, and the protected runtime now uses verified `output/worker-stage` →
+  `output/worker` promotion. Exact Phase 2 artifact `9421010643` passed build and
+  independent/local/host verification. Production was frozen for a verified
+  schema-v21 backup, whose encrypted off-host copy at commit `22b05321…` was
+  independently rehashed, then only migration 022 was applied and exact
+  `1c3bb10…` selected. The immediate rollback pair is application release
+  `08657727…` plus `academiccloud-pre-compute-20260820T200600Z.sqlite`.
+  Least-scoped routing/credentials are protected outside Git, and the final
+  canary run `32415058752` passed real OCR/memory/callback/privacy/zero-artifact
+  evidence with Core responsive and canonical metadata unchanged.
 
 ### RF-SEARCH01 — implementation/artifact complete, production closure authorized later in Goal Mode
 Metadata/name catalogue search is green in development. Final historical source
@@ -286,20 +290,17 @@ Database metadata and object bytes are separate recovery domains. A verified SQL
 
 ## Production Track
 
-Repository-declared production remains exact bounded R3 release
-`08657727a17a7ea766ad0d74cc663fa40f91eee1`, previous release
-`988bdbf052de1a39b47a1e22ac761c977eec72c8`, at unchanged schema v21/history
-001-021 **until GOAL-BETA-PREP01 Phase 2 actually passes preflight and performs
-the authorized cutover**. ARCH-COMPUTE01 is the development checkpoint at schema
-v22; COMPUTE-GHA02 changed only the GitHub qualification path and left
-production untouched.
+Repository-declared production now runs exact Core/Compute release
+`1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, previous application release
+`08657727a17a7ea766ad0d74cc663fa40f91eee1`, at schema v22/history 001–022.
+Rollback to the previous application is inseparable from the verified
+pre-migration backup `academiccloud-pre-compute-20260820T200600Z.sqlite`.
 
-GOAL-BETA-PREP01 Phase 2 explicitly authorizes, after Phase 1 green, the smallest
-safe production backup verification, migration 022, minimum Compute
-credentials/environment, exact artifact/deployment/restart, and one bounded
-canary under the card's credential/privacy/rollback boundaries. This does not
-authorize paid infrastructure, broad credentials, unrelated provider policy
-changes, or destructive data manipulation.
+GOAL-BETA-PREP01 Phase 2 consumed its bounded authority successfully: stopped-
+service backup verification, off-host encrypted evidence, migration 022,
+minimum Compute credentials/environment, exact artifact/deployment/restart, and
+one bounded canary are green. It introduced no paid infrastructure, broad
+credential, provider-policy change, or destructive data manipulation.
 
 RF-SEARCH01 release candidate remains historical evidence at
 `7bba7b869fd1234c1e7c67002cb93368c299209b`; documentation/planning

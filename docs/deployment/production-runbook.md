@@ -5,13 +5,14 @@ This runbook prepares the approved Layer 1 single-host topology: Nginx serves th
 The checked-in files are templates, not authorization to mutate the server or cloud account. Real credentials, bucket/RAM/CORS/versioning changes, DNS, certificate issuance, firewall changes, package installation, service enablement, and production data operations require a separate approved deployment window.
 
 Current bounded authorization is recorded in `tasks/doing/GOAL-BETA-PREP01.md`.
-Its Phase 2 read-only preflight passed for exact artifact `9421010643`, live
-release `08657727…`, rollback `988bdbf…`, and schema v21/history 001–021, but
-execution stopped before backup or any mutation because GitHub requires Owner
-sudo-mode email verification before the minimum single-repository
-`Actions: write` dispatch credential can be created. Resume at that credential
-gate only after the recorded Owner interaction; do not substitute a classic or
-broad personal token.
+Phase 2 consumed its production authority successfully. Exact artifact
+`9421010643` / source `1c3bb10…` now runs at schema v22/history 001–022 after a
+stopped-service verified backup, encrypted off-host publication, only migration
+022, minimum single-repository Actions-write routing credentials, exact install,
+and one bounded real Compute canary. The immediate rollback is previous
+application `08657727…` plus the recorded pre-migration database/config pair.
+Phase 3 RF-SEARCH01 is active; do not substitute a classic/broad personal token
+or reuse the historical Search artifact.
 
 ## Approval-gated preflight
 
@@ -242,26 +243,33 @@ Certbot 2.9.0 plus `python3-acme`, `python3-certbot`, `python3-configargparse`, 
 
 ## Current production state
 
-Production runs exact immutable R3 repair source `08657727a17a7ea766ad0d74cc663fa40f91eee1`, previous release `988bdbf052de1a39b47a1e22ac761c977eec72c8`, at unchanged schema v21/history 001–021. R3 was built directly from that production baseline and changes only the valid non-truncated empty ListParts marker, authoritative recovered-multipart abandon routing/hydration, their focused tests, and the exact CORS readiness contract; RF-SEARCH01 is not deployed. Exact release/process identity, active/running service, loopback/public health/readiness, protected configuration hashes, Nginx runtime identity, schema/history fingerprint, integrity/FK, and all seven pending files are green. No migration command ran and rollback was not required.
+Production runs exact immutable Core/Compute source `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, previous application release `08657727a17a7ea766ad0d74cc663fa40f91eee1`, at schema v22/history 001–022. Exact release/process identity, active/running service with zero restarts, one loopback listener, loopback/public health/readiness, schema/history/checksum, SQLite integrity/FK, Core browser session/Library/details/preview/download, and the real asynchronous Compute canary are green. RF-SEARCH01 is not yet deployed.
 
 Owner-reported R3 browser storage acceptance passed on 2026-08-21 and
-`OPS-STORAGE-INCIDENT01` is closed. The later Metadata Suggestion Core stall is
-a separate cgroup-memory-reclaim incident. ADR-031 implements its remediation in
-development only: migration 022, Core-owned durable jobs, and a GitHub Actions
-Compute worker. Production has not received that migration, artifact,
-configuration, protected environment, or credentials. The existing deployment
-procedure below must not be used to infer cutover authority.
+`OPS-STORAGE-INCIDENT01` is closed. The separate Metadata Suggestion Core stall
+is also closed by the production ADR-031 boundary: migration 022, Core-owned
+durable jobs, and a clean GitHub Actions Compute worker. The Core artifact
+contains neither PDF.js/native canvas nor Tesseract for this path; the dedicated
+worker builds/verifies the pinned ADR-030 runtime and runs one job in one clean
+process. No production `MemoryHigh`/`MemoryMax`, OSS, RAM, CORS, Nginx, or paid
+infrastructure change was required.
 
-A future ADR-031 cutover requires a separately reviewed runbook amendment with
-an exact pre-migration backup/rollback pair, verified Core artifact, migration
-022 command and checksums, least-scoped workflow-dispatch token, shared bootstrap
-secret installed in Core and the protected GitHub environment, pinned
-repository/workflow/ref/Core origin, and post-cutover async-job/Auth/Library/
-health/readiness/canonical-authority acceptance. The Core artifact must contain
-neither PDF.js/native canvas nor Tesseract for Metadata Suggestion; the dedicated
-Compute workflow must independently build and verify the ADR-030 runtime, OCR
-fixtures, memory bound, and one clean concurrency-one worker. Until that exact
-gate exists, stop without changing production.
+The verified pre-migration database is
+`/var/lib/academiccloud/backups/academiccloud-pre-compute-20260820T200600Z.sqlite`
+(778,240 bytes; SHA-256
+`1c00b6bcb9fe7e5aaf30a28c9e0b797753626d0ec99f79d2ebe799d097a8609a`),
+with `integrity_check=ok`, zero foreign-key violations, and encrypted off-host
+commit `22b05321febe6bfceb7d1bd609b30b499937b7d2`. Migration 022 SHA-256 is
+`07dfe1147d830754dd16dce791dfae6bbe234eeea37985901f763575a4645574`.
+Its rollback pair is exact application `08657727…`, that database backup, and
+the preserved pre-cutover environment/unit. Never run the v21 application
+against live v22 without first restoring this paired database/config state.
+
+Canary Core job `2cb8a0b6-fb37-4b51-bd3b-f9330dbbbde7` succeeded on attempt 2
+in final workflow run `32415058752`, job `96574206668`, source `440b556…`.
+Core stayed responsive, the result remained a reviewable candidate, canonical
+metadata stayed unchanged, workflow artifact count was zero, and workflow/Core
+log scans found no signed URL, capability, document/candidate payload, or secret.
 
 The 2026-08-20 `OPS-STORAGE-APP-REPAIR01` attempt verified and installed artifact ID `9405764771`, source `8d28970209c2e7b41b5d9486bea570a2a8e6c7e6`, archive SHA-256 `03edbbe0f8b506bb7d3fbb9b929e90f89b8b6948b4256865fcd44d9c62e8bbe4`, and manifest SHA-256 `76e902496f3255293b670f09248cf73f5e8d665a77e0e7a2446e49b7fe05eeb4`. The release initially passed exact process identity, active/running service, one loopback listener, and loopback/public health/readiness. It then failed the final authorized-scope gate: the exact source descends from frozen `RF-SEARCH01` candidate `7bba7b869fd1234c1e7c67002cb93368c299209b` and ships its Search UI/API despite the deployment's explicit no-Search boundary. The same-schema application-only rollback restored `604cb8d…` and passed exact process identity, v21/history 001–021 fingerprint, old-release tree hash, protected configuration hashes, RAM v2 readback, five preserved `uploading` multipart rows, six preserved `pending_upload` file rows, and all four health/readiness probes. No migration, RAM, credential, configuration, Nginx, SQLite, metadata, OSS object/part, or pending-upload mutation occurred. The inactive `8d289702…` release must not be reselected under the no-Search boundary.
 
@@ -275,7 +283,7 @@ Artifact workflow `32286643640` passed on exact source `604cb8d…`; the primary
 
 The no-persistence private pre-cutover smoke read five anonymized Owner-authorized production PDFs (`REAL-01`…`REAL-05`) through the exact staged release and reported `metadata_mutated=false`, `crash=false`, `raw_error=false`. Two real scanned PDFs produced `ready` suggestions with bounded OCR evidence; three larger scans (76–240 MiB) failed closed inside the 25 s bounded budget (`timeout`) without whole-object download, crash, mutation, or raw-error exposure. Post-cutover acceptance proved exact release/process CWD, schema v21/history 001–021/checksums, integrity/FK, active service, byte-identical public assets, release-local Tesseract 5.5.3, unauthenticated suggestion probes denied, and zero new service errors. No candidate was accepted and canonical metadata remained unchanged. Task-owned staging/diagnostic files were removed.
 
-The current immediate rollback is application-only to exact `988bdbf052de1a39b47a1e22ac761c977eec72c8` against unchanged v21. The older `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` release remains inseparable from its paired schema-v19 backup and must never run against live v21. RF-METASUGGEST-HARDEN01 is PASS/CLOSED; its production authority is exhausted.
+The historical R3 immediate rollback was application-only to exact `988bdbf052de1a39b47a1e22ac761c977eec72c8` against unchanged v21. It is superseded by the current Core/Compute rollback pair recorded above. The older `f62766cd96c3f1e07bd32e5c1ced99a3ebbfdce7` release remains inseparable from its paired schema-v19 backup and must never run against live v21/v22. RF-METASUGGEST-HARDEN01 is PASS/CLOSED; its production authority is exhausted.
 
 ### Historical PROD-09A checkpoint
 

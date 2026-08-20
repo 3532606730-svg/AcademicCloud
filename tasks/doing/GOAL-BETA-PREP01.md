@@ -43,7 +43,7 @@ builds under `output/worker-stage`, verifies before atomic promotion to
 `output/worker`, and is locked by a static deployment contract. Production,
 credentials, schema, database, OSS/RAM/CORS, Search, and callback paths were
 unchanged. Durable evidence is in `tasks/done/COMPUTE-PRECUTOVER01.md` and
-ADR-031. Phase 2 subsequently reached the credential hard stop recorded below.
+ADR-031. Phase 2 subsequently completed the production cutover recorded below.
 
 ### Phase 2 — ARCH-COMPUTE01 production cutover
 
@@ -66,8 +66,8 @@ Credential rule: Codex may generate/install a new strong bootstrap secret withou
 
 Privacy authorization for this program: the Owner accepts that the one selected canary PDF may be transiently processed on a GitHub-hosted runner under the ADR-031 short-lived single-object capability model, provided no raw document bytes/text/candidates are uploaded as workflow artifacts or emitted to logs.
 
-**Phase 2 preflight result — HARD STOP AT MINIMUM CREDENTIAL GATE
-(2026-08-21).** Repository checkpoint `a3af736…` is clean and synchronized.
+**Phase 2 result — COMPLETE (2026-08-21).** Repository checkpoint
+`a3af736…` was clean and synchronized at preflight.
 Exact Core source `1c3bb10…` already produced artifact `9421010643` in run
 `32407660568`; build job `96550916880` and independent verification job
 `96551622641` passed. GitHub artifact SHA-256 is
@@ -77,27 +77,59 @@ archive SHA-256 is
 and manifest SHA-256 is
 `7dfed78239ef60f012b0865715eb78a9a5e0553c7dee6017b68fbd1fa445df7e`.
 The artifact has 4,789 files / 34,151,198 bytes, contains neither Core OCR
-nor PDF-render runtime, and expires at `2026-08-27T19:19:09Z`.
+nor PDF-render runtime, and expires at `2026-08-27T19:19:09Z`. The downloaded
+archive/manifest were rehashed locally and the unpacked artifact passed the
+production-host verifier before installation.
 
 Read-only production preflight re-proved live release `08657727…`, existing
 rollback release `988bdbf…`, active service with zero restarts, exact
 v21/history 001–021, `integrity_check=ok`, and zero foreign-key violations.
-Production `/etc/academiccloud/academiccloud.env` has no Compute/GitHub keys.
-The repository has no `academiccloud-compute-production` Environment, and the
-GitHub account has no fine-grained personal access token. GitHub requires
-sudo-mode email identity verification before a new token can be created.
-Creating that persistent access credential requires Owner interaction, so the
-program stops exactly here under its credential rule. No backup, bootstrap
-secret, GitHub Environment, production environment, migration, release
-installation, restart, canary, database, OSS/RAM/CORS, Search, or academic-data
-mutation occurred.
+The initial minimum-credential hard stop was resolved only after the Owner
+completed GitHub email verification and approved the exact scope. The created
+30-day fine-grained token is owned by `3532606730-svg`, limited to only the
+`AcademicCloud` repository, and grants repository `Actions: write` plus
+GitHub-required read-only metadata; no classic/broad token was used. Protected
+Environment `academiccloud-compute-production` contains one bootstrap secret
+and exact non-secret Core-origin/ref variables. Production contains only the
+seven minimum Compute routing/secret keys in its root-only environment. Secret
+values were never recorded in Git or durable evidence.
 
-Required Owner action: complete the displayed GitHub sudo-mode email
-verification and approve creation of one 30-day fine-grained token owned by
-`3532606730-svg`, limited to the single `AcademicCloud` repository, with only
-repository `Actions: write`. Do not create or supply a classic/broad `repo`
-token. After that approval, Goal Mode can resume from this exact gate without
-repeating Phase 1.
+Writes were frozen by stopping Core. The verified pre-migration backup is
+`academiccloud-pre-compute-20260820T200600Z.sqlite`, 778,240 bytes, SHA-256
+`1c00b6bcb9fe7e5aaf30a28c9e0b797753626d0ec99f79d2ebe799d097a8609a`,
+schema v21 with `integrity_check=ok` and zero foreign-key violations. Its
+encrypted off-host evidence is independently rehashed at private backup commit
+`22b05321febe6bfceb7d1bd609b30b499937b7d2`; the application rollback pair is
+exact `08657727…` plus that database backup and the preserved pre-cutover
+environment/unit. Only migration 022 was applied once; its SHA-256 is
+`07dfe1147d830754dd16dce791dfae6bbe234eeea37985901f763575a4645574`.
+
+Production now selects immutable release `1c3bb10…` at schema v22/history
+001–022. The service is active with zero restarts and one loopback listener;
+loopback/public health are `ok`, readiness is `ready`, existing Owner session,
+Library browse, details, preview, and download passed, and the prior R3 browser
+upload/storage acceptance remains valid.
+
+Exactly one logical canary used Core job
+`2cb8a0b6-fb37-4b51-bd3b-f9330dbbbde7`. Its first dispatch exposed a
+runner-owned-directory promotion defect before claim. After the smallest repair,
+the same queued job claimed but failed closed because the production worker ran
+outside the staged release-local Tesseract tree. The second bounded repair made
+the staged release contain both compiled worker and runtime and executed that
+exact worker. A UI retry created attempt 2 of the same Core job; final workflow
+run `32415058752`, job `96574206668`, source `440b556…` passed routing, build,
+pinned Tesseract, real OCR, the `<768 MiB` peak and `<64 MiB` drift gates,
+claim/compute/callback, and cleanup. The durable job succeeded at 100%, one
+reviewable filename candidate is visible, and canonical metadata was not
+accepted or changed. Core stayed responsive throughout.
+
+The final workflow uploaded zero artifacts. Exact scans of its logs and the Core
+journal found no dispatch/bootstrap secret, signed source URL, capability,
+source/callback payload, document text, candidate payload, or selected filename;
+GitHub's one checkout Authorization value was platform-masked. No source/object,
+canonical metadata, Nginx, `MemoryHigh`/`MemoryMax`, OSS, RAM, CORS, bucket
+policy, paid infrastructure, or Search mutation occurred. Rollback was not
+required. Phase 2 is green and Phase 3 is authorized to proceed.
 
 ### Phase 3 — RF-SEARCH01 compose and production closure
 

@@ -8,43 +8,40 @@ evidence without duplicating it here.
 
 ## Current situation
 
-The first Core/Compute separation vertical slice and COMPUTE-PRECUTOVER01 are
-complete. Exact hosted run `32407660640` qualified source `1c3bb10…` with real
-pinned Tesseract OCR, a 547,860,480-byte peak under the explicit GitHub-hosted
-`<768 MiB` contract, only 225,280 bytes of five-run post-RSS drift under the
-unchanged `<64 MiB` drift contract, a passing privacy/output scan, zero
-artifacts, and no protected production execution. The local-development peak
-gate remains `<512 MiB`. The protected runtime now builds under
-`output/worker-stage`, is verified, and is atomically promoted to
-`output/worker`; static deployment tests prevent those paths from diverging.
+The first Core/Compute separation vertical slice, COMPUTE-PRECUTOVER01, and
+GOAL-BETA-PREP01 Phase 2 production cutover are complete. Production now runs
+exact immutable Core source `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`
+at schema v22/history 001–022. It was installed only after exact artifact
+verification, a stopped-service SQLite backup, off-host encrypted publication
+and independent rehash, and application-plus-database rollback pairing.
 
-GOAL-BETA-PREP01 Phase 2 reached its explicit least-scoped credential hard
-stop before any production mutation. The exact Core artifact is built and
-independently verified, and read-only production backup/rollback/schema
-preflight is green, but Core has no dispatch token, the repository has no
-protected Compute Environment, and the account has no fine-grained PAT.
-GitHub requires Owner sudo-mode email verification before a compliant token
-can be created. After that Owner interaction, the remaining authorized Phase 2
-sequence resumes with the exact Core/Compute production cutover: verified
-rollback/backup evidence, migration 022, only minimum
-least-privilege Compute routing/secret material, one exact deployment, and one
-bounded canary. Goal Mode continues through the remaining bounded beta-prep
-sequence and stops only at `INTERNAL_BETA_READY` or an explicit hard-stop
-condition, before actually starting/inviting users into internal beta.
+Owner email verification and exact-scope approval enabled one 30-day
+fine-grained token limited to only `3532606730-svg/AcademicCloud` with
+repository Actions write plus GitHub-required read-only metadata. Production
+and the protected `academiccloud-compute-production` Environment received only
+the minimum ADR-031 routing/bootstrap values; no credential value is present in
+Git, durable evidence, workflow artifacts, or the checked logs.
 
-Production is still unchanged at the start of this program:
+One logical production canary job
+`2cb8a0b6-fb37-4b51-bd3b-f9330dbbbde7` completed on its second attempt in
+final GitHub run `32415058752`. Two bounded workflow defects were repaired at
+their first failing boundaries: runner ownership of the promoted output tree,
+then execution from the same staged release tree as the verified release-local
+Tesseract runtime. Final OCR/memory, callback, privacy, zero-artifact, and
+candidate-review gates passed. Core stayed responsive, the reviewable filename
+candidate was not accepted, and canonical metadata, source bytes, OSS/RAM/CORS,
+Nginx, and production memory limits remained unchanged. Phase 3 RF-SEARCH01 is
+now active.
+
+Current production:
 
 ```text
-PRODUCTION_RELEASE=08657727a17a7ea766ad0d74cc663fa40f91eee1
-PREVIOUS_RELEASE=988bdbf052de1a39b47a1e22ac761c977eec72c8
-SCHEMA=v21
-MIGRATIONS=001-021
+PRODUCTION_RELEASE=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
+PREVIOUS_RELEASE=08657727a17a7ea766ad0d74cc663fa40f91eee1
+SCHEMA=v22
+MIGRATIONS=001-022
 INTERNAL_BETA_READY=false
 ```
-
-Development has migration 022 and therefore exercises schema v22/history
-001–022 only in disposable local/test databases until the authorized production
-cutover phase actually begins.
 
 ## Storage incident closure
 
@@ -59,18 +56,19 @@ No further RAM/OSS/CORS policy mutation is part of GOAL-BETA-PREP01. The
 incompatible Search-bearing artifact `9405764771` / source `8d289702…` must never
 be selected.
 
-## Separate Metadata Suggestion memory incident
+## Metadata Suggestion memory incident closure
 
-The later Metadata Suggestion failure is not a reopened storage incident.
-Production reached the heavy PDF/render/OCR path inside Core. With
+The Metadata Suggestion failure was not a reopened storage incident. Before the
+Compute cutover, production reached the heavy PDF/render/OCR path inside Core. With
 `MemoryHigh=320MiB`, observed usage around 328 MiB, and `MemoryMax=384MiB`, cgroup
 reclaim blocked the Node event loop and globally stalled the backend even though
 the process stayed alive with zero OOM, OOM-kill, or restart.
 
-The diagnosis classifies this as a single-document working-set spike against the
+The diagnosis classified this as a single-document working-set spike against the
 Core runtime limit. No repeating leak was established; concurrency amplification
-was latent in the old in-process design. The exact record is
-`tasks/done/OPS-METADATA-MEMORY01-DIAGNOSIS.md`.
+was latent in the old in-process design. Phase 2 removed that heavy path from
+Core and the real canary proved fault isolation, so the incident is closed. The
+diagnostic record remains `tasks/done/OPS-METADATA-MEMORY01-DIAGNOSIS.md`.
 
 ## ARCH-COMPUTE01 development checkpoint
 
@@ -171,8 +169,8 @@ ADR-031 remains authoritative for the architecture/security/callback model.
 Codex Goal Mode is authorized to proceed in this exact order:
 
 1. **COMPUTE-PRECUTOVER01 — COMPLETE** — provider-specific GitHub-hosted memory contract and protected Tesseract staging repair passed without production mutation;
-2. **Core/Compute production cutover — HARD STOP AT CREDENTIAL GATE** — exact artifact and read-only rollback/schema preflight are green; Owner sudo-mode email verification is required before creating the single-repository Actions-write dispatch token, after which backup, migration 022, environment setup, deployment/restart, and one bounded production canary remain;
-3. **RF-SEARCH01 production closure** — do not deploy the historical artifact; compose the already-green Search behavior onto the latest post-Compute baseline, run its mandatory browser gate, build/verify a new artifact, then deploy;
+2. **Core/Compute production cutover — COMPLETE** — exact artifact, verified backup/off-host copy, migration 022, least-scoped credentials/environment, exact deployment, Core invariants, and one bounded real canary passed;
+3. **RF-SEARCH01 production closure — ACTIVE** — do not deploy the historical artifact; compose the already-green Search behavior onto the latest post-Compute baseline, run its mandatory browser gate, build/verify a new artifact, then deploy;
 4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery** — upload live states/recovery plus durable Metadata/Compute queued/processing/succeeded/failed and reliable download preparing/started/failed states; no broad notification/history platform;
 5. **QA-GOLDEN01** — exact-build real-browser journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
 
@@ -182,7 +180,7 @@ actual internal-beta decision.
 
 ## Credential/privacy/cost boundaries
 
-Phase 2 preflight evidence:
+Phase 2 cutover evidence:
 
 ```text
 REPOSITORY_HEAD=a3af736e36b3830f728e60e92cfb483e26a0b28f
@@ -192,14 +190,20 @@ ARTIFACT_ID=9421010643
 ARTIFACT_DIGEST_SHA256=48abdc8b2ebfb5484358d6983f83d2f7c7dcb7956d9a2b028d484f668a9e7836
 ARCHIVE_SHA256=1b78cf47ea1938cbed5e1247f27dc5be392596287ae02eb0f4ec0475c5b78e1c
 MANIFEST_SHA256=7dfed78239ef60f012b0865715eb78a9a5e0553c7dee6017b68fbd1fa445df7e
-PRODUCTION_RELEASE=08657727a17a7ea766ad0d74cc663fa40f91eee1
-PRODUCTION_SCHEMA=v21 / 001-021
+PRODUCTION_RELEASE=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
+PREVIOUS_RELEASE=08657727a17a7ea766ad0d74cc663fa40f91eee1
+PRODUCTION_SCHEMA=v22 / 001-022
 SQLITE_INTEGRITY=ok
 FOREIGN_KEY_VIOLATIONS=0
-COMPUTE_ENV_KEYS=absent
-GITHUB_PROTECTED_ENVIRONMENT=absent
-FINE_GRAINED_PAT=absent
-PRODUCTION_MUTATION=false
+BACKUP_SHA256=1c00b6bcb9fe7e5aaf30a28c9e0b797753626d0ec99f79d2ebe799d097a8609a
+OFF_HOST_BACKUP_COMMIT=22b05321febe6bfceb7d1bd609b30b499937b7d2
+COMPUTE_ENV_KEYS=seven root-only minimum keys
+GITHUB_PROTECTED_ENVIRONMENT=academiccloud-compute-production
+FINE_GRAINED_PAT=single repository / Actions write / 30 days
+CANARY_RUN=32415058752 / PASS / ZERO ARTIFACTS
+CANONICAL_METADATA_CHANGED=false
+OSS_RAM_CORS_MEMORY_LIMIT_CHANGED=false
+COST_CHANGED=false
 ```
 
 - Codex may generate/install one strong bootstrap secret without printing or logging it.
@@ -218,9 +222,8 @@ the latest post-Compute baseline with a new exact artifact and browser gate.
 
 ## Next action
 
-**OWNER ACTION REQUIRED AT THE EXACT PHASE 2 CREDENTIAL GATE.** Complete the
-displayed GitHub sudo-mode email verification and approve creation of one
-30-day fine-grained token owned by `3532606730-svg`, limited to only the
-`AcademicCloud` repository, with only repository `Actions: write`. Do not
-create or paste a classic/broad `repo` token. Then resume Goal Mode from Phase
-2; do not repeat Phase 1 or begin internal beta.
+Continue autonomously with GOAL-BETA-PREP01 Phase 3: compose the frozen,
+already-green RF-SEARCH01 behavior onto the post-Compute baseline, preserve its
+authority/ranking semantics, pass the mandatory real-browser Search gate, build
+and independently verify a new exact artifact, then deploy it. Do not reuse the
+historical Search artifact and do not begin internal beta.

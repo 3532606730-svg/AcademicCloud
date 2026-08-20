@@ -1,7 +1,7 @@
 # ADR-031 — Core Authority and Ephemeral Derived Compute
 
 **Date:** 2026-08-21
-**Status:** Accepted by Owner; development and COMPUTE-PRECUTOVER01 complete, production cutover active under GOAL-BETA-PREP01 Phase 2
+**Status:** Accepted and deployed; COMPUTE-PRECUTOVER01 and GOAL-BETA-PREP01 Phase 2 production cutover complete
 
 ## Context
 
@@ -173,22 +173,35 @@ and drift paths together. The exact hosted qualification used no production
 secret or private PDF, uploaded no artifact, and kept the protected job
 skipped.
 
-Migration 022 is development-only at this checkpoint. Production remains exact
-release `08657727a17a7ea766ad0d74cc663fa40f91eee1` at schema v21/history 001–021.
-No production migration, deployment, restart, memory-limit change, provider
-policy change, credential installation, SQLite mutation, or RF-SEARCH01 change
-occurred during pre-cutover qualification.
+GOAL-BETA-PREP01 Phase 2 completed the production gate. Writes were frozen and
+the schema-v21 SQLite backup
+`academiccloud-pre-compute-20260820T200600Z.sqlite` was verified locally and
+through encrypted off-host commit `22b05321…`; its SHA-256 is
+`1c00b6bcb9fe7e5aaf30a28c9e0b797753626d0ec99f79d2ebe799d097a8609a`.
+Only migration 022 was applied once. Production now runs exact verified Core
+source `1c3bb10a48082995924a2d9ec41a48d6d3d34acd` at schema v22/history
+001–022, with previous application `08657727…` inseparably paired to that
+pre-migration database/config state for rollback.
 
-GOAL-BETA-PREP01 Phase 2 is the current Owner-authorized cutover. It must provide
-a pre-migration backup,
-deploy one exact verified Core artifact, apply migration 022 through the existing
-explicit stopped-service procedure, configure only the minimal Compute routing
-and secrets, configure the protected GitHub environment, and then verify Auth,
-Library, health/readiness, durable async Metadata Suggestion, candidate review,
-and rollback evidence. Production needs exactly two new secret values: a
-least-scoped GitHub workflow-dispatch token held by Core and one strong shared
-bootstrap secret installed in Core and the protected GitHub environment. It also
-needs the non-secret exact Core origin and Compute ref routing values.
+The cutover added exactly two secret values: one 30-day fine-grained token held
+by Core, limited to only `3532606730-svg/AcademicCloud` with repository Actions
+write plus required read-only metadata, and one strong shared bootstrap secret
+installed in Core and protected Environment
+`academiccloud-compute-production`. Only the exact non-secret Core origin and
+branch-ref routing values accompany them. No secret value is recorded in this
+ADR or Git.
+
+One logical canary Core job
+`2cb8a0b6-fb37-4b51-bd3b-f9330dbbbde7` succeeded on attempt 2 in final run
+`32415058752`. Two first-boundary workflow defects were repaired without
+weakening the output-only boundary: the runner owns the promotion ancestor, and
+the compiled worker runs from the same staged release tree as its verified
+release-local Tesseract runtime. Final real OCR/memory/callback evidence passed;
+Core remained responsive; one candidate was reviewable but not accepted;
+canonical metadata and the source object remained unchanged. Workflow artifact
+count was zero and workflow/Core log scans found no signed source URL,
+capability, document/candidate payload, or secret. No `MemoryHigh`/`MemoryMax`,
+OSS, RAM, CORS, Nginx, paid-infrastructure, or RF-SEARCH01 change was required.
 
 ## Consequences and risks
 
