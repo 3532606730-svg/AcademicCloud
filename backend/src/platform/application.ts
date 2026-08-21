@@ -82,6 +82,7 @@ export async function createApplication(
         completeMultipartUpload: (actor, fileId, version) =>
           libraryService.completeDefaultMultipartUpload(actor, fileId, version),
         getUploadStatus: (actor, fileId) => libraryService.getDefaultUploadStatus(actor, fileId),
+        createMultipartUpload: (actor, input) => libraryService.createDefaultMultipartUpload(actor, input),
       },
       favorites: { service: favoriteService },
       audit: { service: auditService },

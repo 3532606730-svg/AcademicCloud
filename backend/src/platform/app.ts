@@ -134,6 +134,7 @@ export interface CreateAppOptions {
     completeUpload?: LibraryService["completeDefaultUpload"];
     completeMultipartUpload?: LibraryService["completeDefaultMultipartUpload"];
     getUploadStatus?: LibraryService["getDefaultUploadStatus"];
+    createMultipartUpload?: LibraryService["createDefaultMultipartUpload"];
   };
   favorites?: { service: FavoriteService };
   audit?: { service: AuditService };
@@ -254,6 +255,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
       options.drive.completeUpload,
       options.drive.completeMultipartUpload,
       options.drive.getUploadStatus,
+      options.drive.createMultipartUpload,
     );
   }
 

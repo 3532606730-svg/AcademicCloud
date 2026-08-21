@@ -25,6 +25,8 @@ export interface LibraryRepository {
   /** Keyset-paginated holdings after `after` (null = first page), newest first. */
   listHoldingsPage(libraryId: string, after: HoldingCursor | null, limit: number): LibraryHolding[];
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null;
+  /** True when an available (pending/active) root file in the library domain already carries this name. */
+  hasAvailableNameConflict(libraryId: string, displayName: string): boolean;
   listRecycledHoldings(libraryId: string): LibraryRecycledHolding[];
   findRecycledHoldingByFile(libraryId: string, fileId: string): LibraryRecycledHolding | null;
   verifyRecycledHoldingExclusive(

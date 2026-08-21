@@ -243,6 +243,7 @@ export class SqliteLibraryRepository implements LibraryRepository {
   readonly #listHoldings;
   readonly #listHoldingsPage;
   readonly #findHoldingByFile;
+  readonly #hasAvailableNameConflict;
   readonly #listRecycledHoldings;
   readonly #findRecycledHoldingByFile;
   readonly #verifyRecycledHoldingExclusive;
@@ -388,6 +389,17 @@ export class SqliteLibraryRepository implements LibraryRepository {
        AND files.owner_domain_id = libraries.owner_domain_id
        AND files.state = 'active'
       WHERE libraries.id = ? AND files.id = ?
+    `);
+    this.#hasAvailableNameConflict = database.prepare<[string, string], { conflict: number }>(`
+      SELECT 1 AS conflict
+      FROM libraries
+      JOIN files
+        ON files.owner_domain_id = libraries.owner_domain_id
+       AND files.folder_id IS NULL
+       AND files.state IN ('pending_upload', 'active')
+       AND files.display_name = ? COLLATE NOCASE
+      WHERE libraries.id = ?
+      LIMIT 1
     `);
     const recycledHoldingJoins = `
       FROM libraries
@@ -626,6 +638,10 @@ export class SqliteLibraryRepository implements LibraryRepository {
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null {
     const row = this.#findHoldingByFile.get(libraryId, fileId);
     return row ? toHolding(row) : null;
+  }
+
+  hasAvailableNameConflict(libraryId: string, displayName: string): boolean {
+    return this.#hasAvailableNameConflict.get(displayName, libraryId) !== undefined;
   }
 
   listRecycledHoldings(libraryId: string): LibraryRecycledHolding[] {

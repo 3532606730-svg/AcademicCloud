@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js";
 
-import { DriveError, type DriveService, type UploadStatus } from "./drive-service.js";
+import { DriveError, type DriveService, type UploadStatus, type CreateUploadInput, type MultipartUploadStatus } from "./drive-service.js";
 import type { StoredFile } from "./file.js";
 import type { Folder } from "./folder.js";
 import {
@@ -191,6 +191,11 @@ export async function registerDriveHttp(
     (actor, fileId, version) => driveService.completeMultipartUpload(actor.id, fileId, version),
   getUploadStatus: (actor: AuthenticatedAccount, fileId: string) => Promise<UploadStatus> =
     (actor, fileId) => driveService.getUploadStatus(actor.id, fileId),
+  createMultipartUpload: (
+    actor: AuthenticatedAccount,
+    input: CreateUploadInput,
+  ) => Promise<{ file: StoredFile; transfer: MultipartUploadStatus }> =
+    (actor, input) => driveService.createMultipartUpload(actor.id, input),
 ): Promise<void> {
   app.addHook("onResponse", async (request, reply) => {
     const route = request.routeOptions.url;
@@ -371,7 +376,7 @@ export async function registerDriveHttp(
     },
     async (request, reply) => {
       try {
-        const result = await driveService.createMultipartUpload(requireOwnerId(request.authAccount), {
+        const result = await createMultipartUpload(requireActor(request.authAccount), {
           ...request.body,
           folderId: request.body.folderId ?? null,
         });

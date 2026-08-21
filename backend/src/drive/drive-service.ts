@@ -746,6 +746,15 @@ export class DriveService {
       }
       upload = locked;
     }
+    // A completion may have physically succeeded on the provider while logical
+    // activation failed. Abandoning must then discard the orphan object so no
+    // unowned bytes remain; identity is re-verified against the pending file
+    // before deletion.
+    const pendingObject = await this.safeStat(file);
+    if (pendingObject) {
+      if (!storageMetadataMatches(file, pendingObject)) throw new DriveError("upload_metadata_mismatch");
+      await this.storage.deleteObject(file.objectKey);
+    }
     this.persistence.runInTransaction((repositories) => {
       const current = repositories.files.findById(ownerId, fileId);
       const currentUpload = repositories.multipartUploads?.findByFileId(ownerId, fileId) ?? null;

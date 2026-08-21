@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AuthorizationDeniedError, requireOwner } from "../auth/authorization.js";
-import { DriveError, type DriveService, type UploadStatus } from "../drive/drive-service.js";
+import { DriveError, type DriveService, type UploadStatus, type CreateUploadInput, type MultipartUploadStatus } from "../drive/drive-service.js";
 import { driveEntryVersion } from "../drive/bulk.js";
 import type { StoredFile } from "../drive/file.js";
 import type { DomainRecycleGroup } from "../drive/recycle-repository.js";
@@ -304,22 +304,40 @@ export class LibraryService {
         this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
       });
     } catch (error: unknown) {
-      if (error instanceof DriveError) throw error;
-      if (error instanceof LibraryError) {
-        throw new DriveError(error.code === "not_found" || error.code === "authorization_denied" ? "not_found" : "invalid_state", { cause: error });
-      }
-      if (this.#isConstraint(error)) throw new DriveError("invalid_state", { cause: error });
-      throw error;
+      this.#mapDefaultUploadError(error);
     }
   }
 
   async getDefaultUploadStatus(actor: AuthenticatedAccount, fileId: string): Promise<UploadStatus> {
-    const canonical = this.#requireDefaultUploadActor(actor, fileId);
+    const canonical = this.#requireDefaultUploadActor(actor);
     const existing = this.#completedDefaultUpload(actor, canonical, fileId);
     if (existing) return { kind: "complete", file: existing };
-    return this.#drive.getUploadStatus(actor.id, fileId, "account", (transaction, activated, now) => {
-      this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
-    });
+    try {
+      return await this.#drive.getUploadStatus(actor.id, fileId, "account", (transaction, activated, now) => {
+        this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
+      });
+    } catch (error: unknown) {
+      this.#mapDefaultUploadError(error);
+    }
+  }
+
+  async createDefaultMultipartUpload(
+    actor: AuthenticatedAccount,
+    input: CreateUploadInput,
+  ): Promise<{ file: StoredFile; transfer: MultipartUploadStatus }> {
+    const canonical = this.#requireDefaultUploadActor(actor);
+    // Owner uploads are admitted directly into the canonical library: reject a
+    // name that would collide with an available canonical holding BEFORE any
+    // bytes are uploaded or provider uploads are initiated.
+    if (actor.role === "owner"
+      && this.#persistence.repositories.libraries.hasAvailableNameConflict(canonical.id, input.displayName)) {
+      throw new DriveError("name_conflict");
+    }
+    try {
+      return await this.#drive.createMultipartUpload(actor.id, input);
+    } catch (error: unknown) {
+      this.#mapDefaultUploadError(error);
+    }
   }
 
   async completeDefaultMultipartUpload(
@@ -327,7 +345,7 @@ export class LibraryService {
     fileId: string,
     version: string,
   ): Promise<StoredFile> {
-    const canonical = this.#requireDefaultUploadActor(actor, fileId);
+    const canonical = this.#requireDefaultUploadActor(actor);
     const existing = this.#completedDefaultUpload(actor, canonical, fileId);
     if (existing) return existing;
     try {
@@ -341,16 +359,11 @@ export class LibraryService {
         },
       );
     } catch (error: unknown) {
-      if (error instanceof DriveError) throw error;
-      if (error instanceof LibraryError) {
-        throw new DriveError(error.code === "not_found" || error.code === "authorization_denied" ? "not_found" : "invalid_state", { cause: error });
-      }
-      if (this.#isConstraint(error)) throw new DriveError("invalid_state", { cause: error });
-      throw error;
+      this.#mapDefaultUploadError(error);
     }
   }
 
-  #requireDefaultUploadActor(actor: AuthenticatedAccount, fileId: string): Library {
+  #requireDefaultUploadActor(actor: AuthenticatedAccount): Library {
     const repositories = this.#persistence.repositories;
     const canonical = repositories.libraries.findDefault();
     const current = repositories.accounts.findById(actor.id);
@@ -1169,6 +1182,27 @@ export class LibraryService {
       createdAt: membership.createdAt.toISOString(),
       updatedAt: membership.updatedAt.toISOString(),
     };
+  }
+
+  #mapDefaultUploadError(error: unknown): never {
+    if (error instanceof DriveError) throw error;
+    if (error instanceof LibraryError) {
+      throw new DriveError(
+        error.code === "not_found" || error.code === "authorization_denied" ? "not_found" : "invalid_state",
+        { cause: error },
+      );
+    }
+    if (this.#isNameConflict(error)) throw new DriveError("name_conflict", { cause: error });
+    if (this.#isConstraint(error)) throw new DriveError("invalid_state", { cause: error });
+    throw error;
+  }
+
+  #isNameConflict(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const candidate = error as { code?: unknown };
+    return (candidate.code === "SQLITE_CONSTRAINT_UNIQUE" || candidate.code === "SQLITE_CONSTRAINT")
+      && /owner_domain_id/i.test(error.message)
+      && /display_name/i.test(error.message);
   }
 
   #isConstraint(error: unknown): boolean {

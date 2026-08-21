@@ -308,3 +308,41 @@ test("legacy pending uploads remain truthful one-final-reupload compatibility", 
   assert.equal(persistence.repositories.files.findById("owner-1", legacy.file.id), null);
   assert.equal(await storage.statObject(legacy.file.objectKey), null);
 });
+
+test("physically completed upload with failed logical activation stays stable and abandons without orphan bytes", async (context) => {
+  const constraint = Object.assign(
+    new Error("UNIQUE constraint failed: files.owner_domain_id, files.display_name"),
+    { code: "SQLITE_CONSTRAINT_UNIQUE" },
+  );
+  const failingPromotion = () => { throw constraint; };
+  const { persistence, storage, service } = fixture(context);
+  const created = await service.createMultipartUpload("owner-1", {
+    folderId: null, displayName: "orphan.pdf", mediaType: "application/pdf", sizeBytes: 3,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  const upload = persistence.repositories.multipartUploads!.findByFileId("owner-1", created.file.id)!;
+  storage.putMultipartPart(upload.providerUploadId, 1, 3, "etag-1");
+
+  await assert.rejects(
+    service.completeMultipartUpload("owner-1", created.file.id, multipartUploadVersion(upload), "account", failingPromotion),
+    (error) => error === constraint,
+  );
+  const stuck = persistence.repositories.multipartUploads!.findByFileId("owner-1", created.file.id)!;
+  assert.equal(stuck.state, "completing");
+  assert.notEqual(await storage.statObject(created.file.objectKey), null);
+
+  // A repeated completion attempt fails identically without state mutation.
+  await assert.rejects(
+    service.completeMultipartUpload("owner-1", created.file.id, multipartUploadVersion(stuck), "account", failingPromotion),
+    (error) => error === constraint,
+  );
+  const still = persistence.repositories.multipartUploads!.findByFileId("owner-1", created.file.id)!;
+  assert.equal(still.state, "completing");
+  assert.equal(still.revision, stuck.revision);
+
+  // Abandon discards the physically completed object and removes both rows.
+  await service.abandonUpload("owner-1", created.file.id, multipartUploadVersion(still));
+  assert.equal(persistence.repositories.files.findById("owner-1", created.file.id), null);
+  assert.equal(persistence.repositories.multipartUploads!.findByFileId("owner-1", created.file.id), null);
+  assert.equal(await storage.statObject(created.file.objectKey), null);
+});

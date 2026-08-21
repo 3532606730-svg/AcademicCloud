@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
-import { DriveService } from "../../src/drive/drive-service.js";
+import { DriveError, DriveService } from "../../src/drive/drive-service.js";
 import { FavoriteService } from "../../src/favorites/favorite-service.js";
 import { LibraryError, LibraryService } from "../../src/library/library-service.js";
 import { ScholarlyRecordService } from "../../src/research/service.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
+import { multipartUploadVersion } from "../../src/transfer/multipart-transfer.js";
 import { createTestPersistence } from "../persistence/helpers.js";
 
 const NOW = new Date("2026-08-18T12:00:00.000Z");
@@ -38,8 +39,40 @@ function fixture(context: TestContext) {
   return { database, persistence, storage, drive, libraries, research };
 }
 
-function addAccountHolding(database: ReturnType<typeof fixture>["database"], accountId: string, prefix: string): { fileId: string; artifactId: string; recordId: string; versionId: string; folderId: string } {
-  const fileId = `${prefix}-file`;
+function addCanonicalHolding(database: ReturnType<typeof fixture>["database"], displayName: string): string {
+  const suffix = displayName.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 20);
+  const fileId = `canonical-${suffix}-file`;
+  const recordId = `canonical-${suffix}-record`;
+  const artifactId = `canonical-${suffix}-artifact`;
+  const versionId = `canonical-${suffix}-version`;
+  const domainId = "library:canonical-library";
+  const objectKey = `objects/ca/${"d".repeat(62)}`;
+  const timestamp = NOW.toISOString();
+  database.prepare(`
+    INSERT INTO files (
+      id, owner_domain_id, uploaded_by_account_id, folder_id, display_name,
+      storage_provider, object_key, media_type, size_bytes, checksum_algorithm,
+      checksum, state, revision, created_at, updated_at, activated_at,
+      deleted_at, purged_at, recycle_group_id
+    ) VALUES (?, ?, ?, NULL, ?, 'memory', ?, 'application/pdf', 12, 'md5', ?, 'active', 0, ?, ?, ?, NULL, NULL, NULL)
+  `).run(fileId, domainId, OWNER.id, displayName, objectKey, MD5, timestamp, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_records (id, owner_domain_id, created_by_account_id, label, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(recordId, domainId, OWNER.id, displayName, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_artifacts (id, owner_domain_id, record_id, attachment_state, created_at, updated_at)
+    VALUES (?, ?, ?, 'detached', ?, ?)
+  `).run(artifactId, domainId, recordId, timestamp, timestamp);
+  database.prepare(`
+    INSERT INTO scholarly_artifact_versions (id, owner_domain_id, artifact_id, stored_file_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(versionId, domainId, artifactId, fileId, timestamp, timestamp);
+  database.prepare("UPDATE scholarly_artifacts SET attachment_state = 'attached' WHERE id = ?").run(artifactId);
+  return fileId;
+}
+
+function addAccountHolding(database: ReturnType<typeof fixture>["database"], accountId: string, prefix: string): { fileId: string; artifactId: string; recordId: string; versionId: string; folderId: string } {  const fileId = `${prefix}-file`;
   const recordId = `${prefix}-record`;
   const artifactId = `${prefix}-artifact`;
   const versionId = `${prefix}-version`;
@@ -359,4 +392,80 @@ test("canonical intake persistence failure rolls upload activation and generated
     "SELECT count(*) AS count FROM governance_audit_events WHERE action = 'drive.upload_activate' AND target_id = ?",
   ).get(reserved.file.id)?.count, 0);
   assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_contributions").get()?.count, 0);
+});
+
+test("canonical Owner upload creation rejects a duplicate holding name before reserving any bytes", async (context) => {
+  const { database, persistence, libraries } = fixture(context);
+  addCanonicalHolding(database, "dup-name.pdf");
+  const input = {
+    folderId: null,
+    displayName: "dup-name.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 12,
+    checksum: { algorithm: "md5" as const, value: MD5 },
+  };
+  await assert.rejects(
+    libraries.createDefaultMultipartUpload(OWNER, input),
+    (error) => error instanceof DriveError && error.code === "name_conflict",
+  );
+  await assert.rejects(
+    libraries.createDefaultMultipartUpload(OWNER, { ...input, displayName: "DUP-NAME.PDF" }),
+    (error) => error instanceof DriveError && error.code === "name_conflict",
+  );
+  assert.equal(
+    database.prepare<[], { count: number }>("SELECT count(*) AS count FROM files WHERE display_name = 'dup-name.pdf'").get()?.count,
+    1,
+  );
+  assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM multipart_uploads").get()?.count, 0);
+  // The early gate is scoped to direct Owner admission; Members still submit
+  // for review and their private account domain stays the first authority.
+  const memberCreated = await libraries.createDefaultMultipartUpload(MEMBER, input);
+  assert.ok(memberCreated.file.id);
+  assert.equal(persistence.repositories.multipartUploads!.findByFileId(MEMBER.id, memberCreated.file.id)?.state, "uploading");
+});
+
+test("duplicate canonical filename surfaces name_conflict at completion and status, stays stable, and abandons cleanly", async (context) => {
+  const { database, persistence, storage, drive, libraries } = fixture(context);
+  addCanonicalHolding(database, "clash.pdf");
+  const reserved = await drive.createMultipartUpload(OWNER.id, {
+    folderId: null,
+    displayName: "clash.pdf",
+    mediaType: "application/pdf",
+    sizeBytes: 12,
+    checksum: { algorithm: "md5", value: MD5 },
+  });
+  const upload = persistence.repositories.multipartUploads!.findByFileId(OWNER.id, reserved.file.id)!;
+  storage.putMultipartPart(upload.providerUploadId, 1, 12, "etag-1");
+
+  // The promotion-time UNIQUE collision maps to a clean, stable name_conflict.
+  await assert.rejects(
+    libraries.completeDefaultMultipartUpload(OWNER, reserved.file.id, reserved.transfer.version),
+    (error) => error instanceof DriveError && error.code === "name_conflict",
+  );
+  const stuck = persistence.repositories.multipartUploads!.findByFileId(OWNER.id, reserved.file.id)!;
+  assert.equal(stuck.state, "completing");
+
+  // Status surfaces the same clean code instead of a raw SqliteError/500.
+  await assert.rejects(
+    libraries.getDefaultUploadStatus(OWNER, reserved.file.id),
+    (error) => error instanceof DriveError && error.code === "name_conflict",
+  );
+
+  // Repeating completion with the current version fails identically without
+  // state thrash: no endless 98%-style mutation loop.
+  await assert.rejects(
+    libraries.completeDefaultMultipartUpload(OWNER, reserved.file.id, multipartUploadVersion(stuck)),
+    (error) => error instanceof DriveError && error.code === "name_conflict",
+  );
+  const still = persistence.repositories.multipartUploads!.findByFileId(OWNER.id, reserved.file.id)!;
+  assert.equal(still.state, "completing");
+  assert.equal(still.revision, stuck.revision);
+
+  // The provider object was physically completed: abandoning discards it and
+  // removes both rows, leaving no orphan bytes.
+  assert.notEqual(await storage.statObject(reserved.file.objectKey), null);
+  await drive.abandonUpload(OWNER.id, reserved.file.id, multipartUploadVersion(still));
+  assert.equal(persistence.repositories.files.findById(OWNER.id, reserved.file.id), null);
+  assert.equal(persistence.repositories.multipartUploads!.findByFileId(OWNER.id, reserved.file.id), null);
+  assert.equal(await storage.statObject(reserved.file.objectKey), null);
 });
