@@ -1,5 +1,54 @@
 # QA-GOLDEN01 — Real-Browser Golden Journeys
 
+## Current State
+COMPLETE on the exact production release
+`c741455d7aa631d5b8c37149e8643a6a75b1cae8` (schema v22/history 001–022). The
+exact-release real-browser golden journey passed 32/32 checks with fresh
+run-owned synthetic fixtures and zero persistent residue.
+
+```text
+GOLDEN_RUN_ID=golden-202608211339-u8o6iv
+PRODUCTION_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8
+COMPUTE_RUN=32488192994 / SUCCESS / LOG_SCAN_CLEAN
+GOLDEN_JOURNEY=32/32 PASS
+INTERNAL_BETA_READY=true
+```
+
+## Golden journey evidence (2026-08-21)
+
+- G1 login: authenticated Owner session in the automation profile (login UX
+  itself was already production-verified in PROD-03C1/PROD-04A and daily Owner
+  use); G2 Library catalogue loaded.
+- G3 Search: field present; real-corpus probe exercised (the small corpus
+  currently has no active match for the probe title, so the no-result
+  rendering is itself the correct observable); unmatched query renders the
+  no-result state; rapid query replacement exercises the stale-safety path;
+  Escape clears and restores the ordinary 27-holding catalogue; a guaranteed
+  live-corpus match (the run-owned fixture's original filename) passed.
+- G4/G5 controlled interrupted/resumable upload: 64 MiB run-owned synthetic
+  PDF → immediate Activity Center state → uploading → pause → continue →
+  complete (one resumable-upload path on the exact release).
+- G6 stable user-facing failure rendering: re-uploading the same filename is
+  rejected with the stable localized duplicate-name message in the Activity
+  Center and dismissed cleanly (the c741455 repair surface).
+- G7 details/preview/download: the small run-owned PDF's holding opens
+  资料详情; the PDF preview renders; the downloaded bytes SHA-256 match the
+  fixture exactly.
+- G8 Metadata Suggestion: authenticated POST returned 202 → queued →
+  processing → real GitHub Compute run `32488192994` (OCR 92% confidence) →
+  callback → succeeded with reviewable candidates; canonical metadata stayed
+  unchanged until review; Core health stayed 200 during Compute.
+- G9 favorite → recycle → restore: the holding appears in Favorites, is
+  recycled into 回收站, and restores back to the Library.
+- G10 narrow/mobile: 390×844 smoke with upload and search controls visible.
+- Cleanup: every run-owned fixture was recycled and permanently deleted;
+  zero persistent residue (production non-purged run-owned rows = 0; the
+  pre-existing durable pending fixtures were never touched).
+
+## Next Action
+Complete. All GOAL-BETA-PREP01 phases are green; the program reconciles
+`INTERNAL_BETA_READY=true` and STOPS for the Owner's internal-beta decision.
+
 ## Goal
 Make user-visible end-to-end behavior a first-class release gate rather than relying on unit/service/artifact evidence alone.
 

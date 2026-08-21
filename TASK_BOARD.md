@@ -9,7 +9,7 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
-| GOAL-BETA-PREP01 | OWNER AUTHORIZED / PHASE 5 ACTIVE | Phases 1–4 are green; run the QA-GOLDEN01 exact-release browser journey, then stop at INTERNAL_BETA_READY |
+| GOAL-BETA-PREP01 | ALL FIVE PHASES GREEN / INTERNAL_BETA_READY | STOP — Owner decides whether/when to start or invite users into internal beta |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
@@ -24,8 +24,8 @@ The detailed Owner authorization, boundaries, mandatory sequence, credential/pri
 | 2 | ARCH-COMPUTE01 production cutover | `tasks/doing/GOAL-BETA-PREP01.md` Phase 2 | COMPLETE — production `1c3bb10…`, schema v22/history 001–022, rollback `08657727…` + verified pre-migration DB, final canary run `32415058752` green |
 | 3 | RF-SEARCH01 production closure | `tasks/done/RF-SEARCH01.md` + Goal Phase 3 | COMPLETE — source `b19f9dc5…`, artifact `9424397852`, browser/build/independent/local/host/deploy gates green; historical artifact never used |
 | 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/done/L1-UX08.md` + Goal Phase 4 | COMPLETE — production `c741455…`; Activity Center v0.1 + Source Recovery live; 46/46 real-browser journey green including multipart resume, real GitHub Compute suggestion, wrong-file fail-closed, mobile, stub-picker path, and zero residue |
-| 5 | QA-GOLDEN01 | `tasks/ready/QA-GOLDEN01.md` + Goal Phase 5 | ACTIVE — exact-build real-browser golden journey with safe fixtures and cleanup |
-| 6 | INTERNAL_BETA_READY | `tasks/doing/GOAL-BETA-PREP01.md` | STOP — Owner decides whether/when to start or invite users into internal beta |
+| 5 | QA-GOLDEN01 | `tasks/done/QA-GOLDEN01.md` + Goal Phase 5 | COMPLETE — 32/32 exact-release golden journey on production `c741455…` with zero residue |
+| 6 | INTERNAL_BETA_READY | `tasks/doing/GOAL-BETA-PREP01.md` | READY — STOP; the Owner decides whether/when to start or invite users into internal beta |
 
 Goal Mode should move between these checkpoints autonomously when the changed-risk evidence is green. Routine implementation choices do not require another Owner round-trip. Early STOP conditions remain exactly those in GOAL-BETA-PREP01.
 
@@ -104,7 +104,8 @@ SEARCH_HISTORICAL_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION_SOURCE=b19f9dc5b48e1976127704712e08a8655b1fadd5
 SEARCH_PRODUCTION=PASS
 ACTIVITY_CENTER_V0_1=PASS
-INTERNAL_BETA_READY=false
+QA_GOLDEN01=PASS
+INTERNAL_BETA_READY=true
 ```
 
 The full storage hotfix/R3 artifact identities and hashes remain in `CURRENT_STATE.json` and the completed storage task cards.

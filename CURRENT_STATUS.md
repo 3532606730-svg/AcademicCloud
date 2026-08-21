@@ -41,7 +41,7 @@ PRODUCTION_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8
 PREVIOUS_RELEASE=01747d929cb42e4c107d47c10ad66047377f6bcd
 SCHEMA=v22
 MIGRATIONS=001-022
-INTERNAL_BETA_READY=false
+INTERNAL_BETA_READY=true
 ```
 
 ## Storage incident closure
@@ -173,7 +173,7 @@ Codex Goal Mode is authorized to proceed in this exact order:
 2. **Core/Compute production cutover — COMPLETE** — exact artifact, verified backup/off-host copy, migration 022, least-scoped credentials/environment, exact deployment, Core invariants, and one bounded real canary passed;
 3. **RF-SEARCH01 production closure — COMPLETE** — ancestry-backed composition, focused tests, production browser gate, new exact artifact `9424397852`, independent/local/host verification, and same-schema application cutover passed; historical artifact was not used;
 4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery — COMPLETE** — shipped through same-schema app-only releases `156660d…` → `01747d9…` → `c741455…`; the replacement-release browser journey exposed and `c741455…` repaired a canonical duplicate-name completion defect (early `name_conflict` pre-flight, clean status mapping, orphan-object discard on abandon); the exact-release 46/46 browser journey passed multipart resume, real GitHub Compute suggestion, wrong-file fail-closed, mobile, and the stub-picker path with zero residue;
-5. **QA-GOLDEN01 — ACTIVE** — exact-build real-browser golden journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
+5. **QA-GOLDEN01 — COMPLETE** — the exact-release golden journey `golden-202608211339-u8o6iv` passed 32/32 on production `c741455…`: authenticated session → Library → Search (no-result, stale-safety, clear-restores, live filename fallback) → immediate Activity Center state → controlled 64 MiB pause/continue → stable duplicate-name failure → details/preview/byte-verified download → Metadata Suggestion 202 → queued → processing → real GitHub Compute run `32488192994` → succeeded with reviewable candidates while canonical metadata stayed unchanged and Core stayed healthy → favorite → recycle/restore → 390×844 mobile smoke → zero residue.
 
 When all are green, set `INTERNAL_BETA_READY=true`, reconcile exact release,
 schema, rollback pointer and durable repository state, then STOP for the Owner's
@@ -237,10 +237,28 @@ identity. Production now selects `b19f9dc5…`; health/readiness, process identi
 schema v22, SQLite counts/integrity/FK, and the post-deploy browser journey pass.
 The historical artifact remains permanently forbidden.
 
+## INTERNAL_BETA_READY — reached; STOP for the Owner
+
+All five GOAL-BETA-PREP01 phases are green on the exact production release
+`c741455…`:
+
+```text
+CORE_COMPUTE_CUTOVER=COMPLETE (schema v22 / 001-022)
+REAL_GITHUB_COMPUTE=PASS (canary 32415058752; golden 32488192994; Core responsive)
+SEARCH_PRODUCTION=PASS (browser gate green on the composed baseline)
+ACTIVITY_CENTER_V0_1=PASS (46/46 exact-release browser journey)
+GOLDEN_JOURNEY=PASS (32/32 exact-release browser journey, zero residue)
+UNRESOLVED_BLOCKERS=none
+PRODUCTION_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8
+ROLLBACK_POINTER=01747d929cb42e4c107d47c10ad66047377f6bcd (same-schema app-only)
+INTERNAL_BETA_READY=true
+NEXT=OWNER_INTERNAL_BETA_DECISION
+```
+
+Internal beta itself is NOT started and no users are invited. Starting/inviting
+remains exclusively the Owner's decision.
+
 ## Next action
 
-Continue autonomously with GOAL-BETA-PREP01 Phase 5: run the QA-GOLDEN01
-exact-release real-browser golden journey against production `c741455…` with
-fresh run-owned fixtures and proven cleanup, then reconcile durable state and
-STOP at `INTERNAL_BETA_READY` for the Owner's internal-beta decision. Do not
-begin internal beta or invite users.
+STOP. Report the final program state to the Owner and wait for the
+Owner's internal-beta decision. Do not begin internal beta or invite users.

@@ -396,10 +396,10 @@
     "ownerAuthorizedAt": "2026-08-21T02:52:00+08:00",
     "mode": "Codex Goal Mode autonomous bounded progression",
     "target": "INTERNAL_BETA_READY",
-    "internalBetaReady": false,
+    "internalBetaReady": true,
     "stopBeforeStartingInternalBeta": true,
-    "currentPhase": "Phase 5 / QA-GOLDEN01 exact-release final browser gate",
-    "completedPhases": ["COMPUTE-PRECUTOVER01", "ARCH-COMPUTE01 production cutover", "RF-SEARCH01 production closure", "L1-UX08 Activity Center v0.1 + Source Recovery"],
+    "currentPhase": "COMPLETE — all five phases green; INTERNAL_BETA_READY; STOP for Owner decision",
+    "completedPhases": ["COMPUTE-PRECUTOVER01", "ARCH-COMPUTE01 production cutover", "RF-SEARCH01 production closure", "L1-UX08 Activity Center v0.1 + Source Recovery", "QA-GOLDEN01 exact-release golden journey"],
     "phases": [
       "COMPUTE-PRECUTOVER01: provider-specific hosted memory contract plus protected Tesseract staging repair",
       "ARCH-COMPUTE01 production cutover: backup + migration 022 + minimum credentials/environment + exact deploy + bounded canary",
@@ -437,9 +437,18 @@
     "browserJourney": "46/46 pass on desktop and 390x844 with zero run-owned residue",
     "defectRepaired": "canonical duplicate-name completion bricked multipart in completing with 409/500; now name_conflict pre-flight, clean status mapping, and orphan-object discard on abandon"
   },
+  "goldenJourney": {
+    "task": "QA-GOLDEN01",
+    "runId": "golden-202608211339-u8o6iv",
+    "productionRelease": "c741455d7aa631d5b8c37149e8643a6a75b1cae8",
+    "checks": "32/32 pass",
+    "computeRun": 32488192994,
+    "computeLogPrivacyScan": "clean",
+    "residue": "zero run-owned residue; pre-existing durable pending fixtures untouched",
+    "canonicalMetadataChanged": false
+  },
   "currentPriorityOrder": [
-    "GOAL-BETA-PREP01 Phase 5 / QA-GOLDEN01 exact-release final browser gate",
-    "STOP at INTERNAL_BETA_READY before inviting users",
+    "STOP at INTERNAL_BETA_READY — Owner decides whether/when to start or invite users into internal beta",
     "OPS-DEPENDENCY01 and remaining reliability queue after beta-prep unless newly required by a concrete blocker",
     "Personal Research Workspace later"
   ],
@@ -470,6 +479,7 @@
     "Post-checkpoint ancestry verification corrected one durable-state error: Phase 2 source 1c3bb10 descends RF-SEARCH01 candidate 7bba7b8, so Search was visible even though the historical Search artifact was not used.",
     "Phase 3 closed that sequence with new exact source b19f9dc5, artifact 9424397852, deterministic/independent/local/host verification, the production browser Search journey, and an application-only same-schema cutover. Production schema/history, SQLite counts/integrity/FK, credentials, OSS/RAM/CORS, Nginx, source objects, and cost were unchanged.",
     "Phase 4 shipped the beta-minimum Activity Center plus Source Recovery through three same-schema app-only releases (156660d, 01747d9, c741455). The replacement-release browser journey exposed a canonical-library duplicate-name completion defect that bricked physically-completed multipart uploads in completing with 409/500 surfaces; c741455 repaired it with an early name_conflict pre-flight, clean status mapping, and orphan-object discard on abandon, and the exact-release 46/46 browser journey then passed with zero run-owned residue.",
-    "The four run-owned fixtures from interrupted journey attempts were recovered through ordinary product flows (status finalize after conflict cleared, recycle, permanent delete) and are purged; the pre-existing durable pending fixtures were never touched."
+    "The four run-owned fixtures from interrupted journey attempts were recovered through ordinary product flows (status finalize after conflict cleared, recycle, permanent delete) and are purged; the pre-existing durable pending fixtures were never touched.",
+    "QA-GOLDEN01 passed 32/32 on the exact production release c741455 with the golden run-owned fixture identity golden-202608211339-u8o6iv, real GitHub Compute run 32488192994, a clean log privacy scan, and zero persistent residue. All five phases are green and INTERNAL_BETA_READY=true; internal beta itself is NOT started."
   ]
 }

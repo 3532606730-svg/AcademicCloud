@@ -271,6 +271,20 @@ Also cover one controlled interrupted/resumable upload path and stable user-faci
 
 The final release is not beta-ready merely because unit/CI/artifact gates are green; the changed-risk real-browser journey must pass.
 
+**Phase 5 result — COMPLETE (2026-08-21).** The exact-release real-browser
+golden journey `golden-202608211339-u8o6iv` passed 32/32 on production
+`c741455…`: authenticated Owner session, Library, Search (field, unmatched
+no-result, rapid-query stale-safety, Escape clear restoring the 27-holding
+catalogue, and a guaranteed live-corpus original-filename match), immediate
+Activity Center state, a controlled 64 MiB pause/continue resumable upload, a
+stable duplicate-name failure rendered and dismissed, details/preview/
+byte-hash-verified download, Metadata Suggestion 202 → queued → processing →
+real GitHub Compute run `32488192994` → callback → succeeded with reviewable
+candidates while canonical metadata stayed unchanged and Core health stayed
+200, favorite → recycle → restore, a 390×844 mobile smoke, and exact run-owned
+fixture cleanup with zero persistent residue. The pre-existing durable pending
+fixtures were never touched. All five phases are green.
+
 ## INTERNAL_BETA_READY definition
 
 Set `INTERNAL_BETA_READY=true` only when all are true:
@@ -328,23 +342,21 @@ For bounded defects discovered inside Phases 1–5, diagnose the first failing b
 
 ## Final report
 
-At STOP return at minimum:
-
 ```text
 PROGRAM=GOAL-BETA-PREP01
-FINAL_HEAD=
-PRODUCTION_RELEASE=
-PRODUCTION_SCHEMA=
-COMPUTE_CUTOVER=
-COMPUTE_CANARY=
-SEARCH_PRODUCTION=
-ACTIVITY_CENTER_V0_1=
-GOLDEN_JOURNEY=
-INTERNAL_BETA_READY=
-ROLLBACK_POINTER=
-UNRESOLVED_BLOCKERS=
-PRODUCTION_DATA_MUTATION_SUMMARY=
-CREDENTIAL_CHANGE_SUMMARY=
+FINAL_HEAD=see git history (the reconciliation commit itself is the final checkpoint; a file cannot contain its own SHA)
+PRODUCTION_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8
+PRODUCTION_SCHEMA=v22 / 001-022
+COMPUTE_CUTOVER=COMPLETE
+COMPUTE_CANARY=PASS (32415058752, zero artifacts, canonical metadata unchanged)
+SEARCH_PRODUCTION=PASS (b19f9dc5 composed baseline; browser gate green)
+ACTIVITY_CENTER_V0_1=PASS (46/46 exact-release browser journey)
+GOLDEN_JOURNEY=PASS (32/32 exact-release browser journey, zero residue)
+INTERNAL_BETA_READY=true
+ROLLBACK_POINTER=01747d929cb42e4c107d47c10ad66047377f6bcd (same-schema app-only)
+UNRESOLVED_BLOCKERS=none
+PRODUCTION_DATA_MUTATION_SUMMARY=only run-owned synthetic fixtures created and purged; pre-existing durable pending fixtures untouched; canonical metadata unchanged
+CREDENTIAL_CHANGE_SUMMARY=none in Phases 3-5 (Phase 2 least-scoped credential unchanged)
 COST_CHANGE=false
 NEXT=OWNER_INTERNAL_BETA_DECISION
 STOP

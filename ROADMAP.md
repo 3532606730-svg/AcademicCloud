@@ -87,9 +87,9 @@ GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01 — COMPLETE
 → GOAL-BETA-PREP01 Phase 3 / RF-SEARCH01 production closure — COMPLETE
   compose existing Search behavior onto latest baseline
   + mandatory browser gate + new exact artifact + deploy
-→ GOAL-BETA-PREP01 Phase 4 / L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery — ACTIVE
-→ GOAL-BETA-PREP01 Phase 5 / QA-GOLDEN01 exact-release real-browser final gate
-→ INTERNAL_BETA_READY
+→ GOAL-BETA-PREP01 Phase 4 / L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery — COMPLETE
+→ GOAL-BETA-PREP01 Phase 5 / QA-GOLDEN01 exact-release real-browser final gate — COMPLETE
+→ INTERNAL_BETA_READY — REACHED
 → STOP before starting/inviting users into internal beta
 ```
 
