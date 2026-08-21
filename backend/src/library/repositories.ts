@@ -1,6 +1,7 @@
 import type {
   Library,
   LibraryHolding,
+  LibraryHoldingSort,
   LibraryMembership,
   LibraryRecycledHolding,
   LibraryRole,
@@ -24,6 +25,18 @@ export interface LibraryRepository {
   listHoldings(libraryId: string, limit: number): LibraryHolding[];
   /** Keyset-paginated holdings after `after` (null = first page), newest first. */
   listHoldingsPage(libraryId: string, after: HoldingCursor | null, limit: number): LibraryHolding[];
+  /**
+   * Keyset-paginated holdings under a deterministic server-side sort. `after`
+   * carries the sort's own comparison fields: primary (ISO timestamp for
+   * newest/oldest, pinyin sort key for titles, size for size sorts), secondary
+   * tie-break, and the stable file identity for title/size sorts.
+   */
+  listHoldingsSorted(
+    libraryId: string,
+    sort: LibraryHoldingSort,
+    after: { primary: string; secondary: string; fileId: string } | null,
+    limit: number,
+  ): LibraryHolding[];
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null;
   /** True when an available (pending/active) root file in the library domain already carries this name. */
   hasAvailableNameConflict(libraryId: string, displayName: string): boolean;

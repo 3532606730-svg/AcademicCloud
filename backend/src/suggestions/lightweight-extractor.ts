@@ -32,6 +32,10 @@ function plausible(value: string): boolean {
   const candidate = clean(value);
   if (candidate.length < 2 || candidate.length > 180 || /^\d+[\s./-]*$/u.test(candidate)) return false;
   if (/^(?:unknown|untitled|scanned?(?:\s+document)?|scan|document|file|book|download(?:ed)?)(?:\s+\d+)?$/iu.test(candidate)) return false;
+  // Generic capture/device/sequence junk: scan123, IMG_20260821, DSC_0001,
+  // document001, file12345, page7, screenshot_2024. These must never become a
+  // fabricated canonical title.
+  if (/^(?:scan|img|dsc|doc(?:ument)?|file|photo|pic(?:ture)?|image|screenshot|screen[_-]?shot|page|attachment|untitled|unknown|p\d+)\s*[\s._-]*\d*$/iu.test(candidate)) return false;
   return /[\p{L}]/u.test(candidate);
 }
 
@@ -87,7 +91,11 @@ export function extractLightweightSuggestions(filename: string): Candidate[] {
   const tail = clean(structured[3] ?? "");
   const date = tail.match(/(?:^|[^\d])((?:18|19|20)\d{2}(?:[./-]\d{1,2})?(?:[./-]\d{1,2})?)(?:$|[^\d])/u)?.[1] ?? null;
   const publisher = clean(tail.replace(date ?? "", "").replace(/[，,;；:：]+$/u, ""));
-  if (plausible(title)) results.push(candidate(results.length, "canonicalTitle", title));
+  if (plausible(title)) {
+    // A deliberate 《题名》（出版项）structure is stronger evidence than a bare
+    // filename stem: it is the reliable signal the batch-naming workflow uses.
+    results.push(candidate(results.length, "canonicalTitle", title, { confidence: "medium" }));
+  }
   if (plausible(author)) results.push(candidate(results.length, "authority", author, { authorityType: "person", authorityRole: "author" }));
   if (plausible(publisher)) results.push(candidate(results.length, "authority", publisher, { authorityType: "institution", authorityRole: "publisher" }));
   if (date) results.push(candidate(results.length, "dateStatement", date));

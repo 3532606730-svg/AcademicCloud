@@ -287,6 +287,57 @@ export interface LibraryMetadataInput {
   authorityLinks: Array<{ authorityId: string; role: AuthorityRole }>;
 }
 
+export type LibraryHoldingSort =
+  | "newest"
+  | "oldest"
+  | "title_asc"
+  | "title_desc"
+  | "size_desc"
+  | "size_asc";
+
+export interface LibraryHoldingsPage {
+  holdings: LibraryHolding[];
+  nextCursor: string | null;
+}
+
+export interface BatchNamingPreviewItem {
+  fileId: string;
+  displayName: string;
+  canonicalTitle: string | null;
+  metadataVersion: string;
+  sourceVersion: string;
+  materialType: MaterialType | null;
+  mediaType: string | null;
+  proposedTitle: string | null;
+  proposedConfidence: "medium" | "low" | null;
+  proposedSource: "filename" | null;
+  status: "available" | "unavailable";
+}
+
+export interface BatchNamingPreview {
+  items: BatchNamingPreviewItem[];
+}
+
+export interface BatchNamingItemInput {
+  fileId: string;
+  metadataVersion: string;
+  sourceVersion: string;
+  canonicalTitle: string;
+  materialType: MaterialType;
+}
+
+export type BatchNamingResultStatus =
+  | "applied"
+  | "stale"
+  | "conflict"
+  | "invalid_input"
+  | "not_found";
+
+export interface BatchNamingResultItem {
+  fileId: string;
+  status: BatchNamingResultStatus;
+}
+
 /**
  * Bounded, deterministic bibliographic suggestion evidence.  These values
  * intentionally mirror the server contract but do not expose object keys,
@@ -567,6 +618,9 @@ export interface AcademicCloudApi {
   changeLibraryMemberRole(libraryId: string, accountId: string, role: LibraryRole): Promise<LibraryMember>;
   removeLibraryMember(libraryId: string, accountId: string): Promise<void>;
   listLibraryHoldings(libraryId: string, signal?: AbortSignal): Promise<LibraryHolding[]>;
+  listLibraryHoldingsSorted?(libraryId: string, sort: LibraryHoldingSort, cursor: string | null, signal?: AbortSignal): Promise<LibraryHoldingsPage>;
+  previewLibraryBatchNaming?(libraryId: string, fileIds: string[], signal?: AbortSignal): Promise<BatchNamingPreview>;
+  applyLibraryBatchNaming?(libraryId: string, items: BatchNamingItemInput[]): Promise<{ results: BatchNamingResultItem[] }>;
   searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number): Promise<LibrarySearchPage>;
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
   updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails>;
@@ -929,6 +983,40 @@ export class ApiClient implements AcademicCloudApi {
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings`,
       signal ? { signal } : {},
     )).holdings;
+  }
+
+  async listLibraryHoldingsSorted(
+    libraryId: string,
+    sort: LibraryHoldingSort,
+    cursor: string | null,
+    signal?: AbortSignal,
+  ): Promise<{ holdings: LibraryHolding[]; nextCursor: string | null }> {
+    const params = new URLSearchParams({ sort, limit: "100" });
+    if (cursor) params.set("cursor", cursor);
+    return this.#request<{ holdings: LibraryHolding[]; nextCursor: string | null }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings?${params.toString()}`,
+      signal ? { signal } : {},
+    );
+  }
+
+  async previewLibraryBatchNaming(
+    libraryId: string,
+    fileIds: string[],
+    signal?: AbortSignal,
+  ): Promise<BatchNamingPreview> {
+    const params = new URLSearchParams({ fileIds: fileIds.join(",") });
+    return this.#request<BatchNamingPreview>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/batch-naming?${params.toString()}`,
+      signal ? { signal } : {},
+    );
+  }
+
+  applyLibraryBatchNaming(libraryId: string, items: BatchNamingItemInput[]): Promise<{ results: BatchNamingResultItem[] }> {
+    return this.#jsonBody<{ results: BatchNamingResultItem[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/batch-naming`,
+      "POST",
+      { items },
+    );
   }
 
   async searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number): Promise<LibrarySearchPage> {

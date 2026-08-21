@@ -47,6 +47,7 @@ import { calculateFileMd5 } from "./md5.ts";
 import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
 import { ResourceDetailsDialog } from "./resource-details.tsx";
+import { BatchNamingDialog } from "./batch-naming.tsx";
 import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
 import {
@@ -675,6 +676,7 @@ function DriveView({
   const [recoveringSourceId, setRecoveringSourceId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [resourceDetailsRequest, setResourceDetailsRequest] = useState<ResourceDetailsRequest | null>(null);
+  const [batchNamingRequest, setBatchNamingRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
   const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
@@ -2058,7 +2060,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || moveRequest !== null || accountAdministrationOpen}>
+    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || batchNamingRequest !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -2194,11 +2196,19 @@ function DriveView({
               api={api}
               revision={revision}
               onCatalogueChange={reconcileLibraryCatalogue}
-              renderCatalogue={({ library, holdings, loading: holdingsLoading }) => {
+              renderCatalogue={({ library, holdings, loading: holdingsLoading, nextCursor, loadingMore, onLoadMore }) => {
                 const rootFolders = account.role === "owner" ? entries.folders : [];
                 const rootFiles = account.role === "owner" ? entries.files : [];
                 const catalogueLoading = loading || holdingsLoading;
                 const catalogueEmpty = rootFolders.length + rootFiles.length + holdings.length === 0;
+                const allSelectedAreHoldings = selectedEntries.length > 0
+                  && selectedEntries.every((entry) => entry.scope === "library_holding")
+                  && new Set(selectedEntries.map((entry) => entry.scope === "library_holding" ? entry.library.id : "")).size === 1;
+                const batchNamingAvailable = allSelectedAreHoldings
+                  && library !== null
+                  && library.role === "manager"
+                  && api.previewLibraryBatchNaming !== undefined
+                  && api.applyLibraryBatchNaming !== undefined;
                 return (
                   <section aria-labelledby="contents-title">
                     <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
@@ -2226,6 +2236,10 @@ function DriveView({
                         {...(selectionCapabilities.recycle ? { onRecycle: () => void recycleSelected().catch(() => undefined) } : {})}
                         {...(selectionCapabilities.favoriteAdd ? { onFavoriteAdd: () => void runFavoriteSelection(true) } : {})}
                         {...(selectionCapabilities.favoriteRemove ? { onFavoriteRemove: () => void runFavoriteSelection(false) } : {})}
+                        {...(batchNamingAvailable ? { onBatchName: () => setBatchNamingRequest({
+                          library: library!,
+                          holdings: selectedEntries.map((entry) => (entry.scope === "library_holding" ? entry.item : entry.item)),
+                        }) } : {})}
                       />
                     )}
                     {librarySearchActive ? null : catalogueLoading ? <LoadingRows /> : !library ? (
@@ -2261,6 +2275,13 @@ function DriveView({
                         onToggleSelected={toggleSelection}
                         selectionDisabled={busyId === "bulk"}
                       />
+                    )}
+                    {!librarySearchActive && nextCursor && (
+                      <div className="library-load-more">
+                        <button className="button button--quiet" type="button" disabled={loadingMore} onClick={onLoadMore}>
+                          {loadingMore ? t("library.loadingMore") : t("library.loadMore")}
+                        </button>
+                      </div>
                     )}
                   </section>
                 );
@@ -2681,6 +2702,20 @@ function DriveView({
           }}
           onDownload={() => void downloadLibraryHolding(resourceDetailsRequest.library, resourceDetailsRequest.holding)}
           onSuggestionJobChange={handleResourceSuggestionJobChange}
+        />
+      )}
+      {batchNamingRequest && (
+        <BatchNamingDialog
+          api={api}
+          library={batchNamingRequest.library}
+          holdings={batchNamingRequest.holdings}
+          onClose={() => setBatchNamingRequest(null)}
+          onApplied={() => {
+            // Keep the modal open so the per-item result list stays visible;
+            // the manager closes it explicitly after review.
+            setSelectedKeys(new Set());
+            refresh();
+          }}
         />
       )}
       {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void preview.download()} />}
@@ -3530,6 +3565,7 @@ function BulkToolbar({
   onPermanentDelete,
   onFavoriteAdd,
   onFavoriteRemove,
+  onBatchName,
 }: {
   mode: "library" | "favorites" | "recycle";
   selectedCount: number;
@@ -3541,6 +3577,7 @@ function BulkToolbar({
   onPermanentDelete?: () => void;
   onFavoriteAdd?: () => void;
   onFavoriteRemove?: () => void;
+  onBatchName?: () => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -3552,6 +3589,7 @@ function BulkToolbar({
             {t("bulk.move")}
           </button>
         )}
+        {onBatchName && <button className="button button--small" type="button" disabled={busy} onClick={onBatchName}>{t("bulk.batchName")}</button>}
         {onFavoriteAdd && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteAdd}>{t("bulk.favoriteAdd")}</button>}
         {onFavoriteRemove && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteRemove}>{t("bulk.favoriteRemove")}</button>}
         {onRestore && <button className="button button--small" type="button" disabled={busy} onClick={onRestore}>{t("bulk.restore")}</button>}

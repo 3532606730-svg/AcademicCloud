@@ -434,8 +434,12 @@ export function ResourceDetailsDialog({
       const job = await api.generateLibraryMetadataSuggestions(library.id, holding.file.id);
       setSuggestionJob(job);
       onSuggestionJobChange?.(job);
-      setSuggestionRun(null);
       setSelectedSuggestionIds(new Set());
+      // Fast naming: the lightweight filename-derived run is persisted
+      // synchronously with the request, so the candidates appear immediately
+      // while the OCR/Compute job continues asynchronously.
+      const run = await api.getLibraryMetadataSuggestions?.(library.id, holding.file.id);
+      if (run !== undefined) setSuggestionRun(run);
     } catch (caught) {
       setSuggestionsError(safeSuggestionError(caught));
     } finally {
@@ -836,6 +840,11 @@ function MetadataSuggestionsPanel({
               : t("metadata.suggestions.job.failed")}
       </p>}
       {!loading && !job && !run && <p className="muted">{t("metadata.suggestions.none")}</p>}
+      {!loading && job && run && (job.state === "queued" || job.state === "running") && (
+        <p className={`metadata-suggestions-status metadata-suggestions-job--${job.state}`} role="status">
+          {job.state === "queued" ? t("metadata.suggestions.job.queued") : t("metadata.suggestions.job.processing")}
+        </p>
+      )}
       {run && (
         <>
           <p className={`metadata-suggestions-status metadata-suggestions-status--${run.status}`} role="status">

@@ -258,7 +258,45 @@ NEXT=OWNER_INTERNAL_BETA_DECISION
 Internal beta itself is NOT started and no users are invited. Starting/inviting
 remains exclusively the Owner's decision.
 
+## HOTFIX-META-UX01 — Owner-authorized product-usability hotfix
+
+Owner-authorized on 2026-08-21 as one bounded same-schema hotfix on production
+`c741455…` / schema v22: (A) fast lightweight canonical-title suggestions
+available ≤2 s independent of GitHub Compute/OCR (idempotent, stale/CAS-safe,
+no auto-accept, junk filenames rejected, no OSS rename); (B) manager-only batch
+naming for selected Library holdings (preview → edit/select/deselect →
+"select reliable suggestions" → explicit confirm → per-item results; one
+stale/conflict item never rolls back others; existing canonical metadata
+authority/CAS; OCR not required; no physical rename); (C) server-authoritative
+Library sorting (newest/oldest/title/size) with Chinese Han ordered by
+normalized Hanyu Pinyin, punctuation/brackets/spacing never dominant, Latin A–Z
+in the same key system, one deterministic numeric policy, Unicode fallback,
+title-then-file-identity tie-breaks, and stable keyset cursor pagination;
+Search ranking unchanged.
+
+Key design decision: the migration-019 append-only evidence model is preserved
+exactly. Fast naming persists one immutable run per job; the OCR/Compute
+callback persists a second immutable superseding run (`suggestion-<jobId>-computed`),
+latest-run resolution surfaces it, and an accepted run stays frozen. No trigger
+change, no migration, no candidate delete/update.
+
+Verification before deployment:
+
+```text
+BACKEND_SUITE=343/343 PASS (6 sorting + fast/batch naming tests)
+FRONTEND_SUITE=259/259 PASS
+WORKSPACE_TYPECHECK=PASS
+PRODUCTION_BUILD=PASS
+GIT_DIFF_CHECK=PASS
+MIGRATION_CHANGE=none (schema v22 / 001-022)
+OSS_RAM_CORS_PROVIDER_CREDENTIAL_COST_CHANGE=none
+OWNER_MANUAL_ACCEPTANCE=PENDING (Owner performs manual product acceptance
+in production after deployment; no browser automation was run per Owner override)
+```
+
 ## Next action
 
-STOP. Report the final program state to the Owner and wait for the
-Owner's internal-beta decision. Do not begin internal beta or invite users.
+Deploy the HOTFIX-META-UX01 exact artifact (same-schema app-only), verify
+health/readiness/process/schema/integrity, update durable docs with the release
+identity, commit/push/sync, then STOP for the Owner's manual product acceptance
+and the internal-beta decision.

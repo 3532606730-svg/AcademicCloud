@@ -1,6 +1,14 @@
 export const LIBRARY_ROLES = ["manager", "member"] as const;
 export type LibraryRole = (typeof LIBRARY_ROLES)[number];
 
+export type LibraryHoldingSort =
+  | "newest"
+  | "oldest"
+  | "title_asc"
+  | "title_desc"
+  | "size_desc"
+  | "size_asc";
+
 export interface Library {
   id: string;
   ownerDomainId: string;

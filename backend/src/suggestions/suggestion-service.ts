@@ -21,6 +21,7 @@ import type {
   MaterialType,
   TypeFieldName,
 } from "../metadata/metadata.js";
+import { MATERIAL_TYPES } from "../metadata/metadata.js";
 import type { StorageAdapter } from "../storage/storage-adapter.js";
 import { extractLightweightSuggestions, mergeSuggestionCandidates } from "./lightweight-extractor.js";
 import {
@@ -64,7 +65,49 @@ export interface SuggestionAcceptanceResult {
   run: SuggestionRunSummary;
 }
 
+export interface BatchNamingPreviewItem {
+  fileId: string;
+  displayName: string;
+  canonicalTitle: string | null;
+  metadataVersion: string;
+  sourceVersion: string;
+  materialType: MaterialType | null;
+  mediaType: string | null;
+  proposedTitle: string | null;
+  proposedConfidence: "medium" | "low" | null;
+  proposedSource: "filename" | null;
+  status: "available" | "unavailable";
+}
+
+export interface BatchNamingPreview {
+  items: BatchNamingPreviewItem[];
+}
+
+export interface BatchNamingItemInput {
+  fileId: string;
+  metadataVersion: string;
+  sourceVersion: string;
+  canonicalTitle: string;
+  materialType: MaterialType;
+}
+
+export type BatchNamingResultStatus =
+  | "applied"
+  | "stale"
+  | "conflict"
+  | "invalid_input"
+  | "not_found";
+
+export interface BatchNamingResultItem {
+  fileId: string;
+  status: BatchNamingResultStatus;
+  detail?: MetadataDetail;
+}
+
+export const BATCH_NAMING_MAX_ITEMS = 50;
+
 const VERSION_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
+const SAFE_FILE_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 
 const PDF_MEDIA_TYPE = "application/pdf";
 const JOB_DEADLINE_MILLISECONDS = 2 * 60 * 60_000;
@@ -328,8 +371,135 @@ export class SuggestionService {
     this.#createToken = options.createToken ?? (() => randomBytes(32).toString("base64url"));
   }
 
-  getLatest(actor: AuthenticatedAccount, libraryId: string, fileId: string): SuggestionRunSummary | null {
+  /**
+   * Manager-only batch naming preview. Each selected holding gets the current
+   * display/canonical state plus the immediate lightweight filename-derived
+   * proposal with its confidence; no OCR/Compute dispatch and no persistence
+   * happen here. Items that are not visible/active report `unavailable`.
+   */
+  previewBatchNaming(actor: AuthenticatedAccount, libraryId: string, fileIds: string[]): BatchNamingPreview {
+    if (fileIds.length < 1 || fileIds.length > BATCH_NAMING_MAX_ITEMS || new Set(fileIds).size !== fileIds.length) {
+      throw new SuggestionError("invalid_input");
+    }
     return this.#persistence.runInTransaction((repositories) => {
+      const items: BatchNamingPreviewItem[] = [];
+      for (const fileId of fileIds) {
+        try {
+          const context = resolveHolding(actor, libraryId, fileId, repositories);
+          if (context.membership.role !== "manager") {
+            items.push(this.#unavailableBatchItem(fileId));
+            continue;
+          }
+          const fingerprint = sourceFingerprint(context.file);
+          const detail = this.#metadata.getDetails(actor, libraryId, fileId);
+          const lightweight = extractLightweightSuggestions(context.file.displayName);
+          const title = lightweight.find((candidate) => candidate.fieldPath === "canonicalTitle");
+          items.push({
+            fileId,
+            displayName: context.file.displayName,
+            canonicalTitle: context.holding.canonicalTitle,
+            metadataVersion: detail.metadataVersion,
+            sourceVersion: fingerprint.value,
+            materialType: detail.metadata?.materialType ?? null,
+            mediaType: context.file.mediaType,
+            proposedTitle: title?.value ?? null,
+            proposedConfidence: title ? (title.confidence === "medium" ? "medium" : "low") : null,
+            proposedSource: title?.sourceType === "filename" ? "filename" : null,
+            status: "available",
+          });
+        } catch {
+          items.push(this.#unavailableBatchItem(fileId));
+        }
+      }
+      return { items };
+    });
+  }
+
+  /**
+   * Manager-only batch naming application. Every item writes through the
+   * existing canonical metadata authority/CAS path in its own transaction:
+   * a failing item never corrupts or rolls back the other items, and every
+   * per-item outcome is reported. No automatic acceptance exists here — the
+   * client always confirms before calling.
+   */
+  applyBatchNaming(actor: AuthenticatedAccount, libraryId: string, items: BatchNamingItemInput[]): BatchNamingResultItem[] {
+    if (items.length < 1 || items.length > BATCH_NAMING_MAX_ITEMS || new Set(items.map((item) => item.fileId)).size !== items.length) {
+      throw new SuggestionError("invalid_input");
+    }
+    const results: BatchNamingResultItem[] = [];
+    for (const item of items) {
+      results.push(this.#applyBatchNamingItem(actor, libraryId, item));
+    }
+    return results;
+  }
+
+  #unavailableBatchItem(fileId: string): BatchNamingPreviewItem {
+    return {
+      fileId,
+      displayName: "",
+      canonicalTitle: null,
+      metadataVersion: "",
+      sourceVersion: "",
+      materialType: null,
+      mediaType: null,
+      proposedTitle: null,
+      proposedConfidence: null,
+      proposedSource: null,
+      status: "unavailable",
+    };
+  }
+
+  #applyBatchNamingItem(actor: AuthenticatedAccount, libraryId: string, item: BatchNamingItemInput): BatchNamingResultItem {
+    if (!VERSION_PATTERN.test(item.metadataVersion) || !VERSION_PATTERN.test(item.sourceVersion)
+      || !SAFE_FILE_ID.test(item.fileId) || !MATERIAL_TYPES.includes(item.materialType)) {
+      return { fileId: item.fileId, status: "invalid_input" };
+    }
+    try {
+      const snapshot = this.#persistence.runInTransaction((repositories) => {
+        const context = resolveHolding(actor, libraryId, item.fileId, repositories);
+        if (context.membership.role !== "manager") throw new SuggestionError("not_found");
+        const fingerprint = sourceFingerprint(context.file);
+        if (fingerprint.value !== item.sourceVersion) throw new SuggestionError("stale");
+        const current = repositories.metadata.findMetadata(context.library.ownerDomainId, context.holding.recordId);
+        const input: CanonicalMetadataInput = current
+          ? {
+              materialType: item.materialType,
+              canonicalTitle: item.canonicalTitle,
+              ...(current.subtitle === null ? {} : { subtitle: current.subtitle }),
+              alternativeTitles: [...current.alternativeTitles],
+              ...(current.dateStatement === null ? {} : { dateStatement: current.dateStatement }),
+              identifiers: current.identifiers.map((identifier) => ({ ...identifier })),
+              typeFields: { ...current.typeFields },
+              authorityLinks: current.authorityLinks.map((link) => ({ authorityId: link.authorityId, role: link.role })),
+            }
+          : {
+              materialType: item.materialType,
+              canonicalTitle: item.canonicalTitle,
+              alternativeTitles: [],
+              identifiers: [],
+              typeFields: {},
+              authorityLinks: [],
+            };
+        return { context, input };
+      });
+      const detail = this.#metadata.updateMetadata(actor, libraryId, item.fileId, item.metadataVersion, snapshot.input);
+      return { fileId: item.fileId, status: "applied", detail };
+    } catch (error: unknown) {
+      if (error instanceof SuggestionError) {
+        return { fileId: item.fileId, status: error.code === "stale" ? "stale" : error.code === "not_found" ? "not_found" : "conflict" };
+      }
+      if (error instanceof MetadataError) {
+        if (error.code === "concurrent_change" || error.code === "incompatible_type_transition") {
+          return { fileId: item.fileId, status: "conflict" };
+        }
+        if (error.code === "not_found") return { fileId: item.fileId, status: "not_found" };
+        return { fileId: item.fileId, status: "invalid_input" };
+      }
+      throw error;
+    }
+  }
+
+  getLatest(actor: AuthenticatedAccount, libraryId: string, fileId: string): SuggestionRunSummary | null {    return this.#persistence.runInTransaction((repositories) => {
       const context = resolveHolding(actor, libraryId, fileId, repositories);
       const run = repositories.suggestions.findLatestRun(context.library.ownerDomainId, libraryId, fileId);
       if (!run) return null;
@@ -358,6 +528,41 @@ export class SuggestionService {
 
   expireDueJobs(): number {
     return this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.expireDue(this.#now()));
+  }
+
+  /**
+   * Persist the lightweight filename-derived evidence for a job if its run does
+   * not exist yet. Idempotent: a repeated request reuses the exact run. The
+   * run's source fingerprint makes stale sources fail closed at read/accept
+   * time exactly like Compute-derived runs.
+   */
+  #ensureLightweightRun(
+    repositories: RepositorySet,
+    context: HoldingContext,
+    job: DerivedJobRecord,
+    now: Date,
+  ): void {
+    const runId = `suggestion-${job.id}`;
+    const existing = repositories.suggestions.findRun(context.library.ownerDomainId, runId);
+    if (existing) return;
+    const merged = mergeSuggestionCandidates(
+      [],
+      extractLightweightSuggestions(context.file.displayName),
+      "no_suggestions",
+    );
+    repositories.suggestions.createRun({
+      id: runId,
+      ownerDomainId: context.library.ownerDomainId,
+      libraryId: job.scopeId,
+      recordId: context.holding.recordId,
+      fileId: job.resourceId,
+      sourceFingerprint: sourceFingerprint(context.file),
+      status: merged.status,
+      window: { firstPages: 15, lastPages: 5, pageCount: null, pageIndices: [], complete: false },
+      createdByAccountId: job.createdByAccountId,
+      createdAt: now,
+      candidates: merged.candidates.slice(0, 256).map((candidate, position) => ({ ...candidate, position })),
+    });
   }
 
   getLatestJob(actor: AuthenticatedAccount, libraryId: string, fileId: string): DerivedJobSummary | null {
@@ -399,32 +604,43 @@ export class SuggestionService {
         .update(JSON.stringify(["metadata_suggestion", libraryId, fileId, fingerprint.value]))
         .digest("hex");
       const existing = repositories.derivedJobs.findByIdempotencyKey(idempotencyKey);
+      let job: DerivedJobRecord;
+      let dispatch: boolean;
       if (existing && ["queued", "running", "succeeded"].includes(existing.state)) {
-        return { job: existing, dispatch: false };
-      }
-      // GitHub may queue a clean runner and build/verify its pinned OCR
-      // runtime before claiming the source. The worker capability is minted
-      // only at claim time; this durable deadline bounds the entire provider
-      // journey without coupling Core availability to an event-loop timer.
-      const deadlineAt = new Date(now.getTime() + JOB_DEADLINE_MILLISECONDS);
-      if (existing?.state === "failed" && existing.activeAttemptId) {
+        job = existing;
+        dispatch = false;
+      } else if (existing?.state === "failed" && existing.activeAttemptId) {
+        // GitHub may queue a clean runner and build/verify its pinned OCR
+        // runtime before claiming the source. The worker capability is minted
+        // only at claim time; this durable deadline bounds the entire provider
+        // journey without coupling Core availability to an event-loop timer.
+        const deadlineAt = new Date(now.getTime() + JOB_DEADLINE_MILLISECONDS);
         const retried = repositories.derivedJobs.retry(existing.id, existing.activeAttemptId, attemptId, now, deadlineAt);
         if (!retried) throw new SuggestionError("concurrent_change");
-        return { job: retried, dispatch: true };
+        job = retried;
+        dispatch = true;
+      } else {
+        const deadlineAt = new Date(now.getTime() + JOB_DEADLINE_MILLISECONDS);
+        const created = repositories.derivedJobs.create({
+          id: this.#createId(),
+          kind: "metadata_suggestion",
+          scopeId: libraryId,
+          resourceId: fileId,
+          inputVersion: fingerprint.value,
+          idempotencyKey,
+          attemptId,
+          createdByAccountId: actor.id,
+          createdAt: now,
+          deadlineAt,
+        });
+        job = created;
+        dispatch = true;
       }
-      const created = repositories.derivedJobs.create({
-        id: this.#createId(),
-        kind: "metadata_suggestion",
-        scopeId: libraryId,
-        resourceId: fileId,
-        inputVersion: fingerprint.value,
-        idempotencyKey,
-        attemptId,
-        createdByAccountId: actor.id,
-        createdAt: now,
-        deadlineAt,
-      });
-      return { job: created, dispatch: true };
+      // Fast naming: the lightweight filename-derived evidence is persisted
+      // immediately and independently of the asynchronous Compute job, so a
+      // usable canonical-title candidate exists within seconds of the request.
+      this.#ensureLightweightRun(repositories, context, job, now);
+      return { job, dispatch };
     });
     if (!prepared.dispatch || !prepared.job.activeAttemptId) return publicDerivedJob(prepared.job);
     try {
@@ -557,14 +773,28 @@ export class SuggestionService {
       const context = resolveHolding(actor, job.scopeId, job.resourceId, repositories);
       const fingerprint = sourceFingerprint(context.file);
       if (context.membership.role !== "manager" || fingerprint.value !== job.inputVersion) throw new SuggestionError("stale");
+      const runId = `suggestion-${job.id}`;
+      const existingRun = repositories.suggestions.findRun(context.library.ownerDomainId, runId);
+      // The fast lightweight run is immutable evidence. An accepted run is
+      // frozen: accepted canonical metadata is never silently rewritten by an
+      // asynchronous callback, so the job succeeds against the accepted run
+      // without persisting anything new.
+      if (existingRun && existingRun.status === "accepted") {
+        const succeeded = repositories.derivedJobs.succeed(job.id, result.attemptId, existingRun.id, digest, now);
+        if (!succeeded) throw new SuggestionError("concurrent_change");
+        return succeeded;
+      }
       const merged = mergeSuggestionCandidates(
         result.output.candidates.map(derivedCandidate),
-        extractLightweightSuggestions(context.file.displayName),
+        existingRun?.candidates.map((candidate) => ({ ...candidate })) ?? [],
         result.output.status,
       );
-      const runId = `suggestion-${job.id}`;
       const run: NewSuggestionRun = {
-        id: runId,
+        // Append-only evidence: when the fast lightweight run exists, the
+        // OCR/Compute evidence lands in a second immutable run that supersedes
+        // it; latest-run resolution surfaces it to the UI. Jobs dispatched
+        // before fast naming keep the original single-run behavior.
+        id: existingRun ? `${runId}-computed` : runId,
         ownerDomainId: context.library.ownerDomainId,
         libraryId: job.scopeId,
         recordId: context.holding.recordId,

@@ -6,6 +6,7 @@ import { DriveError } from "../drive/drive-service.js";
 import { LIBRARY_ROLES, type LibraryRole } from "./library.js";
 import { LibraryError, type LibraryService } from "./library-service.js";
 import { SearchInputError } from "./search.js";
+import { HoldingSortError } from "./holding-sort.js";
 
 const ID_PATTERN = "^[A-Za-z0-9_-]{1,128}$";
 const idSchema = { type: "string", pattern: ID_PATTERN, minLength: 1, maxLength: 128 } as const;
@@ -16,7 +17,7 @@ interface MemberParams extends LibraryParams { accountId: string; }
 interface HoldingParams extends LibraryParams { fileId: string; }
 interface MembershipBody { accountId: string; role: LibraryRole; }
 interface RoleBody { role: LibraryRole; }
-interface HoldingsQuery { limit?: number; }
+interface HoldingsQuery { limit?: number; sort?: string; cursor?: string; }
 interface DownloadQuery { disposition?: "attachment" | "inline"; }
 interface ContributionParams extends LibraryParams { contributionId: string; }
 interface ContributionBody { artifactId: string; }
@@ -32,8 +33,8 @@ function sendLibraryError(reply: FastifyReply, error: unknown) {
   if (error instanceof AuthorizationDeniedError) {
     return reply.code(404).send({ error: "not_found" });
   }
-  if (error instanceof SearchInputError) {
-    return reply.code(400).send({ error: "invalid_input" });
+  if (error instanceof SearchInputError || error instanceof HoldingSortError) {
+    return reply.code(400).send({ error: error.code === "invalid_cursor" ? "invalid_cursor" : "invalid_input" });
   }
   if (error instanceof LibraryError) {
     const status = error.code === "invalid_input"
@@ -191,13 +192,32 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
       preHandler: app.authenticate,
       schema: {
         params: { type: "object", required: ["libraryId"], properties: { libraryId: idSchema } },
-        querystring: { type: "object", additionalProperties: false, properties: { limit: { type: "integer", minimum: 1, maximum: 100 } } },
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            limit: { type: "integer", minimum: 1, maximum: 100 },
+            sort: { type: "string", enum: ["newest", "oldest", "title_asc", "title_desc", "size_desc", "size_asc"] },
+            cursor: { type: "string", minLength: 1, maxLength: 8000 },
+          },
+        },
       },
     },
     async (request, reply) => {
       try {
+        if (request.query.sort !== undefined) {
+          const page = service.listHoldingsSorted(
+            requireActor(request.authAccount).id,
+            request.params.libraryId,
+            request.query.sort,
+            request.query.cursor ?? null,
+            request.query.limit ?? 50,
+          );
+          return { holdings: page.holdings, nextCursor: page.nextCursor };
+        }
         return {
           holdings: service.listHoldings(requireActor(request.authAccount).id, request.params.libraryId, request.query.limit),
+          nextCursor: null,
         };
       } catch (error: unknown) {
         return sendLibraryError(reply, error);

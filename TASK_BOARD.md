@@ -10,11 +10,12 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 | Task | State | Next authority |
 |---|---|---|
 | GOAL-BETA-PREP01 | ALL FIVE PHASES GREEN / INTERNAL_BETA_READY | STOP — Owner decides whether/when to start or invite users into internal beta |
+| HOTFIX-META-UX01 | IMPLEMENTED / PRE-DEPLOY VERIFICATION GREEN | Owner-authorized direct same-schema app-only deploy, then Owner manual product acceptance in production |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
 
-The detailed Owner authorization, boundaries, mandatory sequence, credential/privacy rules, and stop conditions are authoritative in `tasks/doing/GOAL-BETA-PREP01.md`.
+The detailed Owner authorization, boundaries, mandatory sequence, credential/privacy rules, and stop conditions are authoritative in `tasks/doing/GOAL-BETA-PREP01.md`. The bounded product-usability hotfix contract is authoritative in `tasks/doing/HOTFIX-META-UX01.md`.
 
 ## Active Goal Mode sequence
 
@@ -106,6 +107,11 @@ SEARCH_PRODUCTION=PASS
 ACTIVITY_CENTER_V0_1=PASS
 QA_GOLDEN01=PASS
 INTERNAL_BETA_READY=true
+
+HOTFIX_META_UX01_STATE=IMPLEMENTED_PRE-DEPLOY_VERIFICATION_GREEN
+HOTFIX_META_UX01_MIGRATION_CHANGE=none
+HOTFIX_META_UX01_OSS_RAM_CORS_CREDENTIAL_COST_CHANGE=none
+HOTFIX_META_UX01_OWNER_MANUAL_ACCEPTANCE=PENDING
 ```
 
 The full storage hotfix/R3 artifact identities and hashes remain in `CURRENT_STATE.json` and the completed storage task cards.

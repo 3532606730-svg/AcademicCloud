@@ -12,6 +12,7 @@ import type { AuditEventKind, AuditReasonCode } from "../audit/audit-event.js";
 import type {
   Library,
   LibraryHolding,
+  LibraryHoldingSort,
   LibraryMembership,
   LibraryRecycledHolding,
   LibraryRole,
@@ -27,6 +28,37 @@ import {
   type SearchableHolding,
 } from "./search.js";
 import type { ContributionCandidate, ContributionState, LibraryContribution } from "./contribution.js";
+import {
+  decodeHoldingSortCursor,
+  encodeHoldingSortCursor,
+  HoldingSortError,
+  isLibraryHoldingSort,
+  type HoldingSortCursor,
+} from "./holding-sort.js";
+import { pinyinSortKey } from "./pinyin.js";
+
+/** Effective display title, mirroring the SQL COALESCE(NULLIF(canonical_title, ''), display_name). */
+function holdingEffectiveTitle(holding: LibraryHolding): string {
+  return holding.canonicalTitle !== null && holding.canonicalTitle !== ""
+    ? holding.canonicalTitle
+    : holding.file.displayName;
+}
+
+function holdingSortCursorFor(sort: LibraryHoldingSort, holding: LibraryHolding): HoldingSortCursor {
+  switch (sort) {
+    case "newest":
+    case "oldest":
+      return { sort, primary: holding.artifactCreatedAt.toISOString(), secondary: holding.artifactId, fileId: "" };
+    case "title_asc":
+    case "title_desc": {
+      const title = holdingEffectiveTitle(holding);
+      return { sort, primary: pinyinSortKey(title), secondary: title, fileId: holding.file.id };
+    }
+    case "size_asc":
+    case "size_desc":
+      return { sort, primary: String(holding.file.sizeBytes), secondary: holding.file.id, fileId: "" };
+  }
+}
 
 export type LibraryErrorCode =
   | "not_found"
@@ -482,6 +514,34 @@ export class LibraryService {
     const repositories = this.#persistence.repositories;
     this.#requireMember(accountId, libraryId, repositories);
     return repositories.libraries.listHoldings(libraryId, limit).map(libraryHoldingView);
+  }
+
+  listHoldingsSorted(
+    accountId: string,
+    libraryId: string,
+    sort: unknown,
+    cursor: string | null,
+    limit = 50,
+  ): { holdings: LibraryHoldingView[]; nextCursor: string | null } {
+    if (!isLibraryHoldingSort(sort)) throw new HoldingSortError("invalid_sort");
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new LibraryError("invalid_input");
+    let after: HoldingSortCursor | null = null;
+    if (cursor !== null && cursor !== "") {
+      after = decodeHoldingSortCursor(cursor, sort);
+      if (!after) throw new HoldingSortError("invalid_cursor");
+    }
+    return this.#persistence.runInTransaction((repositories) => {
+      const library = this.#requireMember(accountId, libraryId, repositories);
+      const page = repositories.libraries.listHoldingsSorted(library.id, sort, after, limit + 1);
+      const hasMore = page.length > limit;
+      const visible = page.slice(0, limit);
+      let nextCursor: string | null = null;
+      if (hasMore && visible.length > 0) {
+        const last = visible[visible.length - 1]!;
+        nextCursor = encodeHoldingSortCursor(holdingSortCursorFor(sort, last));
+      }
+      return { holdings: visible.map(libraryHoldingView), nextCursor };
+    });
   }
 
   searchHoldings(

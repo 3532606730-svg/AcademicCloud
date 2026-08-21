@@ -3,14 +3,17 @@ import type { HoldingCursor } from "../../library/search.js";
 import type {
   Library,
   LibraryHolding,
+  LibraryHoldingSort,
   LibraryMembership,
   LibraryRecycledHolding,
   LibraryRole,
   NewLibrary,
   NewLibraryMembership,
 } from "../../library/library.js";
+import { pinyinSortKey } from "../../library/pinyin.js";
 import type { StoredFileState } from "../../drive/file.js";
 import type { ScholarlyAttachmentState } from "../../research/record.js";
+import type BetterSqlite3 from "better-sqlite3";
 import type { SqliteDatabase } from "./database.js";
 import { fromDatabaseTimestamp, toDatabaseTimestamp } from "./records.js";
 
@@ -229,6 +232,59 @@ const recycledHoldingColumns = `
   files.deleted_at AS file_deleted_at
 `;
 
+/** Shared joins for the active holding projection (list, page, sorted, find). */
+const holdingFrom = `
+  FROM libraries
+  JOIN scholarly_records
+    ON scholarly_records.owner_domain_id = libraries.owner_domain_id
+  JOIN scholarly_artifacts
+    ON scholarly_artifacts.owner_domain_id = scholarly_records.owner_domain_id
+   AND scholarly_artifacts.record_id = scholarly_records.id
+   AND scholarly_artifacts.attachment_state = 'attached'
+  JOIN scholarly_artifact_versions
+    ON scholarly_artifact_versions.owner_domain_id = scholarly_artifacts.owner_domain_id
+   AND scholarly_artifact_versions.artifact_id = scholarly_artifacts.id
+  LEFT JOIN scholarly_record_metadata
+    ON scholarly_record_metadata.owner_domain_id = scholarly_records.owner_domain_id
+   AND scholarly_record_metadata.record_id = scholarly_records.id
+  JOIN files
+    ON files.id = scholarly_artifact_versions.stored_file_id
+   AND files.owner_domain_id = libraries.owner_domain_id
+   AND files.state = 'active'
+`;
+
+/** Effective display title: canonical title when present, otherwise the acquisition filename. */
+const effectiveTitle = "COALESCE(NULLIF(scholarly_record_metadata.canonical_title, ''), files.display_name)";
+
+interface SortedAfterParameters {
+  libraryId: string;
+  afterPrimary: string | number | null;
+  afterSecondary: string | null;
+  afterFileId: string | null;
+  limit: number;
+}
+
+/**
+ * Keyset continuation clause for one sort direction. `terms` lists the ORDER BY
+ * expressions in order; the clause compares them lexicographically against the
+ * cursor's primary/secondary/fileId parts. A two-term sort leaves the third
+ * comparison out entirely.
+ */
+function sortedAfterClause(direction: "asc" | "desc", terms: string[]): string {
+  const compare = direction === "asc" ? ">" : "<";
+  const clauses = [
+    `@afterPrimary IS NULL`,
+    `${terms[0]} ${compare} @afterPrimary`,
+    `(${terms[0]} = @afterPrimary AND ${terms[1]} ${compare} @afterSecondary)`,
+  ];
+  if (terms.length > 2) {
+    clauses.push(
+      `(${terms[0]} = @afterPrimary AND ${terms[1]} = @afterSecondary AND ${terms[2]} ${compare} @afterFileId)`,
+    );
+  }
+  return `AND (${clauses.join(" OR ")})`;
+}
+
 export class SqliteLibraryRepository implements LibraryRepository {
   readonly #createDomain;
   readonly #create;
@@ -247,8 +303,14 @@ export class SqliteLibraryRepository implements LibraryRepository {
   readonly #listRecycledHoldings;
   readonly #findRecycledHoldingByFile;
   readonly #verifyRecycledHoldingExclusive;
+  readonly #listSorted: ReadonlyMap<LibraryHoldingSort, BetterSqlite3.Statement<SortedAfterParameters, HoldingRow>>;
 
   constructor(database: SqliteDatabase) {
+    // Deterministic Han→pinyin sort keys for the title sorts. Registered before
+    // any statement that references pinyin_key(...) is prepared.
+    database.function("pinyin_key", { deterministic: true }, (value: unknown) => (
+      typeof value === "string" ? pinyinSortKey(value) : ""
+    ));
     this.#createDomain = database.prepare<{ domainId: string; createdAt: string }>(`
       INSERT INTO ownership_domains (id, kind, account_id, created_at)
       VALUES (@domainId, 'library', NULL, @createdAt)
@@ -369,6 +431,33 @@ export class SqliteLibraryRepository implements LibraryRepository {
       ORDER BY scholarly_artifacts.created_at DESC, scholarly_artifacts.id DESC
       LIMIT @limit
     `);
+    const sorted = new Map<LibraryHoldingSort, BetterSqlite3.Statement<SortedAfterParameters, HoldingRow>>();
+    const sortedSpecs: ReadonlyArray<{
+      sort: LibraryHoldingSort;
+      direction: "asc" | "desc";
+      /** ORDER BY expressions, first = cursor primary, second = cursor secondary, optional third = file identity. */
+      terms: string[];
+    }> = [
+      { sort: "newest", direction: "desc", terms: ["scholarly_artifacts.created_at", "scholarly_artifacts.id"] },
+      { sort: "oldest", direction: "asc", terms: ["scholarly_artifacts.created_at", "scholarly_artifacts.id"] },
+      { sort: "title_asc", direction: "asc", terms: [`pinyin_key(${effectiveTitle})`, effectiveTitle, "files.id"] },
+      { sort: "title_desc", direction: "desc", terms: [`pinyin_key(${effectiveTitle})`, effectiveTitle, "files.id"] },
+      { sort: "size_asc", direction: "asc", terms: ["files.size_bytes", "files.id"] },
+      { sort: "size_desc", direction: "desc", terms: ["files.size_bytes", "files.id"] },
+    ];
+    for (const spec of sortedSpecs) {
+      const order = spec.direction.toUpperCase();
+      const orderTail = spec.terms.map((term) => `${term} ${order}`).join(", ");
+      sorted.set(spec.sort, database.prepare<SortedAfterParameters, HoldingRow>(`
+        SELECT ${holdingColumns}
+        ${holdingFrom}
+        WHERE libraries.id = @libraryId
+        ${sortedAfterClause(spec.direction, spec.terms)}
+        ORDER BY ${orderTail}
+        LIMIT @limit
+      `));
+    }
+    this.#listSorted = sorted;
     this.#findHoldingByFile = database.prepare<[string, string], HoldingRow>(`
       SELECT ${holdingColumns}
       FROM libraries
@@ -631,6 +720,25 @@ export class SqliteLibraryRepository implements LibraryRepository {
       libraryId,
       afterCreatedAt: after ? toDatabaseTimestamp(after.artifactCreatedAt) : null,
       afterArtifactId: after?.artifactId ?? null,
+      limit,
+    }).map(toHolding);
+  }
+
+  listHoldingsSorted(
+    libraryId: string,
+    sort: LibraryHoldingSort,
+    after: { primary: string; secondary: string; fileId: string } | null,
+    limit: number,
+  ): LibraryHolding[] {
+    const statement = this.#listSorted.get(sort)!;
+    const primary: string | number | null = sort === "size_asc" || sort === "size_desc"
+      ? after ? Number(after.primary) : null
+      : after?.primary ?? null;
+    return statement.all({
+      libraryId,
+      afterPrimary: primary,
+      afterSecondary: after?.secondary ?? null,
+      afterFileId: after?.fileId || null,
       limit,
     }).map(toHolding);
   }

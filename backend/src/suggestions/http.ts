@@ -3,9 +3,11 @@ import { parseDerivedComputeResult } from "@academiccloud/compute-contracts";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { secureSecretEquals } from "../compute/github-actions-dispatcher.js";
+import type { MaterialType } from "../metadata/metadata.js";
 import { SuggestionError, type SuggestionAcceptanceInput, type SuggestionService } from "./suggestion-service.js";
 
 const ID_PATTERN = "^[A-Za-z0-9_-]{1,128}$";
+const ID_PATTERN_REGEX = /^[A-Za-z0-9_-]{1,128}$/u;
 const idSchema = { type: "string", pattern: ID_PATTERN, minLength: 1, maxLength: 128 } as const;
 const emptyQuerySchema = { type: "object", additionalProperties: false, properties: {} } as const;
 const metadataVersionSchema = { type: "string", pattern: "^[A-Za-z0-9_-]{43}$", minLength: 43, maxLength: 43 } as const;
@@ -16,6 +18,17 @@ interface JobParams extends HoldingParams { jobId: string; }
 interface InternalJobParams { jobId: string; }
 interface ClaimBody { attemptId: string; }
 interface AcceptBody extends SuggestionAcceptanceInput { metadata?: Record<string, unknown>; }
+interface LibraryParams { libraryId: string; }
+interface BatchPreviewQuery { fileIds: string; }
+interface BatchNamingBody {
+  items: Array<{
+    fileId: string;
+    metadataVersion: string;
+    sourceVersion: string;
+    canonicalTitle: string;
+    materialType: string;
+  }>;
+}
 
 function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
   if (!account) throw new SuggestionError("not_found");
@@ -209,6 +222,97 @@ export async function registerSuggestionHttp(
             request.params.runId,
             request.body,
           )),
+        };
+      } catch (error: unknown) {
+        return sendSuggestionError(reply, error);
+      }
+    },
+  );
+
+  const batchParamsSchema = {
+    type: "object",
+    required: ["libraryId"],
+    properties: { libraryId: idSchema },
+  } as const;
+
+  app.get<{ Params: LibraryParams; Querystring: BatchPreviewQuery }>(
+    "/api/libraries/:libraryId/holdings/batch-naming",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: batchParamsSchema,
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          required: ["fileIds"],
+          properties: { fileIds: { type: "string", minLength: 1, maxLength: 6_500 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const fileIds = request.query.fileIds.split(",").filter(Boolean);
+      if (fileIds.some((fileId) => !ID_PATTERN_REGEX.test(fileId))) {
+        return reply.code(400).send({ error: "invalid_input" });
+      }
+      try {
+        return service.previewBatchNaming(
+          requireActor(request.authAccount),
+          request.params.libraryId,
+          fileIds,
+        );
+      } catch (error: unknown) {
+        return sendSuggestionError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: LibraryParams; Body: BatchNamingBody }>(
+    "/api/libraries/:libraryId/holdings/batch-naming",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 48 * 1024,
+      schema: {
+        params: batchParamsSchema,
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["items"],
+          properties: {
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: 50,
+              uniqueItems: true,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["fileId", "metadataVersion", "sourceVersion", "canonicalTitle", "materialType"],
+                properties: {
+                  fileId: idSchema,
+                  metadataVersion: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$", minLength: 43, maxLength: 43 },
+                  sourceVersion: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$", minLength: 43, maxLength: 43 },
+                  canonicalTitle: { type: "string", minLength: 1, maxLength: 512 },
+                  materialType: {
+                    type: "string",
+                    enum: ["book", "article", "manuscript", "inscription", "archival_document"],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return {
+          results: service.applyBatchNaming(
+            requireActor(request.authAccount),
+            request.params.libraryId,
+            request.body.items.map((item) => ({ ...item, materialType: item.materialType as MaterialType })),
+          ),
         };
       } catch (error: unknown) {
         return sendSuggestionError(reply, error);

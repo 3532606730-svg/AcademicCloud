@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import type { AcademicCloudApi, LibraryContribution, LibraryHolding, LibrarySummary } from "./api.ts";
+import type { AcademicCloudApi, LibraryContribution, LibraryHolding, LibraryHoldingSort, LibrarySummary } from "./api.ts";
 import { describeError } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
 
@@ -8,10 +8,19 @@ function preferredLibrary(libraries: LibrarySummary[]): LibrarySummary | null {
   return libraries.find((library) => library.isDefault) ?? libraries[0] ?? null;
 }
 
+const SORT_OPTIONS: ReadonlyArray<{ value: LibraryHoldingSort; key: "sortNewest" | "sortOldest" | "sortTitle" | "sortSize" }> = [
+  { value: "newest", key: "sortNewest" },
+  { value: "oldest", key: "sortOldest" },
+  { value: "title_asc", key: "sortTitle" },
+  { value: "size_desc", key: "sortSize" },
+];
+
 /**
  * The normal Library surface. RF-SHAREDDEFAULT01 makes the default Library
  * the canonical corpus; this component therefore presents holdings directly
  * instead of exposing a second top-level "Shared Library" product chooser.
+ * Sorting is server-authoritative with stable keyset pagination; the panel
+ * never reorders a locally loaded page.
  */
 export function SharedLibraryPanel({
   api,
@@ -25,12 +34,18 @@ export function SharedLibraryPanel({
     library: LibrarySummary | null;
     holdings: LibraryHolding[];
     loading: boolean;
+    nextCursor: string | null;
+    loadingMore: boolean;
+    onLoadMore: () => void;
   }) => ReactNode;
   onCatalogueChange?: (state: { library: LibrarySummary | null; holdings: LibraryHolding[] }) => void;
 }) {
   const { language, t } = useLanguage();
   const [library, setLibrary] = useState<LibrarySummary | null>(null);
   const [holdings, setHoldings] = useState<LibraryHolding[]>([]);
+  const [sort, setSort] = useState<LibraryHoldingSort>("newest");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [contributions, setContributions] = useState<LibraryContribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
@@ -63,12 +78,16 @@ export function SharedLibraryPanel({
     let cancelled = false;
     setLoading(true);
     setError(null);
+    const loadHoldings = api.listLibraryHoldingsSorted
+      ? api.listLibraryHoldingsSorted(library.id, sort, null)
+      : api.listLibraryHoldings(library.id).then((items) => ({ holdings: items, nextCursor: null }));
     Promise.all([
-      api.listLibraryHoldings(library.id),
+      loadHoldings,
       library.role === "manager" ? Promise.resolve([]) : api.listMyLibraryContributions(library.id),
-    ]).then(([nextHoldings, nextContributions]) => {
+    ]).then(([page, nextContributions]) => {
       if (cancelled) return;
-      setHoldings(nextHoldings);
+      setHoldings(page.holdings);
+      setNextCursor(page.nextCursor);
       setContributions(nextContributions);
     }, (caught) => {
       if (!cancelled) setError(caught);
@@ -76,7 +95,24 @@ export function SharedLibraryPanel({
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [api, library, revision]);
+  }, [api, library, revision, sort]);
+
+  function loadMore() {
+    if (!library || !nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setError(null);
+    const load = api.listLibraryHoldingsSorted
+      ? api.listLibraryHoldingsSorted(library.id, sort, nextCursor)
+      : Promise.resolve({ holdings: [], nextCursor: null });
+    load.then((page) => {
+      setHoldings((current) => [...current, ...page.holdings]);
+      setNextCursor(page.nextCursor);
+    }, (caught) => {
+      setError(caught);
+    }).finally(() => {
+      setLoadingMore(false);
+    });
+  }
 
   async function withdrawContribution(contribution: LibraryContribution) {
     if (!library) return;
@@ -95,7 +131,26 @@ export function SharedLibraryPanel({
   return (
     <div className="shared-library-panel">
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
-      {renderCatalogue({ library, holdings, loading })}
+      {library && (
+        <div className="library-sort-toolbar">
+          <label htmlFor="library-sort-select">{t("library.sortLabel")}</label>
+          <select
+            id="library-sort-select"
+            value={sort}
+            disabled={loading}
+            onChange={(event) => {
+              setSort(event.target.value as LibraryHoldingSort);
+              setHoldings([]);
+              setNextCursor(null);
+            }}
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{t(`library.${option.key}`)}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {renderCatalogue({ library, holdings, loading, nextCursor, loadingMore, onLoadMore: loadMore })}
       {library?.role !== "manager" && contributions.length > 0 && (
         <section className="shared-library-members" aria-labelledby="shared-library-my-contributions-title">
           <div className="section-heading"><h3 id="shared-library-my-contributions-title">{t("sharedLibrary.myContributions")}</h3><span>{contributions.length}</span></div>
