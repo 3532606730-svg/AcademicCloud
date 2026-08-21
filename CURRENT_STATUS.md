@@ -37,11 +37,12 @@ plus Source Recovery is now active.
 Current production:
 
 ```text
-PRODUCTION_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8
-PREVIOUS_RELEASE=01747d929cb42e4c107d47c10ad66047377f6bcd
+PRODUCTION_RELEASE=53317bb0156589baa21bc69c22e199d200c49840
+PREVIOUS_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8
 SCHEMA=v22
 MIGRATIONS=001-022
 INTERNAL_BETA_READY=true
+HOTFIX_META_UX01=DEPLOYED (Owner manual acceptance pending)
 ```
 
 ## Storage incident closure
@@ -280,7 +281,7 @@ callback persists a second immutable superseding run (`suggestion-<jobId>-comput
 latest-run resolution surfaces it, and an accepted run stays frozen. No trigger
 change, no migration, no candidate delete/update.
 
-Verification before deployment:
+Verification and deployment:
 
 ```text
 BACKEND_SUITE=343/343 PASS (6 sorting + fast/batch naming tests)
@@ -290,13 +291,33 @@ PRODUCTION_BUILD=PASS
 GIT_DIFF_CHECK=PASS
 MIGRATION_CHANGE=none (schema v22 / 001-022)
 OSS_RAM_CORS_PROVIDER_CREDENTIAL_COST_CHANGE=none
+PRODUCTION_BUILD_RUN=32500123948
+ARTIFACT_ID=9453231114
+ARCHIVE_SHA256=620f2c95185e5764ce0f050fc54ba737e45860b1a314e93960f6c954bc70c14f
+MANIFEST_SHA256=dee1539139ccdfbc26baf4d8392534ebde7f07dedb6befa4618844fc0044da57
+HOST_VERIFIER=PASS (archive/manifest/checksum, tree match, release policy,
+native ELF64, compiled acceptance; evidence at
+/root/academiccloud-verify-53317bb/output/53317bb-stage/host-evidence.json)
+RUNTIME_DELTA=exactly the bounded feature surface (39 added / 1 removed / 16
+changed; no database/deployment/scripts/compute change)
+DEPLOYED_RELEASE=53317bb0156589baa21bc69c22e199d200c49840 (same-schema app-only)
+PREVIOUS_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8 (rollback pointer)
+MIGRATION_RUNNER={"appliedVersions":[],"currentVersion":22}
+SERVICE=active / NRestarts=0 / one loopback listener
+HEALTH_READINESS=ok/ready loopback and public
+SCHEMA_AFTER=v22 / 001-022
+SQLITE_INTEGRITY=ok
+FOREIGN_KEY_VIOLATIONS=0
+PROTECTED_CONFIG_HASHES=unchanged (env, systemd unit, nginx site, security headers)
+JOURNAL_SCAN=clean (zero error/fatal/unhandled/exception since restart)
+PENDING_FIXTURES=unchanged durable state (6 pending_upload files, 5 multipart rows)
+DATABASE_MUTATED=false
 OWNER_MANUAL_ACCEPTANCE=PENDING (Owner performs manual product acceptance
 in production after deployment; no browser automation was run per Owner override)
 ```
 
 ## Next action
 
-Deploy the HOTFIX-META-UX01 exact artifact (same-schema app-only), verify
-health/readiness/process/schema/integrity, update durable docs with the release
-identity, commit/push/sync, then STOP for the Owner's manual product acceptance
-and the internal-beta decision.
+STOP for the Owner's manual product acceptance of HOTFIX-META-UX01 (fast
+naming, batch naming, sorting, regression surfaces) and the internal-beta
+decision. Do not begin internal beta or invite users.

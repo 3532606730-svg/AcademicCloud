@@ -90,10 +90,14 @@ production baseline is `c741455d7aa631d5b8c37149e8643a6a75b1cae8` / schema v22.
 - `backend/test/suggestions/suggestion-service.test.ts` (fast/batch tests)
 
 ## Current State
-Implementation complete on branch `codex/project-memory-reconcile-20260817`;
-pre-deploy verification green; production deployment pending (Owner-authorized
-direct same-schema app-only deploy once minimum checks pass); Owner manual
-product acceptance pending after deployment.
+DEPLOYED. Source `53317bb0156589baa21bc69c22e199d200c49840` was built as
+artifact `9453231114` (build run `32500123948`), verified locally and on the
+production host, and installed as the same-schema app-only release on top of
+`c741455…`. Schema v22/001–022 unchanged; zero migrations applied; protected
+config hashes unchanged; journal clean; service active with NRestarts=0.
+Rollback pointer: `c741455…` (same-schema app-only, release tree retained).
+Owner manual product acceptance in production is PENDING (no browser automation
+was run per Owner override).
 
 ## Completed
 
@@ -151,13 +155,9 @@ product acceptance pending after deployment.
 - Search ranking path untouched.
 
 ## Remaining
-- Build the exact artifact (`gh workflow run production-build.yml`), verify it
-  on the host, deploy app-only same-schema, verify health/readiness/process/
-  schema v22/001–022/SQLite integrity/FK/absence of immediate errors.
-- Update durable docs with the production release identity; commit/push;
-  synchronize the local checkout; STOP.
 - Owner manual product acceptance (fast naming, batch naming, sorting,
-  regression surfaces) — pending after deployment.
+  regression surfaces) — pending in production.
+- Move this card to `tasks/done/` after Owner acceptance.
 
 ## Blockers
 None. The earlier "suggestion run evidence is immutable" callback failure was
@@ -174,9 +174,37 @@ GIT_DIFF_CHECK=PASS
 MIGRATION_CHANGE=none (schema v22 / 001-022 untouched)
 OSS_RAM_CORS_PROVIDER_CREDENTIAL_COST_CHANGE=none
 CONFIG_CHANGE=none (.env/.yml/.yaml/.github/docker/nginx untouched)
+
+PRODUCTION_BUILD_RUN=32500123948
+ARTIFACT_ID=9453231114
+ARTIFACT=academiccloud-linux-x64-node24-53317bb0156589baa21bc69c22e199d200c49840
+ARCHIVE_SHA256=620f2c95185e5764ce0f050fc54ba737e45860b1a314e93960f6c954bc70c14f
+MANIFEST_SHA256=dee1539139ccdfbc26baf4d8392534ebde7f07dedb6befa4618844fc0044da57
+MANIFEST=4827 files / 35,151,434 bytes
+RUNTIME_VERIFICATION=ok (native ELF64, argon2id verified, better-sqlite3 3.53.4,
+compute boundary clean, compiled acceptance ok, firstMigrationCount 22,
+redeployMigrationCount 0)
+HOST_VERIFIER=PASS (evidence: /root/academiccloud-verify-53317bb/output/53317bb-stage/host-evidence.json)
+RUNTIME_DELTA_VS_c741455=39 added (holding-sort, pinyin, new frontend bundle,
+pinyin-pro) / 1 removed (old frontend bundle) / 16 changed (six backend runtime
+modules + maps, backend/package.json, frontend/index.html, lockfiles); no
+database/deployment/scripts/compute change
+
+MIGRATION_RUNNER={"appliedVersions":[],"currentVersion":22}
+DEPLOYED_RELEASE=53317bb0156589baa21bc69c22e199d200c49840
+PREVIOUS_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8 (rollback pointer)
+SERVICE=active / NRestarts=0 / one loopback listener / process CWD in new release
+HEALTH_READINESS=ok/ready loopback and public
+SCHEMA_AFTER=v22 / 001-022
+SQLITE_INTEGRITY=ok
+FOREIGN_KEY_VIOLATIONS=0
+PROTECTED_CONFIG_HASHES=unchanged (env, systemd, nginx site, security headers)
+JOURNAL_SCAN=clean since restart
+PENDING_FIXTURES=unchanged durable state (6 pending_upload files, 5 multipart rows)
+DATABASE_MUTATED=false
+ROLLBACK_REQUIRED=false
+OWNER_MANUAL_ACCEPTANCE=PENDING
 ```
 
 ## Next Action
-Exact-artifact build + host verification + app-only same-schema deployment,
-post-deploy health verification, durable-docs release update, commit/push/sync,
-then STOP for Owner manual acceptance.
+STOP for the Owner's manual product acceptance and the internal-beta decision.
