@@ -207,6 +207,44 @@ Required beta v0.1 states:
 
 Keep `待处理` as durable recovery state and Activity Center as live activity. Do not build full history, advanced filters, per-page OCR progress, complex pause semantics, animations, RAG states, or a general notification platform in this phase.
 
+**Phase 4 result — COMPLETE (2026-08-21).** The first Activity Center
+release `156660d…` passed desktop acceptance; the Golden resume fixture then
+exposed a multipart scheduler race (retry stayed `queued` through its first
+status request, so intervening renders started duplicate workflows). Source
+`01747d9…` repaired it with an early `reserving` claim plus a regression test.
+Its replacement-release browser journey then exposed a second, deeper defect:
+a canonical-library UNIQUE filename collision
+(`files.owner_domain_id, files.display_name`) surfaces only at the final
+promotion transaction, so a physically-completed multipart upload stayed
+`completing` with `POST multipart/complete` 409 `invalid_state` and
+`GET status` leaking a raw `SqliteError`/500, without a clean escape path.
+Source `c741455…` fixed the boundary: canonical default-upload creation now
+rejects a duplicate holding name with `name_conflict` before any bytes;
+completion/status wrappers map the promotion-time collision specifically to
+`name_conflict` (status never leaks a raw SqliteError); abandoning a
+physically-completed-but-logically-pending upload discards the matching orphan
+object; repeated completion attempts fail stably without state thrash.
+Regressions cover the early rejection, clean status mapping, no-thrash repeat,
+and orphan-object discard (backend suite 329/329).
+
+Exact source `c741455…` produced artifact `9446463281` in build run
+`32481977985`; deterministic build, independent download/verify, local
+rehash, production-host packaged verification, and the six-backend-module
+runtime delta versus `01747d9…` all passed. It was deployed application-only
+at unchanged schema v22/history 001–022 with no migration, credential,
+OSS/RAM/CORS, Nginx, or configuration change. The exact-release real-browser
+Phase 4 journey then passed 46/46 on desktop and 390×844: multipart
+pause → same-session continue → complete with exactly one resume workflow, no
+authorization storm, and no raw `Failed to fetch`; Metadata Suggestion
+202 → queued → processing → real GitHub Compute OCR (92% confidence) →
+callback → succeeded with two reviewable candidates while canonical metadata
+stayed unchanged and Core/Search stayed responsive; byte-verified download
+activity; reload-safe Job Core state; automatic-recovery fallback, wrong-file
+checksum fail-closed with no part append, and correct-file resume completion;
+mobile Activity Center inside the viewport; the handle-capable enhanced-picker
+path; and exact run-owned fixture cleanup with zero residue. The pre-existing
+durable pending fixtures were never touched. Phase 5 is authorized to proceed.
+
 ### Phase 5 — QA-GOLDEN01 final beta gate
 
 Run an exact-build real-browser golden journey with safe/run-owned fixtures and clean residue:

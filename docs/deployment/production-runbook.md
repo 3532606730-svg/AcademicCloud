@@ -243,7 +243,19 @@ Certbot 2.9.0 plus `python3-acme`, `python3-certbot`, `python3-configargparse`, 
 
 ## Current production state
 
-Production runs exact immutable Search-integrated Core/Compute source `b19f9dc5b48e1976127704712e08a8655b1fadd5`, previous application release `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`, at schema v22/history 001–022. Exact release/process identity, active/running service with zero restarts, one loopback listener, loopback/public health/readiness, schema/history/checksum, SQLite integrity/FK, Core browser session/Library/details/preview/download, the real asynchronous Compute canary, and pre/post-deploy Search browser journeys are green.
+Production runs exact immutable source `c741455d7aa631d5b8c37149e8643a6a75b1cae8`,
+previous application release `01747d929cb42e4c107d47c10ad66047377f6bcd`, at
+schema v22/history 001–022. The release chain is `156660d…` (first Activity
+Center release) → `01747d9…` (scheduler race + suggestion callback repairs) →
+`c741455…` (canonical duplicate-name completion repair: early `name_conflict`
+pre-flight at default-upload creation, clean completion/status `name_conflict`
+mapping instead of a raw SqliteError/500, and orphan-object discard on abandon
+of a physically-completed-but-logically-pending multipart). All three were
+application-only same-schema cutovers; no migration, credential, OSS/RAM/CORS,
+Nginx, memory-limit, or configuration change occurred. The exact-release
+46/46 real-browser Phase 4 journey passed with zero run-owned residue and the
+pre-existing durable pending fixtures untouched. `01747d9…` is the immediate
+same-schema rollback.
 
 RF-SEARCH01 Phase 3 used artifact `9424397852`, build run `32417182890`,
 source `b19f9dc5…`, archive SHA-256

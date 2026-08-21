@@ -9,7 +9,7 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
-| GOAL-BETA-PREP01 | OWNER AUTHORIZED / PHASE 4 ACTIVE | Phases 1–3 are green; implement only beta-minimum L1-UX08 Activity Center v0.1 + Source Recovery |
+| GOAL-BETA-PREP01 | OWNER AUTHORIZED / PHASE 5 ACTIVE | Phases 1–4 are green; run the QA-GOLDEN01 exact-release browser journey, then stop at INTERNAL_BETA_READY |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
@@ -23,8 +23,8 @@ The detailed Owner authorization, boundaries, mandatory sequence, credential/pri
 | 1 | COMPUTE-PRECUTOVER01 | `tasks/done/COMPUTE-PRECUTOVER01.md` | COMPLETE — exact source `1c3bb10…`, run `32407660640`; real OCR, provider-specific memory/drift, staging, privacy/output, and zero-artifact gates passed; production unchanged |
 | 2 | ARCH-COMPUTE01 production cutover | `tasks/doing/GOAL-BETA-PREP01.md` Phase 2 | COMPLETE — production `1c3bb10…`, schema v22/history 001–022, rollback `08657727…` + verified pre-migration DB, final canary run `32415058752` green |
 | 3 | RF-SEARCH01 production closure | `tasks/done/RF-SEARCH01.md` + Goal Phase 3 | COMPLETE — source `b19f9dc5…`, artifact `9424397852`, browser/build/independent/local/host/deploy gates green; historical artifact never used |
-| 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/doing/L1-UX08.md` + Goal Phase 4 | ACTIVE — implementation and changed-risk tests are green; exact artifact/deploy plus real-browser acceptance remain |
-| 5 | QA-GOLDEN01 | `tasks/ready/QA-GOLDEN01.md` + Goal Phase 5 | AUTHORIZED FINAL BETA GATE — exact-build real-browser journey with safe fixtures and cleanup |
+| 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/done/L1-UX08.md` + Goal Phase 4 | COMPLETE — production `c741455…`; Activity Center v0.1 + Source Recovery live; 46/46 real-browser journey green including multipart resume, real GitHub Compute suggestion, wrong-file fail-closed, mobile, stub-picker path, and zero residue |
+| 5 | QA-GOLDEN01 | `tasks/ready/QA-GOLDEN01.md` + Goal Phase 5 | ACTIVE — exact-build real-browser golden journey with safe fixtures and cleanup |
 | 6 | INTERNAL_BETA_READY | `tasks/doing/GOAL-BETA-PREP01.md` | STOP — Owner decides whether/when to start or invite users into internal beta |
 
 Goal Mode should move between these checkpoints autonomously when the changed-risk evidence is green. Routine implementation choices do not require another Owner round-trip. Early STOP conditions remain exactly those in GOAL-BETA-PREP01.
@@ -89,8 +89,8 @@ None of this queue is authorized by GOAL-BETA-PREP01.
 ## Current release boundary
 
 ```text
-DECLARED_PRODUCTION=b19f9dc5b48e1976127704712e08a8655b1fadd5
-PREVIOUS_PRODUCTION=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
+DECLARED_PRODUCTION=c741455d7aa631d5b8c37149e8643a6a75b1cae8
+PREVIOUS_PRODUCTION=01747d929cb42e4c107d47c10ad66047377f6bcd
 PRODUCTION_SCHEMA=v22 / 001-022
 DEVELOPMENT_SCHEMA=v22 / 001-022
 MIGRATION_022_PRODUCTION_APPLIED=true
@@ -103,6 +103,7 @@ ARCH_COMPUTE01_SEARCH_INCLUDED_BY_ANCESTRY=true
 SEARCH_HISTORICAL_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
 SEARCH_PRODUCTION_SOURCE=b19f9dc5b48e1976127704712e08a8655b1fadd5
 SEARCH_PRODUCTION=PASS
+ACTIVITY_CENTER_V0_1=PASS
 INTERNAL_BETA_READY=false
 ```
 

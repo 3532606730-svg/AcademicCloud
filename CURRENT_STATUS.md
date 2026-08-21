@@ -37,8 +37,8 @@ plus Source Recovery is now active.
 Current production:
 
 ```text
-PRODUCTION_RELEASE=b19f9dc5b48e1976127704712e08a8655b1fadd5
-PREVIOUS_RELEASE=1c3bb10a48082995924a2d9ec41a48d6d3d34acd
+PRODUCTION_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8
+PREVIOUS_RELEASE=01747d929cb42e4c107d47c10ad66047377f6bcd
 SCHEMA=v22
 MIGRATIONS=001-022
 INTERNAL_BETA_READY=false
@@ -172,8 +172,8 @@ Codex Goal Mode is authorized to proceed in this exact order:
 1. **COMPUTE-PRECUTOVER01 — COMPLETE** — provider-specific GitHub-hosted memory contract and protected Tesseract staging repair passed without production mutation;
 2. **Core/Compute production cutover — COMPLETE** — exact artifact, verified backup/off-host copy, migration 022, least-scoped credentials/environment, exact deployment, Core invariants, and one bounded real canary passed;
 3. **RF-SEARCH01 production closure — COMPLETE** — ancestry-backed composition, focused tests, production browser gate, new exact artifact `9424397852`, independent/local/host verification, and same-schema application cutover passed; historical artifact was not used;
-4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery — ACTIVE** — upload live states/recovery plus durable Metadata/Compute queued/processing/succeeded/failed and reliable download preparing/started/failed states; no broad notification/history platform;
-5. **QA-GOLDEN01** — exact-build real-browser journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
+4. **L1-UX08 beta-minimum Activity Center v0.1 + Source Recovery — COMPLETE** — shipped through same-schema app-only releases `156660d…` → `01747d9…` → `c741455…`; the replacement-release browser journey exposed and `c741455…` repaired a canonical duplicate-name completion defect (early `name_conflict` pre-flight, clean status mapping, orphan-object discard on abandon); the exact-release 46/46 browser journey passed multipart resume, real GitHub Compute suggestion, wrong-file fail-closed, mobile, and the stub-picker path with zero residue;
+5. **QA-GOLDEN01 — ACTIVE** — exact-build real-browser golden journey covering login → Library → Search → upload/activity → details → preview/download → asynchronous GitHub Compute metadata suggestion → candidate visibility while Core stays healthy → favorite → recycle/restore, plus a controlled resumable-upload path where practical.
 
 When all are green, set `INTERNAL_BETA_READY=true`, reconcile exact release,
 schema, rollback pointer and durable repository state, then STOP for the Owner's
@@ -239,8 +239,8 @@ The historical artifact remains permanently forbidden.
 
 ## Next action
 
-Continue autonomously with GOAL-BETA-PREP01 Phase 4: checkpoint the completed
-beta-minimum Activity Center v0.1 plus safe Source Recovery implementation in
-`tasks/doing/L1-UX08.md`, then build/deploy that exact checkpoint and pass the
-remaining real-browser evidence. Do not broaden it into a
-notification/history platform and do not begin internal beta.
+Continue autonomously with GOAL-BETA-PREP01 Phase 5: run the QA-GOLDEN01
+exact-release real-browser golden journey against production `c741455…` with
+fresh run-owned fixtures and proven cleanup, then reconcile durable state and
+STOP at `INTERNAL_BETA_READY` for the Owner's internal-beta decision. Do not
+begin internal beta or invite users.
