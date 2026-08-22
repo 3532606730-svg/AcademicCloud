@@ -364,6 +364,20 @@ describe("Resource details", () => {
     expect(screen.queryByText("The Mongols and the West, 1221–1410")).not.toBeInTheDocument();
   });
 
+  it("exposes the normalized failure category and a bounded retry action", async () => {
+    const generate = vi.fn().mockResolvedValue({ ...SUCCEEDED_JOB, id: "retry-job", state: "queued", errorCode: null });
+    const job: DerivedMetadataJob = { ...SUCCEEDED_JOB, state: "failed", errorCode: "compute_dispatch_failed" };
+    renderDetails({ api: {
+      generateLibraryMetadataSuggestions: generate,
+      getLibraryMetadataSuggestions: vi.fn().mockResolvedValue(null),
+      getLatestLibraryMetadataSuggestionJob: vi.fn().mockResolvedValue(job),
+    } });
+    const user = userEvent.setup();
+    expect(await screen.findByText("Scheduling failed")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry AI cataloguing" }));
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
   it("preserves the ApiClient receiver for the exact suggestion get, generate, and accept failure shape", async () => {
     let suggestionReads = 0;
     const fetcher = vi.fn<typeof fetch>(async (input, init) => {

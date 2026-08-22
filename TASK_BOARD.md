@@ -1,11 +1,22 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-22
+**Last reconciled:** 2026-08-23
 
 The board is the executable priority view. `CURRENT_STATE.json` holds compact
 current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 ## Current Owner authorization / continuous objective
+
+`INCIDENT-L1-AI-PRODUCTION01` is **BLOCKED** for diagnosis: the existing
+production SSH route now provides bounded read-only evidence, but GitHub API
+and browser evidence routes remain unavailable. No backend repair or deployment
+is authorized by evidence; restore the remaining evidence path before claiming
+AI E2E pass.
+
+`ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is the active recovery task. SSH
+read-only evidence is restored; Git write and GitHub Actions read remain
+blocked by execution/browser controls. Do not resume the incident diagnosis or
+deploy until the recovery card's remaining gates pass.
 
 | Task | State | Next authority |
 |---|---|---|

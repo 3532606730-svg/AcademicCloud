@@ -333,6 +333,15 @@ function suggestionStatusLabel(value: MetadataSuggestionStatus, t: ReturnType<ty
 function suggestionConfidenceLabel(value: MetadataSuggestionConfidence, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_CONFIDENCE_KEYS[value]);
 }
+function suggestionJobFailureLabel(errorCode: NonNullable<DerivedMetadataJob["errorCode"]>, t: ReturnType<typeof useLanguage>["t"]): string {
+  if (errorCode === "compute_dispatch_failed") return t("activity.metadataDispatchFailed");
+  if (errorCode === "compute_source_stale" || errorCode === "compute_source_unavailable") return t("activity.metadataSourceFailed");
+  if (errorCode === "compute_invalid_pdf" || errorCode === "compute_limit_exceeded") return t("activity.metadataPdfFailed");
+  if (errorCode === "compute_ocr_unavailable") return t("activity.metadataOcrFailed");
+  if (errorCode === "compute_invalid_result") return t("activity.metadataValidationFailed");
+  if (errorCode === "compute_authorization_changed") return t("activity.metadataWritebackFailed");
+  return t("activity.metadataTransientFailed");
+}
 function suggestionOriginLabel(value: MetadataSuggestionEvidenceOrigin, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_ORIGIN_KEYS[value]);
 }
@@ -1304,12 +1313,16 @@ function MetadataSuggestionsPanel({
             : job.state === "succeeded"
               ? t("metadata.suggestions.job.succeeded")
               : t("metadata.suggestions.job.failed")}
+        {job.state === "failed" && job.errorCode && <span className="activity-error">{suggestionJobFailureLabel(job.errorCode, t)}</span>}
       </p>}
       {!loading && !job && !run && <p className="muted">{t("metadata.suggestions.none")}</p>}
       {!loading && job && run && (job.state === "queued" || job.state === "running") && (
         <p className={`metadata-suggestions-status metadata-suggestions-job--${job.state}`} role="status">
           {job.state === "queued" ? t("metadata.suggestions.job.queued") : t("metadata.suggestions.job.processing")}
         </p>
+      )}
+      {!loading && job?.state === "failed" && manager && (
+        <button className="button button--small" type="button" onClick={onGenerate} disabled={generating}>{t("activity.metadataRetry")}</button>
       )}
       {run && (
         <>

@@ -716,6 +716,8 @@ function DriveView({
   const [favoriteFileIds, setFavoriteFileIds] = useState<ReadonlySet<string>>(new Set());
   const [favoriteFolderIds, setFavoriteFolderIds] = useState<ReadonlySet<string>>(new Set());
   const [accountAdministrationOpen, setAccountAdministrationOpen] = useState(false);
+  const [accountAdministrationSection, setAccountAdministrationSection] = useState<OwnerAdministrationSection>("members");
+  const [pendingContributionCount, setPendingContributionCount] = useState(0);
   const [accountAdministrationReturnFocus, setAccountAdministrationReturnFocus] = useState<HTMLElement | null>(null);
   const [announcementRevision, setAnnouncementRevision] = useState(0);
   const dragDepthRef = useRef(0);
@@ -725,6 +727,21 @@ function DriveView({
   const pendingInputRefs = useRef(new Map<string, HTMLInputElement>());
   const workspaceRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
+
+  useEffect(() => {
+    const library = libraryCatalogue.library;
+    if (account.role !== "owner" || !library || library.role !== "manager") {
+      setPendingContributionCount(0);
+      return;
+    }
+    let cancelled = false;
+    api.listLibraryContributions(library.id).then((contributions) => {
+      if (!cancelled) setPendingContributionCount(contributions.filter((item) => item.state === "submitted").length);
+    }, () => {
+      if (!cancelled) setPendingContributionCount(0);
+    });
+    return () => { cancelled = true; };
+  }, [account.role, api, libraryCatalogue.library?.id, revision]);
 
   const favoriteLibraryHoldings = favorites?.libraryHoldings ?? [];
   const visibleSelectableEntries: SelectableEntry[] = view === "library"
@@ -2105,6 +2122,7 @@ function DriveView({
             busy={busyId === "logout"}
             onManage={(returnFocus) => {
               setAccountAdministrationReturnFocus(returnFocus);
+              setAccountAdministrationSection("members");
               setAccountAdministrationOpen(true);
             }}
             onSignOut={() => void signOut()}
@@ -2126,6 +2144,18 @@ function DriveView({
           <button className={view === "recycle" ? "nav-item is-active" : "nav-item"} aria-current={view === "recycle" ? "page" : undefined} onClick={() => goToView("recycle")}>
             <RecycleIcon size={18} /> {t("nav.recycle")}
           </button>
+          {account.role === "owner" && pendingContributionCount > 0 && (
+            <button
+              className="nav-item nav-item--attention"
+              type="button"
+              onClick={() => {
+                setAccountAdministrationSection("contributions");
+                setAccountAdministrationOpen(true);
+              }}
+            >
+              {t("nav.pendingContributions", { count: pendingContributionCount })}
+            </button>
+          )}
         </nav>
       </aside>
 
@@ -2390,9 +2420,17 @@ function DriveView({
                 <div className="activity-copy">
                   <strong>{libraryHoldingDisplayTitle(activity.holding, language)}</strong>
                   <span><span>{t("activity.metadata")}</span><span aria-hidden="true"> · </span><span>{t(metadataActivityStateKey(activity.job.state))}</span></span>
+                  {activity.job.state === "failed" && activity.job.errorCode && <span className="activity-error" role="alert">{t(metadataFailureCategoryKey(activity.job.errorCode))}</span>}
                 </div>
                 <div className="job-actions">
                   <button className="button button--small button--quiet" type="button" onClick={() => openResourceDetails(activity.library, activity.holding)}>{t("activity.review")}</button>
+                  {activity.job.state === "failed" && api.generateLibraryMetadataSuggestions && (
+                    <button className="button button--small" type="button" onClick={() => {
+                      void api.generateLibraryMetadataSuggestions!(activity.library.id, activity.holding.file.id).then((job) => {
+                        recordMetadataActivity(activity.library, activity.holding, job);
+                      }).catch((caught) => setError(caught));
+                    }}>{t("activity.metadataRetry")}</button>
+                  )}
                   {(activity.job.state === "succeeded" || activity.job.state === "failed") && (
                     <button className="button button--small button--quiet" type="button" onClick={() => setMetadataActivities((current) => current.filter(({ job }) => job.id !== activity.job.id))}>{t("alert.dismiss")}</button>
                   )}
@@ -2734,6 +2772,7 @@ function DriveView({
           ownerId={account.id}
           onClose={() => setAccountAdministrationOpen(false)}
           returnFocus={accountAdministrationReturnFocus}
+          initialSection={accountAdministrationSection}
           onAnnouncementChanged={() => setAnnouncementRevision((value) => value + 1)}
           onLibraryChanged={refresh}
         />
@@ -2837,6 +2876,16 @@ function metadataActivityStateKey(state: DerivedMetadataJob["state"]) {
     case "succeeded": return "activity.metadataSucceeded" as const;
     case "failed": return "activity.metadataFailed" as const;
   }
+}
+
+function metadataFailureCategoryKey(errorCode: NonNullable<DerivedMetadataJob["errorCode"]>) {
+  if (errorCode === "compute_dispatch_failed") return "activity.metadataDispatchFailed" as const;
+  if (errorCode === "compute_source_stale" || errorCode === "compute_source_unavailable") return "activity.metadataSourceFailed" as const;
+  if (errorCode === "compute_invalid_pdf" || errorCode === "compute_limit_exceeded") return "activity.metadataPdfFailed" as const;
+  if (errorCode === "compute_ocr_unavailable") return "activity.metadataOcrFailed" as const;
+  if (errorCode === "compute_invalid_result") return "activity.metadataValidationFailed" as const;
+  if (errorCode === "compute_authorization_changed") return "activity.metadataWritebackFailed" as const;
+  return "activity.metadataTransientFailed" as const;
 }
 
 function downloadActivityStateKey(state: DownloadActivity["phase"]) {
@@ -3160,6 +3209,7 @@ function OwnerAdministrationDialog({
   returnFocus,
   onAnnouncementChanged,
   onLibraryChanged,
+  initialSection = "members",
 }: {
   api: AcademicCloudApi;
   ownerId: string;
@@ -3167,9 +3217,11 @@ function OwnerAdministrationDialog({
   returnFocus: HTMLElement | null;
   onAnnouncementChanged: () => void;
   onLibraryChanged: () => void;
+  initialSection?: OwnerAdministrationSection;
 }) {
   const { t } = useLanguage();
-  const [section, setSection] = useState<OwnerAdministrationSection>("members");
+  const [section, setSection] = useState<OwnerAdministrationSection>(initialSection);
+  useEffect(() => setSection(initialSection), [initialSection]);
   const dialogRef = useModalDialog(onClose, false, returnFocus);
   const sections: Array<{ id: OwnerAdministrationSection; label: string }> = [
     { id: "members", label: t("ownerAdmin.members") },

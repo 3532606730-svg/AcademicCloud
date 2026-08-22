@@ -2549,6 +2549,37 @@ describe("App", () => {
     expect(getLatestLibraryMetadataSuggestionJob).toHaveBeenCalledTimes(2);
   });
 
+  it("shows a normalized AI failure category and retries through the durable endpoint", async () => {
+    const user = userEvent.setup();
+    const failedJob = {
+      id: "job-failed-1",
+      kind: "metadata_suggestion" as const,
+      resourceId: LIBRARY_HOLDINGS[0]!.file.id,
+      state: "failed" as const,
+      progress: 0,
+      attempts: 1,
+      resultRef: null,
+      errorCode: "compute_dispatch_failed" as const,
+      createdAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: new Date().toISOString(),
+      deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+    };
+    const generate = vi.fn().mockResolvedValue({ ...failedJob, id: "job-retry-1", state: "queued", errorCode: null, finishedAt: null });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+      getLatestLibraryMetadataSuggestionJob: vi.fn().mockResolvedValue(failedJob),
+      generateLibraryMetadataSuggestions: generate,
+    });
+    window.localStorage.removeItem(ACTIVITY_PREFERENCE_KEY);
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Expand background tasks" }));
+    expect(await screen.findByText("Scheduling failed")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry AI cataloguing" }));
+    await waitFor(() => expect(generate).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, LIBRARY_HOLDINGS[0]!.file.id));
+  });
+
   it("shows only observable download preparing, started, and failed states", async () => {
     const user = userEvent.setup();
     let resolveDownload!: (authorization: { method: "GET"; url: string; expiresAt: string }) => void;
@@ -3466,6 +3497,23 @@ describe("Shared Library contribution UI", () => {
     await user.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(reviewLibraryContribution).toHaveBeenCalledWith(library.id, contribution.id, "approve"));
     expect(await screen.findByText("No submitted contributions")).toBeInTheDocument();
+  });
+
+  it("surfaces pending contributions in the ordinary Owner navigation and opens review directly", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraries: vi.fn().mockResolvedValue([library]),
+      listLibraryHoldings: vi.fn().mockResolvedValue([]),
+      listLibraryContributions: vi.fn().mockResolvedValue([contribution]),
+      listLibraryMembers: vi.fn().mockResolvedValue([]),
+    });
+    render(<App api={api} />);
+    const pending = await screen.findByRole("button", { name: "Pending contributions · 1" });
+    await user.click(pending);
+    const dialog = await screen.findByRole("dialog", { name: "Administration" });
+    expect(within(dialog).getByRole("heading", { name: "Contribution review" })).toBeInTheDocument();
+    expect(await within(dialog).findByText("submitted.pdf")).toBeInTheDocument();
   });
 
   it("clears Library-scoped contribution rows immediately when switching Libraries", async () => {

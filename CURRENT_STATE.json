@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-22T23:47:00+08:00",
+  "updatedAt": "2026-08-23T01:20:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -14,8 +14,8 @@
     "activityCenterV01Accepted": true,
     "liveProcessIdentityNeedsIncidentReverification": false
   },
-  "activeIncidents": [],
-  "activeTasks": [],
+  "activeIncidents": ["INCIDENT-L1-AI-PRODUCTION01"],
+  "activeTasks": ["ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01"],
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
     "state": "complete_deployed_verified",

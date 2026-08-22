@@ -1,10 +1,39 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-22
+**Last reconciled:** 2026-08-23
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
 evidence without duplicating it here.
+
+## Active incident: INCIDENT-L1-AI-PRODUCTION01
+
+Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is in
+progress. The existing production SSH route has been restored for bounded
+read-only evidence; Git index writes remain blocked by the execution sandbox
+and GitHub Actions inspection remains unavailable through the restricted CLI
+and browser paths. No production data or application deployment changed.
+
+The reported production-wide AI cataloguing failure remains **BLOCKED for
+diagnosis**. Both new-upload and legacy re-catalogue paths converge on the same
+Core `requestGeneration` and Compute dispatcher route, but the first failing
+production boundary has not been established. The possible missing
+`COMPUTE_PROVIDER` integration risk was reverted and is not deployed; explicit
+configuration remains preferred until live evidence proves otherwise.
+
+The established `academiccloud-prod` SSH route is restored through the
+approved path. A bounded read-only probe confirmed exact release
+`017a47dbd837264175d8cbcb3f469a01e3e62c92`, active service with `NRestarts=0`,
+loopback/public health `200`, and readiness `200`. The earlier alias failure
+was `SSH_CONFIG_NOT_VISIBLE` in the restricted execution sandbox, not DNS or
+host unavailability. GitHub Actions API access remains blocked by the
+restricted CLI/keyring path and the in-app browser security policy. Therefore
+no production root-cause claim, deployment, or `NEW_UPLOAD_AI_E2E` /
+`LEGACY_RECATALOG_AI_E2E` pass is recorded.
+
+The safe local UX portion is complete: Owner navigation exposes `待审核投稿 · N`
+and opens the existing contribution review flow; Activity Center and resource
+details show normalized AI failure categories with a durable retry action.
 
 ## Current situation
 
