@@ -295,6 +295,10 @@ test("approval and ownership promotion roll back completely when governance audi
 
 test("canonical Member upload enters pending review automatically and preserves the contributor's private Favorite after approval", async (context) => {
   const { database, persistence, storage, drive, libraries } = fixture(context);
+  const enrichmentRequests: Array<{ actorId: string; libraryId: string; fileId: string }> = [];
+  libraries.setHoldingAvailableListener(async (actor, libraryId, fileId) => {
+    enrichmentRequests.push({ actorId: actor.id, libraryId, fileId });
+  });
   const favorites = new FavoriteService(persistence, () => NOW);
   const canonical = libraries.listLibraries(MEMBER.id).find((library) => library.isDefault);
   assert.ok(canonical);
@@ -311,6 +315,8 @@ test("canonical Member upload enters pending review automatically and preserves 
   storage.putMultipartPart(memberTransfer.providerUploadId, 1, 12, "etag-1");
 
   const completed = await libraries.completeDefaultMultipartUpload(MEMBER, reserved.file.id, reserved.transfer.version);
+  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  assert.deepEqual(enrichmentRequests, [], "a Member upload cannot trigger canonical enrichment before Owner admission");
   assert.equal(completed.state, "active");
   favorites.setFileFavorite(MEMBER.id, completed.id, true);
   assert.equal(libraries.listHoldings(OUTSIDER.id, canonical.id).length, 0);
@@ -323,6 +329,8 @@ test("canonical Member upload enters pending review automatically and preserves 
   assert.equal(libraries.listContributions(OWNER, canonical.id).length, 1);
 
   libraries.reviewContribution(OWNER, canonical.id, pending[0]!.id, "approve");
+  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  assert.deepEqual(enrichmentRequests, [{ actorId: OWNER.id, libraryId: canonical.id, fileId: completed.id }]);
   assert.equal(libraries.listHoldings(OUTSIDER.id, canonical.id)[0]?.file.id, completed.id);
   assert.equal(favorites.listFavorites(MEMBER.id).libraryHoldings[0]?.holding.file.id, completed.id);
   assert.equal(favorites.listFavorites(OWNER.id).files.length, 0);
@@ -337,6 +345,10 @@ test("canonical Member upload enters pending review automatically and preserves 
 
 test("canonical Owner multipart upload is admitted in the completion transaction without a pending self-review", async (context) => {
   const { database, persistence, storage, drive, libraries } = fixture(context);
+  const enrichmentRequests: Array<{ actorId: string; libraryId: string; fileId: string }> = [];
+  libraries.setHoldingAvailableListener(async (actor, libraryId, fileId) => {
+    enrichmentRequests.push({ actorId: actor.id, libraryId, fileId });
+  });
   const canonical = libraries.listLibraries(OWNER.id).find((library) => library.isDefault);
   assert.ok(canonical);
   const reserved = await drive.createMultipartUpload(OWNER.id, {
@@ -350,6 +362,8 @@ test("canonical Owner multipart upload is admitted in the completion transaction
   storage.putMultipartPart(ownerTransfer.providerUploadId, 1, 12, "etag-1");
 
   const completed = await libraries.completeDefaultMultipartUpload(OWNER, reserved.file.id, reserved.transfer.version);
+  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  assert.deepEqual(enrichmentRequests, [{ actorId: OWNER.id, libraryId: canonical.id, fileId: completed.id }]);
   assert.equal(libraries.listContributions(OWNER, canonical.id).length, 0);
   assert.equal(libraries.listHoldings(MEMBER.id, canonical.id)[0]?.file.id, completed.id);
   assert.equal(database.prepare<[string], { state: string }>(

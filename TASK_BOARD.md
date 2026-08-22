@@ -9,7 +9,7 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
-| L1-INTELLIGENT-LIBRARY01 | ACTIVE — Checkpoint A domain/schema ready for durable checkpoint | Continue mandatory A→F sequence; production only after integrated Checkpoint F gates |
+| L1-INTELLIGENT-LIBRARY01 | ACTIVE — A complete; B exact hosted qualification complete | Continue with Checkpoint C; production only after integrated Checkpoint F gates |
 | GOAL-BETA-PREP01 | ALL FIVE PHASES GREEN / INTERNAL_BETA_READY | STOP — Owner decides whether/when to start or invite users into internal beta |
 | HOTFIX-META-UX01 | DEPLOYED as `53317bb…` (same-schema app-only on `c741455…`) | Owner manual product acceptance in production |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
@@ -25,8 +25,8 @@ and hotfix contracts remain preserved in their existing cards.
 
 | Order | Checkpoint | State |
 |---:|---|---|
-| A | Domain + persistence architecture | READY TO CHECKPOINT — additive migration 023, ADR-032, repository/service/API and focused tests implemented; production unchanged |
-| B | AI bibliographic Compute | PENDING |
+| A | Domain + persistence architecture | COMPLETE / PUSHED / SYNCED — `fff33c7…`; additive migration 023 and ADR-032; production unchanged |
+| B | AI bibliographic Compute | COMPLETE — run `32574319098`, 3/3 + 7/7, sub-6-GiB, zero artifacts; final SHA is B tip before C |
 | C | Search + filters + display | PENDING |
 | D | Citation engine | PENDING |
 | E | Library UX + Activity Center | PENDING |

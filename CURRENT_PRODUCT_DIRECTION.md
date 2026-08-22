@@ -183,7 +183,7 @@ A modern facsimile/carrier edition must not be conflated with the historical sou
 
 Do not force one model to perform every stage.
 
-Preferred architectural direction to benchmark before production selection:
+Accepted Layer-1 production architecture:
 
 ```text
 PDF
@@ -193,21 +193,22 @@ PDF
 → structured metadata
 ```
 
-### PaddleOCR direction
+### PaddleOCR decision
 
-PaddleOCR is now the preferred technology to evaluate for document ingestion and OCR, especially for Chinese, traditional/vertical text, scans, old books, layout-heavy pages and future region OCR.
+PP-OCRv6 small is the exact-pinned ordinary Layer-1 document-reading adapter for
+Chinese, traditional/vertical, Japanese, and modern bibliographic pages.
 
-Potential roles:
+Later separately authorized roles may evaluate:
 
-- PP-OCR for ordinary OCR;
 - PaddleOCR-VL for difficult/complex document pages and old-book recognition;
 - PP-Structure/document-layout capability for layout-aware extraction.
 
 Tesseract should remain available as a legacy/emergency fallback for now, but should no longer be assumed to be the long-term primary OCR engine.
 
-### Qwen direction
+### Qwen decision
 
-Qwen remains the preferred bibliographic reasoning/model family to evaluate.
+Exact-pinned Qwen3-1.7B Q8_0 is the Layer-1 bibliographic reasoner behind strict
+server validation and deterministic label authority.
 
 The intended separation is conceptually:
 
@@ -215,16 +216,18 @@ The intended separation is conceptually:
 >
 > Qwen: determine what those signals mean bibliographically.
 
-For direct visual bibliographic reasoning, qualify a small Qwen-VL first and escalate difficult cases rather than treating one small model as infallible.
-
-Preferred bounded model hierarchy to evaluate:
+Accepted bounded model hierarchy:
 
 ```text
 normal case: small model
 → deterministic quality gate
-→ difficult case: stronger Qwen-VL
-→ still uncertain: preserve only supported fields / safe fallback
+→ uncertain case: preserve only supported fields / human review
 ```
+
+The bounded direct Qwen3-VL-2B comparison did not prove a reliable or cheaper
+automatic escalation: the final exact run timed out safely, while an earlier
+diagnostic completed two of three and missed the traditional vertical case.
+No Qwen-VL or PaddleOCR-VL escalation model is included in Layer 1 production.
 
 Heavy inference remains in ephemeral Compute, not persistent Thin Core. No paid AI API is part of the current direction.
 

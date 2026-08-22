@@ -8,19 +8,25 @@ evidence without duplicating it here.
 
 ## Current situation
 
-Owner-authorized `L1-INTELLIGENT-LIBRARY01` is now active in its mandatory A–F
-sequence. Checkpoint A has implemented the ADR-032 domain and additive
-development migration 023: one authoritative material taxonomy, structured
-contributors/publication/current-carrier/historical-source editions, exact-only
-person Authority binding, and durable field-level human-over-AI authority.
-Focused domain/metadata/migration/API tests and backend typecheck are green;
-the full backend run found one task-caused historical trigger-count expectation,
-which was repaired before the final A gate.
+Owner-authorized `L1-INTELLIGENT-LIBRARY01` is active in its mandatory A–F
+sequence. Checkpoints A and B are complete. A implemented the ADR-032 domain
+and additive development migration 023. B accepted ADR-033 and added migration
+024 plus an exact-pinned, ephemeral, sequential PP-OCRv6-small → Qwen3-1.7B
+Q8_0 bibliographic pipeline. Core remains authoritative; explicit labels and
+strict deterministic checks govern auto-application, human fields are never
+silently replaced, and AI failure never invalidates an admitted file.
+
+Exact hosted source `0fa04b43…`, run `32574319098`, passed real PaddleOCR,
+selected-path 3/3 rendered multilingual/vertical cases, seven-case 7/7
+qualification, 3,396,112-KiB and 3,298,672-KiB encompassing RSS gates, privacy
+and production-shell safety, and zero artifacts. Direct Qwen3-VL did not
+complete inside the bounded final comparison and is not a Layer-1 production
+dependency or automatic escalation.
 
 No partial Layer‑1 production change has occurred. Production remains exact
 `53317bb0156589baa21bc69c22e199d200c49840` at schema v22/history 001–022.
-Development migration head is v23/history 001–023. Continue automatically
-through B–F; production migration/deployment is authorized only at integrated
+Development migration head is v24/history 001–024. Continue automatically
+through C–F; production migration/deployment is authorized only at integrated
 Checkpoint F after its bounded gates. Internal Beta remains unstarted.
 
 The first Core/Compute separation vertical slice, COMPUTE-PRECUTOVER01, and

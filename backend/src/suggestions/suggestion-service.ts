@@ -4,6 +4,7 @@ import type {
   DerivedComputeDispatcher,
   DerivedComputeResult,
   DerivedMetadataCandidate,
+  IntelligentBibliographyResult,
 } from "@academiccloud/compute-contracts";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
@@ -22,6 +23,14 @@ import type {
   TypeFieldName,
 } from "../metadata/metadata.js";
 import { MATERIAL_TYPES } from "../metadata/metadata.js";
+import {
+  changedBibliographicFields,
+  type BibliographicFieldAuthority,
+  type BibliographicFieldName,
+  type BibliographicProfileInput,
+  type ContributorRole,
+  type MaterialClass,
+} from "../bibliography/bibliography.js";
 import type { StorageAdapter } from "../storage/storage-adapter.js";
 import { extractLightweightSuggestions, mergeSuggestionCandidates } from "./lightweight-extractor.js";
 import {
@@ -331,6 +340,233 @@ function derivedCandidate(candidate: DerivedMetadataCandidate): Omit<SuggestionC
     authorityType: candidate.authorityType,
     authorityRole: candidate.authorityRole,
   };
+}
+
+const MATERIAL_CLASS_TO_LEGACY: Readonly<Record<MaterialClass, MaterialType>> = {
+  scholarly_monograph: "book",
+  edited_volume: "book",
+  journal_article: "article",
+  book_chapter: "article",
+  thesis_dissertation: "book",
+  conference_paper: "article",
+  review: "article",
+  reference_work: "book",
+  dictionary_lexicon: "book",
+  primary_source_modern_edition: "book",
+  traditional_book: "book",
+  archival_document: "archival_document",
+  inscription_epigraphy: "inscription",
+  rubbing: "inscription",
+  manuscript: "manuscript",
+  collected_documents: "book",
+  catalogue_bibliography: "book",
+  other: "book",
+  unknown: "book",
+};
+
+function legacyAuthorityRole(role: ContributorRole): "author" | "editor" | "compiler" | "translator" | "contributor" {
+  if (role === "author" || role === "editor" || role === "compiler" || role === "translator") return role;
+  return "contributor";
+}
+
+function lockedByHuman(authorities: readonly BibliographicFieldAuthority[], fieldName: BibliographicFieldName, scopeKey = ""): boolean {
+  return authorities.some((entry) => entry.fieldName === fieldName && entry.scopeKey === scopeKey && entry.source === "human");
+}
+
+function aiMayWrite(
+  authorities: readonly BibliographicFieldAuthority[],
+  fieldName: BibliographicFieldName,
+  existingValueIsAbsent: boolean,
+  scopeKey = "",
+): boolean {
+  const authority = authorities.find((entry) => entry.fieldName === fieldName && entry.scopeKey === scopeKey);
+  return authority?.source === "ai" || (authority === undefined && existingValueIsAbsent);
+}
+
+function exactPersonAuthorityId(repositories: RepositorySet, ownerDomainId: string, label: string): string | undefined {
+  const matches = repositories.bibliography.findExactPersonAuthorities(ownerDomainId, label);
+  return matches.length === 1 ? matches[0]!.id : undefined;
+}
+
+function compact<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
+}
+
+function autoApplyIntelligentBibliography(options: {
+  repositories: RepositorySet;
+  context: HoldingContext;
+  actor: AuthenticatedAccount;
+  result: IntelligentBibliographyResult;
+  suggestionRunId: string;
+  now: Date;
+  createId: () => string;
+}): Array<{ fieldName: BibliographicFieldName; scopeKey: string }> {
+  const { repositories, context, actor, result, suggestionRunId, now, createId } = options;
+  const canonical = result.canonical;
+  if (result.status !== "auto_apply" || canonical === null) return [];
+  const ownerDomainId = context.library.ownerDomainId;
+  const recordId = context.holding.recordId;
+  const authorities = repositories.bibliography.listFieldAuthorities(ownerDomainId, recordId);
+  const applied = new Map<string, { fieldName: BibliographicFieldName; scopeKey: string }>();
+  const mark = (fieldName: BibliographicFieldName, scopeKey = ""): void => {
+    applied.set(`${fieldName}:${scopeKey}`, { fieldName, scopeKey });
+  };
+
+  const currentMetadata = repositories.metadata.findMetadata(ownerDomainId, recordId);
+  const nextMetadata: CanonicalMetadataInput = currentMetadata ? {
+    materialType: currentMetadata.materialType,
+    canonicalTitle: currentMetadata.canonicalTitle,
+    ...(currentMetadata.subtitle === undefined ? {} : { subtitle: currentMetadata.subtitle }),
+    alternativeTitles: [...currentMetadata.alternativeTitles],
+    ...(currentMetadata.dateStatement === undefined ? {} : { dateStatement: currentMetadata.dateStatement }),
+    identifiers: currentMetadata.identifiers.map((entry) => ({ ...entry })),
+    typeFields: { ...currentMetadata.typeFields },
+    authorityLinks: currentMetadata.authorityLinks.map((entry) => ({ ...entry })),
+  } : {
+    materialType: MATERIAL_CLASS_TO_LEGACY[canonical.materialClass],
+    canonicalTitle: canonical.canonicalTitle,
+    alternativeTitles: [],
+    identifiers: [],
+    typeFields: {},
+    authorityLinks: [],
+  };
+  if (aiMayWrite(authorities, "canonicalTitle", currentMetadata === null) && nextMetadata.canonicalTitle !== canonical.canonicalTitle) {
+    nextMetadata.canonicalTitle = canonical.canonicalTitle;
+    mark("canonicalTitle");
+  } else if (!currentMetadata && aiMayWrite(authorities, "canonicalTitle", true)) mark("canonicalTitle");
+  if (canonical.subtitle !== null && aiMayWrite(authorities, "subtitle", nextMetadata.subtitle === undefined)
+    && nextMetadata.subtitle !== canonical.subtitle) {
+    nextMetadata.subtitle = canonical.subtitle;
+    mark("subtitle");
+  }
+  if (canonical.alternativeTitles.length > 0 && aiMayWrite(authorities, "alternativeTitles", nextMetadata.alternativeTitles.length === 0)
+    && JSON.stringify(nextMetadata.alternativeTitles) !== JSON.stringify(canonical.alternativeTitles)) {
+    nextMetadata.alternativeTitles = [...canonical.alternativeTitles];
+    mark("alternativeTitles");
+  }
+  if (canonical.dateStatement !== null && aiMayWrite(authorities, "dateStatement", nextMetadata.dateStatement === undefined)
+    && nextMetadata.dateStatement !== canonical.dateStatement) {
+    nextMetadata.dateStatement = canonical.dateStatement;
+    mark("dateStatement");
+  }
+  if (canonical.identifiers.length > 0 && aiMayWrite(authorities, "identifiers", nextMetadata.identifiers.length === 0)
+    && JSON.stringify(nextMetadata.identifiers) !== JSON.stringify(canonical.identifiers)) {
+    nextMetadata.identifiers = canonical.identifiers.map((entry) => ({ ...entry }));
+    mark("identifiers");
+  }
+  if (!currentMetadata) {
+    for (const contributor of canonical.contributors) {
+      const authorityId = exactPersonAuthorityId(repositories, ownerDomainId, contributor.label);
+      if (!authorityId) continue;
+      const role = legacyAuthorityRole(contributor.role);
+      if (!nextMetadata.authorityLinks.some((entry) => entry.authorityId === authorityId && entry.role === role)) {
+        nextMetadata.authorityLinks.push({ authorityId, role });
+      }
+    }
+  }
+  if (!currentMetadata || JSON.stringify(nextMetadata) !== JSON.stringify({
+    materialType: currentMetadata.materialType,
+    canonicalTitle: currentMetadata.canonicalTitle,
+    ...(currentMetadata.subtitle === undefined ? {} : { subtitle: currentMetadata.subtitle }),
+    alternativeTitles: currentMetadata.alternativeTitles,
+    ...(currentMetadata.dateStatement === undefined ? {} : { dateStatement: currentMetadata.dateStatement }),
+    identifiers: currentMetadata.identifiers,
+    typeFields: currentMetadata.typeFields,
+    authorityLinks: currentMetadata.authorityLinks,
+  })) {
+    const saved = repositories.metadata.saveMetadata({
+      ...nextMetadata,
+      recordId,
+      ownerDomainId,
+      actorAccountId: actor.id,
+      expectedRevision: currentMetadata?.revision ?? null,
+      now,
+    });
+    if (!saved) throw new SuggestionError("concurrent_change");
+  }
+
+  const currentProfile = repositories.bibliography.findProfile(ownerDomainId, recordId);
+  const scalar = <T>(fieldName: BibliographicFieldName, proposed: T | null, existing: T | undefined): T | undefined => {
+    if (proposed === null || !aiMayWrite(authorities, fieldName, existing === undefined)) return existing;
+    return proposed;
+  };
+  const contributorHumanAuthority = authorities.some((entry) => entry.source === "human" && entry.fieldName.startsWith("contributor."));
+  const contributorAiAuthority = authorities.some((entry) => entry.source === "ai" && entry.fieldName.startsWith("contributor."));
+  const contributors = currentProfile && (contributorHumanAuthority || !contributorAiAuthority)
+    ? currentProfile.contributors.map((entry) => ({ ...entry }))
+    : canonical.contributors.map((entry) => ({
+        id: createId(),
+        label: entry.label,
+        role: entry.role,
+        ...(entry.roleLabel === null ? {} : { roleLabel: entry.roleLabel }),
+        ...(() => {
+          const authorityId = exactPersonAuthorityId(repositories, ownerDomainId, entry.label);
+          return authorityId === undefined ? {} : { authorityId };
+        })(),
+      }));
+  const proposedProfile: BibliographicProfileInput = {
+    materialClass: currentProfile && !aiMayWrite(authorities, "materialClass", false)
+      ? currentProfile.materialClass : canonical.materialClass,
+    contributors,
+    publication: compact({
+      publisher: scalar("publication.publisher", canonical.publication.publisher, currentProfile?.publication.publisher),
+      place: scalar("publication.place", canonical.publication.place, currentProfile?.publication.place),
+      publicationDate: scalar("publication.publicationDate", canonical.publication.publicationDate, currentProfile?.publication.publicationDate),
+      editionNumber: scalar("publication.editionNumber", canonical.publication.editionNumber, currentProfile?.publication.editionNumber),
+      printing: scalar("publication.printing", canonical.publication.printing, currentProfile?.publication.printing),
+    }),
+    ...compact({
+      series: scalar("series", canonical.series, currentProfile?.series),
+      volume: scalar("volume", canonical.volume, currentProfile?.volume),
+      language: scalar("language", canonical.language, currentProfile?.language),
+    }),
+    carrierEdition: compact({
+      editionType: scalar("carrierEdition.editionType", canonical.carrierEdition.editionType, currentProfile?.carrierEdition.editionType),
+      editionStatement: scalar("carrierEdition.editionStatement", canonical.carrierEdition.editionStatement, currentProfile?.carrierEdition.editionStatement),
+      facsimileStatement: scalar("carrierEdition.facsimileStatement", canonical.carrierEdition.facsimileStatement, currentProfile?.carrierEdition.facsimileStatement),
+    }),
+    sourceEdition: compact({
+      dynasty: scalar("sourceEdition.dynasty", canonical.sourceEdition.dynasty, currentProfile?.sourceEdition.dynasty),
+      reignTitle: scalar("sourceEdition.reignTitle", canonical.sourceEdition.reignTitle, currentProfile?.sourceEdition.reignTitle),
+      reignYear: scalar("sourceEdition.reignYear", canonical.sourceEdition.reignYear, currentProfile?.sourceEdition.reignYear),
+      absoluteYear: scalar("sourceEdition.absoluteYear", canonical.sourceEdition.absoluteYear, currentProfile?.sourceEdition.absoluteYear),
+      printer: scalar("sourceEdition.printer", canonical.sourceEdition.printer, currentProfile?.sourceEdition.printer),
+      imprint: scalar("sourceEdition.imprint", canonical.sourceEdition.imprint, currentProfile?.sourceEdition.imprint),
+      bookshop: scalar("sourceEdition.bookshop", canonical.sourceEdition.bookshop, currentProfile?.sourceEdition.bookshop),
+      institution: scalar("sourceEdition.institution", canonical.sourceEdition.institution, currentProfile?.sourceEdition.institution),
+      printingPlace: scalar("sourceEdition.printingPlace", canonical.sourceEdition.printingPlace, currentProfile?.sourceEdition.printingPlace),
+      editionType: scalar("sourceEdition.editionType", canonical.sourceEdition.editionType, currentProfile?.sourceEdition.editionType),
+      editionStatement: scalar("sourceEdition.editionStatement", canonical.sourceEdition.editionStatement, currentProfile?.sourceEdition.editionStatement),
+      holdingInformation: scalar("sourceEdition.holdingInformation", canonical.sourceEdition.holdingInformation, currentProfile?.sourceEdition.holdingInformation),
+    }),
+  };
+  const changed = changedBibliographicFields(currentProfile, proposedProfile)
+    .filter((field) => !lockedByHuman(authorities, field.fieldName, field.scopeKey));
+  if (!currentProfile || changed.length > 0) {
+    const saved = repositories.bibliography.saveProfile({
+      ...proposedProfile,
+      recordId,
+      ownerDomainId,
+      actorAccountId: actor.id,
+      expectedRevision: currentProfile?.revision ?? null,
+      now,
+    });
+    if (!saved) throw new SuggestionError("concurrent_change");
+    for (const field of changed) mark(field.fieldName, field.scopeKey);
+    if (!currentProfile && !lockedByHuman(authorities, "materialClass")) mark("materialClass");
+  }
+  for (const field of applied.values()) {
+    repositories.bibliography.setFieldAuthority({
+      recordId,
+      ownerDomainId,
+      fieldName: field.fieldName,
+      scopeKey: field.scopeKey,
+      source: "ai",
+      sourceRunId: suggestionRunId,
+      now,
+    });
+  }
+  return [...applied.values()];
 }
 
 /**
@@ -775,11 +1011,10 @@ export class SuggestionService {
       if (context.membership.role !== "manager" || fingerprint.value !== job.inputVersion) throw new SuggestionError("stale");
       const runId = `suggestion-${job.id}`;
       const existingRun = repositories.suggestions.findRun(context.library.ownerDomainId, runId);
-      // The fast lightweight run is immutable evidence. An accepted run is
-      // frozen: accepted canonical metadata is never silently rewritten by an
-      // asynchronous callback, so the job succeeds against the accepted run
-      // without persisting anything new.
-      if (existingRun && existingRun.status === "accepted") {
+      // An accepted fast run remains immutable. The structured callback still
+      // receives its own append-only run and may fill only fields that have no
+      // human authority; acceptance never becomes permission to overwrite.
+      if (existingRun?.status === "accepted" && result.output.bibliography === undefined) {
         const succeeded = repositories.derivedJobs.succeed(job.id, result.attemptId, existingRun.id, digest, now);
         if (!succeeded) throw new SuggestionError("concurrent_change");
         return succeeded;
@@ -807,6 +1042,41 @@ export class SuggestionService {
         candidates: merged.candidates.slice(0, 256).map((candidate, position) => ({ ...candidate, position })),
       };
       const saved = repositories.suggestions.createRun(run);
+      if (result.output.bibliography) {
+        const appliedFields = autoApplyIntelligentBibliography({
+          repositories,
+          context,
+          actor,
+          result: result.output.bibliography,
+          suggestionRunId: saved.id,
+          now,
+          createId: this.#createId,
+        });
+        const structuredOutputJson = JSON.stringify(result.output.bibliography);
+        const provenance = result.output.bibliography.provenance;
+        repositories.bibliography.createAiRunEvidence({
+          id: `bibliography-${job.id}`,
+          ownerDomainId: context.library.ownerDomainId,
+          recordId: context.holding.recordId,
+          fileId: job.resourceId,
+          suggestionRunId: saved.id,
+          status: result.output.bibliography.status,
+          overallConfidence: result.output.bibliography.overallConfidence,
+          structuredOutputJson,
+          structuredOutputSha256: createHash("sha256").update(structuredOutputJson, "utf8").digest("hex"),
+          promptVersion: provenance.promptVersion,
+          ocrEngineId: !provenance.ocr.used
+            ? "not_used/native_or_embedded_text"
+            : provenance.ocr.legacyFallback
+              ? "academiccloud-tesseract-cli-v1/emergency-legacy"
+              : `${provenance.ocr.family}/${provenance.ocr.packageVersion}/${provenance.ocr.detectionModel.name}@${provenance.ocr.detectionModel.revision}/${provenance.ocr.recognitionModel.name}@${provenance.ocr.recognitionModel.revision}`,
+          reasoningEngineId: `${provenance.reasoning.family}/${provenance.reasoning.name}@${provenance.reasoning.revision}/${provenance.reasoning.quantization}/${provenance.reasoning.runtimeFamily}-${provenance.reasoning.runtimeVersion}@${provenance.reasoning.runtimeRevision}`,
+          selectedPages: [...provenance.selectedPages],
+          autoApplied: appliedFields.length > 0,
+          appliedFields,
+          createdAt: now,
+        });
+      }
       const succeeded = repositories.derivedJobs.succeed(job.id, result.attemptId, saved.id, digest, now);
       if (!succeeded) throw new SuggestionError("concurrent_change");
       return succeeded;

@@ -10,6 +10,7 @@ import type {
 } from "../../bibliography/bibliography.js";
 import type {
   BibliographicRepository,
+  BibliographicAiRunEvidence,
   SaveBibliographicProfileInput,
   SetFieldAuthorityInput,
 } from "../../bibliography/repositories.js";
@@ -87,6 +88,25 @@ interface ExactAuthorityRow {
 
 interface AliasRow { alias: string; }
 
+interface AiRunRow {
+  id: string;
+  owner_domain_id: string;
+  record_id: string;
+  file_id: string;
+  suggestion_run_id: string;
+  status: BibliographicAiRunEvidence["status"];
+  overall_confidence: number;
+  structured_output_json: string;
+  structured_output_sha256: string;
+  prompt_version: BibliographicAiRunEvidence["promptVersion"];
+  ocr_engine_id: string;
+  reasoning_engine_id: string;
+  selected_pages_json: string;
+  auto_applied: number;
+  applied_fields_json: string;
+  created_at: string;
+}
+
 const profileColumns = `
   record_id, owner_domain_id, contract_version, material_class,
   publication_publisher, publication_place, publication_date, edition_number,
@@ -111,6 +131,8 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
   readonly #deleteFieldAuthority;
   readonly #findExactAuthorities;
   readonly #listAuthorityAliases;
+  readonly #insertAiRunEvidence;
+  readonly #findAiRunEvidence;
 
   constructor(database: SqliteDatabase) {
     this.#database = database;
@@ -223,6 +245,30 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
     this.#listAuthorityAliases = database.prepare<[string, string], AliasRow>(`
       SELECT alias FROM scholarly_authority_aliases
       WHERE authority_id = ? AND owner_domain_id = ? ORDER BY position
+    `);
+    this.#insertAiRunEvidence = database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        @id, @ownerDomainId, @recordId, @fileId, @suggestionRunId,
+        1, 'l1-intelligent-library01-v1', @status, @overallConfidence,
+        @structuredOutputJson, @structuredOutputSha256, @promptVersion,
+        @ocrEngineId, @reasoningEngineId, @selectedPagesJson, @autoApplied,
+        @appliedFieldsJson, @createdAt
+      )
+    `);
+    this.#findAiRunEvidence = database.prepare<[string, string], AiRunRow>(`
+      SELECT id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        status, overall_confidence, structured_output_json,
+        structured_output_sha256, prompt_version, ocr_engine_id,
+        reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      FROM scholarly_bibliographic_ai_runs
+      WHERE owner_domain_id = ? AND id = ?
     `);
   }
 
@@ -384,6 +430,40 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
       createdAt: fromDatabaseTimestamp(row.created_at)!,
       updatedAt: fromDatabaseTimestamp(row.updated_at)!,
     }));
+  }
+
+  createAiRunEvidence(evidence: BibliographicAiRunEvidence): BibliographicAiRunEvidence {
+    this.#insertAiRunEvidence.run({
+      ...evidence,
+      selectedPagesJson: JSON.stringify(evidence.selectedPages),
+      autoApplied: evidence.autoApplied ? 1 : 0,
+      appliedFieldsJson: JSON.stringify(evidence.appliedFields),
+      createdAt: toDatabaseTimestamp(evidence.createdAt)!,
+    });
+    return this.findAiRunEvidence(evidence.ownerDomainId, evidence.id)!;
+  }
+
+  findAiRunEvidence(ownerDomainId: string, id: string): BibliographicAiRunEvidence | null {
+    const row = this.#findAiRunEvidence.get(ownerDomainId, id);
+    if (!row) return null;
+    return {
+      id: row.id,
+      ownerDomainId: row.owner_domain_id,
+      recordId: row.record_id,
+      fileId: row.file_id,
+      suggestionRunId: row.suggestion_run_id,
+      status: row.status,
+      overallConfidence: row.overall_confidence,
+      structuredOutputJson: row.structured_output_json,
+      structuredOutputSha256: row.structured_output_sha256,
+      promptVersion: row.prompt_version,
+      ocrEngineId: row.ocr_engine_id,
+      reasoningEngineId: row.reasoning_engine_id,
+      selectedPages: JSON.parse(row.selected_pages_json) as number[],
+      autoApplied: row.auto_applied === 1,
+      appliedFields: JSON.parse(row.applied_fields_json) as BibliographicAiRunEvidence["appliedFields"],
+      createdAt: fromDatabaseTimestamp(row.created_at)!,
+    };
   }
 }
 

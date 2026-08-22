@@ -30,8 +30,8 @@ production failure. Do not start internal beta or invite users.
 
 | Checkpoint | Scope | State | Exact checkpoint SHA |
 |---|---|---|---|
-| A | Domain + persistence architecture | READY TO CHECKPOINT — implementation and evidence below | recorded immediately after commit |
-| B | AI bibliographic Compute | PENDING | — |
+| A | Domain + persistence architecture | COMPLETE / PUSHED / SYNCED | `fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643` |
+| B | AI bibliographic Compute | COMPLETE / QUALIFIED / PUSHED / SYNCED | B tip; exact SHA recorded before C |
 | C | Search + filters + display | PENDING | — |
 | D | Citation engine | PENDING | — |
 | E | Library UX + Activity Center | PENDING | — |
@@ -79,9 +79,74 @@ git diff --check = PASS
 
 Final Checkpoint-A rerun and review are recorded with the checkpoint commit.
 
+## Checkpoint B acceptance evidence
+
+### Implemented
+
+- Replaced the ordinary protected Compute OCR path with sequential, ephemeral,
+  memory-only PP-OCRv6 small document reading followed by Qwen3-1.7B Q8_0
+  bibliographic reasoning. Paddle closes before Qwen starts; neither runtime is
+  resident in Core.
+- Added one strict shared bibliography result contract aligned to migration 023,
+  exact model/runtime provenance, per-field confidence and evidence digests,
+  deterministic quality gates, and fail-closed schema/ISBN/page/authority
+  checks. AI cannot submit contributor authority identities.
+- Added migration 024 for immutable structured AI-run evidence only. It stores
+  no raw OCR text, rendered page bytes, source URL, capability, or model
+  conversation; normalized canonical data remains in migration 023 tables.
+- Core automatically applies only warning-free `>=85` defaults to empty or
+  already AI-authoritative fields. Existing human and pre-authority canonical
+  values remain authoritative, and exact-only same-domain person binding is
+  still performed by Core.
+- Canonical Owner uploads and Owner-approved Member contributions trigger the
+  durable asynchronous job automatically. Dispatch, render, OCR, model,
+  validation, and callback failures do not roll back or hide a valid upload.
+- Ordinary production execution no longer selects Tesseract. The old adapter is
+  retained behind the explicit `ACADEMICCLOUD_OCR_EMERGENCY_LEGACY=1` emergency
+  switch and is absent from the protected workflow environment.
+- Added an exact clean-runner qualification comparing the selected pipeline to
+  qualification-only Qwen3-VL-2B on the same multilingual/vertical rendered
+  pages, plus the full seven-case bibliographic reasoning set, encompassing GNU
+  RSS gates, privacy scan, and zero artifact publication.
+
+### Local verification
+
+```text
+backend = 351/351 PASS
+frontend = 259/259 PASS
+Compute = 60 PASS / 0 FAIL / 2 expected local runtime skips
+Compute contracts = 2/2 PASS
+backend/frontend/Compute/contract typecheck = PASS
+Compute/contract build = PASS
+git diff --check = PASS
+```
+
+### Exact hosted qualification
+
+- Exact source `0fa04b43a80ac4d1486323c700e737850b081222`, workflow run
+  `32574319098`, job `97034473517`, clean `ubuntu-24.04`: SUCCESS.
+- Real PP-OCRv6 rendered-page E2E passed with no skip. The selected
+  PP-OCRv6-small → Qwen3-1.7B pipeline passed title/material class on 3/3
+  modern Chinese, traditional vertical, and Japanese rendered pages in
+  198,499 ms.
+- The seven-case gate passed 7/7. Six evidenced cases were warning-free
+  `auto_apply` at confidence 90 with title/class/carrier/source checks green;
+  the deliberately conflicting case remained `ambiguous` with controlled
+  warnings.
+- Seven-case GNU maximum RSS was 3,396,112 KiB; visual-comparison maximum RSS
+  was 3,298,672 KiB. Both are below the 6-GiB contract.
+- Qualification-only direct Qwen3-VL completed no case inside the final bounded
+  window and is not selected. Earlier diagnostic evidence completed 2/3 but
+  missed the traditional vertical case and was slower than the selected path.
+- Privacy/output and production-shell safety passed; workflow artifacts were
+  exactly zero. Linux production build run `32574318996` also passed
+  deterministic build and independent artifact verification.
+- ADR-033 is Accepted. Production remains exact `53317bb…` at schema
+  v22/history 001–022; no partial deployment or production migration occurred.
+
 ## Remaining acceptance contract
 
-- B: current official PaddleOCR/PP-OCR/PaddleOCR-VL and small Qwen-VL options
+- B: **COMPLETE.** Current official PaddleOCR/PP-OCR/PaddleOCR-VL and small Qwen-VL options
   receive a bounded real decision record; production path is exact-pinned,
   strict-schema, confidence/provenance-bearing, safe auto-application that
   respects human fields, upload-independent on failure, and remains entirely in

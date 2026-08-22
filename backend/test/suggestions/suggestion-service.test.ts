@@ -5,6 +5,7 @@ import type {
   DerivedComputeDispatchJob,
   DerivedComputeDispatcher,
   DerivedComputeResult,
+  IntelligentBibliographyResult,
 } from "@academiccloud/compute-contracts";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
@@ -61,6 +62,77 @@ function successfulResult(jobId: string, attemptId: string): DerivedComputeResul
       }],
     },
   };
+}
+
+function intelligentResult(jobId: string, attemptId: string, options: {
+  title?: string;
+  materialClass?: "scholarly_monograph" | "edited_volume";
+  contributor?: string;
+  publisher?: string | null;
+} = {}): DerivedComputeResult {
+  const title = options.title ?? "近代中国史研究";
+  const materialClass = options.materialClass ?? "scholarly_monograph";
+  const contributor = options.contributor ?? "王明";
+  const publisher = options.publisher ?? null;
+  const evidence = (fieldName: IntelligentBibliographyResult["fields"][number]["fieldName"], scopeKey = "") => ({
+    fieldName,
+    scopeKey,
+    confidence: 96,
+    sourceType: "title_page" as const,
+    sourcePageIndex: 1,
+    pageClass: "title_page" as const,
+    evidenceOrigin: "native_text" as const,
+    evidenceSha256: "a".repeat(64),
+  });
+  const bibliography: IntelligentBibliographyResult = {
+    contractVersion: 1,
+    rulesetVersion: "l1-intelligent-library01-v1",
+    status: "auto_apply",
+    overallConfidence: 96,
+    canonical: {
+      materialClass,
+      canonicalTitle: title,
+      subtitle: null,
+      alternativeTitles: [],
+      dateStatement: null,
+      identifiers: [],
+      contributors: [{ label: contributor, role: "author", roleLabel: null }],
+      publication: { publisher, place: null, publicationDate: null, editionNumber: null, printing: null },
+      series: null,
+      volume: null,
+      language: null,
+      carrierEdition: { editionType: null, editionStatement: null, facsimileStatement: null },
+      sourceEdition: { dynasty: null, reignTitle: null, reignYear: null, absoluteYear: null, printer: null, imprint: null, bookshop: null, institution: null, printingPlace: null, editionType: null, editionStatement: null, holdingInformation: null },
+    },
+    fields: [
+      evidence("materialClass"),
+      evidence("canonicalTitle"),
+      evidence("contributor.label", "contributor:0"),
+      evidence("contributor.role", "contributor:0"),
+      ...(publisher === null ? [] : [evidence("publication.publisher")]),
+    ],
+    warnings: [],
+    provenance: {
+      ocr: {
+        used: false,
+        family: "PaddleOCR", packageVersion: "3.7.0", runtimeFamily: "PaddlePaddle", runtimeVersion: "3.3.1",
+        detectionModel: { name: "PP-OCRv6_small_det", revision: "106c97591b235f607453300d9fc8c1cad1b25488", sha256: "5043d4ccc8d63402ccea8feefcee4db57077431a873e78d2191836a178a492da" },
+        recognitionModel: { name: "PP-OCRv6_small_rec", revision: "bd619643acac4b9650c040234da8d944476ee3f1", sha256: "406e1e689c9a7fbb04178007a3fe10cf852afe7bf8bb3bc6dbb9d532b13bd907" },
+        legacyFallback: false,
+      },
+      reasoning: {
+        family: "Qwen3", name: "Qwen3-1.7B-GGUF", revision: "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+        sha256: "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a", quantization: "Q8_0",
+        runtimeFamily: "llama.cpp", runtimeVersion: "b10218", runtimeRevision: "de69995",
+        runtimeSha256: "78ec7a1964710918030e85c132a0995b10b07e4f43001bdf54fe0fd48d1eb85b",
+      },
+      selectedPages: [1, 2],
+      promptVersion: "l1-intelligent-library01-prompt-v1",
+    },
+  };
+  const legacy = successfulResult(jobId, attemptId);
+  if (legacy.state !== "succeeded") throw new Error("test fixture is invalid");
+  return { ...legacy, output: { ...legacy.output, bibliography } };
 }
 
 function fixture(context: TestContext, options: { now?: () => Date; dispatcher?: DerivedComputeDispatcher } = {}) {
@@ -204,6 +276,109 @@ test("Compute claim and callback create reviewable candidates without canonical 
     } as DerivedComputeResult, claim.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "concurrent_change",
   );
+});
+
+test("safe intelligent callback auto-applies canonical defaults, exact-binds one person, and retains immutable provenance", async (context) => {
+  const { database, persistence, library, fileId, suggestions, metadata } = fixture(context);
+  const authority = metadata.createAuthority(OWNER, library.id, { type: "person", canonicalLabel: "王明", aliases: [] });
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+  const completed = await suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1"), claim.capability.token);
+  assert.equal(completed.state, "succeeded");
+
+  const detail = metadata.getDetails(OWNER, library.id, fileId);
+  assert.equal(detail.metadata?.canonicalTitle, "近代中国史研究");
+  assert.equal(detail.bibliography?.materialClass, "scholarly_monograph");
+  assert.deepEqual(detail.bibliography?.contributors, [{ id: "attempt-2", label: "王明", role: "author", authorityId: authority.id }]);
+  assert.ok(detail.fieldAuthorities.every((field) => field.source === "ai"));
+  const evidence = persistence.repositories.bibliography.findAiRunEvidence(library.ownerDomainId, `bibliography-${job.id}`)!;
+  assert.equal(evidence.status, "auto_apply");
+  assert.equal(evidence.autoApplied, true);
+  assert.ok(evidence.appliedFields.some((field) => field.fieldName === "canonicalTitle"));
+  assert.equal(evidence.structuredOutputJson.includes("近代中国史研究"), true);
+  assert.equal(evidence.structuredOutputJson.includes("rawText"), false);
+  assert.throws(
+    () => database.prepare("UPDATE scholarly_bibliographic_ai_runs SET overall_confidence = 99 WHERE id = ?").run(evidence.id),
+    /bibliographic AI evidence is immutable/,
+  );
+  assert.throws(
+    () => database.prepare("DELETE FROM scholarly_bibliographic_ai_runs WHERE id = ?").run(evidence.id),
+    /bibliographic AI evidence is retained/,
+  );
+});
+
+test("intelligent callback preserves human fields while filling only unprotected defaults", async (context) => {
+  const { persistence, library, fileId, suggestions, metadata } = fixture(context);
+  const initial = metadata.getDetails(OWNER, library.id, fileId);
+  const withTitle = metadata.updateMetadata(OWNER, library.id, fileId, initial.metadataVersion, {
+    materialType: "book",
+    canonicalTitle: "人工题名",
+    alternativeTitles: [],
+    identifiers: [],
+    typeFields: {},
+    authorityLinks: [],
+  });
+  metadata.updateBibliography(OWNER, library.id, fileId, withTitle.bibliographyVersion, {
+    materialClass: "edited_volume",
+    contributors: [{ label: "人工编者", role: "editor" }],
+    publication: {},
+    carrierEdition: {},
+    sourceEdition: {},
+  });
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+  await suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", {
+    title: "AI 题名",
+    materialClass: "scholarly_monograph",
+    contributor: "AI 作者",
+    publisher: "学术出版社",
+  }), claim.capability.token);
+
+  const detail = metadata.getDetails(OWNER, library.id, fileId);
+  assert.equal(detail.metadata?.canonicalTitle, "人工题名");
+  assert.equal(detail.bibliography?.materialClass, "edited_volume");
+  assert.deepEqual(detail.bibliography?.contributors.map((entry) => [entry.label, entry.role]), [["人工编者", "editor"]]);
+  assert.equal(detail.bibliography?.publication.publisher, "学术出版社");
+  const authorities = persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record");
+  assert.equal(authorities.find((entry) => entry.fieldName === "canonicalTitle")?.source, "human");
+  assert.equal(authorities.find((entry) => entry.fieldName === "materialClass")?.source, "human");
+  assert.equal(authorities.find((entry) => entry.fieldName === "publication.publisher")?.source, "ai");
+});
+
+test("AI treats pre-authority canonical metadata as preserved legacy truth instead of permission to overwrite", async (context) => {
+  const { persistence, library, fileId, suggestions, metadata } = fixture(context);
+  const saved = persistence.repositories.metadata.saveMetadata({
+    recordId: "suggestion-record",
+    ownerDomainId: library.ownerDomainId,
+    actorAccountId: OWNER.id,
+    expectedRevision: null,
+    now: NOW,
+    materialType: "article",
+    canonicalTitle: "迁移前既有题名",
+    alternativeTitles: ["既有异名"],
+    identifiers: [],
+    typeFields: {},
+    authorityLinks: [],
+  });
+  assert.ok(saved);
+  assert.deepEqual(persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record"), []);
+
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+  await suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", {
+    title: "AI 新题名",
+    materialClass: "scholarly_monograph",
+    publisher: "学术出版社",
+  }), claim.capability.token);
+
+  const detail = metadata.getDetails(OWNER, library.id, fileId);
+  assert.equal(detail.metadata?.canonicalTitle, "迁移前既有题名");
+  assert.equal(detail.metadata?.materialType, "article");
+  assert.deepEqual(detail.metadata?.alternativeTitles, ["既有异名"]);
+  assert.equal(detail.bibliography?.publication.publisher, "学术出版社");
+  const authorities = persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record");
+  assert.equal(authorities.some((entry) => entry.fieldName === "canonicalTitle"), false);
+  assert.equal(authorities.find((entry) => entry.fieldName === "publication.publisher")?.source, "ai");
 });
 
 test("callback capability and attempt identity fail closed", async (context) => {

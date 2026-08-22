@@ -11,7 +11,7 @@ const bootstrapSecret = process.env.ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET;
 if (!bootstrapSecret) throw new Error("ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET is required");
 
 const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 120_000);
+const timeout = setTimeout(() => controller.abort(), 420_000);
 try {
   const outcome = await runComputeWorker({
     coreBaseUrl: argument("core-base-url"),

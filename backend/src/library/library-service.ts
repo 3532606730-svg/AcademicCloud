@@ -183,6 +183,7 @@ export class LibraryService {
   readonly #drive: DriveService;
   readonly #now: () => Date;
   readonly #createId: () => string;
+  #onHoldingAvailable: ((actor: AuthenticatedAccount, libraryId: string, fileId: string) => Promise<void>) | undefined;
 
   constructor(
     persistence: Persistence,
@@ -194,6 +195,10 @@ export class LibraryService {
     this.#drive = drive;
     this.#now = now;
     this.#createId = createId;
+  }
+
+  setHoldingAvailableListener(listener: (actor: AuthenticatedAccount, libraryId: string, fileId: string) => Promise<void>): void {
+    this.#onHoldingAvailable = listener;
   }
 
   recordAuditAttempt(
@@ -328,13 +333,18 @@ export class LibraryService {
     const existingHolding = repositories.libraries.findHoldingByFile(canonical.id, fileId);
     if (existingHolding?.file.uploadedByAccountId === actor.id) {
       const shared = repositories.files.findByDomainId(canonical.ownerDomainId, fileId);
-      if (shared?.state === "active") return shared;
+      if (shared?.state === "active") {
+        this.#notifyHoldingAvailable(actor, canonical.id, shared);
+        return shared;
+      }
     }
 
     try {
-      return await this.#drive.completeUpload(actor.id, fileId, "account", (transaction, activated, now) => {
+      const completed = await this.#drive.completeUpload(actor.id, fileId, "account", (transaction, activated, now) => {
         this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
       });
+      this.#notifyHoldingAvailable(actor, canonical.id, completed);
+      return completed;
     } catch (error: unknown) {
       this.#mapDefaultUploadError(error);
     }
@@ -343,11 +353,16 @@ export class LibraryService {
   async getDefaultUploadStatus(actor: AuthenticatedAccount, fileId: string): Promise<UploadStatus> {
     const canonical = this.#requireDefaultUploadActor(actor);
     const existing = this.#completedDefaultUpload(actor, canonical, fileId);
-    if (existing) return { kind: "complete", file: existing };
+    if (existing) {
+      this.#notifyHoldingAvailable(actor, canonical.id, existing);
+      return { kind: "complete", file: existing };
+    }
     try {
-      return await this.#drive.getUploadStatus(actor.id, fileId, "account", (transaction, activated, now) => {
+      const status = await this.#drive.getUploadStatus(actor.id, fileId, "account", (transaction, activated, now) => {
         this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
       });
+      if (status.kind === "complete") this.#notifyHoldingAvailable(actor, canonical.id, status.file);
+      return status;
     } catch (error: unknown) {
       this.#mapDefaultUploadError(error);
     }
@@ -379,9 +394,12 @@ export class LibraryService {
   ): Promise<StoredFile> {
     const canonical = this.#requireDefaultUploadActor(actor);
     const existing = this.#completedDefaultUpload(actor, canonical, fileId);
-    if (existing) return existing;
+    if (existing) {
+      this.#notifyHoldingAvailable(actor, canonical.id, existing);
+      return existing;
+    }
     try {
-      return await this.#drive.completeMultipartUpload(
+      const completed = await this.#drive.completeMultipartUpload(
         actor.id,
         fileId,
         version,
@@ -390,6 +408,8 @@ export class LibraryService {
           this.#intakeActivatedFile(transaction, actor, canonical.id, activated, now);
         },
       );
+      this.#notifyHoldingAvailable(actor, canonical.id, completed);
+      return completed;
     } catch (error: unknown) {
       this.#mapDefaultUploadError(error);
     }
@@ -919,7 +939,7 @@ export class LibraryService {
     contributionId: string,
     decision: "approve" | "reject",
   ): ContributionView {
-    return this.#persistence.runInTransaction((repositories) => {
+    const reviewed = this.#persistence.runInTransaction((repositories) => {
       this.#requireManager(actor.id, libraryId, repositories);
       const candidate = repositories.contributions.findCandidate(libraryId, contributionId);
       if (!candidate || candidate.contribution.state !== "submitted") throw new LibraryError("not_found");
@@ -978,6 +998,23 @@ export class LibraryService {
         }
         throw error;
       }
+    });
+    if (decision === "approve") this.#notifyHoldingAvailable(actor, libraryId, reviewed.file);
+    return reviewed;
+  }
+
+  #notifyHoldingAvailable(actor: AuthenticatedAccount, libraryId: string, file: Pick<StoredFile, "id" | "mediaType">): void {
+    const repositories = this.#persistence.repositories;
+    const membership = repositories.libraries.findMembership(libraryId, actor.id);
+    if (file.mediaType?.toLowerCase() !== "application/pdf" || !this.#onHoldingAvailable
+      || !repositories.libraries.findHoldingByFile(libraryId, file.id)
+      || membership?.role !== "manager" || !this.#isEffectiveMembership(repositories, membership)) return;
+    const listener = this.#onHoldingAvailable;
+    queueMicrotask(() => {
+      void listener(actor, libraryId, file.id).catch(() => {
+        // Bibliographic enrichment is best-effort and isolated: a failed job
+        // or dispatcher can never change the completed upload/admission.
+      });
     });
   }
 

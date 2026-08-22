@@ -288,3 +288,24 @@ replace them. Returning a field to AI control is an explicit, field-scoped user
 action. Automatic contributor Authority binding requires one unique exact
 canonical-label or exact-alias person match in the same Library domain; fuzzy,
 invented, and ambiguous binding is prohibited.
+
+## ADR-033 — PP-OCRv6 Small plus Qwen3 for Ephemeral Bibliographic Compute
+
+**Date:** 2026-08-22
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-033-paddleocr-qwen-ephemeral-bibliographic-compute.md`
+
+The accepted Layer-1 production path is sequential PP-OCRv6 small document
+reading, Qwen3-1.7B Q8_0 bibliographic reasoning, and deterministic strict
+validation. Exact official runtime/model revisions and hashes are release-local
+to a clean ephemeral Compute job; raw OCR text and rendered pages remain in
+memory and are never logged, cached, returned as evidence, or persisted.
+
+Core remains authoritative and applies only high-confidence warning-free
+defaults to fields that are not human-authoritative. Direct Qwen3-VL-2B and
+PaddleOCR-VL 1.6 remain future evidence candidates, not ordinary or automatic
+Layer-1 production dependencies. Exact hosted run `32574319098` passed the real
+PaddleOCR E2E, selected-path 3/3 visual cases, seven-case 7/7 reasoning gate,
+both sub-6-GiB probes, privacy/shell safety, and zero-artifact requirement; the
+bounded direct Qwen3-VL comparison did not complete and is excluded from
+production.

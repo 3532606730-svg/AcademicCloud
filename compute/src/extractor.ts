@@ -122,7 +122,7 @@ function excerpt(text: string, value: string): string {
   return bounded.slice(start, start + 320);
 }
 
-function classifyPage(page: PdfTextPage): PageClass {
+export function classifySuggestionPage(page: PdfTextPage): PageClass {
   const text = page.text.normalize("NFC");
   const lower = text.toLocaleLowerCase();
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -180,7 +180,7 @@ function pageContexts(pages: readonly PdfTextPage[]): PageContext[] {
     .slice()
     .sort((a, b) => a.pageIndex - b.pageIndex)
     .map((page) => {
-      const pageClass = classifyPage(page);
+      const pageClass = classifySuggestionPage(page);
       return {
         page,
         pageClass,

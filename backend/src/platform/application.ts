@@ -66,6 +66,9 @@ export async function createApplication(
       dispatcher: computeRuntime.dispatcher,
       coreBaseUrl: computeRuntime.coreBaseUrl,
     });
+    libraryService.setHoldingAvailableListener(async (actor, libraryId, fileId) => {
+      await suggestionService.requestGeneration(actor, libraryId, fileId);
+    });
     const app = await createApp({
       logger: { level: config.logLevel },
       auth: {

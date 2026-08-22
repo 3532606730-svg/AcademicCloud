@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-22T00:30:00+08:00",
+  "updatedAt": "2026-08-22T21:29:33+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -18,13 +18,26 @@
   "activeTasks": ["L1-INTELLIGENT-LIBRARY01", "GOAL-BETA-PREP01", "HOTFIX-META-UX01"],
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
-    "state": "checkpoint_a_ready_for_commit",
+    "state": "checkpoint_b_complete",
     "mandatorySequence": ["A_DOMAIN_PERSISTENCE", "B_AI_COMPUTE", "C_SEARCH_DISPLAY", "D_CITATION", "E_UX_ACTIVITY", "F_INTEGRATION_PRODUCTION"],
-    "developmentSchema": 23,
-    "developmentMigrationHistory": "001-023",
+    "developmentSchema": 24,
+    "developmentMigrationHistory": "001-024",
+    "checkpointA": "fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643",
+    "checkpointBQualification": {
+      "source": "0fa04b43a80ac4d1486323c700e737850b081222",
+      "workflowRun": 32574319098,
+      "jobId": 97034473517,
+      "selectedVisualCases": "3/3 pass",
+      "representativeCases": "7/7 pass",
+      "intelligentMaxRssKiB": 3396112,
+      "visualComparisonMaxRssKiB": 3298672,
+      "artifactCount": 0,
+      "privacyOutputSafety": "pass",
+      "decision": "ADR-033 Accepted; PP-OCRv6 small then Qwen3-1.7B Q8_0; no automatic visual escalation"
+    },
     "productionChanged": false,
     "internalBetaStarted": false,
-    "nextCheckpoint": "B_AI_COMPUTE_after_A_checkpoint_push_and_sync"
+    "nextCheckpoint": "C_SEARCH_DISPLAY"
   },
   "storageIncident": {
     "policyRootCause": "missing RAM allow",

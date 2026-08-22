@@ -38,6 +38,7 @@ const requiredRuntimePaths = [
   "backend/scripts/compiled-acceptance.mjs",
   "compute-contracts/package.json",
   "compute-contracts/dist/index.js",
+  "compute-contracts/dist/bibliography.js",
   "frontend/dist/index.html",
   "database/migrations",
   "deployment/env/academiccloud.env.example",

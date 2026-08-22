@@ -6,7 +6,14 @@ import type {
 
 import { extractSuggestions } from "./extractor.js";
 import { PdfJsFrontMatterInspector, PdfTextInspectionError } from "./pdf-text.js";
-import { OcrError } from "./ocr.js";
+import { OcrError, TesseractCliOcrAdapter } from "./ocr.js";
+import { PaddleOcrSidecarAdapter } from "./paddle-ocr.js";
+import {
+  BibliographicIntelligenceError,
+  deriveIntelligentBibliography,
+  LlamaServerBibliographicReasoner,
+  type BibliographicReasoner,
+} from "./bibliographic-intelligence.js";
 import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfRangeSource } from "./suggestion.js";
 
 const JOB_ID = /^[A-Za-z0-9_-]{1,128}$/u;
@@ -133,6 +140,11 @@ function classifyWorkerError(error: unknown): DerivedComputeErrorCode {
     }
     if (error.code === "input_limit" || error.code === "output_limit") return "compute_limit_exceeded";
   }
+  if (error instanceof BibliographicIntelligenceError) {
+    if (error.code === "invalid_result") return "compute_invalid_result";
+    if (error.code === "reasoner_timeout") return "compute_timeout";
+    return "compute_internal_error";
+  }
   if (error instanceof Error && /source|range|fetch/iu.test(error.message)) return "compute_source_unavailable";
   return "compute_internal_error";
 }
@@ -141,15 +153,30 @@ export async function computeMetadataSuggestions(
   source: PdfRangeSource,
   inspector: BoundedPdfTextSource = new PdfJsFrontMatterInspector(),
   signal?: AbortSignal,
+  reasoner?: BibliographicReasoner,
+  legacyOcrFallback = false,
 ): Promise<MetadataSuggestionComputeOutput> {
   if (!inspector.inspectRange) throw new Error("compute inspector requires bounded range support");
-  const inspection = await inspector.inspectRange(source, SUGGESTION_LIMITS, signal);
+  let inspection;
+  try {
+    inspection = await inspector.inspectRange(source, SUGGESTION_LIMITS, signal);
+  } finally {
+    await inspector.close?.();
+  }
   const extraction = extractSuggestions({
     pages: inspection.pages,
     embeddedMetadata: inspection.embeddedMetadata,
     filename: "",
     hasUsableTextLayer: inspection.hasUsableTextLayer,
   });
+  let bibliography;
+  try {
+    bibliography = reasoner === undefined
+      ? undefined
+      : await deriveIntelligentBibliography(inspection, reasoner, signal, legacyOcrFallback);
+  } finally {
+    await reasoner?.close?.();
+  }
   return {
     status: extraction.status,
     window: {
@@ -160,6 +187,7 @@ export async function computeMetadataSuggestions(
       complete: inspection.complete,
     },
     candidates: extraction.candidates.map((candidate, position) => ({ ...candidate, position })),
+    ...(bibliography === undefined ? {} : { bibliography }),
   };
 }
 
@@ -217,6 +245,7 @@ export async function runComputeWorker(
   options: {
     fetchImplementation?: typeof fetch;
     inspector?: BoundedPdfTextSource;
+    reasoner?: BibliographicReasoner;
     signal?: AbortSignal;
   } = {},
 ): Promise<ComputeWorkerOutcome> {
@@ -241,7 +270,14 @@ export async function runComputeWorker(
     let result: DerivedComputeResult;
     try {
       const source = new HttpPdfRangeSource(claim.source.url, claim.source.sizeBytes, fetchImplementation);
-      const output = await computeMetadataSuggestions(source, options.inspector, options.signal);
+      const emergencyLegacyOcr = process.env.ACADEMICCLOUD_OCR_EMERGENCY_LEGACY === "1";
+      const inspector = options.inspector ?? new PdfJsFrontMatterInspector(
+        process.env.NODE_ENV === "production" && !emergencyLegacyOcr
+          ? new PaddleOcrSidecarAdapter()
+          : new TesseractCliOcrAdapter(),
+      );
+      const reasoner = options.reasoner ?? (process.env.NODE_ENV === "production" ? new LlamaServerBibliographicReasoner() : undefined);
+      const output = await computeMetadataSuggestions(source, inspector, options.signal, reasoner, emergencyLegacyOcr);
       result = { jobId: input.jobId, attemptId: input.attemptId, kind: "metadata_suggestion", state: "succeeded", output };
     } catch (error: unknown) {
       result = {

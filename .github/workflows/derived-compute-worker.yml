@@ -31,14 +31,12 @@ jobs:
     name: Compute qualification / clean Linux worker
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
-      QUALIFICATION_BASE_SOURCE: decfde4d06d359f0cb9873682293ff828bac5ab9
+      QUALIFICATION_BASE_SOURCE: fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643
       QUALIFICATION_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}
       QUALIFICATION_SOURCE_REF: codex/project-memory-reconcile-20260817
-      COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24.04
-      TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
-      GITHUB_API_TOKEN: ${{ github.token }}
+      COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24.04-intelligent
 
     steps:
       - name: Check out the exact qualification source
@@ -48,7 +46,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify exact source, ref, runner, and pre-cutover delta
+      - name: Verify exact source, ref, runner, and intelligent-library baseline
         shell: bash
         run: |
           set -euo pipefail
@@ -59,7 +57,6 @@ jobs:
           test "$(git rev-parse HEAD)" = "$QUALIFICATION_SOURCE_COMMIT"
           git cat-file -e "$QUALIFICATION_BASE_SOURCE^{commit}"
           git merge-base --is-ancestor "$QUALIFICATION_BASE_SOURCE" HEAD
-          test "$(git diff --name-only "$QUALIFICATION_BASE_SOURCE"..HEAD)" = $'.github/workflows/derived-compute-worker.yml\nbackend/test/deployment/artifacts.test.ts\ncompute/scripts/memory-probe.ts'
 
       - name: Set up latest Node.js 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -83,74 +80,88 @@ jobs:
           npm test --workspace @academiccloud/compute
           npm run build --workspace @academiccloud/compute
 
-      - name: Build the pinned worker-local Tesseract runtime
+      - name: Build the pinned worker-local PaddleOCR and Qwen runtime
+        shell: bash
+        env:
+          INTELLIGENT_COMPARISON_ASSETS: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          bash scripts/build-intelligent-compute-runtime.sh output/qualification/runtime
+
+      - name: Install a qualification-only CJK rendering font
         shell: bash
         run: |
           set -euo pipefail
-          readonly OUTPUT_UID="$(id -u)"
-          readonly OUTPUT_GID="$(id -g)"
-          mkdir -p output
-          docker pull "$TESSERACT_BUILDER_IMAGE"
-          test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
-          docker run --rm --platform linux/amd64 \
-            --env TESSERACT_BUILDER_IMAGE \
-            --env GITHUB_API_TOKEN \
-            --env "ARTIFACT_OUTPUT_UID=$OUTPUT_UID" \
-            --env "ARTIFACT_OUTPUT_GID=$OUTPUT_GID" \
-            --volume "$GITHUB_WORKSPACE:/work" \
-            --workdir /work \
-            "$TESSERACT_BUILDER_IMAGE" \
-            bash scripts/build-tesseract-runtime.sh output/qualification/runtime/tesseract
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
 
-      - name: Verify real Tesseract OCR and Linux memory
+      - name: Verify real PaddleOCR, real Qwen reasoning, and Linux memory
         shell: bash
         env:
-          OCR_TESSERACT_PATH: ${{ github.workspace }}/output/qualification/runtime/tesseract/bin/tesseract
-          OCR_TESSDATA_PATH: ${{ github.workspace }}/output/qualification/runtime/tesseract/tessdata
-          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/output/qualification/runtime/tesseract/lib
+          PADDLE_OCR_PYTHON_PATH: ${{ github.workspace }}/output/qualification/runtime/paddle/venv/bin/python
+          PADDLE_OCR_SIDECAR_PATH: ${{ github.workspace }}/output/qualification/runtime/paddle/paddle_ocr_sidecar.py
+          PADDLE_OCR_DETECTION_MODEL_PATH: ${{ github.workspace }}/output/qualification/runtime/paddle/models/PP-OCRv6_small_det
+          PADDLE_OCR_RECOGNITION_MODEL_PATH: ${{ github.workspace }}/output/qualification/runtime/paddle/models/PP-OCRv6_small_rec
+          BIBLIOGRAPHY_LLAMA_SERVER_PATH: ${{ github.workspace }}/output/qualification/runtime/llama/bin/llama-server
+          BIBLIOGRAPHY_QWEN_MODEL_PATH: ${{ github.workspace }}/output/qualification/runtime/qwen/Qwen3-1.7B-Q8_0.gguf
+          BIBLIOGRAPHY_QWEN_VL_MODEL_PATH: ${{ github.workspace }}/output/qualification/runtime/comparison/qwen-vl/Qwen3VL-2B-Instruct-Q4_K_M.gguf
+          BIBLIOGRAPHY_QWEN_VL_MMPROJ_PATH: ${{ github.workspace }}/output/qualification/runtime/comparison/qwen-vl/mmproj-Qwen3VL-2B-Instruct-Q8_0.gguf
+          PADDLE_OCR_STARTUP_DIAGNOSTICS: "1"
         run: |
           set -euo pipefail
           readonly EVIDENCE_DIR="output/qualification-evidence"
           mkdir -p "$EVIDENCE_DIR"
-          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd() + '/output/qualification');"
-          npx tsx --test compute/test/realistic-ocr-e2e.test.ts | tee "$EVIDENCE_DIR/realistic-ocr-e2e.tap"
-          ! grep -Eq '^# skipped [1-9][0-9]*$|# SKIP' "$EVIDENCE_DIR/realistic-ocr-e2e.tap"
+          readonly QUALIFICATION_FONT="$(fc-match -f '%{file}\n' 'Noto Sans CJK SC' | head -n 1)"
+          test -s "$QUALIFICATION_FONT"
+          export BIBLIOGRAPHY_QUALIFICATION_FONT_PATH="$QUALIFICATION_FONT"
+          node scripts/verify-intelligent-compute-runtime.mjs output/qualification/runtime > "$EVIDENCE_DIR/runtime-verification.json"
+          npx tsx --test compute/test/realistic-paddle-ocr-e2e.test.ts | tee "$EVIDENCE_DIR/realistic-paddle-ocr-e2e.tap"
+          ! grep -Eq '^# skipped [1-9][0-9]*$|# SKIP' "$EVIDENCE_DIR/realistic-paddle-ocr-e2e.tap"
           set +e
-          /usr/bin/time -v -o "$EVIDENCE_DIR/compute-memory-resource.txt" \
-            npm run memory:probe --workspace @academiccloud/compute \
-            2> >(tee "$EVIDENCE_DIR/compute-memory-probe.stderr" >&2) \
-            | tee "$EVIDENCE_DIR/compute-memory-probe.jsonl"
+          /usr/bin/time -v -o "$EVIDENCE_DIR/visual-comparison-memory-resource.txt" \
+            npx tsx compute/scripts/visual-architecture-qualification.ts \
+            2> "$EVIDENCE_DIR/visual-comparison.stderr" \
+            | tee "$EVIDENCE_DIR/visual-comparison.jsonl"
+          readonly VISUAL_EXIT="${PIPESTATUS[0]}"
+          set -e
+          readonly VISUAL_MAX_RSS_KB="$(sed -nE 's/^[[:space:]]*Maximum resident set size \(kbytes\):[[:space:]]*([0-9]+)$/\1/p' "$EVIDENCE_DIR/visual-comparison-memory-resource.txt")"
+          test -n "$VISUAL_MAX_RSS_KB"
+          test "$VISUAL_MAX_RSS_KB" -lt 6291456
+          readonly VISUAL_JSON="$(grep -E '^\{"status":"(ok|failed)"' "$EVIDENCE_DIR/visual-comparison.jsonl" | tail -n 1)"
+          jq -e '.status == "ok" and .pipelinePassed == 3 and .total == 3' <<<"$VISUAL_JSON" >/dev/null
+          test "$VISUAL_EXIT" -eq 0
+          set +e
+          /usr/bin/time -v -o "$EVIDENCE_DIR/intelligent-memory-resource.txt" \
+            npx tsx compute/scripts/intelligent-qualification.ts \
+            2> "$EVIDENCE_DIR/intelligent-qualification.stderr" \
+            | tee "$EVIDENCE_DIR/intelligent-qualification.jsonl"
           readonly PROBE_EXIT="${PIPESTATUS[0]}"
           set -e
-          readonly GNU_MAX_RSS="$(grep -E '^[[:space:]]*Maximum resident set size \(kbytes\):' "$EVIDENCE_DIR/compute-memory-resource.txt")"
-          test -n "$GNU_MAX_RSS"
-          echo "$GNU_MAX_RSS"
-          if (( PROBE_EXIT != 0 )); then
-            {
-              echo "### Compute qualification memory evidence"
-              echo
-              echo "The exact memory gate failed. GNU time still records the encompassing command resource maximum, including child-process execution."
-              echo
-              echo '```text'
-              grep -E 'Compute peak RSS exceeded|repeat-run RSS drift exceeded' "$EVIDENCE_DIR/compute-memory-probe.stderr"
-              echo "$GNU_MAX_RSS"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit "$PROBE_EXIT"
-          fi
-          readonly PROBE_JSON="$(grep -E '^\{"status":"ok"' "$EVIDENCE_DIR/compute-memory-probe.jsonl" | tail -n 1)"
+          readonly GNU_MAX_RSS_KB="$(sed -nE 's/^[[:space:]]*Maximum resident set size \(kbytes\):[[:space:]]*([0-9]+)$/\1/p' "$EVIDENCE_DIR/intelligent-memory-resource.txt")"
+          test -n "$GNU_MAX_RSS_KB"
+          test "$GNU_MAX_RSS_KB" -lt 6291456
+          readonly PROBE_JSON="$(grep -E '^\{"status":"(ok|failed)"' "$EVIDENCE_DIR/intelligent-qualification.jsonl" | tail -n 1)"
           test -n "$PROBE_JSON"
-          jq -e '.ocrMode == "release_local_tesseract" and .memoryProfile == "github-hosted-ubuntu-24.04" and .peakRssLimitBytes == 805306368 and .peakRssBytes < .peakRssLimitBytes and .repeatDriftBytes < 67108864' <<<"$PROBE_JSON" >/dev/null
+          jq -e '.status == "ok" and .passed == 7 and .total == 7' <<<"$PROBE_JSON" >/dev/null
           {
-            echo "### Compute qualification memory evidence"
+            echo "### Intelligent Compute qualification evidence"
             echo
-            echo "The JSON probe records Node/PDF.js/native-canvas clean, peak, post-job, and repeat-run RSS with release-local Tesseract enabled. GNU time records the encompassing command resource maximum, including child-process execution."
+            echo "The exact pinned PP-OCRv6 small + Qwen3-1.7B Q8_0 path passed all seven bounded bibliographic cases. GNU time encompasses the Node and local model child processes; the gate is below 6 GiB on the GitHub-hosted runner."
             echo
-            echo '```text'
-            jq '{status, cleanStartRssBytes, peakRssBytes, postJobRssBytes, retainedGrowthBytes, repeatDriftBytes, runs, memoryProfile, peakRssLimitBytes, ocrMode}' <<<"$PROBE_JSON"
-            echo "$GNU_MAX_RSS"
+            echo '```json'
+            jq '{status, passed, total, outcomes}' <<<"$PROBE_JSON"
             echo '```'
+            echo "Maximum resident set size (kbytes): $GNU_MAX_RSS_KB"
+            echo
+            echo "A qualification-only exact-pinned Qwen3-VL-2B direct-visual path was compared on the same three rendered multilingual/vertical pages; it is not included in the production runtime."
+            echo
+            echo '```json'
+            jq '{status, selectedArchitecture, pipelinePassed, visualPassed, total, visualCompleted, pipelineMilliseconds, visualMilliseconds, outcomes}' <<<"$VISUAL_JSON"
+            echo '```'
+            echo "Visual comparison maximum resident set size (kbytes): $VISUAL_MAX_RSS_KB"
           } >> "$GITHUB_STEP_SUMMARY"
+          exit "$PROBE_EXIT"
 
       - name: Verify qualification output and production-shell safety
         if: always() && github.event_name == 'pull_request'
@@ -158,12 +169,16 @@ jobs:
         run: |
           set -euo pipefail
           readonly EVIDENCE_DIR="output/qualification-evidence"
-          test -s "$EVIDENCE_DIR/realistic-ocr-e2e.tap"
-          test -s "$EVIDENCE_DIR/compute-memory-resource.txt"
-          test -s "$EVIDENCE_DIR/compute-memory-probe.jsonl"
-          test -f "$EVIDENCE_DIR/compute-memory-probe.stderr"
+          test -s "$EVIDENCE_DIR/runtime-verification.json"
+          test -s "$EVIDENCE_DIR/realistic-paddle-ocr-e2e.tap"
+          test -s "$EVIDENCE_DIR/visual-comparison-memory-resource.txt"
+          test -s "$EVIDENCE_DIR/visual-comparison.jsonl"
+          test -f "$EVIDENCE_DIR/visual-comparison.stderr"
+          test -s "$EVIDENCE_DIR/intelligent-memory-resource.txt"
+          test -s "$EVIDENCE_DIR/intelligent-qualification.jsonl"
+          test -f "$EVIDENCE_DIR/intelligent-qualification.stderr"
           ! grep -ERniE \
-            'Authorization:[[:space:]]*(Bearer|Basic)|[?&](X-Amz-|x-oss-|Signature=|security-token=)|"(sourceUrl|callbackUrl|capability|candidates|evidenceExcerpt)"[[:space:]]*:|A Durable Compute Memory Probe|Copyright 2026 AcademicCloud Press|978-0-306-40615-7' \
+            'Authorization:[[:space:]]*(Bearer|Basic)|[?&](X-Amz-|x-oss-|Signature=|security-token=)|"(sourceUrl|callbackUrl|capability|candidates|evidenceExcerpt|canonicalTitle|contributors|publisher)"[[:space:]]*:|ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET' \
             "$EVIDENCE_DIR"
           ! grep -Eq -- '--(core-base-url|job-id|attempt-id)=\$\{\{ inputs\.' .github/workflows/derived-compute-worker.yml
           grep -Fq -- '--core-base-url="$COMPUTE_INPUT_CORE_ORIGIN"' .github/workflows/derived-compute-worker.yml
@@ -175,15 +190,13 @@ jobs:
     name: Metadata suggestion / clean Linux worker
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     environment: academiccloud-compute-production
     env:
-      TESSERACT_BUILDER_IMAGE: ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
-      GITHUB_API_TOKEN: ${{ github.token }}
       COMPUTE_INPUT_JOB_ID: ${{ inputs.job_id }}
       COMPUTE_INPUT_ATTEMPT_ID: ${{ inputs.attempt_id }}
       COMPUTE_INPUT_CORE_ORIGIN: ${{ inputs.core_base_url }}
-      COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24.04
+      COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24.04-intelligent
 
     steps:
       - name: Validate pinned routing before exposing the worker capability
@@ -224,7 +237,7 @@ jobs:
           npm run build --workspace @academiccloud/compute-contracts
           npm run build --workspace @academiccloud/compute
 
-      - name: Build the pinned worker-local Tesseract runtime
+      - name: Build and atomically stage the pinned intelligent runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -234,48 +247,25 @@ jobs:
           mkdir -p "$STAGING_ROOT/compute" "$STAGING_ROOT/runtime"
           cp -a compute/dist "$STAGING_ROOT/compute/dist"
           cp compute/package.json "$STAGING_ROOT/compute/package.json"
-          docker pull "$TESSERACT_BUILDER_IMAGE"
-          test "$(docker image inspect "$TESSERACT_BUILDER_IMAGE" --format '{{.Architecture}}')" = "amd64"
-          docker run --rm --platform linux/amd64 \
-            --env "TESSERACT_BUILDER_IMAGE=$TESSERACT_BUILDER_IMAGE" \
-            --env "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" \
-            --env "ARTIFACT_OUTPUT_UID=$(id -u)" \
-            --env "ARTIFACT_OUTPUT_GID=$(id -g)" \
-            --volume "$GITHUB_WORKSPACE:/work" \
-            --workdir /work \
-            "$TESSERACT_BUILDER_IMAGE" \
-            bash scripts/build-tesseract-runtime.sh "$STAGING_ROOT/runtime/tesseract"
-          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd() + '/$STAGING_ROOT');"
+          bash scripts/build-intelligent-compute-runtime.sh "$STAGING_ROOT/runtime"
+          node scripts/verify-intelligent-compute-runtime.mjs "$STAGING_ROOT/runtime"
           node --check "$STAGING_ROOT/compute/dist/main.js"
           mv "$STAGING_ROOT" "$RUNTIME_ROOT"
 
-      - name: Verify Compute OCR runtime and realistic fixtures
+      - name: Verify Compute OCR runtime and realistic fixture
         shell: bash
         env:
-          OCR_TESSERACT_PATH: ${{ github.workspace }}/output/worker/runtime/tesseract/bin/tesseract
-          OCR_TESSDATA_PATH: ${{ github.workspace }}/output/worker/runtime/tesseract/tessdata
-          OCR_TESSERACT_LIBRARY_PATH: ${{ github.workspace }}/output/worker/runtime/tesseract/lib
+          PADDLE_OCR_PYTHON_PATH: ${{ github.workspace }}/output/worker/runtime/paddle/venv/bin/python
+          PADDLE_OCR_SIDECAR_PATH: ${{ github.workspace }}/output/worker/runtime/paddle/paddle_ocr_sidecar.py
+          PADDLE_OCR_DETECTION_MODEL_PATH: ${{ github.workspace }}/output/worker/runtime/paddle/models/PP-OCRv6_small_det
+          PADDLE_OCR_RECOGNITION_MODEL_PATH: ${{ github.workspace }}/output/worker/runtime/paddle/models/PP-OCRv6_small_rec
         run: |
           set -euo pipefail
-          node --input-type=module --eval "import { verifyTesseractRuntime } from './scripts/tesseract-runtime.mjs'; verifyTesseractRuntime(process.cwd() + '/output/worker');"
-          npx tsx --test compute/test/realistic-ocr-e2e.test.ts
-          mkdir -p output
-          /usr/bin/time -v -o output/compute-memory-resource.txt \
-            npm run memory:probe --workspace @academiccloud/compute \
-            | tee output/compute-memory-probe.jsonl
-          {
-            echo "### Compute memory evidence"
-            echo
-            echo "The JSON probe records Node/PDF.js/native-canvas clean, peak, post-job, and repeat-run RSS with release-local Tesseract enabled. GNU time records the encompassing command resource maximum, including child-process execution."
-            echo
-            echo '```text'
-            grep -E '^\{"status":"ok"' output/compute-memory-probe.jsonl | tail -n 1 | jq '{status, cleanStartRssBytes, peakRssBytes, postJobRssBytes, retainedGrowthBytes, repeatDriftBytes, runs, memoryProfile, peakRssLimitBytes, ocrMode}'
-            grep -E '^[[:space:]]*Maximum resident set size \(kbytes\):' output/compute-memory-resource.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          node scripts/verify-intelligent-compute-runtime.mjs output/worker/runtime
+          npx tsx --test compute/test/realistic-paddle-ocr-e2e.test.ts
 
-      - name: Claim, compute, and return bounded candidates
-        timeout-minutes: 5
+      - name: Claim, compute, and return bounded structured bibliography
+        timeout-minutes: 12
         shell: bash
         env:
           NODE_ENV: production

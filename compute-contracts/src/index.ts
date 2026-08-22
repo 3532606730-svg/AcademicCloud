@@ -169,6 +169,7 @@ export interface MetadataSuggestionComputeOutput {
   status: DerivedSuggestionStatus;
   window: DerivedSuggestionWindow;
   candidates: DerivedMetadataCandidate[];
+  bibliography?: IntelligentBibliographyResult;
 }
 
 export interface DerivedComputeSucceededResult {
@@ -287,14 +288,21 @@ function parseWindow(value: unknown): DerivedSuggestionWindow {
 
 function parseOutput(value: unknown): MetadataSuggestionComputeOutput {
   const output = record(value, "result.output");
-  exactKeys(output, ["status", "window", "candidates"], "result.output");
+  exactKeys(output, ["status", "window", "candidates", "bibliography"], "result.output");
   if (!Array.isArray(output.candidates) || output.candidates.length > 256) {
     throw new TypeError("result.output.candidates is invalid");
   }
+  const window = parseWindow(output.window);
+  const bibliography = output.bibliography === undefined ? undefined : parseIntelligentBibliographyResult(output.bibliography);
+  if (bibliography && (bibliography.provenance.selectedPages.some((page) => !window.pageIndices.includes(page))
+    || bibliography.fields.some((field) => field.sourcePageIndex !== null && !window.pageIndices.includes(field.sourcePageIndex)))) {
+    throw new TypeError("result bibliography provenance falls outside the inspected window");
+  }
   return {
     status: oneOf(output.status, DERIVED_SUGGESTION_STATUSES, "result.output.status"),
-    window: parseWindow(output.window),
+    window,
     candidates: output.candidates.map((candidate, position) => parseCandidate(candidate, position)),
+    ...(bibliography === undefined ? {} : { bibliography }),
   };
 }
 
@@ -318,3 +326,9 @@ export function parseDerivedComputeResult(value: unknown): DerivedComputeResult 
   }
   return { ...base, kind: "metadata_suggestion", state, output: parseOutput(result.output) };
 }
+import {
+  parseIntelligentBibliographyResult,
+  type IntelligentBibliographyResult,
+} from "./bibliography.js";
+
+export * from "./bibliography.js";

@@ -63,8 +63,8 @@ export const SUGGESTION_LIMITS: Readonly<SuggestionLimits> = Object.freeze({
   maxTotalOcrOutputCharacters: 65_536,
   maxOcrProcessOutputBytes: 2 * 1024 * 1024,
   minimumOcrConfidence: 55,
-  perPageOcrTimeoutMilliseconds: 5_000,
-  totalRequestTimeoutMilliseconds: 25_000,
+  perPageOcrTimeoutMilliseconds: 60_000,
+  totalRequestTimeoutMilliseconds: 180_000,
   maxConcurrentPageOcrJobs: 1,
   maxConcurrentOcrRequests: 1,
   timeoutMilliseconds: 5_000,
@@ -111,6 +111,7 @@ export interface PdfTextInspection {
 export interface BoundedPdfTextSource {
   inspect(bytes: Uint8Array, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection>;
   inspectRange?(source: PdfRangeSource, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection>;
+  close?(): Promise<void> | void;
 }
 
 export interface PdfRangeSource {

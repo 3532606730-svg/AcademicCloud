@@ -43,6 +43,7 @@ export interface OcrRecognition {
 
 export interface OcrAdapter {
   recognizePage(input: OcrPageInput, signal?: AbortSignal): Promise<OcrRecognition>;
+  close?(): Promise<void> | void;
 }
 
 export interface TesseractCliConfig {

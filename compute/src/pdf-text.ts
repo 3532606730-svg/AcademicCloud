@@ -600,6 +600,10 @@ export class PdfJsFrontMatterInspector implements BoundedPdfTextSource {
   inspectRange(source: PdfRangeSource, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
     return inspectPdfFrontMatterRange(source, this.#ocr, limits, signal);
   }
+
+  close(): Promise<void> | void {
+    return this.#ocr.close?.();
+  }
 }
 
 export class PdfJsTextSource extends PdfJsTextInspector {}

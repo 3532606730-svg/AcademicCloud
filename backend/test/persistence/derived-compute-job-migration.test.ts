@@ -29,7 +29,7 @@ test("migration 022 upgrades v21 append-only and durable job state survives a da
       INSERT INTO accounts (id, login_name, password_hash, role, auth_revision, state, created_at, updated_at)
       VALUES ('compute-owner', 'compute-owner', 'hash', 'owner', 0, 'active', ?, ?)
     `).run(NOW.toISOString(), NOW.toISOString());
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [22, 23], currentVersion: 23 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [22, 23, 24], currentVersion: 24 });
     const repository = new SqliteDerivedJobRepository(database);
     const created = repository.create({
       id: "job-restart",
@@ -53,7 +53,7 @@ test("migration 022 upgrades v21 append-only and durable job state survives a da
     assert.equal(reopened.activeAttemptId, "attempt-1");
     assert.equal(reopened.providerJobId, "provider-1");
     assert.equal(reopened.capabilityTokenHash, null);
-    assert.equal(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).currentVersion, 23);
+    assert.equal(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).currentVersion, 24);
   } finally {
     database.close();
     rmSync(temporaryDirectory, { recursive: true, force: true });
