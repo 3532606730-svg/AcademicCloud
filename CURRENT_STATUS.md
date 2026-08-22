@@ -8,18 +8,25 @@ evidence without duplicating it here.
 
 ## Active incident: INCIDENT-L1-AI-PRODUCTION01
 
-Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is in
-progress. The existing production SSH route has been restored for bounded
-read-only evidence; Git index writes remain blocked by the execution sandbox
-and GitHub Actions inspection remains unavailable through the restricted CLI
-and browser paths. No production data or application deployment changed.
+Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is
+resolved for the incident: the production SSH route, Git checkpoint/push path,
+and authorized GitHub Actions browser evidence are available. No production
+data or application deployment has changed in this checkpoint.
 
-The reported production-wide AI cataloguing failure remains **BLOCKED for
-diagnosis**. Both new-upload and legacy re-catalogue paths converge on the same
-Core `requestGeneration` and Compute dispatcher route, but the first failing
-production boundary has not been established. The possible missing
-`COMPUTE_PROVIDER` integration risk was reverted and is not deployed; explicit
-configuration remains preferred until live evidence proves otherwise.
+The production-wide AI cataloguing failure is **DIAGNOSED / REPAIR READY**.
+Representative new-upload and legacy re-catalogue jobs both dispatched to
+GitHub Actions/Compute and failed at the same PDF.js range transport callback:
+`#onReceiveData - no PDFDataTransportStreamRangeReader instance found.` The
+failure occurs before OCR/Qwen; a successful historical worker run is the
+control. The proven common cause is a stale/late range response racing PDF.js
+range-reader removal. No `COMPUTE_PROVIDER` inference or configuration change
+is implicated or deployed.
+
+The bounded repair is implemented locally in `compute/src/pdf-text.ts`: range
+transport callbacks are lifecycle-guarded, stale PDF.js reader assertions are
+ignored narrowly, and transport disposal precedes `loadingTask.destroy()`.
+Focused Compute regression and full Compute gates are green; immutable artifact,
+deployment, and the two mandatory real production E2Es remain pending.
 
 The established `academiccloud-prod` SSH route is restored through the
 approved path. A bounded read-only probe confirmed exact release

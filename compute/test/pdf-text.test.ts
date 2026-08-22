@@ -9,6 +9,7 @@ import {
 } from "../src/pdf-text.js";
 import { OcrError, type OcrAdapter, type OcrRecognition } from "../src/ocr.js";
 import { SUGGESTION_LIMITS, type SuggestionLimits } from "../src/suggestion.js";
+import { makeOversizedRealisticPdf } from "./fixtures/realistic-pdf.js";
 
 function makePdf(pages: string[], mediaBox = "0 0 612 792"): Uint8Array {
   const objects: string[] = [
@@ -218,4 +219,33 @@ test("range-backed inspector accepts an object larger than the whole-object comp
   );
   assert.ok(requests.length >= 1);
   assert.ok(requests.every(([begin, end]) => end > begin && end - begin <= SUGGESTION_LIMITS.rangeChunkBytes));
+});
+
+test("range-backed inspector ignores a stale response after PDF.js settles its reader", async () => {
+  const bytes = makeOversizedRealisticPdf(["Range-backed title evidence"]);
+  let reads = 0;
+  const source = {
+    length: bytes.byteLength,
+    read(begin: number, end: number): Promise<Uint8Array> {
+      reads += 1;
+      if (reads === 1) return Promise.resolve(bytes.slice(begin, end));
+      // Simulate a provider response racing PDF.js reader completion. The
+      // second callback is stale and must not surface as a parser failure.
+      return {
+        then(onFulfilled: (value: Uint8Array) => void) {
+          const chunk = bytes.slice(begin, end);
+          onFulfilled(chunk);
+          onFulfilled(chunk);
+          return { catch() {} };
+        },
+      } as unknown as Promise<Uint8Array>;
+    },
+  };
+  const inspection = await inspectPdfFrontMatterRange(
+    source,
+    new RecordingOcrAdapter(async () => recognized("unused")),
+    limits({ timeoutMilliseconds: 1_000, totalRequestTimeoutMilliseconds: 1_000 }),
+  );
+  assert.equal(inspection.pageCount, 1);
+  assert.ok(reads >= 2);
 });

@@ -110,7 +110,7 @@ class PdfRangeTransport extends PDFDataRangeTransport {
   private requests = 0;
   private fetchedBytes = 0;
   private reservedBytes = 0;
-  private aborted = false;
+  private closed = false;
 
   constructor(
     private readonly source: PdfRangeSource,
@@ -130,6 +130,7 @@ class PdfRangeTransport extends PDFDataRangeTransport {
   }
 
   override requestDataRange(begin: number, end: number): void {
+    if (this.closed) return;
     const boundedEnd = Math.min(end, begin + this.limits.rangeChunkBytes, this.length);
     const size = boundedEnd - begin;
     // The aggregate byte budget is reserved synchronously so concurrent PDF.js
@@ -146,17 +147,40 @@ class PdfRangeTransport extends PDFDataRangeTransport {
     this.requests += 1;
     this.reservedBytes += size;
     void this.source.read(begin, boundedEnd, this.signal).then((bytes) => {
-      if (this.aborted) return;
+      if (this.closed) return;
       this.fetchedBytes += bytes.byteLength;
       this.onDataRange(begin, bytes);
     }).catch(() => {
-      if (this.aborted) return;
+      if (this.closed) return;
       this.onDataRange(begin, new Uint8Array());
     });
   }
 
+  /**
+   * PDF.js can remove a range reader before an outstanding source read settles.
+   * Invalidate this adapter first so late callbacks never reach PDF.js' strict
+   * range-reader lookup during document teardown.
+   */
+  override onDataRange(begin: number, chunk: Uint8Array): void {
+    if (this.closed) return;
+    try {
+      super.onDataRange(begin, chunk);
+    } catch (error: unknown) {
+      // A source response can race PDF.js cancellation and arrive after its
+      // range reader has been removed. This is a stale callback, not a PDF
+      // parse failure; ignore only PDF.js' exact lifecycle assertion.
+      if (error instanceof Error
+        && error.message === "#onReceiveData - no `PDFDataTransportStreamRangeReader` instance found.") return;
+      throw error;
+    }
+  }
+
+  dispose(): void {
+    this.closed = true;
+  }
+
   override abort(): void {
-    this.aborted = true;
+    this.dispose();
   }
 }
 
@@ -344,6 +368,7 @@ async function inspectPdf(options: {
   }
 
   let loadingTask: ReturnType<typeof getDocument> | undefined;
+  let rangeTransport: PdfRangeTransport | undefined;
   const startedAt = Date.now();
   const parserDeadline = startedAt + limits.timeoutMilliseconds;
   const requestDeadline = startedAt + (ocr === undefined ? limits.timeoutMilliseconds : limits.totalRequestTimeoutMilliseconds);
@@ -352,7 +377,7 @@ async function inspectPdf(options: {
     const initialData = source
       ? await withTimeout(source.read(0, Math.min(source.length, limits.rangeChunkBytes), signal), operationBudget(parserDeadline, limits.timeoutMilliseconds), signal)
       : undefined;
-    const rangeTransport = source ? new PdfRangeTransport(source, limits, signal, initialData) : undefined;
+    rangeTransport = source ? new PdfRangeTransport(source, limits, signal, initialData) : undefined;
     loadingTask = getDocument({
       ...(bytes ? { data: new Uint8Array(bytes) } : { range: rangeTransport!, length: source!.length, rangeChunkSize: limits.rangeChunkBytes }),
       disableAutoFetch: true,
@@ -523,6 +548,7 @@ async function inspectPdf(options: {
         }
       }
     }
+    rangeTransport?.dispose();
     await loadingTask.destroy();
     return {
       pageCount,
@@ -542,6 +568,7 @@ async function inspectPdf(options: {
     throw new PdfTextInspectionError("invalid_pdf");
   } finally {
     releaseOcrRequest?.();
+    rangeTransport?.dispose();
     if (loadingTask && !loadingTask.destroyed) {
       try {
         await loadingTask.destroy();

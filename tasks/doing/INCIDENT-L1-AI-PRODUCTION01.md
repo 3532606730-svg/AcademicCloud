@@ -33,19 +33,22 @@ ADR-014, ADR-022, ADR-023, ADR-031, ADR-033, ADR-034.
 `frontend/src/shared-library.tsx`.
 
 ## Current State
-The incident is not diagnosed. Repository records describe the last release as
-healthy, while the pasted incident reports production-wide AI failure. The
-existing `academiccloud-prod` SSH route has since been restored through the
-approved execution path. A bounded read-only probe confirmed the exact release,
-active service, zero restarts, and green loopback/public health and readiness.
-The earlier alias failure was caused by the restricted sandbox not seeing the
-user SSH configuration, not by DNS or host unavailability. GitHub API access is
-blocked by the restricted CLI/keyring path and the in-app browser request was
-denied by browser security policy.
+The first failing production boundary is established for both representative
+flows. New-upload job `23b6e0dc-a79d-457e-be59-f17a56736d6f` and legacy
+re-catalogue job `3967581d-effb-47c2-b13c-d5478dbdcb95` both dispatched to
+GitHub Actions/Compute and failed in `compute/src/pdf-text.ts` at the PDF.js
+range transport callback with `#onReceiveData - no
+PDFDataTransportStreamRangeReader instance found.` before OCR/Qwen. Live legacy
+job `39022af0-1079-48ff-804d-02710794333e` shows the same worker boundary and
+bounded RSS evidence. Historical run #40/job `96834998685` completed on the
+prior worker path. GitHub Actions evidence is available through the authorized
+browser route.
 
-The possible `COMPUTE_PROVIDER` inference repair was reverted and is not part of
-the working tree or any release. Missing `COMPUTE_PROVIDER` remains a hypothesis,
-not an established root cause. Explicit production configuration is preferred.
+The common root cause is a stale/late range response racing PDF.js reader
+removal. The existing `aborted` flag only covered whole-task abort and did not
+guard the callback itself or the pre-destroy lifecycle. The provisional
+`COMPUTE_PROVIDER` inference change remains fully reverted and is not part of
+the working tree or any release.
 
 ## Completed
 - Added Owner-visible `待审核投稿 · N` navigation entry using the existing
@@ -56,20 +59,21 @@ not an established root cause. Explicit production configuration is preferred.
   categories, and retry behavior.
 - Preserved failed durable job evidence; no jobs/files/objects were deleted or
   retried automatically.
+- Added explicit Compute range-transport disposal before PDF.js destruction,
+  callback guarding, and exact stale-reader assertion handling.
+- Added a deterministic stale range-response regression; it fails with the
+  prior unhandled PDF.js assertion and passes with the repair.
 
 ## Remaining
-- Establish production first-failure evidence for new upload and legacy
-  re-catalogue.
-- Determine whether any repair belongs in application code or deployment
-  configuration.
-- Deploy one coherent hotfix and run real production E2E only after evidence.
+- Commit/push the bounded Compute repair and build an immutable Linux artifact.
+- Create/verify the v24 rollback backup pair and deploy the application-only
+  hotfix through the established runbook.
+- Run one real new-upload and one explicit legacy re-catalogue production E2E,
+  then verify contribution review and duplicate/authority/privacy invariants.
 
 ## Blockers
-GitHub Actions API and browser inspection remain unavailable through the
-restricted CLI/keyring and browser-security paths. Git index writes are also
-blocked by the sandbox and the escalated Git probe was rejected by the execution
-broker. Without durable job/Actions evidence, the common root cause and the two
-required E2E outcomes cannot be proven.
+None for diagnosis or implementation. Production deployment remains pending
+the bounded checkpoint, artifact, backup, and changed-risk E2E gates below.
 
 ## Last Verification
 ```text
@@ -77,7 +81,7 @@ BACKEND_BASELINE=364/364 PASS
 FRONTEND_FOCUSED=175/175 PASS
 FRONTEND_FULL=273/273 PASS
 COMPUTE_CONTRACTS=2/2 PASS
-COMPUTE=60/62 PASS / 2 expected local-runtime skips
+COMPUTE=61/63 PASS / 2 expected local-runtime skips
 BACKEND_TYPECHECK=PASS
 FRONTEND_TYPECHECK=PASS
 WORKSPACE_TYPECHECK=PASS
@@ -85,10 +89,11 @@ FRONTEND_PRODUCTION_BUILD=PASS
 BACKEND_BUILD=PASS
 GIT_DIFF_CHECK=PASS
 COMPUTE_PROVIDER_INFERENCE=REVERTED / NOT DEPLOYED
-PRODUCTION_DIAGNOSIS=BLOCKED (no production or Actions evidence path)
+PRODUCTION_DIAGNOSIS=PASS (new-upload + legacy both fail at PDF.js range callback)
+RANGE_TRANSPORT_REGRESSION=PASS (fails pre-fix on exact PDF.js assertion)
 ```
 
 ## Next Action
-Complete `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01`; then trace both
-representative jobs to the first failing boundary and only then implement/deploy
-the smallest evidence-supported repair and perform real E2E acceptance.
+Checkpoint/push the Compute repair, build and verify the immutable v24
+application artifact, deploy with the existing same-schema rollback contract,
+and complete both mandatory real production AI E2Es before closing the incident.

@@ -7,16 +7,15 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 ## Current Owner authorization / continuous objective
 
-`INCIDENT-L1-AI-PRODUCTION01` is **BLOCKED** for diagnosis: the existing
-production SSH route now provides bounded read-only evidence, but GitHub API
-and browser evidence routes remain unavailable. No backend repair or deployment
-is authorized by evidence; restore the remaining evidence path before claiming
-AI E2E pass.
+`INCIDENT-L1-AI-PRODUCTION01` is **DIAGNOSED / REPAIR IN PROGRESS**: new-upload
+and legacy re-catalogue jobs both fail at the proven PDF.js range-reader
+callback boundary after Compute dispatch. The bounded lifecycle repair is
+implemented and locally verified; checkpoint, artifact, deployment, and the
+two mandatory production E2Es remain.
 
-`ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is the active recovery task. SSH
-read-only evidence is restored; Git write and GitHub Actions read remain
-blocked by execution/browser controls. Do not resume the incident diagnosis or
-deploy until the recovery card's remaining gates pass.
+`ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` has its access gates resolved:
+SSH read-only evidence, Git write/push, and authorized GitHub Actions browser
+read are available. Reconcile the card at the incident checkpoint.
 
 | Task | State | Next authority |
 |---|---|---|
