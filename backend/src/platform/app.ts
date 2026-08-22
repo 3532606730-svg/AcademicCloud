@@ -28,6 +28,8 @@ import { registerMetadataHttp } from "../metadata/http.js";
 import type { CredentialResetService } from "../auth/credential-reset-service.js";
 import type { SuggestionService } from "../suggestions/suggestion-service.js";
 import { registerSuggestionHttp } from "../suggestions/http.js";
+import type { CitationService } from "../citation/citation-service.js";
+import { registerCitationHttp } from "../citation/http.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -142,6 +144,7 @@ export interface CreateAppOptions {
   libraries?: { service: LibraryService };
   metadata?: { service: CanonicalMetadataService };
   suggestions?: { service: SuggestionService; bootstrapSecret?: string | null };
+  citations?: { service: CitationService };
   readinessCheck?: () => boolean;
 }
 
@@ -310,6 +313,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
     await registerSuggestionHttp(app, options.suggestions.service, {
       bootstrapSecret: options.suggestions.bootstrapSecret ?? null,
     });
+  }
+
+  if (options.citations) {
+    if (!options.auth) throw new Error("citation routes require authentication composition");
+    await registerCitationHttp(app, options.citations.service);
   }
 
   return app;

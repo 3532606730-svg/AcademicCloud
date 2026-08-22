@@ -32,8 +32,8 @@ production failure. Do not start internal beta or invite users.
 |---|---|---|---|
 | A | Domain + persistence architecture | COMPLETE / PUSHED / SYNCED | `fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643` |
 | B | AI bibliographic Compute | COMPLETE / QUALIFIED / PUSHED / SYNCED | `9d8a3a097a5eba0d8c1603cee18568793417b135` |
-| C | Search + filters + display | COMPLETE / PUSHED / SYNCED | C tip; exact SHA recorded before D |
-| D | Citation engine | PENDING | — |
+| C | Search + filters + display | COMPLETE / PUSHED / SYNCED | `17c1395995575cdf5b26944097c382fbf44478fe` |
+| D | Citation engine | COMPLETE / PUSH AND SYNC PENDING | D tip; exact SHA recorded before E |
 | E | Library UX + Activity Center | PENDING | — |
 | F | Integration + migration + exact production deployment | PENDING | — |
 
@@ -200,6 +200,61 @@ frontend production build = PASS
 git diff --check = PASS
 ```
 
+## Checkpoint D acceptance evidence
+
+### Implemented
+
+- Accepted ADR-035 and added an authorization-first, per-request citation route
+  over the canonical metadata-details service. The client supplies only the
+  selected style and typed locators; Library authority and canonical facts
+  remain server-derived.
+- Added a style-neutral CSL-compatible mapping that preserves material class,
+  exact contributor roles, current carrier edition, historical source/base
+  edition, publication facts, identifiers, archive/fonds/reference facts, and
+  bounded partial-metadata fallback.
+- Exact-pinned local `citeproc@2.4.63`; no runtime network, AI formatting,
+  remote style fetch, or user-authored style execution is in the request path.
+- Added exact release-owned `production_subset` definitions for Chicago Notes
+  & Bibliography, 《历史研究》, 《文史哲》, and current GB/T 7714—2025.
+  Each response carries reviewed source/revision, processor version, review
+  date, and SHA-256, and definition drift fails closed.
+- Added strict structured locators for page, page range, volume, fascicle,
+  chapter, 卷, 叶面, line, item, document number, archive call number, and
+  labelled custom values. Chinese historical combinations render in stable
+  scholarly order without pretending every locator is a page.
+- Returned full note, supported subsequent short note, bibliography, normalized
+  CSL item, completeness, material class, structured locators, and style
+  provenance together for the Checkpoint-E dialog/copy surface.
+
+### Exact style pins
+
+```text
+Chicago Notes & Bibliography = decf6aa5bde13e8f52e7674d421bb1a20b5bfd18fe588b9160ce260ac0e7d514
+《历史研究》 = 54d40e14b8171047200f42021c2506d308bf20b1d79e4d54afeccc56df083478
+《文史哲》 = 1cbb0cb635739c1233ea69b369ee3c9aaa6ce20370f0d1dc8208b80325670be8
+GB/T 7714—2025 = e41c757ffc1a5230f60e03cd829fb0c13c1556373d87f586cf6a98f0fd8d0599
+```
+
+### Safety and verification
+
+- Effective membership is checked before canonical metadata is loaded;
+  guessed Library/holding identities remain non-disclosing. Citation output is
+  not persisted and does not expose another account's private research state.
+- Missing facts yield explicit partial completeness and safe fallback; no
+  contributor, edition, date, archive, or publication fact is invented.
+- Checkpoint D adds no schema/backfill/object mutation, provider/configuration
+  change, private artifact, or production action. Production remains exact
+  `53317bb…` at schema v22/history 001–022; development stays 001–024.
+
+```text
+backend full suite = 364/364 PASS
+focused citation/mapping/processor/HTTP/authority = 8/8 PASS
+backend production compile = PASS
+workspace typecheck = PASS
+npm dependency audit at install = 0 vulnerabilities
+git diff --check = PASS
+```
+
 ## Remaining acceptance contract
 
 - B: **COMPLETE.** Current official PaddleOCR/PP-OCR/PaddleOCR-VL and small Qwen-VL options
@@ -211,7 +266,7 @@ git diff --check = PASS
 - C: **COMPLETE.** Server-authoritative structured metadata Search, material and advanced
   filters, filter-bound cursor identity, stable ranking/pagination/sort, and
   modern/historical/facsimile display composition with safe fallback.
-- D: deterministic CSL-compatible mapping and UI-ready output for Chicago Notes
+- D: **COMPLETE.** Deterministic CSL-compatible mapping and UI-ready output for Chicago Notes
   & Bibliography, 《历史研究》, 《文史哲》, and GB/T 7714, including page, 卷,
   册, 叶, 行, archive, and custom locators.
 - E: automatic upload status, concise Library row/detail/edit/filter/citation
@@ -219,7 +274,7 @@ git diff --check = PASS
   collapsed/local preference behavior.
 - F: relevant backend/frontend/Compute tests, workspace typecheck, production
   build, diff/private-artifact/config review; exact immutable artifact; verified
-  stopped-service backup/off-host hash and app+DB rollback pair; migration 023;
+  stopped-service backup/off-host hash and app+DB rollback pair; migrations 023–024;
   exact deploy and health/readiness/schema/integrity/FK/journal/memory checks.
   At most one tiny Owner-controlled Compute canary if materially needed. No
   full-Library AI wave.

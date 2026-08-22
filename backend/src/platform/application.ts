@@ -21,6 +21,7 @@ import {
   UnavailableDerivedComputeDispatcher,
   type DerivedComputeRuntime,
 } from "../compute/github-actions-dispatcher.js";
+import { CitationService } from "../citation/citation-service.js";
 
 export async function createApplication(
   config: AppConfig,
@@ -59,6 +60,7 @@ export async function createApplication(
     const auditService = new AuditService(persistence);
     const scholarlyRecordService = new ScholarlyRecordService(persistence);
     const canonicalMetadataService = new CanonicalMetadataService(persistence);
+    const citationService = new CitationService(canonicalMetadataService);
     const suggestionService = new SuggestionService({
       persistence,
       storage,
@@ -92,6 +94,7 @@ export async function createApplication(
       research: { service: scholarlyRecordService },
       metadata: { service: canonicalMetadataService },
       suggestions: { service: suggestionService, bootstrapSecret: computeRuntime.bootstrapSecret },
+      citations: { service: citationService },
       libraries: { service: libraryService },
       readinessCheck: () => persistence.isReady(),
     });

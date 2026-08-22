@@ -201,6 +201,51 @@ test("metadata HTTP is exact-holding scoped, manager-only for writes, CAS guarde
     assert.equal(saved.originalFilename, "accepted -- source.pdf");
     assert.equal(saved.metadata.authorityLinks[0]?.canonicalLabel, "陈垣");
 
+    const citationUrl = `/api/libraries/${libraryId}/holdings/metadata-http-file/citation`;
+    const citation = await app.inject({
+      method: "POST",
+      url: citationUrl,
+      headers: { ...baseHeaders(memberCookie), "content-type": "application/json" },
+      payload: {
+        style: "lishi-yanjiu",
+        locators: [
+          { type: "juan", value: "三" },
+          { type: "folio", value: "8", side: "verso" },
+          { type: "archive_call_number", value: "甲-12" },
+        ],
+      },
+    });
+    assert.equal(citation.statusCode, 200);
+    const citationBody = citation.json() as {
+      style: { id: string; revision: string; sha256: string; source: string };
+      cslItem: { title: string; note: string; edition: string };
+      outputs: { fullNote: string; shortNote: string; bibliography: string };
+    };
+    assert.equal(citationBody.style.id, "lishi-yanjiu");
+    assert.equal(citationBody.style.sha256.length, 64);
+    assert.equal(citationBody.cslItem.title, "Canonical title");
+    assert.equal(citationBody.cslItem.note, "陈垣点校");
+    assert.match(citationBody.outputs.fullNote, /卷三，第8b叶，档号甲-12/u);
+    assert.match(citationBody.outputs.bibliography, /中华书局/u);
+    const invalidCitation = await app.inject({
+      method: "POST", url: citationUrl,
+      headers: { ...baseHeaders(memberCookie), "content-type": "application/json" },
+      payload: { style: "lishi-yanjiu", locators: [{ type: "page", value: "1", side: "recto" }] },
+    });
+    assert.equal(invalidCitation.statusCode, 400);
+    const guessedCitation = await app.inject({
+      method: "POST", url: `/api/libraries/guessed/holdings/metadata-http-file/citation`,
+      headers: { ...baseHeaders(ownerCookie), "content-type": "application/json" },
+      payload: { style: "lishi-yanjiu", locators: [] },
+    });
+    assert.equal(guessedCitation.statusCode, 404);
+    const wrongContentType = await app.inject({
+      method: "POST", url: citationUrl,
+      headers: { ...baseHeaders(memberCookie), "content-type": "text/plain" },
+      payload: "not-json",
+    });
+    assert.equal(wrongContentType.statusCode, 415);
+
     const stale = await app.inject({
       method: "PUT",
       url: updateUrl,

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-22T22:00:30+08:00",
+  "updatedAt": "2026-08-22T23:00:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -18,7 +18,7 @@
   "activeTasks": ["L1-INTELLIGENT-LIBRARY01", "GOAL-BETA-PREP01", "HOTFIX-META-UX01"],
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
-    "state": "checkpoint_c_complete",
+    "state": "checkpoint_d_complete",
     "mandatorySequence": ["A_DOMAIN_PERSISTENCE", "B_AI_COMPUTE", "C_SEARCH_DISPLAY", "D_CITATION", "E_UX_ACTIVITY", "F_INTEGRATION_PRODUCTION"],
     "developmentSchema": 24,
     "developmentMigrationHistory": "001-024",
@@ -50,9 +50,27 @@
       "schemaMigration": "none",
       "productionChanged": false
     },
+    "checkpointD": {
+      "decision": "ADR-035 Accepted; authorization-first canonical metadata projection, exact-pinned offline citeproc, typed locators, and release-owned style hashes",
+      "processor": "citeproc-js citeproc@2.4.63 exact",
+      "styles": ["chicago-notes-bibliography", "lishi-yanjiu", "wenshizhe", "gb-t-7714-2025"],
+      "styleHashes": {
+        "chicago-notes-bibliography": "decf6aa5bde13e8f52e7674d421bb1a20b5bfd18fe588b9160ce260ac0e7d514",
+        "lishi-yanjiu": "54d40e14b8171047200f42021c2506d308bf20b1d79e4d54afeccc56df083478",
+        "wenshizhe": "1cbb0cb635739c1233ea69b369ee3c9aaa6ce20370f0d1dc8208b80325670be8",
+        "gb-t-7714-2025": "e41c757ffc1a5230f60e03cd829fb0c13c1556373d87f586cf6a98f0fd8d0599"
+      },
+      "locatorTypes": ["page", "page_range", "volume", "fascicle", "chapter", "juan", "folio", "line", "item", "document_number", "archive_call_number", "custom"],
+      "focusedBackend": "8/8 pass",
+      "backendSuite": "364/364 pass",
+      "backendBuild": "pass",
+      "typecheck": "pass",
+      "schemaMigration": "none",
+      "productionChanged": false
+    },
     "productionChanged": false,
     "internalBetaStarted": false,
-    "nextCheckpoint": "D_CITATION"
+    "nextCheckpoint": "E_UX_ACTIVITY"
   },
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
@@ -563,6 +581,7 @@
     "The four run-owned fixtures from interrupted journey attempts were recovered through ordinary product flows (status finalize after conflict cleared, recycle, permanent delete) and are purged; the pre-existing durable pending fixtures were never touched.",
     "QA-GOLDEN01 passed 32/32 on the exact production release c741455 with the golden run-owned fixture identity golden-202608211339-u8o6iv, real GitHub Compute run 32488192994, a clean log privacy scan, and zero persistent residue. All five phases are green and INTERNAL_BETA_READY=true; internal beta itself is NOT started.",
     "HOTFIX-META-UX01 (Owner-authorized 2026-08-21) is implemented and deployed as the same-schema app-only release 53317bb on top of c741455: fast naming persists one immutable run per suggestion request, the OCR/Compute callback persists a second immutable superseding run (latest-run resolution surfaces it) so migration-019 append-only evidence semantics, accepted-run freezing, and canonical-metadata authority stay intact; batch naming previews and applies through the existing CAS path with per-item isolation; Library sorting is server-authoritative with Hanyu-Pinyin-normalized title keys (deterministic pinyin_key SQLite function) and stable keyset cursors; Search ranking is unchanged. Verification: backend 343/343, frontend 259/259, typecheck/build/diff-check pass, host packaged verifier pass, runtime delta bounded, schema v22/001-022 unchanged with zero migrations applied, integrity ok, FK 0, protected-config hashes unchanged, journal clean, durable pending fixtures untouched, NRestarts=0. Rollback pointer c741455. Owner manual product acceptance is PENDING; internal beta is NOT started.",
-    "L1-INTELLIGENT-LIBRARY01 Checkpoint C accepted ADR-034 and completed metadata-aware Search, the exact 19-class and restrained advanced filters, query/filter/sort-bound keyset cursors, and non-persisted modern/historical/facsimile display composition. Backend 357/357, frontend 262/262, workspace typecheck, frontend build, and diff check passed. Production remains exact 53317bb at schema v22/history 001-022; no partial deployment occurred."
+    "L1-INTELLIGENT-LIBRARY01 Checkpoint C accepted ADR-034 and completed metadata-aware Search, the exact 19-class and restrained advanced filters, query/filter/sort-bound keyset cursors, and non-persisted modern/historical/facsimile display composition. Backend 357/357, frontend 262/262, workspace typecheck, frontend build, and diff check passed. Production remains exact 53317bb at schema v22/history 001-022; no partial deployment occurred.",
+    "L1-INTELLIGENT-LIBRARY01 Checkpoint D accepted ADR-035 and completed the exact-pinned offline citation projection for Chicago Notes & Bibliography, 《历史研究》, 《文史哲》, and current GB/T 7714—2025. Typed locators, explicit partial completeness, canonical authorization, and exact style hashes are covered by focused 8/8 and backend 364/364 tests plus build/typecheck. Production remains exact 53317bb at schema v22/history 001-022; no partial deployment occurred."
   ]
 }

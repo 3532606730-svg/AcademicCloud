@@ -329,3 +329,23 @@ key, or the only searchable identity. Carrier and source editions remain
 separate, unsupported precision is omitted, and legacy canonical/safe filename
 fallback remains available. No schema, data, object, provider, or production
 change is part of this decision.
+
+## ADR-035 — Deterministic CSL Citation Projection and Style Pinning
+
+**Date:** 2026-08-22
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-035-deterministic-csl-citation-projection-and-style-pinning.md`
+
+Authorized canonical bibliographic metadata is projected into a style-neutral
+CSL-compatible item and rendered locally by exact-pinned `citeproc@2.4.63`.
+The release owns four exact-hashed, source-attributed `production_subset`
+definitions: Chicago Notes & Bibliography, 《历史研究》, 《文史哲》, and current
+GB/T 7714—2025. No runtime style fetch, AI formatting, client-supplied
+canonical facts, or citation-history persistence is permitted.
+
+Page, page range, volume, fascicle, chapter, 卷, 叶面, line, item, document
+number, archive call number, and labelled custom locators remain typed and are
+rendered deterministically. Full note, supported subsequent note,
+bibliography, normalized CSL item, completeness, and style provenance are
+returned together. No schema, data, object, provider, or production change is
+part of this decision.
