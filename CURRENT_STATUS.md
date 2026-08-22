@@ -8,75 +8,47 @@ evidence without duplicating it here.
 
 ## Current situation
 
-Owner-authorized `L1-INTELLIGENT-LIBRARY01` is active in its mandatory A–F
-sequence. Checkpoints A, B, C, D, and E are complete. A implemented the ADR-032 domain
-and additive development migration 023. B accepted ADR-033 and added migration
-024 plus an exact-pinned, ephemeral, sequential PP-OCRv6-small → Qwen3-1.7B
-Q8_0 bibliographic pipeline. C accepted ADR-034 and added authorization-first
-metadata-aware Search, the exact 19-class and restrained advanced filters,
-query/filter/sort-bound keyset cursors, and non-persisted modern/historical/
-facsimile display composition while retaining the existing six normal Library
-sort contracts. D accepted ADR-035 and added an exact-pinned, offline,
-authorization-first CSL citation projection for Chicago Notes & Bibliography,
-《历史研究》, 《文史哲》, and current GB/T 7714—2025. Its typed modern and
-historical locators, explicit partial completeness, style provenance, and exact
-style hashes keep output deterministic without creating citation history or a
-second metadata authority. E completed the compact responsive Library control
-row, collapsed-by-default account-local Activity Center preference, ordinary
-details-to-citation flow, direct structured bibliography editing, and explicit
-field-scoped human-to-AI restoration. Frontend 270/270, full workspace
-typecheck, and the production frontend build are green. Core remains authoritative; explicit labels and
-strict deterministic checks govern auto-application, human fields are never
-silently replaced, and AI failure never invalidates an admitted file.
+`L1-INTELLIGENT-LIBRARY01` is complete across mandatory checkpoints A–F and
+deployed as one exact integrated production release. Layer 1 now includes the
+ADR-032 normalized bibliographic domain, ADR-033 ephemeral sequential
+PP-OCRv6-small → Qwen3-1.7B pipeline, ADR-034 metadata-aware Search/filter/
+display composition, ADR-035 deterministic offline citation output for Chicago
+Notes & Bibliography, 《历史研究》, 《文史哲》, and GB/T 7714—2025, plus the
+compact Library/Activity/details/edit/citation experience. Core remains the
+only authority for Library access, canonical data, CAS, field authority, and AI
+application; human fields are never silently replaced and AI failure never
+invalidates an admitted file.
 
-Exact hosted source `0fa04b43…`, run `32574319098`, passed real PaddleOCR,
-selected-path 3/3 rendered multilingual/vertical cases, seven-case 7/7
-qualification, 3,396,112-KiB and 3,298,672-KiB encompassing RSS gates, privacy
-and production-shell safety, and zero artifacts. Direct Qwen3-VL did not
-complete inside the bounded final comparison and is not a Layer-1 production
-dependency or automatic escalation.
+Exact source `017a47dbd837264175d8cbcb3f469a01e3e62c92`, artifact
+`9477785607` from run `32580834900`, passed deterministic Linux build,
+independent download/manifest verification, isolated Alibaba-host runtime
+acceptance, full backend/frontend/Compute/contract tests, workspace typecheck,
+production build, compiled acceptance, audit, and private-artifact/config
+review. The stopped-service v22 backup was verified, encrypted, published to
+the private off-host repository, and independently rehashed before exactly
+migrations 023–024 were applied.
 
-No partial Layer‑1 production change has occurred. Production remains exact
-`53317bb0156589baa21bc69c22e199d200c49840` at schema v22/history 001–022.
-Development migration head is v24/history 001–024. Continue automatically
-through F; production migration/deployment is authorized only at integrated
-Checkpoint F after its bounded gates. Internal Beta remains unstarted.
-
-The first Core/Compute separation vertical slice, COMPUTE-PRECUTOVER01, and
-GOAL-BETA-PREP01 Phase 2 production cutover are complete. Production now runs
-exact immutable Core source `1c3bb10a48082995924a2d9ec41a48d6d3d34acd`
-at schema v22/history 001–022. It was installed only after exact artifact
-verification, a stopped-service SQLite backup, off-host encrypted publication
-and independent rehash, and application-plus-database rollback pairing.
-
-Owner email verification and exact-scope approval enabled one 30-day
-fine-grained token limited to only `3532606730-svg/AcademicCloud` with
-repository Actions write plus GitHub-required read-only metadata. Production
-and the protected `academiccloud-compute-production` Environment received only
-the minimum ADR-031 routing/bootstrap values; no credential value is present in
-Git, durable evidence, workflow artifacts, or the checked logs.
-
-One logical production canary job
-`2cb8a0b6-fb37-4b51-bd3b-f9330dbbbde7` completed on its second attempt in
-final GitHub run `32415058752`. Two bounded workflow defects were repaired at
-their first failing boundaries: runner ownership of the promoted output tree,
-then execution from the same staged release tree as the verified release-local
-Tesseract runtime. Final OCR/memory, callback, privacy, zero-artifact, and
-candidate-review gates passed. Core stayed responsive, the reviewable filename
-candidate was not accepted, and canonical metadata, source bytes, OSS/RAM/CORS,
-Nginx, and production memory limits remained unchanged. Phase 3 RF-SEARCH01
-subsequently closed on its own exact release; Phase 4 Activity Center v0.1
-plus Source Recovery is now active.
+Production is healthy on schema v24/history 001–024: SQLite integrity `ok`,
+foreign-key violations 0, exact process/frontend identity, public and loopback
+health/readiness green, `NRestarts=0`, one loopback listener, clean journal/OOM
+evidence, and protected configuration unchanged. Backup/live comparison proves
+no full-Library AI wave or historical backfill. The immediate rollback pair is
+exact previous application `53317bb…` plus
+`academiccloud-pre-l1-20260822T152800Z.sqlite`; rollback was not required.
+`UPLOAD-PERF01` is the next approved task but has not started. Internal Beta
+remains unstarted and no users were invited.
 
 Current production:
 
 ```text
-PRODUCTION_RELEASE=53317bb0156589baa21bc69c22e199d200c49840
-PREVIOUS_RELEASE=c741455d7aa631d5b8c37149e8643a6a75b1cae8
-SCHEMA=v22
-MIGRATIONS=001-022
+PRODUCTION_RELEASE=017a47dbd837264175d8cbcb3f469a01e3e62c92
+PREVIOUS_RELEASE=53317bb0156589baa21bc69c22e199d200c49840
+SCHEMA=v24
+MIGRATIONS=001-024
+LAYER1_COMPLETE=true
 INTERNAL_BETA_READY=true
-HOTFIX_META_UX01=DEPLOYED (Owner manual acceptance pending)
+INTERNAL_BETA_STARTED=false
+NEXT_APPROVED=UPLOAD-PERF01 (not started)
 ```
 
 ## Storage incident closure
@@ -268,14 +240,14 @@ and opening the existing details surface. Exact integrated source `b19f9dc5…`
 then produced artifact `9424397852` in run `32417182890`; its build and
 independent jobs, local hashes, and host verifier passed. The 4,789-file runtime
 tree is byte-identical to previous release `1c3bb10…` except artifact-manifest
-identity. Production now selects `b19f9dc5…`; health/readiness, process identity,
+identity. At the Phase-3 checkpoint production selected `b19f9dc5…`; health/readiness, process identity,
 schema v22, SQLite counts/integrity/FK, and the post-deploy browser journey pass.
 The historical artifact remains permanently forbidden.
 
-## INTERNAL_BETA_READY — reached; STOP for the Owner
+## INTERNAL_BETA_READY — historical gate reached; still not started
 
-All five GOAL-BETA-PREP01 phases are green on the exact production release
-`c741455…`:
+All five GOAL-BETA-PREP01 phases first reached green on the then-current exact
+production release `c741455…`; the later Layer-1 release preserves this gate:
 
 ```text
 CORE_COMPUTE_CUTOVER=COMPLETE (schema v22 / 001-022)

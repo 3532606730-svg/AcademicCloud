@@ -2,7 +2,7 @@
 
 **Recorded:** 2026-08-22
 
-This file preserves the Owner-approved product direction discussed after the current HOTFIX-META-UX01 deployment. It is a durable planning/status record so later agents do not lose the intended product trajectory.
+This file preserves the Owner-approved product direction recorded before and completed through `L1-INTELLIGENT-LIBRARY01`. It is a durable planning record so later agents do not lose the intended product trajectory.
 
 This document does **not** by itself authorize production mutation, schema migration, paid infrastructure, provider-policy changes, credential broadening, Internal Beta, or implementation of later layers. Existing task cards, ADRs, `CURRENT_STATUS.md`, `CURRENT_STATE.json`, and explicit Owner task prompts remain authoritative for execution.
 
@@ -46,7 +46,9 @@ Layer 4 — AI Research
   RAG and broader research assistance
 ```
 
-Current near-term implementation should remain focused on Layer 1 plus the separately bounded upload-performance release. Layer 2/3/4 are roadmap directions, not part of the current implementation unless separately authorized.
+Layer 1 is complete in production. The separately bounded `UPLOAD-PERF01`
+release is next approved but not started. Layer 2/3/4 remain roadmap directions,
+not part of current implementation unless separately authorized.
 
 ## Layer 1 — AI Bibliographic Intelligence
 

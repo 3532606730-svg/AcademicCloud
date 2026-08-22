@@ -9,19 +9,20 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
-| L1-INTELLIGENT-LIBRARY01 | ACTIVE — A–E complete; integrated Library/Activity/citation/edit UX and all earlier gates green | Continue with Checkpoint F exact integration, migration, release, and bounded production verification |
+| L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
+| UPLOAD-PERF01 | NEXT APPROVED / NOT STARTED | Separate independently rollbackable release; do not start from this completed program |
 | GOAL-BETA-PREP01 | ALL FIVE PHASES GREEN / INTERNAL_BETA_READY | STOP — Owner decides whether/when to start or invite users into internal beta |
-| HOTFIX-META-UX01 | DEPLOYED as `53317bb…` (same-schema app-only on `c741455…`) | Owner manual product acceptance in production |
+| HOTFIX-META-UX01 | HISTORICAL RELEASE `53317bb…`, now the immediate app+v22 backup rollback pair for `017a47d…` | Owner manual acceptance remains pending; no action started here |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
 
-The current detailed Owner authorization, boundaries, mandatory A–F sequence,
-credential/privacy rules, production authority, and stop conditions are
-authoritative in `tasks/doing/L1-INTELLIGENT-LIBRARY01.md`. Historical beta-prep
-and hotfix contracts remain preserved in their existing cards.
+The completed A–F contract, credential/privacy boundaries, production evidence,
+and rollback record are authoritative in
+`tasks/done/L1-INTELLIGENT-LIBRARY01.md`. Historical beta-prep and hotfix
+contracts remain preserved in their existing cards.
 
-## Active Intelligent Library sequence
+## Completed Intelligent Library sequence
 
 | Order | Checkpoint | State |
 |---:|---|---|
@@ -29,8 +30,8 @@ and hotfix contracts remain preserved in their existing cards.
 | B | AI bibliographic Compute | COMPLETE / PUSHED / SYNCED — `9d8a3a0…`; run `32574319098`, 3/3 + 7/7, sub-6-GiB, zero artifacts |
 | C | Search + filters + display | COMPLETE / PUSHED / SYNCED — ADR-034; backend 357/357, frontend 262/262, typecheck/build green; production unchanged |
 | D | Citation engine | COMPLETE / PUSHED / SYNCED — `015738c…`; ADR-035; four exact-hashed styles including 《历史研究》; backend 364/364, focused 8/8, build/typecheck green; production unchanged |
-| E | Library UX + Activity Center | COMPLETE / PUSH AND SYNC PENDING — quiet responsive Search/type/sort/filter row, collapsed local-preference Activity Center, direct bibliography/field-authority editing, four-style citation dialog; frontend 270/270, typecheck/build green; production unchanged |
-| F | Integration + migration + exact production deployment | PENDING |
+| E | Library UX + Activity Center | COMPLETE / PUSHED / SYNCED — `017a47d…`; quiet responsive Search/type/sort/filter row, collapsed local-preference Activity Center, direct bibliography/field-authority editing, four-style citation dialog; frontend 270/270, typecheck/build green |
+| F | Integration + migration + exact production deployment | COMPLETE / DEPLOYED / VERIFIED — artifact `9477785607`; stopped-service encrypted/off-host rollback generation; migrations 023–024; exact `017a47d…`; health/schema/integrity/FK/journal/memory/no-wave green |
 
 ## Active Goal Mode sequence
 
@@ -105,11 +106,13 @@ None of this queue is authorized by GOAL-BETA-PREP01.
 ## Current release boundary
 
 ```text
-DECLARED_PRODUCTION=53317bb0156589baa21bc69c22e199d200c49840
-PREVIOUS_PRODUCTION=c741455d7aa631d5b8c37149e8643a6a75b1cae8
-PRODUCTION_SCHEMA=v22 / 001-022
-DEVELOPMENT_SCHEMA=v22 / 001-022
+DECLARED_PRODUCTION=017a47dbd837264175d8cbcb3f469a01e3e62c92
+PREVIOUS_PRODUCTION=53317bb0156589baa21bc69c22e199d200c49840
+PRODUCTION_SCHEMA=v24 / 001-024
+DEVELOPMENT_SCHEMA=v24 / 001-024
 MIGRATION_022_PRODUCTION_APPLIED=true
+MIGRATION_023_PRODUCTION_APPLIED=true
+MIGRATION_024_PRODUCTION_APPLIED=true
 
 ARCH_COMPUTE01_PRODUCTION_CHANGED=true
 ARCH_COMPUTE01_PRODUCTION_CREDENTIALS_CHANGED=true_least_scoped
@@ -122,8 +125,11 @@ SEARCH_PRODUCTION=PASS
 ACTIVITY_CENTER_V0_1=PASS
 QA_GOLDEN01=PASS
 INTERNAL_BETA_READY=true
+INTERNAL_BETA_STARTED=false
+LAYER1_COMPLETE=true
+NEXT_APPROVED=UPLOAD-PERF01_NOT_STARTED
 
-HOTFIX_META_UX01_STATE=DEPLOYED_53317bb
+HOTFIX_META_UX01_STATE=SUPERSEDED_BY_017a47d_RETAINED_AS_ROLLBACK
 HOTFIX_META_UX01_MIGRATION_CHANGE=none
 HOTFIX_META_UX01_OSS_RAM_CORS_CREDENTIAL_COST_CHANGE=none
 HOTFIX_META_UX01_OWNER_MANUAL_ACCEPTANCE=PENDING

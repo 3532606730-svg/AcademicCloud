@@ -1,5 +1,7 @@
 # L1-INTELLIGENT-LIBRARY01 — Complete Intelligent Library
 
+**State:** COMPLETE / DEPLOYED / VERIFIED — 2026-08-22
+
 ## Goal
 
 Turn the canonical shared Library into a bibliographically intelligent Layer‑1
@@ -34,8 +36,8 @@ production failure. Do not start internal beta or invite users.
 | B | AI bibliographic Compute | COMPLETE / QUALIFIED / PUSHED / SYNCED | `9d8a3a097a5eba0d8c1603cee18568793417b135` |
 | C | Search + filters + display | COMPLETE / PUSHED / SYNCED | `17c1395995575cdf5b26944097c382fbf44478fe` |
 | D | Citation engine | COMPLETE / PUSHED / SYNCED | `015738ccb43fa120ab3a2455798d18a22e2f6a21` |
-| E | Library UX + Activity Center | COMPLETE / PUSH AND SYNC PENDING | E tip; exact SHA recorded before F |
-| F | Integration + migration + exact production deployment | PENDING | — |
+| E | Library UX + Activity Center | COMPLETE / PUSHED / SYNCED | `017a47dbd837264175d8cbcb3f469a01e3e62c92` |
+| F | Integration + migration + exact production deployment | COMPLETE / DEPLOYED / VERIFIED | exact production source `017a47dbd837264175d8cbcb3f469a01e3e62c92`; final reconciliation checkpoint recorded in Git history |
 
 ## Checkpoint A evidence
 
@@ -302,7 +304,87 @@ frontend production build = PASS
 git diff --check = PASS
 ```
 
-## Remaining acceptance contract
+## Checkpoint F acceptance evidence
+
+### Integrated verification
+
+```text
+backend = 364/364 PASS
+frontend = 270/270 PASS
+Compute = 60 PASS / 0 FAIL / 2 expected local-runtime skips
+Compute contracts = 2/2 PASS
+workspace typecheck = PASS
+all-workspace production build = PASS
+compiled acceptance = PASS (24 migrations; restart/backup/restore checks)
+Argon2id benchmark = m=65536, t=3, p=1; hash 83 ms; verify 81 ms; peak RSS 135 MiB
+npm audit (all and production-only) = 0 vulnerabilities
+git diff/private-artifact/config review = PASS; unrelated scratch/ preserved
+```
+
+### Exact artifact and stopped-service rollback generation
+
+- Exact source `017a47dbd837264175d8cbcb3f469a01e3e62c92` built in GitHub
+  Actions run `32580834900`; Linux build job `97049835217` and independent
+  verification job `97050251770` passed.
+- Artifact `9477785607`, GitHub digest
+  `b221f22b0b1d7b22543e43ac0f5a756465e1f750f57c5cc07c87b49cec8ef3bd`;
+  archive SHA-256
+  `e714ef877681fddd9078fb6cdcace31d1602840bc244ac84b9cfcc868d903210`;
+  manifest SHA-256
+  `3b32afe7b2c75766cdd4f5faed5934e23d6229cc3986fe7ad09766bd26c37b4f`.
+  Independent download, 4,857-file manifest, native-module boundary,
+  compiled acceptance, and isolated Alibaba-host runtime checks passed.
+- With exact previous release `53317bb0156589baa21bc69c22e199d200c49840`
+  stopped and schema v22/history 001–022 intact, the consistent backup
+  `academiccloud-pre-l1-20260822T152800Z.sqlite` was created at 1,355,776
+  bytes with SHA-256
+  `a11a38da37ac0df45ae5eb632184ffca44674210b2fe780d34c4815ee445a7b8`.
+  Its compiled receipt verification passed.
+- Database and protected-configuration recovery material was published only as
+  `age` ciphertext plus non-secret receipt/manifest to the private off-host
+  repository. Payload commit `908c85ab1ddb5e189a440320070148b973235dc0`,
+  sealed remote head `a5bbbeb27d6486083a45e4191c55fa0ec6db8479`;
+  a fresh authenticated clone independently reproduced the receipt and both
+  ciphertext hashes. No plaintext SQLite database was published.
+
+### Migration, deployment, and bounded production proof
+
+- The immutable target release was installed root-owned and non-writable by
+  `academiccloud`. The `current` symlink was atomically selected while the
+  service remained stopped, then the compiled migration runner applied exactly
+  versions 023 and 024 and reported `currentVersion: 24`.
+- Migration 023 checksum is
+  `b4eeb224e4b44691ed8b11b91fca53eea079c874034008f575bb861066132a42`;
+  migration 024 checksum is
+  `60c1410b4dc75476841d3f5ee08edd1cdec74c668555cd608fc6fc31e62358d1`.
+  Production now reports schema v24/history 001–024, SQLite integrity `ok`,
+  zero foreign-key violations, and unchanged account/folder/file/session/
+  invitation/announcement counts across the stopped-service boundary.
+- The active process CWD resolves inside exact release `017a47d…`;
+  `NRestarts=0`, one `127.0.0.1:3000` listener, loopback/public health `ok`,
+  readiness `ready`, public frontend index byte identity exact, zero service
+  error/fatal matches, zero new kernel or cgroup OOM events, and zero failed
+  units. Final-smoke `MemoryPeak=113,774,592` bytes under unchanged
+  `MemoryHigh=335,544,320` and `MemoryMax=402,653,184`.
+- Root-only environment, systemd unit, Nginx site, and security-header hashes
+  remained exact. OSS/RAM/CORS, credentials, source objects, DNS/TLS, memory
+  policy, and paid cost were not changed.
+- Backup/live comparison proved identical counts for 132 files, 73 suggestion
+  runs, 63 suggestion candidates, and 47 durable Compute jobs. All five
+  migration-023/024 tables remained empty immediately after cutover: no
+  historical backfill, existing-data reinterpretation, or full-Library AI wave
+  occurred.
+- The optional production Compute canary was not run because no task-owned
+  authenticated source fixture existed; using an existing private academic
+  resource would have weakened the bounded privacy contract. Hosted exact-path
+  qualification was already green, and the migration/no-wave/runtime evidence
+  covered the changed production risk without touching user-authored data.
+- Rollback was not required. The immediate rollback is the inseparable pair:
+  application `53317bb0156589baa21bc69c22e199d200c49840` plus restoration of
+  `academiccloud-pre-l1-20260822T152800Z.sqlite`; the old application must never
+  run against the live v24 database.
+
+## Acceptance contract — complete
 
 - B: **COMPLETE.** Current official PaddleOCR/PP-OCR/PaddleOCR-VL and small Qwen-VL options
   receive a bounded real decision record; production path is exact-pinned,
@@ -319,14 +401,14 @@ git diff --check = PASS
 - E: **COMPLETE.** Automatic upload status, concise Library row/detail/edit/filter/citation
   UX, explicit human-to-AI reset, responsive toolbar, and Activity Center
   collapsed/local preference behavior.
-- F: relevant backend/frontend/Compute tests, workspace typecheck, production
-  build, diff/private-artifact/config review; exact immutable artifact; verified
-  stopped-service backup/off-host hash and app+DB rollback pair; migrations 023–024;
-  exact deploy and health/readiness/schema/integrity/FK/journal/memory checks.
-  At most one tiny Owner-controlled Compute canary if materially needed. No
-  full-Library AI wave.
+- F: **COMPLETE.** Integrated tests/build/audit, exact immutable artifact,
+  stopped-service verified/off-host rollback generation, additive migrations
+  023–024, exact deployment, and health/readiness/schema/integrity/FK/journal/
+  memory/no-wave checks are green. The privacy-safe canary decision is recorded
+  above; no full-Library AI wave occurred.
 
 ## Final successor
 
-After a green production release, set next approved work to `UPLOAD-PERF01` but
-do not start it. STOP with Internal Beta still not started.
+Next approved work is `UPLOAD-PERF01`, but it has not been started. Layer 1 is
+complete and this program stops with Internal Beta still not started and no
+users invited.

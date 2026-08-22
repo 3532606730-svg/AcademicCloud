@@ -4,15 +4,14 @@ This runbook prepares the approved Layer 1 single-host topology: Nginx serves th
 
 The checked-in files are templates, not authorization to mutate the server or cloud account. Real credentials, bucket/RAM/CORS/versioning changes, DNS, certificate issuance, firewall changes, package installation, service enablement, and production data operations require a separate approved deployment window.
 
-Current bounded authorization is recorded in `tasks/doing/GOAL-BETA-PREP01.md`.
-Phase 2 consumed its production authority successfully. Exact artifact
-`9421010643` / source `1c3bb10…` now runs at schema v22/history 001–022 after a
-stopped-service verified backup, encrypted off-host publication, only migration
-022, minimum single-repository Actions-write routing credentials, exact install,
-and one bounded real Compute canary. The immediate rollback is previous
-application `08657727…` plus the recorded pre-migration database/config pair.
-Phase 3 RF-SEARCH01 is active; do not substitute a classic/broad personal token
-or reuse the historical Search artifact.
+The most recent bounded authority, `L1-INTELLIGENT-LIBRARY01`, is complete and
+consumed. Exact artifact `9477785607` / source `017a47d…` runs at schema
+v24/history 001–024 after a stopped-service verified backup, encrypted private
+off-host publication and independent rehash, exactly migrations 023–024,
+immutable install, and bounded production verification. The immediate rollback
+is previous application `53317bb…` plus the recorded v22 pre-migration database.
+No further deployment or production mutation is authorized by the completed
+card; `8d289702…` remains permanently disallowed.
 
 ## Approval-gated preflight
 
@@ -243,19 +242,45 @@ Certbot 2.9.0 plus `python3-acme`, `python3-certbot`, `python3-configargparse`, 
 
 ## Current production state
 
-Production runs exact immutable source `c741455d7aa631d5b8c37149e8643a6a75b1cae8`,
-previous application release `01747d929cb42e4c107d47c10ad66047377f6bcd`, at
-schema v22/history 001–022. The release chain is `156660d…` (first Activity
-Center release) → `01747d9…` (scheduler race + suggestion callback repairs) →
-`c741455…` (canonical duplicate-name completion repair: early `name_conflict`
-pre-flight at default-upload creation, clean completion/status `name_conflict`
-mapping instead of a raw SqliteError/500, and orphan-object discard on abandon
-of a physically-completed-but-logically-pending multipart). All three were
-application-only same-schema cutovers; no migration, credential, OSS/RAM/CORS,
-Nginx, memory-limit, or configuration change occurred. The exact-release
-46/46 real-browser Phase 4 journey passed with zero run-owned residue and the
-pre-existing durable pending fixtures untouched. `01747d9…` is the immediate
-same-schema rollback.
+Production runs exact immutable source
+`017a47dbd837264175d8cbcb3f469a01e3e62c92`, previous application release
+`53317bb0156589baa21bc69c22e199d200c49840`, at schema v24/history 001–024.
+Artifact `9477785607` from workflow `32580834900` has GitHub digest
+`b221f22b0b1d7b22543e43ac0f5a756465e1f750f57c5cc07c87b49cec8ef3bd`,
+archive SHA-256
+`e714ef877681fddd9078fb6cdcace31d1602840bc244ac84b9cfcc868d903210`,
+and manifest SHA-256
+`3b32afe7b2c75766cdd4f5faed5934e23d6229cc3986fe7ad09766bd26c37b4f`.
+The deterministic/independent build and isolated Alibaba runtime acceptance
+passed before the root-owned, non-writable release was installed.
+
+The stopped-service pre-migration backup is
+`/var/lib/academiccloud/backups/academiccloud-pre-l1-20260822T152800Z.sqlite`
+(1,355,776 bytes; SHA-256
+`a11a38da37ac0df45ae5eb632184ffca44674210b2fe780d34c4815ee445a7b8`).
+Its receipt and `age`-encrypted database/configuration generation were
+published to private off-host payload commit
+`908c85ab1ddb5e189a440320070148b973235dc0` and sealed at
+`a5bbbeb27d6486083a45e4191c55fa0ec6db8479`; a fresh clone independently
+rehash-verified the three payload files and contained no plaintext database.
+
+The compiled migration runner applied exactly 023 and 024. Their SHA-256 values
+are `b4eeb224e4b44691ed8b11b91fca53eea079c874034008f575bb861066132a42`
+and `60c1410b4dc75476841d3f5ee08edd1cdec74c668555cd608fc6fc31e62358d1`.
+Post-cutover verification passed schema/history/checksums, SQLite integrity
+`ok`, zero foreign-key violations, exact process/frontend identity, one
+loopback listener, public and loopback health/readiness, `NRestarts=0`, clean
+journal and OOM evidence, and unchanged protected configuration. Backup/live
+counts for files, suggestion runs/candidates, and durable Compute jobs were
+identical; the five new bibliographic/AI tables were empty, proving no backfill
+or full-Library AI wave. The optional canary was skipped because no task-owned
+authenticated fixture existed and no pre-existing private resource was used.
+
+Rollback was not required. The current rollback is an inseparable app-plus-
+database pair: select `53317bb0156589baa21bc69c22e199d200c49840` only together
+with restoration of `academiccloud-pre-l1-20260822T152800Z.sqlite`, then verify
+schema v22/history 001–022, integrity/FK, exact process identity, and health/
+readiness. Never run the previous application against the live v24 database.
 
 RF-SEARCH01 Phase 3 used artifact `9424397852`, build run `32417182890`,
 source `b19f9dc5…`, archive SHA-256

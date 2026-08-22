@@ -47,8 +47,8 @@ provider-neutral Compute interface; the existing bounded front-matter OCR and
 Metadata Suggestion heavy path runs one page at a time in one clean worker; and
 the browser uses durable queued/processing/succeeded/failed state. Core retains
 all Auth, Library, SQLite, storage, suggestion-review, and canonical metadata
-authority. The exact Core/Compute cutover now runs at schema v22/history
-001–022.
+authority. Its exact historical cutover established schema v22/history
+001–022; the later completed Layer-1 release advances production to v24.
 
 `COMPUTE-GHA02` qualified the exact workflow-only checkpoint on a real
 GitHub-hosted `ubuntu-24.04` runner. Its final exact run passed contracts,
@@ -61,8 +61,8 @@ pre-existing staging mismatch (`runtime/tesseract` versus the pinned builder's
 repository-`output/`-only contract); qualification did not execute or repair
 that path.
 
-The Owner has now authorized `GOAL-BETA-PREP01` as the bounded autonomous
-program that clears these two blockers and proceeds to internal-beta readiness:
+The completed `GOAL-BETA-PREP01` program cleared these two blockers and reached
+internal-beta readiness:
 
 COMPUTE-PRECUTOVER01 cleared both blockers on exact hosted run
 `32407660640`: source `1c3bb10…` passed real OCR, the explicit GitHub-hosted
@@ -93,32 +93,23 @@ GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01 — COMPLETE
 → STOP before starting/inviting users into internal beta
 ```
 
-The subsequent Owner-authorized `L1-INTELLIGENT-LIBRARY01` program is now the
-active execution sequence. Checkpoint A completed the normalized bibliographic
-domain and additive development migration 023. Checkpoint B completed additive
-development migration 024 and exact hosted qualification of the selected,
-ephemeral, sequential PP-OCRv6-small → Qwen3-1.7B Q8_0 pipeline. Checkpoint C
-completed metadata-aware Search, the exact 19-class/advanced-filter contract,
-query/filter/sort-bound keyset cursors, and non-persisted scholarly catalogue
-display composition. Checkpoint D accepted ADR-035 and completed the
-exact-pinned offline CSL citation projection for Chicago Notes & Bibliography,
-《历史研究》, 《文史哲》, and current GB/T 7714—2025. Checkpoint E completed the
-compact responsive Library controls, collapsed/local-preference Activity
-Center, direct structured bibliography/field-authority editing, and the
-four-style citation dialog. Continue F full verification, stopped-service backup, migrations 023–024,
-exact immutable build/deployment, and bounded production verification. No
-partial production deployment is allowed. Production therefore remains exact
-`53317bb…` at schema v22/history 001–022 until F is green; development migration
-head is v24/history 001–024. After the integrated exact release passes, STOP
-again before internal beta or invitations.
+The Owner-authorized `L1-INTELLIGENT-LIBRARY01` program is complete across
+checkpoints A–F. A/B delivered the normalized bibliographic domain, additive
+migrations 023–024, and the exact-qualified ephemeral PP-OCRv6-small →
+Qwen3-1.7B Q8_0 pipeline. C/D delivered metadata-aware Search/filter/display
+and exact-pinned offline citation projection for Chicago Notes & Bibliography,
+《历史研究》, 《文史哲》, and GB/T 7714—2025. E delivered the compact Library,
+Activity, direct bibliography editing, field-authority reset, and citation UX.
+F completed the exact artifact, stopped-service encrypted/off-host rollback
+generation, additive migration, deployment, and bounded production proof.
+Production runs exact `017a47d…` at schema v24/history 001–024 with no
+historical backfill or full-Library AI wave.
 
-Routine implementation choices inside the active A–F sequence do not require a
-separate Owner round-trip. The explicit hard-stop conditions in
-`tasks/doing/L1-INTELLIGENT-LIBRARY01.md` remain binding: no destructive
-migration/backfill, paid infrastructure, persistent heavy model in Core,
-broader credentials, unproven data-integrity risk, security/privacy weakening,
-provider-policy mutation outside a newly proved blocker, uncontrolled
-full-Library processing, or unrelated product/architecture expansion.
+Layer 1 is complete. `UPLOAD-PERF01` is the next approved, separately
+rollbackable release, but it has not started. Stop here before Internal Beta,
+user invitations, Upload Pipeline V2 implementation, or any Layer 2/3/4 work.
+The completed contract and hard boundaries remain preserved in
+`tasks/done/L1-INTELLIGENT-LIBRARY01.md`.
 
 ## Why this interlock exists
 

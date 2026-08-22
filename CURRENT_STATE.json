@@ -1,29 +1,32 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-22T23:00:00+08:00",
+  "updatedAt": "2026-08-22T23:47:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
-    "declaredRelease": "53317bb0156589baa21bc69c22e199d200c49840",
-    "previousRelease": "c741455d7aa631d5b8c37149e8643a6a75b1cae8",
-    "schema": 22,
-    "migrationHead": 22,
-    "migrationHistory": "001-022",
+    "declaredRelease": "017a47dbd837264175d8cbcb3f469a01e3e62c92",
+    "previousRelease": "53317bb0156589baa21bc69c22e199d200c49840",
+    "schema": 24,
+    "migrationHead": 24,
+    "migrationHistory": "001-024",
     "rfSearchRuntimePresent": true,
     "rfSearchPhase3Accepted": true,
     "activityCenterV01Accepted": true,
     "liveProcessIdentityNeedsIncidentReverification": false
   },
   "activeIncidents": [],
-  "activeTasks": ["L1-INTELLIGENT-LIBRARY01", "GOAL-BETA-PREP01", "HOTFIX-META-UX01"],
+  "activeTasks": [],
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
-    "state": "checkpoint_e_complete",
+    "state": "complete_deployed_verified",
     "mandatorySequence": ["A_DOMAIN_PERSISTENCE", "B_AI_COMPUTE", "C_SEARCH_DISPLAY", "D_CITATION", "E_UX_ACTIVITY", "F_INTEGRATION_PRODUCTION"],
     "developmentSchema": 24,
     "developmentMigrationHistory": "001-024",
     "checkpointA": "fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643",
     "checkpointB": "9d8a3a097a5eba0d8c1603cee18568793417b135",
+    "checkpointCCommit": "17c1395995575cdf5b26944097c382fbf44478fe",
+    "checkpointDCommit": "015738ccb43fa120ab3a2455798d18a22e2f6a21",
+    "checkpointECommit": "017a47dbd837264175d8cbcb3f469a01e3e62c92",
     "checkpointBQualification": {
       "source": "0fa04b43a80ac4d1486323c700e737850b081222",
       "workflowRun": 32574319098,
@@ -80,9 +83,39 @@
       "schemaMigration": "none",
       "productionChanged": false
     },
-    "productionChanged": false,
+    "checkpointF": {
+      "sourceCommit": "017a47dbd837264175d8cbcb3f469a01e3e62c92",
+      "productionBuildRun": 32580834900,
+      "linuxBuildJob": 97049835217,
+      "independentVerificationJob": 97050251770,
+      "artifactId": 9477785607,
+      "artifactDigestSha256": "b221f22b0b1d7b22543e43ac0f5a756465e1f750f57c5cc07c87b49cec8ef3bd",
+      "archiveSha256": "e714ef877681fddd9078fb6cdcace31d1602840bc244ac84b9cfcc868d903210",
+      "manifestSha256": "3b32afe7b2c75766cdd4f5faed5934e23d6229cc3986fe7ad09766bd26c37b4f",
+      "backup": "academiccloud-pre-l1-20260822T152800Z.sqlite",
+      "backupSha256": "a11a38da37ac0df45ae5eb632184ffca44674210b2fe780d34c4815ee445a7b8",
+      "offHostPayloadCommit": "908c85ab1ddb5e189a440320070148b973235dc0",
+      "offHostSealedHead": "a5bbbeb27d6486083a45e4191c55fa0ec6db8479",
+      "migrationsApplied": [23, 24],
+      "schemaAfter": 24,
+      "migrationHistoryAfter": "001-024",
+      "sqliteIntegrity": "ok",
+      "foreignKeyViolations": 0,
+      "service": "active; NRestarts=0; one loopback listener; public and loopback health/readiness green; exact process and frontend identity",
+      "memoryPeakBytes": 113774592,
+      "journalAndOom": "zero service errors/fatal patterns; zero new kernel/cgroup OOM",
+      "noFullLibraryAiWave": true,
+      "canary": "not run: no task-owned authenticated fixture; existing private resources not used",
+      "protectedConfigurationChanged": false,
+      "ossRamCorsCredentialCostChanged": false,
+      "rollbackPair": "53317bb0156589baa21bc69c22e199d200c49840 + academiccloud-pre-l1-20260822T152800Z.sqlite",
+      "rollbackRequired": false
+    },
+    "productionChanged": true,
     "internalBetaStarted": false,
-    "nextCheckpoint": "F_INTEGRATION_PRODUCTION"
+    "layer1Complete": true,
+    "nextCheckpoint": null,
+    "nextApprovedTask": "UPLOAD-PERF01_NOT_STARTED"
   },
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
@@ -426,7 +459,7 @@
     "archiveSha256": "4b72062734fa941ea4bd48019713a4fbb8951a7793a04f625a3680d7c8e1a15b",
     "manifestSha256": "beb15507b20c99679fb48cfe772c29d1d92a930b2adcd337202d88f0cff49458",
     "independentVerification": "pass",
-    "productionCutover": "pass; ancestry-backed composition was verified, mandatory desktop browser journeys passed before the new exact integrated artifact, and production now runs the new Phase 3 release; historical artifact was not used",
+    "productionCutover": "pass; ancestry-backed composition was verified, mandatory desktop browser journeys passed before the then-new exact Phase 3 artifact, and the historical artifact was not used",
     "currentlyLive": true,
     "phase3Accepted": true,
     "integratedSourceCommit": "b19f9dc5b48e1976127704712e08a8655b1fadd5",
@@ -559,9 +592,9 @@
     "ownerManualAcceptance": "PENDING — Owner performs manual product acceptance in production (fast naming, batch naming, sorting, regression surfaces); no browser automation was run per Owner override"
   },
   "currentPriorityOrder": [
-    "L1-INTELLIGENT-LIBRARY01 Checkpoint F — integration, migrations 023-024, exact production release",
-    "Continue mandatory F gates; production changes only as one exact integrated release",
-    "STOP after the exact release; internal beta and invitations remain unstarted"
+    "L1-INTELLIGENT-LIBRARY01 — COMPLETE / exact production 017a47d / schema v24",
+    "UPLOAD-PERF01 — next approved separate release, not started",
+    "STOP; internal beta and invitations remain unstarted"
   ],
   "notes": [
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
@@ -571,7 +604,7 @@
     "The failed deployment attempt briefly exposed RF-SEARCH01 and rolled back successfully to 604cb8d without schema, RAM, credential, configuration, database, or pending-upload mutation.",
     "The replacement hotfix source 988bdbf was based directly on previous production 604cb8d and restored the first bounded ListParts normalization without Search.",
     "The final bounded R3 source 08657727 is based directly on production 988bdbf and changes only two runtime files plus focused tests and the exact CORS readiness contract; artifact 9413295334 passed deterministic Linux build and independent/host verification.",
-    "Production now runs exact 08657727 with previous release 988bdbf; schema/history, RAM v2, credentials, protected configuration, SQLite contents, all seven pending files, and all six multipart rows were preserved, rollback was not required, and RF-SEARCH01 is not deployed.",
+    "At the R3 checkpoint production ran exact 08657727 with previous release 988bdbf; schema/history, RAM v2, credentials, protected configuration, SQLite contents, all seven pending files, and all six multipart rows were preserved, rollback was not required, and RF-SEARCH01 was not deployed.",
     "The exact OSS CORS rule now retains POST and adds only PUT plus Content-MD5 for the exact AcademicCloud Origin; no further CORS/provider policy churn is authorized inside GOAL-BETA-PREP01 absent a newly proven regression.",
     "The later Metadata Suggestion stall is a separate Core memory-reclaim incident, not a reopened storage incident; ARCH-COMPUTE01 implements a development-only asynchronous Compute boundary without production mutation so far.",
     "COMPUTE-GHA02 final hosted run 32403834659 passed contracts, Compute, pinned Tesseract 5.5.3, real OCR, exact five-run memory gate, output safety, and zero-artifact checks; production job execution was skipped and no private PDF was processed.",
@@ -593,8 +626,9 @@
     "The four run-owned fixtures from interrupted journey attempts were recovered through ordinary product flows (status finalize after conflict cleared, recycle, permanent delete) and are purged; the pre-existing durable pending fixtures were never touched.",
     "QA-GOLDEN01 passed 32/32 on the exact production release c741455 with the golden run-owned fixture identity golden-202608211339-u8o6iv, real GitHub Compute run 32488192994, a clean log privacy scan, and zero persistent residue. All five phases are green and INTERNAL_BETA_READY=true; internal beta itself is NOT started.",
     "HOTFIX-META-UX01 (Owner-authorized 2026-08-21) is implemented and deployed as the same-schema app-only release 53317bb on top of c741455: fast naming persists one immutable run per suggestion request, the OCR/Compute callback persists a second immutable superseding run (latest-run resolution surfaces it) so migration-019 append-only evidence semantics, accepted-run freezing, and canonical-metadata authority stay intact; batch naming previews and applies through the existing CAS path with per-item isolation; Library sorting is server-authoritative with Hanyu-Pinyin-normalized title keys (deterministic pinyin_key SQLite function) and stable keyset cursors; Search ranking is unchanged. Verification: backend 343/343, frontend 259/259, typecheck/build/diff-check pass, host packaged verifier pass, runtime delta bounded, schema v22/001-022 unchanged with zero migrations applied, integrity ok, FK 0, protected-config hashes unchanged, journal clean, durable pending fixtures untouched, NRestarts=0. Rollback pointer c741455. Owner manual product acceptance is PENDING; internal beta is NOT started.",
-    "L1-INTELLIGENT-LIBRARY01 Checkpoint C accepted ADR-034 and completed metadata-aware Search, the exact 19-class and restrained advanced filters, query/filter/sort-bound keyset cursors, and non-persisted modern/historical/facsimile display composition. Backend 357/357, frontend 262/262, workspace typecheck, frontend build, and diff check passed. Production remains exact 53317bb at schema v22/history 001-022; no partial deployment occurred.",
-    "L1-INTELLIGENT-LIBRARY01 Checkpoint D accepted ADR-035 and completed the exact-pinned offline citation projection for Chicago Notes & Bibliography, 《历史研究》, 《文史哲》, and current GB/T 7714—2025. Typed locators, explicit partial completeness, canonical authorization, and exact style hashes are covered by focused 8/8 and backend 364/364 tests plus build/typecheck. Production remains exact 53317bb at schema v22/history 001-022; no partial deployment occurred.",
-    "L1-INTELLIGENT-LIBRARY01 Checkpoint E completed the quiet responsive Library control row, collapsed-by-default account-local Activity Center preference, direct structured bibliography and field-authority editing, and the four-style citation dialog with exact plain-text copy. Focused frontend 209/209, full frontend 270/270, workspace typecheck, production frontend build, and diff check passed. Production remains exact 53317bb at schema v22/history 001-022; no partial deployment occurred."
+    "L1-INTELLIGENT-LIBRARY01 Checkpoint C accepted ADR-034 and completed metadata-aware Search, the exact 19-class and restrained advanced filters, query/filter/sort-bound keyset cursors, and non-persisted modern/historical/facsimile display composition. Backend 357/357, frontend 262/262, workspace typecheck, frontend build, and diff check passed. Production remained exact 53317bb at schema v22/history 001-022 until integrated Checkpoint F; no partial deployment occurred.",
+    "L1-INTELLIGENT-LIBRARY01 Checkpoint D accepted ADR-035 and completed the exact-pinned offline citation projection for Chicago Notes & Bibliography, 《历史研究》, 《文史哲》, and current GB/T 7714—2025. Typed locators, explicit partial completeness, canonical authorization, and exact style hashes are covered by focused 8/8 and backend 364/364 tests plus build/typecheck. Production remained exact 53317bb at schema v22/history 001-022 until integrated Checkpoint F; no partial deployment occurred.",
+    "L1-INTELLIGENT-LIBRARY01 Checkpoint E completed the quiet responsive Library control row, collapsed-by-default account-local Activity Center preference, direct structured bibliography and field-authority editing, and the four-style citation dialog with exact plain-text copy. Focused frontend 209/209, full frontend 270/270, workspace typecheck, production frontend build, and diff check passed. Production remained exact 53317bb at schema v22/history 001-022 until the integrated F release.",
+    "L1-INTELLIGENT-LIBRARY01 Checkpoint F deployed exact source 017a47d from artifact 9477785607 after a stopped-service v22 backup, age-encrypted private off-host publication and independent rehash. Migrations 023-024 applied exactly; production is v24/history 001-024 with integrity ok, FK 0, exact process/frontend identity, NRestarts 0, health/readiness green, clean journal/OOM evidence, unchanged protected configuration/provider/cost boundaries, and no full-Library AI wave or backfill. Rollback pair is 53317bb plus academiccloud-pre-l1-20260822T152800Z.sqlite; rollback was not required. Layer 1 is complete; UPLOAD-PERF01 is next but not started; Internal Beta remains unstarted."
   ]
 }
