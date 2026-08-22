@@ -50,6 +50,7 @@ import { ResourceDetailsDialog } from "./resource-details.tsx";
 import { BatchNamingDialog } from "./batch-naming.tsx";
 import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
+import { CitationDialog } from "./citation.tsx";
 import {
   forgetSourceHandle,
   recoverRememberedSource,
@@ -451,6 +452,34 @@ interface ResourceDetailsRequest {
   returnFocus: HTMLElement | null;
 }
 
+interface CitationRequest {
+  library: LibrarySummary;
+  holding: LibraryHolding;
+  returnFocus: HTMLElement | null;
+}
+
+const ACTIVITY_PREFERENCE_PREFIX = "academiccloud.activity-center.expanded.v1";
+
+function activityPreferenceKey(accountId: string): string {
+  return `${ACTIVITY_PREFERENCE_PREFIX}:${accountId}`;
+}
+
+function readActivityExpanded(accountId: string): boolean {
+  try {
+    return window.localStorage.getItem(activityPreferenceKey(accountId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeActivityExpanded(accountId: string, expanded: boolean): void {
+  try {
+    window.localStorage.setItem(activityPreferenceKey(accountId), expanded ? "1" : "0");
+  } catch {
+    // Browser-local preference is optional; activity behavior remains usable.
+  }
+}
+
 type ResourceScope = "account_folder" | "account_file" | "library_holding" | "library_recycle_holding";
 
 type AccountSelectableEntry =
@@ -671,11 +700,13 @@ function DriveView({
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [metadataActivities, setMetadataActivities] = useState<MetadataActivity[]>([]);
   const [downloadActivities, setDownloadActivities] = useState<DownloadActivity[]>([]);
+  const [activityExpanded, setActivityExpanded] = useState(() => readActivityExpanded(account.id));
   const [uploadPickerFallbackAvailable, setUploadPickerFallbackAvailable] = useState(false);
   const [sourceRecoveryFallbacks, setSourceRecoveryFallbacks] = useState<Record<string, string>>({});
   const [recoveringSourceId, setRecoveringSourceId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [resourceDetailsRequest, setResourceDetailsRequest] = useState<ResourceDetailsRequest | null>(null);
+  const [citationRequest, setCitationRequest] = useState<CitationRequest | null>(null);
   const [batchNamingRequest, setBatchNamingRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
@@ -2044,6 +2075,9 @@ function DriveView({
 
   const activityJobs = jobs.filter((job) => job.phase !== "abandoned");
   const activityCount = activityJobs.length + metadataActivities.length + downloadActivities.length;
+  const activityFailureCount = activityJobs.filter((job) => job.phase === "error").length
+    + metadataActivities.filter((activity) => activity.job.state === "failed").length
+    + downloadActivities.filter((activity) => activity.phase === "failed").length;
   const isLibraryEmpty = entries.folders.length === 0 && entries.files.length === 0;
   const workspaceTitle = view === "library"
     ? path.at(-1)?.name ?? t("nav.library")
@@ -2060,7 +2094,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || batchNamingRequest !== null || moveRequest !== null || accountAdministrationOpen}>
+    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || citationRequest !== null || batchNamingRequest !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -2106,7 +2140,7 @@ function DriveView({
         onDrop={view === "library" ? onWorkspaceDrop : undefined}
       >
         <header className="workspace-head">
-          <div className="workspace-title">
+          <div className={`workspace-title${view === "library" && path.length === 0 ? " workspace-title--catalogue" : ""}`}>
             {view === "library" && path.length > 0 && (
               <button
                 className="back-button"
@@ -2133,6 +2167,9 @@ function DriveView({
               </nav>
             )}
             <h1>{workspaceTitle}</h1>
+            {view === "library" && path.length === 0 && libraryCatalogue.holdings.length > 0 && (
+              <p className="workspace-summary">{t("library.loadedCount", { count: libraryCatalogue.holdings.length })}</p>
+            )}
             {view === "library" && path.length > 0 && !loading && (
               <p className="workspace-summary">
                 {t("workspace.itemSummary", {
@@ -2196,7 +2233,7 @@ function DriveView({
               api={api}
               revision={revision}
               onCatalogueChange={reconcileLibraryCatalogue}
-              renderCatalogue={({ library, holdings, loading: holdingsLoading, nextCursor, loadingMore, onLoadMore }) => {
+              renderCatalogue={({ library, holdings, loading: holdingsLoading, nextCursor, loadingMore, sort, onSortChange, onLoadMore }) => {
                 const rootFolders = account.role === "owner" ? entries.folders : [];
                 const rootFiles = account.role === "owner" ? entries.files : [];
                 const catalogueLoading = loading || holdingsLoading;
@@ -2218,6 +2255,8 @@ function DriveView({
                         library={library}
                         language={language}
                         t={t}
+                        sort={sort}
+                        onSortChange={onSortChange}
                         onActiveChange={setLibrarySearchActive}
                         onOpenResult={(result) => openResourceDetails(library, librarySearchResultToHolding(result))}
                       />
@@ -2291,12 +2330,23 @@ function DriveView({
         )}
 
         {activityCount > 0 && (
-          <section className="activity-center" aria-labelledby="activity-center-title" aria-live="polite">
+          <section className={`activity-center${activityExpanded ? " is-expanded" : " is-collapsed"}`} aria-labelledby="activity-center-title" aria-live="polite">
             <div className="activity-center-heading">
-              <h2 id="activity-center-title">{t("activity.title")}</h2>
-              <span>{t("activity.summary", { count: activityCount })}</span>
+              <div><h2 id="activity-center-title">{t("activity.title")}</h2><span>{t("activity.summary", { count: activityCount })}</span>{activityFailureCount > 0 && <span className="activity-failed-summary">{t("activity.failedSummary", { count: activityFailureCount })}</span>}</div>
+              <button
+                className="button button--small button--quiet activity-toggle"
+                type="button"
+                aria-expanded={activityExpanded}
+                aria-controls="activity-center-entries"
+                onClick={() => setActivityExpanded((current) => {
+                  const next = !current;
+                  writeActivityExpanded(account.id, next);
+                  return next;
+                })}
+              >{activityExpanded ? t("activity.collapse") : t("activity.expand")}</button>
               {activityJobs.length > 0 && <span className="visually-hidden">{t("upload.queueSummary", { count: activityJobs.length })}</span>}
             </div>
+            {activityExpanded && <div id="activity-center-entries" className="activity-center-entries">
             {activityJobs.map((job) => (
               <div className="activity-item upload-job" key={job.id}>
                 <div>
@@ -2363,6 +2413,7 @@ function DriveView({
                 )}
               </div>
             ))}
+            </div>}
           </section>
         )}
 
@@ -2701,7 +2752,21 @@ function DriveView({
             void openLibraryPreview(request.library, request.holding, request.returnFocus);
           }}
           onDownload={() => void downloadLibraryHolding(resourceDetailsRequest.library, resourceDetailsRequest.holding)}
+          onCitation={() => {
+            const request = resourceDetailsRequest;
+            setResourceDetailsRequest(null);
+            setCitationRequest(request);
+          }}
           onSuggestionJobChange={handleResourceSuggestionJobChange}
+        />
+      )}
+      {citationRequest && (
+        <CitationDialog
+          api={api}
+          library={citationRequest.library}
+          holding={citationRequest.holding}
+          returnFocus={citationRequest.returnFocus}
+          onClose={() => setCitationRequest(null)}
         />
       )}
       {batchNamingRequest && (

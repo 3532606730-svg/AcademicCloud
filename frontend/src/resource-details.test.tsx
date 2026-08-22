@@ -51,6 +51,9 @@ function detail(
     displayTitle: "元西域人华化考",
     originalFilename: HOLDING.file.displayName,
     metadataVersion: "m".repeat(43),
+    bibliographyVersion: "b".repeat(43),
+    bibliography: null,
+    fieldAuthorities: [],
     canEditMetadata,
     file: { id: HOLDING.file.id, mediaType: HOLDING.file.mediaType, sizeBytes: 42, updatedAt: HOLDING.file.updatedAt },
     metadata: {
@@ -134,6 +137,7 @@ function renderDetails(options: {
     ...options.api,
   } as unknown as AcademicCloudApi;
   const onSaved = vi.fn();
+  const onCitation = vi.fn();
   render(
     <LanguageProvider>
       <ResourceDetailsDialog
@@ -144,10 +148,11 @@ function renderDetails(options: {
         onSaved={onSaved}
         onPreview={vi.fn()}
         onDownload={vi.fn()}
+        onCitation={onCitation}
       />
     </LanguageProvider>,
   );
-  return { api, onSaved };
+  return { api, onSaved, onCitation };
 }
 
 beforeEach(() => {
@@ -222,6 +227,76 @@ describe("Resource details", () => {
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
+  it("edits structured carrier and historical-source bibliography without opening AI history", async () => {
+    const initial: LibraryHoldingDetails = {
+      ...detail(),
+      bibliographyVersion: "b".repeat(43),
+      bibliography: {
+        contractVersion: 1,
+        materialClass: "primary_source_modern_edition",
+        contributors: [{ id: "contributor-1", label: "陈垣", role: "collator", roleLabel: "点校" }],
+        publication: { publisher: "中华书局", place: "北京", publicationDate: "2009" },
+        language: "zh-CN",
+        carrierEdition: { editionType: "facsimile", editionStatement: "现代影印本" },
+        sourceEdition: { dynasty: "明", reignTitle: "万历", reignYear: "二十四年", editionType: "recut", editionStatement: "金陵唐氏重刻本" },
+      },
+    };
+    const saved = { ...initial, bibliographyVersion: "c".repeat(43), bibliography: { ...initial.bibliography!, publication: { ...initial.bibliography!.publication, publisher: "上海古籍出版社" } } };
+    const updateLibraryHoldingBibliography = vi.fn().mockResolvedValue(saved);
+    const { onSaved } = renderDetails({ initial, api: { updateLibraryHoldingBibliography } });
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("Current carrier edition")).toBeInTheDocument();
+    expect(screen.getByText("Historical source / base edition")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit bibliography" }));
+    const publisher = screen.getByLabelText("Publisher");
+    await user.clear(publisher);
+    await user.type(publisher, "上海古籍出版社");
+    await user.click(screen.getByRole("button", { name: "Save bibliography" }));
+
+    await waitFor(() => expect(updateLibraryHoldingBibliography).toHaveBeenCalledTimes(1));
+    expect(updateLibraryHoldingBibliography).toHaveBeenCalledWith(LIBRARY.id, HOLDING.file.id, expect.objectContaining({
+      bibliographyVersion: "b".repeat(43),
+      materialClass: "primary_source_modern_edition",
+      publication: expect.objectContaining({ publisher: "上海古籍出版社" }),
+      carrierEdition: expect.objectContaining({ editionType: "facsimile", editionStatement: "现代影印本" }),
+      sourceEdition: expect.objectContaining({ dynasty: "明", reignTitle: "万历", editionType: "recut" }),
+    }));
+    expect(onSaved).toHaveBeenCalledWith(saved);
+  });
+
+  it("restores only explicitly selected human-authoritative fields to AI control", async () => {
+    const initial: LibraryHoldingDetails = {
+      ...detail(),
+      bibliographyVersion: "b".repeat(43),
+      fieldAuthorities: [
+        { fieldName: "materialClass", scopeKey: "", source: "human", establishedAt: "2026-08-22T00:00:00.000Z" },
+        { fieldName: "publication.publisher", scopeKey: "", source: "human", establishedAt: "2026-08-22T00:00:00.000Z" },
+      ],
+    };
+    const restored = { ...initial, bibliographyVersion: "c".repeat(43), fieldAuthorities: [initial.fieldAuthorities[1]!] };
+    const restoreLibraryHoldingBibliographyAi = vi.fn().mockResolvedValue(restored);
+    renderDetails({ initial, api: { restoreLibraryHoldingBibliographyAi } });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText(/Fields controlled by the user/));
+    await user.click(screen.getByRole("checkbox", { name: "Material class" }));
+    await user.click(screen.getByRole("button", { name: "Restore AI control" }));
+
+    await waitFor(() => expect(restoreLibraryHoldingBibliographyAi).toHaveBeenCalledWith(LIBRARY.id, HOLDING.file.id, {
+      bibliographyVersion: "b".repeat(43),
+      fields: [{ fieldName: "materialClass", scopeKey: "" }],
+    }));
+    expect(await screen.findByText(/can be updated by later AI cataloguing/i)).toBeInTheDocument();
+  });
+
+  it("opens the citation flow from the ordinary details surface", async () => {
+    const { onCitation } = renderDetails({ api: { generateLibraryCitation: vi.fn() } });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Cite" }));
+    expect(onCitation).toHaveBeenCalledTimes(1);
+  });
+
   it("refreshes once and exits edit mode after a stale CAS without replaying the write", async () => {
     const latest = { ...detail(), displayTitle: "其他操作的新题名", metadataVersion: "z".repeat(43), metadata: { ...detail().metadata!, canonicalTitle: "其他操作的新题名" } };
     const get = vi.fn().mockResolvedValueOnce(detail()).mockResolvedValueOnce(latest);
@@ -269,7 +344,7 @@ describe("Resource details", () => {
 
   it.each([
     ["queued", "Metadata suggestion job queued"],
-    ["running", "Finding resource information in Compute…"],
+    ["running", "Organizing resource information…"],
     ["failed", "Could not find resource information. Try again."],
   ] as const)("renders durable asynchronous %s state without keeping the request open", async (state, label) => {
     const job: DerivedMetadataJob = {

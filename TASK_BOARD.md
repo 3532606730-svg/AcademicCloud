@@ -9,7 +9,7 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
-| L1-INTELLIGENT-LIBRARY01 | ACTIVE — A–D complete; citation engine and all earlier gates green | Continue with Checkpoint E; production only after integrated Checkpoint F gates |
+| L1-INTELLIGENT-LIBRARY01 | ACTIVE — A–E complete; integrated Library/Activity/citation/edit UX and all earlier gates green | Continue with Checkpoint F exact integration, migration, release, and bounded production verification |
 | GOAL-BETA-PREP01 | ALL FIVE PHASES GREEN / INTERNAL_BETA_READY | STOP — Owner decides whether/when to start or invite users into internal beta |
 | HOTFIX-META-UX01 | DEPLOYED as `53317bb…` (same-schema app-only on `c741455…`) | Owner manual product acceptance in production |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
@@ -28,8 +28,8 @@ and hotfix contracts remain preserved in their existing cards.
 | A | Domain + persistence architecture | COMPLETE / PUSHED / SYNCED — `fff33c7…`; additive migration 023 and ADR-032; production unchanged |
 | B | AI bibliographic Compute | COMPLETE / PUSHED / SYNCED — `9d8a3a0…`; run `32574319098`, 3/3 + 7/7, sub-6-GiB, zero artifacts |
 | C | Search + filters + display | COMPLETE / PUSHED / SYNCED — ADR-034; backend 357/357, frontend 262/262, typecheck/build green; production unchanged |
-| D | Citation engine | COMPLETE / PUSH AND SYNC PENDING — ADR-035; four exact-hashed styles including 《历史研究》; backend 364/364, focused 8/8, build/typecheck green; production unchanged |
-| E | Library UX + Activity Center | PENDING |
+| D | Citation engine | COMPLETE / PUSHED / SYNCED — `015738c…`; ADR-035; four exact-hashed styles including 《历史研究》; backend 364/364, focused 8/8, build/typecheck green; production unchanged |
+| E | Library UX + Activity Center | COMPLETE / PUSH AND SYNC PENDING — quiet responsive Search/type/sort/filter row, collapsed local-preference Activity Center, direct bibliography/field-authority editing, four-style citation dialog; frontend 270/270, typecheck/build green; production unchanged |
 | F | Integration + migration + exact production deployment | PENDING |
 
 ## Active Goal Mode sequence

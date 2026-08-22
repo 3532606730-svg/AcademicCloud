@@ -305,11 +305,73 @@ export interface LibraryMetadata {
   typeFields: MetadataTypeFields;
   authorityLinks: LibraryMetadataAuthorityLink[];
 }
+export interface BibliographicContributor {
+  id: string;
+  label: string;
+  role: ContributorRole;
+  roleLabel?: string;
+  authorityId?: string;
+}
+export interface BibliographicPublication {
+  publisher?: string;
+  place?: string;
+  publicationDate?: string;
+  editionNumber?: string;
+  printing?: string;
+}
+export interface BibliographicCarrierEdition {
+  editionType?: EditionType;
+  editionStatement?: string;
+  facsimileStatement?: string;
+}
+export interface BibliographicSourceEdition {
+  dynasty?: string;
+  reignTitle?: string;
+  reignYear?: string;
+  absoluteYear?: number;
+  printer?: string;
+  imprint?: string;
+  bookshop?: string;
+  institution?: string;
+  printingPlace?: string;
+  editionType?: EditionType;
+  editionStatement?: string;
+  holdingInformation?: string;
+}
+export interface LibraryBibliographicProfile {
+  contractVersion: 1;
+  materialClass: MaterialClass;
+  contributors: BibliographicContributor[];
+  publication: BibliographicPublication;
+  series?: string;
+  volume?: string;
+  language?: string;
+  carrierEdition: BibliographicCarrierEdition;
+  sourceEdition: BibliographicSourceEdition;
+}
+export type BibliographicFieldName =
+  | "materialClass" | "canonicalTitle" | "subtitle" | "alternativeTitles" | "dateStatement" | "identifiers"
+  | "publication.publisher" | "publication.place" | "publication.publicationDate" | "publication.editionNumber" | "publication.printing"
+  | "series" | "volume" | "language"
+  | "carrierEdition.editionType" | "carrierEdition.editionStatement" | "carrierEdition.facsimileStatement"
+  | "sourceEdition.dynasty" | "sourceEdition.reignTitle" | "sourceEdition.reignYear" | "sourceEdition.absoluteYear"
+  | "sourceEdition.printer" | "sourceEdition.imprint" | "sourceEdition.bookshop" | "sourceEdition.institution"
+  | "sourceEdition.printingPlace" | "sourceEdition.editionType" | "sourceEdition.editionStatement" | "sourceEdition.holdingInformation"
+  | "contributor.label" | "contributor.role" | "contributor.roleLabel" | "contributor.authorityId";
+export interface BibliographicFieldAuthority {
+  fieldName: BibliographicFieldName;
+  scopeKey: string;
+  source: "human" | "ai";
+  establishedAt: string;
+}
 export interface LibraryHoldingDetails {
   displayTitle: string;
   originalFilename: string;
   metadataVersion: string;
   metadata: LibraryMetadata | null;
+  bibliographyVersion: string;
+  bibliography: LibraryBibliographicProfile | null;
+  fieldAuthorities: BibliographicFieldAuthority[];
   canEditMetadata: boolean;
   file: Pick<LibraryHolding["file"], "id" | "mediaType" | "sizeBytes" | "updatedAt">;
 }
@@ -323,6 +385,46 @@ export interface LibraryMetadataInput {
   identifiers: MetadataIdentifier[];
   typeFields: MetadataTypeFields;
   authorityLinks: Array<{ authorityId: string; role: AuthorityRole }>;
+}
+export type LibraryBibliographyInput = Omit<LibraryBibliographicProfile, "contractVersion" | "contributors"> & {
+  bibliographyVersion: string;
+  contributors: Array<Omit<BibliographicContributor, "id"> & { id?: string }>;
+};
+
+export type CitationStyleId = "chicago-notes-bibliography" | "lishi-yanjiu" | "wenshizhe" | "gb-t-7714-2025";
+export type CitationLocatorType =
+  | "page" | "page_range" | "volume" | "fascicle" | "chapter" | "juan"
+  | "folio" | "line" | "item" | "document_number" | "archive_call_number" | "custom";
+export interface CitationLocator {
+  type: CitationLocatorType;
+  value: string;
+  side?: "recto" | "verso";
+  label?: string;
+}
+export interface CitationResult {
+  style: {
+    id: CitationStyleId;
+    label: string;
+    processor: "citeproc-js";
+    processorVersion: string;
+    revision: string;
+    source: string;
+    sourceRevision: string;
+    sha256: string;
+    verifiedAt: string;
+    compliance: "official" | "production_subset";
+    supportsShortNote: boolean;
+  };
+  completeness: "structured" | "partial";
+  materialClass: MaterialClass | null;
+  locators: CitationLocator[];
+  cslItem: Record<string, unknown> & { id: string; type: string; title: string; "title-short": string };
+  outputs: {
+    citation: string;
+    fullNote: string | null;
+    shortNote: string | null;
+    bibliography: string;
+  };
 }
 
 export type LibraryHoldingSort =
@@ -662,6 +764,17 @@ export interface AcademicCloudApi {
   searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number, filters?: LibrarySearchFilters, sort?: LibrarySearchSort): Promise<LibrarySearchPage>;
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
   updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails>;
+  updateLibraryHoldingBibliography?(libraryId: string, fileId: string, input: LibraryBibliographyInput): Promise<LibraryHoldingDetails>;
+  restoreLibraryHoldingBibliographyAi?(
+    libraryId: string,
+    fileId: string,
+    input: { bibliographyVersion: string; fields: Array<{ fieldName: BibliographicFieldName; scopeKey: string }> },
+  ): Promise<LibraryHoldingDetails>;
+  generateLibraryCitation?(
+    libraryId: string,
+    fileId: string,
+    input: { style: CitationStyleId; locators: CitationLocator[] },
+  ): Promise<CitationResult>;
   /** Metadata suggestions are optional for compatibility with older API fakes. */
   generateLibraryMetadataSuggestions?(libraryId: string, fileId: string): Promise<DerivedMetadataJob>;
   getLatestLibraryMetadataSuggestionJob?(
@@ -1092,6 +1205,38 @@ export class ApiClient implements AcademicCloudApi {
     return this.#jsonBody<LibraryHoldingDetails>(
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata`,
       "PUT",
+      input,
+    );
+  }
+
+  updateLibraryHoldingBibliography(libraryId: string, fileId: string, input: LibraryBibliographyInput): Promise<LibraryHoldingDetails> {
+    return this.#jsonBody<LibraryHoldingDetails>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/bibliography`,
+      "PUT",
+      input,
+    );
+  }
+
+  restoreLibraryHoldingBibliographyAi(
+    libraryId: string,
+    fileId: string,
+    input: { bibliographyVersion: string; fields: Array<{ fieldName: BibliographicFieldName; scopeKey: string }> },
+  ): Promise<LibraryHoldingDetails> {
+    return this.#jsonBody<LibraryHoldingDetails>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/bibliography/restore-ai`,
+      "POST",
+      input,
+    );
+  }
+
+  generateLibraryCitation(
+    libraryId: string,
+    fileId: string,
+    input: { style: CitationStyleId; locators: CitationLocator[] },
+  ): Promise<CitationResult> {
+    return this.#jsonBody<CitationResult>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/citation`,
+      "POST",
       input,
     );
   }

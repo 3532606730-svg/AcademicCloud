@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App, ScholarlyRecordsDialog } from "./App.tsx";
 import {
@@ -19,8 +19,18 @@ import type { UploadProgressMetrics } from "./direct-upload.ts";
 import { DirectUploadError } from "./direct-upload.ts";
 import { LanguageProvider } from "./i18n-react.tsx";
 
+const ACTIVITY_PREFERENCE_KEY = "academiccloud.activity-center.expanded.v1:account-1";
+
+beforeEach(() => {
+  // Most legacy interaction tests exercise controls inside the Activity Center.
+  // Give those tests an explicit saved preference; focused tests below verify
+  // the product's collapsed first-use state and preference persistence.
+  window.localStorage.setItem(ACTIVITY_PREFERENCE_KEY, "1");
+});
+
 afterEach(() => {
   window.localStorage.removeItem("academiccloud.language");
+  window.localStorage.removeItem(ACTIVITY_PREFERENCE_KEY);
   window.sessionStorage.clear();
   window.history.replaceState(null, "", "/");
   document.documentElement.lang = "";
@@ -2454,12 +2464,18 @@ describe("App", () => {
     Object.defineProperty(window, "showOpenFilePicker", { configurable: true, value: picker });
     const checksumFile = vi.fn(() => new Promise<string>(() => undefined));
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT) });
+    window.localStorage.removeItem(ACTIVITY_PREFERENCE_KEY);
     render(<App api={api} checksumFile={checksumFile} />);
 
     await user.click(await screen.findByRole("button", { name: "Upload resources" }));
 
     await waitFor(() => expect(picker).toHaveBeenCalledWith({ multiple: true }));
     expect(await screen.findByRole("heading", { name: "Activity Center" })).toBeInTheDocument();
+    const expand = screen.getByRole("button", { name: "Expand background tasks" });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(selected.name)).not.toBeInTheDocument();
+    await user.click(expand);
+    expect(window.localStorage.getItem(ACTIVITY_PREFERENCE_KEY)).toBe("1");
     expect(screen.getByText(selected.name)).toBeInTheDocument();
     expect(screen.getByText("Calculating checksum")).toBeInTheDocument();
   });
@@ -2495,6 +2511,7 @@ describe("App", () => {
   });
 
   it("restores server-authoritative metadata activity after an App reload", async () => {
+    const user = userEvent.setup();
     const job = {
       id: "job-activity-1",
       kind: "metadata_suggestion" as const,
@@ -2516,14 +2533,19 @@ describe("App", () => {
       getLatestLibraryMetadataSuggestionJob,
     });
 
+    window.localStorage.removeItem(ACTIVITY_PREFERENCE_KEY);
     const first = render(<App api={api} />);
-    expect(await screen.findByText("Metadata suggestions")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Activity Center" })).toBeInTheDocument();
+    expect(screen.queryByText("AI cataloguing")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Expand background tasks" }));
+    expect(await screen.findByText("AI cataloguing")).toBeInTheDocument();
     expect(screen.getByText("Queued")).toBeInTheDocument();
     first.unmount();
 
     render(<App api={api} />);
-    expect(await screen.findByText("Metadata suggestions")).toBeInTheDocument();
+    expect(await screen.findByText("AI cataloguing")).toBeInTheDocument();
     expect(screen.getByText("Queued")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Collapse background tasks" })).toHaveAttribute("aria-expanded", "true");
     expect(getLatestLibraryMetadataSuggestionJob).toHaveBeenCalledTimes(2);
   });
 

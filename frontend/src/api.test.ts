@@ -528,6 +528,43 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[3]?.[1]?.body).toBe(JSON.stringify({ type: "person", canonicalLabel: "Author", aliases: [] }));
   });
 
+  it("uses exact bibliography, field-authority reset, and citation contracts", async () => {
+    const bibliographyInput = {
+      bibliographyVersion: "b".repeat(43),
+      materialClass: "traditional_book" as const,
+      contributors: [{ id: "contributor-1", label: "郑樵", role: "author" as const }],
+      publication: { publisher: "中华书局", place: "北京", publicationDate: "2009" },
+      carrierEdition: { editionType: "facsimile" as const, editionStatement: "影印本" },
+      sourceEdition: { dynasty: "明", reignTitle: "万历", editionType: "recut" as const },
+    };
+    const restoreInput = {
+      bibliographyVersion: "c".repeat(43),
+      fields: [{ fieldName: "materialClass" as const, scopeKey: "" }],
+    };
+    const citationInput = {
+      style: "lishi-yanjiu" as const,
+      locators: [{ type: "juan" as const, value: "五" }, { type: "folio" as const, value: "8", side: "verso" as const }],
+    };
+    const responses = [
+      new Response(JSON.stringify({ bibliographyVersion: "c".repeat(43) }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ bibliographyVersion: "d".repeat(43) }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ style: { id: "lishi-yanjiu" }, outputs: { fullNote: "注", shortNote: "简注", bibliography: "书目", citation: "注" } }), { status: 200, headers: { "content-type": "application/json" } }),
+    ];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => responses.shift()!);
+    const api = new ApiClient({ fetcher });
+
+    await api.updateLibraryHoldingBibliography("library / one", "file / one", bibliographyInput);
+    await api.restoreLibraryHoldingBibliographyAi("library / one", "file / one", restoreInput);
+    await api.generateLibraryCitation("library / one", "file / one", citationInput);
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/bibliography");
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ method: "PUT", body: JSON.stringify(bibliographyInput) });
+    expect(fetcher.mock.calls[1]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/bibliography/restore-ai");
+    expect(fetcher.mock.calls[1]?.[1]).toMatchObject({ method: "POST", body: JSON.stringify(restoreInput) });
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/citation");
+    expect(fetcher.mock.calls[2]?.[1]).toMatchObject({ method: "POST", body: JSON.stringify(citationInput) });
+  });
+
   it("uses bounded metadata-suggestion generation, review, and explicit acceptance contracts", async () => {
     const run = {
       id: "run-1",

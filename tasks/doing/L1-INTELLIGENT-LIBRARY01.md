@@ -33,8 +33,8 @@ production failure. Do not start internal beta or invite users.
 | A | Domain + persistence architecture | COMPLETE / PUSHED / SYNCED | `fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643` |
 | B | AI bibliographic Compute | COMPLETE / QUALIFIED / PUSHED / SYNCED | `9d8a3a097a5eba0d8c1603cee18568793417b135` |
 | C | Search + filters + display | COMPLETE / PUSHED / SYNCED | `17c1395995575cdf5b26944097c382fbf44478fe` |
-| D | Citation engine | COMPLETE / PUSH AND SYNC PENDING | D tip; exact SHA recorded before E |
-| E | Library UX + Activity Center | PENDING | — |
+| D | Citation engine | COMPLETE / PUSHED / SYNCED | `015738ccb43fa120ab3a2455798d18a22e2f6a21` |
+| E | Library UX + Activity Center | COMPLETE / PUSH AND SYNC PENDING | E tip; exact SHA recorded before F |
 | F | Integration + migration + exact production deployment | PENDING | — |
 
 ## Checkpoint A evidence
@@ -255,6 +255,53 @@ npm dependency audit at install = 0 vulnerabilities
 git diff --check = PASS
 ```
 
+## Checkpoint E acceptance evidence
+
+### Implemented
+
+- Consolidated the wide Library controls into one restrained Search → material
+  class → sort → Filters row. All six existing server-authoritative sort modes
+  remain available, the separate visible sort toolbar is gone, and the row
+  stacks responsively on narrow screens.
+- Tightened the Library heading and reports the number of holdings currently
+  loaded without presenting a page count as a total corpus count.
+- Made Activity Center compact and collapsed on first use, with a count and
+  failed-count summary, explicit expansion, and an optional account-scoped
+  browser-local preference. Existing durable upload, AI-cataloguing, download,
+  failed, and completed evidence is preserved; implementation jargon is not
+  exposed in ordinary activity copy.
+- Added the ordinary details → Cite flow with all four exact Checkpoint-D styles,
+  structured page/range, volume, fascicle, chapter, 卷, 叶面, line, item,
+  document-number, archive-call-number, and labelled custom locators. The
+  client renders plain server-returned text and copies that exact text; no HTML
+  citation rendering or client-side authority is introduced.
+- Added direct structured bibliographic editing for material class,
+  contributors and evidence roles, publication, language, series/volume,
+  current carrier edition, and historical source/base edition. The existing
+  compatibility metadata editor remains distinct, while field-scoped
+  human-to-AI restoration is explicit, selected, and CAS-protected.
+
+### Safety and verification
+
+- Every bibliography/citation request uses the existing Library and holding
+  identity only; Core still derives effective membership, canonical facts,
+  CAS state, field authority, and citation output. No client owner/role,
+  canonical identity, raw style, or private-overlay claim is accepted.
+- The Activity preference contains one per-account boolean only. It is not
+  server data, does not delete old failure evidence, and failure to access
+  browser storage leaves the panel usable in its safe collapsed state.
+- Checkpoint E adds no migration, backfill, object mutation, credential,
+  provider, OSS/RAM/CORS, or production change. Production remains exact
+  `53317bb…` at schema v22/history 001–022; development stays 001–024.
+
+```text
+frontend full suite = 270/270 PASS
+focused citation/details/search/API/App/mobile = 209/209 PASS
+workspace typecheck = PASS
+frontend production build = PASS
+git diff --check = PASS
+```
+
 ## Remaining acceptance contract
 
 - B: **COMPLETE.** Current official PaddleOCR/PP-OCR/PaddleOCR-VL and small Qwen-VL options
@@ -269,7 +316,7 @@ git diff --check = PASS
 - D: **COMPLETE.** Deterministic CSL-compatible mapping and UI-ready output for Chicago Notes
   & Bibliography, 《历史研究》, 《文史哲》, and GB/T 7714, including page, 卷,
   册, 叶, 行, archive, and custom locators.
-- E: automatic upload status, concise Library row/detail/edit/filter/citation
+- E: **COMPLETE.** Automatic upload status, concise Library row/detail/edit/filter/citation
   UX, explicit human-to-AI reset, responsive toolbar, and Activity Center
   collapsed/local preference behavior.
 - F: relevant backend/frontend/Compute tests, workspace typecheck, production

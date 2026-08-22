@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ApiError,
   type AcademicCloudApi,
+  type LibraryHoldingSort,
   type LibrarySearchPage,
   type LibrarySearchResult,
   type LibrarySummary,
@@ -41,7 +42,11 @@ function result(overrides: Partial<LibrarySearchResult> = {}): LibrarySearchResu
   };
 }
 
-function renderField(api: AcademicCloudApi, onOpenResult: (next: LibrarySearchResult) => void = vi.fn()) {
+function renderField(
+  api: AcademicCloudApi,
+  onOpenResult: (next: LibrarySearchResult) => void = vi.fn(),
+  sorting?: { sort: LibraryHoldingSort; onSortChange: (next: LibraryHoldingSort) => void },
+) {
   render(
     <LibrarySearchField
       api={api}
@@ -49,6 +54,7 @@ function renderField(api: AcademicCloudApi, onOpenResult: (next: LibrarySearchRe
       language="en"
       t={t}
       onOpenResult={onOpenResult}
+      {...sorting}
     />,
   );
   return screen.getByLabelText("Search Library");
@@ -405,5 +411,29 @@ describe("LibrarySearchField", () => {
     expect(screen.getByLabelText("Material class")).toHaveValue("");
     expect(screen.getByLabelText("Publisher")).toHaveValue("");
     expect(screen.queryByText("元史 中华书局1976点校本")).not.toBeInTheDocument();
+  });
+
+  it("keeps the six server-authoritative sort choices in the quiet search row", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn().mockResolvedValue({ results: [], nextCursor: null });
+    const onSortChange = vi.fn();
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    const input = renderField(api, vi.fn(), { sort: "newest", onSortChange });
+
+    const sort = screen.getByLabelText("Sort");
+    expect(within(sort).getAllByRole("option")).toHaveLength(6);
+    await user.selectOptions(sort, "title_asc");
+    expect(onSortChange).toHaveBeenCalledWith("title_asc");
+
+    await user.type(input, "book");
+    await waitFor(() => expect(searchLibraryHoldings).toHaveBeenCalledWith(
+      LIBRARY.id,
+      "book",
+      expect.any(AbortSignal),
+      undefined,
+      undefined,
+      undefined,
+      "newest",
+    ));
   });
 });

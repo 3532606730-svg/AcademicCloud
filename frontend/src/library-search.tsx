@@ -5,6 +5,7 @@ import type {
   ContributorRole,
   EditionType,
   LibraryHolding,
+  LibraryHoldingSort,
   LibrarySearchFilters,
   LibrarySearchResult,
   LibrarySummary,
@@ -16,6 +17,15 @@ import { describeError, type Language, type MessageKey } from "./i18n.ts";
 import type { Translator } from "./i18n-react.tsx";
 
 const SEARCH_DEBOUNCE_MS = 280;
+
+const SORT_OPTIONS: ReadonlyArray<{ value: LibraryHoldingSort; key: MessageKey }> = [
+  { value: "newest", key: "library.sortNewest" },
+  { value: "oldest", key: "library.sortOldest" },
+  { value: "title_asc", key: "library.sortTitleAsc" },
+  { value: "title_desc", key: "library.sortTitleDesc" },
+  { value: "size_asc", key: "library.sortSizeAsc" },
+  { value: "size_desc", key: "library.sortSizeDesc" },
+];
 
 const MATERIAL_CLASSES: readonly MaterialClass[] = [
   "scholarly_monograph", "edited_volume", "journal_article", "book_chapter",
@@ -98,6 +108,8 @@ export function LibrarySearchField({
   t,
   onOpenResult,
   onActiveChange,
+  sort,
+  onSortChange,
 }: {
   api: AcademicCloudApi;
   library: LibrarySummary | null;
@@ -105,6 +117,8 @@ export function LibrarySearchField({
   t: Translator;
   onOpenResult: (result: LibrarySearchResult) => void;
   onActiveChange?: (active: boolean) => void;
+  sort?: LibraryHoldingSort;
+  onSortChange?: (sort: LibraryHoldingSort) => void;
 }) {
   const [query, setQuery] = useState("");
   const [materialClass, setMaterialClass] = useState<MaterialClass | "">("");
@@ -193,9 +207,11 @@ export function LibrarySearchField({
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      const request = hasFilters
-        ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, undefined, undefined, filters)
-        : api.searchLibraryHoldings(libraryId, trimmed, controller.signal);
+      const request = sort
+        ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, undefined, undefined, hasFilters ? filters : undefined, sort)
+        : hasFilters
+          ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, undefined, undefined, filters)
+          : api.searchLibraryHoldings(libraryId, trimmed, controller.signal);
       request.then((page) => {
         if (requestIdRef.current !== requestId || controller.signal.aborted) return;
         setResults(page.results);
@@ -211,7 +227,7 @@ export function LibrarySearchField({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [active, api, filterIdentity, hasFilters, library, query]);
+  }, [active, api, filterIdentity, hasFilters, library, query, sort]);
 
   function loadMore() {
     const libraryId = library?.id;
@@ -223,9 +239,11 @@ export function LibrarySearchField({
     loadMoreAbortRef.current = controller;
     setLoadingMore(true);
     setLoadMoreError(null);
-    const request = hasFilters
-      ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor, undefined, filters)
-      : api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor);
+    const request = sort
+      ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor, undefined, hasFilters ? filters : undefined, sort)
+      : hasFilters
+        ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor, undefined, filters)
+        : api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor);
     request.then((page) => {
       if (requestIdRef.current !== requestId || controller.signal.aborted) return;
       setResults((current) => {
@@ -282,6 +300,12 @@ export function LibrarySearchField({
           <select value={materialClass} onChange={(event) => setMaterialClass(event.target.value as MaterialClass | "")}>
             <option value="">{t("librarySearch.allMaterials")}</option>
             {MATERIAL_CLASSES.map((value) => <option key={value} value={value}>{t(materialClassKey(value))}</option>)}
+          </select>
+        </label>
+        <label className="library-search-sort">
+          <span className="visually-hidden">{t("library.sortLabel")}</span>
+          <select aria-label={t("library.sortLabel")} value={sort ?? "newest"} onChange={(event) => onSortChange?.(event.target.value as LibraryHoldingSort)}>
+            {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.key)}</option>)}
           </select>
         </label>
         <details className="library-search-advanced">

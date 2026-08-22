@@ -9,7 +9,7 @@ evidence without duplicating it here.
 ## Current situation
 
 Owner-authorized `L1-INTELLIGENT-LIBRARY01` is active in its mandatory A–F
-sequence. Checkpoints A, B, C, and D are complete. A implemented the ADR-032 domain
+sequence. Checkpoints A, B, C, D, and E are complete. A implemented the ADR-032 domain
 and additive development migration 023. B accepted ADR-033 and added migration
 024 plus an exact-pinned, ephemeral, sequential PP-OCRv6-small → Qwen3-1.7B
 Q8_0 bibliographic pipeline. C accepted ADR-034 and added authorization-first
@@ -21,7 +21,11 @@ authorization-first CSL citation projection for Chicago Notes & Bibliography,
 《历史研究》, 《文史哲》, and current GB/T 7714—2025. Its typed modern and
 historical locators, explicit partial completeness, style provenance, and exact
 style hashes keep output deterministic without creating citation history or a
-second metadata authority. Core remains authoritative; explicit labels and
+second metadata authority. E completed the compact responsive Library control
+row, collapsed-by-default account-local Activity Center preference, ordinary
+details-to-citation flow, direct structured bibliography editing, and explicit
+field-scoped human-to-AI restoration. Frontend 270/270, full workspace
+typecheck, and the production frontend build are green. Core remains authoritative; explicit labels and
 strict deterministic checks govern auto-application, human fields are never
 silently replaced, and AI failure never invalidates an admitted file.
 
@@ -35,7 +39,7 @@ dependency or automatic escalation.
 No partial Layer‑1 production change has occurred. Production remains exact
 `53317bb0156589baa21bc69c22e199d200c49840` at schema v22/history 001–022.
 Development migration head is v24/history 001–024. Continue automatically
-through E–F; production migration/deployment is authorized only at integrated
+through F; production migration/deployment is authorized only at integrated
 Checkpoint F after its bounded gates. Internal Beta remains unstarted.
 
 The first Core/Compute separation vertical slice, COMPUTE-PRECUTOVER01, and

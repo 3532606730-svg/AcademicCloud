@@ -5,8 +5,13 @@ import {
   type AcademicCloudApi,
   type AuthorityRole,
   type AuthorityType,
+  type BibliographicFieldAuthority,
+  type BibliographicFieldName,
+  type ContributorRole,
   type DerivedMetadataJob,
+  type EditionType,
   type LibraryAuthority,
+  type LibraryBibliographyInput,
   type LibraryHolding,
   type LibraryHoldingDetails,
   type MetadataSuggestionAcceptInput,
@@ -18,6 +23,7 @@ import {
   type MetadataSuggestionStatus,
   type LibraryMetadataInput,
   type LibrarySummary,
+  type MaterialClass,
   type MaterialType,
   type MetadataTypeFields,
 } from "./api.ts";
@@ -52,6 +58,52 @@ const FIELDS_BY_TYPE: Record<MaterialType, Array<{ key: keyof MetadataTypeFields
 
 type LinkDraft = { authorityId: string; role: AuthorityRole };
 type IdentifierDraft = { scheme: string; value: string };
+type BibliographyDraft = {
+  materialClass: MaterialClass;
+  contributors: Array<{ id?: string; label: string; role: ContributorRole; roleLabel: string; authorityId?: string }>;
+  publisher: string;
+  place: string;
+  publicationDate: string;
+  editionNumber: string;
+  printing: string;
+  series: string;
+  volume: string;
+  language: string;
+  carrierEditionType: EditionType | "";
+  carrierEditionStatement: string;
+  facsimileStatement: string;
+  sourceDynasty: string;
+  sourceReignTitle: string;
+  sourceReignYear: string;
+  sourceAbsoluteYear: string;
+  sourcePrinter: string;
+  sourceImprint: string;
+  sourceBookshop: string;
+  sourceInstitution: string;
+  sourcePrintingPlace: string;
+  sourceEditionType: EditionType | "";
+  sourceEditionStatement: string;
+  sourceHoldingInformation: string;
+};
+
+const MATERIAL_CLASSES: readonly MaterialClass[] = [
+  "scholarly_monograph", "edited_volume", "journal_article", "book_chapter",
+  "thesis_dissertation", "conference_paper", "review", "reference_work",
+  "dictionary_lexicon", "primary_source_modern_edition", "traditional_book",
+  "archival_document", "inscription_epigraphy", "rubbing", "manuscript",
+  "collected_documents", "catalogue_bibliography", "other", "unknown",
+];
+const CONTRIBUTOR_ROLES: readonly ContributorRole[] = [
+  "author", "editor", "compiler", "translator", "annotator", "collator",
+  "punctuator", "commentator", "reviser", "selector", "organizer", "other",
+];
+const EDITION_TYPES: readonly EditionType[] = [
+  "critical_edition", "annotated_edition", "collated_edition", "punctuated_edition",
+  "translated_edition", "facsimile", "reprint", "engraved", "recut",
+  "facsimile_engraved", "movable_type", "multicolor_print", "manuscript_copy",
+  "hand_copy", "draft_manuscript", "facsimile_hand_copy", "lithograph",
+  "letterpress", "composite_repaired", "hand_copy_repaired", "repaired", "other", "unknown",
+];
 
 const MATERIAL_LABEL_KEYS: Record<MaterialType, MessageKey> = {
   book: "metadata.typeBook",
@@ -111,6 +163,114 @@ function materialLabel(value: unknown, t: ReturnType<typeof useLanguage>["t"]): 
 }
 function fieldLabel(value: string, t: ReturnType<typeof useLanguage>["t"]): string {
   return value in FIELD_LABEL_KEYS ? t(fieldLabelKey(value as keyof MetadataTypeFields)) : value;
+}
+
+function materialClassLabel(value: MaterialClass, t: ReturnType<typeof useLanguage>["t"]): string {
+  return t(`materialClass.${value}`);
+}
+
+function editionTypeLabel(value: EditionType, t: ReturnType<typeof useLanguage>["t"]): string {
+  return t(`editionType.${value}`);
+}
+
+function contributorRoleLabel(value: ContributorRole, t: ReturnType<typeof useLanguage>["t"]): string {
+  return t(`contributorRole.${value}`);
+}
+
+function bibliographyDraftFromDetail(detail: LibraryHoldingDetails): BibliographyDraft {
+  const profile = detail.bibliography;
+  return {
+    materialClass: profile?.materialClass ?? "unknown",
+    contributors: profile?.contributors.map((contributor) => ({
+      id: contributor.id,
+      label: contributor.label,
+      role: contributor.role,
+      roleLabel: contributor.roleLabel ?? "",
+      ...(contributor.authorityId ? { authorityId: contributor.authorityId } : {}),
+    })) ?? [],
+    publisher: profile?.publication.publisher ?? "",
+    place: profile?.publication.place ?? "",
+    publicationDate: profile?.publication.publicationDate ?? "",
+    editionNumber: profile?.publication.editionNumber ?? "",
+    printing: profile?.publication.printing ?? "",
+    series: profile?.series ?? "",
+    volume: profile?.volume ?? "",
+    language: profile?.language ?? "",
+    carrierEditionType: profile?.carrierEdition.editionType ?? "",
+    carrierEditionStatement: profile?.carrierEdition.editionStatement ?? "",
+    facsimileStatement: profile?.carrierEdition.facsimileStatement ?? "",
+    sourceDynasty: profile?.sourceEdition.dynasty ?? "",
+    sourceReignTitle: profile?.sourceEdition.reignTitle ?? "",
+    sourceReignYear: profile?.sourceEdition.reignYear ?? "",
+    sourceAbsoluteYear: profile?.sourceEdition.absoluteYear === undefined ? "" : String(profile.sourceEdition.absoluteYear),
+    sourcePrinter: profile?.sourceEdition.printer ?? "",
+    sourceImprint: profile?.sourceEdition.imprint ?? "",
+    sourceBookshop: profile?.sourceEdition.bookshop ?? "",
+    sourceInstitution: profile?.sourceEdition.institution ?? "",
+    sourcePrintingPlace: profile?.sourceEdition.printingPlace ?? "",
+    sourceEditionType: profile?.sourceEdition.editionType ?? "",
+    sourceEditionStatement: profile?.sourceEdition.editionStatement ?? "",
+    sourceHoldingInformation: profile?.sourceEdition.holdingInformation ?? "",
+  };
+}
+
+function optionalText(value: string): string | undefined {
+  return value.trim() || undefined;
+}
+
+function bibliographyInput(draft: BibliographyDraft, bibliographyVersion: string): LibraryBibliographyInput | null {
+  const year = draft.sourceAbsoluteYear.trim();
+  const absoluteYear = year === "" ? undefined : Number(year);
+  if (absoluteYear !== undefined && (!Number.isInteger(absoluteYear) || absoluteYear < -9999 || absoluteYear > 9999)) return null;
+  const contributors = draft.contributors.flatMap((contributor) => {
+    const label = contributor.label.trim();
+    if (!label) return [];
+    return [{
+      ...(contributor.id ? { id: contributor.id } : {}),
+      label,
+      role: contributor.role,
+      ...(optionalText(contributor.roleLabel) ? { roleLabel: optionalText(contributor.roleLabel)! } : {}),
+      ...(contributor.authorityId ? { authorityId: contributor.authorityId } : {}),
+    }];
+  });
+  return {
+    bibliographyVersion,
+    materialClass: draft.materialClass,
+    contributors,
+    publication: {
+      ...(optionalText(draft.publisher) ? { publisher: optionalText(draft.publisher)! } : {}),
+      ...(optionalText(draft.place) ? { place: optionalText(draft.place)! } : {}),
+      ...(optionalText(draft.publicationDate) ? { publicationDate: optionalText(draft.publicationDate)! } : {}),
+      ...(optionalText(draft.editionNumber) ? { editionNumber: optionalText(draft.editionNumber)! } : {}),
+      ...(optionalText(draft.printing) ? { printing: optionalText(draft.printing)! } : {}),
+    },
+    ...(optionalText(draft.series) ? { series: optionalText(draft.series)! } : {}),
+    ...(optionalText(draft.volume) ? { volume: optionalText(draft.volume)! } : {}),
+    ...(optionalText(draft.language) ? { language: optionalText(draft.language)! } : {}),
+    carrierEdition: {
+      ...(draft.carrierEditionType ? { editionType: draft.carrierEditionType } : {}),
+      ...(optionalText(draft.carrierEditionStatement) ? { editionStatement: optionalText(draft.carrierEditionStatement)! } : {}),
+      ...(optionalText(draft.facsimileStatement) ? { facsimileStatement: optionalText(draft.facsimileStatement)! } : {}),
+    },
+    sourceEdition: {
+      ...(optionalText(draft.sourceDynasty) ? { dynasty: optionalText(draft.sourceDynasty)! } : {}),
+      ...(optionalText(draft.sourceReignTitle) ? { reignTitle: optionalText(draft.sourceReignTitle)! } : {}),
+      ...(optionalText(draft.sourceReignYear) ? { reignYear: optionalText(draft.sourceReignYear)! } : {}),
+      ...(absoluteYear === undefined ? {} : { absoluteYear }),
+      ...(optionalText(draft.sourcePrinter) ? { printer: optionalText(draft.sourcePrinter)! } : {}),
+      ...(optionalText(draft.sourceImprint) ? { imprint: optionalText(draft.sourceImprint)! } : {}),
+      ...(optionalText(draft.sourceBookshop) ? { bookshop: optionalText(draft.sourceBookshop)! } : {}),
+      ...(optionalText(draft.sourceInstitution) ? { institution: optionalText(draft.sourceInstitution)! } : {}),
+      ...(optionalText(draft.sourcePrintingPlace) ? { printingPlace: optionalText(draft.sourcePrintingPlace)! } : {}),
+      ...(draft.sourceEditionType ? { editionType: draft.sourceEditionType } : {}),
+      ...(optionalText(draft.sourceEditionStatement) ? { editionStatement: optionalText(draft.sourceEditionStatement)! } : {}),
+      ...(optionalText(draft.sourceHoldingInformation) ? { holdingInformation: optionalText(draft.sourceHoldingInformation)! } : {}),
+    },
+  };
+}
+
+function authorityKey(authority: Pick<BibliographicFieldAuthority, "fieldName" | "scopeKey">): string {
+  return JSON.stringify([authority.fieldName, authority.scopeKey]);
 }
 
 const SUGGESTION_SOURCE_KEYS: Record<MetadataSuggestionSourceType, MessageKey> = {
@@ -275,6 +435,7 @@ export function ResourceDetailsDialog({
   onSaved,
   onPreview,
   onDownload,
+  onCitation,
   onSuggestionJobChange,
 }: {
   api: AcademicCloudApi;
@@ -285,13 +446,17 @@ export function ResourceDetailsDialog({
   onSaved: (detail: LibraryHoldingDetails) => void;
   onPreview: () => void;
   onDownload: () => void;
+  onCitation?: () => void;
   onSuggestionJobChange?: (job: DerivedMetadataJob) => void;
 }) {
   const { language, t } = useLanguage();
   const [detail, setDetail] = useState<LibraryHoldingDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [editingBibliography, setEditingBibliography] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingBibliography, setSavingBibliography] = useState(false);
+  const [restoringAi, setRestoringAi] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
   const [draft, setDraft] = useState(() => draftFromDetail({
@@ -299,9 +464,24 @@ export function ResourceDetailsDialog({
     originalFilename: holding.file.displayName,
     metadataVersion: "",
     metadata: null,
+    bibliographyVersion: "",
+    bibliography: null,
+    fieldAuthorities: [],
     canEditMetadata: library.role === "manager",
     file: { id: holding.file.id, mediaType: holding.file.mediaType, sizeBytes: holding.file.sizeBytes, updatedAt: holding.file.updatedAt },
   }));
+  const [bibliographyDraft, setBibliographyDraft] = useState<BibliographyDraft>(() => bibliographyDraftFromDetail({
+    displayTitle: holding.canonicalTitle ?? holding.file.displayName,
+    originalFilename: holding.file.displayName,
+    metadataVersion: "",
+    metadata: null,
+    bibliographyVersion: "",
+    bibliography: null,
+    fieldAuthorities: [],
+    canEditMetadata: library.role === "manager",
+    file: { id: holding.file.id, mediaType: holding.file.mediaType, sizeBytes: holding.file.sizeBytes, updatedAt: holding.file.updatedAt },
+  }));
+  const [selectedRestoreFields, setSelectedRestoreFields] = useState<Set<string>>(() => new Set());
   const [authorities, setAuthorities] = useState<LibraryAuthority[]>([]);
   const [authorityType, setAuthorityType] = useState<AuthorityType>("person");
   const [authorityLabel, setAuthorityLabel] = useState("");
@@ -314,7 +494,7 @@ export function ResourceDetailsDialog({
   const [suggestionsAccepting, setSuggestionsAccepting] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<unknown>(null);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<Set<string>>(() => new Set());
-  const dialogRef = useResourceDialog(onClose, saving || suggestionsGenerating || suggestionsAccepting, returnFocus);
+  const dialogRef = useResourceDialog(onClose, saving || savingBibliography || restoringAi || suggestionsGenerating || suggestionsAccepting, returnFocus);
 
   const groupedAuthorities = useMemo(() => {
     const map = new Map<string, LibraryAuthority>();
@@ -329,6 +509,8 @@ export function ResourceDetailsDialog({
       const next = await api.getLibraryHoldingDetails(library.id, holding.file.id);
       setDetail(next);
       setDraft(draftFromDetail(next));
+      setBibliographyDraft(bibliographyDraftFromDetail(next));
+      setSelectedRestoreFields(new Set());
     } catch (caught) {
       setError(caught);
     } finally {
@@ -484,6 +666,7 @@ export function ResourceDetailsDialog({
       if (nextDetail) {
         setDetail(nextDetail);
         setDraft(draftFromDetail(nextDetail));
+        setBibliographyDraft(bibliographyDraftFromDetail(nextDetail));
         setEditing(false);
         onSaved(nextDetail);
       } else {
@@ -501,6 +684,7 @@ export function ResourceDetailsDialog({
           const latest = await api.getLibraryHoldingDetails(library.id, holding.file.id);
           setDetail(latest);
           setDraft(draftFromDetail(latest));
+          setBibliographyDraft(bibliographyDraftFromDetail(latest));
           setEditing(false);
           onSaved(latest);
           setSuggestionRun(null);
@@ -620,6 +804,7 @@ export function ResourceDetailsDialog({
       const next = await api.updateLibraryHoldingMetadata(library.id, holding.file.id, input);
       setDetail(next);
       setDraft(draftFromDetail(next));
+      setBibliographyDraft(bibliographyDraftFromDetail(next));
       setEditing(false);
       onSaved(next);
     } catch (caught) {
@@ -628,6 +813,7 @@ export function ResourceDetailsDialog({
           const latest = await api.getLibraryHoldingDetails(library.id, holding.file.id);
           setDetail(latest);
           setDraft(draftFromDetail(latest));
+          setBibliographyDraft(bibliographyDraftFromDetail(latest));
           setEditing(false);
           onSaved(latest);
           setNotice(t("metadata.conflictRefreshed"));
@@ -642,9 +828,86 @@ export function ResourceDetailsDialog({
     }
   }
 
+  async function saveBibliography() {
+    if (!detail || !api.updateLibraryHoldingBibliography) return;
+    const input = bibliographyInput(bibliographyDraft, detail.bibliographyVersion);
+    if (!input || bibliographyDraft.contributors.some((contributor) => !contributor.label.trim())) {
+      setError(new ApiError(400, "invalid_input"));
+      return;
+    }
+    setSavingBibliography(true);
+    setError(null);
+    setNotice("");
+    try {
+      const next = await api.updateLibraryHoldingBibliography(library.id, holding.file.id, input);
+      setDetail(next);
+      setDraft(draftFromDetail(next));
+      setBibliographyDraft(bibliographyDraftFromDetail(next));
+      setEditingBibliography(false);
+      setSelectedRestoreFields(new Set());
+      setNotice(t("metadata.bibliographySaved"));
+      onSaved(next);
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.code === "concurrent_change") {
+        try {
+          const latest = await api.getLibraryHoldingDetails(library.id, holding.file.id);
+          setDetail(latest);
+          setDraft(draftFromDetail(latest));
+          setBibliographyDraft(bibliographyDraftFromDetail(latest));
+          setEditingBibliography(false);
+          setSelectedRestoreFields(new Set());
+          setNotice(t("metadata.conflictRefreshed"));
+          onSaved(latest);
+        } catch (refreshError) {
+          setError(refreshError);
+        }
+      } else {
+        setError(caught);
+      }
+    } finally {
+      setSavingBibliography(false);
+    }
+  }
+
+  async function restoreAiAuthority() {
+    if (!detail || !api.restoreLibraryHoldingBibliographyAi) return;
+    const fields = detail.fieldAuthorities
+      .filter((authority) => authority.source === "human" && selectedRestoreFields.has(authorityKey(authority)))
+      .map(({ fieldName, scopeKey }) => ({ fieldName, scopeKey }));
+    if (fields.length === 0) {
+      setNotice(t("metadata.restoreAiSelect"));
+      return;
+    }
+    setRestoringAi(true);
+    setError(null);
+    setNotice("");
+    try {
+      const next = await api.restoreLibraryHoldingBibliographyAi(library.id, holding.file.id, {
+        bibliographyVersion: detail.bibliographyVersion,
+        fields,
+      });
+      setDetail(next);
+      setDraft(draftFromDetail(next));
+      setBibliographyDraft(bibliographyDraftFromDetail(next));
+      setSelectedRestoreFields(new Set());
+      setNotice(t("metadata.restoreAiDone"));
+      onSaved(next);
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.code === "concurrent_change") {
+        await loadDetails();
+        setNotice(t("metadata.conflictRefreshed"));
+      } else {
+        setError(caught);
+      }
+    } finally {
+      setRestoringAi(false);
+    }
+  }
+
   const metadata = detail?.metadata;
+  const bibliography = detail?.bibliography;
   const displayTitle = detail?.displayTitle ?? holding.canonicalTitle ?? holding.file.displayName;
-  const detailTypeLabel = metadata ? materialLabel(metadata.materialType, t) : null;
+  const detailTypeLabel = bibliography ? materialClassLabel(bibliography.materialClass, t) : metadata ? materialLabel(metadata.materialType, t) : null;
 
   return (
     <dialog ref={dialogRef} className="resource-details-modal" aria-labelledby="resource-details-title">
@@ -653,16 +916,17 @@ export function ResourceDetailsDialog({
           <h2 id="resource-details-title">{displayTitle}</h2>
           {detailTypeLabel && <span className="resource-details-type">{detailTypeLabel}</span>}
         </div>
-        <button className="button button--quiet" type="button" onClick={onClose} disabled={saving} aria-label={t("metadata.closeAria")}>{t("preview.close")}</button>
+        <button className="button button--quiet" type="button" onClick={onClose} disabled={saving || savingBibliography || restoringAi} aria-label={t("metadata.closeAria")}>{t("preview.close")}</button>
       </header>
       {loading ? <p role="status">{t("sharedLibrary.loading")}</p> : error !== null ? (
         <div className="alert alert--error" role="alert">{describeError(error, language)}</div>
       ) : detail && (
         <div className="resource-details-body">
           {notice && <div className="alert alert--success" role="status">{notice}</div>}
-          {!editing ? (
+          {!editing && !editingBibliography ? (
             <>
               {metadata ? <MetadataReadOnly metadata={metadata} t={t} /> : <p className="muted">{t("metadata.noMetadata")}</p>}
+              {bibliography ? <BibliographyReadOnly bibliography={bibliography} t={t} /> : <p className="muted">{t("metadata.noBibliography")}</p>}
               <fieldset className="resource-details-original">
                 <legend>{t("metadata.originalFilename")}</legend>
                 <p>{detail.originalFilename}</p>
@@ -691,13 +955,30 @@ export function ResourceDetailsDialog({
                   language={language}
                 />
               )}
+              {detail.canEditMetadata && api.restoreLibraryHoldingBibliographyAi && detail.fieldAuthorities.some((authority) => authority.source === "human") && (
+                <FieldAuthorityControl
+                  authorities={detail.fieldAuthorities}
+                  bibliography={bibliography ?? null}
+                  selected={selectedRestoreFields}
+                  busy={restoringAi}
+                  onToggle={(key) => setSelectedRestoreFields((current) => {
+                    const next = new Set(current);
+                    if (next.has(key)) next.delete(key); else next.add(key);
+                    return next;
+                  })}
+                  onRestore={() => void restoreAiAuthority()}
+                  t={t}
+                />
+              )}
               <footer className="resource-details-actions">
                 <button className="button button--quiet" type="button" onClick={onPreview} disabled={!holding.file.mediaType || (!holding.file.mediaType.startsWith("image/") && holding.file.mediaType !== "application/pdf")}>{t("menu.preview")}</button>
                 <button className="button" type="button" onClick={onDownload}>{t("menu.download")}</button>
-                {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--primary" type="button" onClick={() => setEditing(true)}>{t("metadata.edit")}</button>}
+                {api.generateLibraryCitation && onCitation && <button className="button" type="button" onClick={onCitation}>{t("citation.action")}</button>}
+                {detail.canEditMetadata && api.updateLibraryHoldingBibliography && <button className="button" type="button" onClick={() => { setEditingBibliography(true); setNotice(""); }}>{t("metadata.editBibliography")}</button>}
+                {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--primary" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.edit")}</button>}
               </footer>
             </>
-          ) : (
+          ) : editing ? (
             <>
               {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
                 <MetadataSuggestionsPanel
@@ -741,11 +1022,196 @@ export function ResourceDetailsDialog({
                 t={t}
               />
             </>
+          ) : (
+            <BibliographyEditor
+              draft={bibliographyDraft}
+              setDraft={setBibliographyDraft}
+              saving={savingBibliography}
+              onCancel={() => { setBibliographyDraft(bibliographyDraftFromDetail(detail)); setEditingBibliography(false); setNotice(""); }}
+              onSave={() => void saveBibliography()}
+              t={t}
+            />
           )}
         </div>
       )}
     </dialog>
   );
+}
+
+function BibliographyReadOnly({
+  bibliography,
+  t,
+}: {
+  bibliography: NonNullable<LibraryHoldingDetails["bibliography"]>;
+  t: ReturnType<typeof useLanguage>["t"];
+}) {
+  const publication = [bibliography.publication.place, bibliography.publication.publisher, bibliography.publication.publicationDate]
+    .filter(Boolean).join(" · ");
+  const carrier = [
+    bibliography.carrierEdition.editionType ? editionTypeLabel(bibliography.carrierEdition.editionType, t) : "",
+    bibliography.carrierEdition.editionStatement,
+    bibliography.carrierEdition.facsimileStatement,
+  ].filter(Boolean).join(" · ");
+  const source = [
+    bibliography.sourceEdition.dynasty,
+    bibliography.sourceEdition.reignTitle,
+    bibliography.sourceEdition.reignYear,
+    bibliography.sourceEdition.absoluteYear === undefined ? "" : String(bibliography.sourceEdition.absoluteYear),
+    bibliography.sourceEdition.printingPlace,
+    bibliography.sourceEdition.printer,
+    bibliography.sourceEdition.imprint,
+    bibliography.sourceEdition.bookshop,
+    bibliography.sourceEdition.institution,
+    bibliography.sourceEdition.editionType ? editionTypeLabel(bibliography.sourceEdition.editionType, t) : "",
+    bibliography.sourceEdition.editionStatement,
+    bibliography.sourceEdition.holdingInformation,
+  ].filter(Boolean).join(" · ");
+  return <section className="resource-bibliography" aria-labelledby="resource-bibliography-title">
+    <h3 id="resource-bibliography-title">{t("metadata.bibliographyTitle")}</h3>
+    <div className="resource-details-facts"><dl>
+      <ReactFact label={t("librarySearch.materialClass")} value={materialClassLabel(bibliography.materialClass, t)} />
+      {bibliography.contributors.length > 0 && <ReactFact label={t("metadata.contributors")} value={bibliography.contributors.map((contributor) => `${contributor.label}${contributor.roleLabel ?? contributorRoleLabel(contributor.role, t)}`).join("、")} />}
+      {publication && <ReactFact label={t("metadata.publication")} value={publication} />}
+      {bibliography.publication.editionNumber && <ReactFact label={t("metadata.editionNumber")} value={bibliography.publication.editionNumber} />}
+      {bibliography.publication.printing && <ReactFact label={t("metadata.printing")} value={bibliography.publication.printing} />}
+      {bibliography.series && <ReactFact label={t("metadata.series")} value={bibliography.series} />}
+      {bibliography.volume && <ReactFact label={t("metadata.volume")} value={bibliography.volume} />}
+      {bibliography.language && <ReactFact label={t("metadata.language")} value={bibliography.language} />}
+      {carrier && <ReactFact label={t("metadata.carrierEdition")} value={carrier} />}
+      {source && <ReactFact label={t("metadata.sourceEdition")} value={source} />}
+    </dl></div>
+  </section>;
+}
+
+function authorityFieldLabel(
+  authority: BibliographicFieldAuthority,
+  bibliography: LibraryHoldingDetails["bibliography"],
+  t: ReturnType<typeof useLanguage>["t"],
+): string {
+  const labels: Partial<Record<BibliographicFieldName, string>> = {
+    materialClass: t("librarySearch.materialClass"), canonicalTitle: t("metadata.canonicalTitle"), subtitle: t("metadata.subtitle"),
+    alternativeTitles: t("metadata.alternativeTitles"), dateStatement: t("metadata.dateStatement"), identifiers: t("metadata.identifiers"),
+    "publication.publisher": t("metadata.publisher"), "publication.place": t("metadata.place"), "publication.publicationDate": t("metadata.publicationDate"),
+    "publication.editionNumber": t("metadata.editionNumber"), "publication.printing": t("metadata.printing"), series: t("metadata.series"),
+    volume: t("metadata.volume"), language: t("metadata.language"), "carrierEdition.editionType": t("metadata.editionType"),
+    "carrierEdition.editionStatement": t("metadata.editionStatement"), "carrierEdition.facsimileStatement": t("metadata.facsimileStatement"),
+    "sourceEdition.dynasty": t("metadata.dynasty"), "sourceEdition.reignTitle": t("metadata.reignTitle"),
+    "sourceEdition.reignYear": t("metadata.reignYear"), "sourceEdition.absoluteYear": t("metadata.absoluteYear"),
+    "sourceEdition.printer": t("metadata.printer"), "sourceEdition.imprint": t("metadata.imprint"), "sourceEdition.bookshop": t("metadata.bookshop"),
+    "sourceEdition.institution": t("metadata.institution"), "sourceEdition.printingPlace": t("metadata.printingPlace"),
+    "sourceEdition.editionType": t("metadata.editionType"), "sourceEdition.editionStatement": t("metadata.editionStatement"),
+    "sourceEdition.holdingInformation": t("metadata.holdingInformation"), "contributor.label": t("metadata.contributorName"),
+    "contributor.role": t("metadata.contributorRole"), "contributor.roleLabel": t("metadata.contributorRoleLabel"),
+    "contributor.authorityId": t("metadata.authorities"),
+  };
+  const base = labels[authority.fieldName] ?? authority.fieldName;
+  if (!authority.scopeKey) return base;
+  const contributor = bibliography?.contributors.find((entry) => entry.id === authority.scopeKey);
+  return contributor ? `${base} — ${contributor.label}` : base;
+}
+
+function FieldAuthorityControl({
+  authorities,
+  bibliography,
+  selected,
+  busy,
+  onToggle,
+  onRestore,
+  t,
+}: {
+  authorities: BibliographicFieldAuthority[];
+  bibliography: LibraryHoldingDetails["bibliography"];
+  selected: Set<string>;
+  busy: boolean;
+  onToggle: (key: string) => void;
+  onRestore: () => void;
+  t: ReturnType<typeof useLanguage>["t"];
+}) {
+  const human = authorities.filter((authority) => authority.source === "human");
+  return <details className="field-authority-control">
+    <summary>{t("metadata.restoreAiTitle")} · {human.length}</summary>
+    <p>{t("metadata.restoreAiHelp")}</p>
+    <div className="field-authority-list">
+      {human.map((authority) => {
+        const key = authorityKey(authority);
+        return <label key={key}><input type="checkbox" checked={selected.has(key)} onChange={() => onToggle(key)} />{authorityFieldLabel(authority, bibliography, t)}</label>;
+      })}
+    </div>
+    <button className="button button--small" type="button" disabled={busy || selected.size === 0} onClick={onRestore}>{t("metadata.restoreAi")}</button>
+  </details>;
+}
+
+function BibliographyEditor({
+  draft,
+  setDraft,
+  saving,
+  onCancel,
+  onSave,
+  t,
+}: {
+  draft: BibliographyDraft;
+  setDraft: Dispatch<SetStateAction<BibliographyDraft>>;
+  saving: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+  t: ReturnType<typeof useLanguage>["t"];
+}) {
+  function set<K extends keyof BibliographyDraft>(key: K, value: BibliographyDraft[K]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+  const yearValid = draft.sourceAbsoluteYear.trim() === "" || /^-?\d{1,4}$/u.test(draft.sourceAbsoluteYear.trim());
+  return <div className="resource-details-editor bibliography-editor">
+    <fieldset><legend>{t("metadata.bibliographyTitle")}</legend>
+      <label>{t("librarySearch.materialClass")}<select value={draft.materialClass} onChange={(event) => set("materialClass", event.target.value as MaterialClass)}>{MATERIAL_CLASSES.map((value) => <option key={value} value={value}>{materialClassLabel(value, t)}</option>)}</select></label>
+      <label>{t("metadata.series")}<input maxLength={255} value={draft.series} onChange={(event) => set("series", event.target.value)} /></label>
+      <label>{t("metadata.volume")}<input maxLength={128} value={draft.volume} onChange={(event) => set("volume", event.target.value)} /></label>
+      <label>{t("metadata.language")}<input maxLength={128} value={draft.language} onChange={(event) => set("language", event.target.value)} /></label>
+    </fieldset>
+    <fieldset><legend>{t("metadata.contributors")}</legend>
+      {draft.contributors.map((contributor, index) => <div className="bibliography-contributor-row" key={contributor.id ?? `new-${index}`}>
+        <input aria-label={t("metadata.contributorName")} maxLength={255} value={contributor.label} onChange={(event) => setDraft((current) => ({ ...current, contributors: current.contributors.map((item, itemIndex) => {
+          if (itemIndex !== index) return item;
+          const { authorityId: _authorityId, ...unbound } = item;
+          return { ...unbound, label: event.target.value };
+        }) }))} />
+        <select aria-label={t("metadata.contributorRole")} value={contributor.role} onChange={(event) => setDraft((current) => ({ ...current, contributors: current.contributors.map((item, itemIndex) => itemIndex === index ? { ...item, role: event.target.value as ContributorRole } : item) }))}>{CONTRIBUTOR_ROLES.map((role) => <option key={role} value={role}>{contributorRoleLabel(role, t)}</option>)}</select>
+        <input aria-label={t("metadata.contributorRoleLabel")} maxLength={64} value={contributor.roleLabel} onChange={(event) => setDraft((current) => ({ ...current, contributors: current.contributors.map((item, itemIndex) => itemIndex === index ? { ...item, roleLabel: event.target.value } : item) }))} />
+        <button className="button button--small button--quiet" type="button" onClick={() => setDraft((current) => ({ ...current, contributors: current.contributors.filter((_, itemIndex) => itemIndex !== index) }))}>{t("alert.dismiss")}</button>
+      </div>)}
+      {draft.contributors.length < 64 && <button className="button button--small" type="button" onClick={() => setDraft((current) => ({ ...current, contributors: [...current.contributors, { label: "", role: "author", roleLabel: "" }] }))}>{t("metadata.addContributor")}</button>}
+    </fieldset>
+    <fieldset><legend>{t("metadata.publication")}</legend>
+      <label>{t("metadata.publisher")}<input maxLength={255} value={draft.publisher} onChange={(event) => set("publisher", event.target.value)} /></label>
+      <label>{t("metadata.place")}<input maxLength={255} value={draft.place} onChange={(event) => set("place", event.target.value)} /></label>
+      <label>{t("metadata.publicationDate")}<input maxLength={64} value={draft.publicationDate} onChange={(event) => set("publicationDate", event.target.value)} /></label>
+      <label>{t("metadata.editionNumber")}<input maxLength={128} value={draft.editionNumber} onChange={(event) => set("editionNumber", event.target.value)} /></label>
+      <label>{t("metadata.printing")}<input maxLength={128} value={draft.printing} onChange={(event) => set("printing", event.target.value)} /></label>
+    </fieldset>
+    <fieldset><legend>{t("metadata.carrierEdition")}</legend>
+      <EditionTypeSelect value={draft.carrierEditionType} onChange={(value) => set("carrierEditionType", value)} t={t} />
+      <label>{t("metadata.editionStatement")}<input maxLength={512} value={draft.carrierEditionStatement} onChange={(event) => set("carrierEditionStatement", event.target.value)} /></label>
+      <label>{t("metadata.facsimileStatement")}<input maxLength={512} value={draft.facsimileStatement} onChange={(event) => set("facsimileStatement", event.target.value)} /></label>
+    </fieldset>
+    <fieldset><legend>{t("metadata.sourceEdition")}</legend>
+      <label>{t("metadata.dynasty")}<input maxLength={64} value={draft.sourceDynasty} onChange={(event) => set("sourceDynasty", event.target.value)} /></label>
+      <label>{t("metadata.reignTitle")}<input maxLength={64} value={draft.sourceReignTitle} onChange={(event) => set("sourceReignTitle", event.target.value)} /></label>
+      <label>{t("metadata.reignYear")}<input maxLength={64} value={draft.sourceReignYear} onChange={(event) => set("sourceReignYear", event.target.value)} /></label>
+      <label>{t("metadata.absoluteYear")}<input inputMode="numeric" maxLength={5} aria-invalid={!yearValid} value={draft.sourceAbsoluteYear} onChange={(event) => set("sourceAbsoluteYear", event.target.value)} /></label>
+      <label>{t("metadata.printer")}<input maxLength={255} value={draft.sourcePrinter} onChange={(event) => set("sourcePrinter", event.target.value)} /></label>
+      <label>{t("metadata.imprint")}<input maxLength={255} value={draft.sourceImprint} onChange={(event) => set("sourceImprint", event.target.value)} /></label>
+      <label>{t("metadata.bookshop")}<input maxLength={255} value={draft.sourceBookshop} onChange={(event) => set("sourceBookshop", event.target.value)} /></label>
+      <label>{t("metadata.institution")}<input maxLength={255} value={draft.sourceInstitution} onChange={(event) => set("sourceInstitution", event.target.value)} /></label>
+      <label>{t("metadata.printingPlace")}<input maxLength={255} value={draft.sourcePrintingPlace} onChange={(event) => set("sourcePrintingPlace", event.target.value)} /></label>
+      <EditionTypeSelect value={draft.sourceEditionType} onChange={(value) => set("sourceEditionType", value)} t={t} />
+      <label>{t("metadata.editionStatement")}<input maxLength={512} value={draft.sourceEditionStatement} onChange={(event) => set("sourceEditionStatement", event.target.value)} /></label>
+      <label>{t("metadata.holdingInformation")}<input maxLength={512} value={draft.sourceHoldingInformation} onChange={(event) => set("sourceHoldingInformation", event.target.value)} /></label>
+    </fieldset>
+    <footer className="resource-details-actions"><button className="button button--quiet" type="button" disabled={saving} onClick={onCancel}>{t("metadata.cancel")}</button><button className="button button--primary" type="button" disabled={saving || !yearValid || draft.contributors.some((contributor) => !contributor.label.trim())} onClick={onSave}>{saving ? t("metadata.savingBibliography") : t("metadata.saveBibliography")}</button></footer>
+  </div>;
+}
+
+function EditionTypeSelect({ value, onChange, t }: { value: EditionType | ""; onChange: (value: EditionType | "") => void; t: ReturnType<typeof useLanguage>["t"] }) {
+  return <label>{t("metadata.editionType")}<select value={value} onChange={(event) => onChange(event.target.value as EditionType | "")}><option value="">{t("librarySearch.any")}</option>{EDITION_TYPES.map((type) => <option key={type} value={type}>{editionTypeLabel(type, t)}</option>)}</select></label>;
 }
 
 function MetadataReadOnly({ metadata, t }: { metadata: NonNullable<LibraryHoldingDetails["metadata"]>; t: ReturnType<typeof useLanguage>["t"] }) {

@@ -102,8 +102,10 @@ completed metadata-aware Search, the exact 19-class/advanced-filter contract,
 query/filter/sort-bound keyset cursors, and non-persisted scholarly catalogue
 display composition. Checkpoint D accepted ADR-035 and completed the
 exact-pinned offline CSL citation projection for Chicago Notes & Bibliography,
-《历史研究》, 《文史哲》, and current GB/T 7714—2025. Continue E integrated Library and
-Activity UX → F full verification, stopped-service backup, migrations 023–024,
+《历史研究》, 《文史哲》, and current GB/T 7714—2025. Checkpoint E completed the
+compact responsive Library controls, collapsed/local-preference Activity
+Center, direct structured bibliography/field-authority editing, and the
+four-style citation dialog. Continue F full verification, stopped-service backup, migrations 023–024,
 exact immutable build/deployment, and bounded production verification. No
 partial production deployment is allowed. Production therefore remains exact
 `53317bb…` at schema v22/history 001–022 until F is green; development migration

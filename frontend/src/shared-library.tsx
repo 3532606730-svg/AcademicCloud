@@ -8,13 +8,6 @@ function preferredLibrary(libraries: LibrarySummary[]): LibrarySummary | null {
   return libraries.find((library) => library.isDefault) ?? libraries[0] ?? null;
 }
 
-const SORT_OPTIONS: ReadonlyArray<{ value: LibraryHoldingSort; key: "sortNewest" | "sortOldest" | "sortTitle" | "sortSize" }> = [
-  { value: "newest", key: "sortNewest" },
-  { value: "oldest", key: "sortOldest" },
-  { value: "title_asc", key: "sortTitle" },
-  { value: "size_desc", key: "sortSize" },
-];
-
 /**
  * The normal Library surface. RF-SHAREDDEFAULT01 makes the default Library
  * the canonical corpus; this component therefore presents holdings directly
@@ -36,6 +29,8 @@ export function SharedLibraryPanel({
     loading: boolean;
     nextCursor: string | null;
     loadingMore: boolean;
+    sort: LibraryHoldingSort;
+    onSortChange: (sort: LibraryHoldingSort) => void;
     onLoadMore: () => void;
   }) => ReactNode;
   onCatalogueChange?: (state: { library: LibrarySummary | null; holdings: LibraryHolding[] }) => void;
@@ -131,26 +126,20 @@ export function SharedLibraryPanel({
   return (
     <div className="shared-library-panel">
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
-      {library && (
-        <div className="library-sort-toolbar">
-          <label htmlFor="library-sort-select">{t("library.sortLabel")}</label>
-          <select
-            id="library-sort-select"
-            value={sort}
-            disabled={loading}
-            onChange={(event) => {
-              setSort(event.target.value as LibraryHoldingSort);
-              setHoldings([]);
-              setNextCursor(null);
-            }}
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{t(`library.${option.key}`)}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {renderCatalogue({ library, holdings, loading, nextCursor, loadingMore, onLoadMore: loadMore })}
+      {renderCatalogue({
+        library,
+        holdings,
+        loading,
+        nextCursor,
+        loadingMore,
+        sort,
+        onSortChange: (nextSort) => {
+          setSort(nextSort);
+          setHoldings([]);
+          setNextCursor(null);
+        },
+        onLoadMore: loadMore,
+      })}
       {library?.role !== "manager" && contributions.length > 0 && (
         <section className="shared-library-members" aria-labelledby="shared-library-my-contributions-title">
           <div className="section-heading"><h3 id="shared-library-my-contributions-title">{t("sharedLibrary.myContributions")}</h3><span>{contributions.length}</span></div>
