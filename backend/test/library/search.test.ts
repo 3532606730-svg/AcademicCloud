@@ -10,6 +10,7 @@ import {
   type SearchableHolding,
 } from "../../src/library/search.js";
 import type { CanonicalMetadata } from "../../src/metadata/metadata.js";
+import type { BibliographicProfile } from "../../src/bibliography/bibliography.js";
 
 function metadata(overrides: Partial<CanonicalMetadata> = {}): CanonicalMetadata {
   return {
@@ -36,13 +37,36 @@ function holding(overrides: Partial<SearchableHolding> = {}): SearchableHolding 
   return {
     fileId: "file-a",
     displayName: "zhangfan-yuandai-zaixiang.pdf",
+    sizeBytes: 12,
+    artifactId: "artifact-a",
+    artifactCreatedAt: new Date("2026-08-18T00:00:00.000Z"),
     canonicalTitle: "元代宰相制度研究",
     metadata: metadata(),
+    bibliography: null,
     authorLabels: ["张帆"],
     authorities: [
       { type: "person", role: "author", label: "张帆", aliases: [] },
       { type: "institution", role: "publisher", label: "北京大学出版社", aliases: [] },
     ],
+    ...overrides,
+  };
+}
+
+function bibliography(overrides: Partial<BibliographicProfile> = {}): BibliographicProfile {
+  return {
+    recordId: "record",
+    ownerDomainId: "library:lib",
+    contractVersion: 1,
+    materialClass: "scholarly_monograph",
+    contributors: [],
+    publication: {},
+    carrierEdition: {},
+    sourceEdition: {},
+    revision: 1,
+    createdByAccountId: "owner",
+    updatedByAccountId: "owner",
+    createdAt: new Date("2026-08-18T00:00:00.000Z"),
+    updatedAt: new Date("2026-08-18T00:00:00.000Z"),
     ...overrides,
   };
 }
@@ -131,7 +155,8 @@ test("result DTO exposes only presentation fields, never internal identity", () 
   const page = searchHoldings([holding()], "元代宰相制度研究", 10, null);
   const result = page.results[0]!;
   assert.deepEqual(Object.keys(result).sort(), [
-    "authorLabels", "canonicalTitle", "date", "displayName", "fileId", "materialType", "publisher",
+    "authorLabels", "canonicalTitle", "catalogueDisplayTitle", "contributorLabels", "date", "displayName",
+    "editionStatement", "fileId", "language", "materialClass", "materialType", "publisher",
   ]);
   assert.equal(result.publisher, "北京大学出版社");
   assert.equal(result.date, "1997");
@@ -189,4 +214,92 @@ test("collectAllHoldings enumerates the whole corpus and fails closed instead of
 
   assert.deepEqual(collectAllHoldings(paginator, 2, 100)?.map((row) => row.id), ["h0", "h1", "h2", "h3", "h4"]);
   assert.equal(collectAllHoldings(paginator, 2, 2), null, "exceeding the page guard must fail closed, not truncate");
+});
+
+test("structured bibliography search preserves title priority and supports historical and modern edition concepts", () => {
+  const exactTitle = holding({ fileId: "title", canonicalTitle: "中华书局点校本", bibliography: null });
+  const modern = holding({
+    fileId: "modern",
+    canonicalTitle: "元史",
+    bibliography: bibliography({
+      materialClass: "primary_source_modern_edition",
+      contributors: [{ id: "c-modern", label: "宋濂", role: "annotator", roleLabel: "点校" }],
+      publication: { publisher: "中华书局", place: "北京", publicationDate: "1976" },
+      carrierEdition: { editionType: "annotated_edition" },
+    }),
+  });
+  const traditional = holding({
+    fileId: "traditional",
+    canonicalTitle: "某书",
+    bibliography: bibliography({
+      materialClass: "traditional_book",
+      sourceEdition: { dynasty: "明", reignTitle: "万历", reignYear: "二十四", institution: "武英殿", editionType: "engraved" },
+    }),
+  });
+
+  assert.deepEqual(results("中华书局点校本", [modern]).map((item) => item.fileId), ["modern"]);
+  assert.deepEqual(results("现代点校本", [modern]).map((item) => item.fileId), ["modern"]);
+  assert.deepEqual(results("明代刻本", [traditional]).map((item) => item.fileId), ["traditional"]);
+  assert.deepEqual(results("万历刻本", [traditional]).map((item) => item.fileId), ["traditional"]);
+  assert.deepEqual(results("武英殿本", [traditional]).map((item) => item.fileId), ["traditional"]);
+  assert.deepEqual(searchHoldings([modern, exactTitle], "中华书局点校本", 10).results.map((item) => item.fileId), ["title", "modern"]);
+});
+
+test("material and advanced filters are server-authoritative and compose conjunctively", () => {
+  const modern = holding({
+    fileId: "modern-filter",
+    bibliography: bibliography({
+      materialClass: "primary_source_modern_edition",
+      contributors: [{ id: "c-filter", label: "顾颉刚", role: "annotator", roleLabel: "点校" }],
+      publication: { publisher: "中华书局", publicationDate: "1976" },
+      series: "二十四史",
+      volume: "第一册",
+      language: "汉语",
+      carrierEdition: { editionType: "annotated_edition" },
+      sourceEdition: { dynasty: "元", reignTitle: "至正" },
+    }),
+  });
+  const traditional = holding({
+    fileId: "traditional-filter",
+    bibliography: bibliography({ materialClass: "traditional_book", language: "汉语", sourceEdition: { dynasty: "明", editionType: "engraved" } }),
+  });
+  const filters = {
+    materialClass: "primary_source_modern_edition" as const,
+    contributor: "顾颉刚",
+    language: "汉语",
+    publisher: "中华书局",
+    year: "1976",
+    editionType: "annotated_edition" as const,
+    dynasty: "元",
+    reignTitle: "至正",
+    editorialRole: "annotator" as const,
+    series: "二十四史",
+    volume: "第一册",
+  };
+  assert.deepEqual(searchHoldings([traditional, modern], "", 10, null, filters).results.map((item) => item.fileId), ["modern-filter"]);
+  assert.deepEqual(searchHoldings([traditional, modern], "", 10, null, { materialClass: "traditional_book" }).results.map((item) => item.fileId), ["traditional-filter"]);
+  assert.throws(() => searchHoldings([modern], "", 10), (error) => error instanceof SearchInputError && error.code === "empty_query");
+});
+
+test("cursor identity binds query, filters, and sort while every search sort paginates without duplicates", () => {
+  const corpus = Array.from({ length: 5 }, (_, index) => holding({
+    fileId: `sorted-${index}`,
+    artifactId: `artifact-${index}`,
+    artifactCreatedAt: new Date(`2026-08-${String(10 + index).padStart(2, "0")}T00:00:00.000Z`),
+    sizeBytes: 10 + index,
+    canonicalTitle: `书 ${index}`,
+    bibliography: bibliography({ materialClass: "traditional_book", sourceEdition: { dynasty: index % 2 === 0 ? "明" : "清" } }),
+  }));
+  for (const sort of ["relevance", "newest", "oldest", "title_asc", "title_desc", "size_asc", "size_desc"] as const) {
+    const first = searchHoldings(corpus, "书", 2, null, { materialClass: "traditional_book" }, sort);
+    const second = searchHoldings(corpus, "书", 2, first.nextCursor, { materialClass: "traditional_book" }, sort);
+    const third = searchHoldings(corpus, "书", 2, second.nextCursor, { materialClass: "traditional_book" }, sort);
+    const ids = [...first.results, ...second.results, ...third.results].map((item) => item.fileId);
+    assert.equal(ids.length, 5);
+    assert.equal(new Set(ids).size, 5);
+  }
+  const page = searchHoldings(corpus, "书", 2, null, { dynasty: "明" }, "newest");
+  assert.ok(page.nextCursor);
+  assert.throws(() => searchHoldings(corpus, "书", 2, page.nextCursor, { dynasty: "清" }, "newest"), (error) => error instanceof SearchInputError && error.code === "invalid_cursor");
+  assert.throws(() => searchHoldings(corpus, "书", 2, page.nextCursor, { dynasty: "明" }, "oldest"), (error) => error instanceof SearchInputError && error.code === "invalid_cursor");
 });

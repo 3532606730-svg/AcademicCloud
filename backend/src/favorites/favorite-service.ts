@@ -65,7 +65,9 @@ export class FavoriteService {
     const holding = repositories.libraries.findHoldingByFile(library.id, fileId);
     if (!holding) return null;
     const file = repositories.files.findByDomainId(library.ownerDomainId, fileId);
-    return file ? { file, libraryHolding: { library, role: membership.role, holding } } : null;
+    if (!file) return null;
+    const bibliography = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
+    return { file, libraryHolding: { library, role: membership.role, holding, bibliography } };
   }
 
   setFolderFavorite(accountId: string, folderId: string, favorite: boolean): void {

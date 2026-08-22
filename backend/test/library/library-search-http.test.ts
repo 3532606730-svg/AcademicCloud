@@ -62,6 +62,24 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
   `).run(defaultLibrary.owner_domain_id, timestamp, timestamp);
   provisioning.prepare("INSERT INTO scholarly_record_authority_links (record_id, owner_domain_id, position, authority_id, role) VALUES (?, ?, 0, 'search-http-author', 'author')")
     .run(recordId, defaultLibrary.owner_domain_id);
+  provisioning.prepare(`
+    INSERT INTO scholarly_bibliographic_profiles (
+      record_id, owner_domain_id, material_class, publication_publisher, publication_place,
+      publication_date, series_title, volume_part, language_label, carrier_edition_type,
+      revision, created_by_account_id, updated_by_account_id, created_at, updated_at
+    ) VALUES (?, ?, 'primary_source_modern_edition', '中华书局', '北京', '1976',
+      '二十四史', '第一册', '汉语', 'annotated_edition', 1, 'owner-search', 'owner-search', ?, ?)
+  `).run(recordId, defaultLibrary.owner_domain_id, timestamp, timestamp);
+  provisioning.prepare(`
+    INSERT INTO scholarly_bibliographic_contributors (
+      id, record_id, owner_domain_id, position, label, role, role_label, authority_id
+    ) VALUES ('search-http-contributor', ?, ?, 0, '顾颉刚', 'annotator', '点校', NULL)
+  `).run(recordId, defaultLibrary.owner_domain_id);
+  provisioning.prepare(`
+    INSERT INTO scholarly_bibliographic_source_editions (
+      record_id, owner_domain_id, dynasty, reign_title, edition_type
+    ) VALUES (?, ?, '元', '至正', 'engraved')
+  `).run(recordId, defaultLibrary.owner_domain_id);
   provisioning.close();
 
   const app = await createApplication(
@@ -97,6 +115,27 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
     assert.equal(body.results[0]?.fileId, fileId);
     assert.equal(body.results[0]?.canonicalTitle, "元代宰相制度研究");
 
+    const filtered = await app.inject({
+      method: "GET",
+      url: `/api/libraries/${defaultLibrary.id}/holdings/search?materialClass=primary_source_modern_edition&publisher=${encodeURIComponent("中华书局")}&year=1976&editorialRole=annotator&sort=title_asc`,
+      headers: headers(memberCookie),
+    });
+    assert.equal(filtered.statusCode, 200);
+    assert.deepEqual((filtered.json() as { results: Array<{ fileId: string; materialClass: string; catalogueDisplayTitle: string }> }).results, [{
+      fileId,
+      materialClass: "primary_source_modern_edition",
+      catalogueDisplayTitle: "元代宰相制度研究 中华书局1976点校本",
+      canonicalTitle: "元代宰相制度研究",
+      authorLabels: ["张帆"],
+      contributorLabels: ["顾颉刚"],
+      date: "1976",
+      publisher: "中华书局",
+      materialType: "book",
+      language: "汉语",
+      editionStatement: "中华书局1976点校本",
+      displayName: "scan-001.pdf",
+    }]);
+
     const noMatch = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings/search?q=${encodeURIComponent("不存在")}`, headers: headers(memberCookie) });
     assert.equal(noMatch.statusCode, 200);
     assert.equal((noMatch.json() as { results: unknown[] }).results.length, 0);
@@ -111,6 +150,9 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
 
     const tooLong = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings/search?q=${encodeURIComponent("a".repeat(101))}`, headers: headers(memberCookie) });
     assert.equal(tooLong.statusCode, 400);
+
+    const invalidMaterial = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings/search?materialClass=book`, headers: headers(memberCookie) });
+    assert.equal(invalidMaterial.statusCode, 400);
   } finally {
     await app.close();
     rmSync(dbPath, { force: true });

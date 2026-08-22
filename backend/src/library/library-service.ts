@@ -23,6 +23,7 @@ import {
   searchHoldings,
   SEARCH_MAX_SCAN_PAGES,
   SEARCH_SCAN_PAGE_SIZE,
+  type LibrarySearchFilters,
   type LibrarySearchPage,
   type SearchableAuthority,
   type SearchableHolding,
@@ -532,8 +533,9 @@ export class LibraryService {
   listHoldings(accountId: string, libraryId: string, limit = 100): LibraryHoldingView[] {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new LibraryError("invalid_input");
     const repositories = this.#persistence.repositories;
-    this.#requireMember(accountId, libraryId, repositories);
-    return repositories.libraries.listHoldings(libraryId, limit).map(libraryHoldingView);
+    const library = this.#requireMember(accountId, libraryId, repositories);
+    return repositories.libraries.listHoldings(libraryId, limit).map((holding) =>
+      libraryHoldingView(holding, repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId)));
   }
 
   listHoldingsSorted(
@@ -560,7 +562,11 @@ export class LibraryService {
         const last = visible[visible.length - 1]!;
         nextCursor = encodeHoldingSortCursor(holdingSortCursorFor(sort, last));
       }
-      return { holdings: visible.map(libraryHoldingView), nextCursor };
+      return {
+        holdings: visible.map((holding) =>
+          libraryHoldingView(holding, repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId))),
+        nextCursor,
+      };
     });
   }
 
@@ -570,6 +576,8 @@ export class LibraryService {
     rawQuery: string,
     limit: number,
     cursor: string | null,
+    filters: LibrarySearchFilters = {},
+    sort = "relevance",
   ): LibrarySearchPage {
     // Effective-authority filtering is the first step: a non-member, a
     // disabled account, or a guessed library id throws not_found before any
@@ -585,7 +593,7 @@ export class LibraryService {
       );
       if (holdings === null) throw new LibraryError("invalid_state");
       const searchable = holdings.map((holding) => this.#searchableHolding(library.ownerDomainId, holding, repositories));
-      return searchHoldings(searchable, rawQuery, limit, cursor);
+      return searchHoldings(searchable, rawQuery, limit, cursor, filters, sort);
     });
   }
 
@@ -595,6 +603,7 @@ export class LibraryService {
     repositories: RepositorySet,
   ): SearchableHolding {
     const metadata = repositories.metadata.findMetadata(ownerDomainId, holding.recordId);
+    const bibliography = repositories.bibliography.findProfile(ownerDomainId, holding.recordId);
     const authorities: SearchableAuthority[] = [];
     if (metadata) {
       for (const link of metadata.authorityLinks) {
@@ -611,8 +620,12 @@ export class LibraryService {
     return {
       fileId: holding.file.id,
       displayName: holding.file.displayName,
+      sizeBytes: holding.file.sizeBytes,
+      artifactId: holding.artifactId,
+      artifactCreatedAt: holding.artifactCreatedAt,
       canonicalTitle: holding.canonicalTitle,
       metadata,
+      bibliography,
       authorLabels: [...holding.authorLabels],
       authorities,
     };

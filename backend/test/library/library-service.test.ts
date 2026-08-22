@@ -145,6 +145,23 @@ test("Library holdings project ordered author labels without denormalizing canon
   const catalogued = libraries.listHoldings(OWNER.id, library.id)[0]!;
   assert.equal(catalogued.canonicalTitle, "书名");
   assert.deepEqual(catalogued.authorLabels, ["作者甲", "作者乙"]);
+  persistence.repositories.bibliography.saveProfile({
+    recordId: catalogued.recordId,
+    ownerDomainId: `library:${library.id}`,
+    actorAccountId: OWNER.id,
+    expectedRevision: null,
+    now: NOW,
+    materialClass: "scholarly_monograph",
+    contributors: [{ id: "library-catalogue-author", label: "作者甲", role: "author" }],
+    publication: { publisher: "学术出版社", publicationDate: "2026" },
+    language: "汉语",
+    carrierEdition: {},
+    sourceEdition: {},
+  });
+  const intelligent = libraries.listHoldings(OWNER.id, library.id)[0]!;
+  assert.equal(intelligent.materialClass, "scholarly_monograph");
+  assert.deepEqual(intelligent.contributorLabels, ["作者甲"]);
+  assert.equal(intelligent.catalogueDisplayTitle, "作者甲 书名");
 
   libraries.addMember(OWNER, library.id, MEMBER.id, "member");
   assert.deepEqual(libraries.listHoldings(MEMBER.id, library.id)[0]?.authorLabels, ["作者甲", "作者乙"]);

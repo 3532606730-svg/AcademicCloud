@@ -31,8 +31,8 @@ production failure. Do not start internal beta or invite users.
 | Checkpoint | Scope | State | Exact checkpoint SHA |
 |---|---|---|---|
 | A | Domain + persistence architecture | COMPLETE / PUSHED / SYNCED | `fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643` |
-| B | AI bibliographic Compute | COMPLETE / QUALIFIED / PUSHED / SYNCED | B tip; exact SHA recorded before C |
-| C | Search + filters + display | PENDING | — |
+| B | AI bibliographic Compute | COMPLETE / QUALIFIED / PUSHED / SYNCED | `9d8a3a097a5eba0d8c1603cee18568793417b135` |
+| C | Search + filters + display | COMPLETE / PUSHED / SYNCED | C tip; exact SHA recorded before D |
 | D | Citation engine | PENDING | — |
 | E | Library UX + Activity Center | PENDING | — |
 | F | Integration + migration + exact production deployment | PENDING | — |
@@ -144,6 +144,62 @@ git diff --check = PASS
 - ADR-033 is Accepted. Production remains exact `53317bb…` at schema
   v22/history 001–022; no partial deployment or production migration occurred.
 
+## Checkpoint C acceptance evidence
+
+### Implemented
+
+- Accepted ADR-034 and extended the authorization-first catalogue query over
+  the migration-023 bibliography without changing the existing RF-SEARCH01
+  title/contributor-first relevance tiers or making composed display text the
+  sole search identity.
+- Added server-authoritative filtering for the exact 19-value material class
+  plus contributor, language, publisher, publication year/date, carrier/source
+  edition type, dynasty, reign title, editorial role, series, and volume.
+- Bound every Search cursor to a SHA-256 identity of the normalized query,
+  normalized filters, and sort mode. Keyset continuation supports relevance
+  and all existing six sort modes; incompatible cursors fail closed.
+- Preserved the established normal Library sort implementation, Hanyu-Pinyin
+  title behavior, natural/numeric policy, Unicode fallback, and deterministic
+  tie-breaks. Search relevance and normal sorting remain distinct.
+- Added evidence-driven structured edition matching for modern and historical
+  queries including `明代刻本`, `万历刻本`, `武英殿本`, `影印本`, `现代点校本`,
+  and `中华书局点校本`.
+- Added one presentation-only modern/historical/facsimile display composer.
+  Modern scholarship uses contributor + space + title; primary/historical
+  sources use title + supported carrier/source edition statement. The
+  composed label is exposed consistently in Library lists, Search, and
+  Library-scoped Favorites but is never persisted or used as a storage key.
+- Added a visible authoritative material-class selector and restrained
+  collapsible advanced-filter UI. Filter-only queries execute on the server;
+  clearing or changing query/filter state cancels stale requests and resets
+  pagination.
+
+### Safety and compatibility
+
+- Effective membership filtering still precedes enumeration, matching,
+  filtering, ranking, counting, and cursor creation; inaccessible identities
+  remain non-disclosing.
+- Existing canonical metadata and safe display-name fallback remain usable for
+  rows without a migration-023 profile. No guessed edition precision or
+  placeholder is introduced, and no `.pdf` suffix appears when a real
+  scholarly title is available.
+- Checkpoint C adds no migration or backfill and does not mutate metadata,
+  object bytes, filenames, private overlays, credentials, provider policy, or
+  production configuration. Production remains exact `53317bb…` at schema
+  v22/history 001–022; development remains v24/history 001–024.
+
+### Verification
+
+```text
+backend full suite = 357/357 PASS
+frontend full suite = 262/262 PASS
+focused backend Search/filter/display/sort/HTTP/service = 26/26 PASS
+focused frontend Search/filter/display/API = 44/44 PASS
+workspace typecheck = PASS
+frontend production build = PASS
+git diff --check = PASS
+```
+
 ## Remaining acceptance contract
 
 - B: **COMPLETE.** Current official PaddleOCR/PP-OCR/PaddleOCR-VL and small Qwen-VL options
@@ -152,7 +208,7 @@ git diff --check = PASS
   respects human fields, upload-independent on failure, and remains entirely in
   ephemeral Compute. Old Tesseract naming becomes legacy/emergency, and batch
   naming becomes bibliographic maintenance.
-- C: server-authoritative structured metadata Search, material and advanced
+- C: **COMPLETE.** Server-authoritative structured metadata Search, material and advanced
   filters, filter-bound cursor identity, stable ranking/pagination/sort, and
   modern/historical/facsimile display composition with safe fallback.
 - D: deterministic CSL-compatible mapping and UI-ready output for Chicago Notes

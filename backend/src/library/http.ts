@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AuthorizationDeniedError } from "../auth/authorization.js";
+import { CONTRIBUTOR_ROLES, EDITION_TYPES, MATERIAL_CLASSES, type ContributorRole, type EditionType, type MaterialClass } from "../bibliography/bibliography.js";
 import { DriveError } from "../drive/drive-service.js";
 import { LIBRARY_ROLES, type LibraryRole } from "./library.js";
 import { LibraryError, type LibraryService } from "./library-service.js";
@@ -22,7 +23,23 @@ interface DownloadQuery { disposition?: "attachment" | "inline"; }
 interface ContributionParams extends LibraryParams { contributionId: string; }
 interface ContributionBody { artifactId: string; }
 interface HoldingVersionBody { version: string; }
-interface SearchQuery { q: string; limit?: number; cursor?: string; }
+interface SearchQuery {
+  q?: string;
+  limit?: number;
+  cursor?: string;
+  sort?: string;
+  materialClass?: MaterialClass;
+  contributor?: string;
+  language?: string;
+  publisher?: string;
+  year?: string;
+  editionType?: EditionType;
+  dynasty?: string;
+  reignTitle?: string;
+  editorialRole?: ContributorRole;
+  series?: string;
+  volume?: string;
+}
 
 function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
   if (!account) throw new LibraryError("not_found");
@@ -234,11 +251,22 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
         querystring: {
           type: "object",
           additionalProperties: false,
-          required: ["q"],
           properties: {
-            q: { type: "string", minLength: 1, maxLength: 100 },
+            q: { type: "string", maxLength: 100 },
             limit: { type: "integer", minimum: 1, maximum: 100 },
-            cursor: { type: "string", minLength: 1, maxLength: 200 },
+            cursor: { type: "string", minLength: 1, maxLength: 8000 },
+            sort: { type: "string", enum: ["relevance", "newest", "oldest", "title_asc", "title_desc", "size_desc", "size_asc"] },
+            materialClass: { type: "string", enum: MATERIAL_CLASSES },
+            contributor: { type: "string", minLength: 1, maxLength: 128 },
+            language: { type: "string", minLength: 1, maxLength: 128 },
+            publisher: { type: "string", minLength: 1, maxLength: 128 },
+            year: { type: "string", minLength: 1, maxLength: 128 },
+            editionType: { type: "string", enum: EDITION_TYPES },
+            dynasty: { type: "string", minLength: 1, maxLength: 128 },
+            reignTitle: { type: "string", minLength: 1, maxLength: 128 },
+            editorialRole: { type: "string", enum: CONTRIBUTOR_ROLES },
+            series: { type: "string", minLength: 1, maxLength: 128 },
+            volume: { type: "string", minLength: 1, maxLength: 128 },
           },
         },
       },
@@ -248,9 +276,23 @@ export async function registerLibraryHttp(app: FastifyInstance, service: Library
         return service.searchHoldings(
           requireActor(request.authAccount).id,
           request.params.libraryId,
-          request.query.q,
+          request.query.q ?? "",
           request.query.limit ?? 50,
           request.query.cursor ?? null,
+          {
+            ...(request.query.materialClass ? { materialClass: request.query.materialClass } : {}),
+            ...(request.query.contributor ? { contributor: request.query.contributor } : {}),
+            ...(request.query.language ? { language: request.query.language } : {}),
+            ...(request.query.publisher ? { publisher: request.query.publisher } : {}),
+            ...(request.query.year ? { year: request.query.year } : {}),
+            ...(request.query.editionType ? { editionType: request.query.editionType } : {}),
+            ...(request.query.dynasty ? { dynasty: request.query.dynasty } : {}),
+            ...(request.query.reignTitle ? { reignTitle: request.query.reignTitle } : {}),
+            ...(request.query.editorialRole ? { editorialRole: request.query.editorialRole } : {}),
+            ...(request.query.series ? { series: request.query.series } : {}),
+            ...(request.query.volume ? { volume: request.query.volume } : {}),
+          },
+          request.query.sort ?? "relevance",
         );
       } catch (error: unknown) {
         return sendLibraryError(reply, error);

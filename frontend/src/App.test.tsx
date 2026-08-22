@@ -2563,7 +2563,7 @@ describe("resource-scope catalogue interactions", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
-    const libraryCheckbox = await screen.findByRole("checkbox", { name: "Select Author A, Author B · Canonical book" });
+    const libraryCheckbox = await screen.findByRole("checkbox", { name: "Select Author A、Author B Canonical book" });
     await user.click(libraryCheckbox);
     expect(libraryCheckbox).toBeChecked();
     let toolbar = screen.getByRole("toolbar", { name: "Selected item actions" });
@@ -2646,15 +2646,15 @@ describe("resource-scope catalogue interactions", () => {
     });
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: "Favorites" }));
-    expect(await screen.findByText("Favorite Author · Canonical favorite title")).toBeInTheDocument();
+    expect(await screen.findByText("Favorite Author Canonical favorite title")).toBeInTheDocument();
     expect(screen.queryByText("book.pdf")).not.toBeInTheDocument();
-    let menu = await openRowMenu("Favorite Author · Canonical favorite title");
+    let menu = await openRowMenu("Favorite Author Canonical favorite title");
     await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
     await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id, "inline"));
-    expect(await screen.findByRole("heading", { name: "Favorite Author · Canonical favorite title" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Favorite Author Canonical favorite title" })).toBeInTheDocument();
     expect(createDownload).not.toHaveBeenCalled();
     await user.click(await screen.findByRole("button", { name: "Close preview" }));
-    menu = await openRowMenu("Favorite Author · Canonical favorite title");
+    menu = await openRowMenu("Favorite Author Canonical favorite title");
     await user.click(within(menu).getByRole("menuitem", { name: "Download" }));
     await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id));
     expect(createDownload).not.toHaveBeenCalled();

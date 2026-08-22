@@ -327,7 +327,8 @@ input:hover { border-color: #a7b2a8; }
 
 /* Quiet catalogue search: one bounded metadata/name field above the table. */
 .library-search { margin-bottom: 0.85rem; }
-.library-search-field { position: relative; max-width: 34rem; }
+.library-search-toolbar { display: flex; align-items: flex-start; gap: 0.55rem; flex-wrap: wrap; }
+.library-search-field { position: relative; min-width: min(25rem, 100%); max-width: 42rem; flex: 1 1 28rem; }
 .library-search-input {
   width: 100%;
   min-height: 2.5rem;
@@ -360,6 +361,39 @@ input:hover { border-color: #a7b2a8; }
   transform: translateY(-50%);
 }
 .library-search-clear:hover { color: var(--ink); background: #eceee9; }
+.library-search-material select,
+.library-search-advanced summary {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--paper);
+  font: inherit;
+}
+.library-search-material select { max-width: 15rem; }
+.library-search-advanced { position: relative; }
+.library-search-advanced summary { display: flex; align-items: center; cursor: pointer; list-style: none; }
+.library-search-advanced summary::-webkit-details-marker { display: none; }
+.library-search-advanced[open] summary { border-color: #98a49b; }
+.library-search-filter-grid {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  display: grid;
+  width: min(38rem, calc(100vw - 3rem));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: var(--paper);
+  box-shadow: 0 0.75rem 2rem rgba(36, 43, 38, 0.12);
+}
+.library-search-filter-grid label { display: grid; gap: 0.3rem; color: var(--muted); font-size: 0.78rem; }
+.library-search-filter-grid input,
+.library-search-filter-grid select { width: 100%; min-height: 2.35rem; padding: 0.45rem 0.6rem; color: var(--ink); border: 1px solid var(--line); border-radius: 0.45rem; background: var(--paper); font: inherit; }
 .library-search-results { margin-top: 0.6rem; }
 .library-search-results > .muted { margin: 0.25rem 0; }
 .library-search-more { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.6rem; }
@@ -925,6 +959,10 @@ input:hover { border-color: #a7b2a8; }
   .library-search-field { max-width: none; }
   .library-search-input { min-height: 2.75rem; }
   .library-search-clear { width: 2.75rem; height: 2.75rem; }
+  .library-search-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .library-search-field { min-width: 0; }
+  .library-search-material select, .library-search-advanced, .library-search-advanced summary { width: 100%; max-width: none; min-height: 2.75rem; }
+  .library-search-filter-grid { position: static; width: 100%; grid-template-columns: minmax(0, 1fr); margin-top: 0.4rem; box-shadow: none; }
   .library-search-result { min-height: 2.75rem; padding: 0.7rem 0.9rem; }
   .bulk-toolbar { position: sticky; z-index: 20; top: 0.35rem; align-items: stretch; flex-direction: column; }
   .bulk-toolbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; }

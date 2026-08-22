@@ -207,6 +207,10 @@ export interface LibraryHolding {
   recordLabel: string;
   canonicalTitle: string | null;
   authorLabels: string[];
+  materialClass?: MaterialClass | null;
+  contributorLabels?: string[];
+  editionStatement?: string | null;
+  catalogueDisplayTitle?: string;
   artifactId: string;
   versionId: string;
   version: string;
@@ -223,9 +227,14 @@ export interface LibrarySearchResult {
   fileId: string;
   canonicalTitle: string | null;
   authorLabels: string[];
+  contributorLabels: string[];
   date: string | null;
   publisher: string | null;
+  materialClass: MaterialClass | null;
   materialType: MaterialType | null;
+  language: string | null;
+  editionStatement: string | null;
+  catalogueDisplayTitle: string;
   displayName: string;
 }
 
@@ -235,6 +244,35 @@ export interface LibrarySearchPage {
 }
 
 export type MaterialType = "book" | "article" | "manuscript" | "inscription" | "archival_document";
+export type MaterialClass =
+  | "scholarly_monograph" | "edited_volume" | "journal_article" | "book_chapter"
+  | "thesis_dissertation" | "conference_paper" | "review" | "reference_work"
+  | "dictionary_lexicon" | "primary_source_modern_edition" | "traditional_book"
+  | "archival_document" | "inscription_epigraphy" | "rubbing" | "manuscript"
+  | "collected_documents" | "catalogue_bibliography" | "other" | "unknown";
+export type ContributorRole =
+  | "author" | "editor" | "compiler" | "translator" | "annotator" | "collator"
+  | "punctuator" | "commentator" | "reviser" | "selector" | "organizer" | "other";
+export type EditionType =
+  | "critical_edition" | "annotated_edition" | "collated_edition" | "punctuated_edition"
+  | "translated_edition" | "facsimile" | "reprint" | "engraved" | "recut"
+  | "facsimile_engraved" | "movable_type" | "multicolor_print" | "manuscript_copy"
+  | "hand_copy" | "draft_manuscript" | "facsimile_hand_copy" | "lithograph"
+  | "letterpress" | "composite_repaired" | "hand_copy_repaired" | "repaired" | "other" | "unknown";
+export interface LibrarySearchFilters {
+  materialClass?: MaterialClass;
+  contributor?: string;
+  language?: string;
+  publisher?: string;
+  year?: string;
+  editionType?: EditionType;
+  dynasty?: string;
+  reignTitle?: string;
+  editorialRole?: ContributorRole;
+  series?: string;
+  volume?: string;
+}
+export type LibrarySearchSort = "relevance" | LibraryHoldingSort;
 export type AuthorityType = "person" | "place" | "language" | "work" | "institution";
 export type AuthorityRole =
   | "author" | "editor" | "translator" | "compiler" | "scribe" | "sender" | "recipient" | "creator" | "contributor"
@@ -621,7 +659,7 @@ export interface AcademicCloudApi {
   listLibraryHoldingsSorted?(libraryId: string, sort: LibraryHoldingSort, cursor: string | null, signal?: AbortSignal): Promise<LibraryHoldingsPage>;
   previewLibraryBatchNaming?(libraryId: string, fileIds: string[], signal?: AbortSignal): Promise<BatchNamingPreview>;
   applyLibraryBatchNaming?(libraryId: string, items: BatchNamingItemInput[]): Promise<{ results: BatchNamingResultItem[] }>;
-  searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number): Promise<LibrarySearchPage>;
+  searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number, filters?: LibrarySearchFilters, sort?: LibrarySearchSort): Promise<LibrarySearchPage>;
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
   updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails>;
   /** Metadata suggestions are optional for compatibility with older API fakes. */
@@ -1019,10 +1057,24 @@ export class ApiClient implements AcademicCloudApi {
     );
   }
 
-  async searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number): Promise<LibrarySearchPage> {
+  async searchLibraryHoldings(
+    libraryId: string,
+    query: string,
+    signal?: AbortSignal,
+    cursor?: string,
+    limit?: number,
+    filters?: LibrarySearchFilters,
+    sort?: LibrarySearchSort,
+  ): Promise<LibrarySearchPage> {
     const params = new URLSearchParams({ q: query });
     if (cursor) params.set("cursor", cursor);
     if (limit !== undefined) params.set("limit", String(limit));
+    if (sort !== undefined) params.set("sort", sort);
+    if (filters) {
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && value !== "") params.set(key, value);
+      }
+    }
     return this.#request<LibrarySearchPage>(
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/search?${params.toString()}`,
       signal ? { signal } : {},

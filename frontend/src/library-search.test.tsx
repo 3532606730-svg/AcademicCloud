@@ -28,9 +28,14 @@ function result(overrides: Partial<LibrarySearchResult> = {}): LibrarySearchResu
     fileId: "file-1",
     canonicalTitle: null,
     authorLabels: [],
+    contributorLabels: [],
     date: null,
     publisher: null,
+    materialClass: null,
     materialType: null,
+    language: null,
+    editionStatement: null,
+    catalogueDisplayTitle: "",
     displayName: "paper.pdf",
     ...overrides,
   };
@@ -74,7 +79,7 @@ describe("LibrarySearchField", () => {
     await waitFor(() =>
       expect(searchLibraryHoldings).toHaveBeenCalledWith(LIBRARY.id, "book", expect.any(AbortSignal)),
     );
-    expect(await screen.findByText("Author A · Canonical book")).toBeInTheDocument();
+    expect(await screen.findByText("Author A Canonical book")).toBeInTheDocument();
     expect(screen.getByText("1962 · Press · Book")).toBeInTheDocument();
     expect(screen.queryByText("book.pdf")).not.toBeInTheDocument();
   });
@@ -354,10 +359,51 @@ describe("LibrarySearchField", () => {
       recordLabel: "d.pdf",
       canonicalTitle: "Title",
       authorLabels: ["Author"],
+      materialClass: null,
+      contributorLabels: [],
+      editionStatement: null,
+      catalogueDisplayTitle: "",
       artifactId: "",
       versionId: "",
       version: "",
       file: { id: "f", displayName: "d.pdf", mediaType: null, sizeBytes: 0, updatedAt: "" },
     });
+  });
+
+  it("runs material-only and advanced filters on the server and clears them atomically", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn().mockResolvedValue({
+      results: [result({ fileId: "filtered", canonicalTitle: "元史", catalogueDisplayTitle: "元史 中华书局1976点校本", materialClass: "primary_source_modern_edition", displayName: "yuan.pdf" })],
+      nextCursor: null,
+    });
+    const api = { searchLibraryHoldings } as unknown as AcademicCloudApi;
+    renderField(api);
+
+    await user.selectOptions(screen.getByLabelText("Material class"), "primary_source_modern_edition");
+    await waitFor(() => expect(searchLibraryHoldings).toHaveBeenCalledWith(
+      LIBRARY.id,
+      "",
+      expect.any(AbortSignal),
+      undefined,
+      undefined,
+      { materialClass: "primary_source_modern_edition" },
+    ));
+    expect(await screen.findByText("元史 中华书局1976点校本")).toBeInTheDocument();
+
+    await user.click(screen.getByText("Filters"));
+    await user.type(screen.getByLabelText("Publisher"), "中华书局");
+    await waitFor(() => expect(searchLibraryHoldings).toHaveBeenLastCalledWith(
+      LIBRARY.id,
+      "",
+      expect.any(AbortSignal),
+      undefined,
+      undefined,
+      { materialClass: "primary_source_modern_edition", publisher: "中华书局" },
+    ));
+
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getByLabelText("Material class")).toHaveValue("");
+    expect(screen.getByLabelText("Publisher")).toHaveValue("");
+    expect(screen.queryByText("元史 中华书局1976点校本")).not.toBeInTheDocument();
   });
 });

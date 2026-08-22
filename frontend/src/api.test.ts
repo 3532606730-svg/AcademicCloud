@@ -704,4 +704,49 @@ describe("ApiClient", () => {
     expect(calls[3]?.path).toBe("/api/favorites/folders/folder-1");
     assertBodylessRequestInit(calls[3]?.init, "DELETE");
   });
+
+  it("serializes catalogue query, advanced filters, sort, and cursor as one bounded server request", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ results: [], nextCursor: null }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    const api = new ApiClient({ fetcher });
+    await api.searchLibraryHoldings(
+      "library / one",
+      "元史",
+      undefined,
+      "opaque-cursor",
+      25,
+      {
+        materialClass: "primary_source_modern_edition",
+        contributor: "顾颉刚",
+        publisher: "中华书局",
+        year: "1976",
+        editionType: "annotated_edition",
+        dynasty: "元",
+        editorialRole: "annotator",
+        series: "二十四史",
+        volume: "第一册",
+      },
+      "title_asc",
+    );
+    const path = String(fetcher.mock.calls[0]?.[0]);
+    const url = new URL(path, "http://academiccloud.test");
+    expect(url.pathname).toBe("/api/libraries/library%20%2F%20one/holdings/search");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      q: "元史",
+      cursor: "opaque-cursor",
+      limit: "25",
+      sort: "title_asc",
+      materialClass: "primary_source_modern_edition",
+      contributor: "顾颉刚",
+      publisher: "中华书局",
+      year: "1976",
+      editionType: "annotated_edition",
+      dynasty: "元",
+      editorialRole: "annotator",
+      series: "二十四史",
+      volume: "第一册",
+    });
+  });
 });

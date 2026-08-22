@@ -100,7 +100,7 @@ function setMetadata(
 }
 
 test("authority-scoped search returns only accessible holdings across the whole corpus", (context) => {
-  const { database, libraries, metadata } = fixture(context);
+  const { database, libraries, metadata, persistence } = fixture(context);
   const library = libraries.createLibrary(OWNER, "Shared Sources");
   libraries.addMember(OWNER, library.id, MEMBER.id, "member");
   const ownerDomainId = `library:${library.id}`;
@@ -108,13 +108,29 @@ test("authority-scoped search returns only accessible holdings across the whole 
   const bookB = addHolding(database, ownerDomainId, "bb", "scan-002.pdf");
   setMetadata(metadata, library.id, bookA, { canonicalTitle: "元代宰相制度研究", authorLabel: "张帆", publisherLabel: "北京大学出版社", dateStatement: "1997", identifier: "9787301032145" });
   setMetadata(metadata, library.id, bookB, { canonicalTitle: "The Mongols and the West", authorLabel: "Peter Jackson", publisherLabel: "Routledge", dateStatement: "2018" });
+  const holdingA = persistence.repositories.libraries.findHoldingByFile(library.id, bookA)!;
+  persistence.repositories.bibliography.saveProfile({
+    ownerDomainId,
+    recordId: holdingA.recordId,
+    actorAccountId: OWNER.id,
+    expectedRevision: null,
+    now: NOW,
+    materialClass: "primary_source_modern_edition",
+    contributors: [{ id: "search-contributor-a", label: "顾颉刚", role: "annotator", roleLabel: "点校" }],
+    publication: { publisher: "中华书局", place: "北京", publicationDate: "1976" },
+    series: "二十四史",
+    volume: "第一册",
+    language: "汉语",
+    carrierEdition: { editionType: "annotated_edition" },
+    sourceEdition: { dynasty: "元" },
+  });
 
   const byTitle = libraries.searchHoldings(MEMBER.id, library.id, "元代宰相", 50, null);
   assert.deepEqual(byTitle.results.map((item) => item.fileId), [bookA]);
   assert.equal(byTitle.results[0]?.canonicalTitle, "元代宰相制度研究");
   assert.deepEqual(byTitle.results[0]?.authorLabels, ["张帆"]);
-  assert.equal(byTitle.results[0]?.publisher, "北京大学出版社");
-  assert.equal(byTitle.results[0]?.date, "1997");
+  assert.equal(byTitle.results[0]?.publisher, "中华书局");
+  assert.equal(byTitle.results[0]?.date, "1976");
 
   const byAuthor = libraries.searchHoldings(MEMBER.id, library.id, "Peter Jackson", 50, null);
   assert.deepEqual(byAuthor.results.map((item) => item.fileId), [bookB]);
@@ -124,6 +140,23 @@ test("authority-scoped search returns only accessible holdings across the whole 
 
   const byFilename = libraries.searchHoldings(MEMBER.id, library.id, "scan-002", 50, null);
   assert.deepEqual(byFilename.results.map((item) => item.fileId), [bookB]);
+
+  const byStructuredEdition = libraries.searchHoldings(MEMBER.id, library.id, "中华书局点校本", 50, null);
+  assert.deepEqual(byStructuredEdition.results.map((item) => item.fileId), [bookA]);
+  assert.equal(byStructuredEdition.results[0]?.materialClass, "primary_source_modern_edition");
+  assert.equal(byStructuredEdition.results[0]?.catalogueDisplayTitle, "元代宰相制度研究 中华书局1976点校本");
+
+  const filtered = libraries.searchHoldings(MEMBER.id, library.id, "", 50, null, {
+    materialClass: "primary_source_modern_edition",
+    contributor: "顾颉刚",
+    publisher: "中华书局",
+    year: "1976",
+    editionType: "annotated_edition",
+    editorialRole: "annotator",
+    series: "二十四史",
+    volume: "第一册",
+  });
+  assert.deepEqual(filtered.results.map((item) => item.fileId), [bookA]);
 });
 
 test("non-members, disabled accounts, and guessed libraries are indistinguishable from no match", (context) => {

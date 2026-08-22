@@ -4,6 +4,8 @@ import type { Language } from "./i18n.ts";
 export interface LibraryDisplayTitleInput {
   canonicalTitle: string | null;
   authorLabels?: readonly string[];
+  catalogueDisplayTitle?: string | undefined;
+  editionStatement?: string | null | undefined;
   fallbackDisplayName: string;
 }
 
@@ -14,24 +16,30 @@ export interface LibraryDisplayTitleInput {
  */
 export function composeLibraryDisplayTitle(
   input: LibraryDisplayTitleInput,
-  language: Language,
+  _language: Language,
 ): string {
+  const serverComposition = input.catalogueDisplayTitle?.trim();
+  if (serverComposition) return serverComposition;
   const canonicalTitle = input.canonicalTitle?.trim();
   if (!canonicalTitle) return input.fallbackDisplayName;
+
+  const editionStatement = input.editionStatement?.trim();
+  if (editionStatement) return `${canonicalTitle} ${editionStatement}`;
 
   const authorLabels = (input.authorLabels ?? [])
     .map((label) => label.trim())
     .filter(Boolean);
   if (authorLabels.length === 0) return canonicalTitle;
 
-  const authorSeparator = language === "zh-CN" ? "、" : ", ";
-  return `${authorLabels.join(authorSeparator)} · ${canonicalTitle}`;
+  return `${authorLabels.join("、")} ${canonicalTitle}`;
 }
 
 export function libraryHoldingDisplayTitle(holding: LibraryHolding, language: Language): string {
   return composeLibraryDisplayTitle({
     canonicalTitle: holding.canonicalTitle,
     authorLabels: holding.authorLabels,
+    catalogueDisplayTitle: holding.catalogueDisplayTitle,
+    editionStatement: holding.editionStatement,
     fallbackDisplayName: holding.file.displayName,
   }, language);
 }

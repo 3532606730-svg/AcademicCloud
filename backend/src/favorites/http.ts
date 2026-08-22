@@ -30,7 +30,7 @@ export async function registerFavoritesHttp(app: FastifyInstance, favoriteServic
     const snapshot = favoriteService.listFavorites(requireAccountId(request.authAccount));
     return {
       files: snapshot.files.map(fileDto),
-      libraryHoldings: snapshot.libraryHoldings.map(({ library, role, holding }) => ({
+      libraryHoldings: snapshot.libraryHoldings.map(({ library, role, holding, bibliography }) => ({
         library: {
           id: library.id,
           name: library.name,
@@ -38,7 +38,7 @@ export async function registerFavoritesHttp(app: FastifyInstance, favoriteServic
           isDefault: library.isDefault,
           createdAt: library.createdAt.toISOString(),
         },
-        holding: libraryHoldingView(holding),
+        holding: libraryHoldingView(holding, bibliography),
       })),
       folders: snapshot.folders.map((entry) => ({
         ...folderDto(entry.folder),

@@ -309,3 +309,23 @@ PaddleOCR E2E, selected-path 3/3 visual cases, seven-case 7/7 reasoning gate,
 both sub-6-GiB probes, privacy/shell safety, and zero-artifact requirement; the
 bounded direct Qwen3-VL comparison did not complete and is excluded from
 production.
+
+## ADR-034 — Metadata-Aware Catalogue Query and Display Identity
+
+**Date:** 2026-08-22
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-034-metadata-aware-catalogue-query-and-display-identity.md`
+
+Library Search remains authorization-first and server-authoritative while
+expanding across migration-023 material class, contributor, publication,
+language, carrier-edition, historical-source-edition, series, and volume
+facts. Title/contributor relevance stays stronger than low-value metadata;
+query, normalized filters, and sort mode form one cursor identity; the existing
+six normal Library sorts remain unchanged.
+
+Modern and historical catalogue labels are non-persisted presentation
+projections. They never become `canonicalTitle`, a physical filename, an object
+key, or the only searchable identity. Carrier and source editions remain
+separate, unsupported precision is omitted, and legacy canonical/safe filename
+fallback remains available. No schema, data, object, provider, or production
+change is part of this decision.

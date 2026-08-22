@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-08-21
+**Last reconciled:** 2026-08-22
 
 ## Product Direction
 
@@ -93,12 +93,28 @@ GOAL-BETA-PREP01 Phase 1 / COMPUTE-PRECUTOVER01 — COMPLETE
 → STOP before starting/inviting users into internal beta
 ```
 
-Routine implementation choices inside this exact program no longer require a
+The subsequent Owner-authorized `L1-INTELLIGENT-LIBRARY01` program is now the
+active execution sequence. Checkpoint A completed the normalized bibliographic
+domain and additive development migration 023. Checkpoint B completed additive
+development migration 024 and exact hosted qualification of the selected,
+ephemeral, sequential PP-OCRv6-small → Qwen3-1.7B Q8_0 pipeline. Checkpoint C
+completed metadata-aware Search, the exact 19-class/advanced-filter contract,
+query/filter/sort-bound keyset cursors, and non-persisted scholarly catalogue
+display composition. Continue D citation engine → E integrated Library and
+Activity UX → F full verification, stopped-service backup, migrations 023–024,
+exact immutable build/deployment, and bounded production verification. No
+partial production deployment is allowed. Production therefore remains exact
+`53317bb…` at schema v22/history 001–022 until F is green; development migration
+head is v24/history 001–024. After the integrated exact release passes, STOP
+again before internal beta or invitations.
+
+Routine implementation choices inside the active A–F sequence do not require a
 separate Owner round-trip. The explicit hard-stop conditions in
-`tasks/doing/GOAL-BETA-PREP01.md` remain binding: no paid infrastructure, no
-broad personal token stored on production, no unproven data-integrity/migration
-risk, no security/privacy weakening, no provider-policy mutation outside scope,
-and no unrelated product/architecture expansion.
+`tasks/doing/L1-INTELLIGENT-LIBRARY01.md` remain binding: no destructive
+migration/backfill, paid infrastructure, persistent heavy model in Core,
+broader credentials, unproven data-integrity risk, security/privacy weakening,
+provider-policy mutation outside a newly proved blocker, uncontrolled
+full-Library processing, or unrelated product/architecture expansion.
 
 ## Why this interlock exists
 

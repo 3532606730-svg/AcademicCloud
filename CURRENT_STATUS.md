@@ -9,10 +9,14 @@ evidence without duplicating it here.
 ## Current situation
 
 Owner-authorized `L1-INTELLIGENT-LIBRARY01` is active in its mandatory A–F
-sequence. Checkpoints A and B are complete. A implemented the ADR-032 domain
+sequence. Checkpoints A, B, and C are complete. A implemented the ADR-032 domain
 and additive development migration 023. B accepted ADR-033 and added migration
 024 plus an exact-pinned, ephemeral, sequential PP-OCRv6-small → Qwen3-1.7B
-Q8_0 bibliographic pipeline. Core remains authoritative; explicit labels and
+Q8_0 bibliographic pipeline. C accepted ADR-034 and added authorization-first
+metadata-aware Search, the exact 19-class and restrained advanced filters,
+query/filter/sort-bound keyset cursors, and non-persisted modern/historical/
+facsimile display composition while retaining the existing six normal Library
+sort contracts. Core remains authoritative; explicit labels and
 strict deterministic checks govern auto-application, human fields are never
 silently replaced, and AI failure never invalidates an admitted file.
 
@@ -26,7 +30,7 @@ dependency or automatic escalation.
 No partial Layer‑1 production change has occurred. Production remains exact
 `53317bb0156589baa21bc69c22e199d200c49840` at schema v22/history 001–022.
 Development migration head is v24/history 001–024. Continue automatically
-through C–F; production migration/deployment is authorized only at integrated
+through D–F; production migration/deployment is authorized only at integrated
 Checkpoint F after its bounded gates. Internal Beta remains unstarted.
 
 The first Core/Compute separation vertical slice, COMPUTE-PRECUTOVER01, and

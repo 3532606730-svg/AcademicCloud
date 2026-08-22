@@ -289,6 +289,10 @@ test("favorites listing preserves Library scope and holding identity instead of 
         recordLabel: string;
         canonicalTitle: string | null;
         authorLabels: string[];
+        materialClass: null;
+        contributorLabels: string[];
+        editionStatement: string | null;
+        catalogueDisplayTitle: string;
         artifactId: string;
         versionId: string;
         version: string;
@@ -305,6 +309,10 @@ test("favorites listing preserves Library scope and holding identity instead of 
     recordLabel: "Canonical favorite record",
     canonicalTitle: "Canonical favorite title",
     authorLabels: ["Author A", "Author B"],
+    materialClass: null,
+    contributorLabels: ["Author A", "Author B"],
+    editionStatement: null,
+    catalogueDisplayTitle: "Author A、Author B Canonical favorite title",
     artifactId,
     versionId,
     version: body.libraryHoldings[0]?.holding.version,

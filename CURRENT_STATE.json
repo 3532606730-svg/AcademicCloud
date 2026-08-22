@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-22T21:29:33+08:00",
+  "updatedAt": "2026-08-22T22:00:30+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -18,11 +18,12 @@
   "activeTasks": ["L1-INTELLIGENT-LIBRARY01", "GOAL-BETA-PREP01", "HOTFIX-META-UX01"],
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
-    "state": "checkpoint_b_complete",
+    "state": "checkpoint_c_complete",
     "mandatorySequence": ["A_DOMAIN_PERSISTENCE", "B_AI_COMPUTE", "C_SEARCH_DISPLAY", "D_CITATION", "E_UX_ACTIVITY", "F_INTEGRATION_PRODUCTION"],
     "developmentSchema": 24,
     "developmentMigrationHistory": "001-024",
     "checkpointA": "fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643",
+    "checkpointB": "9d8a3a097a5eba0d8c1603cee18568793417b135",
     "checkpointBQualification": {
       "source": "0fa04b43a80ac4d1486323c700e737850b081222",
       "workflowRun": 32574319098,
@@ -35,9 +36,23 @@
       "privacyOutputSafety": "pass",
       "decision": "ADR-033 Accepted; PP-OCRv6 small then Qwen3-1.7B Q8_0; no automatic visual escalation"
     },
+    "checkpointC": {
+      "decision": "ADR-034 Accepted; authorization-first structured catalogue query and non-persisted display identity",
+      "materialClasses": 19,
+      "advancedFilters": ["materialClass", "contributor", "language", "publisher", "year", "editionType", "dynasty", "reignTitle", "editorialRole", "series", "volume"],
+      "cursorIdentity": "normalized query + normalized filters + sort; SHA-256 bound; keyset continuation",
+      "sortModes": ["newest", "oldest", "title_asc", "title_desc", "size_asc", "size_desc"],
+      "focusedBackend": "26/26 pass",
+      "backendSuite": "357/357 pass",
+      "frontendSuite": "262/262 pass",
+      "typecheck": "pass",
+      "frontendBuild": "pass",
+      "schemaMigration": "none",
+      "productionChanged": false
+    },
     "productionChanged": false,
     "internalBetaStarted": false,
-    "nextCheckpoint": "C_SEARCH_DISPLAY"
+    "nextCheckpoint": "D_CITATION"
   },
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
@@ -514,9 +529,9 @@
     "ownerManualAcceptance": "PENDING — Owner performs manual product acceptance in production (fast naming, batch naming, sorting, regression surfaces); no browser automation was run per Owner override"
   },
   "currentPriorityOrder": [
-    "STOP at INTERNAL_BETA_READY — Owner decides whether/when to start or invite users into internal beta",
-    "OPS-DEPENDENCY01 and remaining reliability queue after beta-prep unless newly required by a concrete blocker",
-    "Personal Research Workspace later"
+    "L1-INTELLIGENT-LIBRARY01 Checkpoint D — deterministic citation engine",
+    "Continue mandatory D-E-F sequence; production changes only at integrated Checkpoint F",
+    "STOP after the exact release; internal beta and invitations remain unstarted"
   ],
   "notes": [
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",
@@ -547,6 +562,7 @@
     "Phase 4 shipped the beta-minimum Activity Center plus Source Recovery through three same-schema app-only releases (156660d, 01747d9, c741455). The replacement-release browser journey exposed a canonical-library duplicate-name completion defect that bricked physically-completed multipart uploads in completing with 409/500 surfaces; c741455 repaired it with an early name_conflict pre-flight, clean status mapping, and orphan-object discard on abandon, and the exact-release 46/46 browser journey then passed with zero run-owned residue.",
     "The four run-owned fixtures from interrupted journey attempts were recovered through ordinary product flows (status finalize after conflict cleared, recycle, permanent delete) and are purged; the pre-existing durable pending fixtures were never touched.",
     "QA-GOLDEN01 passed 32/32 on the exact production release c741455 with the golden run-owned fixture identity golden-202608211339-u8o6iv, real GitHub Compute run 32488192994, a clean log privacy scan, and zero persistent residue. All five phases are green and INTERNAL_BETA_READY=true; internal beta itself is NOT started.",
-    "HOTFIX-META-UX01 (Owner-authorized 2026-08-21) is implemented and deployed as the same-schema app-only release 53317bb on top of c741455: fast naming persists one immutable run per suggestion request, the OCR/Compute callback persists a second immutable superseding run (latest-run resolution surfaces it) so migration-019 append-only evidence semantics, accepted-run freezing, and canonical-metadata authority stay intact; batch naming previews and applies through the existing CAS path with per-item isolation; Library sorting is server-authoritative with Hanyu-Pinyin-normalized title keys (deterministic pinyin_key SQLite function) and stable keyset cursors; Search ranking is unchanged. Verification: backend 343/343, frontend 259/259, typecheck/build/diff-check pass, host packaged verifier pass, runtime delta bounded, schema v22/001-022 unchanged with zero migrations applied, integrity ok, FK 0, protected-config hashes unchanged, journal clean, durable pending fixtures untouched, NRestarts=0. Rollback pointer c741455. Owner manual product acceptance is PENDING; internal beta is NOT started."
+    "HOTFIX-META-UX01 (Owner-authorized 2026-08-21) is implemented and deployed as the same-schema app-only release 53317bb on top of c741455: fast naming persists one immutable run per suggestion request, the OCR/Compute callback persists a second immutable superseding run (latest-run resolution surfaces it) so migration-019 append-only evidence semantics, accepted-run freezing, and canonical-metadata authority stay intact; batch naming previews and applies through the existing CAS path with per-item isolation; Library sorting is server-authoritative with Hanyu-Pinyin-normalized title keys (deterministic pinyin_key SQLite function) and stable keyset cursors; Search ranking is unchanged. Verification: backend 343/343, frontend 259/259, typecheck/build/diff-check pass, host packaged verifier pass, runtime delta bounded, schema v22/001-022 unchanged with zero migrations applied, integrity ok, FK 0, protected-config hashes unchanged, journal clean, durable pending fixtures untouched, NRestarts=0. Rollback pointer c741455. Owner manual product acceptance is PENDING; internal beta is NOT started.",
+    "L1-INTELLIGENT-LIBRARY01 Checkpoint C accepted ADR-034 and completed metadata-aware Search, the exact 19-class and restrained advanced filters, query/filter/sort-bound keyset cursors, and non-persisted modern/historical/facsimile display composition. Backend 357/357, frontend 262/262, workspace typecheck, frontend build, and diff check passed. Production remains exact 53317bb at schema v22/history 001-022; no partial deployment occurred."
   ]
 }
