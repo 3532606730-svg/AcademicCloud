@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { AUTHORITY_TYPES, MATERIAL_TYPES } from "./metadata.js";
+import { CONTRIBUTOR_ROLES, EDITION_TYPES, MATERIAL_CLASSES } from "../bibliography/bibliography.js";
 import { MetadataError, type CanonicalMetadataService } from "./metadata-service.js";
 
 const ID_PATTERN = "^[A-Za-z0-9_-]{1,128}$";
@@ -26,6 +27,25 @@ interface MetadataBody {
 interface AuthorityBody { type: string; canonicalLabel: string; aliases: string[]; }
 interface AuthorityUpdateBody extends AuthorityBody { expectedVersion: string; }
 interface AuthorityQuery { type: string; beforeId?: string; limit?: number; }
+interface BibliographyBody {
+  bibliographyVersion: string;
+  materialClass: string;
+  contributors: Array<{ id?: string; label: string; role: string; roleLabel?: string | null; authorityId?: string | null }>;
+  publication: { publisher?: string | null; place?: string | null; publicationDate?: string | null; editionNumber?: string | null; printing?: string | null };
+  series?: string | null;
+  volume?: string | null;
+  language?: string | null;
+  carrierEdition: { editionType?: string | null; editionStatement?: string | null; facsimileStatement?: string | null };
+  sourceEdition: {
+    dynasty?: string | null; reignTitle?: string | null; reignYear?: string | null; absoluteYear?: number | null;
+    printer?: string | null; imprint?: string | null; bookshop?: string | null; institution?: string | null;
+    printingPlace?: string | null; editionType?: string | null; editionStatement?: string | null; holdingInformation?: string | null;
+  };
+}
+interface AuthorityResetBody {
+  bibliographyVersion: string;
+  fields: Array<{ fieldName: string; scopeKey: string }>;
+}
 
 function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
   if (!account) throw new MetadataError("not_found");
@@ -135,6 +155,134 @@ export async function registerMetadataHttp(app: FastifyInstance, service: Canoni
           request.params.fileId,
           metadataVersion,
           metadataBody,
+        );
+      } catch (error: unknown) {
+        const actor = request.authAccount;
+        if (actor) service.recordAuditAttempt(actor, "libraries.metadata_update", error);
+        return sendMetadataError(reply, error);
+      }
+    },
+  );
+
+  const nullableText = (maximum: number) => ({
+    anyOf: [{ type: "string", minLength: 1, maxLength: maximum }, { type: "null" }],
+  } as const);
+  const editionTypeSchema = { anyOf: [{ enum: EDITION_TYPES }, { type: "null" }] } as const;
+
+  app.put<{ Params: HoldingParams; Body: BibliographyBody }>(
+    "/api/libraries/:libraryId/holdings/:fileId/bibliography",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 64 * 1024,
+      schema: {
+        params: {
+          type: "object",
+          required: ["libraryId", "fileId"],
+          properties: { libraryId: idSchema, fileId: idSchema },
+        },
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["bibliographyVersion", "materialClass", "contributors", "publication", "carrierEdition", "sourceEdition"],
+          properties: {
+            bibliographyVersion: metadataVersionSchema,
+            materialClass: { enum: MATERIAL_CLASSES },
+            contributors: {
+              type: "array", minItems: 0, maxItems: 64,
+              items: {
+                type: "object", additionalProperties: false, required: ["label", "role"],
+                properties: {
+                  id: idSchema,
+                  label: { type: "string", minLength: 1, maxLength: 255 },
+                  role: { enum: CONTRIBUTOR_ROLES },
+                  roleLabel: nullableText(64),
+                  authorityId: { anyOf: [idSchema, { type: "null" }] },
+                },
+              },
+            },
+            publication: {
+              type: "object", additionalProperties: false,
+              properties: {
+                publisher: nullableText(255), place: nullableText(255), publicationDate: nullableText(64),
+                editionNumber: nullableText(128), printing: nullableText(128),
+              },
+            },
+            series: nullableText(255),
+            volume: nullableText(128),
+            language: nullableText(128),
+            carrierEdition: {
+              type: "object", additionalProperties: false,
+              properties: {
+                editionType: editionTypeSchema,
+                editionStatement: nullableText(512),
+                facsimileStatement: nullableText(512),
+              },
+            },
+            sourceEdition: {
+              type: "object", additionalProperties: false,
+              properties: {
+                dynasty: nullableText(64), reignTitle: nullableText(64), reignYear: nullableText(64),
+                absoluteYear: { anyOf: [{ type: "integer", minimum: -9999, maximum: 9999 }, { type: "null" }] },
+                printer: nullableText(255), imprint: nullableText(255), bookshop: nullableText(255),
+                institution: nullableText(255), printingPlace: nullableText(255), editionType: editionTypeSchema,
+                editionStatement: nullableText(512), holdingInformation: nullableText(512),
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { bibliographyVersion, ...body } = request.body;
+        return service.updateBibliography(
+          requireActor(request.authAccount), request.params.libraryId, request.params.fileId, bibliographyVersion, body,
+        );
+      } catch (error: unknown) {
+        const actor = request.authAccount;
+        if (actor) service.recordAuditAttempt(actor, "libraries.metadata_update", error);
+        return sendMetadataError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: HoldingParams; Body: AuthorityResetBody }>(
+    "/api/libraries/:libraryId/holdings/:fileId/bibliography/restore-ai",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 16 * 1024,
+      schema: {
+        params: {
+          type: "object", required: ["libraryId", "fileId"],
+          properties: { libraryId: idSchema, fileId: idSchema },
+        },
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object", additionalProperties: false, required: ["bibliographyVersion", "fields"],
+          properties: {
+            bibliographyVersion: metadataVersionSchema,
+            fields: {
+              type: "array", minItems: 1, maxItems: 64,
+              items: {
+                type: "object", additionalProperties: false, required: ["fieldName", "scopeKey"],
+                properties: {
+                  fieldName: { type: "string", minLength: 1, maxLength: 64 },
+                  scopeKey: { type: "string", maxLength: 128 },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return service.resetBibliographicFieldAuthority(
+          requireActor(request.authAccount), request.params.libraryId, request.params.fileId,
+          request.body.bibliographyVersion, request.body.fields,
         );
       } catch (error: unknown) {
         const actor = request.authAccount;

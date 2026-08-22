@@ -6,6 +6,16 @@ import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.
 import type { AuditEventKind, AuditReasonCode } from "../audit/audit-event.js";
 import type { Library, LibraryHolding, LibraryMembership } from "../library/library.js";
 import {
+  BIBLIOGRAPHIC_FIELD_NAMES,
+  BibliographyValidationError,
+  changedBibliographicFields,
+  normalizeBibliographicProfileInput,
+  type BibliographicFieldAuthority,
+  type BibliographicFieldName,
+  type BibliographicProfile,
+  type BibliographicProfileInput,
+} from "../bibliography/bibliography.js";
+import {
   AUTHORITY_ROLES,
   AUTHORITY_ROLES_BY_TYPE,
   AUTHORITY_TYPES,
@@ -66,6 +76,9 @@ export interface MetadataDetail {
   originalFilename: string;
   metadataVersion: string;
   metadata: PublicMetadata | null;
+  bibliographyVersion: string;
+  bibliography: PublicBibliographicProfile | null;
+  fieldAuthorities: PublicFieldAuthority[];
   canEditMetadata: boolean;
   file: {
     id: string;
@@ -73,6 +86,18 @@ export interface MetadataDetail {
     sizeBytes: number;
     updatedAt: string;
   };
+}
+
+export interface PublicBibliographicProfile extends BibliographicProfileInput {
+  contractVersion: 1;
+  contributors: BibliographicProfile["contributors"];
+}
+
+export interface PublicFieldAuthority {
+  fieldName: BibliographicFieldName;
+  scopeKey: string;
+  source: "human" | "ai";
+  establishedAt: string;
 }
 
 export interface AuthorityPage {
@@ -220,6 +245,39 @@ function metadataVersion(recordId: string, metadata: CanonicalMetadata | null): 
     .digest("base64url");
 }
 
+function bibliographyVersion(recordId: string, profile: BibliographicProfile | null): string {
+  return createHash("sha256")
+    .update(JSON.stringify([
+      "bibliography",
+      recordId,
+      profile === null ? "absent" : [profile.revision, profile.updatedAt.toISOString()],
+    ]))
+    .digest("base64url");
+}
+
+function publicBibliography(profile: BibliographicProfile): PublicBibliographicProfile {
+  return {
+    contractVersion: 1,
+    materialClass: profile.materialClass,
+    contributors: profile.contributors.map((contributor) => ({ ...contributor })),
+    publication: { ...profile.publication },
+    ...(profile.series === undefined ? {} : { series: profile.series }),
+    ...(profile.volume === undefined ? {} : { volume: profile.volume }),
+    ...(profile.language === undefined ? {} : { language: profile.language }),
+    carrierEdition: { ...profile.carrierEdition },
+    sourceEdition: { ...profile.sourceEdition },
+  };
+}
+
+function publicFieldAuthority(authority: BibliographicFieldAuthority): PublicFieldAuthority {
+  return {
+    fieldName: authority.fieldName,
+    scopeKey: authority.scopeKey,
+    source: authority.source,
+    establishedAt: authority.establishedAt.toISOString(),
+  };
+}
+
 function publicAuthority(authority: ScholarlyAuthority): PublicAuthority {
   return {
     id: authority.id,
@@ -312,6 +370,127 @@ export class CanonicalMetadataService {
         now: this.#now(),
       });
       if (!saved) throw new MetadataError("concurrent_change");
+      const now = this.#now();
+      for (const fieldName of changedLegacyHumanFields(current, saved)) {
+        repositories.bibliography.setFieldAuthority({
+          recordId: holding.recordId,
+          ownerDomainId: library.ownerDomainId,
+          fieldName,
+          scopeKey: "",
+          source: "human",
+          actorAccountId: actor.id,
+          now,
+        });
+      }
+      recordAuditEvent(repositories, {
+        action: "libraries.metadata_update",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: holding.recordId,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+      return this.#detail(repositories, library, membership, holding);
+    });
+  }
+
+  updateBibliography(
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    fileId: string,
+    expectedVersion: string,
+    value: unknown,
+  ): MetadataDetail {
+    if (!OPAQUE_VERSION.test(expectedVersion)) throw new MetadataError("invalid_input");
+    let normalized: BibliographicProfileInput;
+    try {
+      normalized = normalizeBibliographicProfileInput(value);
+    } catch (error: unknown) {
+      if (error instanceof BibliographyValidationError) throw new MetadataError("invalid_input", { cause: error });
+      throw error;
+    }
+    return this.#persistence.runInTransaction((repositories) => {
+      const { library, membership, holding } = this.#resolveMemberHolding(actor, libraryId, fileId, repositories);
+      if (membership.role !== "manager") throw new MetadataError("not_found");
+      const current = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
+      if (bibliographyVersion(holding.recordId, current) !== expectedVersion) throw new MetadataError("concurrent_change");
+      const currentIds = new Set(current?.contributors.map((contributor) => contributor.id) ?? []);
+      const input: BibliographicProfileInput = {
+        ...normalized,
+        contributors: normalized.contributors.map((contributor) => ({
+          ...contributor,
+          id: contributor.id && currentIds.has(contributor.id) ? contributor.id : this.#createId(),
+        })),
+      };
+      for (const contributor of input.contributors) {
+        if (!contributor.authorityId) continue;
+        const authority = repositories.metadata.findAuthority(library.ownerDomainId, contributor.authorityId);
+        if (!authority || authority.type !== "person"
+          || (authority.canonicalLabel !== contributor.label && !authority.aliases.includes(contributor.label))) {
+          throw new MetadataError("not_found");
+        }
+      }
+      const saved = repositories.bibliography.saveProfile({
+        ...input,
+        recordId: holding.recordId,
+        ownerDomainId: library.ownerDomainId,
+        actorAccountId: actor.id,
+        expectedRevision: current?.revision ?? null,
+        now: this.#now(),
+      });
+      if (!saved) throw new MetadataError("concurrent_change");
+      const now = this.#now();
+      for (const field of changedBibliographicFields(current, saved)) {
+        repositories.bibliography.setFieldAuthority({
+          recordId: holding.recordId,
+          ownerDomainId: library.ownerDomainId,
+          fieldName: field.fieldName,
+          scopeKey: field.scopeKey,
+          source: "human",
+          actorAccountId: actor.id,
+          now,
+        });
+      }
+      recordAuditEvent(repositories, {
+        action: "libraries.metadata_update",
+        actorKind: "account",
+        actorAccountId: actor.id,
+        targetId: holding.recordId,
+        outcome: "succeeded",
+        reason: null,
+        occurredAt: now,
+      });
+      return this.#detail(repositories, library, membership, holding);
+    });
+  }
+
+  resetBibliographicFieldAuthority(
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    fileId: string,
+    expectedVersion: string,
+    fields: unknown,
+  ): MetadataDetail {
+    if (!OPAQUE_VERSION.test(expectedVersion) || !Array.isArray(fields) || fields.length < 1 || fields.length > 64) {
+      throw new MetadataError("invalid_input");
+    }
+    const registry = new Set<string>(BIBLIOGRAPHIC_FIELD_NAMES);
+    const normalized = fields.map((entry): { fieldName: BibliographicFieldName; scopeKey: string } => {
+      if (!isPlainObject(entry) || typeof entry.fieldName !== "string" || !registry.has(entry.fieldName)
+        || typeof entry.scopeKey !== "string" || (entry.scopeKey !== "" && !SAFE_ID.test(entry.scopeKey))) {
+        throw new MetadataError("invalid_input");
+      }
+      const fieldName = entry.fieldName as BibliographicFieldName;
+      if (fieldName.startsWith("contributor.") !== Boolean(entry.scopeKey)) throw new MetadataError("invalid_input");
+      return { fieldName, scopeKey: entry.scopeKey };
+    });
+    return this.#persistence.runInTransaction((repositories) => {
+      const { library, membership, holding } = this.#resolveMemberHolding(actor, libraryId, fileId, repositories);
+      if (membership.role !== "manager") throw new MetadataError("not_found");
+      const current = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
+      if (bibliographyVersion(holding.recordId, current) !== expectedVersion) throw new MetadataError("concurrent_change");
+      repositories.bibliography.clearFieldAuthorities(library.ownerDomainId, holding.recordId, normalized);
       recordAuditEvent(repositories, {
         action: "libraries.metadata_update",
         actorKind: "account",
@@ -323,6 +502,12 @@ export class CanonicalMetadataService {
       });
       return this.#detail(repositories, library, membership, holding);
     });
+  }
+
+  findUniqueExactPersonAuthority(ownerDomainId: string, label: string): ScholarlyAuthority | null {
+    const normalized = normalizeText(label, 255);
+    const matches = this.#persistence.repositories.bibliography.findExactPersonAuthorities(ownerDomainId, normalized);
+    return matches.length === 1 ? matches[0]! : null;
   }
 
   listAuthorities(actor: AuthenticatedAccount, libraryId: string, type: AuthorityType, beforeId: string | null, limit = 100): AuthorityPage {
@@ -451,12 +636,17 @@ export class CanonicalMetadataService {
     holding: LibraryHolding,
   ): MetadataDetail {
     const metadata = repositories.metadata.findMetadata(library.ownerDomainId, holding.recordId);
+    const bibliography = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
+    const fieldAuthorities = repositories.bibliography.listFieldAuthorities(library.ownerDomainId, holding.recordId);
     const publicMetadata = metadata ? this.#publicMetadata(repositories, metadata) : null;
     return {
       displayTitle: publicMetadata?.canonicalTitle ?? holding.file.displayName,
       originalFilename: holding.file.displayName,
       metadataVersion: metadataVersion(holding.recordId, metadata),
       metadata: publicMetadata,
+      bibliographyVersion: bibliographyVersion(holding.recordId, bibliography),
+      bibliography: bibliography ? publicBibliography(bibliography) : null,
+      fieldAuthorities: fieldAuthorities.map(publicFieldAuthority),
       canEditMetadata: membership.role === "manager",
       file: {
         id: holding.file.id,
@@ -486,4 +676,14 @@ export class CanonicalMetadataService {
   }
 }
 
-export { normalizeAuthorityInput, normalizeMetadataInput, metadataVersion, authorityVersion };
+function changedLegacyHumanFields(previous: CanonicalMetadata | null, next: CanonicalMetadata): BibliographicFieldName[] {
+  const fields: BibliographicFieldName[] = [];
+  if (!previous || previous.canonicalTitle !== next.canonicalTitle) fields.push("canonicalTitle");
+  if (!previous || previous.subtitle !== next.subtitle) fields.push("subtitle");
+  if (!previous || JSON.stringify(previous.alternativeTitles) !== JSON.stringify(next.alternativeTitles)) fields.push("alternativeTitles");
+  if (!previous || previous.dateStatement !== next.dateStatement) fields.push("dateStatement");
+  if (!previous || JSON.stringify(previous.identifiers) !== JSON.stringify(next.identifiers)) fields.push("identifiers");
+  return fields;
+}
+
+export { normalizeAuthorityInput, normalizeMetadataInput, metadataVersion, bibliographyVersion, authorityVersion };

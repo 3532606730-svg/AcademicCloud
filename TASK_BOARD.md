@@ -1,6 +1,6 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-21
+**Last reconciled:** 2026-08-22
 
 The board is the executable priority view. `CURRENT_STATE.json` holds compact
 current pointers; task cards and ADRs preserve complete contracts and evidence.
@@ -9,13 +9,28 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 | Task | State | Next authority |
 |---|---|---|
+| L1-INTELLIGENT-LIBRARY01 | ACTIVE — Checkpoint A domain/schema ready for durable checkpoint | Continue mandatory A→F sequence; production only after integrated Checkpoint F gates |
 | GOAL-BETA-PREP01 | ALL FIVE PHASES GREEN / INTERNAL_BETA_READY | STOP — Owner decides whether/when to start or invite users into internal beta |
 | HOTFIX-META-UX01 | DEPLOYED as `53317bb…` (same-schema app-only on `c741455…`) | Owner manual product acceptance in production |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
 
-The detailed Owner authorization, boundaries, mandatory sequence, credential/privacy rules, and stop conditions are authoritative in `tasks/doing/GOAL-BETA-PREP01.md`. The bounded product-usability hotfix contract is authoritative in `tasks/doing/HOTFIX-META-UX01.md`.
+The current detailed Owner authorization, boundaries, mandatory A–F sequence,
+credential/privacy rules, production authority, and stop conditions are
+authoritative in `tasks/doing/L1-INTELLIGENT-LIBRARY01.md`. Historical beta-prep
+and hotfix contracts remain preserved in their existing cards.
+
+## Active Intelligent Library sequence
+
+| Order | Checkpoint | State |
+|---:|---|---|
+| A | Domain + persistence architecture | READY TO CHECKPOINT — additive migration 023, ADR-032, repository/service/API and focused tests implemented; production unchanged |
+| B | AI bibliographic Compute | PENDING |
+| C | Search + filters + display | PENDING |
+| D | Citation engine | PENDING |
+| E | Library UX + Activity Center | PENDING |
+| F | Integration + migration + exact production deployment | PENDING |
 
 ## Active Goal Mode sequence
 

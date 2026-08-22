@@ -180,6 +180,56 @@ test("manager canonical edits preserve physical identity, lineage, filename, pro
   assert.deepEqual(holding, { canonical_title: "元西域人华化考", display_name: "metadata -- acquisition filename.pdf" });
 });
 
+test("structured bibliography persists field-level human authority and exact-only person binding", (context) => {
+  const { persistence, library, fileId, metadata } = fixture(context);
+  const initial = metadata.getDetails(OWNER, library.id, fileId);
+  assert.equal(initial.bibliography, null);
+  assert.equal(initial.bibliographyVersion.length, 43);
+  assert.deepEqual(initial.fieldAuthorities, []);
+
+  const person = metadata.createAuthority(OWNER, library.id, {
+    type: "person", canonicalLabel: "杉山正明", aliases: ["Sugiyama Masaaki"],
+  });
+  const saved = metadata.updateBibliography(OWNER, library.id, fileId, initial.bibliographyVersion, {
+    materialClass: "scholarly_monograph",
+    contributors: [{ label: "杉山正明", role: "author", authorityId: person.id }],
+    publication: { publisher: "講談社", publicationDate: "1996" },
+    language: "日本語",
+    carrierEdition: {},
+    sourceEdition: {},
+  });
+  assert.equal(saved.bibliography?.materialClass, "scholarly_monograph");
+  assert.equal(saved.bibliography?.contributors[0]?.authorityId, person.id);
+  assert.equal(saved.fieldAuthorities.every((entry) => entry.source === "human"), true);
+  assert.equal(saved.fieldAuthorities.some((entry) => entry.fieldName === "materialClass"), true);
+  assert.equal(saved.fieldAuthorities.some((entry) => entry.fieldName === "publication.publisher"), true);
+  assert.equal(saved.fieldAuthorities.some((entry) => entry.fieldName === "publication.place"), false);
+  assert.equal(saved.fieldAuthorities.some((entry) => entry.fieldName === "contributor.role" && entry.scopeKey.length > 0), true);
+  assert.equal(metadata.findUniqueExactPersonAuthority(library.ownerDomainId, "杉山正明")?.id, person.id);
+  assert.equal(metadata.findUniqueExactPersonAuthority(library.ownerDomainId, "杉山正"), null);
+
+  metadata.createAuthority(OWNER, library.id, {
+    type: "person", canonicalLabel: "別人", aliases: ["杉山正明"],
+  });
+  assert.equal(metadata.findUniqueExactPersonAuthority(library.ownerDomainId, "杉山正明"), null);
+  const { contractVersion: _contractVersion, ...bibliographyInput } = saved.bibliography!;
+  assert.throws(
+    () => metadata.updateBibliography(OWNER, library.id, fileId, saved.bibliographyVersion, {
+      ...bibliographyInput,
+      contributors: [{ ...saved.bibliography!.contributors[0]!, label: "杉山正" }],
+    }),
+    (error) => error instanceof MetadataError && error.code === "not_found",
+  );
+
+  const reset = metadata.resetBibliographicFieldAuthority(
+    OWNER, library.id, fileId, saved.bibliographyVersion,
+    [{ fieldName: "materialClass", scopeKey: "" }],
+  );
+  assert.equal(reset.fieldAuthorities.some((entry) => entry.fieldName === "materialClass"), false);
+  assert.equal(reset.fieldAuthorities.some((entry) => entry.fieldName === "publication.publisher"), true);
+  assert.equal(persistence.repositories.bibliography.findProfile(library.ownerDomainId, "metadata-record")?.materialClass, "scholarly_monograph");
+});
+
 test("metadata CAS, authority validation, and type transitions fail atomically", (context) => {
   const { database, persistence, library, fileId, metadata } = fixture(context);
   const initial = metadata.getDetails(OWNER, library.id, fileId);

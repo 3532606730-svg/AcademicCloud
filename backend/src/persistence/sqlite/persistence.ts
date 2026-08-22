@@ -18,6 +18,7 @@ import { SqliteCanonicalMetadataRepository } from "./metadata-repository.js";
 import { SqliteSuggestionRepository } from "./suggestion-repository.js";
 import { SqliteMultipartUploadRepository } from "./multipart-upload-repository.js";
 import { SqliteDerivedJobRepository } from "./derived-job-repository.js";
+import { SqliteBibliographicRepository } from "./bibliographic-repository.js";
 
 export class SqlitePersistence implements Persistence {
   readonly repositories: RepositorySet;
@@ -40,6 +41,7 @@ export class SqlitePersistence implements Persistence {
       contributions: new SqliteContributionRepository(database),
       credentialResets: new SqliteCredentialResetRepository(database),
       metadata: new SqliteCanonicalMetadataRepository(database),
+      bibliography: new SqliteBibliographicRepository(database),
       suggestions: new SqliteSuggestionRepository(database),
       multipartUploads: new SqliteMultipartUploadRepository(database),
       derivedJobs: new SqliteDerivedJobRepository(database),

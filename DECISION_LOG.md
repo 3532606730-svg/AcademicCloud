@@ -268,3 +268,23 @@ or OCR E2E for this path; the dedicated Compute workflow inherits ADR-030's
 exact pinned runtime verification. Development migration 022 is not applied to
 production, and all production secrets, environment, artifact, backup/migration,
 deployment, and rollback work remains a separate Owner gate.
+
+## ADR-032 — Intelligent Bibliographic Domain and Human Field Authority
+
+**Date:** 2026-08-22
+**Status:** Accepted by Owner through L1-INTELLIGENT-LIBRARY01
+**Full record:** `docs/decisions/ADR-032-intelligent-bibliographic-domain-and-human-authority.md`
+
+Layer 1 adopts one authoritative 19-value `materialClass` taxonomy, normalized
+contributors with controlled conceptual roles plus evidence labels, and
+separate current-carrier and historical-source edition structures. The older
+migration-018 discriminator remains compatibility-only; migration 023 adds the
+new profile, contributor, source-edition, field-authority, and query index
+structures without rewriting old rows or migration-019/020 evidence.
+
+AI supplies default metadata. A human edit establishes durable authority only
+for the fields actually populated or changed; later AI evidence cannot silently
+replace them. Returning a field to AI control is an explicit, field-scoped user
+action. Automatic contributor Authority binding requires one unique exact
+canonical-label or exact-alias person match in the same Library domain; fuzzy,
+invented, and ambiguous binding is prohibited.

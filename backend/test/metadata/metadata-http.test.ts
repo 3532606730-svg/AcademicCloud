@@ -96,11 +96,17 @@ test("metadata HTTP is exact-holding scoped, manager-only for writes, CAS guarde
 
     const memberDetail = await app.inject({ method: "GET", url: detailUrl, headers: baseHeaders(memberCookie) });
     assert.equal(memberDetail.statusCode, 200);
-    const initial = memberDetail.json() as Record<string, unknown> & { metadataVersion: string; originalFilename: string; metadata: null; canEditMetadata: boolean };
+    const initial = memberDetail.json() as Record<string, unknown> & {
+      metadataVersion: string; bibliographyVersion: string; originalFilename: string;
+      metadata: null; bibliography: null; fieldAuthorities: unknown[]; canEditMetadata: boolean;
+    };
     assert.equal(initial.originalFilename, "accepted -- source.pdf");
     assert.equal(initial.metadata, null);
+    assert.equal(initial.bibliography, null);
+    assert.deepEqual(initial.fieldAuthorities, []);
     assert.equal(initial.canEditMetadata, false);
     assert.equal(initial.metadataVersion.length, 43);
+    assert.equal(initial.bibliographyVersion.length, 43);
     for (const forbidden of ["ownerDomainId", "recordId", "artifactId", "versionId", "objectKey", "checksum", "uploadedByAccountId", "favorites", "notes", "readingState"]) {
       assert.equal(forbidden in initial, false);
     }
@@ -140,6 +146,48 @@ test("metadata HTTP is exact-holding scoped, manager-only for writes, CAS guarde
     });
     assert.equal(authorityResponse.statusCode, 200);
     const authority = (authorityResponse.json() as { authority: { id: string } }).authority;
+
+    const bibliographyUrl = `/api/libraries/${libraryId}/holdings/metadata-http-file/bibliography`;
+    const bibliographyBody = {
+      bibliographyVersion: initial.bibliographyVersion,
+      materialClass: "primary_source_modern_edition",
+      contributors: [{ label: "陈垣", role: "collator", roleLabel: "点校", authorityId: authority.id }],
+      publication: { publisher: "中华书局", publicationDate: "1976" },
+      language: "中文",
+      carrierEdition: { editionType: "punctuated_edition", editionStatement: "1976年点校本" },
+      sourceEdition: {},
+    };
+    assert.equal((await app.inject({
+      method: "PUT", url: bibliographyUrl,
+      headers: { ...baseHeaders(memberCookie), "content-type": "application/json" }, payload: bibliographyBody,
+    })).statusCode, 404);
+    const bibliographyWrite = await app.inject({
+      method: "PUT", url: bibliographyUrl,
+      headers: { ...baseHeaders(ownerCookie), "content-type": "application/json" }, payload: bibliographyBody,
+    });
+    assert.equal(bibliographyWrite.statusCode, 200);
+    const bibliographySaved = bibliographyWrite.json() as {
+      bibliographyVersion: string;
+      bibliography: { materialClass: string; contributors: Array<{ id: string; label: string; role: string; roleLabel: string; authorityId: string }> };
+      fieldAuthorities: Array<{ fieldName: string; source: string }>;
+    };
+    assert.equal(bibliographySaved.bibliography.materialClass, "primary_source_modern_edition");
+    assert.deepEqual(bibliographySaved.bibliography.contributors[0], {
+      id: bibliographySaved.bibliography.contributors[0]?.id,
+      label: "陈垣", role: "collator", roleLabel: "点校", authorityId: authority.id,
+    });
+    assert.equal(bibliographySaved.fieldAuthorities.some((entry) => entry.fieldName === "materialClass" && entry.source === "human"), true);
+    assert.equal((await app.inject({
+      method: "PUT", url: bibliographyUrl,
+      headers: { ...baseHeaders(ownerCookie), "content-type": "application/json" }, payload: bibliographyBody,
+    })).statusCode, 409);
+    const restore = await app.inject({
+      method: "POST", url: `${bibliographyUrl}/restore-ai`,
+      headers: { ...baseHeaders(ownerCookie), "content-type": "application/json" },
+      payload: { bibliographyVersion: bibliographySaved.bibliographyVersion, fields: [{ fieldName: "materialClass", scopeKey: "" }] },
+    });
+    assert.equal(restore.statusCode, 200);
+    assert.equal((restore.json() as { fieldAuthorities: Array<{ fieldName: string }> }).fieldAuthorities.some((entry) => entry.fieldName === "materialClass"), false);
 
     const ownerWrite = await app.inject({
       method: "PUT",

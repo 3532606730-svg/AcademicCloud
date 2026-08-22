@@ -33,8 +33,8 @@ test("migrations 008 through 015 preserve the Accounts I foundation", (context) 
     `).run(NOW, NOW);
 
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
-      currentVersion: 22,
+      appliedVersions: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
+      currentVersion: 23,
     });
     assert.deepEqual(database.prepare("SELECT id, role, state FROM accounts").all(), [
       { id: "owner-1", role: "owner", state: "active" },

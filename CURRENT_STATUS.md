@@ -1,12 +1,27 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-21
+**Last reconciled:** 2026-08-22
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
 evidence without duplicating it here.
 
 ## Current situation
+
+Owner-authorized `L1-INTELLIGENT-LIBRARY01` is now active in its mandatory A–F
+sequence. Checkpoint A has implemented the ADR-032 domain and additive
+development migration 023: one authoritative material taxonomy, structured
+contributors/publication/current-carrier/historical-source editions, exact-only
+person Authority binding, and durable field-level human-over-AI authority.
+Focused domain/metadata/migration/API tests and backend typecheck are green;
+the full backend run found one task-caused historical trigger-count expectation,
+which was repaired before the final A gate.
+
+No partial Layer‑1 production change has occurred. Production remains exact
+`53317bb0156589baa21bc69c22e199d200c49840` at schema v22/history 001–022.
+Development migration head is v23/history 001–023. Continue automatically
+through B–F; production migration/deployment is authorized only at integrated
+Checkpoint F after its bounded gates. Internal Beta remains unstarted.
 
 The first Core/Compute separation vertical slice, COMPUTE-PRECUTOVER01, and
 GOAL-BETA-PREP01 Phase 2 production cutover are complete. Production now runs
