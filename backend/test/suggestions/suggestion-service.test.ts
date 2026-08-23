@@ -43,6 +43,30 @@ class DeferredDispatcher implements DerivedComputeDispatcher {
   }
 }
 
+/**
+ * Models the only unsafe external boundary: the provider accepts the first
+ * dispatch, then Core loses the receipt before it can persist it. A restarted
+ * Core instance must be able to reconcile the durable row without allowing
+ * both accepted workers to claim/execute the same attempt.
+ */
+class AmbiguousRestartDispatcher implements DerivedComputeDispatcher {
+  readonly jobs: DerivedComputeDispatchJob[] = [];
+  #calls = 0;
+  providerExecutions = 0;
+
+  async dispatch(job: DerivedComputeDispatchJob): Promise<{ provider: string; providerJobId: string }> {
+    this.#calls += 1;
+    this.jobs.push({ ...job });
+    if (this.#calls === 1) {
+      this.providerExecutions += 1;
+      throw new Error("Core crashed after provider acceptance");
+    }
+    // Provider-side idempotency resolves the same stable attempt identity to
+    // the accepted execution; the adapter does not start a second workload.
+    return { provider: "test", providerJobId: `provider-${job.attemptId}` };
+  }
+}
+
 function ids(...values: string[]): () => string {
   let position = 0;
   return () => values[position++] ?? `generated-${position}`;
@@ -294,6 +318,41 @@ test("ambiguous provider acceptance does not create a duplicate provider executi
   assert.equal(persistence.repositories.derivedJobs.findByIdempotencyKey(
     persistence.repositories.derivedJobs.findById(job.id)!.idempotencyKey,
   )?.id, job.id);
+});
+
+test("restart reconciliation preserves one provider execution across an accepted-dispatch receipt gap", async (context) => {
+  const dispatcher = new AmbiguousRestartDispatcher();
+  const first = fixture(context, { dispatcher });
+  const queued = await first.suggestions.requestGeneration(OWNER, first.library.id, first.fileId, { origin: "admission" });
+  assert.equal(queued.state, "queued");
+  assert.equal(dispatcher.jobs.length, 1, "the first provider dispatch was accepted before receipt persistence");
+
+  // A fresh service instance represents a Core restart: its in-process
+  // dispatch guard is empty, but it shares the same durable SQLite state.
+  const restarted = new SuggestionService({
+    persistence: first.persistence,
+    storage: first.storage,
+    metadata: first.metadata,
+    dispatcher,
+    coreBaseUrl: "https://academiccloud.example",
+    now: () => NOW,
+    createId: ids("unused"),
+    createToken: () => "job-capability-token",
+  });
+  assert.equal(await restarted.reconcileUndispatchedJobs(), 1);
+  assert.equal(dispatcher.jobs.length, 2, "the restarted reconciler issued one recovery dispatch");
+  assert.equal(dispatcher.providerExecutions, 1, "provider idempotency keeps the recovery at one execution");
+  assert.equal(first.persistence.repositories.derivedJobs.findById(queued.id)?.providerJobId, "provider-attempt-1");
+
+  // Both provider runs carry the same attempt identity. Core's conditional
+  // queued -> running transition is the durable provider-execution gate.
+  const claims = await Promise.allSettled([
+    restarted.claimJob(queued.id, "attempt-1"),
+    restarted.claimJob(queued.id, "attempt-1"),
+  ]);
+  assert.equal(claims.filter((claim) => claim.status === "fulfilled").length, 1);
+  assert.equal(claims.filter((claim) => claim.status === "rejected").length, 1);
+  assert.equal(first.persistence.repositories.derivedJobs.findById(queued.id)?.state, "running");
 });
 
 test("Compute claim and callback create reviewable candidates without canonical writes", async (context) => {

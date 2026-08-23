@@ -1,5 +1,7 @@
 name: Derived compute worker
 
+run-name: AcademicCloud derived compute ${{ inputs.job_id }}/${{ inputs.attempt_id }}
+
 on:
   pull_request:
     branches:
@@ -23,7 +25,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: derived-compute-${{ inputs.job_id }}
+  # A retry gets a new attempt_id. Duplicate dispatches for one ambiguous
+  # hand-off therefore share a group and serialize; Core's atomic claim then
+  # admits exactly one worker execution for that (job_id, attempt_id).
+  group: derived-compute-${{ inputs.job_id }}-${{ inputs.attempt_id }}
   cancel-in-progress: false
 
 jobs:

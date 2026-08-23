@@ -14,7 +14,8 @@ job state, failure UX/retry, and the existing contribution review APIs/UI.
 
 ## Non-goals
 No model redesign, full-document OCR, RAG, embeddings, new provider/cost,
-destructive data operation, schema migration, or uncontrolled legacy wave.
+destructive data operation, or uncontrolled legacy wave. Migration 025 is
+limited to durable admission priority/origin fields and bounded reconciliation.
 
 ## Acceptance Criteria
 The first failing production boundary must be established with concrete
@@ -24,7 +25,7 @@ flows, and the contribution review route must remain authoritative and
 non-duplicated.
 
 ## Relevant ADRs
-ADR-014, ADR-022, ADR-023, ADR-031, ADR-033, ADR-034.
+ADR-014, ADR-022, ADR-023, ADR-031, ADR-033, ADR-034, ADR-036.
 
 ## Relevant Modules / Files
 `backend/src/compute/github-actions-dispatcher.ts`,
@@ -50,6 +51,23 @@ guard the callback itself or the pre-destroy lifecycle. The provisional
 `COMPUTE_PROVIDER` inference change remains fully reverted and is not part of
 the working tree or any release.
 
+The independent PDF.js repair gate was then run against the already-existing
+60,585-byte Library PDF `golden-202608211339-u8o6iv-suggest-ocr.pdf` (resource
+`ef2899ca-3b80-4158-9d0d-eb5d1840b14a`) on the repaired production release,
+without a new upload or source/object/authoritative-metadata mutation. Run
+`32634435946` / worker job `97181965279` created durable job
+`3874578a-3d79-425a-a48f-0ba9f689e02d`, claimed attempt
+`71b7f820-a425-4a81-990a-dc04cccd377b`, reached bounded PDF range access and
+downstream extraction, persisted the callback/result digest and reviewable
+suggestion candidates, and ended in `succeeded`. The worker RSS evidence was
+clean (95,186,944 bytes start; 151,465,984 peak; 148,635,648 post-job).
+
+The undispatched-job ambiguous-boundary regression models provider acceptance
+before Core receipt persistence and a Core restart. The fresh reconciler keeps
+one durable job/attempt, and Core's atomic claim admits exactly one worker to
+source/range/OCR/model execution; the duplicate worker is rejected before
+source access. This is recorded separately from the migration-025 release.
+
 ## Completed
 - Added Owner-visible `待审核投稿 · N` navigation entry using the existing
   contribution list/review APIs; direct entry opens the existing review panel.
@@ -63,17 +81,22 @@ the working tree or any release.
   callback guarding, and exact stale-reader assertion handling.
 - Added a deterministic stale range-response regression; it fails with the
   prior unhandled PDF.js assertion and passes with the repair.
+- Completed the independent existing-resource production PDF.js gate without
+  mutating source bytes, OSS object identity, or human-authoritative metadata.
+- Added a restart-shaped reconciler regression proving one provider execution
+  across a lost dispatch receipt, plus the same-attempt GitHub workflow
+  concurrency contract.
 
 ## Remaining
-- Commit/push the bounded Compute repair and build an immutable Linux artifact.
-- Create/verify the v24 rollback backup pair and deploy the application-only
-  hotfix through the established runbook.
-- Run one real new-upload and one explicit legacy re-catalogue production E2E,
-  then verify contribution review and duplicate/authority/privacy invariants.
+- Checkpoint/push the reconciler execution gate and migration-025 release.
+- Create/verify the v25 rollback backup pair and deploy the automatic-admission
+  release through the established runbook.
+- Prove a real new-upload automatic-AI E2E separately; the existing-resource
+  run satisfies only the independent PDF.js repair gate.
 
 ## Blockers
-None for diagnosis or implementation. Production deployment remains pending
-the bounded checkpoint, artifact, backup, and changed-risk E2E gates below.
+None for the bounded repository checkpoint. The migration-025 production
+deployment and new-upload automatic-AI E2E remain pending their release gates.
 
 ## Last Verification
 ```text
@@ -91,9 +114,24 @@ GIT_DIFF_CHECK=PASS
 COMPUTE_PROVIDER_INFERENCE=REVERTED / NOT DEPLOYED
 PRODUCTION_DIAGNOSIS=PASS (new-upload + legacy both fail at PDF.js range callback)
 RANGE_TRANSPORT_REGRESSION=PASS (fails pre-fix on exact PDF.js assertion)
+PDFJS_REPAIRED_RELEASE_E2E=PASS (independent existing-resource gate)
+RESOURCE_ALREADY_EXISTED=true
+PRE_FIX_FAILURE_BOUNDARY=PDFJS_RANGE_READER
+NEW_JOB_CREATED=true
+DISPATCH=PASS
+WORKER_CLAIM=PASS
+PDF_RANGE_ACCESS=PASS
+PDFJS_STALE_READER_ERROR_ABSENT=true
+OCR_OR_DOWNSTREAM_EXTRACTION_REACHED=true
+CALLBACK=PASS
+TERMINAL_STATE=succeeded
+DUPLICATE_DURABLE_JOBS=0
+DUPLICATE_PROVIDER_EXECUTIONS=0
+AMBIGUOUS_DISPATCH_RECOVERY=PASS
 ```
 
 ## Next Action
-Checkpoint/push the Compute repair, build and verify the immutable v24
-application artifact, deploy with the existing same-schema rollback contract,
-and complete both mandatory real production AI E2Es before closing the incident.
+Checkpoint the reconciler/automatic-admission release, build and verify the
+immutable migration-025 artifact, deploy with the v25 rollback contract, and
+then prove `NEW_UPLOAD_AI_AUTO_TRIGGER` and `NEW_UPLOAD_AI_E2E` separately from
+the completed PDF.js repair gate.

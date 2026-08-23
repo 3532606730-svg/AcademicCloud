@@ -28,6 +28,15 @@
 7. Provider-backed production paths are not declared complete from unit/CI,
    artifact, and health evidence alone. A bounded real Golden E2E covering
    browser, storage, Core, Compute, callback, and UI state is required.
+8. The provider hand-off is treated as an ambiguous external boundary. The
+   GitHub adapter first lists recent `workflow_dispatch` runs and matches the
+   immutable `run-name` `(job_id, attempt_id)` key. If an accepted run already
+   exists, recovery returns that run identity and does not POST a second
+   dispatch. The workflow concurrency group remains a defense-in-depth guard,
+   and Core's conditional `queued -> running` claim is the durable exactly-once
+   execution gate. A Core restart may recover a lost receipt, but only one
+   provider run can reach range/OCR/model work; later duplicate workers
+   terminate at claim without source access.
 
 ## Consequences
 
@@ -50,3 +59,25 @@
   it would create an uncontrolled wave and could mask persistent failures.
 - Treating the latest-created terminal job as current UI state: rejected because
   it lets an old failure masquerade as a new active retry.
+
+## Ambiguous provider hand-off verification
+
+The acceptance boundary is intentionally split:
+
+```text
+durable job creation
+→ provider dispatch accepted
+→ Core receipt persistence (ambiguous crash boundary)
+→ worker claim (durable exactly-once gate)
+→ range/OCR/model execution
+```
+
+The restart regression keeps one durable job and one attempt identity, models a
+provider acceptance followed by a lost receipt, runs the fresh reconciler, and
+submits both accepted worker attempts to the same Core claim. The provider
+execution counter remains one, exactly one claim transitions the job to
+`running`, and the other is rejected before source access. The GitHub adapter
+has a focused HTTP regression proving that an already visible accepted run is
+recovered without a second dispatch POST. The workflow uses
+`cancel-in-progress: false` so an accidentally concurrent same-attempt run is
+allowed to finish and is still stopped by Core claim before source access.

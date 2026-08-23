@@ -7,11 +7,10 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 ## Current Owner authorization / continuous objective
 
-`INCIDENT-L1-AI-PRODUCTION01` is **DIAGNOSED / REPAIR IN PROGRESS**: new-upload
-and legacy re-catalogue jobs both fail at the proven PDF.js range-reader
-callback boundary after Compute dispatch. The bounded lifecycle repair is
-implemented and locally verified; checkpoint, artifact, deployment, and the
-two mandatory production E2Es remain.
+`INCIDENT-L1-AI-PRODUCTION01` is **DIAGNOSED / AUTOMATIC-ADMISSION RELEASE IN
+PROGRESS**: the independent existing-resource PDF.js repair gate is PASS and
+the migration-025 reconciler execution gate is locally PASS. The later release
+still needs artifact/deployment and the real new-upload AI E2E.
 
 `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` has its access gates resolved:
 SSH read-only evidence, Git write/push, and authorized GitHub Actions browser
@@ -26,6 +25,25 @@ read are available. Reconcile the card at the incident checkpoint.
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
+
+Independent incident gates:
+
+```text
+PDFJS_REPAIRED_RELEASE_E2E=PASS
+RESOURCE_ALREADY_EXISTED=true
+PRE_FIX_FAILURE_BOUNDARY=PDFJS_RANGE_READER
+NEW_JOB_CREATED=true
+DISPATCH=PASS
+WORKER_CLAIM=PASS
+PDF_RANGE_ACCESS=PASS
+PDFJS_STALE_READER_ERROR_ABSENT=true
+OCR_OR_DOWNSTREAM_EXTRACTION_REACHED=true
+CALLBACK=PASS
+TERMINAL_STATE=succeeded
+DUPLICATE_DURABLE_JOBS=0
+DUPLICATE_PROVIDER_EXECUTIONS=0
+AMBIGUOUS_DISPATCH_RECOVERY=PASS
+```
 
 The completed A–F contract, credential/privacy boundaries, production evidence,
 and rollback record are authoritative in
@@ -119,6 +137,8 @@ None of this queue is authorized by GOAL-BETA-PREP01.
 DECLARED_PRODUCTION=017a47dbd837264175d8cbcb3f469a01e3e62c92
 PREVIOUS_PRODUCTION=53317bb0156589baa21bc69c22e199d200c49840
 PRODUCTION_SCHEMA=v24 / 001-024
+MIGRATION_025_PRODUCTION_APPLIED=false
+AUTOMATIC_ADMISSION_RELEASE_PENDING=true
 DEVELOPMENT_SCHEMA=v24 / 001-024
 MIGRATION_022_PRODUCTION_APPLIED=true
 MIGRATION_023_PRODUCTION_APPLIED=true

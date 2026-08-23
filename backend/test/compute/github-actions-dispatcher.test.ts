@@ -8,9 +8,10 @@ import {
 } from "../../src/compute/github-actions-dispatcher.js";
 
 test("GitHub Actions adapter dispatches opaque identity only", async () => {
-  let request: { url: string; init: RequestInit } | null = null;
+  const requests: Array<{ url: string; init: RequestInit }> = [];
   const fetchImplementation: typeof fetch = async (input, init = {}) => {
-    request = { url: String(input), init };
+    requests.push({ url: String(input), init });
+    if (init.method === "GET") return new Response(JSON.stringify({ workflow_runs: [] }), { status: 200 });
     return new Response(null, { status: 204 });
   };
   const dispatcher = new GitHubActionsComputeDispatcher({
@@ -27,9 +28,10 @@ test("GitHub Actions adapter dispatches opaque identity only", async () => {
     coreBaseUrl: "https://cloud.example.edu",
   });
   assert.equal(receipt.provider, "github_actions");
-  assert.equal(request!.url, "https://api.github.com/repos/academiccloud/core/actions/workflows/derived-compute-worker.yml/dispatches");
-  assert.equal(new Headers(request!.init.headers).get("authorization"), "Bearer github-dispatch-token-that-is-long-enough");
-  const body = JSON.parse(String(request!.init.body));
+  assert.equal(requests[0]!.url, "https://api.github.com/repos/academiccloud/core/actions/workflows/derived-compute-worker.yml/runs?event=workflow_dispatch&per_page=100");
+  assert.equal(requests[1]!.url, "https://api.github.com/repos/academiccloud/core/actions/workflows/derived-compute-worker.yml/dispatches");
+  assert.equal(new Headers(requests[1]!.init.headers).get("authorization"), "Bearer github-dispatch-token-that-is-long-enough");
+  const body = JSON.parse(String(requests[1]!.init.body));
   assert.deepEqual(body, {
     ref: "codex/compute-release",
     inputs: {
@@ -40,6 +42,32 @@ test("GitHub Actions adapter dispatches opaque identity only", async () => {
   });
   assert.equal(JSON.stringify(body).includes("file-secret-id"), false);
   assert.equal(JSON.stringify(body).includes("object"), false);
+});
+
+test("GitHub Actions adapter recovers an accepted run without a second dispatch", async () => {
+  const requests: Array<{ url: string; init: RequestInit }> = [];
+  const fetchImplementation: typeof fetch = async (input, init = {}) => {
+    requests.push({ url: String(input), init });
+    if (init.method === "GET") {
+      return new Response(JSON.stringify({ workflow_runs: [{ id: 8123, display_title: "AcademicCloud derived compute job-1/attempt-1" }] }), { status: 200 });
+    }
+    throw new Error("a second workflow dispatch would be a duplicate provider execution");
+  };
+  const dispatcher = new GitHubActionsComputeDispatcher({
+    repository: "academiccloud/core",
+    workflow: "derived-compute-worker.yml",
+    ref: "codex/compute-release",
+    token: "github-dispatch-token-that-is-long-enough",
+  }, fetchImplementation);
+  const receipt = await dispatcher.dispatch({
+    id: "job-1",
+    kind: "metadata_suggestion",
+    resourceId: "file-1",
+    attemptId: "attempt-1",
+    coreBaseUrl: "https://cloud.example.edu",
+  });
+  assert.equal(receipt.providerJobId, "github-actions:academiccloud/core:derived-compute-worker.yml:attempt-1:run-8123");
+  assert.equal(requests.length, 1);
 });
 
 test("runtime configuration fails closed unless every provider credential and route is present", () => {

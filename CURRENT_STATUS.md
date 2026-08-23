@@ -13,7 +13,8 @@ resolved for the incident: the production SSH route, Git checkpoint/push path,
 and authorized GitHub Actions browser evidence are available. No production
 data or application deployment has changed in this checkpoint.
 
-The production-wide AI cataloguing failure is **DIAGNOSED / REPAIR READY**.
+The production-wide AI cataloguing failure is **DIAGNOSED / AUTOMATIC-ADMISSION
+RELEASE READY**.
 Representative new-upload and legacy re-catalogue jobs both dispatched to
 GitHub Actions/Compute and failed at the same PDF.js range transport callback:
 `#onReceiveData - no PDFDataTransportStreamRangeReader instance found.` The
@@ -22,11 +23,17 @@ control. The proven common cause is a stale/late range response racing PDF.js
 range-reader removal. No `COMPUTE_PROVIDER` inference or configuration change
 is implicated or deployed.
 
-The bounded repair is implemented locally in `compute/src/pdf-text.ts`: range
-transport callbacks are lifecycle-guarded, stale PDF.js reader assertions are
-ignored narrowly, and transport disposal precedes `loadingTask.destroy()`.
-Focused Compute regression and full Compute gates are green; immutable artifact,
-deployment, and the two mandatory real production E2Es remain pending.
+The bounded repair is implemented in `compute/src/pdf-text.ts`: range transport
+callbacks are lifecycle-guarded, stale PDF.js reader assertions are ignored
+narrowly, and transport disposal precedes `loadingTask.destroy()`. Focused
+Compute regression and full Compute gates are green. The independent repaired-
+release PDF.js gate is green against the existing 60,585-byte Library PDF and
+is recorded separately from the migration-025 automatic-admission release.
+
+Migration 025 adds durable admission origin/priority and bounded
+undispatched-job reconciliation. Core's atomic attempt claim is the durable
+exactly-once provider-execution gate across a lost GitHub dispatch receipt and
+Core restart; the restart regression is green.
 
 The established `academiccloud-prod` SSH route is restored through the
 approved path. A bounded read-only probe confirmed exact release
@@ -34,9 +41,29 @@ approved path. A bounded read-only probe confirmed exact release
 loopback/public health `200`, and readiness `200`. The earlier alias failure
 was `SSH_CONFIG_NOT_VISIBLE` in the restricted execution sandbox, not DNS or
 host unavailability. GitHub Actions API access remains blocked by the
-restricted CLI/keyring path and the in-app browser security policy. Therefore
-no production root-cause claim, deployment, or `NEW_UPLOAD_AI_E2E` /
-`LEGACY_RECATALOG_AI_E2E` pass is recorded.
+restricted CLI/keyring path and the in-app browser security policy. The later
+automatic-admission release still needs deployment and a real new-upload AI
+E2E; the independent existing-resource PDF.js repair gate is recorded below.
+
+```text
+PDFJS_REPAIRED_RELEASE_E2E=PASS
+RESOURCE_ALREADY_EXISTED=true
+PRE_FIX_FAILURE_BOUNDARY=PDFJS_RANGE_READER
+NEW_JOB_CREATED=true
+DISPATCH=PASS
+WORKER_CLAIM=PASS
+PDF_RANGE_ACCESS=PASS
+PDFJS_STALE_READER_ERROR_ABSENT=true
+OCR_OR_DOWNSTREAM_EXTRACTION_REACHED=true
+CALLBACK=PASS
+TERMINAL_STATE=succeeded
+PDFJS_REPAIRED_RELEASE=3a88cfef7a4083ebe2a0277bd50b356e5fb86f46
+PDFJS_REPAIRED_RELEASE_RUN=32634435946
+PDFJS_REPAIRED_RELEASE_WORKER_JOB=97181965279
+DUPLICATE_DURABLE_JOBS=0
+DUPLICATE_PROVIDER_EXECUTIONS=0
+AMBIGUOUS_DISPATCH_RECOVERY=PASS
+```
 
 The safe local UX portion is complete: Owner navigation exposes `待审核投稿 · N`
 and opens the existing contribution review flow; Activity Center and resource
@@ -81,6 +108,8 @@ PRODUCTION_RELEASE=017a47dbd837264175d8cbcb3f469a01e3e62c92
 PREVIOUS_RELEASE=53317bb0156589baa21bc69c22e199d200c49840
 SCHEMA=v24
 MIGRATIONS=001-024
+MIGRATION_025_PRODUCTION_APPLIED=false
+AUTOMATIC_ADMISSION_RELEASE_PENDING=true
 LAYER1_COMPLETE=true
 INTERNAL_BETA_READY=true
 INTERNAL_BETA_STARTED=false
