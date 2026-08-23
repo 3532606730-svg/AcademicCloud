@@ -18,6 +18,7 @@ import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfRangeSource } fro
 
 const JOB_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 const MAX_HTTP_RANGE_BYTES = 2 * 1024 * 1024;
+const MAX_CALLBACK_RESULT_BYTES = 448 * 1024;
 const RESULT_CALLBACK_RETRY_DELAYS_MS = [100, 250] as const;
 
 export interface ComputeWorkerInput {
@@ -184,7 +185,7 @@ export async function computeMetadataSuggestions(
   } finally {
     await reasoner?.close?.();
   }
-  return {
+  return fitCallbackOutput({
     status: extraction.status,
     window: {
       firstPages: 15,
@@ -195,11 +196,19 @@ export async function computeMetadataSuggestions(
     },
     candidates: extraction.candidates.map((candidate, position) => ({ ...candidate, position })),
     ...(bibliography === undefined ? {} : { bibliography }),
-  };
+  });
 }
 
 async function postJson(url: string, headers: Record<string, string>, body: unknown, fetchImplementation: typeof fetch): Promise<Response> {
   return fetchImplementation(url, { method: "POST", headers, body: JSON.stringify(body) });
+}
+
+function fitCallbackOutput(output: MetadataSuggestionComputeOutput): MetadataSuggestionComputeOutput {
+  let candidates = output.candidates;
+  while (candidates.length > 1 && Buffer.byteLength(JSON.stringify({ ...output, candidates }), "utf8") > MAX_CALLBACK_RESULT_BYTES) {
+    candidates = candidates.slice(0, -1);
+  }
+  return candidates.length === output.candidates.length ? output : { ...output, candidates };
 }
 
 async function delay(milliseconds: number, signal?: AbortSignal): Promise<void> {
