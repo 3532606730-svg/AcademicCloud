@@ -69,7 +69,7 @@ export async function createApplication(
       coreBaseUrl: computeRuntime.coreBaseUrl,
     });
     libraryService.setHoldingAvailableListener(async (actor, libraryId, fileId) => {
-      await suggestionService.requestGeneration(actor, libraryId, fileId);
+      await suggestionService.requestGeneration(actor, libraryId, fileId, { origin: "admission", queuePriority: 10 });
     });
     const app = await createApp({
       logger: { level: config.logLevel },
@@ -102,6 +102,7 @@ export async function createApplication(
     const jobDeadlineSweep = setInterval(() => {
       try {
         suggestionService.expireDueJobs();
+        void suggestionService.reconcileUndispatchedJobs();
       } catch {
         // A maintenance sweep must never become a Core availability boundary.
         // Per-request reads run the same durable expiry transition, so a later
@@ -109,6 +110,9 @@ export async function createApplication(
       }
     }, 60_000);
     jobDeadlineSweep.unref();
+    // Close the admission-to-provider hand-off gap promptly after startup.
+    // The recurring sweep remains the durable recovery path for later crashes.
+    void suggestionService.reconcileUndispatchedJobs();
 
     app.addHook("onClose", () => {
       clearInterval(jobDeadlineSweep);

@@ -937,8 +937,12 @@ export function ResourceDetailsDialog({
               {metadata ? <MetadataReadOnly metadata={metadata} t={t} /> : <p className="muted">{t("metadata.noMetadata")}</p>}
               {bibliography ? <BibliographyReadOnly bibliography={bibliography} t={t} /> : <p className="muted">{t("metadata.noBibliography")}</p>}
               <fieldset className="resource-details-original">
-                <legend>{t("metadata.originalFilename")}</legend>
-                <p>{detail.originalFilename}</p>
+                <legend>{t("metadata.fileInformation")}</legend>
+                <dl>
+                  <ReactFact label={t("metadata.originalFilename")} value={detail.originalFilename} />
+                  <ReactFact label={t("metadata.materialType")} value={holding.file.mediaType ?? "-"} />
+                  <ReactFact label={t("metadata.fileSize")} value={`${holding.file.sizeBytes} bytes`} />
+                </dl>
               </fieldset>
               {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
                 <MetadataSuggestionsPanel
@@ -983,12 +987,15 @@ export function ResourceDetailsDialog({
                 <button className="button button--quiet" type="button" onClick={onPreview} disabled={!holding.file.mediaType || (!holding.file.mediaType.startsWith("image/") && holding.file.mediaType !== "application/pdf")}>{t("menu.preview")}</button>
                 <button className="button" type="button" onClick={onDownload}>{t("menu.download")}</button>
                 {api.generateLibraryCitation && onCitation && <button className="button" type="button" onClick={onCitation}>{t("citation.action")}</button>}
-                {detail.canEditMetadata && api.updateLibraryHoldingBibliography && <button className="button" type="button" onClick={() => { setEditingBibliography(true); setNotice(""); }}>{t("metadata.editBibliography")}</button>}
                 {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--primary" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.edit")}</button>}
               </footer>
             </>
           ) : editing ? (
             <>
+              <header className="resource-details-editor-header">
+                <h3>{t("metadata.bibliographyTitle")}</h3>
+                {api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" onClick={() => { setEditing(false); setEditingBibliography(true); }}>{t("metadata.editBibliography")}</button>}
+              </header>
               {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
                 <MetadataSuggestionsPanel
                   run={suggestionRun}

@@ -4,6 +4,9 @@ import type {
   DerivedComputeJobState,
 } from "@academiccloud/compute-contracts";
 
+export type DerivedJobOrigin = "admission" | "interactive" | "backfill";
+export type DerivedJobPriority = 10 | 100;
+
 export interface DerivedJobRecord {
   id: string;
   kind: DerivedComputeJobKind;
@@ -28,6 +31,8 @@ export interface DerivedJobRecord {
   startedAt: Date | null;
   finishedAt: Date | null;
   deadlineAt: Date;
+  queuePriority: DerivedJobPriority;
+  origin: DerivedJobOrigin;
 }
 
 export interface DerivedJobSummary {
@@ -43,6 +48,9 @@ export interface DerivedJobSummary {
   startedAt: string | null;
   finishedAt: string | null;
   deadlineAt: string;
+  /** Optional for compatibility with older API fakes; server responses include both fields. */
+  queuePriority?: DerivedJobPriority;
+  origin?: DerivedJobOrigin;
 }
 
 export interface NewDerivedJob {
@@ -56,6 +64,8 @@ export interface NewDerivedJob {
   createdByAccountId: string;
   createdAt: Date;
   deadlineAt: Date;
+  queuePriority?: DerivedJobPriority;
+  origin?: DerivedJobOrigin;
 }
 
 export function publicDerivedJob(job: DerivedJobRecord): DerivedJobSummary {
@@ -72,5 +82,7 @@ export function publicDerivedJob(job: DerivedJobRecord): DerivedJobSummary {
     startedAt: job.startedAt?.toISOString() ?? null,
     finishedAt: job.finishedAt?.toISOString() ?? null,
     deadlineAt: job.deadlineAt.toISOString(),
+    ...(job.queuePriority === undefined ? {} : { queuePriority: job.queuePriority }),
+    ...(job.origin === undefined ? {} : { origin: job.origin }),
   };
 }

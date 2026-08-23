@@ -1,6 +1,6 @@
 import type { DerivedComputeErrorCode, DerivedComputeJobKind, DerivedComputeJobState } from "@academiccloud/compute-contracts";
 
-import type { DerivedJobRecord, NewDerivedJob } from "../../jobs/job.js";
+import type { DerivedJobOrigin, DerivedJobPriority, DerivedJobRecord, NewDerivedJob } from "../../jobs/job.js";
 import type { DerivedJobRepository } from "../../jobs/repositories.js";
 import type { SqliteDatabase } from "./database.js";
 
@@ -28,13 +28,15 @@ interface JobRow {
   started_at: string | null;
   finished_at: string | null;
   deadline_at: string;
+  queue_priority: DerivedJobPriority;
+  origin: DerivedJobOrigin;
 }
 
 const SELECT = `
 SELECT id, kind, scope_id, resource_id, input_version, idempotency_key, state, progress,
   attempts, active_attempt_id, provider, provider_job_id, capability_token_hash,
   capability_expires_at, result_ref, result_digest, error_code, created_by_account_id,
-  created_at, updated_at, started_at, finished_at, deadline_at
+  created_at, updated_at, started_at, finished_at, deadline_at, queue_priority, origin
 FROM derived_compute_jobs`;
 
 function date(value: string | null): Date | null {
@@ -66,6 +68,8 @@ function map(row: JobRow): DerivedJobRecord {
     startedAt: date(row.started_at),
     finishedAt: date(row.finished_at),
     deadlineAt: new Date(row.deadline_at),
+    queuePriority: row.queue_priority,
+    origin: row.origin,
   };
 }
 
@@ -77,8 +81,8 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
       INSERT INTO derived_compute_jobs (
         id, kind, scope_id, resource_id, input_version, idempotency_key, state,
         progress, attempts, active_attempt_id, created_by_account_id, created_at,
-        updated_at, deadline_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, 1, ?, ?, ?, ?, ?)
+        updated_at, deadline_at, queue_priority, origin
+      ) VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, 1, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       job.id,
       job.kind,
@@ -91,6 +95,8 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
       job.createdAt.toISOString(),
       job.createdAt.toISOString(),
       job.deadlineAt.toISOString(),
+      job.queuePriority ?? 10,
+      job.origin ?? "interactive",
     );
     return this.findById(job.id)!;
   }
@@ -109,10 +115,24 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     const row = this.database.prepare<[string, string, string], JobRow>(`
       ${SELECT}
       WHERE kind = ? AND scope_id = ? AND resource_id = ?
-      ORDER BY created_at DESC, id DESC
+      -- A newly queued/running generation is the current user-visible state.
+      -- Terminal history remains available through the job-id endpoint, but an
+      -- old failure must never mask a newer retry.
+      ORDER BY CASE WHEN state IN ('queued', 'running') THEN 0 ELSE 1 END,
+        created_at DESC, id DESC
       LIMIT 1
     `).get(kind, scopeId, resourceId);
     return row ? map(row) : null;
+  }
+
+  listUndispatched(limit: number): DerivedJobRecord[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("invalid derived job limit");
+    return this.database.prepare<[number], JobRow>(`
+      ${SELECT}
+      WHERE state = 'queued' AND provider_job_id IS NULL
+      ORDER BY queue_priority ASC, created_at ASC, id ASC
+      LIMIT ?
+    `).all(limit).map(map);
   }
 
   retry(jobId: string, expectedAttemptId: string, nextAttemptId: string, now: Date, deadlineAt: Date): DerivedJobRecord | null {

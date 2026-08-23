@@ -25,7 +25,7 @@ test("migration 014 persists Library domains, membership constraints, and append
   const { database } = createTestPersistence(context);
   assert.deepEqual(database.prepare("SELECT version FROM schema_migrations ORDER BY version").all(), [
     { version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 },
-    { version: 7 }, { version: 8 }, { version: 9 }, { version: 10 }, { version: 11 }, { version: 12 }, { version: 13 }, { version: 14 }, { version: 15 }, { version: 16 }, { version: 17 }, { version: 18 }, { version: 19 }, { version: 20 }, { version: 21 }, { version: 22 }, { version: 23 }, { version: 24 },
+    { version: 7 }, { version: 8 }, { version: 9 }, { version: 10 }, { version: 11 }, { version: 12 }, { version: 13 }, { version: 14 }, { version: 15 }, { version: 16 }, { version: 17 }, { version: 18 }, { version: 19 }, { version: 20 }, { version: 21 }, { version: 22 }, { version: 23 }, { version: 24 }, { version: 25 },
   ]);
   assert.deepEqual(database.prepare("SELECT target_type FROM governance_audit_target_types WHERE target_type = 'library'").all(), [{ target_type: "library" }]);
   assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM sqlite_master WHERE type = 'table' AND name IN ('libraries', 'library_memberships')").get()?.count, 2);
@@ -42,7 +42,7 @@ test("migration 014 can be applied append-only from schema 013", (context) => {
       INSERT INTO accounts (id, login_name, password_hash, role, state, created_at, updated_at)
       VALUES ('owner-a', 'owner-a', 'hash', 'owner', 'active', ?, ?)
     `).run(NOW, NOW);
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], currentVersion: 24 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], currentVersion: 25 });
     assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
   } finally {
     database.close();

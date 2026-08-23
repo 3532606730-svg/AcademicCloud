@@ -167,7 +167,7 @@ describe("Resource details", () => {
     expect(within(dialog).getByText("<img src=x onerror=alert(1)>陈垣")).toBeInTheDocument();
     expect(within(dialog).queryByRole("img")).not.toBeInTheDocument();
     expect(within(dialog).queryByText("authority-secret-id")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Edit resource" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Edit information" })).toBeInTheDocument();
   });
 
   it("uses effective Library role for a read-only Member even if the surrounding account could be Owner", async () => {
@@ -176,7 +176,7 @@ describe("Resource details", () => {
       initial: detail("book", {}, false),
     });
     await screen.findByRole("dialog", { name: "元西域人华化考" });
-    expect(screen.queryByRole("button", { name: "Edit resource" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit information" })).not.toBeInTheDocument();
   });
 
   it("renders an unknown future template safely without enabling a destructive edit", async () => {
@@ -193,7 +193,7 @@ describe("Resource details", () => {
     expect(screen.getAllByText("future_material").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("futureField")).toBeInTheDocument();
     expect(screen.getByText("<script>alert(1)</script>")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit resource" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit information" })).not.toBeInTheDocument();
   });
 
   it.each([
@@ -211,7 +211,7 @@ describe("Resource details", () => {
   it("submits only the metadata CAS snapshot and refreshes the catalogue after a successful edit", async () => {
     const { api, onSaved } = renderDetails();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Edit resource" }));
+    await user.click(await screen.findByRole("button", { name: "Edit information" }));
     const title = screen.getByLabelText("Canonical title");
     await user.clear(title);
     await user.type(title, "元西域人华化考（修订）");
@@ -248,7 +248,8 @@ describe("Resource details", () => {
 
     expect(await screen.findByText("Current carrier edition")).toBeInTheDocument();
     expect(screen.getByText("Historical source / base edition")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Edit bibliography" }));
+    await user.click(screen.getByRole("button", { name: "Edit information" }));
+    await user.click(screen.getByRole("button", { name: "Edit bibliographic information" }));
     const publisher = screen.getByLabelText("Publisher");
     await user.clear(publisher);
     await user.type(publisher, "上海古籍出版社");
@@ -303,11 +304,11 @@ describe("Resource details", () => {
     const update = vi.fn().mockRejectedValue(new ApiError(409, "concurrent_change"));
     const { api } = renderDetails({ api: { getLibraryHoldingDetails: get, updateLibraryHoldingMetadata: update } });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Edit resource" }));
+    await user.click(await screen.findByRole("button", { name: "Edit information" }));
     await user.click(screen.getByRole("button", { name: "Save metadata" }));
     expect(await screen.findByText(/latest metadata is loaded/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "其他操作的新题名" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit resource" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit information" })).toBeInTheDocument();
     expect(update).toHaveBeenCalledTimes(1);
     expect(get).toHaveBeenCalledTimes(2);
     expect(api.updateLibraryHoldingMetadata).toBe(update);
@@ -316,7 +317,7 @@ describe("Resource details", () => {
   it("does not hide and discard populated fields during a material-type change", async () => {
     renderDetails();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Edit resource" }));
+    await user.click(await screen.findByRole("button", { name: "Edit information" }));
     await user.selectOptions(screen.getByLabelText("Material type"), "article");
     expect(screen.getByText(/Clear the current material-specific fields/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Material type")).toHaveValue("book");
@@ -332,13 +333,13 @@ describe("Resource details", () => {
     } });
     const user = userEvent.setup();
     await screen.findByRole("dialog", { name: "元西域人华化考" });
-    expect(screen.getByRole("button", { name: "Find metadata suggestions" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Find metadata suggestions" }));
+    expect(screen.getByRole("button", { name: "Organize with AI" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Organize with AI" }));
     expect((await screen.findAllByText("The Mongols and the West, 1221–1410")).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Title page · Page 3/)).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText(/Local OCR · 88%/)).toBeInTheDocument();
-    expect(screen.getByText("Resource information suggestions")).toBeInTheDocument();
+    expect(screen.getByText("AI recognition results")).toBeInTheDocument();
     expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
   });
 
@@ -415,9 +416,9 @@ describe("Resource details", () => {
       && (init?.method ?? "GET") === "GET",
     )).toBe(true));
 
-    await user.click(screen.getByRole("button", { name: "Find metadata suggestions" }));
+    await user.click(screen.getByRole("button", { name: "Organize with AI" }));
     await user.click(await screen.findByRole("checkbox", { name: /Canonical title/ }));
-    await user.click(screen.getByRole("button", { name: "Accept selected" }));
+    await user.click(screen.getByRole("button", { name: "Use selected suggestions" }));
 
     await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
       "/api/libraries/canonical-library/holdings/file-1/metadata/suggestions",
@@ -442,7 +443,7 @@ describe("Resource details", () => {
       ),
     } });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: language === "en" ? "Find metadata suggestions" : "查找资料信息建议" }));
+    await user.click(await screen.findByRole("button", { name: language === "en" ? "Organize with AI" : "AI 整理" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(expected);
     expect(screen.queryByText(/Cannot read properties of undefined/u)).not.toBeInTheDocument();
   });
@@ -453,7 +454,7 @@ describe("Resource details", () => {
       generateLibraryMetadataSuggestions: vi.fn().mockRejectedValue(new ApiError(404, "not_found")),
     } });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Find metadata suggestions" }));
+    await user.click(await screen.findByRole("button", { name: "Organize with AI" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("This resource is no longer available to your account.");
   });
 
@@ -468,8 +469,8 @@ describe("Resource details", () => {
     await screen.findByRole("dialog", { name: "元西域人华化考" });
     expect(await screen.findByText("Some content could not be read")).toBeInTheDocument();
     expect(screen.getByText(/Try again if needed/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Find metadata suggestions" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Accept selected" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Organize with AI" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Use selected suggestions" })).not.toBeInTheDocument();
   });
 
   it("accepts only an explicit manager selection with the current metadata CAS", async () => {
@@ -479,7 +480,7 @@ describe("Resource details", () => {
     const user = userEvent.setup();
     await screen.findByRole("dialog", { name: "元西域人华化考" });
     await user.click(await screen.findByRole("checkbox", { name: /Selected: Canonical title/ }));
-    await user.click(screen.getByRole("button", { name: "Accept selected" }));
+    await user.click(screen.getByRole("button", { name: "Use selected suggestions" }));
     await waitFor(() => expect(accept).toHaveBeenCalledTimes(1));
     expect(accept).toHaveBeenCalledWith(LIBRARY.id, HOLDING.file.id, SUGGESTION_RUN.id, expect.objectContaining({
       acceptedCandidateIds: ["run-1:0"],

@@ -27,6 +27,22 @@ class CapturingDispatcher implements DerivedComputeDispatcher {
   }
 }
 
+class DeferredDispatcher implements DerivedComputeDispatcher {
+  readonly jobs: DerivedComputeDispatchJob[] = [];
+  #resolve: ((receipt: { provider: string; providerJobId: string }) => void) | undefined;
+
+  async dispatch(job: DerivedComputeDispatchJob): Promise<{ provider: string; providerJobId: string }> {
+    this.jobs.push({ ...job });
+    return new Promise((resolve) => { this.#resolve = resolve; });
+  }
+
+  resolve(): void {
+    if (!this.#resolve) throw new Error("dispatch is not pending");
+    this.#resolve({ provider: "test", providerJobId: "provider-deferred" });
+    this.#resolve = undefined;
+  }
+}
+
 function ids(...values: string[]): () => string {
   let position = 0;
   return () => values[position++] ?? `generated-${position}`;
@@ -226,6 +242,8 @@ test("request returns a durable queued identity promptly and is idempotent", asy
   assert.equal(first.id, "job-1");
   assert.equal(first.state, "queued");
   assert.equal(first.attempts, 1);
+  assert.equal(first.origin, "interactive");
+  assert.equal(first.queuePriority, 10);
   assert.deepEqual((dispatcher as CapturingDispatcher).jobs, [{
     id: "job-1",
     kind: "metadata_suggestion",
@@ -239,6 +257,43 @@ test("request returns a durable queued identity promptly and is idempotent", asy
   assert.equal((dispatcher as CapturingDispatcher).jobs.length, 1);
   assert.equal(suggestions.getLatestJob(MEMBER, library.id, fileId)?.id, first.id);
   assert.equal(suggestions.getJob(MEMBER, library.id, fileId, first.id).state, "queued");
+});
+
+test("admission dispatch failure stays durable and the reconciler records one provider receipt", async (context) => {
+  let calls = 0;
+  const dispatcher: DerivedComputeDispatcher = {
+    dispatch: async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("provider hand-off unavailable");
+      return { provider: "test", providerJobId: "provider-recovered" };
+    },
+  };
+  const { persistence, library, fileId, suggestions } = fixture(context, { dispatcher });
+  const queued = await suggestions.requestGeneration(OWNER, library.id, fileId, { origin: "admission" });
+  assert.equal(queued.state, "queued");
+  assert.equal(queued.origin, "admission");
+  assert.equal(queued.queuePriority, 10);
+  assert.equal(await suggestions.reconcileUndispatchedJobs(), 1);
+  const recovered = persistence.repositories.derivedJobs.findById(queued.id)!;
+  assert.equal(recovered.state, "queued");
+  assert.equal(recovered.providerJobId, "provider-recovered");
+  assert.equal(calls, 2);
+});
+
+test("ambiguous provider acceptance does not create a duplicate provider execution", async (context) => {
+  const dispatcher = new DeferredDispatcher();
+  const { persistence, library, fileId, suggestions } = fixture(context, { dispatcher });
+  const request = suggestions.requestGeneration(OWNER, library.id, fileId, { origin: "admission" });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(dispatcher.jobs.length, 1);
+  assert.equal(await suggestions.reconcileUndispatchedJobs(), 0);
+  dispatcher.resolve();
+  const job = await request;
+  assert.equal(persistence.repositories.derivedJobs.findById(job.id)?.providerJobId, "provider-deferred");
+  assert.equal(dispatcher.jobs.length, 1);
+  assert.equal(persistence.repositories.derivedJobs.findByIdempotencyKey(
+    persistence.repositories.derivedJobs.findById(job.id)!.idempotencyKey,
+  )?.id, job.id);
 });
 
 test("Compute claim and callback create reviewable candidates without canonical writes", async (context) => {

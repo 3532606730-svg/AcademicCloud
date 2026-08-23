@@ -29,7 +29,7 @@ test("migration 022 upgrades v21 append-only and durable job state survives a da
       INSERT INTO accounts (id, login_name, password_hash, role, auth_revision, state, created_at, updated_at)
       VALUES ('compute-owner', 'compute-owner', 'hash', 'owner', 0, 'active', ?, ?)
     `).run(NOW.toISOString(), NOW.toISOString());
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [22, 23, 24], currentVersion: 24 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [22, 23, 24, 25], currentVersion: 25 });
     const repository = new SqliteDerivedJobRepository(database);
     const created = repository.create({
       id: "job-restart",
@@ -53,7 +53,26 @@ test("migration 022 upgrades v21 append-only and durable job state survives a da
     assert.equal(reopened.activeAttemptId, "attempt-1");
     assert.equal(reopened.providerJobId, "provider-1");
     assert.equal(reopened.capabilityTokenHash, null);
-    assert.equal(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).currentVersion, 24);
+    assert.equal(reopened.queuePriority, 10);
+    assert.equal(reopened.origin, "interactive");
+    const repositoryAfterRestart = new SqliteDerivedJobRepository(database);
+    assert.ok(repositoryAfterRestart.fail(created.id, "attempt-1", "compute_internal_error", NOW));
+    const current = repositoryAfterRestart.create({
+      id: "job-current",
+      kind: "metadata_suggestion",
+      scopeId: "canonical-library",
+      resourceId: "file-1",
+      inputVersion: "input-version-new",
+      idempotencyKey: "b".repeat(64),
+      attemptId: "attempt-current",
+      createdByAccountId: "compute-owner",
+      createdAt: new Date(NOW.getTime() + 1_000),
+      deadlineAt: new Date(NOW.getTime() + 15 * 60_000),
+      origin: "admission",
+      queuePriority: 10,
+    });
+    assert.equal(repositoryAfterRestart.findLatest("metadata_suggestion", "canonical-library", "file-1")?.id, current.id);
+    assert.equal(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).currentVersion, 25);
   } finally {
     database.close();
     rmSync(temporaryDirectory, { recursive: true, force: true });

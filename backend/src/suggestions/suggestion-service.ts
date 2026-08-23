@@ -11,7 +11,13 @@ import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import type { StoredFile } from "../drive/file.js";
 import type { Library, LibraryHolding, LibraryMembership } from "../library/library.js";
-import { publicDerivedJob, type DerivedJobRecord, type DerivedJobSummary } from "../jobs/job.js";
+import {
+  publicDerivedJob,
+  type DerivedJobOrigin,
+  type DerivedJobPriority,
+  type DerivedJobRecord,
+  type DerivedJobSummary,
+} from "../jobs/job.js";
 import {
   CanonicalMetadataService,
   MetadataError,
@@ -584,6 +590,13 @@ export class SuggestionService {
   readonly #now: () => Date;
   readonly #createId: () => string;
   readonly #createToken: () => string;
+  /**
+   * Provider dispatch is an external side effect whose receipt is persisted
+   * afterward. Keep one in-flight hand-off per durable job in this Core
+   * process so the recovery sweep cannot issue a second provider execution
+   * during that ambiguous interval.
+   */
+  readonly #dispatchingJobs = new Set<string>();
 
   constructor(options: {
     persistence: Persistence;
@@ -801,6 +814,23 @@ export class SuggestionService {
     });
   }
 
+  async #dispatchJob(job: DerivedJobRecord): Promise<{ provider: string; providerJobId: string } | null> {
+    const attemptId = job.activeAttemptId;
+    if (!attemptId || this.#dispatchingJobs.has(job.id)) return null;
+    this.#dispatchingJobs.add(job.id);
+    try {
+      return await this.#dispatcher.dispatch({
+        id: job.id,
+        kind: job.kind,
+        resourceId: job.resourceId,
+        attemptId,
+        coreBaseUrl: this.#coreBaseUrl,
+      });
+    } finally {
+      this.#dispatchingJobs.delete(job.id);
+    }
+  }
+
   getLatestJob(actor: AuthenticatedAccount, libraryId: string, fileId: string): DerivedJobSummary | null {
     return this.#persistence.runInTransaction((repositories) => {
       repositories.derivedJobs.expireDue(this.#now());
@@ -826,6 +856,7 @@ export class SuggestionService {
     actor: AuthenticatedAccount,
     libraryId: string,
     fileId: string,
+    options: { origin?: DerivedJobOrigin; queuePriority?: DerivedJobPriority } = {},
   ): Promise<DerivedJobSummary> {
     const now = this.#now();
     const attemptId = this.#createId();
@@ -844,6 +875,9 @@ export class SuggestionService {
       let dispatch: boolean;
       if (existing && ["queued", "running", "succeeded"].includes(existing.state)) {
         job = existing;
+        // An already-created queued row is owned by the durable reconciler.
+        // Dispatching it again here would race a concurrent request or sweep
+        // across the provider-accepted/Core-receipt boundary.
         dispatch = false;
       } else if (existing?.state === "failed" && existing.activeAttemptId) {
         // GitHub may queue a clean runner and build/verify its pinned OCR
@@ -854,7 +888,10 @@ export class SuggestionService {
         const retried = repositories.derivedJobs.retry(existing.id, existing.activeAttemptId, attemptId, now, deadlineAt);
         if (!retried) throw new SuggestionError("concurrent_change");
         job = retried;
-        dispatch = true;
+        // Backfill rows are deliberately persisted first. The bounded
+        // reconciler dispatches them only after foreground admissions/retries
+        // already present in the queue.
+        dispatch = options.origin !== "backfill";
       } else {
         const deadlineAt = new Date(now.getTime() + JOB_DEADLINE_MILLISECONDS);
         const created = repositories.derivedJobs.create({
@@ -868,25 +905,26 @@ export class SuggestionService {
           createdByAccountId: actor.id,
           createdAt: now,
           deadlineAt,
+          origin: options.origin ?? "interactive",
+          queuePriority: options.queuePriority ?? (options.origin === "backfill" ? 100 : 10),
         });
         job = created;
-        dispatch = true;
+        dispatch = options.origin !== "backfill";
       }
       // Fast naming: the lightweight filename-derived evidence is persisted
       // immediately and independently of the asynchronous Compute job, so a
       // usable canonical-title candidate exists within seconds of the request.
       this.#ensureLightweightRun(repositories, context, job, now);
-      return { job, dispatch };
+      return {
+        job,
+        dispatch,
+        keepQueuedOnDispatchFailure: options.origin === "admission",
+      };
     });
     if (!prepared.dispatch || !prepared.job.activeAttemptId) return publicDerivedJob(prepared.job);
     try {
-      const receipt = await this.#dispatcher.dispatch({
-        id: prepared.job.id,
-        kind: prepared.job.kind,
-        resourceId: prepared.job.resourceId,
-        attemptId: prepared.job.activeAttemptId,
-        coreBaseUrl: this.#coreBaseUrl,
-      });
+      const receipt = await this.#dispatchJob(prepared.job);
+      if (!receipt) return publicDerivedJob(prepared.job);
       const recorded = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.recordDispatch(
         prepared.job.id,
         prepared.job.activeAttemptId!,
@@ -896,6 +934,7 @@ export class SuggestionService {
       ));
       return publicDerivedJob(recorded ?? prepared.job);
     } catch {
+      if (prepared.keepQueuedOnDispatchFailure) return publicDerivedJob(prepared.job);
       const failed = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
         prepared.job.id,
         prepared.job.activeAttemptId!,
@@ -904,6 +943,38 @@ export class SuggestionService {
       ));
       return publicDerivedJob(failed ?? prepared.job);
     }
+  }
+
+  /**
+   * Resume the narrow hand-off gap between durable queue creation and provider
+   * receipt persistence. This does not create historical work: it only
+   * dispatches already-created queued jobs that have no provider identity.
+   */
+  async reconcileUndispatchedJobs(limit = 20): Promise<number> {
+    const jobs = this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(this.#now());
+      return repositories.derivedJobs.listUndispatched(limit);
+    });
+    let dispatched = 0;
+    for (const job of jobs) {
+      if (!job.activeAttemptId) continue;
+      try {
+        const receipt = await this.#dispatchJob(job);
+        if (!receipt) continue;
+        const recorded = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.recordDispatch(
+          job.id,
+          job.activeAttemptId!,
+          receipt.provider,
+          receipt.providerJobId,
+          this.#now(),
+        ));
+        if (recorded) dispatched += 1;
+      } catch {
+        // Keep the queued row durable for the next sweep. A provider outage
+        // must not turn an admitted upload into a failed upload.
+      }
+    }
+    return dispatched;
   }
 
   async claimJob(jobId: string, attemptId: string): Promise<SuggestionComputeClaim> {

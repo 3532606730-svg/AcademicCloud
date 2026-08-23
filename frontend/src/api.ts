@@ -590,6 +590,8 @@ export interface DerivedMetadataJob {
   startedAt: string | null;
   finishedAt: string | null;
   deadlineAt: string;
+  queuePriority?: 10 | 100;
+  origin?: "admission" | "interactive" | "backfill";
 }
 export type LibraryMetadataWithoutVersion = Omit<LibraryMetadataInput, "metadataVersion">;
 export interface MetadataSuggestionAcceptInput {

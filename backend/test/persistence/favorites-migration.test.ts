@@ -21,12 +21,12 @@ function pinnedDirectory(context: TestContext, version: number): string {
   return directory;
 }
 
-test("fresh database migrates 0 -> 24 with favorites, announcement, audit, ownership, scholarly identity, Library, metadata, suggestions, durable compute jobs, provenance, credential reset, resumable-transfer, and bibliographic tables with clean integrity", (context) => {
+test("fresh database migrates 0 -> 25 with favorites, announcement, audit, ownership, scholarly identity, Library, metadata, suggestions, durable compute jobs, provenance, credential reset, resumable-transfer, and bibliographic tables with clean integrity", (context) => {
   const { database } = createTestPersistence(context);
   const version = database
     .prepare<[], { version: number }>("SELECT MAX(version) AS version FROM schema_migrations")
     .get()?.version;
-  assert.equal(version, 24);
+  assert.equal(version, 25);
 
   const tables = database
     .prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'favorite_%' ORDER BY name")

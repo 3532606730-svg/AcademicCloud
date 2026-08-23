@@ -71,8 +71,8 @@ test("migration 021 upgrades v20 append-only and persists exact CAS-bound multip
     insertPendingFile(database, "multipart-pending", "c");
 
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [21, 22, 23, 24],
-      currentVersion: 24,
+      appliedVersions: [21, 22, 23, 24, 25],
+      currentVersion: 25,
     });
     assert.equal(
       database.prepare<[], { count: number }>("SELECT COUNT(*) AS count FROM multipart_uploads").get()?.count,

@@ -82,8 +82,8 @@ test("migration 016 atomically establishes the canonical Library and preserves t
     database.prepare("UPDATE scholarly_artifacts SET attachment_state = 'attached' WHERE id = 'stable-artifact'").run();
 
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [16, 17, 18, 19, 20, 21, 22, 23, 24],
-      currentVersion: 24,
+      appliedVersions: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+      currentVersion: 25,
     });
 
     assert.deepEqual(database.prepare(`
@@ -137,7 +137,7 @@ test("migration 016 atomically establishes the canonical Library and preserves t
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM favorite_files WHERE account_id = 'member-a' AND file_id = 'legacy-file'").get()?.count, 1);
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM governance_audit_events WHERE action = 'libraries.corpus_transition'").get()?.count, 2);
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [], currentVersion: 24 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [], currentVersion: 25 });
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM canonical_library_record_transitions").get()?.count, 2);
     assert.equal(database.prepare<[], { integrity_check: string }>("PRAGMA integrity_check").get()?.integrity_check, "ok");
     assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
