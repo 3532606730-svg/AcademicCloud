@@ -18,7 +18,7 @@ import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfRangeSource } fro
 
 const JOB_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 const MAX_HTTP_RANGE_BYTES = 2 * 1024 * 1024;
-const MAX_CALLBACK_RESULT_BYTES = 448 * 1024;
+const MAX_CALLBACK_RESULT_BYTES = 256 * 1024;
 const RESULT_CALLBACK_RETRY_DELAYS_MS = [100, 250] as const;
 
 export interface ComputeWorkerInput {

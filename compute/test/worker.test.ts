@@ -86,7 +86,7 @@ test("worker preserves extracted candidates when the optional reasoner is unavai
   assert.equal(output.bibliography, undefined);
   assert.equal(output.status, "ready");
   assert.ok(output.candidates.length > 0);
-  assert.ok(Buffer.byteLength(JSON.stringify(output), "utf8") < 448 * 1024);
+  assert.ok(Buffer.byteLength(JSON.stringify(output), "utf8") < 256 * 1024);
 });
 
 test("worker drops an oversized optional bibliography before callback", async () => {
@@ -124,7 +124,7 @@ test("worker drops an oversized optional bibliography before callback", async ()
     kind: "metadata_suggestion",
     state: "succeeded",
     output: fitted,
-  }), "utf8") <= 448 * 1024);
+  }), "utf8") <= 256 * 1024);
 });
 
 test("worker maps bounded extraction failure to a stable failed callback", async () => {
