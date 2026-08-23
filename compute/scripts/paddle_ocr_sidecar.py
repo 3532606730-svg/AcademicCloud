@@ -13,9 +13,9 @@ import sys
 from typing import Any
 
 ENGINE_ID = (
-    "academiccloud-paddleocr-v1/paddleocr-3.7.0/paddle-3.3.1/"
-    "PP-OCRv6_small_det@106c97591b235f607453300d9fc8c1cad1b25488/"
-    "PP-OCRv6_small_rec@bd619643acac4b9650c040234da8d944476ee3f1"
+    "academiccloud-paddleocr-v1/3.7.0/3.3.1/"
+    "det@106c97591b235f607453300d9fc8c1cad1b25488/"
+    "rec@bd619643acac4b9650c040234da8d944476ee3f1"
 )
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_TEXT_CHARACTERS = 16_384

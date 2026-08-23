@@ -11,7 +11,10 @@ import {
 import { OcrError, type OcrAdapter, type OcrPageInput, type OcrRecognition } from "./ocr.js";
 import { SUGGESTION_LIMITS } from "./suggestion.js";
 
-export const PADDLE_OCR_ENGINE_ID = `academiccloud-paddleocr-v1/paddleocr-${PADDLE_OCR_PACKAGE_VERSION}/paddle-${PADDLE_RUNTIME_VERSION}/${PADDLE_DETECTION_MODEL.name}@${PADDLE_DETECTION_MODEL.revision}/${PADDLE_RECOGNITION_MODEL.name}@${PADDLE_RECOGNITION_MODEL.revision}` as const;
+// Candidate provenance is retained in the v20 SQLite column capped at 128
+// characters. Keep the complete pinned runtime/model revisions while using
+// compact stable labels so OCR-bearing callbacks remain persistable.
+export const PADDLE_OCR_ENGINE_ID = `academiccloud-paddleocr-v1/${PADDLE_OCR_PACKAGE_VERSION}/${PADDLE_RUNTIME_VERSION}/det@${PADDLE_DETECTION_MODEL.revision}/rec@${PADDLE_RECOGNITION_MODEL.revision}` as const;
 
 export interface PaddleOcrConfig {
   pythonPath: string;
