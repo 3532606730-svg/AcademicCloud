@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import type { MetadataSuggestionComputeOutput } from "@academiccloud/compute-contracts";
 import type { BoundedPdfTextSource } from "../src/suggestion.js";
 import { BibliographicIntelligenceError } from "../src/bibliographic-intelligence.js";
-import { computeMetadataSuggestions, runComputeWorker } from "../src/worker.js";
+import { computeMetadataSuggestions, fitCallbackOutput, runComputeWorker } from "../src/worker.js";
 
 const INPUT = {
   coreBaseUrl: "https://core.example",
@@ -86,6 +87,44 @@ test("worker preserves extracted candidates when the optional reasoner is unavai
   assert.equal(output.status, "ready");
   assert.ok(output.candidates.length > 0);
   assert.ok(Buffer.byteLength(JSON.stringify(output), "utf8") < 448 * 1024);
+});
+
+test("worker drops an oversized optional bibliography before callback", async () => {
+  const output = {
+    status: "ready",
+    window: { firstPages: 15, lastPages: 5, pageCount: 1, pageIndices: [1], complete: true },
+    candidates: Array.from({ length: 256 }, (_, position) => ({
+      position,
+      fieldPath: "canonicalTitle",
+      typeFieldName: null,
+      authorityType: null,
+      authorityRole: null,
+      identifierScheme: null,
+      value: "x".repeat(512),
+      sourceType: "title_page",
+      sourcePageIndex: 1,
+      pageClass: "title_page",
+      confidence: "medium",
+      precedenceRank: 10,
+      evidenceExcerpt: "x".repeat(512),
+      evidenceOrigin: "native_text",
+      ocrEngine: null,
+      ocrConfidence: null,
+      rulesetVersion: "rf-frontmatterocr-v1",
+    })),
+    bibliography: { oversized: "x".repeat(500_000) },
+  } as unknown as MetadataSuggestionComputeOutput;
+
+  const fitted = fitCallbackOutput(output);
+  assert.equal(fitted.bibliography, undefined);
+  assert.ok(fitted.candidates.length < output.candidates.length);
+  assert.ok(Buffer.byteLength(JSON.stringify({
+    jobId: "x".repeat(128),
+    attemptId: "x".repeat(128),
+    kind: "metadata_suggestion",
+    state: "succeeded",
+    output: fitted,
+  }), "utf8") <= 448 * 1024);
 });
 
 test("worker maps bounded extraction failure to a stable failed callback", async () => {

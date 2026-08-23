@@ -203,12 +203,23 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
   return fetchImplementation(url, { method: "POST", headers, body: JSON.stringify(body) });
 }
 
-function fitCallbackOutput(output: MetadataSuggestionComputeOutput): MetadataSuggestionComputeOutput {
+export function fitCallbackOutput(output: MetadataSuggestionComputeOutput): MetadataSuggestionComputeOutput {
   let candidates = output.candidates;
-  while (candidates.length > 1 && Buffer.byteLength(JSON.stringify({ ...output, candidates }), "utf8") > MAX_CALLBACK_RESULT_BYTES) {
+  const callbackBytes = (value: MetadataSuggestionComputeOutput): number => Buffer.byteLength(JSON.stringify({
+    jobId: "x".repeat(128),
+    attemptId: "x".repeat(128),
+    kind: "metadata_suggestion",
+    state: "succeeded",
+    output: value,
+  }), "utf8");
+  while (candidates.length > 0 && callbackBytes({ ...output, candidates }) > MAX_CALLBACK_RESULT_BYTES) {
     candidates = candidates.slice(0, -1);
   }
-  return candidates.length === output.candidates.length ? output : { ...output, candidates };
+  let fitted = candidates.length === output.candidates.length ? output : { ...output, candidates };
+  if (fitted.bibliography !== undefined && callbackBytes(fitted) > MAX_CALLBACK_RESULT_BYTES) {
+    delete fitted.bibliography;
+  }
+  return fitted;
 }
 
 async function delay(milliseconds: number, signal?: AbortSignal): Promise<void> {
