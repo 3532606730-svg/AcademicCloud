@@ -174,6 +174,13 @@ export async function computeMetadataSuggestions(
     bibliography = reasoner === undefined
       ? undefined
       : await deriveIntelligentBibliography(inspection, reasoner, signal, legacyOcrFallback);
+  } catch (error: unknown) {
+    // PDF.js/OCR extraction is independently useful. A bounded model startup
+    // or inference outage must not discard that already-completed result, while
+    // invalid model output remains fail-closed through the rethrow below.
+    if (!(error instanceof BibliographicIntelligenceError)
+      || !["reasoner_unavailable", "reasoner_timeout"].includes(error.code)) throw error;
+    bibliography = undefined;
   } finally {
     await reasoner?.close?.();
   }

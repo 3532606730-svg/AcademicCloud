@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { BoundedPdfTextSource } from "../src/suggestion.js";
-import { runComputeWorker } from "../src/worker.js";
+import { BibliographicIntelligenceError } from "../src/bibliographic-intelligence.js";
+import { computeMetadataSuggestions, runComputeWorker } from "../src/worker.js";
 
 const INPUT = {
   coreBaseUrl: "https://core.example",
@@ -70,6 +71,20 @@ test("worker claims with bootstrap authority, range-reads the source, and return
   assert.equal("source" in callback, false);
   assert.equal("objectKey" in callback, false);
   assert.equal("canonicalMetadata" in callback, false);
+});
+
+test("worker preserves extracted candidates when the optional reasoner is unavailable", async () => {
+  const output = await computeMetadataSuggestions(
+    { length: 5, async read() { return new Uint8Array([37, 80, 68, 70, 45]); } },
+    inspector(),
+    undefined,
+    {
+      async infer() { throw new BibliographicIntelligenceError("reasoner_unavailable", "request_failed"); },
+    },
+  );
+  assert.equal(output.bibliography, undefined);
+  assert.equal(output.status, "ready");
+  assert.ok(output.candidates.length > 0);
 });
 
 test("worker maps bounded extraction failure to a stable failed callback", async () => {
