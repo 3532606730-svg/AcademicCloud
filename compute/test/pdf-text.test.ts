@@ -43,6 +43,11 @@ function limits(overrides: Partial<SuggestionLimits> = {}): Readonly<SuggestionL
   return { ...SUGGESTION_LIMITS, ...overrides };
 }
 
+test("production PDF inspection keeps real-resource parser headroom inside the total request budget", () => {
+  assert.equal(SUGGESTION_LIMITS.timeoutMilliseconds, 30_000);
+  assert.ok(SUGGESTION_LIMITS.timeoutMilliseconds < SUGGESTION_LIMITS.totalRequestTimeoutMilliseconds);
+});
+
 class RecordingOcrAdapter implements OcrAdapter {
   readonly calls: Array<{ pageIndex: number; imageBytes: number }> = [];
 

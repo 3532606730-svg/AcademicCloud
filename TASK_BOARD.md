@@ -1,16 +1,18 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-23
+**Last reconciled:** 2026-08-24
 
 The board is the executable priority view. `CURRENT_STATE.json` holds compact
 current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 ## Current Owner authorization / continuous objective
 
-`INCIDENT-L1-AI-PRODUCTION01` is **DIAGNOSED / AUTOMATIC-ADMISSION RELEASE IN
-PROGRESS**: the independent existing-resource PDF.js repair gate is PASS and
-the migration-025 reconciler execution gate is locally PASS. The later release
-still needs artifact/deployment and the real new-upload AI E2E.
+`INCIDENT-L1-AI-PRODUCTION01` is **CURRENTLY OPEN / PRODUCTION USER ACCEPTANCE
+FAIL**. The Owner's real-browser observation overrides the earlier fixture,
+harness, worker, CI, and repository gates. Diagnose the first broken boundary
+through the signed-in production UI, make only the smallest repair, deploy its
+exact artifact, and re-test the same real browser path. Do not start the AI
+quality cohort, Internal Beta, `UPLOAD-PERF01`, or unrelated work.
 
 `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` has its access gates resolved:
 SSH read-only evidence, Git write/push, and authorized GitHub Actions browser
@@ -20,7 +22,7 @@ read are available. Reconcile the card at the incident checkpoint.
 |---|---|---|
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | NEXT APPROVED / NOT STARTED | Separate independently rollbackable release; do not start from this completed program |
-| GOAL-BETA-PREP01 | ALL FIVE PHASES GREEN / INTERNAL_BETA_READY | STOP — Owner decides whether/when to start or invite users into internal beta |
+| GOAL-BETA-PREP01 | HISTORICAL GATES PRESERVED / INTERNAL_BETA_READY=false | STOP — production Owner-path acceptance failed; no internal beta or invitations |
 | HOTFIX-META-UX01 | HISTORICAL RELEASE `53317bb…`, now the immediate app+v22 backup rollback pair for `017a47d…` | Owner manual acceptance remains pending; no action started here |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
@@ -134,12 +136,12 @@ None of this queue is authorized by GOAL-BETA-PREP01.
 ## Current release boundary
 
 ```text
-DECLARED_PRODUCTION=017a47dbd837264175d8cbcb3f469a01e3e62c92
-PREVIOUS_PRODUCTION=53317bb0156589baa21bc69c22e199d200c49840
-PRODUCTION_SCHEMA=v24 / 001-024
-MIGRATION_025_PRODUCTION_APPLIED=false
-AUTOMATIC_ADMISSION_RELEASE_PENDING=true
-DEVELOPMENT_SCHEMA=v24 / 001-024
+DECLARED_PRODUCTION=17fb945220c44df71e4846a0ccd5f54e98f43858
+PREVIOUS_PRODUCTION=3a88cfef7a4083ebe2a0277bd50b356e5fb86f46
+PRODUCTION_SCHEMA=v25 / 001-025
+MIGRATION_025_PRODUCTION_APPLIED=true
+AUTOMATIC_ADMISSION_RELEASE_PENDING=false
+DEVELOPMENT_SCHEMA=v25 / 001-025
 MIGRATION_022_PRODUCTION_APPLIED=true
 MIGRATION_023_PRODUCTION_APPLIED=true
 MIGRATION_024_PRODUCTION_APPLIED=true
@@ -154,10 +156,10 @@ SEARCH_PRODUCTION_SOURCE=b19f9dc5b48e1976127704712e08a8655b1fadd5
 SEARCH_PRODUCTION=PASS
 ACTIVITY_CENTER_V0_1=PASS
 QA_GOLDEN01=PASS
-INTERNAL_BETA_READY=true
+INTERNAL_BETA_READY=false
 INTERNAL_BETA_STARTED=false
 LAYER1_COMPLETE=true
-NEXT_APPROVED=UPLOAD-PERF01_NOT_STARTED
+NEXT_ACTION=INCIDENT_L1_AI_PRODUCTION01_REAL_BROWSER_REPAIR
 
 HOTFIX_META_UX01_STATE=SUPERSEDED_BY_017a47d_RETAINED_AS_ROLLBACK
 HOTFIX_META_UX01_MIGRATION_CHANGE=none

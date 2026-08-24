@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-23
+**Last reconciled:** 2026-08-24
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
@@ -8,13 +8,52 @@ evidence without duplicating it here.
 
 ## Active incident: INCIDENT-L1-AI-PRODUCTION01
 
+Owner real-browser production acceptance on 2026-08-24 overrides every earlier
+synthetic fixture, harness, CI, worker, and repository acceptance claim. The
+feature remains unusable through the normal deployed website. The incident is
+open and Internal Beta readiness is revoked until the same real Owner browser
+path passes after a live-boundary diagnosis and repair.
+
+```text
+PRODUCTION_USER_ACCEPTANCE=FAIL
+INCIDENT_L1_AI_PRODUCTION01=CURRENTLY_OPEN
+INTERNAL_BETA_READY=false
+OWNER_REAL_BROWSER_PATH=FAIL
+```
+
+Live production identity and the first failure boundary are now established:
+
+```text
+PRODUCTION_FRONTEND_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
+PRODUCTION_FRONTEND_JS=index-OhtI0cc3.js
+PRODUCTION_FRONTEND_JS_SHA256=5e64a5c4c34aebbb1fe8c68ab18172a8a31c0243efebe708b34a0f08d20f0689
+PRODUCTION_CORE_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
+SCHEMA_VERSION=v25
+MIGRATION_HISTORY=001-025
+FIRST_FAILURE_BOUNDARY=H. WORKER_COMPUTE
+ROOT_CAUSE=real production PDFs exceed the inherited 5,000 ms PDF.js inspection budget
+```
+
+The normal signed-in Owner UI opened the real canonical-Library resource
+`ad0cc21f-dd8e-48be-b223-d2576ab0d33f` (62,990,004 bytes). The retry request
+returned `202`; authenticated job polling returned `200`; the durable job,
+attempt, provider receipt, dispatch, and worker claim all existed. The prior
+attempt then became `failed/compute_timeout` 5.606 seconds after claim, with no
+browser console error. Multiple other real Library PDFs failed in the same
+5–6-second interval, while the 60,585-byte golden fixture passed. The deployed
+Compute constant was exactly 5,000 ms. The smallest repair raises only this
+parser budget to 30,000 ms inside the unchanged 180,000 ms total-request and
+12-minute workflow ceilings; focused Compute typecheck and 64/64 runnable tests
+are green. Exact worker publication and same-resource real-browser retest remain
+pending, so the incident stays open.
+
 Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is
 resolved for the incident: the production SSH route, Git checkpoint/push path,
 and authorized GitHub Actions browser evidence are available. No production
 data or application deployment has changed in this checkpoint.
 
-The production-wide AI cataloguing failure is **DIAGNOSED / AUTOMATIC-ADMISSION
-RELEASE READY**.
+The production-wide AI cataloguing incident is **CURRENTLY OPEN / OWNER PATH
+REPAIR IN PROGRESS**.
 Representative new-upload and legacy re-catalogue jobs both dispatched to
 GitHub Actions/Compute and failed at the same PDF.js range transport callback:
 `#onReceiveData - no PDFDataTransportStreamRangeReader instance found.` The
@@ -101,19 +140,20 @@ exact previous application `53317bb…` plus
 `UPLOAD-PERF01` is the next approved task but has not started. Internal Beta
 remains unstarted and no users were invited.
 
-Current production:
+Current production after the migration-025 release, with Owner acceptance
+revoked:
 
 ```text
-PRODUCTION_RELEASE=017a47dbd837264175d8cbcb3f469a01e3e62c92
-PREVIOUS_RELEASE=53317bb0156589baa21bc69c22e199d200c49840
-SCHEMA=v24
-MIGRATIONS=001-024
-MIGRATION_025_PRODUCTION_APPLIED=false
-AUTOMATIC_ADMISSION_RELEASE_PENDING=true
+PRODUCTION_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
+PREVIOUS_RELEASE=3a88cfef7a4083ebe2a0277bd50b356e5fb86f46
+SCHEMA=v25
+MIGRATIONS=001-025
+MIGRATION_025_PRODUCTION_APPLIED=true
+AUTOMATIC_ADMISSION_RELEASE_PENDING=false
 LAYER1_COMPLETE=true
-INTERNAL_BETA_READY=true
+INTERNAL_BETA_READY=false
 INTERNAL_BETA_STARTED=false
-NEXT_APPROVED=UPLOAD-PERF01 (not started)
+NEXT_ACTION=INCIDENT-L1-AI-PRODUCTION01 real-browser repair (in progress)
 ```
 
 ## Storage incident closure

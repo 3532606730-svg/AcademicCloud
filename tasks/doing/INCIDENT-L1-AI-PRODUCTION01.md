@@ -34,7 +34,54 @@ ADR-014, ADR-022, ADR-023, ADR-031, ADR-033, ADR-034, ADR-036.
 `frontend/src/shared-library.tsx`.
 
 ## Current State
-The first failing production boundary is established for both representative
+Owner real-browser production acceptance failed on 2026-08-24 and overrides all
+earlier synthetic fixture, harness, CI, worker-terminal, and repository gates as
+acceptance evidence. The incident is currently open and Internal Beta readiness
+is revoked. The active task is to reproduce the normal signed-in Owner workflow
+on the deployed website, identify the first broken boundary with live browser,
+Core, schema, and durable-state evidence, then make and deploy only the smallest
+repair before re-testing that same path.
+
+```text
+PRODUCTION_USER_ACCEPTANCE=FAIL
+INCIDENT_L1_AI_PRODUCTION01=CURRENTLY_OPEN
+INTERNAL_BETA_READY=false
+OWNER_REAL_BROWSER_PATH=FAIL
+```
+
+The 2026-08-24 normal Owner-browser reproduction established the current first
+failure boundary before the repair was changed:
+
+```text
+PRODUCTION_FRONTEND_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
+PRODUCTION_FRONTEND_JS=index-OhtI0cc3.js
+PRODUCTION_FRONTEND_JS_SHA256=5e64a5c4c34aebbb1fe8c68ab18172a8a31c0243efebe708b34a0f08d20f0689
+PRODUCTION_CORE_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
+SCHEMA_VERSION=v25
+MIGRATION_HISTORY=001-025
+FIRST_FAILURE_BOUNDARY=H. WORKER_COMPUTE
+ROOT_CAUSE=real production PDFs exceed the inherited 5,000 ms PDF.js inspection budget
+```
+
+The signed-in UI opened canonical-Library resource
+`ad0cc21f-dd8e-48be-b223-d2576ab0d33f` without an authentication or console
+error. Its normal retry request returned `202`, authenticated polling returned
+`200`, and Core persisted the durable attempt and GitHub provider receipt. The
+prior real attempt was claimed and failed as `compute_timeout` after 5.606
+seconds. Several other real Library PDFs show the same 5–6-second claimed-
+worker failure, whereas the 60,585-byte fixture succeeds. The production
+worker imported `SUGGESTION_LIMITS.timeoutMilliseconds=5_000`; therefore UI,
+API contract, session, admission, job projection, and provider dispatch all
+precede and pass the first broken boundary.
+
+The smallest repair changes only the Compute PDF inspection budget from 5,000
+to 30,000 ms, preserving the 180,000 ms request and 12-minute workflow ceilings.
+Compute typecheck and all 64 runnable focused tests pass; two release-local
+runtime E2Es remain expected local skips. Publication and the same-resource
+Owner-browser retest are pending, so no acceptance state has been advanced.
+
+Historical pre-override evidence established the earlier PDF.js range-reader
+boundary for both representative
 flows. New-upload job `23b6e0dc-a79d-457e-be59-f17a56736d6f` and legacy
 re-catalogue job `3967581d-effb-47c2-b13c-d5478dbdcb95` both dispatched to
 GitHub Actions/Compute and failed in `compute/src/pdf-text.ts` at the PDF.js
@@ -86,25 +133,40 @@ source access. This is recorded separately from the migration-025 release.
 - Added a restart-shaped reconciler regression proving one provider execution
   across a lost dispatch receipt, plus the same-attempt GitHub workflow
   concurrency contract.
+- Verified the live frontend asset identity, exact Core release, and complete
+  migration history 001–025 from production.
+- Reproduced the ordinary signed-in Owner resource/retry path and isolated the
+  first current failure at worker Compute after UI/API/session/job/dispatch.
+- Raised only the PDF parser budget to 30 seconds and passed focused Compute
+  typecheck plus 64/64 runnable tests.
 
 ## Remaining
-- Checkpoint/push the reconciler execution gate and migration-025 release.
-- Create/verify the v25 rollback backup pair and deploy the automatic-admission
-  release through the established runbook.
-- Prove a real new-upload automatic-AI E2E separately; the existing-resource
-  run satisfies only the independent PDF.js repair gate.
+- Publish the exact repair commit used by the protected Compute workflow.
+- Re-trigger the same real Library resource through the normal Owner UI and
+  prove terminal success plus reviewable result display without applying any
+  candidate or mutating source/metadata.
 
 ## Blockers
-None for the bounded repository checkpoint. The migration-025 production
-deployment and new-upload automatic-AI E2E remain pending their release gates.
+None for live diagnosis. Incident closure, the AI quality cohort, Internal Beta,
+and unrelated work are blocked on `OWNER_REAL_BROWSER_PATH=PASS`.
 
 ## Last Verification
 ```text
+PRODUCTION_USER_ACCEPTANCE=FAIL
+INCIDENT_L1_AI_PRODUCTION01=CURRENTLY_OPEN
+INTERNAL_BETA_READY=false
+OWNER_REAL_BROWSER_PATH=FAIL
+PRODUCTION_FRONTEND_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
+PRODUCTION_CORE_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
+SCHEMA_VERSION=v25 / 001-025
+FIRST_FAILURE_BOUNDARY=H. WORKER_COMPUTE
+ROOT_CAUSE=5,000 ms PDF inspection budget is too short for real production PDFs
 BACKEND_BASELINE=364/364 PASS
 FRONTEND_FOCUSED=175/175 PASS
 FRONTEND_FULL=273/273 PASS
 COMPUTE_CONTRACTS=2/2 PASS
-COMPUTE=61/63 PASS / 2 expected local-runtime skips
+COMPUTE=64/66 PASS / 2 expected local-runtime skips
+COMPUTE_TYPECHECK=PASS
 BACKEND_TYPECHECK=PASS
 FRONTEND_TYPECHECK=PASS
 WORKSPACE_TYPECHECK=PASS
@@ -131,7 +193,6 @@ AMBIGUOUS_DISPATCH_RECOVERY=PASS
 ```
 
 ## Next Action
-Checkpoint the reconciler/automatic-admission release, build and verify the
-immutable migration-025 artifact, deploy with the v25 rollback contract, and
-then prove `NEW_UPLOAD_AI_AUTO_TRIGGER` and `NEW_UPLOAD_AI_E2E` separately from
-the completed PDF.js repair gate.
+Checkpoint and publish the exact parser-budget repair, then retry the same real
+resource through the normal signed-in Owner UI and follow it through result
+display. Do not accept candidates or mutate the source/authoritative metadata.
