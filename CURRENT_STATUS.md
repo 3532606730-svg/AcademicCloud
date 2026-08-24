@@ -31,7 +31,7 @@ PRODUCTION_CORE_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
 SCHEMA_VERSION=v25
 MIGRATION_HISTORY=001-025
 FIRST_FAILURE_BOUNDARY=H. WORKER_COMPUTE
-ROOT_CAUSE=real production PDFs exceed the inherited 5,000 ms PDF.js inspection budget
+ROOT_CAUSE=32 MiB aggregate PDF range budget exhausts during document_load; the empty range leaves PDF.js pending until timeout
 ```
 
 The normal signed-in Owner UI opened the real canonical-Library resource
@@ -56,8 +56,17 @@ UI/resource in run `32694218980`, attempt
 every supplied aggregate deadline rules out ordinary latency headroom. A
 privacy-safe diagnostic now reports only the bounded operation stage and range
 request/byte counters outside the durable callback; source URLs, PDF content,
-candidate content, and metadata remain absent. The diagnostic run is pending,
-so the incident stays open.
+candidate content, and metadata remain absent. Exact diagnostic worker
+`aafb608a2e52ab2a36b679def6f0ac9e1697ce68`, run `32694721068`, attempt
+`34327558-fae8-4359-af66-1c18f8507090` reported
+`stage=document_load`, `rangeRequests=31`, and `rangeBytes=31,532,724`. With
+the 1 MiB initial prefix, this reaches the 32 MiB aggregate ceiling; the next
+request is replaced by an empty chunk and PDF.js cannot finish document load.
+The smallest repair raises only the aggregate range ceiling to 64 MiB while
+retaining range-only access, the 1 MiB request cap, 64-request cap, 4 GiB object
+cap, 120-second parser, 180-second request, and 420-second worker ceilings. The
+same-resource real-browser repair run remains pending, so the incident stays
+open.
 
 Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is
 resolved for the incident: the production SSH route, Git checkpoint/push path,

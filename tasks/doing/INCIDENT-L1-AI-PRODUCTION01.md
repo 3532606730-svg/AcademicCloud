@@ -60,7 +60,7 @@ PRODUCTION_CORE_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
 SCHEMA_VERSION=v25
 MIGRATION_HISTORY=001-025
 FIRST_FAILURE_BOUNDARY=H. WORKER_COMPUTE
-ROOT_CAUSE=real production PDFs exceed the inherited 5,000 ms PDF.js inspection budget
+ROOT_CAUSE=32 MiB aggregate PDF range budget exhausts during document_load; the empty range leaves PDF.js pending until timeout
 ```
 
 The signed-in UI opened canonical-Library resource
@@ -88,7 +88,16 @@ ended `compute_timeout` exactly 120.646 seconds after claim. Repeated exhaustion
 of every supplied aggregate deadline rules out ordinary latency headroom. A
 privacy-safe diagnostic now reports only the bounded operation stage and range
 request/byte counters outside the durable callback; no source URL, PDF content,
-candidate content, or metadata is logged. No acceptance state has advanced.
+candidate content, or metadata is logged. Exact diagnostic worker
+`aafb608a2e52ab2a36b679def6f0ac9e1697ce68`, run `32694721068`, attempt
+`34327558-fae8-4359-af66-1c18f8507090` reported
+`stage=document_load`, `rangeRequests=31`, and `rangeBytes=31,532,724`. With
+the 1 MiB initial prefix, this reaches the 32 MiB aggregate ceiling; the next
+request is replaced with an empty chunk and PDF.js cannot finish document load.
+The smallest repair raises only the aggregate range ceiling to 64 MiB while
+retaining range-only access, the 1 MiB request cap, 64-request cap, 4 GiB object
+cap, 120-second parser, 180-second request, and 420-second worker ceilings. No
+acceptance state has advanced.
 
 Historical pre-override evidence established the earlier PDF.js range-reader
 boundary for both representative
@@ -153,10 +162,11 @@ source access. This is recorded separately from the migration-025 release.
 - Proved the 120-second worker also exhausts that deadline and added a bounded,
   non-content stage/range diagnostic so the exact stuck operation can be
   repaired instead of increasing the aggregate timeout again.
+- Proved document load exhausts the 32 MiB aggregate range budget at 31 range
+  requests plus the initial 1 MiB prefix; raised only that ceiling to 64 MiB.
 
 ## Remaining
-- Publish and run the privacy-safe diagnostic from the same real UI/resource.
-- Repair only the exact stuck operation identified by that diagnostic.
+- Publish the exact 64 MiB aggregate range repair.
 - Re-trigger the same real Library resource through the normal Owner UI and
   prove terminal success plus reviewable result display without applying any
   candidate or mutating source/metadata.

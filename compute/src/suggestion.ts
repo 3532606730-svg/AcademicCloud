@@ -45,7 +45,7 @@ export interface SuggestionLimits {
 export const SUGGESTION_LIMITS: Readonly<SuggestionLimits> = Object.freeze({
   maxObjectBytes: 32 * 1024 * 1024,
   maxObjectSizeBytes: 4 * 1024 * 1024 * 1024,
-  maxRangeBytes: 32 * 1024 * 1024,
+  maxRangeBytes: 64 * 1024 * 1024,
   maxRangeRequests: 64,
   rangeChunkBytes: 1 * 1024 * 1024,
   maxPages: 20,
