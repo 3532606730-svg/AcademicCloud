@@ -45,6 +45,7 @@ export interface BibliographicAiRunEvidence {
 
 export interface BibliographicRepository {
   findProfile(ownerDomainId: string, recordId: string): BibliographicProfile | null;
+  findProfiles(ownerDomainId: string, recordIds: string[]): BibliographicProfile[];
   saveProfile(input: SaveBibliographicProfileInput): BibliographicProfile | null;
   listFieldAuthorities(ownerDomainId: string, recordId: string): BibliographicFieldAuthority[];
   setFieldAuthority(input: SetFieldAuthorityInput): void;

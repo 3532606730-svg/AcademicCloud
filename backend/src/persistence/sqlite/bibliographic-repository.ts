@@ -47,6 +47,7 @@ interface ContributorRow {
   role_label: string | null;
   authority_id: string | null;
 }
+interface BatchContributorRow extends ContributorRow { record_id: string; }
 
 interface SourceEditionRow {
   dynasty: string | null;
@@ -62,6 +63,7 @@ interface SourceEditionRow {
   edition_statement: string | null;
   holding_information: string | null;
 }
+interface BatchSourceEditionRow extends SourceEditionRow { record_id: string; }
 
 interface FieldAuthorityRow {
   record_id: string;
@@ -324,6 +326,87 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
       createdAt: fromDatabaseTimestamp(row.created_at)!,
       updatedAt: fromDatabaseTimestamp(row.updated_at)!,
     };
+  }
+
+  findProfiles(ownerDomainId: string, recordIds: string[]): BibliographicProfile[] {
+    if (recordIds.length === 0) return [];
+    const recordIdsJson = JSON.stringify(recordIds);
+    const profiles = this.#database.prepare<[string, string], ProfileRow>(`
+      SELECT ${profileColumns}
+      FROM scholarly_bibliographic_profiles
+      WHERE owner_domain_id = ? AND record_id IN (SELECT value FROM json_each(?))
+    `).all(ownerDomainId, recordIdsJson);
+    if (profiles.length === 0) return [];
+    const contributors = this.#database.prepare<[string, string], BatchContributorRow>(`
+      SELECT record_id, id, label, role, role_label, authority_id
+      FROM scholarly_bibliographic_contributors
+      WHERE owner_domain_id = ? AND record_id IN (SELECT value FROM json_each(?))
+      ORDER BY record_id, position
+    `).all(ownerDomainId, recordIdsJson);
+    const sourceEditions = this.#database.prepare<[string, string], BatchSourceEditionRow>(`
+      SELECT record_id, dynasty, reign_title, reign_year, absolute_year, printer,
+        imprint, bookshop, institution, printing_place, edition_type,
+        edition_statement, holding_information
+      FROM scholarly_bibliographic_source_editions
+      WHERE owner_domain_id = ? AND record_id IN (SELECT value FROM json_each(?))
+    `).all(ownerDomainId, recordIdsJson);
+    const contributorsByRecord = new Map<string, BatchContributorRow[]>();
+    for (const contributor of contributors) {
+      const group = contributorsByRecord.get(contributor.record_id);
+      if (group) group.push(contributor);
+      else contributorsByRecord.set(contributor.record_id, [contributor]);
+    }
+    const sourceByRecord = new Map(sourceEditions.map((source) => [source.record_id, source]));
+    return profiles.map((row) => {
+      const source = sourceByRecord.get(row.record_id);
+      return {
+        recordId: row.record_id,
+        ownerDomainId: row.owner_domain_id,
+        contractVersion: 1,
+        materialClass: row.material_class,
+        contributors: (contributorsByRecord.get(row.record_id) ?? []).map((entry) => ({
+          id: entry.id,
+          label: entry.label,
+          role: entry.role,
+          ...(entry.role_label === null ? {} : { roleLabel: entry.role_label }),
+          ...(entry.authority_id === null ? {} : { authorityId: entry.authority_id }),
+        })),
+        publication: compact({
+          publisher: row.publication_publisher ?? undefined,
+          place: row.publication_place ?? undefined,
+          publicationDate: row.publication_date ?? undefined,
+          editionNumber: row.edition_number ?? undefined,
+          printing: row.printing ?? undefined,
+        }),
+        ...(row.series_title === null ? {} : { series: row.series_title }),
+        ...(row.volume_part === null ? {} : { volume: row.volume_part }),
+        ...(row.language_label === null ? {} : { language: row.language_label }),
+        carrierEdition: compact({
+          editionType: row.carrier_edition_type ?? undefined,
+          editionStatement: row.carrier_edition_statement ?? undefined,
+          facsimileStatement: row.carrier_facsimile_statement ?? undefined,
+        }),
+        sourceEdition: source ? compact({
+          dynasty: source.dynasty ?? undefined,
+          reignTitle: source.reign_title ?? undefined,
+          reignYear: source.reign_year ?? undefined,
+          absoluteYear: source.absolute_year ?? undefined,
+          printer: source.printer ?? undefined,
+          imprint: source.imprint ?? undefined,
+          bookshop: source.bookshop ?? undefined,
+          institution: source.institution ?? undefined,
+          printingPlace: source.printing_place ?? undefined,
+          editionType: source.edition_type ?? undefined,
+          editionStatement: source.edition_statement ?? undefined,
+          holdingInformation: source.holding_information ?? undefined,
+        }) : {},
+        revision: row.revision,
+        createdByAccountId: row.created_by_account_id,
+        updatedByAccountId: row.updated_by_account_id,
+        createdAt: fromDatabaseTimestamp(row.created_at)!,
+        updatedAt: fromDatabaseTimestamp(row.updated_at)!,
+      };
+    });
   }
 
   saveProfile(input: SaveBibliographicProfileInput): BibliographicProfile | null {

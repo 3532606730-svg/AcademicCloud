@@ -159,6 +159,42 @@ test("authority-scoped search returns only accessible holdings across the whole 
   assert.deepEqual(filtered.results.map((item) => item.fileId), [bookA]);
 });
 
+test("catalogue search hydrates metadata, bibliography, and authorities in constant batch calls", (context) => {
+  const { database, libraries, metadata, persistence } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Batch Search");
+  const ownerDomainId = `library:${library.id}`;
+  const first = addHolding(database, ownerDomainId, "ba", "first.pdf");
+  const second = addHolding(database, ownerDomainId, "bb2", "second.pdf");
+  setMetadata(metadata, library.id, first, { canonicalTitle: "第一种元史", authorLabel: "甲" });
+  setMetadata(metadata, library.id, second, { canonicalTitle: "第二种元史", authorLabel: "乙" });
+
+  const metadataRepository = persistence.repositories.metadata;
+  const bibliographyRepository = persistence.repositories.bibliography;
+  const batchCalls = { metadata: 0, bibliography: 0, authorities: 0 };
+  const findMetadataMany = metadataRepository.findMetadataMany.bind(metadataRepository);
+  const findProfiles = bibliographyRepository.findProfiles.bind(bibliographyRepository);
+  const findAuthorities = metadataRepository.findAuthorities.bind(metadataRepository);
+  metadataRepository.findMetadata = () => { throw new Error("singular metadata hydration is forbidden"); };
+  bibliographyRepository.findProfile = () => { throw new Error("singular bibliography hydration is forbidden"); };
+  metadataRepository.findAuthority = () => { throw new Error("singular authority hydration is forbidden"); };
+  metadataRepository.findMetadataMany = (...arguments_) => {
+    batchCalls.metadata += 1;
+    return findMetadataMany(...arguments_);
+  };
+  bibliographyRepository.findProfiles = (...arguments_) => {
+    batchCalls.bibliography += 1;
+    return findProfiles(...arguments_);
+  };
+  metadataRepository.findAuthorities = (...arguments_) => {
+    batchCalls.authorities += 1;
+    return findAuthorities(...arguments_);
+  };
+
+  const result = libraries.searchHoldings(OWNER.id, library.id, "元史", 50, null);
+  assert.deepEqual(result.results.map((entry) => entry.fileId).sort(), [first, second].sort());
+  assert.deepEqual(batchCalls, { metadata: 1, bibliography: 1, authorities: 1 });
+});
+
 test("non-members, disabled accounts, and guessed libraries are indistinguishable from no match", (context) => {
   const { database, libraries, metadata, persistence } = fixture(context);
   const library = libraries.createLibrary(OWNER, "Shared Sources");

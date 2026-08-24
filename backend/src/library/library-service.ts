@@ -534,8 +534,11 @@ export class LibraryService {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new LibraryError("invalid_input");
     const repositories = this.#persistence.repositories;
     const library = this.#requireMember(accountId, libraryId, repositories);
-    return repositories.libraries.listHoldings(libraryId, limit).map((holding) =>
-      libraryHoldingView(holding, repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId)));
+    const holdings = repositories.libraries.listHoldings(libraryId, limit);
+    const profiles = new Map(repositories.bibliography
+      .findProfiles(library.ownerDomainId, holdings.map((holding) => holding.recordId))
+      .map((profile) => [profile.recordId, profile]));
+    return holdings.map((holding) => libraryHoldingView(holding, profiles.get(holding.recordId) ?? null));
   }
 
   listHoldingsSorted(
@@ -557,14 +560,16 @@ export class LibraryService {
       const page = repositories.libraries.listHoldingsSorted(library.id, sort, after, limit + 1);
       const hasMore = page.length > limit;
       const visible = page.slice(0, limit);
+      const profiles = new Map(repositories.bibliography
+        .findProfiles(library.ownerDomainId, visible.map((holding) => holding.recordId))
+        .map((profile) => [profile.recordId, profile]));
       let nextCursor: string | null = null;
       if (hasMore && visible.length > 0) {
         const last = visible[visible.length - 1]!;
         nextCursor = encodeHoldingSortCursor(holdingSortCursorFor(sort, last));
       }
       return {
-        holdings: visible.map((holding) =>
-          libraryHoldingView(holding, repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId))),
+        holdings: visible.map((holding) => libraryHoldingView(holding, profiles.get(holding.recordId) ?? null)),
         nextCursor,
       };
     });
@@ -592,22 +597,33 @@ export class LibraryService {
         SEARCH_MAX_SCAN_PAGES,
       );
       if (holdings === null) throw new LibraryError("invalid_state");
-      const searchable = holdings.map((holding) => this.#searchableHolding(library.ownerDomainId, holding, repositories));
+      const searchable = this.#searchableHoldings(library.ownerDomainId, holdings, repositories);
       return searchHoldings(searchable, rawQuery, limit, cursor, filters, sort);
     });
   }
 
-  #searchableHolding(
+  #searchableHoldings(
     ownerDomainId: string,
-    holding: LibraryHolding,
+    holdings: LibraryHolding[],
     repositories: RepositorySet,
-  ): SearchableHolding {
-    const metadata = repositories.metadata.findMetadata(ownerDomainId, holding.recordId);
-    const bibliography = repositories.bibliography.findProfile(ownerDomainId, holding.recordId);
-    const authorities: SearchableAuthority[] = [];
-    if (metadata) {
-      for (const link of metadata.authorityLinks) {
-        const authority = repositories.metadata.findAuthority(ownerDomainId, link.authorityId);
+  ): SearchableHolding[] {
+    const recordIds = holdings.map((holding) => holding.recordId);
+    const metadataByRecord = new Map(repositories.metadata
+      .findMetadataMany(ownerDomainId, recordIds)
+      .map((metadata) => [metadata.recordId, metadata]));
+    const bibliographyByRecord = new Map(repositories.bibliography
+      .findProfiles(ownerDomainId, recordIds)
+      .map((profile) => [profile.recordId, profile]));
+    const authorityIds = [...new Set([...metadataByRecord.values()]
+      .flatMap((metadata) => metadata.authorityLinks.map((link) => link.authorityId)))];
+    const authoritiesById = new Map(repositories.metadata
+      .findAuthorities(ownerDomainId, authorityIds)
+      .map((authority) => [authority.id, authority]));
+    return holdings.map((holding) => {
+      const metadata = metadataByRecord.get(holding.recordId) ?? null;
+      const authorities: SearchableAuthority[] = [];
+      for (const link of metadata?.authorityLinks ?? []) {
+        const authority = authoritiesById.get(link.authorityId);
         if (!authority) continue;
         authorities.push({
           type: authority.type,
@@ -616,19 +632,19 @@ export class LibraryService {
           aliases: [...authority.aliases],
         });
       }
-    }
-    return {
-      fileId: holding.file.id,
-      displayName: holding.file.displayName,
-      sizeBytes: holding.file.sizeBytes,
-      artifactId: holding.artifactId,
-      artifactCreatedAt: holding.artifactCreatedAt,
-      canonicalTitle: holding.canonicalTitle,
-      metadata,
-      bibliography,
-      authorLabels: [...holding.authorLabels],
-      authorities,
-    };
+      return {
+        fileId: holding.file.id,
+        displayName: holding.file.displayName,
+        sizeBytes: holding.file.sizeBytes,
+        artifactId: holding.artifactId,
+        artifactCreatedAt: holding.artifactCreatedAt,
+        canonicalTitle: holding.canonicalTitle,
+        metadata,
+        bibliography: bibliographyByRecord.get(holding.recordId) ?? null,
+        authorLabels: [...holding.authorLabels],
+        authorities,
+      };
+    });
   }
 
   recycleHolding(actor: AuthenticatedAccount, libraryId: string, fileId: string, expectedVersion: string): void {

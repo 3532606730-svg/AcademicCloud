@@ -26,8 +26,10 @@ export interface UpdateAuthorityInput {
 
 export interface CanonicalMetadataRepository {
   findMetadata(ownerDomainId: string, recordId: string): CanonicalMetadata | null;
+  findMetadataMany(ownerDomainId: string, recordIds: string[]): CanonicalMetadata[];
   saveMetadata(input: SaveMetadataInput): CanonicalMetadata | null;
   findAuthority(ownerDomainId: string, authorityId: string): ScholarlyAuthority | null;
+  findAuthorities(ownerDomainId: string, authorityIds: string[]): ScholarlyAuthority[];
   listAuthorities(ownerDomainId: string, type: AuthorityType, beforeId: string | null, limit: number): ScholarlyAuthority[];
   createAuthority(authority: NewScholarlyAuthority): ScholarlyAuthority;
   updateAuthority(input: UpdateAuthorityInput): ScholarlyAuthority | null;

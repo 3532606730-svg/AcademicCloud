@@ -37,6 +37,10 @@ interface AlternativeTitleRow { title: string; }
 interface IdentifierRow { scheme: string; value: string; }
 interface TypeFieldRow { field_name: DatabaseTypeFieldName; value: string; }
 interface AuthorityLinkRow { authority_id: string; role: AuthorityRole; }
+interface BatchAlternativeTitleRow extends AlternativeTitleRow { record_id: string; }
+interface BatchIdentifierRow extends IdentifierRow { record_id: string; }
+interface BatchTypeFieldRow extends TypeFieldRow { record_id: string; }
+interface BatchAuthorityLinkRow extends AuthorityLinkRow { record_id: string; }
 
 interface AuthorityRow {
   id: string;
@@ -51,6 +55,7 @@ interface AuthorityRow {
 }
 
 interface AuthorityAliasRow { alias: string; }
+interface BatchAuthorityAliasRow extends AuthorityAliasRow { authority_id: string; }
 
 type DatabaseTypeFieldName =
   | "edition_statement"
@@ -126,7 +131,7 @@ export class SqliteCanonicalMetadataRepository implements CanonicalMetadataRepos
   readonly #deleteAuthorityAliases;
   readonly #insertAuthorityAlias;
 
-  constructor(database: SqliteDatabase) {
+  constructor(private readonly database: SqliteDatabase) {
     this.#findMetadata = database.prepare<[string, string], MetadataRow>(`
       SELECT ${metadataColumns}
       FROM scholarly_record_metadata
@@ -328,6 +333,74 @@ export class SqliteCanonicalMetadataRepository implements CanonicalMetadataRepos
     };
   }
 
+  findMetadataMany(ownerDomainId: string, recordIds: string[]): CanonicalMetadata[] {
+    if (recordIds.length === 0) return [];
+    const recordIdsJson = JSON.stringify(recordIds);
+    const parents = this.database.prepare<[string, string], MetadataRow>(`
+      SELECT ${metadataColumns}
+      FROM scholarly_record_metadata
+      WHERE owner_domain_id = ? AND record_id IN (SELECT value FROM json_each(?))
+    `).all(ownerDomainId, recordIdsJson);
+    if (parents.length === 0) return [];
+    const alternativeTitles = this.database.prepare<[string, string], BatchAlternativeTitleRow>(`
+      SELECT record_id, title FROM scholarly_record_alternative_titles
+      WHERE owner_domain_id = ? AND record_id IN (SELECT value FROM json_each(?))
+      ORDER BY record_id, position
+    `).all(ownerDomainId, recordIdsJson);
+    const identifiers = this.database.prepare<[string, string], BatchIdentifierRow>(`
+      SELECT record_id, scheme, value FROM scholarly_record_identifiers
+      WHERE owner_domain_id = ? AND record_id IN (SELECT value FROM json_each(?))
+      ORDER BY record_id, position
+    `).all(ownerDomainId, recordIdsJson);
+    const typeFields = this.database.prepare<[string, string], BatchTypeFieldRow>(`
+      SELECT record_id, field_name, value FROM scholarly_record_type_fields
+      WHERE owner_domain_id = ? AND record_id IN (SELECT value FROM json_each(?))
+      ORDER BY record_id, field_name
+    `).all(ownerDomainId, recordIdsJson);
+    const authorityLinks = this.database.prepare<[string, string], BatchAuthorityLinkRow>(`
+      SELECT record_id, authority_id, role FROM scholarly_record_authority_links
+      WHERE owner_domain_id = ? AND record_id IN (SELECT value FROM json_each(?))
+      ORDER BY record_id, position
+    `).all(ownerDomainId, recordIdsJson);
+    const group = <T extends { record_id: string }>(rows: T[]): Map<string, T[]> => {
+      const result = new Map<string, T[]>();
+      for (const row of rows) {
+        const values = result.get(row.record_id);
+        if (values) values.push(row);
+        else result.set(row.record_id, [row]);
+      }
+      return result;
+    };
+    const alternativesByRecord = group(alternativeTitles);
+    const identifiersByRecord = group(identifiers);
+    const fieldsByRecord = group(typeFields);
+    const linksByRecord = group(authorityLinks);
+    return parents.map((row) => {
+      const fields: Partial<Record<TypeFieldName, string>> = {};
+      for (const field of fieldsByRecord.get(row.record_id) ?? []) {
+        fields[FIELD_FROM_DATABASE[field.field_name]] = field.value;
+      }
+      return {
+        recordId: row.record_id,
+        ownerDomainId: row.owner_domain_id,
+        contractVersion: 1,
+        materialType: row.material_type,
+        canonicalTitle: row.canonical_title,
+        ...(row.subtitle === null ? {} : { subtitle: row.subtitle }),
+        alternativeTitles: (alternativesByRecord.get(row.record_id) ?? []).map((entry) => entry.title),
+        ...(row.date_statement === null ? {} : { dateStatement: row.date_statement }),
+        identifiers: (identifiersByRecord.get(row.record_id) ?? []).map((entry) => ({ scheme: entry.scheme, value: entry.value })),
+        typeFields: fields,
+        authorityLinks: (linksByRecord.get(row.record_id) ?? []).map((entry) => ({ authorityId: entry.authority_id, role: entry.role })),
+        revision: row.revision,
+        createdByAccountId: row.created_by_account_id,
+        updatedByAccountId: row.updated_by_account_id,
+        createdAt: fromDatabaseTimestamp(row.created_at)!,
+        updatedAt: fromDatabaseTimestamp(row.updated_at)!,
+      };
+    });
+  }
+
   saveMetadata(input: SaveMetadataInput): CanonicalMetadata | null {
     const now = toDatabaseTimestamp(input.now)!;
     const parent = {
@@ -387,6 +460,39 @@ export class SqliteCanonicalMetadataRepository implements CanonicalMetadataRepos
   findAuthority(ownerDomainId: string, authorityId: string): ScholarlyAuthority | null {
     const row = this.#findAuthority.get(ownerDomainId, authorityId);
     return row ? this.#toAuthority(row) : null;
+  }
+
+  findAuthorities(ownerDomainId: string, authorityIds: string[]): ScholarlyAuthority[] {
+    if (authorityIds.length === 0) return [];
+    const authorityIdsJson = JSON.stringify(authorityIds);
+    const authorities = this.database.prepare<[string, string], AuthorityRow>(`
+      SELECT ${authorityColumns}
+      FROM scholarly_authorities
+      WHERE owner_domain_id = ? AND id IN (SELECT value FROM json_each(?))
+    `).all(ownerDomainId, authorityIdsJson);
+    const aliases = this.database.prepare<[string, string], BatchAuthorityAliasRow>(`
+      SELECT authority_id, alias FROM scholarly_authority_aliases
+      WHERE owner_domain_id = ? AND authority_id IN (SELECT value FROM json_each(?))
+      ORDER BY authority_id, position
+    `).all(ownerDomainId, authorityIdsJson);
+    const aliasesByAuthority = new Map<string, string[]>();
+    for (const row of aliases) {
+      const values = aliasesByAuthority.get(row.authority_id);
+      if (values) values.push(row.alias);
+      else aliasesByAuthority.set(row.authority_id, [row.alias]);
+    }
+    return authorities.map((row) => ({
+      id: row.id,
+      ownerDomainId: row.owner_domain_id,
+      type: row.authority_type,
+      canonicalLabel: row.canonical_label,
+      aliases: aliasesByAuthority.get(row.id) ?? [],
+      revision: row.revision,
+      createdByAccountId: row.created_by_account_id,
+      updatedByAccountId: row.updated_by_account_id,
+      createdAt: fromDatabaseTimestamp(row.created_at)!,
+      updatedAt: fromDatabaseTimestamp(row.updated_at)!,
+    }));
   }
 
   listAuthorities(ownerDomainId: string, type: AuthorityType, beforeId: string | null, limit: number): ScholarlyAuthority[] {
