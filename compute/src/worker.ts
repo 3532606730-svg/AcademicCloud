@@ -44,6 +44,11 @@ export interface WorkerMemoryEvidence {
 export interface ComputeWorkerOutcome {
   result: DerivedComputeResult;
   memory: WorkerMemoryEvidence;
+  failureDiagnostic?: {
+    stage: PdfTextInspectionError["diagnosticStage"];
+    rangeRequests?: number;
+    rangeBytes?: number;
+  };
 }
 
 function safeUrl(value: string, label: string): URL {
@@ -295,6 +300,7 @@ export async function runComputeWorker(
     if (!claimResponse.ok) throw new Error(`compute claim failed with status ${claimResponse.status}`);
     const claim = parseClaim(await claimResponse.json(), input);
     let result: DerivedComputeResult;
+    let failureDiagnostic: ComputeWorkerOutcome["failureDiagnostic"];
     try {
       const source = new HttpPdfRangeSource(claim.source.url, claim.source.sizeBytes, fetchImplementation);
       const emergencyLegacyOcr = process.env.ACADEMICCLOUD_OCR_EMERGENCY_LEGACY === "1";
@@ -307,6 +313,13 @@ export async function runComputeWorker(
       const output = await computeMetadataSuggestions(source, inspector, options.signal, reasoner, emergencyLegacyOcr);
       result = { jobId: input.jobId, attemptId: input.attemptId, kind: "metadata_suggestion", state: "succeeded", output };
     } catch (error: unknown) {
+      if (error instanceof PdfTextInspectionError) {
+        failureDiagnostic = {
+          stage: error.diagnosticStage,
+          ...(error.rangeRequests === undefined ? {} : { rangeRequests: error.rangeRequests }),
+          ...(error.rangeBytes === undefined ? {} : { rangeBytes: error.rangeBytes }),
+        };
+      }
       result = {
         jobId: input.jobId,
         attemptId: input.attemptId,
@@ -346,6 +359,7 @@ export async function runComputeWorker(
     return {
       result,
       memory: { cleanStartRssBytes, peakRssBytes, postJobRssBytes: process.memoryUsage.rss() },
+      ...(failureDiagnostic === undefined ? {} : { failureDiagnostic }),
     };
   } finally {
     clearInterval(sampler);

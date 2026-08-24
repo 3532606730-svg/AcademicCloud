@@ -27,11 +27,40 @@ export type PdfTextInspectionErrorCode =
   | "ocr_timeout"
   | "ocr_capacity";
 
+export type PdfTextInspectionDiagnosticStage =
+  | "unspecified"
+  | "initial_range"
+  | "document_load"
+  | "page_load"
+  | "page_text"
+  | "metadata"
+  | "ocr_page_load"
+  | "render";
+
 /** Errors expose only a small, non-sensitive code. */
 export class PdfTextInspectionError extends Error {
-  constructor(readonly code: PdfTextInspectionErrorCode) {
+  constructor(
+    readonly code: PdfTextInspectionErrorCode,
+    readonly diagnosticStage: PdfTextInspectionDiagnosticStage = "unspecified",
+    readonly rangeRequests?: number,
+    readonly rangeBytes?: number,
+  ) {
     super(code);
     this.name = "PdfTextInspectionError";
+  }
+}
+
+async function atInspectionStage<T>(
+  diagnosticStage: PdfTextInspectionDiagnosticStage,
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error: unknown) {
+    if (error instanceof PdfTextInspectionError && error.diagnosticStage === "unspecified") {
+      throw new PdfTextInspectionError(error.code, diagnosticStage, error.rangeRequests, error.rangeBytes);
+    }
+    throw error;
   }
 }
 
@@ -375,7 +404,11 @@ async function inspectPdf(options: {
   let releaseOcrRequest: (() => void) | undefined;
   try {
     const initialData = source
-      ? await withTimeout(source.read(0, Math.min(source.length, limits.rangeChunkBytes), signal), operationBudget(parserDeadline, limits.timeoutMilliseconds), signal)
+      ? await atInspectionStage("initial_range", () => withTimeout(
+        source.read(0, Math.min(source.length, limits.rangeChunkBytes), signal),
+        operationBudget(parserDeadline, limits.timeoutMilliseconds),
+        signal,
+      ))
       : undefined;
     rangeTransport = source ? new PdfRangeTransport(source, limits, signal, initialData) : undefined;
     loadingTask = getDocument({
@@ -390,7 +423,11 @@ async function inspectPdf(options: {
       useSystemFonts: false,
       verbosity: 0,
     });
-    const document = await withTimeout(loadingTask.promise, operationBudget(parserDeadline, limits.timeoutMilliseconds), signal);
+    const document = await atInspectionStage("document_load", () => withTimeout(
+      loadingTask!.promise,
+      operationBudget(parserDeadline, limits.timeoutMilliseconds),
+      signal,
+    ));
     const pageCount = document.numPages;
     if (!Number.isSafeInteger(pageCount) || pageCount < 1 || pageCount > 100_000) {
       throw new PdfTextInspectionError("limit_exceeded");
@@ -406,28 +443,28 @@ async function inspectPdf(options: {
       throwIfAborted(signal);
       let page: PDFPageProxy | undefined;
       try {
-        page = await withTimeout(
+        page = await atInspectionStage("page_load", () => withTimeout(
           document.getPage(pageIndex),
           operationBudget(parserDeadline, limits.timeoutMilliseconds),
           signal,
-        );
+        ));
         const remainingText = limits.maxTotalTextCharacters - decodedTextCharacters;
         if (remainingText <= 0) {
           complete = false;
           break;
         }
-        const nativeText = await readBoundedPageText(
-          page,
+        const nativeText = await atInspectionStage("page_text", () => readBoundedPageText(
+          page!,
           Math.min(limits.maxPageTextCharacters, remainingText),
           parserDeadline,
           limits.timeoutMilliseconds,
           signal,
-        );
+        ));
         decodedTextCharacters += nativeText.length;
         inspectedPages.push({ pageIndex, nativeText });
       } catch (error: unknown) {
         if (error instanceof PdfTextInspectionError && ["aborted", "timeout", "limit_exceeded"].includes(error.code)) {
-          if (error.code === "aborted") throw error;
+          if (error.code === "aborted" || error.code === "timeout") throw error;
           complete = false;
           break;
         }
@@ -443,11 +480,11 @@ async function inspectPdf(options: {
 
     let embeddedMetadata: PdfEmbeddedMetadata = {};
     try {
-      const metadata = await withTimeout(
+      const metadata = await atInspectionStage("metadata", () => withTimeout(
         document.getMetadata(),
         operationBudget(parserDeadline, limits.timeoutMilliseconds),
         signal,
-      );
+      ));
       embeddedMetadata = normaliseEmbedded(metadata.info, limits);
     } catch (error: unknown) {
       if (error instanceof PdfTextInspectionError && ["timeout", "aborted", "limit_exceeded"].includes(error.code)) {
@@ -481,11 +518,11 @@ async function inspectPdf(options: {
       if (limits.maxConcurrentPageOcrJobs !== 1) throw new PdfTextInspectionError("limit_exceeded");
       let page: PDFPageProxy | undefined;
       try {
-        page = await withTimeout(
+        page = await atInspectionStage("ocr_page_load", () => withTimeout(
           document.getPage(pageIndex),
           operationBudget(requestDeadline, limits.timeoutMilliseconds),
           signal,
-        );
+        ));
         const dimensions = renderedDimensions(page, limits);
         // Native canvas is an OCR-only dependency. Native-text PDFs never
         // load its backing runtime into the clean worker process.
@@ -499,7 +536,11 @@ async function inspectPdf(options: {
             canvasContext: context as never,
             viewport: dimensions.viewport as never,
           });
-          await withTimeout(renderTask.promise, operationBudget(requestDeadline, limits.timeoutMilliseconds), signal);
+          await atInspectionStage("render", () => withTimeout(
+            renderTask!.promise,
+            operationBudget(requestDeadline, limits.timeoutMilliseconds),
+            signal,
+          ));
         } catch (error: unknown) {
           renderTask?.cancel();
           if (error instanceof PdfTextInspectionError) throw error;
@@ -562,7 +603,15 @@ async function inspectPdf(options: {
       ocrPageCount,
     };
   } catch (error: unknown) {
-    if (error instanceof PdfTextInspectionError) throw error;
+    if (error instanceof PdfTextInspectionError) {
+      const metrics = rangeTransport?.metrics;
+      throw new PdfTextInspectionError(
+        error.code,
+        error.diagnosticStage,
+        metrics?.requests,
+        metrics?.fetchedBytes,
+      );
+    }
     const message = error instanceof Error ? error.message.toLowerCase() : "";
     if (message.includes("password") || message.includes("encrypted")) throw new PdfTextInspectionError("encrypted_pdf");
     throw new PdfTextInspectionError("invalid_pdf");

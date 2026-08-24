@@ -81,8 +81,14 @@ then ran from the same UI/resource as run `32693793765`, attempt
 222,720,000 bytes versus 185,860,096 bytes on a five-second control) but again
 ended `compute_timeout` exactly 30.948 seconds after claim. This preserves the
 same first failure boundary and proves 30 seconds insufficient. The next bounded
-value is 120,000 ms, still inside the unchanged 180,000 ms request and 420,000
-ms worker ceilings. No acceptance state has been advanced.
+value of 120,000 ms was published as exact worker
+`478098904ac23bca9d9d99f43309acdfa3221ea1` and tested from the same UI/resource
+in run `32694218980`, attempt `8c262ac5-bd35-46f2-bebf-e20e2a2d16b0`. It again
+ended `compute_timeout` exactly 120.646 seconds after claim. Repeated exhaustion
+of every supplied aggregate deadline rules out ordinary latency headroom. A
+privacy-safe diagnostic now reports only the bounded operation stage and range
+request/byte counters outside the durable callback; no source URL, PDF content,
+candidate content, or metadata is logged. No acceptance state has advanced.
 
 Historical pre-override evidence established the earlier PDF.js range-reader
 boundary for both representative
@@ -144,9 +150,13 @@ source access. This is recorded separately from the migration-025 release.
 - Proved a 30-second parser budget still terminates the same real PDF at the
   deadline; retained the same H/Compute diagnosis and moved the bounded parser
   budget to 120 seconds inside the existing request/worker ceilings.
+- Proved the 120-second worker also exhausts that deadline and added a bounded,
+  non-content stage/range diagnostic so the exact stuck operation can be
+  repaired instead of increasing the aggregate timeout again.
 
 ## Remaining
-- Publish the exact repair commit used by the protected Compute workflow.
+- Publish and run the privacy-safe diagnostic from the same real UI/resource.
+- Repair only the exact stuck operation identified by that diagnostic.
 - Re-trigger the same real Library resource through the normal Owner UI and
   prove terminal success plus reviewable result display without applying any
   candidate or mutating source/metadata.

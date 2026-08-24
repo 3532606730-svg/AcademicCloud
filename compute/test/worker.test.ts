@@ -4,6 +4,7 @@ import { test } from "node:test";
 import type { MetadataSuggestionComputeOutput } from "@academiccloud/compute-contracts";
 import type { BoundedPdfTextSource } from "../src/suggestion.js";
 import { BibliographicIntelligenceError } from "../src/bibliographic-intelligence.js";
+import { PdfTextInspectionError } from "../src/pdf-text.js";
 import { computeMetadataSuggestions, fitCallbackOutput, runComputeWorker } from "../src/worker.js";
 
 const INPUT = {
@@ -157,6 +158,39 @@ test("worker maps bounded extraction failure to a stable failed callback", async
     kind: "metadata_suggestion",
     state: "failed",
     errorCode: "compute_source_unavailable",
+  });
+});
+
+test("worker reports only bounded PDF failure diagnostics outside the durable callback", async () => {
+  let callback: unknown;
+  const fetchImplementation: typeof fetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith("/claim")) {
+      return Response.json({
+        job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
+      });
+    }
+    if (url.endsWith("/result")) {
+      callback = JSON.parse(String(init.body));
+      return Response.json({ job: { state: "failed" } });
+    }
+    return new Response(null, { status: 500 });
+  };
+  const failingInspector: BoundedPdfTextSource = {
+    async inspect() { throw new Error("unused"); },
+    async inspectRange() { throw new PdfTextInspectionError("timeout", "page_text", 4, 4096); },
+  };
+  const outcome = await runComputeWorker(INPUT, { fetchImplementation, inspector: failingInspector });
+  assert.deepEqual(outcome.failureDiagnostic, { stage: "page_text", rangeRequests: 4, rangeBytes: 4096 });
+  assert.deepEqual(callback, {
+    jobId: INPUT.jobId,
+    attemptId: INPUT.attemptId,
+    kind: "metadata_suggestion",
+    state: "failed",
+    errorCode: "compute_timeout",
   });
 });
 

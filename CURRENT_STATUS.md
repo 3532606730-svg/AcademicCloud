@@ -48,9 +48,16 @@ and tested from the same UI/resource in run `32693793765`, attempt
 222,720,000 bytes versus 185,860,096 bytes on a five-second control) but again
 ended `compute_timeout` exactly 30.948 seconds after claim. This proves the
 failure remains the same parser deadline and rejects 30 seconds as insufficient.
-The next bounded value is 120,000 ms, still inside the unchanged 180,000 ms
-total-request and 420,000 ms worker ceilings. Focused checks and another exact
-same-resource real-browser run remain required, so the incident stays open.
+The next bounded value of 120,000 ms was published as exact worker
+`478098904ac23bca9d9d99f43309acdfa3221ea1` and tested from the same
+UI/resource in run `32694218980`, attempt
+`8c262ac5-bd35-46f2-bebf-e20e2a2d16b0`. It again ended
+`compute_timeout` exactly 120.646 seconds after claim. Repeated exhaustion of
+every supplied aggregate deadline rules out ordinary latency headroom. A
+privacy-safe diagnostic now reports only the bounded operation stage and range
+request/byte counters outside the durable callback; source URLs, PDF content,
+candidate content, and metadata remain absent. The diagnostic run is pending,
+so the incident stays open.
 
 Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is
 resolved for the incident: the production SSH route, Git checkpoint/push path,

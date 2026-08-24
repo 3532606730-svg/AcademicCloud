@@ -25,6 +25,7 @@ try {
     attemptId: outcome.result.attemptId,
     state: outcome.result.state,
     memory: outcome.memory,
+    ...(outcome.failureDiagnostic === undefined ? {} : { failureDiagnostic: outcome.failureDiagnostic }),
   })}\n`);
   if (outcome.result.state === "failed") process.exitCode = 1;
 } finally {
