@@ -65,6 +65,7 @@ test("worker claims with bootstrap authority, range-reads the source, and return
   assert.ok(outcome.memory.cleanStartRssBytes > 0);
   assert.ok(outcome.memory.peakRssBytes >= outcome.memory.cleanStartRssBytes);
   assert.ok(outcome.memory.postJobRssBytes > 0);
+  assert.deepEqual(outcome.sourceAccess, { sourceBytes: 5, rangeBudgetBytes: 5, rangeRequests: 1, rangeBytes: 5 });
   assert.equal(calls[0]?.authorization, `Bearer ${INPUT.bootstrapSecret}`);
   assert.deepEqual(calls[0]?.body, { attemptId: INPUT.attemptId });
   assert.equal(calls[2]?.authorization, "Bearer result-capability-token-that-is-long-enough");

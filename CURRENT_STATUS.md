@@ -76,6 +76,26 @@ exact worker labels that path and extends only the total extraction window to
 300 seconds inside the unchanged 420-second worker and 10-minute capability.
 The incident stays open pending that same-resource result.
 
+That same-resource result is now green but is only the first of two required
+acceptance boundaries. Exact worker `c9b87babb32899f01ef3162a42a0c4b52cd7437f`,
+run `32695881291`, worker job `97337737363`, and attempt
+`91975c39-aa9e-462a-b78d-0d55af5e34fb` completed in 5m05s. Core persisted
+`succeeded`, a complete 20-page selected window, and a reviewable candidate;
+the real resource-details UI displays it with no console error. Peak worker RSS
+was 279,941,120 bytes. `CURRENT_62_99MB_OWNER_PATH=PASS`.
+
+The incident remains open because this file consumed 61,941,428 later range
+bytes plus its initial prefix, almost the entire 64 MiB allowance. PDFs above
+64 MiB are expected: uploads admit 5 GiB, Compute descriptors retain a 4 GiB
+source bound, and approved production PDFs observed read-only extend from
+72,459,070 to 922,469,003 bytes above 64 MiB. The local repair now derives
+aggregate range bytes and requests from exact object length at 1 MiB per range.
+It separately caps PDF.js's full-length backing buffer at 1 GiB, covering the
+observed production corpus while staying inside the qualified <6 GiB worker
+envelope; larger signed sources fail before object read and leave the admitted
+file untouched. The exact >64 MiB Owner retry is still pending, so overall
+Owner acceptance remains FAIL.
+
 Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is
 resolved for the incident: the production SSH route, Git checkpoint/push path,
 and authorized GitHub Actions browser evidence are available. No production

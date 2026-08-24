@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T13:30:00+08:00",
+  "updatedAt": "2026-08-24T14:25:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -12,7 +12,12 @@
     "rfSearchRuntimePresent": true,
     "rfSearchPhase3Accepted": true,
     "activityCenterV01Accepted": true,
-    "liveProcessIdentityNeedsIncidentReverification": false
+    "liveProcessIdentityNeedsIncidentReverification": false,
+    "productionUserAcceptance": false,
+    "ownerRealBrowserPath": false,
+    "current6299MbOwnerPath": true,
+    "largePdfOver64MbPath": false,
+    "incidentL1AiProduction01Closed": false
   },
   "activeIncidents": ["INCIDENT-L1-AI-PRODUCTION01"],
   "activeTasks": ["INCIDENT-L1-AI-PRODUCTION01"],

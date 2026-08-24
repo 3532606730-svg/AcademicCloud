@@ -155,6 +155,36 @@ and Q8_0 projector SHA-256
 
 ## Privacy, cost, and operations
 
+### 2026-08-24 large-PDF range-policy amendment
+
+The production incident proved that a fixed aggregate range ceiling is not a
+valid proxy for bounded front-matter work. A 62,990,004-byte approved PDF
+required 61,941,428 bytes of later range access in addition to its initial
+prefix merely to load the document. A 64 MiB ceiling therefore encoded one
+fixture's size rather than a support or resource boundary. PDFs larger than 64
+MiB are an expected product input: browser uploads retain the 5 GiB file
+contract, the signed Compute source descriptor remains bounded at 4 GiB, the
+large-file UX covers 50–200 MB, and the approved production corpus observed at
+this checkpoint extends through 922,469,003 bytes.
+
+Compute now derives the aggregate PDF range budget from the exact stat-verified
+object length. The maximum range-request count is `ceil(object length / 1
+MiB)` and the existing 1 MiB per-request provider bound remains. Initial and
+later reads count toward the same exact-object allowance; the policy does not
+grow a constant in response to each fixture.
+
+PDF.js 6.2.108's range-backed `ChunkedStream` allocates a full-length
+`Uint8Array` before parsing. The parser therefore has a separate 1 GiB input
+buffer ceiling, selected to cover the largest approved production PDF observed
+above while retaining headroom inside the already-qualified sub-6-GiB
+intelligent worker. A source between that parser ceiling and the 4 GiB signed-
+source ceiling fails with the stable Compute limit result before any object
+read; the admitted file remains usable and canonical metadata is untouched.
+This is a parser-allocation guard, not an aggregate-access allowance. The clean
+worker log may record only source byte length, derived budget, range count, and
+range bytes; no URL, object key, content, OCR text, candidates, or metadata is
+added.
+
 All heavy work stays in the existing ephemeral GitHub-hosted adapter, one clean
 process/job and concurrency one. There is no paid API, paid GPU, second server,
 Core daemon, provider mutation, private-PDF cache, rendered-image cache, or

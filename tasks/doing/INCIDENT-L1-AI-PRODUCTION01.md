@@ -107,6 +107,31 @@ unlabelled timeout path in the source is OCR recognition. The next exact worker
 labels that path and extends only the total extraction window to 300 seconds
 inside the unchanged 420-second worker and 10-minute capability.
 
+Exact worker `c9b87babb32899f01ef3162a42a0c4b52cd7437f`, run
+`32695881291`, worker job `97337737363`, and attempt
+`91975c39-aa9e-462a-b78d-0d55af5e34fb` then completed the same normal Owner
+retry path in `succeeded` after 5m05s. Core committed the callback at
+`2026-08-24T06:10:35.118Z`; the immutable computed run covers all selected
+first-15/last-5 pages and the actual resource-details UI displays the
+reviewable suggestion with no console error. Worker RSS was 95,444,992 bytes
+at clean start, 279,941,120 peak, and 237,719,552 post-job. This proves the
+current 62,990,004-byte path, but it does not close the incident: the preceding
+attempt needed 61,941,428 later range bytes plus the initial prefix, nearly
+saturating the 64 MiB ceiling.
+
+Production supports PDFs above 64 MiB. Upload admission is 5 GiB, the signed
+Compute source descriptor is bounded at 4 GiB, the normal large-file UX covers
+50–200 MB, and approved canonical-Library PDFs observed read-only in production
+range from 72,459,070 through 922,469,003 bytes above that threshold. The fixed
+64 MiB byte and request ceilings are therefore a second H/Worker-Compute defect.
+The bounded repair derives aggregate bytes and requests from the exact object
+length at the unchanged 1 MiB provider request size. Because PDF.js allocates a
+full-length range backing buffer, a distinct 1 GiB parser-allocation guard is
+tied to the largest observed approved production PDF and the existing <6 GiB
+intelligent-worker qualification; larger signed sources fail before object
+read without affecting the admitted file. Success logs gain only bounded
+source-size/range metrics, not source identity or content.
+
 Historical pre-override evidence established the earlier PDF.js range-reader
 boundary for both representative
 flows. New-upload job `23b6e0dc-a79d-457e-be59-f17a56736d6f` and legacy
@@ -175,12 +200,18 @@ source access. This is recorded separately from the migration-025 release.
 - Proved the 64 MiB repair clears document load and reaches downstream OCR;
   extended only the total extraction window from 180 to 300 seconds and added
   the missing bounded OCR diagnostic label.
+- Proved the exact 62,990,004-byte Owner UI retry succeeds end to end on
+  `c9b87ba…` and displays a reviewable result without applying it.
+- Established that >64 MiB PDFs are expected and replaced the fixture-specific
+  aggregate ceiling locally with an exact-object-derived range policy plus a
+  separately justified 1 GiB PDF.js allocation guard.
 
 ## Remaining
-- Publish the exact 300-second extraction-window repair.
-- Re-trigger the same real Library resource through the normal Owner UI and
-  prove terminal success plus reviewable result display without applying any
-  candidate or mutating source/metadata.
+- Checkpoint and publish the exact size-aware range policy.
+- Re-trigger the existing 72,459,070-byte approved Library PDF through the
+  normal Owner UI and prove >64 MiB range access, callback, terminal success,
+  and reviewable result display without applying a candidate or mutating
+  source/metadata.
 
 ## Blockers
 None for live diagnosis. Incident closure, the AI quality cohort, Internal Beta,
@@ -196,12 +227,12 @@ PRODUCTION_FRONTEND_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
 PRODUCTION_CORE_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
 SCHEMA_VERSION=v25 / 001-025
 FIRST_FAILURE_BOUNDARY=H. WORKER_COMPUTE
-ROOT_CAUSE=5,000 ms PDF inspection budget is too short for real production PDFs
+ROOT_CAUSE=fixed aggregate PDF range ceiling was sized to fixtures instead of the admitted object; PDF.js also requires an explicit full-length buffer guard
 BACKEND_BASELINE=364/364 PASS
 FRONTEND_FOCUSED=175/175 PASS
 FRONTEND_FULL=273/273 PASS
 COMPUTE_CONTRACTS=2/2 PASS
-COMPUTE=64/66 PASS / 2 expected local-runtime skips
+COMPUTE=66/68 PASS / 2 expected local-runtime skips
 COMPUTE_TYPECHECK=PASS
 BACKEND_TYPECHECK=PASS
 FRONTEND_TYPECHECK=PASS
@@ -226,9 +257,13 @@ TERMINAL_STATE=succeeded
 DUPLICATE_DURABLE_JOBS=0
 DUPLICATE_PROVIDER_EXECUTIONS=0
 AMBIGUOUS_DISPATCH_RECOVERY=PASS
+CURRENT_62_99MB_OWNER_PATH=PASS
+LARGE_PDF_OVER_64MB_PATH=FAIL / pending repaired-worker production retry
+INCIDENT_CLOSED=false
 ```
 
 ## Next Action
-Checkpoint and publish the exact parser-budget repair, then retry the same real
-resource through the normal signed-in Owner UI and follow it through result
-display. Do not accept candidates or mutate the source/authoritative metadata.
+Checkpoint and publish the exact size-aware range repair, then retry the
+existing 72,459,070-byte Library resource through the normal signed-in Owner UI
+and follow it through result display. Do not accept candidates or mutate the
+source/authoritative metadata.

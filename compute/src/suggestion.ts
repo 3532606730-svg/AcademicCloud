@@ -17,8 +17,7 @@ export const SUGGESTION_WINDOW = Object.freeze({ firstPages: 15, lastPages: 5 })
 export interface SuggestionLimits {
   maxObjectBytes: number;
   maxObjectSizeBytes: number;
-  maxRangeBytes: number;
-  maxRangeRequests: number;
+  maxPdfJsBufferBytes: number;
   rangeChunkBytes: number;
   maxPages: number;
   maxPageTextCharacters: number;
@@ -45,8 +44,11 @@ export interface SuggestionLimits {
 export const SUGGESTION_LIMITS: Readonly<SuggestionLimits> = Object.freeze({
   maxObjectBytes: 32 * 1024 * 1024,
   maxObjectSizeBytes: 4 * 1024 * 1024 * 1024,
-  maxRangeBytes: 64 * 1024 * 1024,
-  maxRangeRequests: 64,
+  // PDF.js allocates a full-length ChunkedStream backing buffer even when it
+  // receives the object through byte ranges. One GiB covers the largest
+  // approved production PDF observed at this incident checkpoint (922 MB)
+  // while preserving the qualified <6 GiB intelligent-worker envelope.
+  maxPdfJsBufferBytes: 1 * 1024 * 1024 * 1024,
   rangeChunkBytes: 1 * 1024 * 1024,
   maxPages: 20,
   maxPageTextCharacters: 16_384,

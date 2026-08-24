@@ -44,6 +44,12 @@ export interface WorkerMemoryEvidence {
 export interface ComputeWorkerOutcome {
   result: DerivedComputeResult;
   memory: WorkerMemoryEvidence;
+  sourceAccess?: {
+    sourceBytes: number;
+    rangeBudgetBytes: number;
+    rangeRequests: number;
+    rangeBytes: number;
+  };
   failureDiagnostic?: {
     code: PdfTextInspectionError["code"];
     stage: PdfTextInspectionError["diagnosticStage"];
@@ -95,6 +101,8 @@ export class HttpPdfRangeSource implements PdfRangeSource {
   readonly length: number;
   readonly #url: string;
   readonly #fetch: typeof fetch;
+  #rangeRequests = 0;
+  #rangeBytes = 0;
 
   constructor(url: string, length: number, fetchImplementation: typeof fetch = fetch) {
     safeUrl(url, "compute source URL");
@@ -106,11 +114,16 @@ export class HttpPdfRangeSource implements PdfRangeSource {
     this.#fetch = fetchImplementation;
   }
 
+  get metrics(): { rangeRequests: number; rangeBytes: number } {
+    return { rangeRequests: this.#rangeRequests, rangeBytes: this.#rangeBytes };
+  }
+
   async read(begin: number, end: number, signal?: AbortSignal): Promise<Uint8Array> {
     if (!Number.isSafeInteger(begin) || begin < 0 || !Number.isSafeInteger(end) || end <= begin
       || end > this.length || end - begin > MAX_HTTP_RANGE_BYTES) {
       throw new RangeError("compute source range is invalid");
     }
+    this.#rangeRequests += 1;
     const response = await this.#fetch(this.#url, {
       method: "GET",
       headers: { range: `bytes=${begin}-${end - 1}` },
@@ -119,6 +132,7 @@ export class HttpPdfRangeSource implements PdfRangeSource {
     if (response.status !== 206) throw new Error("compute source range unavailable");
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength !== end - begin) throw new Error("compute source range length mismatch");
+    this.#rangeBytes += bytes.byteLength;
     return bytes;
   }
 }
@@ -302,8 +316,10 @@ export async function runComputeWorker(
     const claim = parseClaim(await claimResponse.json(), input);
     let result: DerivedComputeResult;
     let failureDiagnostic: ComputeWorkerOutcome["failureDiagnostic"];
+    let sourceAccess: ComputeWorkerOutcome["sourceAccess"];
+    let source: HttpPdfRangeSource | undefined;
     try {
-      const source = new HttpPdfRangeSource(claim.source.url, claim.source.sizeBytes, fetchImplementation);
+      source = new HttpPdfRangeSource(claim.source.url, claim.source.sizeBytes, fetchImplementation);
       const emergencyLegacyOcr = process.env.ACADEMICCLOUD_OCR_EMERGENCY_LEGACY === "1";
       const inspector = options.inspector ?? new PdfJsFrontMatterInspector(
         process.env.NODE_ENV === "production" && !emergencyLegacyOcr
@@ -328,6 +344,13 @@ export async function runComputeWorker(
         kind: "metadata_suggestion",
         state: "failed",
         errorCode: classifyWorkerError(error),
+      };
+    }
+    if (source !== undefined) {
+      sourceAccess = {
+        sourceBytes: source.length,
+        rangeBudgetBytes: Math.min(source.length, SUGGESTION_LIMITS.maxPdfJsBufferBytes),
+        ...source.metrics,
       };
     }
     sample();
@@ -361,6 +384,7 @@ export async function runComputeWorker(
     return {
       result,
       memory: { cleanStartRssBytes, peakRssBytes, postJobRssBytes: process.memoryUsage.rss() },
+      ...(sourceAccess === undefined ? {} : { sourceAccess }),
       ...(failureDiagnostic === undefined ? {} : { failureDiagnostic }),
     };
   } finally {

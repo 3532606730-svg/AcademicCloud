@@ -137,10 +137,11 @@ export function isUsableNativeText(text: string): boolean {
 }
 
 class PdfRangeTransport extends PDFDataRangeTransport {
-  private requests = 0;
-  private fetchedBytes = 0;
+  private requests: number;
+  private fetchedBytes: number;
   private reservedBytes = 0;
   private closed = false;
+  private readonly maximumRequests: number;
 
   constructor(
     private readonly source: PdfRangeSource,
@@ -152,7 +153,11 @@ class PdfRangeTransport extends PDFDataRangeTransport {
     // progressive stream done forces PDF.js to satisfy later page/xref reads
     // through requestDataRange instead of silently draining the whole object.
     super(source.length, initialData ?? null, true);
-    if (initialData) this.reservedBytes += initialData.byteLength;
+    const policy = pdfRangeAccessPolicy(source.length, limits);
+    this.maximumRequests = policy.maximumRequests;
+    this.requests = initialData === undefined ? 0 : 1;
+    this.fetchedBytes = initialData?.byteLength ?? 0;
+    if (initialData) this.reservedBytes = initialData.byteLength;
   }
 
   get metrics(): { requests: number; fetchedBytes: number } {
@@ -166,8 +171,8 @@ class PdfRangeTransport extends PDFDataRangeTransport {
     // The aggregate byte budget is reserved synchronously so concurrent PDF.js
     // requests can never collectively exceed the hard ceiling.
     if (size <= 0
-      || this.requests >= this.limits.maxRangeRequests
-      || this.reservedBytes + size > this.limits.maxRangeBytes) {
+      || this.requests >= this.maximumRequests
+      || this.reservedBytes + size > this.source.length) {
       // PDF.js has no public range-error callback. Delivering an empty chunk
       // makes the worker fail closed; the inspection wrapper maps that failure
       // to a bounded invalid/partial result without exposing provider details.
@@ -212,6 +217,31 @@ class PdfRangeTransport extends PDFDataRangeTransport {
   override abort(): void {
     this.dispose();
   }
+}
+
+export interface PdfRangeAccessPolicy {
+  maximumBytes: number;
+  maximumRequests: number;
+}
+
+/**
+ * Derive the aggregate range allowance from the admitted object itself. This
+ * avoids a fixture-sized byte ceiling while retaining a separate PDF.js
+ * allocation guard and the fixed per-request provider bound.
+ */
+export function pdfRangeAccessPolicy(
+  sourceLength: number,
+  limits: Readonly<SuggestionLimits> = SUGGESTION_LIMITS,
+): PdfRangeAccessPolicy {
+  if (!Number.isSafeInteger(sourceLength) || sourceLength < 5
+    || sourceLength > limits.maxObjectSizeBytes
+    || sourceLength > limits.maxPdfJsBufferBytes) {
+    throw new PdfTextInspectionError("too_large");
+  }
+  return {
+    maximumBytes: sourceLength,
+    maximumRequests: Math.ceil(sourceLength / limits.rangeChunkBytes),
+  };
 }
 
 async function withTimeout<T>(operation: Promise<T>, timeoutMilliseconds: number, signal?: AbortSignal): Promise<T> {
@@ -393,6 +423,7 @@ async function inspectPdf(options: {
   if (source && (!Number.isSafeInteger(source.length) || source.length < 5 || source.length > limits.maxObjectSizeBytes)) {
     throw new PdfTextInspectionError("too_large");
   }
+  if (source) pdfRangeAccessPolicy(source.length, limits);
   if (bytes && (bytes.byteLength < 5 || new TextDecoder("ascii").decode(bytes.subarray(0, 5)) !== "%PDF-")) {
     throw new PdfTextInspectionError("invalid_pdf");
   }

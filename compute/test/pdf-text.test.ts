@@ -5,6 +5,7 @@ import {
   inspectPdfFrontMatter,
   inspectPdfFrontMatterRange,
   inspectPdfText,
+  pdfRangeAccessPolicy,
   PdfTextInspectionError,
 } from "../src/pdf-text.js";
 import { OcrError, type OcrAdapter, type OcrRecognition } from "../src/ocr.js";
@@ -47,8 +48,25 @@ test("production PDF inspection keeps real-resource parser headroom inside the t
   assert.equal(SUGGESTION_LIMITS.timeoutMilliseconds, 120_000);
   assert.equal(SUGGESTION_LIMITS.totalRequestTimeoutMilliseconds, 300_000);
   assert.ok(SUGGESTION_LIMITS.timeoutMilliseconds < SUGGESTION_LIMITS.totalRequestTimeoutMilliseconds);
-  assert.equal(SUGGESTION_LIMITS.maxRangeBytes, 64 * 1024 * 1024);
-  assert.ok(SUGGESTION_LIMITS.maxRangeBytes <= SUGGESTION_LIMITS.maxRangeRequests * SUGGESTION_LIMITS.rangeChunkBytes);
+  assert.equal(SUGGESTION_LIMITS.maxPdfJsBufferBytes, 1024 * 1024 * 1024);
+  const currentProduction = pdfRangeAccessPolicy(62_990_004);
+  const over64MiBProduction = pdfRangeAccessPolicy(72_459_070);
+  assert.equal(currentProduction.maximumBytes, 62_990_004);
+  assert.equal(over64MiBProduction.maximumBytes, 72_459_070);
+  assert.equal(over64MiBProduction.maximumRequests, Math.ceil(72_459_070 / SUGGESTION_LIMITS.rangeChunkBytes));
+  assert.ok(over64MiBProduction.maximumBytes > 64 * 1024 * 1024);
+});
+
+test("range policy rejects before PDF.js allocates beyond its qualified buffer envelope", async () => {
+  let reads = 0;
+  await assert.rejects(
+    () => inspectPdfFrontMatterRange({
+      length: SUGGESTION_LIMITS.maxPdfJsBufferBytes + 1,
+      async read() { reads += 1; return new Uint8Array(); },
+    }, new RecordingOcrAdapter(async () => recognized("unused"))),
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code === "too_large",
+  );
+  assert.equal(reads, 0);
 });
 
 class RecordingOcrAdapter implements OcrAdapter {
