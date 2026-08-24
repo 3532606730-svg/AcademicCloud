@@ -67,7 +67,7 @@ export const SUGGESTION_LIMITS: Readonly<SuggestionLimits> = Object.freeze({
   totalRequestTimeoutMilliseconds: 180_000,
   maxConcurrentPageOcrJobs: 1,
   maxConcurrentOcrRequests: 1,
-  timeoutMilliseconds: 30_000,
+  timeoutMilliseconds: 120_000,
 });
 
 export type SuggestionCandidate = DerivedMetadataCandidate;

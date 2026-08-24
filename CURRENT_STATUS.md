@@ -41,11 +41,16 @@ attempt, provider receipt, dispatch, and worker claim all existed. The prior
 attempt then became `failed/compute_timeout` 5.606 seconds after claim, with no
 browser console error. Multiple other real Library PDFs failed in the same
 5–6-second interval, while the 60,585-byte golden fixture passed. The deployed
-Compute constant was exactly 5,000 ms. The smallest repair raises only this
-parser budget to 30,000 ms inside the unchanged 180,000 ms total-request and
-12-minute workflow ceilings; focused Compute typecheck and 64/64 runnable tests
-are green. Exact worker publication and same-resource real-browser retest remain
-pending, so the incident stays open.
+Compute constant was exactly 5,000 ms. A first 30,000 ms bounded adjustment was
+published as exact worker `8e687343f83706c1caa6c0e466b3494bca3d96fb`
+and tested from the same UI/resource in run `32693793765`, attempt
+`fcf08f10-00c1-4ca4-ae92-4c4eb918f0e6`. It advanced farther (peak RSS
+222,720,000 bytes versus 185,860,096 bytes on a five-second control) but again
+ended `compute_timeout` exactly 30.948 seconds after claim. This proves the
+failure remains the same parser deadline and rejects 30 seconds as insufficient.
+The next bounded value is 120,000 ms, still inside the unchanged 180,000 ms
+total-request and 420,000 ms worker ceilings. Focused checks and another exact
+same-resource real-browser run remain required, so the incident stays open.
 
 Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is
 resolved for the incident: the production SSH route, Git checkpoint/push path,

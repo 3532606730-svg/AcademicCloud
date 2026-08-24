@@ -44,7 +44,7 @@ function limits(overrides: Partial<SuggestionLimits> = {}): Readonly<SuggestionL
 }
 
 test("production PDF inspection keeps real-resource parser headroom inside the total request budget", () => {
-  assert.equal(SUGGESTION_LIMITS.timeoutMilliseconds, 30_000);
+  assert.equal(SUGGESTION_LIMITS.timeoutMilliseconds, 120_000);
   assert.ok(SUGGESTION_LIMITS.timeoutMilliseconds < SUGGESTION_LIMITS.totalRequestTimeoutMilliseconds);
 });
 

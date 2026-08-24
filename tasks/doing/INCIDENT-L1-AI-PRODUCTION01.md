@@ -74,11 +74,15 @@ worker imported `SUGGESTION_LIMITS.timeoutMilliseconds=5_000`; therefore UI,
 API contract, session, admission, job projection, and provider dispatch all
 precede and pass the first broken boundary.
 
-The smallest repair changes only the Compute PDF inspection budget from 5,000
-to 30,000 ms, preserving the 180,000 ms request and 12-minute workflow ceilings.
-Compute typecheck and all 64 runnable focused tests pass; two release-local
-runtime E2Es remain expected local skips. Publication and the same-resource
-Owner-browser retest are pending, so no acceptance state has been advanced.
+The first bounded repair changed only the Compute PDF inspection budget from
+5,000 to 30,000 ms. Exact worker `8e687343f83706c1caa6c0e466b3494bca3d96fb`
+then ran from the same UI/resource as run `32693793765`, attempt
+`fcf08f10-00c1-4ca4-ae92-4c4eb918f0e6`. It advanced farther (peak RSS
+222,720,000 bytes versus 185,860,096 bytes on a five-second control) but again
+ended `compute_timeout` exactly 30.948 seconds after claim. This preserves the
+same first failure boundary and proves 30 seconds insufficient. The next bounded
+value is 120,000 ms, still inside the unchanged 180,000 ms request and 420,000
+ms worker ceilings. No acceptance state has been advanced.
 
 Historical pre-override evidence established the earlier PDF.js range-reader
 boundary for both representative
@@ -137,8 +141,9 @@ source access. This is recorded separately from the migration-025 release.
   migration history 001–025 from production.
 - Reproduced the ordinary signed-in Owner resource/retry path and isolated the
   first current failure at worker Compute after UI/API/session/job/dispatch.
-- Raised only the PDF parser budget to 30 seconds and passed focused Compute
-  typecheck plus 64/64 runnable tests.
+- Proved a 30-second parser budget still terminates the same real PDF at the
+  deadline; retained the same H/Compute diagnosis and moved the bounded parser
+  budget to 120 seconds inside the existing request/worker ceilings.
 
 ## Remaining
 - Publish the exact repair commit used by the protected Compute workflow.
