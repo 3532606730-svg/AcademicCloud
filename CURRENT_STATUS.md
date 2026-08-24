@@ -28,10 +28,12 @@ INTERNAL_BETA_STARTED=false
 ```
 
 The Local Compute Owner override continues this program and changes only the
-next production Compute strategy. Local HEAD is `c9ab369…`; remote HEAD is
-`8db7f7d…` until the current checkpoints and durable pivot are published. The
-two untracked workspace roots `%SystemDrive%/` and `scratch/` remain preserved
-as pre-existing user material. Live production remains exact frontend/Core
+next production Compute strategy. The shared code, privacy-safe inventory tool,
+and ADR-037 checkpoint were pushed and independently verified at local/remote
+HEAD `5911954ebc0ef1d8164203d995b9191a5bfc75ee`; this source-staging evidence is
+the following reconciliation checkpoint. The two untracked workspace roots
+`%SystemDrive%/` and `scratch/` remain preserved as pre-existing user material.
+Live production remains exact frontend/Core
 `17fb945220c44df71e4846a0ccd5f54e98f43858`,
 schema v25/history 001–025. Direct read-only evidence shows the service
 active/running with `NRestarts=0`, `MemoryHigh=320 MiB`, `MemoryMax=384 MiB`,
@@ -65,10 +67,11 @@ GITHUB_HOSTED_PRODUCTION_COMPUTE=false
 NEW_BILLABLE_GITHUB_USAGE=false
 ACTIONS_BUDGET_USD=0
 CURRENT_WORK_CHECKPOINTED=true
-CURRENT_WORK_PUSHED=false
-REMOTE_HEAD_CONFIRMED=false
+CURRENT_WORK_PUSHED=true
+REMOTE_HEAD_CONFIRMED=true
 DURABLE_NEXT_STEP_RECORDED=true
-OWNER_SOURCES_STAGED_ON_D=false
+OWNER_SOURCES_STAGED_ON_D=true
+OWNER_SOURCE_COPY_SHA256_VERIFIED=true
 ```
 
 The preserved shared fixes are local checkpoints `a4a1c4b` (eight-state
@@ -77,9 +80,14 @@ state), `1497bec` (SQLite batch Library/Search hydration), and `c9ab369`
 (privacy-safe Compute stage/result diagnostics). Backend typecheck and 371/371
 tests, frontend typecheck and 283/283 tests, Compute typecheck and 68 passing
 plus 2 expected runtime skips, full workspace build, and diff check passed. No
-new GitHub-hosted production probe was launched. WSL has not been installed or
-enabled by this program; first publish and verify the repository checkpoints,
-then preserve/re-hash the 12 PDFs under the D-drive acceptance staging area.
+new GitHub-hosted production probe was launched. All 12 source files were copied
+without renaming to `D:\AcademicCloudCompute\staging\acceptance-sources`; target
+count is 12, target bytes are 199,835,281, and every target length/SHA-256
+matches the immutable task manifest. WSL has not been installed or enabled by
+this program. All pre-WSL/reboot recovery gates are now complete; the next step
+is read-only host/WSL/GPU/disk inspection followed by WSL2-on-D installation,
+with one precise Owner action request only if unavoidable UAC or reboot blocks
+continuation.
 
 ## Historical incident evidence (superseded as current acceptance)
 

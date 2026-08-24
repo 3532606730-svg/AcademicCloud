@@ -95,10 +95,12 @@ Owner-authorized on 2026-08-24 and continued by the
 `ACADEMICCLOUD-FINAL-STABILIZATION-LOCAL-COMPUTE-PIVOT` Owner override. This is
 not a new task: it changes only the next Compute architecture/execution
 strategy. The authoritative branch is
-`codex/project-memory-reconcile-20260817`. Local HEAD is `c9ab369…`; remote HEAD
-is `8db7f7d…` until the current reviewable checkpoints and this durable pivot
-are pushed. Pre-existing untracked `%SystemDrive%/` and `scratch/` remain
-untouched. Production remains exact frontend/Core
+`codex/project-memory-reconcile-20260817`. The shared fixes, privacy-safe
+inventory tool, and ADR-037 were pushed and independently verified at
+local/remote HEAD `5911954ebc0ef1d8164203d995b9191a5bfc75ee`; this D-drive
+source-staging evidence is the following reconciliation checkpoint.
+Pre-existing untracked `%SystemDrive%/` and `scratch/` remain untouched.
+Production remains exact frontend/Core
 `17fb945220c44df71e4846a0ccd5f54e98f43858`, schema v25/history 001–025. No new
 GitHub-hosted production Compute probe was launched after the override.
 
@@ -122,12 +124,17 @@ Pre-WSL/reboot recovery gates at this checkpoint:
 
 ```text
 CURRENT_WORK_CHECKPOINTED=true
-CURRENT_WORK_PUSHED=false
-REMOTE_HEAD_CONFIRMED=false
+CURRENT_WORK_PUSHED=true
+REMOTE_HEAD_CONFIRMED=true
 DURABLE_NEXT_STEP_RECORDED=true
-OWNER_SOURCES_STAGED_ON_D=false
-OWNER_SOURCE_COPY_SHA256_VERIFIED=false
+OWNER_SOURCES_STAGED_ON_D=true
+OWNER_SOURCE_COPY_SHA256_VERIFIED=true
 ```
+
+The 12 exact files were copied without renaming to
+`D:\AcademicCloudCompute\staging\acceptance-sources`. The target contains 12
+files and 199,835,281 bytes; every target length and SHA-256 matches the locked
+manifest below. The source files remain untouched.
 
 Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
@@ -171,14 +178,13 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 - Retained a privacy-safe read-only production inventory script and aligned its
   reviewable-AI projection with exact immutable `scholarly_bibliographic_ai_runs`
   evidence rather than candidate-source inference.
+- Pushed the three code checkpoints, inventory tool, and ADR-037 reconciliation;
+  independently verified local and remote HEAD equality at `5911954…`.
+- Preserved all 12 exact Owner sources on D outside Git and passed 12/12 target
+  length/SHA-256 verification with no rename or source mutation.
 
 ## Remaining
 
-- Commit/push the Local Compute decision and read-only inventory tool, then
-  verify local/remote equality without touching preserved untracked roots.
-- Copy the exact 12 Owner PDFs without renaming to
-  `D:\AcademicCloudCompute\staging\acceptance-sources` and reverify all recorded
-  sizes/SHA-256 values before any WSL feature change or reboot.
 - Install/import WSL2 under D only after every pre-WSL gate is true; qualify GPU,
   exact runtimes/models, resource envelope, and immutable local release.
 - Implement the provider-neutral pull/claim/lease/heartbeat/callback protocol,
@@ -199,18 +205,19 @@ remains a mandatory hard stop if encountered.
 
 ## Last Verification
 
-2026-08-24: local HEAD `c9ab369…`, remote `8db7f7d…`; all three shared-fix
-checkpoints and the full local gates above are green. 12/12 Owner PDFs remain
-available with exact recorded hashes; staging-copy verification is pending.
-Production remains `17fb945…`, schema 25/history 001–025. General readiness
-baseline remains 37 PASS, 4 FAIL, 3 WARN, 11 UNKNOWN, 3 INFO; no result has been
-misreported as final acceptance. No GitHub-hosted production Compute has run
-since the pivot.
+2026-08-24: local/remote equality verified at `5911954…` after publishing all
+shared fixes, the inventory tool, and ADR-037. The following source-staging
+reconciliation records 12/12 D-drive copies, 199,835,281 bytes, and 12/12 exact
+length/SHA-256 matches. Production remains `17fb945…`, schema 25/history
+001–025. General readiness baseline remains 37 PASS, 4 FAIL, 3 WARN, 11 UNKNOWN,
+3 INFO; no result has been misreported as final acceptance. No GitHub-hosted
+production Compute has run since the pivot, and no WSL/Windows feature has yet
+been changed.
 
 ## Next Action
 
-Review/checkpoint this Local Compute reconciliation and privacy-safe inventory
-tool, push the authorized non-main branch, verify local/remote equality, then
-preserve and rehash all 12 Owner sources on D. Only after those gates are durable
-may WSL-on-D installation and local GPU/runtime qualification begin. Do not
-launch a GitHub-hosted production Compute probe or corpus wave.
+Commit/push this source-preservation reconciliation and verify local/remote
+equality. Then inspect current Windows/WSL/GPU/disk/virtualization state
+read-only and begin WSL-on-D installation and local runtime qualification. Stop
+once with one precise request only if unavoidable UAC or reboot is required. Do
+not launch a GitHub-hosted production Compute probe or corpus wave.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T19:09:43+08:00",
+  "updatedAt": "2026-08-24T19:18:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -27,7 +27,7 @@
   "activeTasks": ["ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE"],
   "finalStabilizationProgram": {
     "task": "ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE",
-    "state": "active_shared_fixes_checkpointed_local_compute_pivot_pre_wsl",
+    "state": "active_local_compute_pivot_pre_wsl_gates_complete",
     "autonomousFullCorpusAcceptance": "pending",
     "wholeProductPerformanceAcceptance": "pending",
     "internalBetaReady": false,
@@ -63,15 +63,19 @@
     },
     "preWslGates": {
       "currentWorkCheckpointed": true,
-      "currentWorkPushed": false,
-      "remoteHeadConfirmed": false,
+      "currentWorkPushed": true,
+      "remoteHeadConfirmed": true,
       "durableNextStepRecorded": true,
-      "ownerSourcesStagedOnD": false,
-      "ownerSourceCopySha256Verified": false
+      "ownerSourcesStagedOnD": true,
+      "ownerSourceCopySha256Verified": true,
+      "verifiedCheckpointHead": "5911954ebc0ef1d8164203d995b9191a5bfc75ee",
+      "stagingPath": "D:\\AcademicCloudCompute\\staging\\acceptance-sources",
+      "stagedFileCount": 12,
+      "stagedBytes": 199835281
     },
     "baseline": {
-      "localHead": "c9ab369",
-      "remoteHead": "8db7f7d",
+      "localHead": "5911954ebc0ef1d8164203d995b9191a5bfc75ee verified before the source-staging reconciliation",
+      "remoteHead": "5911954ebc0ef1d8164203d995b9191a5bfc75ee verified before the source-staging reconciliation",
       "productionRelease": "17fb945220c44df71e4846a0ccd5f54e98f43858",
       "schema": 25,
       "migrationHistory": "001-025",
@@ -83,7 +87,7 @@
   },
   "localComputePivot": {
     "decision": "ADR-037",
-    "status": "accepted_pre_wsl_implementation_pending",
+    "status": "accepted_pre_wsl_gates_complete_implementation_pending",
     "productionComputeControlPlane": "CORE_PULL_WORKER",
     "localPullProvider": "primary_target",
     "githubHostedProductionCompute": false,
@@ -101,7 +105,7 @@
     "persistentProductionPdfStorage": false,
     "persistentRawOcrStorage": false,
     "persistentRenderedPageStorage": false,
-    "next": "publish and remote-verify current checkpoints and ADR-037; preserve and re-hash 12 Owner PDFs on D; only then begin WSL2-on-D qualification"
+    "next": "inspect current Windows, WSL, GPU, disk, and virtualization state read-only; then begin WSL2-on-D installation/qualification, stopping once only if unavoidable UAC or reboot is required"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",

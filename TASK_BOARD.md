@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / SHARED FIXES CHECKPOINTED / LOCAL PIVOT PRE-WSL | Push and verify `a4a1c4b` + `1497bec` + `c9ab369` and ADR-037, preserve/re-hash 12 sources on D, then qualify WSL-on-D Local Pull Compute |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / LOCAL PIVOT PRE-WSL GATES COMPLETE | Inspect host/WSL/GPU/disk state, then install and qualify WSL-on-D Local Pull Compute; stop once only if unavoidable UAC or reboot is required |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -60,16 +60,18 @@ PRODUCTION_COMPUTE_CONTROL_PLANE=CORE_PULL_WORKER
 LOCAL_PULL_PROVIDER=PRIMARY
 GITHUB_HOSTED_PRODUCTION_COMPUTE=false
 CURRENT_WORK_CHECKPOINTED=true
-CURRENT_WORK_PUSHED=false
-REMOTE_HEAD_CONFIRMED=false
+CURRENT_WORK_PUSHED=true
+REMOTE_HEAD_CONFIRMED=true
 DURABLE_NEXT_STEP_RECORDED=true
-OWNER_SOURCES_STAGED_ON_D=false
-OWNER_SOURCE_COPY_SHA256_VERIFIED=false
+OWNER_SOURCES_STAGED_ON_D=true
+OWNER_SOURCE_COPY_SHA256_VERIFIED=true
 ```
 
 Current corpus facts remain `OWNER_SUPPLIED_TOTAL=12`,
 `PRODUCTION_ELIGIBLE_TOTAL=93`, and `UNIQUE_ACCEPTANCE_TOTAL=105`; recompute
 before final execution. No 105-resource wave starts before Local Pull cutover.
+The 12 D-drive staging copies retain their exact filenames, contain 199,835,281
+bytes, and passed all manifest length/SHA-256 checks.
 
 Historical independent incident gates (not current final acceptance):
 
