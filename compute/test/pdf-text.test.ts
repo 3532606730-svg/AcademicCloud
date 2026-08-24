@@ -199,6 +199,24 @@ test("per-page and total OCR text limits plus total request timeout are enforced
   );
 });
 
+test("aggregate OCR deadline preserves completed pages as an explicit partial window", async () => {
+  const adapter = new RecordingOcrAdapter((pageIndex, signal) => {
+    if (pageIndex === 1) {
+      return new Promise((resolve) => setTimeout(() => resolve(recognized("First page evidence")), 20));
+    }
+    return new Promise((_resolve, reject) => {
+      signal?.addEventListener("abort", () => reject(new OcrError("aborted")), { once: true });
+    });
+  });
+  const inspection = await inspectPdfFrontMatter(makePdf(["", ""]), adapter, limits({
+    perPageOcrTimeoutMilliseconds: 100,
+    totalRequestTimeoutMilliseconds: 50,
+  }));
+  assert.equal(inspection.complete, false);
+  assert.deepEqual(inspection.pages.map((page) => [page.pageIndex, page.text]), [[1, "First page evidence"]]);
+  assert.deepEqual(adapter.calls.map((call) => call.pageIndex), [1]);
+});
+
 test("only one OCR-bearing request is active and cancellation releases capacity", async () => {
   let markEntered!: () => void;
   const entered = new Promise<void>((resolve) => { markEntered = resolve; });

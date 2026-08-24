@@ -613,6 +613,20 @@ async function inspectPdf(options: {
           canvas.width = 1;
           canvas.height = 1;
         }
+      } catch (error: unknown) {
+        // The aggregate extraction deadline is a window-completeness bound,
+        // not a reason to discard already completed OCR evidence. Preserve a
+        // partial, explicitly incomplete window only after at least one page
+        // has completed. A first-page timeout, a per-page timeout before the
+        // aggregate deadline, and every non-timeout failure still fail closed.
+        if (error instanceof PdfTextInspectionError
+          && ["timeout", "ocr_timeout"].includes(error.code)
+          && Date.now() >= requestDeadline
+          && pages.length > 0) {
+          complete = false;
+          break;
+        }
+        throw error;
       } finally {
         try {
           page?.cleanup();
