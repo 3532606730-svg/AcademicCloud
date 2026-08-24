@@ -65,8 +65,16 @@ request is replaced by an empty chunk and PDF.js cannot finish document load.
 The smallest repair raises only the aggregate range ceiling to 64 MiB while
 retaining range-only access, the 1 MiB request cap, 64-request cap, 4 GiB object
 cap, 120-second parser, 180-second request, and 420-second worker ceilings. The
-same-resource real-browser repair run remains pending, so the incident stays
-open.
+same-resource run on exact worker
+`61692e9df22c5f063d79e98a37a065987599e5d6`, run `32695272586`, attempt
+`e12ea293-1e99-4892-aa64-50813c42d1b0` cleared `document_load`, read 60 ranges /
+61,941,428 bytes, and continued past the prior parser termination. It then
+ended `compute_timeout` exactly at the 180-second total extraction deadline.
+Because page load/render failures are already stage-labelled, the only
+remaining unlabelled timeout path in the source is OCR recognition; the next
+exact worker labels that path and extends only the total extraction window to
+300 seconds inside the unchanged 420-second worker and 10-minute capability.
+The incident stays open pending that same-resource result.
 
 Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is
 resolved for the incident: the production SSH route, Git checkpoint/push path,

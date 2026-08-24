@@ -35,7 +35,8 @@ export type PdfTextInspectionDiagnosticStage =
   | "page_text"
   | "metadata"
   | "ocr_page_load"
-  | "render";
+  | "render"
+  | "ocr";
 
 /** Errors expose only a small, non-sensitive code. */
 export class PdfTextInspectionError extends Error {
@@ -552,14 +553,14 @@ async function inspectPdf(options: {
           const imageBytes: Uint8Array = canvas.toBuffer("image/png");
           if (imageBytes.byteLength > limits.maxEncodedPageImageBytes) throw new PdfTextInspectionError("limit_exceeded");
           ocrPageCount += 1;
-          const recognized = await recognizeWithDeadline({
+          const recognized = await atInspectionStage("ocr", () => recognizeWithDeadline({
             ocr,
             imageBytes,
             pageIndex,
             deadline: requestDeadline,
             limits,
             ...(signal === undefined ? {} : { signal }),
-          });
+          }));
           const text = recognized.status === "recognized"
             ? asBoundedText(recognized.text, limits.maxOcrOutputCharactersPerPage)
             : "";

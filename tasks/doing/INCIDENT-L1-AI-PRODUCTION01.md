@@ -97,7 +97,15 @@ request is replaced with an empty chunk and PDF.js cannot finish document load.
 The smallest repair raises only the aggregate range ceiling to 64 MiB while
 retaining range-only access, the 1 MiB request cap, 64-request cap, 4 GiB object
 cap, 120-second parser, 180-second request, and 420-second worker ceilings. No
-acceptance state has advanced.
+acceptance state advanced. Exact worker
+`61692e9df22c5f063d79e98a37a065987599e5d6`, run `32695272586`, attempt
+`e12ea293-1e99-4892-aa64-50813c42d1b0` then cleared `document_load`, read 60
+ranges / 61,941,428 bytes, and continued past the former parser termination.
+It ended `compute_timeout` exactly at the 180-second total extraction deadline.
+Page load/render failures are already stage-labelled, so the only remaining
+unlabelled timeout path in the source is OCR recognition. The next exact worker
+labels that path and extends only the total extraction window to 300 seconds
+inside the unchanged 420-second worker and 10-minute capability.
 
 Historical pre-override evidence established the earlier PDF.js range-reader
 boundary for both representative
@@ -164,9 +172,12 @@ source access. This is recorded separately from the migration-025 release.
   repaired instead of increasing the aggregate timeout again.
 - Proved document load exhausts the 32 MiB aggregate range budget at 31 range
   requests plus the initial 1 MiB prefix; raised only that ceiling to 64 MiB.
+- Proved the 64 MiB repair clears document load and reaches downstream OCR;
+  extended only the total extraction window from 180 to 300 seconds and added
+  the missing bounded OCR diagnostic label.
 
 ## Remaining
-- Publish the exact 64 MiB aggregate range repair.
+- Publish the exact 300-second extraction-window repair.
 - Re-trigger the same real Library resource through the normal Owner UI and
   prove terminal success plus reviewable result display without applying any
   candidate or mutating source/metadata.

@@ -184,7 +184,7 @@ test("worker reports only bounded PDF failure diagnostics outside the durable ca
     async inspectRange() { throw new PdfTextInspectionError("timeout", "page_text", 4, 4096); },
   };
   const outcome = await runComputeWorker(INPUT, { fetchImplementation, inspector: failingInspector });
-  assert.deepEqual(outcome.failureDiagnostic, { stage: "page_text", rangeRequests: 4, rangeBytes: 4096 });
+  assert.deepEqual(outcome.failureDiagnostic, { code: "timeout", stage: "page_text", rangeRequests: 4, rangeBytes: 4096 });
   assert.deepEqual(callback, {
     jobId: INPUT.jobId,
     attemptId: INPUT.attemptId,

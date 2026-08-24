@@ -64,7 +64,7 @@ export const SUGGESTION_LIMITS: Readonly<SuggestionLimits> = Object.freeze({
   maxOcrProcessOutputBytes: 2 * 1024 * 1024,
   minimumOcrConfidence: 55,
   perPageOcrTimeoutMilliseconds: 60_000,
-  totalRequestTimeoutMilliseconds: 180_000,
+  totalRequestTimeoutMilliseconds: 300_000,
   maxConcurrentPageOcrJobs: 1,
   maxConcurrentOcrRequests: 1,
   timeoutMilliseconds: 120_000,

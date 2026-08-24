@@ -45,6 +45,7 @@ export interface ComputeWorkerOutcome {
   result: DerivedComputeResult;
   memory: WorkerMemoryEvidence;
   failureDiagnostic?: {
+    code: PdfTextInspectionError["code"];
     stage: PdfTextInspectionError["diagnosticStage"];
     rangeRequests?: number;
     rangeBytes?: number;
@@ -315,6 +316,7 @@ export async function runComputeWorker(
     } catch (error: unknown) {
       if (error instanceof PdfTextInspectionError) {
         failureDiagnostic = {
+          code: error.code,
           stage: error.diagnosticStage,
           ...(error.rangeRequests === undefined ? {} : { rangeRequests: error.rangeRequests }),
           ...(error.rangeBytes === undefined ? {} : { rangeBytes: error.rangeBytes }),
