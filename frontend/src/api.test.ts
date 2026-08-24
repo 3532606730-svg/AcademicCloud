@@ -609,6 +609,7 @@ describe("ApiClient", () => {
     const responses = [
       new Response(JSON.stringify({ job }), { status: 202, headers: { "content-type": "application/json" } }),
       new Response(JSON.stringify({ job }), { status: 200, headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify({ states: [{ fileId: "file / one", state: "queued", job }] }), { status: 200, headers: { "content-type": "application/json" } }),
       new Response(JSON.stringify({ job: { ...job, state: "running", progress: 5 } }), { status: 200, headers: { "content-type": "application/json" } }),
       new Response(JSON.stringify({ run }), { status: 200, headers: { "content-type": "application/json" } }),
       new Response(JSON.stringify({ detail, run: { ...run, status: "accepted" } }), { status: 200, headers: { "content-type": "application/json" } }),
@@ -617,6 +618,9 @@ describe("ApiClient", () => {
     const api = new ApiClient({ fetcher });
     await expect(api.generateLibraryMetadataSuggestions("library / one", "file / one")).resolves.toEqual(job);
     await expect(api.getLatestLibraryMetadataSuggestionJob("library / one", "file / one")).resolves.toEqual(job);
+    await expect(api.getLatestLibraryMetadataSuggestionStates("library / one", ["file / one"])).resolves.toEqual([
+      { fileId: "file / one", state: "queued", job },
+    ]);
     await expect(api.getLibraryMetadataSuggestionJob("library / one", "file / one", "job / one")).resolves.toMatchObject({ state: "running" });
     await expect(api.getLibraryMetadataSuggestions("library / one", "file / one")).resolves.toEqual(run);
     const acceptance = {
@@ -638,9 +642,10 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[0]?.[1]?.method).toBe("POST");
     expect(fetcher.mock.calls[0]?.[1]?.body).toBeUndefined();
     expect(fetcher.mock.calls[1]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestion-jobs/latest");
-    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestion-jobs/job%20%2F%20one");
-    expect(fetcher.mock.calls[3]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestions");
-    expect(fetcher.mock.calls[4]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestions/run-1/accept");
+    expect(fetcher.mock.calls[2]?.[0]).toBe("/api/libraries/library%20%2F%20one/metadata/suggestion-states?fileIds=file+%2F+one");
+    expect(fetcher.mock.calls[3]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestion-jobs/job%20%2F%20one");
+    expect(fetcher.mock.calls[4]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestions");
+    expect(fetcher.mock.calls[5]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestions/run-1/accept");
   });
 
   it("uses scoped Library recycle/list/restore contracts with opaque versions", async () => {

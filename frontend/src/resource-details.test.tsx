@@ -344,9 +344,9 @@ describe("Resource details", () => {
   });
 
   it.each([
-    ["queued", "Metadata suggestion job queued"],
-    ["running", "Organizing resource information…"],
-    ["failed", "Could not find resource information. Try again."],
+    ["queued", "AI cataloguing is queued"],
+    ["running", "AI cataloguing is running"],
+    ["failed", "The current AI cataloguing run failed"],
   ] as const)("renders durable asynchronous %s state without keeping the request open", async (state, label) => {
     const job: DerivedMetadataJob = {
       ...SUCCEEDED_JOB,
@@ -363,6 +363,38 @@ describe("Resource details", () => {
     } });
     expect(await screen.findByText(label)).toBeInTheDocument();
     expect(screen.queryByText("The Mongols and the West, 1221–1410")).not.toBeInTheDocument();
+  });
+
+  it("keeps a filename fallback visible without letting it hide the current failed generation", async () => {
+    const filenameRun: MetadataSuggestionRun = {
+      ...SUGGESTION_RUN,
+      id: "run-filename",
+      window: { ...SUGGESTION_RUN.window, pageCount: null, pageIndices: [], complete: false },
+      candidates: [{
+        ...SUGGESTION_RUN.candidates[0]!,
+        id: "run-filename:0",
+        value: "Filename fallback",
+        sourceType: "filename",
+        sourcePageIndex: null,
+        pageClass: null,
+        evidenceOrigin: "filename",
+        ocrEngine: null,
+        ocrConfidence: null,
+      }],
+    };
+    const job: DerivedMetadataJob = {
+      ...SUCCEEDED_JOB,
+      state: "failed",
+      resultRef: null,
+      errorCode: "compute_internal_error",
+    };
+    renderDetails({ api: {
+      getLibraryMetadataSuggestions: vi.fn().mockResolvedValue(filenameRun),
+      getLatestLibraryMetadataSuggestionJob: vi.fn().mockResolvedValue(job),
+    } });
+    expect(await screen.findByText("The current AI cataloguing run failed")).toBeInTheDocument();
+    expect(screen.getByText("Filename fallback")).toBeInTheDocument();
+    expect(screen.queryByText("AI cataloguing succeeded — reviewable evidence is available")).not.toBeInTheDocument();
   });
 
   it("exposes the normalized failure category and a bounded retry action", async () => {
@@ -467,7 +499,7 @@ describe("Resource details", () => {
       api: { getLibraryMetadataSuggestions: getSuggestions, generateLibraryMetadataSuggestions: vi.fn() },
     });
     await screen.findByRole("dialog", { name: "元西域人华化考" });
-    expect(await screen.findByText("Some content could not be read")).toBeInTheDocument();
+    expect(await screen.findByText(/Some content could not be read/)).toBeInTheDocument();
     expect(screen.getByText(/Try again if needed/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Organize with AI" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Use selected suggestions" })).not.toBeInTheDocument();

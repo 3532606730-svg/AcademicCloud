@@ -109,6 +109,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
   materialClass?: "scholarly_monograph" | "edited_volume";
   contributor?: string;
   publisher?: string | null;
+  status?: "auto_apply" | "ambiguous";
 } = {}): DerivedComputeResult {
   const title = options.title ?? "近代中国史研究";
   const materialClass = options.materialClass ?? "scholarly_monograph";
@@ -127,7 +128,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
   const bibliography: IntelligentBibliographyResult = {
     contractVersion: 1,
     rulesetVersion: "l1-intelligent-library01-v1",
-    status: "auto_apply",
+    status: options.status ?? "auto_apply",
     overallConfidence: 96,
     canonical: {
       materialClass,
@@ -378,6 +379,7 @@ test("Compute claim and callback create reviewable candidates without canonical 
   assert.equal(run.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")?.value,
     "The Mongols and the West, 1221-1410");
   assert.equal(run.candidates.some((candidate) => candidate.sourceType === "filename"), false);
+  assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "extraction_only");
   assert.equal(persistence.repositories.suggestions.listRuns(library.ownerDomainId, library.id, fileId, 10).length, 2);
 
   const replay = await suggestions.applyComputeResult(result, claim.capability.token);
@@ -405,6 +407,7 @@ test("safe intelligent callback auto-applies canonical defaults, exact-binds one
   assert.equal(detail.bibliography?.materialClass, "scholarly_monograph");
   assert.deepEqual(detail.bibliography?.contributors, [{ id: "attempt-2", label: "王明", role: "author", authorityId: authority.id }]);
   assert.ok(detail.fieldAuthorities.every((field) => field.source === "ai"));
+  assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "applied");
   const evidence = persistence.repositories.bibliography.findAiRunEvidence(library.ownerDomainId, `bibliography-${job.id}`)!;
   assert.equal(evidence.status, "auto_apply");
   assert.equal(evidence.autoApplied, true);
@@ -419,6 +422,19 @@ test("safe intelligent callback auto-applies canonical defaults, exact-binds one
     () => database.prepare("DELETE FROM scholarly_bibliographic_ai_runs WHERE id = ?").run(evidence.id),
     /bibliographic AI evidence is retained/,
   );
+});
+
+test("structured ambiguous AI evidence is reviewable while extraction alone is not", async (context) => {
+  const { library, fileId, suggestions } = fixture(context);
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+  await suggestions.applyComputeResult(
+    intelligentResult(job.id, "attempt-1", { status: "ambiguous" }),
+    claim.capability.token,
+  );
+  const state = suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0];
+  assert.equal(state?.job?.resultRef, `suggestion-${job.id}-computed`);
+  assert.equal(state?.state, "ai_succeeded_reviewable");
 });
 
 test("intelligent callback preserves human fields while filling only unprotected defaults", async (context) => {

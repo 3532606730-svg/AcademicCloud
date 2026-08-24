@@ -11,7 +11,7 @@ import type {
   SuggestionRulesetVersion,
 } from "../../suggestions/suggestion.js";
 import { SUGGESTION_RULESET_VERSION } from "../../suggestions/suggestion.js";
-import type { SuggestionRepository } from "../../suggestions/repositories.js";
+import type { SuggestionRepository, SuggestionRunStateEvidence } from "../../suggestions/repositories.js";
 import type { SqliteDatabase } from "./database.js";
 import { fromDatabaseTimestamp, toDatabaseTimestamp } from "./records.js";
 
@@ -59,6 +59,19 @@ interface CandidateRow {
   ruleset_version: string;
 }
 
+interface RunStateEvidenceRow {
+  id: string;
+  file_id: string;
+  status: SuggestionStatus;
+  page_count: number | null;
+  page_indices: string;
+  window_complete: 0 | 1;
+  candidate_count: number;
+  non_filename_candidate_count: number;
+  ai_reviewable: 0 | 1;
+  applied: 0 | 1;
+}
+
 const runColumns = `
   id, owner_domain_id, library_id, record_id, file_id, status,
   ruleset_version, source_version, source_file_revision,
@@ -102,7 +115,7 @@ export class SqliteSuggestionRepository implements SuggestionRepository {
   readonly #listCandidates;
   readonly #updateStatus;
 
-  constructor(database: SqliteDatabase) {
+  constructor(private readonly database: SqliteDatabase) {
     this.#insertRun = database.prepare<{
       id: string;
       ownerDomainId: string;
@@ -268,6 +281,60 @@ export class SqliteSuggestionRepository implements SuggestionRepository {
   findLatestRun(ownerDomainId: string, libraryId: string, fileId: string): SuggestionRunRecord | null {
     const row = this.#findLatestRun.get(ownerDomainId, libraryId, fileId);
     return row ? this.#toRun(row) : null;
+  }
+
+  findLatestStateEvidenceMany(ownerDomainId: string, libraryId: string, fileIds: string[]): SuggestionRunStateEvidence[] {
+    if (fileIds.length === 0) return [];
+    const rows = this.database.prepare<[string, string, string], RunStateEvidenceRow>(`
+      WITH ranked_runs AS (
+        SELECT scholarly_metadata_suggestion_runs.*,
+          ROW_NUMBER() OVER (PARTITION BY file_id ORDER BY created_at DESC, id DESC) AS current_rank
+        FROM scholarly_metadata_suggestion_runs
+        WHERE owner_domain_id = ? AND library_id = ?
+          AND file_id IN (SELECT value FROM json_each(?))
+      )
+      SELECT ranked_runs.id, ranked_runs.file_id, ranked_runs.status,
+        ranked_runs.page_count, ranked_runs.page_indices, ranked_runs.window_complete,
+        COUNT(candidates.id) AS candidate_count,
+        COALESCE(SUM(CASE
+          WHEN candidates.source_type <> 'filename' AND candidates.evidence_origin <> 'filename' THEN 1
+          ELSE 0
+        END), 0)
+          AS non_filename_candidate_count,
+        EXISTS (
+          SELECT 1
+          FROM scholarly_bibliographic_ai_runs AS ai_run
+          WHERE ai_run.owner_domain_id = ranked_runs.owner_domain_id
+            AND ai_run.suggestion_run_id = ranked_runs.id
+            AND ai_run.status IN ('auto_apply', 'ambiguous')
+        ) AS ai_reviewable,
+        EXISTS (
+          SELECT 1
+          FROM scholarly_bibliographic_field_authority AS authority
+          WHERE authority.owner_domain_id = ranked_runs.owner_domain_id
+            AND authority.authority_source = 'ai'
+            AND authority.source_run_id = ranked_runs.id
+        ) AS applied
+      FROM ranked_runs
+      LEFT JOIN scholarly_metadata_suggestion_candidates AS candidates
+        ON candidates.owner_domain_id = ranked_runs.owner_domain_id
+       AND candidates.run_id = ranked_runs.id
+      WHERE ranked_runs.current_rank = 1
+      GROUP BY ranked_runs.id, ranked_runs.owner_domain_id, ranked_runs.file_id, ranked_runs.status,
+        ranked_runs.page_count, ranked_runs.page_indices, ranked_runs.window_complete
+    `).all(ownerDomainId, libraryId, JSON.stringify(fileIds));
+    return rows.map((row) => ({
+      id: row.id,
+      fileId: row.file_id,
+      status: row.status,
+      pageCount: row.page_count,
+      pageIndices: parsePageIndices(row.page_indices),
+      windowComplete: row.window_complete === 1,
+      candidateCount: row.candidate_count,
+      nonFilenameCandidateCount: row.non_filename_candidate_count,
+      aiReviewable: row.ai_reviewable === 1,
+      applied: row.applied === 1,
+    }));
   }
 
   listRuns(ownerDomainId: string, libraryId: string, fileId: string, limit: number): SuggestionRunRecord[] {

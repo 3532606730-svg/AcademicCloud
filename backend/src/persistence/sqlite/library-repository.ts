@@ -305,7 +305,7 @@ export class SqliteLibraryRepository implements LibraryRepository {
   readonly #verifyRecycledHoldingExclusive;
   readonly #listSorted: ReadonlyMap<LibraryHoldingSort, BetterSqlite3.Statement<SortedAfterParameters, HoldingRow>>;
 
-  constructor(database: SqliteDatabase) {
+  constructor(private readonly database: SqliteDatabase) {
     // Deterministic Han→pinyin sort keys for the title sorts. Registered before
     // any statement that references pinyin_key(...) is prepared.
     database.function("pinyin_key", { deterministic: true }, (value: unknown) => (
@@ -746,6 +746,17 @@ export class SqliteLibraryRepository implements LibraryRepository {
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null {
     const row = this.#findHoldingByFile.get(libraryId, fileId);
     return row ? toHolding(row) : null;
+  }
+
+  countActiveHoldingsByFileIds(libraryId: string, fileIds: string[]): number {
+    if (fileIds.length === 0) return 0;
+    const row = this.database.prepare<[string, string], { holding_count: number }>(`
+      SELECT COUNT(DISTINCT files.id) AS holding_count
+      ${holdingFrom}
+      WHERE libraries.id = ?
+        AND files.id IN (SELECT value FROM json_each(?))
+    `).get(libraryId, JSON.stringify(fileIds));
+    return row?.holding_count ?? 0;
   }
 
   hasAvailableNameConflict(libraryId: string, displayName: string): boolean {

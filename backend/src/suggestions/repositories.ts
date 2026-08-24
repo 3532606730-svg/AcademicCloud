@@ -4,6 +4,19 @@ import type {
   SuggestionStatus,
 } from "./suggestion.js";
 
+export interface SuggestionRunStateEvidence {
+  id: string;
+  fileId: string;
+  status: SuggestionStatus;
+  pageCount: number | null;
+  pageIndices: number[];
+  windowComplete: boolean;
+  candidateCount: number;
+  nonFilenameCandidateCount: number;
+  aiReviewable: boolean;
+  applied: boolean;
+}
+
 /**
  * Persistence boundary for bounded bibliographic suggestion runs.
  *
@@ -17,6 +30,7 @@ export interface SuggestionRepository {
   createRun(run: NewSuggestionRun): SuggestionRunRecord;
   findRun(ownerDomainId: string, runId: string): SuggestionRunRecord | null;
   findLatestRun(ownerDomainId: string, libraryId: string, fileId: string): SuggestionRunRecord | null;
+  findLatestStateEvidenceMany(ownerDomainId: string, libraryId: string, fileIds: string[]): SuggestionRunStateEvidence[];
   listRuns(ownerDomainId: string, libraryId: string, fileId: string, limit: number): SuggestionRunRecord[];
   updateStatus(
     ownerDomainId: string,

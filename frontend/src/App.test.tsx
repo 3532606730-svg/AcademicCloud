@@ -2526,11 +2526,15 @@ describe("App", () => {
       finishedAt: null,
       deadlineAt: new Date(Date.now() + 60_000).toISOString(),
     };
-    const getLatestLibraryMetadataSuggestionJob = vi.fn().mockResolvedValue(job);
+    const getLatestLibraryMetadataSuggestionStates = vi.fn().mockResolvedValue([{
+      fileId: job.resourceId,
+      state: "queued",
+      job,
+    }]);
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
-      getLatestLibraryMetadataSuggestionJob,
+      getLatestLibraryMetadataSuggestionStates,
     });
 
     window.localStorage.removeItem(ACTIVITY_PREFERENCE_KEY);
@@ -2546,7 +2550,7 @@ describe("App", () => {
     expect(await screen.findByText("AI cataloguing")).toBeInTheDocument();
     expect(screen.getByText("Queued")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Collapse background tasks" })).toHaveAttribute("aria-expanded", "true");
-    expect(getLatestLibraryMetadataSuggestionJob).toHaveBeenCalledTimes(2);
+    expect(getLatestLibraryMetadataSuggestionStates).toHaveBeenCalledTimes(2);
   });
 
   it("shows a normalized AI failure category and retries through the durable endpoint", async () => {
@@ -2569,7 +2573,11 @@ describe("App", () => {
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
-      getLatestLibraryMetadataSuggestionJob: vi.fn().mockResolvedValue(failedJob),
+      getLatestLibraryMetadataSuggestionStates: vi.fn().mockResolvedValue([{
+        fileId: failedJob.resourceId,
+        state: "failed",
+        job: failedJob,
+      }]),
       generateLibraryMetadataSuggestions: generate,
     });
     window.localStorage.removeItem(ACTIVITY_PREFERENCE_KEY);

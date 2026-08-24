@@ -7,6 +7,7 @@ export interface DerivedJobRepository {
   findById(jobId: string): DerivedJobRecord | null;
   findByIdempotencyKey(idempotencyKey: string): DerivedJobRecord | null;
   findLatest(kind: "metadata_suggestion", scopeId: string, resourceId: string): DerivedJobRecord | null;
+  findLatestMany(kind: "metadata_suggestion", scopeId: string, resourceIds: string[]): DerivedJobRecord[];
   listUndispatched(limit: number): DerivedJobRecord[];
   retry(jobId: string, expectedAttemptId: string, nextAttemptId: string, now: Date, deadlineAt: Date): DerivedJobRecord | null;
   recordDispatch(jobId: string, attemptId: string, provider: string, providerJobId: string, now: Date): DerivedJobRecord | null;

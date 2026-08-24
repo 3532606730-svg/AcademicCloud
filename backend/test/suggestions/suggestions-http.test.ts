@@ -154,6 +154,14 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
     assert.equal(dispatcher.jobs.length, 1);
     const dispatched = dispatcher.jobs[0]!;
 
+    const queuedStates = await app.inject({
+      method: "GET",
+      url: "/api/libraries/canonical-library/metadata/suggestion-states?fileIds=suggest-http-file",
+      headers: headers(ownerCookie),
+    });
+    assert.equal(queuedStates.statusCode, 200);
+    assert.equal((queuedStates.json() as { states: Array<{ state: string }> }).states[0]?.state, "queued");
+
     const memberJob = await app.inject({
       method: "GET",
       url: `${base.replace(/\/suggestions$/u, "/suggestion-jobs")}/${job.id}`,
@@ -210,6 +218,17 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
     const run = (latest.json() as { run: { id: string; status: string; candidates: Array<Record<string, unknown>> } }).run;
     assert.equal(run.status, "ready");
     assert.equal(run.candidates.some((candidate) => "objectKey" in candidate || "checksum" in candidate || "favorites" in candidate), false);
+
+    const succeededStates = await app.inject({
+      method: "GET",
+      url: "/api/libraries/canonical-library/metadata/suggestion-states?fileIds=suggest-http-file",
+      headers: headers(ownerCookie),
+    });
+    assert.equal(succeededStates.statusCode, 200);
+    assert.equal(
+      (succeededStates.json() as { states: Array<{ state: string }> }).states[0]?.state,
+      "extraction_only",
+    );
 
     const memberLatest = await app.inject({ method: "GET", url: base, headers: headers(memberCookie) });
     assert.equal(memberLatest.statusCode, 200);

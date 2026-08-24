@@ -109,6 +109,43 @@ export async function registerSuggestionHttp(
     properties: { libraryId: idSchema, fileId: idSchema },
   } as const;
 
+  app.get<{ Params: LibraryParams; Querystring: BatchPreviewQuery }>(
+    "/api/libraries/:libraryId/metadata/suggestion-states",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: {
+          type: "object",
+          required: ["libraryId"],
+          properties: { libraryId: idSchema },
+        },
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          required: ["fileIds"],
+          properties: { fileIds: { type: "string", minLength: 1, maxLength: 13_000 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const fileIds = request.query.fileIds.split(",");
+      if (fileIds.some((fileId) => !ID_PATTERN_REGEX.test(fileId))) {
+        return reply.code(400).send({ error: "invalid_input" });
+      }
+      try {
+        return {
+          states: service.getLatestCataloguingStates(
+            requireActor(request.authAccount),
+            request.params.libraryId,
+            fileIds,
+          ),
+        };
+      } catch (error: unknown) {
+        return sendSuggestionError(reply, error);
+      }
+    },
+  );
+
   app.post<{ Params: HoldingParams }>(
     "/api/libraries/:libraryId/holdings/:fileId/metadata/suggestions",
     {

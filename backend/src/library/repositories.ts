@@ -38,6 +38,7 @@ export interface LibraryRepository {
     limit: number,
   ): LibraryHolding[];
   findHoldingByFile(libraryId: string, fileId: string): LibraryHolding | null;
+  countActiveHoldingsByFileIds(libraryId: string, fileIds: string[]): number;
   /** True when an available (pending/active) root file in the library domain already carries this name. */
   hasAvailableNameConflict(libraryId: string, displayName: string): boolean;
   listRecycledHoldings(libraryId: string): LibraryRecycledHolding[];

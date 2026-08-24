@@ -14,6 +14,7 @@ import {
   type LibraryRecycleFile,
   type LibrarySummary,
   type ManagedAccount,
+  type MetadataCataloguingState,
   type MultipartTransfer,
   type EntriesResponse,
   type FileEntry,
@@ -426,6 +427,7 @@ interface MetadataActivity {
   library: LibrarySummary;
   holding: LibraryHolding;
   job: DerivedMetadataJob;
+  state: MetadataCataloguingState;
 }
 
 interface DownloadActivity {
@@ -799,8 +801,8 @@ function DriveView({
     job: DerivedMetadataJob,
   ) => {
     setMetadataActivities((current) => [
-      { library, holding, job },
-      ...current.filter((activity) => activity.job.id !== job.id),
+      { library, holding, job, state: job.state === "succeeded" ? "extraction_only" : job.state },
+      ...current.filter((activity) => activity.library.id !== library.id || activity.holding.file.id !== holding.file.id),
     ]);
   }, []);
   const handleResourceSuggestionJobChange = useCallback((job: DerivedMetadataJob) => {
@@ -808,67 +810,66 @@ function DriveView({
     recordMetadataActivity(resourceDetailsRequest.library, resourceDetailsRequest.holding, job);
   }, [recordMetadataActivity, resourceDetailsRequest]);
 
-  // Reload-safe Job Core discovery. The existing per-resource endpoint
-  // performs the same Library authorization as Resource Details, so the
-  // Activity Center never gains a broader cross-account read surface.
+  // Reload-safe Job Core discovery. One authorization-scoped batch projection
+  // replaces the former per-visible-holding request fan-out.
   useEffect(() => {
     const library = libraryCatalogue.library;
-    if (!library || !api.getLatestLibraryMetadataSuggestionJob) return;
+    if (!library || !api.getLatestLibraryMetadataSuggestionStates || libraryCatalogue.holdings.length === 0) return;
     const controller = new AbortController();
-    void Promise.all(libraryCatalogue.holdings.map(async (holding) => {
-      try {
-        const job = await api.getLatestLibraryMetadataSuggestionJob!(library.id, holding.file.id, controller.signal);
-        if (!job) return null;
+    const holdingsByFileId = new Map(libraryCatalogue.holdings.map((holding) => [holding.file.id, holding]));
+    void api.getLatestLibraryMetadataSuggestionStates(
+      library.id,
+      libraryCatalogue.holdings.map((holding) => holding.file.id),
+      controller.signal,
+    ).then((states) => {
+      if (controller.signal.aborted) return;
+      const visible = states.flatMap((summary) => {
+        const job = summary.job;
+        const holding = holdingsByFileId.get(summary.fileId);
+        if (!job || !holding) return [];
         const terminalAt = job.finishedAt ? new Date(job.finishedAt).getTime() : 0;
         const recent = terminalAt > 0 && Date.now() - terminalAt <= METADATA_ACTIVITY_RELOAD_WINDOW_MS;
         return job.state === "queued" || job.state === "running" || recent
-          ? { library, holding, job }
-          : null;
-      } catch (caught) {
-        if (caught instanceof DOMException && caught.name === "AbortError") return null;
-        // Activity discovery is supplementary. Resource Details remains the
-        // explicit error surface for a resource-specific request failure.
-        return null;
-      }
-    })).then((activities) => {
-      if (controller.signal.aborted) return;
-      const visible = activities.filter((activity): activity is MetadataActivity => activity !== null);
+          ? [{ library, holding, job, state: summary.state }]
+          : [];
+      });
       setMetadataActivities((current) => {
-        const discoveredIds = new Set(visible.map((activity) => activity.job.id));
+        const discoveredResources = new Set(visible.map((activity) => `${activity.library.id}\u0000${activity.holding.file.id}`));
         return [
           ...visible,
-          ...current.filter((activity) => !discoveredIds.has(activity.job.id)),
+          ...current.filter((activity) => !discoveredResources.has(`${activity.library.id}\u0000${activity.holding.file.id}`)),
         ];
       });
+    }, () => {
+      // Activity discovery is supplementary. Resource Details remains the
+      // explicit error surface for a resource-specific request failure.
     });
     return () => controller.abort();
   }, [api, libraryCatalogue]);
 
   useEffect(() => {
-    if (!api.getLibraryMetadataSuggestionJob) return;
+    if (!api.getLatestLibraryMetadataSuggestionStates) return;
     const active = metadataActivities.filter(({ job }) => job.state === "queued" || job.state === "running");
     if (active.length === 0) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      void Promise.all(active.map(async (activity) => {
-        try {
-          const job = await api.getLibraryMetadataSuggestionJob!(
-            activity.library.id,
-            activity.holding.file.id,
-            activity.job.id,
-            controller.signal,
-          );
-          return { ...activity, job };
-        } catch (caught) {
-          if (caught instanceof DOMException && caught.name === "AbortError") return activity;
-          return activity;
-        }
-      })).then((updates) => {
+      const library = active[0]!.library;
+      void api.getLatestLibraryMetadataSuggestionStates!(
+        library.id,
+        active.filter((activity) => activity.library.id === library.id).map((activity) => activity.holding.file.id),
+        controller.signal,
+      ).then((states) => {
         if (controller.signal.aborted) return;
+        const byFileId = new Map(states.map((summary) => [summary.fileId, summary]));
         setMetadataActivities((current) => current.map((activity) => (
-          updates.find((candidate) => candidate.job.id === activity.job.id) ?? activity
+          activity.library.id !== library.id
+            ? activity
+            : (() => {
+                const summary = byFileId.get(activity.holding.file.id);
+                return summary?.job ? { ...activity, job: summary.job, state: summary.state } : activity;
+              })()
         )));
-      });
+      }, () => undefined);
     }, 2_000);
     return () => {
       controller.abort();
@@ -2093,7 +2094,7 @@ function DriveView({
   const activityJobs = jobs.filter((job) => job.phase !== "abandoned");
   const activityCount = activityJobs.length + metadataActivities.length + downloadActivities.length;
   const activityFailureCount = activityJobs.filter((job) => job.phase === "error").length
-    + metadataActivities.filter((activity) => activity.job.state === "failed").length
+    + metadataActivities.filter((activity) => activity.state === "failed").length
     + downloadActivities.filter((activity) => activity.phase === "failed").length;
   const isLibraryEmpty = entries.folders.length === 0 && entries.files.length === 0;
   const workspaceTitle = view === "library"
@@ -2419,7 +2420,7 @@ function DriveView({
               <div className="activity-item activity-item--compact" key={activity.job.id}>
                 <div className="activity-copy">
                   <strong>{libraryHoldingDisplayTitle(activity.holding, language)}</strong>
-                  <span><span>{t("activity.metadata")}</span><span aria-hidden="true"> · </span><span>{t(metadataActivityStateKey(activity.job.state))}</span></span>
+                  <span><span>{t("activity.metadata")}</span><span aria-hidden="true"> · </span><span>{t(metadataActivityStateKey(activity.state))}</span></span>
                   {activity.job.state === "failed" && activity.job.errorCode && <span className="activity-error" role="alert">{t(metadataFailureCategoryKey(activity.job.errorCode))}</span>}
                 </div>
                 <div className="job-actions">
@@ -2869,12 +2870,16 @@ function uploadPhaseKey(phase: UploadPhase) {
   }
 }
 
-function metadataActivityStateKey(state: DerivedMetadataJob["state"]) {
+function metadataActivityStateKey(state: MetadataCataloguingState) {
   switch (state) {
     case "queued": return "activity.metadataQueued" as const;
     case "running": return "activity.metadataProcessing" as const;
-    case "succeeded": return "activity.metadataSucceeded" as const;
     case "failed": return "activity.metadataFailed" as const;
+    case "not_run": return "metadata.suggestions.state.notRun" as const;
+    case "filename_inference_only": return "metadata.suggestions.state.filenameOnly" as const;
+    case "extraction_only": return "metadata.suggestions.state.extractionOnly" as const;
+    case "ai_succeeded_reviewable": return "metadata.suggestions.state.reviewable" as const;
+    case "applied": return "metadata.suggestions.state.applied" as const;
   }
 }
 

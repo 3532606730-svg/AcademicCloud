@@ -20,15 +20,16 @@ import {
   type MetadataSuggestionConfidence,
   type MetadataSuggestionEvidenceOrigin,
   type MetadataSuggestionSourceType,
-  type MetadataSuggestionStatus,
   type LibraryMetadataInput,
   type LibrarySummary,
   type MaterialClass,
+  type MetadataCataloguingState,
   type MaterialType,
   type MetadataTypeFields,
 } from "./api.ts";
 import { describeError, type MessageKey } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
+import { deriveMetadataCataloguingState } from "./metadata-cataloguing-state.ts";
 
 const MATERIAL_TYPES: MaterialType[] = ["book", "article", "manuscript", "inscription", "archival_document"];
 const AUTHORITY_TYPES: AuthorityType[] = ["person", "place", "language", "work", "institution"];
@@ -282,14 +283,15 @@ const SUGGESTION_SOURCE_KEYS: Record<MetadataSuggestionSourceType, MessageKey> =
   embedded_pdf_metadata: "metadata.suggestions.source.embedded",
   filename: "metadata.suggestions.source.filename",
 };
-const SUGGESTION_STATUS_KEYS: Record<MetadataSuggestionStatus, MessageKey> = {
-  ready: "metadata.suggestions.status.ready",
-  ambiguous: "metadata.suggestions.status.ambiguous",
-  no_suggestions: "metadata.suggestions.status.noSuggestions",
-  ocr_deferred: "metadata.suggestions.status.ocrDeferred",
-  unsupported: "metadata.suggestions.status.unsupported",
-  stale: "metadata.suggestions.status.stale",
-  accepted: "metadata.suggestions.status.accepted",
+const CATALOGUING_STATE_KEYS: Record<MetadataCataloguingState, MessageKey> = {
+  not_run: "metadata.suggestions.state.notRun",
+  queued: "metadata.suggestions.state.queued",
+  running: "metadata.suggestions.state.running",
+  failed: "metadata.suggestions.state.failed",
+  filename_inference_only: "metadata.suggestions.state.filenameOnly",
+  extraction_only: "metadata.suggestions.state.extractionOnly",
+  ai_succeeded_reviewable: "metadata.suggestions.state.reviewable",
+  applied: "metadata.suggestions.state.applied",
 };
 const SUGGESTION_CONFIDENCE_KEYS: Record<MetadataSuggestionConfidence, MessageKey> = {
   high: "metadata.suggestions.confidence.high",
@@ -326,9 +328,6 @@ function safeSuggestionError(error: unknown): ApiError {
 
 function suggestionSourceLabel(value: MetadataSuggestionSourceType, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_SOURCE_KEYS[value]);
-}
-function suggestionStatusLabel(value: MetadataSuggestionStatus, t: ReturnType<typeof useLanguage>["t"]): string {
-  return t(SUGGESTION_STATUS_KEYS[value]);
 }
 function suggestionConfidenceLabel(value: MetadataSuggestionConfidence, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_CONFIDENCE_KEYS[value]);
@@ -498,6 +497,7 @@ export function ResourceDetailsDialog({
   const [pendingAuthorityCandidateId, setPendingAuthorityCandidateId] = useState<string | null>(null);
   const [suggestionRun, setSuggestionRun] = useState<MetadataSuggestionRun | null>(null);
   const [suggestionJob, setSuggestionJob] = useState<DerivedMetadataJob | null>(null);
+  const [cataloguingState, setCataloguingState] = useState<MetadataCataloguingState | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsGenerating, setSuggestionsGenerating] = useState(false);
   const [suggestionsAccepting, setSuggestionsAccepting] = useState(false);
@@ -552,14 +552,31 @@ export function ResourceDetailsDialog({
   }, [api, library.id, holding.file.id]);
 
   useEffect(() => {
+    if (api.getLatestLibraryMetadataSuggestionStates) {
+      const controller = new AbortController();
+      api.getLatestLibraryMetadataSuggestionStates(library.id, [holding.file.id], controller.signal)
+        .then((states) => {
+          const summary = states[0];
+          setSuggestionJob(summary?.job ?? null);
+          setCataloguingState(summary?.state ?? "not_run");
+          if (summary?.job) onSuggestionJobChange?.(summary.job);
+        })
+        .catch((caught: unknown) => {
+          if (!(caught instanceof DOMException && caught.name === "AbortError")) setSuggestionsError(safeSuggestionError(caught));
+        });
+      return () => controller.abort();
+    }
     if (!api.getLatestLibraryMetadataSuggestionJob) {
       setSuggestionJob(null);
+      setCataloguingState(null);
       return;
     }
     const controller = new AbortController();
     api.getLatestLibraryMetadataSuggestionJob(library.id, holding.file.id, controller.signal)
       .then((job) => {
         setSuggestionJob(job);
+        setCataloguingState(job?.state === "queued" || job?.state === "running" || job?.state === "failed"
+          ? job.state : null);
         if (job) onSuggestionJobChange?.(job);
       })
       .catch((caught: unknown) => {
@@ -581,13 +598,18 @@ export function ResourceDetailsDialog({
           : job;
         if (stopped) return;
         setSuggestionJob(next);
+        setCataloguingState(next.state === "succeeded" ? "extraction_only" : next.state);
         onSuggestionJobChange?.(next);
         if (next.state === "succeeded") {
-          const run = await api.getLibraryMetadataSuggestions?.(library.id, holding.file.id, controller.signal);
+          const [run, states] = await Promise.all([
+            api.getLibraryMetadataSuggestions?.(library.id, holding.file.id, controller.signal),
+            api.getLatestLibraryMetadataSuggestionStates?.(library.id, [holding.file.id], controller.signal),
+          ]);
           if (!stopped && run !== undefined) {
             setSuggestionRun(run);
             setSelectedSuggestionIds(new Set());
           }
+          if (!stopped && states?.[0]) setCataloguingState(states[0].state);
           return;
         }
         if (next.state === "failed") return;
@@ -624,6 +646,7 @@ export function ResourceDetailsDialog({
     try {
       const job = await api.generateLibraryMetadataSuggestions(library.id, holding.file.id);
       setSuggestionJob(job);
+      setCataloguingState(job.state === "succeeded" ? "extraction_only" : job.state);
       onSuggestionJobChange?.(job);
       setSelectedSuggestionIds(new Set());
       // Fast naming: the lightweight filename-derived run is persisted
@@ -685,6 +708,7 @@ export function ResourceDetailsDialog({
         setEditing(false);
       }
       setSuggestionRun(response.run ?? { ...suggestionRun, status: "accepted" });
+      setCataloguingState("applied");
       setSelectedSuggestionIds(new Set());
       setNotice(t("metadata.suggestions.accepted"));
     } catch (caught) {
@@ -948,6 +972,8 @@ export function ResourceDetailsDialog({
                 <MetadataSuggestionsPanel
                   run={suggestionRun}
                   job={suggestionJob}
+                  authoritativeState={cataloguingState}
+                  fieldAuthorities={detail.fieldAuthorities}
                   loading={suggestionsLoading}
                   generating={suggestionsGenerating}
                   accepting={suggestionsAccepting}
@@ -1000,6 +1026,8 @@ export function ResourceDetailsDialog({
                 <MetadataSuggestionsPanel
                   run={suggestionRun}
                   job={suggestionJob}
+                  authoritativeState={cataloguingState}
+                  fieldAuthorities={detail.fieldAuthorities}
                   loading={suggestionsLoading}
                   generating={suggestionsGenerating}
                   accepting={suggestionsAccepting}
@@ -1269,6 +1297,8 @@ function suggestionFieldLabel(candidate: MetadataSuggestionCandidate, t: ReturnT
 function MetadataSuggestionsPanel({
   run,
   job,
+  authoritativeState,
+  fieldAuthorities,
   loading,
   generating,
   accepting,
@@ -1285,6 +1315,8 @@ function MetadataSuggestionsPanel({
 }: {
   run: MetadataSuggestionRun | null;
   job: DerivedMetadataJob | null;
+  authoritativeState: MetadataCataloguingState | null;
+  fieldAuthorities: BibliographicFieldAuthority[];
   loading: boolean;
   generating: boolean;
   accepting: boolean;
@@ -1302,6 +1334,7 @@ function MetadataSuggestionsPanel({
   const jobActive = job?.state === "queued" || job?.state === "running";
   const busy = loading || generating || accepting || jobActive;
   const reviewable = run?.status === "ready" || run?.status === "ambiguous";
+  const cataloguingState = deriveMetadataCataloguingState({ job, run, fieldAuthorities, authoritativeState });
   return (
     <section className="metadata-suggestions" aria-labelledby="metadata-suggestions-title">
       <header className="metadata-suggestions-header">
@@ -1312,30 +1345,15 @@ function MetadataSuggestionsPanel({
       </header>
       {loading && <p className="muted" role="status">{t("metadata.suggestions.loading")}</p>}
       {error !== null && <div className="alert alert--error" role="alert">{suggestionErrorLabel(error, t)}</div>}
-      {!loading && job && !run && <p className={`metadata-suggestions-status metadata-suggestions-job--${job.state}`} role="status">
-        {job.state === "queued"
-          ? t("metadata.suggestions.job.queued")
-          : job.state === "running"
-            ? t("metadata.suggestions.job.processing")
-            : job.state === "succeeded"
-              ? t("metadata.suggestions.job.succeeded")
-              : t("metadata.suggestions.job.failed")}
-        {job.state === "failed" && job.errorCode && <span className="activity-error">{suggestionJobFailureLabel(job.errorCode, t)}</span>}
+      {!loading && <p className={`metadata-suggestions-status metadata-suggestions-state--${cataloguingState}`} role="status">
+        {t(CATALOGUING_STATE_KEYS[cataloguingState])}
+        {job?.state === "failed" && job.errorCode && <span className="activity-error">{suggestionJobFailureLabel(job.errorCode, t)}</span>}
       </p>}
-      {!loading && !job && !run && <p className="muted">{t("metadata.suggestions.none")}</p>}
-      {!loading && job && run && (job.state === "queued" || job.state === "running") && (
-        <p className={`metadata-suggestions-status metadata-suggestions-job--${job.state}`} role="status">
-          {job.state === "queued" ? t("metadata.suggestions.job.queued") : t("metadata.suggestions.job.processing")}
-        </p>
-      )}
       {!loading && job?.state === "failed" && manager && (
         <button className="button button--small" type="button" onClick={onGenerate} disabled={generating}>{t("activity.metadataRetry")}</button>
       )}
       {run && (
         <>
-          <p className={`metadata-suggestions-status metadata-suggestions-status--${run.status}`} role="status">
-            {suggestionStatusLabel(run.status, t)}
-          </p>
           {!run.window.complete && run.candidates.length > 0 && <p className="muted">{t("metadata.suggestions.partialDescription")}</p>}
           {run.status === "ocr_deferred" && <p className="muted">{t("metadata.suggestions.ocrDeferredDescription")}</p>}
           {run.status === "unsupported" && <p className="muted">{t("metadata.suggestions.unsupportedDescription")}</p>}

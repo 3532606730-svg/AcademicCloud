@@ -125,6 +125,29 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     return row ? map(row) : null;
   }
 
+  findLatestMany(kind: "metadata_suggestion", scopeId: string, resourceIds: string[]): DerivedJobRecord[] {
+    if (resourceIds.length === 0) return [];
+    const rows = this.database.prepare<[string, string, string], JobRow>(`
+      SELECT id, kind, scope_id, resource_id, input_version, idempotency_key, state, progress,
+        attempts, active_attempt_id, provider, provider_job_id, capability_token_hash,
+        capability_expires_at, result_ref, result_digest, error_code, created_by_account_id,
+        created_at, updated_at, started_at, finished_at, deadline_at, queue_priority, origin
+      FROM (
+        SELECT derived_compute_jobs.*,
+          ROW_NUMBER() OVER (
+            PARTITION BY resource_id
+            ORDER BY CASE WHEN state IN ('queued', 'running') THEN 0 ELSE 1 END,
+              created_at DESC, id DESC
+          ) AS current_rank
+        FROM derived_compute_jobs
+        WHERE kind = ? AND scope_id = ?
+          AND resource_id IN (SELECT value FROM json_each(?))
+      )
+      WHERE current_rank = 1
+    `).all(kind, scopeId, JSON.stringify(resourceIds));
+    return rows.map(map);
+  }
+
   listUndispatched(limit: number): DerivedJobRecord[] {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("invalid derived job limit");
     return this.database.prepare<[number], JobRow>(`

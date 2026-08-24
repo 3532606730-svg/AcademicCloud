@@ -45,6 +45,7 @@ import {
   type SuggestionRunRecord,
   type SuggestionRunSummary,
 } from "./suggestion.js";
+import type { SuggestionRunStateEvidence } from "./repositories.js";
 
 export type SuggestionErrorCode =
   | "not_found"
@@ -120,12 +121,61 @@ export interface BatchNamingResultItem {
 }
 
 export const BATCH_NAMING_MAX_ITEMS = 50;
+export const METADATA_CATALOGUING_BATCH_MAX_ITEMS = 100;
+
+export type MetadataCataloguingState =
+  | "not_run"
+  | "queued"
+  | "running"
+  | "failed"
+  | "filename_inference_only"
+  | "extraction_only"
+  | "ai_succeeded_reviewable"
+  | "applied";
+
+export interface MetadataCataloguingSummary {
+  fileId: string;
+  state: MetadataCataloguingState;
+  job: DerivedJobSummary | null;
+}
 
 const VERSION_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 const SAFE_FILE_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 
 const PDF_MEDIA_TYPE = "application/pdf";
 const JOB_DEADLINE_MILLISECONDS = 2 * 60 * 60_000;
+
+export function deriveMetadataCataloguingState(
+  job: Pick<DerivedJobRecord, "state" | "resultRef"> | null,
+  run: Pick<SuggestionRunStateEvidence,
+    "id" | "status" | "pageCount" | "pageIndices" | "windowComplete" | "candidateCount" | "nonFilenameCandidateCount" | "aiReviewable" | "applied"
+  > | null,
+): MetadataCataloguingState {
+  if (job?.state === "queued") return "queued";
+  if (job?.state === "running") return "running";
+  // The newest generation is authoritative. A stale lightweight or accepted
+  // run may remain useful history, but it must never hide a current failure.
+  if (job?.state === "failed") return "failed";
+
+  const currentResult = run !== null && (job === null || job.resultRef === run.id);
+  if (currentResult && (run.status === "accepted" || run.applied)) return "applied";
+  if (currentResult && run.aiReviewable) return "ai_succeeded_reviewable";
+
+  if (job?.state === "succeeded") {
+    // A terminal job without its exact result run is not a proven reviewable
+    // AI result. Treat it as an incomplete extraction/result projection.
+    if (!run || !currentResult) return "extraction_only";
+    const extractionObserved = run.nonFilenameCandidateCount > 0
+      || run.pageCount !== null || run.pageIndices.length > 0 || run.windowComplete;
+    return extractionObserved ? "extraction_only" : "filename_inference_only";
+  }
+
+  if (!run) return "not_run";
+  if (run.status === "accepted" || run.applied) return "applied";
+  if (run.nonFilenameCandidateCount > 0
+    || run.pageCount !== null || run.pageIndices.length > 0 || run.windowComplete) return "extraction_only";
+  return "filename_inference_only";
+}
 
 function sourceFingerprint(file: StoredFile): {
   value: string;
@@ -837,6 +887,41 @@ export class SuggestionService {
       resolveHolding(actor, libraryId, fileId, repositories);
       const job = repositories.derivedJobs.findLatest("metadata_suggestion", libraryId, fileId);
       return job ? publicDerivedJob(job) : null;
+    });
+  }
+
+  getLatestCataloguingStates(
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    fileIds: string[],
+  ): MetadataCataloguingSummary[] {
+    if (fileIds.length < 1 || fileIds.length > METADATA_CATALOGUING_BATCH_MAX_ITEMS
+      || fileIds.some((fileId) => !SAFE_FILE_ID.test(fileId))
+      || new Set(fileIds).size !== fileIds.length) throw new SuggestionError("invalid_input");
+    return this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(this.#now());
+      if (!isActiveAccount(actor, repositories)) throw new SuggestionError("not_found");
+      const library = repositories.libraries.findById(libraryId);
+      const membership = library ? repositories.libraries.findMembership(libraryId, actor.id) : null;
+      if (!library || !membership
+        || repositories.libraries.countActiveHoldingsByFileIds(libraryId, fileIds) !== fileIds.length) {
+        throw new SuggestionError("not_found");
+      }
+      const jobs = new Map(repositories.derivedJobs
+        .findLatestMany("metadata_suggestion", libraryId, fileIds)
+        .map((job) => [job.resourceId, job]));
+      const runs = new Map(repositories.suggestions
+        .findLatestStateEvidenceMany(library.ownerDomainId, libraryId, fileIds)
+        .map((run) => [run.fileId, run]));
+      return fileIds.map((fileId) => {
+        const job = jobs.get(fileId) ?? null;
+        const run = runs.get(fileId) ?? null;
+        return {
+          fileId,
+          state: deriveMetadataCataloguingState(job, run),
+          job: job ? publicDerivedJob(job) : null,
+        };
+      });
     });
   }
 

@@ -362,6 +362,7 @@ export interface BibliographicFieldAuthority {
   fieldName: BibliographicFieldName;
   scopeKey: string;
   source: "human" | "ai";
+  sourceRunId?: string;
   establishedAt: string;
 }
 export interface LibraryHoldingDetails {
@@ -593,6 +594,20 @@ export interface DerivedMetadataJob {
   queuePriority?: 10 | 100;
   origin?: "admission" | "interactive" | "backfill";
 }
+export type MetadataCataloguingState =
+  | "not_run"
+  | "queued"
+  | "running"
+  | "failed"
+  | "filename_inference_only"
+  | "extraction_only"
+  | "ai_succeeded_reviewable"
+  | "applied";
+export interface MetadataCataloguingSummary {
+  fileId: string;
+  state: MetadataCataloguingState;
+  job: DerivedMetadataJob | null;
+}
 export type LibraryMetadataWithoutVersion = Omit<LibraryMetadataInput, "metadataVersion">;
 export interface MetadataSuggestionAcceptInput {
   acceptedCandidateIds: string[];
@@ -784,6 +799,11 @@ export interface AcademicCloudApi {
     fileId: string,
     signal?: AbortSignal,
   ): Promise<DerivedMetadataJob | null>;
+  getLatestLibraryMetadataSuggestionStates?(
+    libraryId: string,
+    fileIds: string[],
+    signal?: AbortSignal,
+  ): Promise<MetadataCataloguingSummary[]>;
   getLibraryMetadataSuggestionJob?(
     libraryId: string,
     fileId: string,
@@ -1260,6 +1280,18 @@ export class ApiClient implements AcademicCloudApi {
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/${encodeURIComponent(fileId)}/metadata/suggestion-jobs/latest`,
       signal ? { signal } : {},
     )).job;
+  }
+
+  async getLatestLibraryMetadataSuggestionStates(
+    libraryId: string,
+    fileIds: string[],
+    signal?: AbortSignal,
+  ): Promise<MetadataCataloguingSummary[]> {
+    const query = new URLSearchParams({ fileIds: fileIds.join(",") });
+    return (await this.#request<{ states: MetadataCataloguingSummary[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/metadata/suggestion-states?${query.toString()}`,
+      signal ? { signal } : {},
+    )).states;
   }
 
   async getLibraryMetadataSuggestionJob(

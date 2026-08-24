@@ -97,6 +97,7 @@ export interface PublicFieldAuthority {
   fieldName: BibliographicFieldName;
   scopeKey: string;
   source: "human" | "ai";
+  sourceRunId?: string;
   establishedAt: string;
 }
 
@@ -274,6 +275,7 @@ function publicFieldAuthority(authority: BibliographicFieldAuthority): PublicFie
     fieldName: authority.fieldName,
     scopeKey: authority.scopeKey,
     source: authority.source,
+    ...(authority.sourceRunId === undefined ? {} : { sourceRunId: authority.sourceRunId }),
     establishedAt: authority.establishedAt.toISOString(),
   };
 }
