@@ -66,7 +66,18 @@ const SERVER_INFERENCE_TIMEOUT_MILLISECONDS = 420_000;
 export class BibliographicIntelligenceError extends Error {
   constructor(
     readonly code: "invalid_result" | "reasoner_unavailable" | "reasoner_timeout",
-    readonly diagnostic: "unspecified" | "server_exited" | "request_failed" | "http_non_ok" | "response_too_large" | "response_json_invalid" | "content_missing" | "content_json_invalid" = "unspecified",
+    readonly diagnostic:
+      | "unspecified"
+      | "server_exited"
+      | "request_failed"
+      | "http_non_ok"
+      | "response_too_large"
+      | "response_json_invalid"
+      | "content_missing"
+      | "content_json_invalid"
+      | "canonical_schema_invalid"
+      | "field_evidence_invalid"
+      | "result_schema_invalid" = "unspecified",
   ) {
     super(code);
     this.name = "BibliographicIntelligenceError";
@@ -284,13 +295,36 @@ function normalizeSparseCanonical(value: unknown, inspection: PdfTextInspection)
       compactKey(contributor.label) !== publisherKey
       && !/(?:出版社|出版公司|press|publishing)$/iu.test(contributor.label.trim())
     ));
+  const identifiers = supplied(input, "identifiers", []);
+  if (!Array.isArray(identifiers)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  const normalizedIdentifiers = [...new Map(identifiers.flatMap((value) => {
+    let identifier: Record<string, unknown>;
+    try {
+      identifier = sparseRecord(value, ["scheme", "value"]);
+    } catch {
+      return [];
+    }
+    const scheme = typeof identifier.scheme === "string" ? identifier.scheme.normalize("NFC").trim().toLocaleLowerCase() : "";
+    const identifierValue = typeof identifier.value === "string" ? identifier.value.normalize("NFC").trim() : "";
+    if (!scheme || scheme.length > 32 || !identifierValue || identifierValue.length > 128
+      || (scheme === "isbn" && !validIsbn(identifierValue))) return [];
+    return [[`${scheme}\u0000${identifierValue}`, { scheme, value: identifierValue }] as const];
+  })).values()];
+  const alternativeTitles = supplied(input, "alternativeTitles", []);
+  if (!Array.isArray(alternativeTitles)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  const normalizedAlternativeTitles = [...new Map(alternativeTitles.flatMap((value) => {
+    if (typeof value !== "string") return [];
+    const title = value.normalize("NFC").trim();
+    const key = compactKey(title);
+    return !title || !key || [...title].length > 512 ? [] : [[key, title] as const];
+  })).values()].slice(0, 32);
   return {
     materialClass,
     canonicalTitle: uniqueLabeledValue(inspection, ["文章题名", "文章題名", "题名页题名", "題名頁題名", "封面题名", "封面題名", "题名", "題名", "书名", "書名"]) ?? input.canonicalTitle,
     subtitle: optionalText(input, "subtitle"),
-    alternativeTitles: supplied(input, "alternativeTitles", []),
+    alternativeTitles: normalizedAlternativeTitles,
     dateStatement: optionalText(input, "dateStatement"),
-    identifiers: supplied(input, "identifiers", []),
+    identifiers: normalizedIdentifiers,
     contributors: normalizedContributors.map((contributor) => {
       return { label: contributor.label, role: contributor.role, roleLabel: supplied(contributor, "roleLabel", null) };
     }),
@@ -583,6 +617,43 @@ function singlePageEvidence(
   });
 }
 
+function multiPageEvidence(
+  canonical: IntelligentCanonicalBibliography,
+  modelFields: unknown[],
+  inspection: PdfTextInspection,
+): Array<Record<string, unknown>> {
+  const required = populatedFieldKeys(canonical);
+  const fields = new Map<string, Record<string, unknown>>();
+  for (const value of modelFields) {
+    let field: Record<string, unknown>;
+    try {
+      field = sparseRecord(value, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"]);
+    } catch {
+      continue;
+    }
+    if (typeof field.fieldName !== "string" || typeof field.scopeKey !== "string") continue;
+    const key = `${field.fieldName}:${field.scopeKey}`;
+    // The strict model can return evidence for a fact removed by deterministic
+    // normalization (for example an invalid ISBN or publisher-shaped
+    // contributor). Such evidence is not a fact and must not poison the whole
+    // otherwise valid result.
+    if (!required.has(key)) continue;
+    if (fields.has(key)) throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+    try {
+      fields.set(key, authoritativeEvidence(field, inspection));
+    } catch (error: unknown) {
+      if (error instanceof BibliographicIntelligenceError) {
+        throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+      }
+      throw error;
+    }
+  }
+  if (fields.size !== required.size || [...required].some((key) => !fields.has(key))) {
+    throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+  }
+  return [...fields.values()];
+}
+
 function compactKey(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
 }
@@ -646,17 +717,31 @@ export async function deriveIntelligentBibliography(
   const model = await reasoner.infer(promptFor(inspection), signal);
   const raw = sparseRecord(model, ["status", "overallConfidence", "canonical", "fields", "warnings"]);
   if (!Array.isArray(raw.fields) || !Array.isArray(raw.warnings)) throw new BibliographicIntelligenceError("invalid_result");
-  const normalizedCanonical = raw.canonical === null ? null : parseIntelligentCanonicalBibliography(normalizeSparseCanonical(raw.canonical, inspection));
-  const canonical = normalizedCanonical === null ? null : discardUnresolvedModelFacts(normalizedCanonical, raw.warnings, inspection);
+  let normalizedCanonical: IntelligentCanonicalBibliography | null;
+  try {
+    normalizedCanonical = raw.canonical === null ? null : parseIntelligentCanonicalBibliography(normalizeSparseCanonical(raw.canonical, inspection));
+  } catch (error: unknown) {
+    if (error instanceof BibliographicIntelligenceError) throw error;
+    throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  }
+  let canonical: IntelligentCanonicalBibliography | null;
+  try {
+    canonical = normalizedCanonical === null ? null : discardUnresolvedModelFacts(normalizedCanonical, raw.warnings, inspection);
+  } catch (error: unknown) {
+    if (error instanceof BibliographicIntelligenceError) throw error;
+    throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  }
   const fields = canonical !== null && inspection.pages.length === 1
     ? singlePageEvidence(canonical, raw.fields, inspection, raw.overallConfidence)
-    : raw.fields.map((entry) => authoritativeEvidence(entry, inspection));
+    : canonical === null ? [] : multiPageEvidence(canonical, raw.fields, inspection);
   const requestedStatus = raw.status;
   // Parse model output first as non-authoritative evidence. Only the final pass
   // below may promote a schema-valid, deterministic-warning-free result to
   // auto_apply, so strict callback validation never depends on model self-rating.
   const preliminaryStatus = canonical === null ? "no_bibliography" : "ambiguous";
-  const candidate = parseIntelligentBibliographyResult({
+  let candidate: IntelligentBibliographyResult;
+  try {
+    candidate = parseIntelligentBibliographyResult({
     contractVersion: 1,
     rulesetVersion: INTELLIGENT_RULESET_VERSION,
     status: preliminaryStatus,
@@ -689,14 +774,23 @@ export async function deriveIntelligentBibliography(
       selectedPages: [...inspection.pageIndices],
       promptVersion: INTELLIGENT_PROMPT_VERSION,
     },
-  });
+    });
+  } catch (error: unknown) {
+    if (error instanceof BibliographicIntelligenceError) throw error;
+    throw new BibliographicIntelligenceError("invalid_result", "result_schema_invalid");
+  }
   if (candidate.status === "no_bibliography") return candidate;
   const warnings = [...new Set([...candidate.warnings, ...deterministicWarnings(candidate)])];
   const statusAllowsPromotion = requestedStatus === "auto_apply" || hasExplicitUnconflictedTitleEvidence(inspection);
-  return parseIntelligentBibliographyResult({
-    ...candidate,
-    status: statusAllowsPromotion && candidate.overallConfidence >= AUTO_APPLY_CONFIDENCE && warnings.length === 0
-      ? "auto_apply" : "ambiguous",
-    warnings,
-  });
+  try {
+    return parseIntelligentBibliographyResult({
+      ...candidate,
+      status: statusAllowsPromotion && candidate.overallConfidence >= AUTO_APPLY_CONFIDENCE && warnings.length === 0
+        ? "auto_apply" : "ambiguous",
+      warnings,
+    });
+  } catch (error: unknown) {
+    if (error instanceof BibliographicIntelligenceError) throw error;
+    throw new BibliographicIntelligenceError("invalid_result", "result_schema_invalid");
+  }
 }

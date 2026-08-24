@@ -183,6 +183,7 @@ test("worker reports only bounded PDF failure diagnostics outside the durable ca
   const failingInspector: BoundedPdfTextSource = {
     async inspect() { throw new Error("unused"); },
     async inspectRange() { throw new PdfTextInspectionError("timeout", "page_text", 4, 4096); },
+    async close() { throw new Error("cleanup must not mask the inspection boundary"); },
   };
   const outcome = await runComputeWorker(INPUT, { fetchImplementation, inspector: failingInspector });
   assert.deepEqual(outcome.failureDiagnostic, { code: "timeout", stage: "page_text", rangeRequests: 4, rangeBytes: 4096 });
@@ -193,6 +194,50 @@ test("worker reports only bounded PDF failure diagnostics outside the durable ca
     state: "failed",
     errorCode: "compute_timeout",
   });
+});
+
+test("worker reports a controlled post-extraction diagnostic without exposing model output", async () => {
+  let callback: unknown;
+  const fetchImplementation: typeof fetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith("/claim")) {
+      return Response.json({
+        job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
+      });
+    }
+    if (url === "https://storage.example/signed-source") {
+      return new Response(new Uint8Array([37, 80, 68, 70, 45]), { status: 206 });
+    }
+    if (url.endsWith("/result")) {
+      callback = JSON.parse(String(init.body));
+      return Response.json({ job: { state: "failed" } });
+    }
+    return new Response(null, { status: 404 });
+  };
+  const outcome = await runComputeWorker(INPUT, {
+    fetchImplementation,
+    inspector: inspector(),
+    reasoner: {
+      async infer() { throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid"); },
+      async close() { throw new Error("cleanup must not mask the reasoning boundary"); },
+    },
+  });
+  assert.deepEqual(outcome.failureDiagnostic, {
+    code: "invalid_result",
+    stage: "bibliographic_reasoning",
+    detail: "field_evidence_invalid",
+  });
+  assert.deepEqual(callback, {
+    jobId: INPUT.jobId,
+    attemptId: INPUT.attemptId,
+    kind: "metadata_suggestion",
+    state: "failed",
+    errorCode: "compute_invalid_result",
+  });
+  assert.equal(JSON.stringify(outcome).includes("A Durable Compute Title"), false);
 });
 
 test("worker bounds successful-result callback retries and reports a terminal failure instead of stranding running state", async () => {

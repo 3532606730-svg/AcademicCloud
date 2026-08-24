@@ -93,13 +93,25 @@ test("seven bounded representative bibliographic cases remain inside the strict 
   }
 });
 
-test("invalid ISBN fails closed and publisher-shaped people are removed before auto-apply", async () => {
+test("invalid ISBN facts and publisher-shaped people are removed before auto-apply", async () => {
   const invalidIsbn = {
     ...emptyCanonical("安全题名"),
     identifiers: [{ scheme: "isbn", value: "978-0-000-00000-0" }],
   };
   const invalid = fixture(invalidIsbn);
-  await assert.rejects(deriveIntelligentBibliography(invalid.inspection, invalid.reasoner), /ISBN checksum/u);
+  invalid.inspection.pageCount = 2;
+  invalid.inspection.pageIndices = [1, 2];
+  invalid.inspection.pages.push({
+    pageIndex: 2,
+    text: "版权页",
+    evidenceOrigin: "native_text",
+    ocrEngine: null,
+    ocrConfidence: null,
+  });
+  const withoutInvalidIsbn = await deriveIntelligentBibliography(invalid.inspection, invalid.reasoner);
+  assert.equal(withoutInvalidIsbn.status, "auto_apply");
+  assert.deepEqual(withoutInvalidIsbn.canonical?.identifiers, []);
+  assert.ok(withoutInvalidIsbn.fields.every((field) => field.fieldName !== "identifiers"));
 
   const publisherAsPerson = {
     ...emptyCanonical("安全题名"),

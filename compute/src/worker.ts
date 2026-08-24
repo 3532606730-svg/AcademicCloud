@@ -51,12 +51,19 @@ export interface ComputeWorkerOutcome {
     rangeBytes: number;
   };
   failureDiagnostic?: {
-    code: PdfTextInspectionError["code"];
-    stage: PdfTextInspectionError["diagnosticStage"];
+    code: PdfTextInspectionError["code"] | BibliographicIntelligenceError["code"] | "unclassified_error";
+    stage: PdfTextInspectionError["diagnosticStage"] | ComputeWorkerStage;
+    detail?: BibliographicIntelligenceError["diagnostic"];
     rangeRequests?: number;
     rangeBytes?: number;
   };
 }
+
+export type ComputeWorkerStage =
+  | "pdf_inspection"
+  | "deterministic_extraction"
+  | "bibliographic_reasoning"
+  | "callback_fitting";
 
 function safeUrl(value: string, label: string): URL {
   let parsed: URL;
@@ -176,14 +183,23 @@ export async function computeMetadataSuggestions(
   signal?: AbortSignal,
   reasoner?: BibliographicReasoner,
   legacyOcrFallback = false,
+  onStage?: (stage: ComputeWorkerStage) => void,
 ): Promise<MetadataSuggestionComputeOutput> {
   if (!inspector.inspectRange) throw new Error("compute inspector requires bounded range support");
   let inspection;
   try {
+    onStage?.("pdf_inspection");
     inspection = await inspector.inspectRange(source, SUGGESTION_LIMITS, signal);
   } finally {
-    await inspector.close?.();
+    try {
+      await inspector.close?.();
+    } catch {
+      // The single-job provider process exits after the callback. A cleanup
+      // failure must not erase valid evidence or mask the primary boundary;
+      // the OS remains the final child-process cleanup boundary.
+    }
   }
+  onStage?.("deterministic_extraction");
   const extraction = extractSuggestions({
     pages: inspection.pages,
     embeddedMetadata: inspection.embeddedMetadata,
@@ -192,6 +208,7 @@ export async function computeMetadataSuggestions(
   });
   let bibliography;
   try {
+    onStage?.("bibliographic_reasoning");
     bibliography = reasoner === undefined
       ? undefined
       : await deriveIntelligentBibliography(inspection, reasoner, signal, legacyOcrFallback);
@@ -199,12 +216,18 @@ export async function computeMetadataSuggestions(
     // PDF.js/OCR extraction is independently useful. A bounded model startup
     // or inference outage must not discard that already-completed result, while
     // invalid model output remains fail-closed through the rethrow below.
-    if (!(error instanceof BibliographicIntelligenceError)
-      || !["reasoner_unavailable", "reasoner_timeout"].includes(error.code)) throw error;
+    const recoverable = error instanceof BibliographicIntelligenceError
+      && ["reasoner_unavailable", "reasoner_timeout"].includes(error.code);
+    if (!recoverable) throw error;
     bibliography = undefined;
   } finally {
-    await reasoner?.close?.();
+    try {
+      await reasoner?.close?.();
+    } catch {
+      // See the inspector cleanup boundary above.
+    }
   }
+  onStage?.("callback_fitting");
   return fitCallbackOutput({
     status: extraction.status,
     window: {
@@ -318,6 +341,7 @@ export async function runComputeWorker(
     let failureDiagnostic: ComputeWorkerOutcome["failureDiagnostic"];
     let sourceAccess: ComputeWorkerOutcome["sourceAccess"];
     let source: HttpPdfRangeSource | undefined;
+    let workerStage: ComputeWorkerStage = "pdf_inspection";
     try {
       source = new HttpPdfRangeSource(claim.source.url, claim.source.sizeBytes, fetchImplementation);
       const emergencyLegacyOcr = process.env.ACADEMICCLOUD_OCR_EMERGENCY_LEGACY === "1";
@@ -327,7 +351,14 @@ export async function runComputeWorker(
           : new TesseractCliOcrAdapter(),
       );
       const reasoner = options.reasoner ?? (process.env.NODE_ENV === "production" ? new LlamaServerBibliographicReasoner() : undefined);
-      const output = await computeMetadataSuggestions(source, inspector, options.signal, reasoner, emergencyLegacyOcr);
+      const output = await computeMetadataSuggestions(
+        source,
+        inspector,
+        options.signal,
+        reasoner,
+        emergencyLegacyOcr,
+        (stage) => { workerStage = stage; },
+      );
       result = { jobId: input.jobId, attemptId: input.attemptId, kind: "metadata_suggestion", state: "succeeded", output };
     } catch (error: unknown) {
       if (error instanceof PdfTextInspectionError) {
@@ -336,6 +367,12 @@ export async function runComputeWorker(
           stage: error.diagnosticStage,
           ...(error.rangeRequests === undefined ? {} : { rangeRequests: error.rangeRequests }),
           ...(error.rangeBytes === undefined ? {} : { rangeBytes: error.rangeBytes }),
+        };
+      } else {
+        failureDiagnostic = {
+          code: error instanceof BibliographicIntelligenceError ? error.code : "unclassified_error",
+          stage: workerStage,
+          ...(error instanceof BibliographicIntelligenceError ? { detail: error.diagnostic } : {}),
         };
       }
       result = {
