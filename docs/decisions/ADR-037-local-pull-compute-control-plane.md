@@ -1,0 +1,209 @@
+# ADR-037 — Local Pull Worker as the Production Compute Control Plane
+
+**Date:** 2026-08-24
+**Status:** Accepted by Owner; implementation and production cutover pending
+
+## Context
+
+AcademicCloud's durable Core/Compute separation is correct, but the first
+provider adapter executes every production bibliographic job through a
+GitHub-hosted Actions runner. Production inventory now contains 93 eligible
+PDFs, the final acceptance corpus currently contains 105 unique resources, and
+GitHub Actions has consumed 1,701 of 2,000 included hosted minutes while the
+Owner's Actions budget remains USD 0. Per-document hosted setup, queueing,
+runtime preparation, qualification, and runner allocation are therefore the
+wrong normal production control plane for the remaining stabilization work.
+
+The Owner has an existing Windows 11 x64 computer with a Ryzen 9 7945HX,
+16 GiB physical RAM, an NVIDIA GeForce RTX 4060 Laptop GPU with approximately
+8 GiB dedicated VRAM, and sufficient D-drive capacity. The computer is not an
+authority node and is not continuously available. It is suitable only as a
+disposable, revocable Compute executor whose absence must not impair Core or
+any non-AI product path.
+
+## Decision
+
+### Production provider and preserved authority
+
+The target production control plane is:
+
+```text
+PRODUCTION_COMPUTE_CONTROL_PLANE=CORE_PULL_WORKER
+LOCAL_PULL_PROVIDER=PRIMARY
+GITHUB_HOSTED_PRODUCTION_COMPUTE=false
+```
+
+Core remains the sole authority defined by ADR-031, ADR-032, ADR-033, and
+ADR-036. It continues to own authentication, Library/resource authorization,
+durable queue state, source identity, capability issuance, callback validation,
+candidate persistence, human-field authority, canonical CAS writes, and
+idempotency. The local worker receives no SQLite access, Library browsing,
+Owner/session credential, arbitrary object access, canonical write authority,
+or inbound network authority.
+
+The existing GitHub Actions adapter remains behind the provider-neutral
+interface for CI, release qualification, and a separately authorized emergency
+fallback. It is disabled for normal production document processing and is not
+replaced with a GitHub self-hosted runner.
+
+### Pull, claim, lease, and recovery protocol
+
+The worker exposes no public endpoint and opens no inbound firewall or router
+path. It initiates bounded outbound HTTPS long polls to Core. Core atomically
+offers or claims one eligible attempt only after validating the dedicated
+machine credential, provider eligibility, job generation, source fingerprint,
+and existing durable state.
+
+Each effective claim has a bounded renewable lease. The worker heartbeats while
+the attempt remains active. A missing heartbeat after the lease boundary makes
+the attempt recoverable through an explicit durable transition; it never leaves
+one resource permanently stuck. Completion remains attempt-bound and
+idempotent. The protocol must preserve:
+
+- at-least-once delivery;
+- at most one effective claim at any instant; and
+- at most one effective result application for one immutable generation.
+
+Sleep, shutdown, WSL termination, network loss, process death, and Windows
+update are normal failure cases. Delayed callbacks from an expired or replaced
+attempt fail closed. The local machine being offline leaves jobs queued or
+recoverable while Auth, Library, upload/download, preview, Search, citation,
+metadata, and every other Core path remain available.
+
+The worker uses a dedicated, independently revocable machine credential with
+only pull/claim/heartbeat/callback scope. It is stored outside Git and browser
+sessions, never printed or logged, and grants neither research-data browsing nor
+human or Owner operations.
+
+### Runtime and storage boundary
+
+The preferred runtime is WSL2 with a supported Ubuntu environment, native Linux
+Node, a Python virtual environment, the exact Paddle runtime/models, and exact
+llama.cpp/Qwen runtime. Docker is not part of the initial design. Large runtime
+state must live under `D:\AcademicCloudCompute`, separate from the development
+checkout. The conceptual layout is:
+
+```text
+D:\AcademicCloudCompute\
+  wsl\
+  releases\
+  models\
+  cache\
+  logs\
+  staging\
+  control\
+```
+
+The WSL distribution virtual disk, configured swap, immutable releases, models,
+and non-sensitive caches must not silently consume material C-drive capacity.
+The live worker never runs from `D:\Projects\AcademicCloud` or any dirty Git
+checkout.
+
+Every production worker release binds exact Compute source SHA, runtime
+manifest, Node/Python/Paddle versions, Paddle model revisions and hashes,
+llama.cpp identity and hash, Qwen model identity and hash, and selected CPU/CUDA
+backends. Releases are staged, verified, qualified, atomically selected, and
+restartable; rollback selects the previous qualified immutable release rather
+than pulling into a live tree.
+
+### Resource protection and model lifecycle
+
+Initial whole-job concurrency is one. The worker supports only the minimum
+operational modes:
+
+- `NORMAL`: one job, restrained host priority, and no new claim on battery when
+  that state is reliably observable;
+- `PAUSED`: no new claims; Core safely retains queued work; and
+- `BURST`: bounded qualification or corpus work inside a measured safe envelope,
+  still at whole-job concurrency one.
+
+Qualification sets an evidence-backed WSL memory, CPU, swap, RSS, VRAM,
+utilization, and thermal envelope for the 16 GiB host. It compares exact-model
+Qwen CPU versus CUDA and Paddle CPU versus GPU rather than assuming every stage
+benefits from GPU execution. Heavy runtimes initialize on demand, may be reused
+across consecutive jobs, and are released after a measured bounded idle TTL.
+They do not permanently reserve GPU memory while no work exists without new
+evidence.
+
+### Source privacy and sparse access
+
+The laptop is Compute, not a second AcademicCloud corpus. Long-lived state may
+contain immutable code/runtime/model assets and privacy-safe operational
+metrics. It must not intentionally retain production PDFs, rendered production
+pages, raw OCR text, signed URLs, capabilities, or canonical metadata mirrors.
+Controlled attempt-temporary files use restrictive permissions and are removed
+after the attempt and on startup after an unclean exit. Logs contain only safe
+identities, states, stage classes, timings, counts, and resource measurements.
+
+Source access remains exact-attempt and bounded. Native text and embedded
+metadata precede targeted rendering/OCR; additional pages are opened only when
+evidence requires them. Range bytes and object bytes are measured. Permanent
+local PDF caching is prohibited. HTTP connections may be reused, while source
+capabilities remain short-lived and may be renewed only for the same valid
+lease and source generation.
+
+### Qualification and cutover gates
+
+Heavy dependency/model/runtime qualification occurs once per exact local
+release, not once per document. It covers runtime identity, tests/build where
+applicable, real Paddle inference, real Qwen reasoning, representative
+bibliographic fixtures, memory/VRAM envelope, and privacy output scanning.
+Normal jobs perform only lightweight release-identity and health checks.
+
+Production cannot switch until all local environment, GPU/runtime, pull,
+atomic-claim, heartbeat, lease-expiry, callback, idempotency, forced-loss,
+restart, privacy, and resource-envelope gates in the active task pass. Then the
+same normal product path must pass a small native-text PDF, ordinary PDF,
+scan-heavy PDF, large PDF, and the same previously failed resource. The
+105-resource wave begins only after this cutover is green and never runs on
+GitHub-hosted Compute.
+
+## Migration and rollback
+
+Implementation adds the smallest provider-neutral Core protocol and durable
+lease state required by the accepted job model. Any schema change is additive,
+backed up and migrated under the existing production gate. Bibliographic
+business logic cannot branch on Local versus GitHub provider identity.
+
+Cutover first disables new normal GitHub dispatch, verifies there is no unsafe
+in-flight ambiguity, enables Local Pull claims, and runs bounded canaries. If
+Local Compute is unavailable after cutover, the safe default is queued AI work,
+not automatic GitHub spend. Rollback may restore the previous exact Core/local
+release or use the retained GitHub adapter only under separate explicit
+authority. No rollback changes source objects or human/canonical metadata.
+
+## Relationship to earlier decisions
+
+- ADR-031 remains authoritative for Core authority, fault isolation, source and
+  callback capabilities, and derived-result boundaries. This ADR supersedes
+  only its choice of GitHub Actions as the normal production adapter and its
+  clean-runner-per-document execution assumption.
+- ADR-033 remains authoritative for exact PP-OCRv6-small → Qwen3-1.7B model
+  semantics, deterministic validation, evidence, and privacy. This ADR
+  supersedes only GitHub-hosted ephemeral runtime placement and permits a
+  qualified warm local runtime with bounded idle release.
+- ADR-036 remains authoritative for admission, current-generation projection,
+  foreground/background priority, exactly-once effective claim, and the real
+  provider-backed Golden gate. Its GitHub dispatch-receipt reconciliation is
+  retained only for the disabled fallback adapter; Local Pull uses the lease
+  protocol in this ADR.
+- ADR-023 requires this decision, implementation checkpoints, authorized push,
+  and accessible local/remote equality to become durable before WSL or reboot.
+
+## Consequences
+
+- Normal production AI consumes no GitHub-hosted runner minutes and adds no
+  cloud or subscription cost.
+- Queue latency and per-document build/download/qualification overhead can be
+  removed, while measured local resource use becomes an explicit acceptance
+  concern.
+- Laptop absence delays AI but cannot reduce Core availability or corrupt one
+  job's durable state.
+- The new lease and credential surfaces require focused authorization,
+  non-disclosure, expiry, duplicate-callback, sleep/loss, and restart tests.
+- WSL/GPU installation and any unavoidable reboot occur only after the current
+  work is committed, pushed, remotely verified, durably recoverable, and the 12
+  Owner sources are preserved on D with verified SHA-256 identities.
+- Whole-document OCR/indexing, RAG, new product scope, paid services, public
+  inbound laptop access, persistent private-PDF caching, and artifact
+  `9405764771` remain unauthorized.

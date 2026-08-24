@@ -3,6 +3,12 @@
 **Status:** Accepted for `INCIDENT-L1-AI-PRODUCTION01`
 **Date:** 2026-08-23
 
+**2026-08-24 provider amendment:** ADR-037 preserves admission, generation,
+priority, current-state, and exactly-once effective-claim semantics. Its Local
+Pull lease/heartbeat protocol becomes the normal production hand-off; the
+GitHub dispatch-receipt logic below remains only for the retained disabled
+normal-production fallback adapter.
+
 ## Decision
 
 1. Admission of an eligible PDF into the canonical Library creates exactly one

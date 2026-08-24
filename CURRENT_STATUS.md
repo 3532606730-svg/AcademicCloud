@@ -27,10 +27,12 @@ INTERNAL_BETA_READY=false
 INTERNAL_BETA_STARTED=false
 ```
 
-Recovery on 2026-08-24 established local and remote branch HEAD
-`816f9154c58d560399e527823ea9d16ec87afa1a`; the two untracked workspace roots
-`%SystemDrive%/` and `scratch/` are preserved as pre-existing user material.
-Live production remains exact frontend/Core `17fb945220c44df71e4846a0ccd5f54e98f43858`,
+The Local Compute Owner override continues this program and changes only the
+next production Compute strategy. Local HEAD is `c9ab369…`; remote HEAD is
+`8db7f7d…` until the current checkpoints and durable pivot are published. The
+two untracked workspace roots `%SystemDrive%/` and `scratch/` remain preserved
+as pre-existing user material. Live production remains exact frontend/Core
+`17fb945220c44df71e4846a0ccd5f54e98f43858`,
 schema v25/history 001–025. Direct read-only evidence shows the service
 active/running with `NRestarts=0`, `MemoryHigh=320 MiB`, `MemoryMax=384 MiB`,
 loopback/public health and readiness 200, SQLite integrity `ok`, and zero
@@ -39,10 +41,45 @@ headroom 10,319,340 KiB below its 10 GiB gate, a CSP/profile mismatch, nine
 historical current-boot kernel OOM matches, and several concurrent-probe
 timeouts; these are baseline findings to classify, not final acceptance.
 
-All 12 Owner-supplied PDFs named in the active task are locally available and
-have immutable SHA-256 identities recorded in the active task card. No upload,
+All 12 Owner-supplied PDFs named in the active task remain locally available and
+have immutable SHA-256 identities recorded in the active task card. The current
+manifest is 12 Owner PDFs plus 93 production-eligible PDFs, zero exact production
+duplicates among the 12, and 105 unique acceptance resources. No upload,
 production AI execution, deployment, provider mutation, paid usage, or source
-mutation occurred during recovery.
+mutation occurred during recovery or after the Local Compute override.
+
+## Local Compute pivot — accepted, pre-WSL checkpoint in progress
+
+ADR-037 changes the normal production provider from per-document GitHub-hosted
+Actions to an outbound-only Local Pull worker on the Owner's existing Windows
+machine. Core durable queue, authorization, source/callback capabilities,
+candidate validation, human-field authority, and canonical CAS remain
+unchanged. The laptop is a disposable executor: if it is offline, asleep,
+paused, rebooting, or broken, AI work remains queued/recoverable and all non-AI
+Core functions remain available.
+
+```text
+PRODUCTION_COMPUTE_CONTROL_PLANE=CORE_PULL_WORKER
+LOCAL_PULL_PROVIDER=PRIMARY
+GITHUB_HOSTED_PRODUCTION_COMPUTE=false
+NEW_BILLABLE_GITHUB_USAGE=false
+ACTIONS_BUDGET_USD=0
+CURRENT_WORK_CHECKPOINTED=true
+CURRENT_WORK_PUSHED=false
+REMOTE_HEAD_CONFIRMED=false
+DURABLE_NEXT_STEP_RECORDED=true
+OWNER_SOURCES_STAGED_ON_D=false
+```
+
+The preserved shared fixes are local checkpoints `a4a1c4b` (eight-state
+current-generation projection plus exact AI evidence and batch Activity/Details
+state), `1497bec` (SQLite batch Library/Search hydration), and `c9ab369`
+(privacy-safe Compute stage/result diagnostics). Backend typecheck and 371/371
+tests, frontend typecheck and 283/283 tests, Compute typecheck and 68 passing
+plus 2 expected runtime skips, full workspace build, and diff check passed. No
+new GitHub-hosted production probe was launched. WSL has not been installed or
+enabled by this program; first publish and verify the repository checkpoints,
+then preserve/re-hash the 12 PDFs under the D-drive acceptance staging area.
 
 ## Historical incident evidence (superseded as current acceptance)
 

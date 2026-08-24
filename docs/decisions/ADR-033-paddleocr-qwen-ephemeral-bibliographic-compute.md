@@ -3,6 +3,12 @@
 **Date:** 2026-08-22
 **Status:** Accepted
 
+**2026-08-24 execution amendment:** ADR-037 preserves the exact model/runtime
+identities, sequential document-reading/reasoning semantics, validation,
+evidence, and privacy requirements here. It supersedes only per-document
+GitHub-hosted runtime placement and permits a qualified immutable local worker
+with bounded demand-driven warm reuse.
+
 ## Context
 
 `L1-INTELLIGENT-LIBRARY01` requires automatic, bounded cataloguing of newly

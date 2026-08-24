@@ -3,6 +3,11 @@
 **Date:** 2026-08-21
 **Status:** Accepted and deployed; COMPUTE-PRECUTOVER01 and GOAL-BETA-PREP01 Phase 2 production cutover complete
 
+**2026-08-24 provider amendment:** ADR-037 preserves this ADR's Core authority,
+fault-isolation, durable-job, source-capability, callback, and derived-result
+boundaries, but supersedes GitHub Actions as the normal production adapter with
+an outbound Local Pull worker. Historical GitHub evidence remains valid.
+
 ## Context
 
 The completed front-matter OCR and Metadata Suggestion implementation preserved

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T18:07:23+08:00",
+  "updatedAt": "2026-08-24T19:09:43+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -27,21 +27,51 @@
   "activeTasks": ["ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE"],
   "finalStabilizationProgram": {
     "task": "ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE",
-    "state": "active_recovered_reconciliation_in_progress",
+    "state": "active_shared_fixes_checkpointed_local_compute_pivot_pre_wsl",
     "autonomousFullCorpusAcceptance": "pending",
     "wholeProductPerformanceAcceptance": "pending",
     "internalBetaReady": false,
     "internalBetaStarted": false,
     "hardThirtySecondAiSla": false,
     "ownerSuppliedAvailable": 12,
+    "ownerSuppliedBytes": 199835281,
     "ownerSourceUnavailable": 0,
-    "productionEligibleTotal": null,
-    "uniqueAcceptanceTotal": null,
+    "ownerExactProductionDuplicates": 0,
+    "productionEligibleTotal": 93,
+    "uniqueAcceptanceTotal": 105,
+    "rawJobInventory": {
+      "notRun": 41,
+      "failed": 43,
+      "succeeded": 9,
+      "classification": "pre-cutover baseline only; recompute under exact current-generation evidence semantics before final execution"
+    },
     "zeroAdditionalCostRequired": true,
     "newBillableGithubUsageAllowed": false,
+    "githubActionsIncludedMinutesUsed": 1701,
+    "githubActionsIncludedMinutesTotal": 2000,
+    "githubActionsBudgetUsd": 0,
+    "githubActionsStopUsageAtBudget": true,
+    "sharedFixCheckpoints": {
+      "cataloguingStateAndActivityBatch": "a4a1c4b",
+      "librarySearchBatchHydration": "1497bec",
+      "computeStageDiagnostics": "c9ab369",
+      "backend": "typecheck pass; 371/371 tests pass",
+      "frontend": "typecheck pass; 283/283 tests pass",
+      "compute": "typecheck pass; 68 pass plus 2 expected runtime skips",
+      "workspaceBuild": "pass",
+      "diffCheck": "pass"
+    },
+    "preWslGates": {
+      "currentWorkCheckpointed": true,
+      "currentWorkPushed": false,
+      "remoteHeadConfirmed": false,
+      "durableNextStepRecorded": true,
+      "ownerSourcesStagedOnD": false,
+      "ownerSourceCopySha256Verified": false
+    },
     "baseline": {
-      "localHead": "816f9154c58d560399e527823ea9d16ec87afa1a",
-      "remoteHead": "816f9154c58d560399e527823ea9d16ec87afa1a",
+      "localHead": "c9ab369",
+      "remoteHead": "8db7f7d",
       "productionRelease": "17fb945220c44df71e4846a0ccd5f54e98f43858",
       "schema": 25,
       "migrationHistory": "001-025",
@@ -50,6 +80,28 @@
       "foreignKeyViolations": 0,
       "preservedUntrackedRoots": ["%SystemDrive%/", "scratch/"]
     }
+  },
+  "localComputePivot": {
+    "decision": "ADR-037",
+    "status": "accepted_pre_wsl_implementation_pending",
+    "productionComputeControlPlane": "CORE_PULL_WORKER",
+    "localPullProvider": "primary_target",
+    "githubHostedProductionCompute": false,
+    "githubActionsProvider": "disabled_for_normal_production_retained_for_ci_qualification_and_separately_authorized_emergency_fallback",
+    "windowsHost": "Windows 11 x64; Ryzen 9 7945HX; 16 GiB RAM; NVIDIA GeForce RTX 4060 Laptop GPU approximately 8 GiB VRAM",
+    "targetRoot": "D:\\AcademicCloudCompute",
+    "wslInstalledByProgram": false,
+    "inboundPublicServiceAllowed": false,
+    "workerAuthority": "disposable Compute executor only; no Library browsing, human metadata, Owner, SQLite, canonical-write, or arbitrary-object authority",
+    "wholeJobConcurrency": 1,
+    "modes": ["NORMAL", "PAUSED", "BURST"],
+    "modelLifecycle": "demand-driven warm reuse with measured bounded idle release",
+    "offlineInvariant": "AI jobs remain queued/recoverable; Core and all non-AI product paths remain available",
+    "durableProtocolTarget": ["outbound long poll", "atomic claim", "bounded lease", "heartbeat", "expiry recovery", "attempt-bound idempotent callback"],
+    "persistentProductionPdfStorage": false,
+    "persistentRawOcrStorage": false,
+    "persistentRenderedPageStorage": false,
+    "next": "publish and remote-verify current checkpoints and ADR-037; preserve and re-hash 12 Owner PDFs on D; only then begin WSL2-on-D qualification"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",

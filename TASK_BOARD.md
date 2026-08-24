@@ -30,13 +30,21 @@ frozen full-corpus clean sweep are mandatory. Do not start Internal Beta,
 invitations, unrelated features, whole-document OCR/indexing, embeddings/RAG,
 paid infrastructure, or forbidden artifact `9405764771`.
 
+The 2026-08-24 Local Compute Owner override continues this task and supersedes
+only the normal production Compute provider. Target state is Core durable queue
+plus an outbound-only Local Pull worker on the existing Owner machine;
+GitHub-hosted production document processing is frozen. GitHub remains a
+provider-neutral CI/qualification and separately authorized emergency adapter.
+No WSL/Windows feature/reboot work begins until current code is pushed and
+remote-verified and all 12 Owner PDFs are preserved and re-hashed on D.
+
 `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is complete: SSH read-only evidence,
 Git write/push, authenticated GitHub Actions read, and browser evidence remained
 available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / RECOVERY COMPLETE / RECONCILIATION IN PROGRESS | Inventory deployed features, production AI corpus, and performance baselines; then repair first shared correctness boundary |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / SHARED FIXES CHECKPOINTED / LOCAL PIVOT PRE-WSL | Push and verify `a4a1c4b` + `1497bec` + `c9ab369` and ADR-037, preserve/re-hash 12 sources on D, then qualify WSL-on-D Local Pull Compute |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -44,6 +52,24 @@ available through incident closure; its card is archived under `tasks/done/`.
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
+
+Current Local Compute transition gates:
+
+```text
+PRODUCTION_COMPUTE_CONTROL_PLANE=CORE_PULL_WORKER
+LOCAL_PULL_PROVIDER=PRIMARY
+GITHUB_HOSTED_PRODUCTION_COMPUTE=false
+CURRENT_WORK_CHECKPOINTED=true
+CURRENT_WORK_PUSHED=false
+REMOTE_HEAD_CONFIRMED=false
+DURABLE_NEXT_STEP_RECORDED=true
+OWNER_SOURCES_STAGED_ON_D=false
+OWNER_SOURCE_COPY_SHA256_VERIFIED=false
+```
+
+Current corpus facts remain `OWNER_SUPPLIED_TOTAL=12`,
+`PRODUCTION_ELIGIBLE_TOTAL=93`, and `UNIQUE_ACCEPTANCE_TOTAL=105`; recompute
+before final execution. No 105-resource wave starts before Local Pull cutover.
 
 Historical independent incident gates (not current final acceptance):
 

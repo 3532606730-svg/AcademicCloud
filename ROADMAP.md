@@ -53,6 +53,32 @@ No hard 30-second AI SLA applies. No new paid infrastructure, billable GitHub
 usage, Internal Beta/invitations, unrelated Layer 2/3/4 scope, whole-document
 OCR/indexing, embeddings, or RAG is authorized.
 
+The Local Compute Owner override preserves this entire interlock and changes
+only its next Compute execution strategy. ADR-037 makes an outbound-only Local
+Pull worker on the existing Owner Windows/WSL2 machine the primary normal
+production provider. GitHub Actions remains behind the provider-neutral
+boundary for CI, release qualification, and separately authorized emergency
+fallback, but normal production PDFs and the final corpus may not consume
+GitHub-hosted runners. The current sequence is now:
+
+```text
+shared correctness/performance checkpoints
+→ durable push + local/remote equality
+→ preserve/re-hash 12 Owner sources on D
+→ WSL2-on-D + exact CPU/GPU runtime qualification
+→ pull/claim/lease/heartbeat/crash-recovery implementation
+→ representative same-resource production canaries
+→ Local Pull production cutover
+→ remaining zero-cost whole-product performance repair
+→ frozen 105-resource clean sweep (subject to final manifest recomputation)
+→ whole-product regression and cost proof
+```
+
+The Owner laptop is a disposable executor, not an authority or second corpus.
+Its absence may delay AI but must not affect Library, storage, Search, citation,
+metadata, or other Core availability. Initial whole-job concurrency is one;
+the runtime uses demand-driven warming and a measured host-resource envelope.
+
 ## Current Reality — Operational Maturity Interlock
 
 Real use on 2026-08-20 exposed a gap between strong repository/unit/artifact
@@ -69,7 +95,7 @@ Library, health, and unrelated requests. The Owner authorized the first gradual
 Core/Compute separation rather than a memory-limit-only workaround.
 
 `ARCH-COMPUTE01` is complete in production. Migration 022 supplies durable
-job authority in Core; GitHub Actions is the first adapter behind a
+job authority in Core; GitHub Actions was the first adapter behind a
 provider-neutral Compute interface; the existing bounded front-matter OCR and
 Metadata Suggestion heavy path runs one page at a time in one clean worker; and
 the browser uses durable queued/processing/succeeded/failed state. Core retains

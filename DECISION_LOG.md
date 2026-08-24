@@ -370,3 +370,45 @@ an arbitrary latency threshold. Internal Beta, invitations, new product scope,
 whole-document OCR/indexing, embeddings/RAG, paid services, new billable GitHub
 usage, irreversible real-data risk, and forbidden artifact `9405764771` remain
 outside authority.
+
+## ADR-036 — Automatic AI Admission Queue and Provider-Backed Golden Gate
+
+**Date:** 2026-08-23
+**Status:** Accepted
+**Full record:** `docs/decisions/ADR-036-ai-admission-queue-and-production-golden-gate.md`
+
+Eligible Library admission creates one durable asynchronous bibliographic job
+for the source generation without coupling upload/admission success to AI
+success. Current-generation queued/running state outranks terminal history;
+Core remains the canonical and human-authority gate. Foreground admission and
+interactive retry work outrank separately authorized historical work.
+
+Provider acceptance is an ambiguous external boundary, while Core's conditional
+claim is the exactly-once effective-execution gate. The original GitHub adapter
+recovers accepted dispatch receipts without duplicate provider execution. Under
+ADR-037 this GitHub-specific receipt logic remains only in the disabled normal-
+production fallback; Local Pull uses a lease and heartbeat while preserving the
+same durable-generation and idempotent-result invariants.
+
+## ADR-037 — Local Pull Worker as the Production Compute Control Plane
+
+**Date:** 2026-08-24
+**Status:** Accepted by Owner; implementation and production cutover pending
+**Full record:** `docs/decisions/ADR-037-local-pull-compute-control-plane.md`
+
+The active final-stabilization program moves normal production bibliographic AI
+from per-document GitHub-hosted Actions to an outbound-only Local Pull worker on
+the Owner's existing Windows/WSL2 machine. Core remains the sole authority and
+adds the smallest provider-neutral atomic claim, bounded lease, heartbeat,
+expiry recovery, and attempt-bound callback protocol. Laptop absence leaves AI
+queued/recoverable and cannot reduce non-AI Core availability.
+
+The local executor uses one narrow revocable machine credential, immutable
+exact releases under `D:\AcademicCloudCompute`, whole-job concurrency one,
+measured CPU/RAM/VRAM limits, demand-driven model warming, and no persistent
+production PDF/OCR/page cache. GitHub remains for source control,
+CI/qualification, and separately authorized emergency fallback, but
+`GITHUB_HOSTED_PRODUCTION_COMPUTE=false` for normal production and the final
+corpus. Existing Core/Compute authority, exact PP-OCRv6-small → Qwen3-1.7B
+semantics, human authority, source integrity, and zero-cost requirements remain
+unchanged.

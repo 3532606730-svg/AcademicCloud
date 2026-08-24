@@ -78,6 +78,9 @@ Owner interaction.
 - ADR-033: exact ephemeral PP-OCRv6-small → Qwen3-1.7B Compute pipeline.
 - ADR-034: authorization-first catalogue Search/filter/display.
 - ADR-035: deterministic exact-pinned citation projection.
+- ADR-036: automatic admission jobs, generation priority, and exactly-once
+  effective claim.
+- ADR-037: Local Pull worker as the normal production Compute control plane.
 
 ## Relevant Modules / Files
 
@@ -88,15 +91,43 @@ Owner interaction.
 
 ## Current State
 
-Owner-authorized on 2026-08-24. Local and remote authoritative branch
-`codex/project-memory-reconcile-20260817` both point to
-`816f9154c58d560399e527823ea9d16ec87afa1a`. Pre-existing untracked
-`%SystemDrive%/` and `scratch/` are preserved. Production is exact frontend/Core
-`17fb945220c44df71e4846a0ccd5f54e98f43858`, schema v25/history 001–025,
-active/running with `NRestarts=0`, health/readiness 200, SQLite integrity `ok`,
-and FK violations 0. Current-generation whole-product/full-corpus acceptance
-has not begun, so incident OPEN, production acceptance FAIL, performance and
-corpus acceptance PENDING, and Internal Beta readiness false are authoritative.
+Owner-authorized on 2026-08-24 and continued by the
+`ACADEMICCLOUD-FINAL-STABILIZATION-LOCAL-COMPUTE-PIVOT` Owner override. This is
+not a new task: it changes only the next Compute architecture/execution
+strategy. The authoritative branch is
+`codex/project-memory-reconcile-20260817`. Local HEAD is `c9ab369…`; remote HEAD
+is `8db7f7d…` until the current reviewable checkpoints and this durable pivot
+are pushed. Pre-existing untracked `%SystemDrive%/` and `scratch/` remain
+untouched. Production remains exact frontend/Core
+`17fb945220c44df71e4846a0ccd5f54e98f43858`, schema v25/history 001–025. No new
+GitHub-hosted production Compute probe was launched after the override.
+
+Current acceptance inventory is 12 Owner PDFs plus 93 production-eligible PDFs,
+with zero exact production duplicate among the 12 and a current unique manifest
+of 105. The baseline raw job projection is 41 not run, 43 failed, and 9
+succeeded. These are pre-cutover inventory facts, not acceptance. GitHub Actions
+has used 1,701 of 2,000 included hosted minutes; Actions budget is USD 0 with
+stop-usage enabled. Remaining minutes are not authorized for routine production
+documents or the final corpus.
+
+ADR-037 makes `CORE_PULL_WORKER` the target production control plane and Local
+Pull the primary provider. GitHub Actions remains a provider-neutral CI,
+qualification, and separately authorized emergency implementation, but is
+disabled for normal production AI. The local Windows machine remains a
+disposable outbound-only Compute executor; its absence must leave AI jobs
+queued/recoverable and every non-AI Core path available. WSL has not been
+installed or enabled by this program yet.
+
+Pre-WSL/reboot recovery gates at this checkpoint:
+
+```text
+CURRENT_WORK_CHECKPOINTED=true
+CURRENT_WORK_PUSHED=false
+REMOTE_HEAD_CONFIRMED=false
+DURABLE_NEXT_STEP_RECORDED=true
+OWNER_SOURCES_STAGED_ON_D=false
+OWNER_SOURCE_COPY_SHA256_VERIFIED=false
+```
 
 Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
@@ -118,6 +149,8 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 ## Completed
 
 - Fully read the Owner execution contract and repository workflow.
+- Fully read and reconciled the Local Compute pivot without restarting or
+  discarding the existing investigation.
 - Verified local HEAD, exact remote HEAD, branch, preserved dirty roots, and
   historical task/release state.
 - Verified all 12 Owner sources exist and recorded exact size/SHA-256 identity.
@@ -125,17 +158,36 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 - Re-established live release, service, health/readiness, schema/history,
   SQLite integrity, and foreign-key baseline facts.
 - Reconciled the active program into authoritative recovery documents.
+- Completed three reviewable local code checkpoints:
+  - `a4a1c4b`: eight-state current-generation AI semantics, exact immutable AI
+    evidence binding, batch latest-state API, and Activity/Details N+1 removal;
+  - `1497bec`: bounded SQLite batch metadata/bibliography/authority hydration
+    for Library listing and Search; and
+  - `c9ab369`: privacy-safe Compute stage/error classification and fact-level
+    invalid-result handling without source/model text disclosure.
+- Passed backend typecheck and 371/371 tests, frontend typecheck and 283/283
+  tests, Compute typecheck and 68 passing plus 2 expected runtime skips, full
+  workspace build, and `git diff --check` for those checkpoints.
+- Retained a privacy-safe read-only production inventory script and aligned its
+  reviewable-AI projection with exact immutable `scholarly_bibliographic_ai_runs`
+  evidence rather than candidate-source inference.
 
 ## Remaining
 
-- Commit and publish the planning/state reconciliation, then verify local/remote
-  equality without touching preserved untracked roots.
-- Inventory all deployed features/routes, request/query shapes, production
-  AI-eligible resources, exact duplicate identities, and GitHub cost/quota facts.
-- Establish privacy-safe production performance baselines.
-- Repair AI state semantics and all real-material failures.
+- Commit/push the Local Compute decision and read-only inventory tool, then
+  verify local/remote equality without touching preserved untracked roots.
+- Copy the exact 12 Owner PDFs without renaming to
+  `D:\AcademicCloudCompute\staging\acceptance-sources` and reverify all recorded
+  sizes/SHA-256 values before any WSL feature change or reboot.
+- Install/import WSL2 under D only after every pre-WSL gate is true; qualify GPU,
+  exact runtimes/models, resource envelope, and immutable local release.
+- Implement the provider-neutral pull/claim/lease/heartbeat/callback protocol,
+  narrow revocable machine credential, crash/sleep/restart recovery, and
+  NORMAL/PAUSED/BURST controls.
+- Classify the root-disk, CSP, and systemd-metric audit findings by evidence.
 - Implement only measured, safe, material zero-cost performance improvements.
-- Qualify/deploy exact releases and retry the same affected resources.
+- Qualify/deploy exact Core/frontend/Local Compute releases, retry the same
+  affected resources, and compare local versus historical hosted stage timings.
 - Freeze implementation; run whole-product regression and final full-corpus
   clean sweep; reconcile final cost and acceptance evidence.
 
@@ -147,16 +199,18 @@ remains a mandatory hard stop if encountered.
 
 ## Last Verification
 
-2026-08-24: local and remote HEAD both `816f915…`; 12/12 Owner PDFs available
-with exact hashes; production release `17fb945…`; service active/running,
-`NRestarts=0`, loopback/public health/readiness 200; schema 25/history 001–025;
-SQLite integrity `ok`; FK violations 0. General readiness baseline: 37 PASS,
-4 FAIL, 3 WARN, 11 UNKNOWN, 3 INFO; failures require bounded classification and
-must not be misreported as final acceptance.
+2026-08-24: local HEAD `c9ab369…`, remote `8db7f7d…`; all three shared-fix
+checkpoints and the full local gates above are green. 12/12 Owner PDFs remain
+available with exact recorded hashes; staging-copy verification is pending.
+Production remains `17fb945…`, schema 25/history 001–025. General readiness
+baseline remains 37 PASS, 4 FAIL, 3 WARN, 11 UNKNOWN, 3 INFO; no result has been
+misreported as final acceptance. No GitHub-hosted production Compute has run
+since the pivot.
 
 ## Next Action
 
-Review and checkpoint this durable reconciliation, publish it to the authorized
-non-main branch, verify local/remote equality, then inventory deployed features,
-the production AI corpus, exact Owner-source duplicates, and zero-cost/billing
-constraints before any large hosted-compute wave.
+Review/checkpoint this Local Compute reconciliation and privacy-safe inventory
+tool, push the authorized non-main branch, verify local/remote equality, then
+preserve and rehash all 12 Owner sources on D. Only after those gates are durable
+may WSL-on-D installation and local GPU/runtime qualification begin. Do not
+launch a GitHub-hosted production Compute probe or corpus wave.
