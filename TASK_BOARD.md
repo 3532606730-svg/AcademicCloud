@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / LOCAL PIVOT PRE-WSL GATES COMPLETE | Inspect host/WSL/GPU/disk state, then install and qualify WSL-on-D Local Pull Compute; stop once only if unavoidable UAC or reboot is required |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRE-WSL GATES COMPLETE / AWAITING ONE OWNER UAC+REBOOT | Owner runs `wsl.exe --install --no-distribution` once in an Administrator terminal and restarts; then agent re-verifies and installs/imports Ubuntu under D only |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -72,6 +72,13 @@ Current corpus facts remain `OWNER_SUPPLIED_TOTAL=12`,
 before final execution. No 105-resource wave starts before Local Pull cutover.
 The 12 D-drive staging copies retain their exact filenames, contain 199,835,281
 bytes, and passed all manifest length/SHA-256 checks.
+
+Host preflight passed the hardware/storage prerequisites and confirmed a true
+UAC boundary: Windows 11 build 26200, virtualization enabled, Hypervisor
+present, RTX 4060 8,188 MiB, 113.55 GB free on D, and WSL absent. No Windows
+feature changed. The single required Owner action is an elevated
+`wsl.exe --install --no-distribution` followed by the requested restart; no
+default distribution may be installed on C.
 
 Historical independent incident gates (not current final acceptance):
 

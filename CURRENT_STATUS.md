@@ -85,9 +85,19 @@ without renaming to `D:\AcademicCloudCompute\staging\acceptance-sources`; target
 count is 12, target bytes are 199,835,281, and every target length/SHA-256
 matches the immutable task manifest. WSL has not been installed or enabled by
 this program. All pre-WSL/reboot recovery gates are now complete; the next step
-is read-only host/WSL/GPU/disk inspection followed by WSL2-on-D installation,
-with one precise Owner action request only if unavoidable UAC or reboot blocks
-continuation.
+was read-only host/WSL/GPU/disk inspection.
+
+That preflight confirmed Windows 11 Home x64 build 26200, Ryzen 9 7945HX
+16-core/32-thread CPU, 16.84 GB physical RAM, firmware virtualization enabled,
+Hypervisor present, RTX 4060 Laptop GPU with 8,188 MiB VRAM and driver 572.83,
+15.55 GB free on C, and 113.55 GB free on D. Windows Node is v24.16.0 and Git is
+2.55.0. WSL is not installed. Both WSL status and optional-feature inspection
+show that elevation is required; no OS feature was changed. This is the one
+legitimate Owner UAC/reboot boundary. Run `wsl.exe --install --no-distribution`
+from an Administrator terminal and restart Windows when requested; the
+`--no-distribution` gate prevents a default Ubuntu/VHDX installation on C.
+After restart, reverify this repository and the 12 hashes, then place the Linux
+distribution under `D:\AcademicCloudCompute\wsl`.
 
 ## Historical incident evidence (superseded as current acceptance)
 

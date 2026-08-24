@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T19:18:00+08:00",
+  "updatedAt": "2026-08-24T19:22:08+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -87,7 +87,7 @@
   },
   "localComputePivot": {
     "decision": "ADR-037",
-    "status": "accepted_pre_wsl_gates_complete_implementation_pending",
+    "status": "accepted_pre_wsl_gates_complete_awaiting_owner_uac_reboot",
     "productionComputeControlPlane": "CORE_PULL_WORKER",
     "localPullProvider": "primary_target",
     "githubHostedProductionCompute": false,
@@ -105,7 +105,25 @@
     "persistentProductionPdfStorage": false,
     "persistentRawOcrStorage": false,
     "persistentRenderedPageStorage": false,
-    "next": "inspect current Windows, WSL, GPU, disk, and virtualization state read-only; then begin WSL2-on-D installation/qualification, stopping once only if unavoidable UAC or reboot is required"
+    "hostPreflight": {
+      "operatingSystem": "Windows 11 Home Chinese x64 10.0.26200",
+      "cpu": "AMD Ryzen 9 7945HX; 16 cores; 32 logical processors",
+      "physicalMemoryBytes": 16844877824,
+      "cFreeBytes": 15552995328,
+      "dFreeBytes": 113545478144,
+      "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+      "gpuDriver": "572.83",
+      "gpuTotalMiB": 8188,
+      "firmwareVirtualization": true,
+      "hypervisorPresent": true,
+      "windowsNode": "v24.16.0",
+      "windowsGit": "2.55.0.windows.3",
+      "wslInstalled": false,
+      "featureInspection": "requires elevation",
+      "classification": "true UAC and likely reboot boundary; no OS feature was changed"
+    },
+    "ownerBoundaryAction": "Open Windows Terminal or PowerShell as Administrator, run: wsl.exe --install --no-distribution, approve UAC, and restart Windows when requested. This intentionally installs no default Linux distribution on C.",
+    "next": "after reboot, reverify repository/staging hashes, WSL2 status, and GPU visibility; then import/install Ubuntu under D:\\AcademicCloudCompute\\wsl without creating a default C-drive distro"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",

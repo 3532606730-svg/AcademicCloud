@@ -182,6 +182,13 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   independently verified local and remote HEAD equality at `5911954…`.
 - Preserved all 12 exact Owner sources on D outside Git and passed 12/12 target
   length/SHA-256 verification with no rename or source mutation.
+- Completed read-only host preflight: Windows 11 Home x64 build 26200, Ryzen 9
+  7945HX 16C/32T, 16.84 GB RAM, firmware virtualization enabled, Hypervisor
+  present, RTX 4060 Laptop GPU 8,188 MiB / driver 572.83, C free 15.55 GB, D
+  free 113.55 GB, Windows Node v24.16.0, and Git 2.55.0.
+- Confirmed WSL is absent and both feature inspection and installation require
+  elevation. No Windows optional feature, default distribution, or C-drive WSL
+  state was created.
 
 ## Remaining
 
@@ -199,9 +206,13 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-None at recovery. Additional monetary cost, unavailable required permission,
-irreversible real-data risk, or a proven privacy/security authority conflict
-remains a mandatory hard stop if encountered.
+One legitimate pre-install boundary remains: the Owner must approve UAC once
+and allow the required Windows restart after running
+`wsl.exe --install --no-distribution` in an Administrator terminal. This command
+intentionally installs no default Linux distribution on C. Repository work,
+remote publication, durable next-step state, and the 12 D-drive source copies
+are reboot-safe. Additional monetary cost, irreversible real-data risk, or a
+proven privacy/security authority conflict remains a mandatory hard stop.
 
 ## Last Verification
 
@@ -212,12 +223,13 @@ length/SHA-256 matches. Production remains `17fb945…`, schema 25/history
 001–025. General readiness baseline remains 37 PASS, 4 FAIL, 3 WARN, 11 UNKNOWN,
 3 INFO; no result has been misreported as final acceptance. No GitHub-hosted
 production Compute has run since the pivot, and no WSL/Windows feature has yet
-been changed.
+been changed. Host preflight established the exact UAC/reboot boundary above.
 
 ## Next Action
 
-Commit/push this source-preservation reconciliation and verify local/remote
-equality. Then inspect current Windows/WSL/GPU/disk/virtualization state
-read-only and begin WSL-on-D installation and local runtime qualification. Stop
-once with one precise request only if unavoidable UAC or reboot is required. Do
-not launch a GitHub-hosted production Compute probe or corpus wave.
+After this boundary record is committed/pushed and local/remote equality is
+verified, the Owner runs `wsl.exe --install --no-distribution` once from an
+Administrator terminal and restarts Windows when requested. On continuation,
+reverify repository HEAD and all 12 staging hashes, then install/import Ubuntu
+under `D:\AcademicCloudCompute\wsl` and qualify the local GPU/runtime. Do not
+launch a GitHub-hosted production Compute probe or corpus wave.
