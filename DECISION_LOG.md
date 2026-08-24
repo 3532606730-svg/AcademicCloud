@@ -349,3 +349,24 @@ rendered deterministically. Full note, supported subsequent note,
 bibliography, normalized CSL item, completeness, and style provenance are
 returned together. No schema, data, object, provider, or production change is
 part of this decision.
+
+## Owner execution decision — Final stabilization, full corpus, zero cost
+
+**Date:** 2026-08-24
+**Status:** Active Owner-authorized continuous execution program
+**Task:** `tasks/doing/ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE.md`
+
+The Owner reopened `INCIDENT-L1-AI-PRODUCTION01` and revoked the earlier
+whole-product production acceptance and Internal Beta readiness until every
+currently implemented critical path, all available Owner-supplied relevant
+files, and all AI-eligible production Library resources pass the new final
+contract. Existing upload/multipart optimization is part of this integrated
+program; stale next-task pointers do not start a separate Epic.
+
+Functional correctness, data authority/privacy/security, production stability,
+and zero additional cost all outrank performance. The former hard 30-second AI
+SLA is retired; measured structural improvement is required without inventing
+an arbitrary latency threshold. Internal Beta, invitations, new product scope,
+whole-document OCR/indexing, embeddings/RAG, paid services, new billable GitHub
+usage, irreversible real-data risk, and forbidden artifact `9405764771` remain
+outside authority.

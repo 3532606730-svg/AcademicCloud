@@ -7,13 +7,28 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 ## Current Owner authorization / continuous objective
 
-`INCIDENT-L1-AI-PRODUCTION01` is **CLOSED / OWNER REAL-BROWSER PATH PASS**.
-The exact 62,990,004-byte path and a 76,097,594-byte >64 MiB path both pass
-through the normal signed-in production UI. The larger run read the complete
-object in 73 bounded requests, persisted two reviewable candidates, and used
-the existing incomplete-window contract at the unchanged OCR deadline. Do not
-start the AI quality cohort, Internal Beta, `UPLOAD-PERF01`, or unrelated work
-from this closure.
+`ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE` is
+**ACTIVE / OWNER-AUTHORIZED CONTINUOUS EXECUTION**. It reopens
+`INCIDENT-L1-AI-PRODUCTION01`, revokes whole-product production acceptance and
+Internal Beta readiness, and supersedes the stale `UPLOAD-PERF01` next-task
+pointer. It covers correctness, stability, AI-state semantics, all available
+Owner sources, all AI-eligible production Library resources, and material
+zero-cost performance work on existing paths including upload/multipart.
+
+```text
+INCIDENT_L1_AI_PRODUCTION01=OPEN
+PRODUCTION_USER_ACCEPTANCE=FAIL
+AUTONOMOUS_FULL_CORPUS_ACCEPTANCE=PENDING
+WHOLE_PRODUCT_PERFORMANCE_ACCEPTANCE=PENDING
+INTERNAL_BETA_READY=false
+INTERNAL_BETA_STARTED=false
+```
+
+There is no fixed 30-second AI SLA. Cost, data authority, privacy, security,
+stability, exact release identity, normal product-path execution, and a final
+frozen full-corpus clean sweep are mandatory. Do not start Internal Beta,
+invitations, unrelated features, whole-document OCR/indexing, embeddings/RAG,
+paid infrastructure, or forbidden artifact `9405764771`.
 
 `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is complete: SSH read-only evidence,
 Git write/push, authenticated GitHub Actions read, and browser evidence remained
@@ -21,15 +36,16 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / RECOVERY COMPLETE / RECONCILIATION IN PROGRESS | Inventory deployed features, production AI corpus, and performance baselines; then repair first shared correctness boundary |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
-| UPLOAD-PERF01 | NEXT APPROVED / NOT STARTED | Separate independently rollbackable release; do not start from this completed program |
-| GOAL-BETA-PREP01 | COMPLETE / INTERNAL_BETA_READY=true | STOP — Owner decides whether/when to start Internal Beta; no invitations sent |
+| UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
+| GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
 | HOTFIX-META-UX01 | HISTORICAL RELEASE `53317bb…`, now the immediate app+v22 backup rollback pair for `017a47d…` | Owner manual acceptance remains pending; no action started here |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
 | OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
 
-Independent incident gates:
+Historical independent incident gates (not current final acceptance):
 
 ```text
 PDFJS_REPAIRED_RELEASE_E2E=PASS
@@ -163,10 +179,13 @@ SEARCH_PRODUCTION_SOURCE=b19f9dc5b48e1976127704712e08a8655b1fadd5
 SEARCH_PRODUCTION=PASS
 ACTIVITY_CENTER_V0_1=PASS
 QA_GOLDEN01=PASS
-INTERNAL_BETA_READY=true
+INTERNAL_BETA_READY=false
 INTERNAL_BETA_STARTED=false
 LAYER1_COMPLETE=true
-NEXT_ACTION=STOP_FOR_OWNER_INTERNAL_BETA_DECISION
+INCIDENT_L1_AI_PRODUCTION01=OPEN
+AUTONOMOUS_FULL_CORPUS_ACCEPTANCE=PENDING
+WHOLE_PRODUCT_PERFORMANCE_ACCEPTANCE=PENDING
+NEXT_ACTION=EXECUTE_FINAL_STABILIZATION_FULL_CORPUS_ZERO_COST_PERFORMANCE
 
 HOTFIX_META_UX01_STATE=SUPERSEDED_BY_017a47d_RETAINED_AS_ROLLBACK
 HOTFIX_META_UX01_MIGRATION_CHANGE=none

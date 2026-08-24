@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T15:05:00+08:00",
+  "updatedAt": "2026-08-24T18:07:23+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -12,19 +12,45 @@
     "rfSearchRuntimePresent": true,
     "rfSearchPhase3Accepted": true,
     "activityCenterV01Accepted": true,
-    "liveProcessIdentityNeedsIncidentReverification": false,
-    "productionUserAcceptance": true,
-    "ownerRealBrowserPath": true,
-    "current6299MbOwnerPath": true,
-    "largePdfOver64MbPath": true,
-    "incidentL1AiProduction01Closed": true,
+    "liveProcessIdentityNeedsIncidentReverification": true,
+    "productionUserAcceptance": false,
+    "ownerRealBrowserPath": false,
+    "current6299MbOwnerPath": false,
+    "largePdfOver64MbPath": false,
+    "incidentL1AiProduction01Closed": false,
     "acceptedComputeSource": "ccde12d0f1aadff484b42841eb1136061f86cb9b",
     "largePdfAcceptanceRun": 32699116627,
     "largePdfAcceptanceBytes": 76097594,
     "largePdfAcceptanceRangeRequests": 73
   },
-  "activeIncidents": [],
-  "activeTasks": [],
+  "activeIncidents": ["INCIDENT-L1-AI-PRODUCTION01"],
+  "activeTasks": ["ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE"],
+  "finalStabilizationProgram": {
+    "task": "ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE",
+    "state": "active_recovered_reconciliation_in_progress",
+    "autonomousFullCorpusAcceptance": "pending",
+    "wholeProductPerformanceAcceptance": "pending",
+    "internalBetaReady": false,
+    "internalBetaStarted": false,
+    "hardThirtySecondAiSla": false,
+    "ownerSuppliedAvailable": 12,
+    "ownerSourceUnavailable": 0,
+    "productionEligibleTotal": null,
+    "uniqueAcceptanceTotal": null,
+    "zeroAdditionalCostRequired": true,
+    "newBillableGithubUsageAllowed": false,
+    "baseline": {
+      "localHead": "816f9154c58d560399e527823ea9d16ec87afa1a",
+      "remoteHead": "816f9154c58d560399e527823ea9d16ec87afa1a",
+      "productionRelease": "17fb945220c44df71e4846a0ccd5f54e98f43858",
+      "schema": 25,
+      "migrationHistory": "001-025",
+      "service": "active/running; NRestarts=0; loopback/public health and readiness 200",
+      "sqliteIntegrity": "ok",
+      "foreignKeyViolations": 0,
+      "preservedUntrackedRoots": ["%SystemDrive%/", "scratch/"]
+    }
+  },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
     "state": "complete_deployed_verified",
@@ -124,7 +150,7 @@
     "internalBetaStarted": false,
     "layer1Complete": true,
     "nextCheckpoint": null,
-    "nextApprovedTask": "UPLOAD-PERF01_NOT_STARTED"
+    "nextApprovedTask": "ACADEMICCLOUD_FINAL_STABILIZATION_ACTIVE"
   },
   "storageIncident": {
     "policyRootCause": "missing RAM allow",
@@ -601,9 +627,9 @@
     "ownerManualAcceptance": "PENDING — Owner performs manual product acceptance in production (fast naming, batch naming, sorting, regression surfaces); no browser automation was run per Owner override"
   },
   "currentPriorityOrder": [
-    "L1-INTELLIGENT-LIBRARY01 — COMPLETE / exact production 017a47d / schema v24",
-    "UPLOAD-PERF01 — next approved separate release, not started",
-    "STOP; internal beta and invitations remain unstarted"
+    "ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE — ACTIVE",
+    "Correctness and authority before stability, zero cost, and performance",
+    "STOP before internal beta, invitations, new product scope, paid usage, or irreversible real-data risk"
   ],
   "notes": [
     "Do not store the current branch HEAD in this file: a file cannot truthfully contain the SHA of the commit that contains itself.",

@@ -6,14 +6,52 @@
 cards preserve the complete implementation, incident, release, and rollback
 evidence without duplicating it here.
 
-## Closed incident: INCIDENT-L1-AI-PRODUCTION01
+## Active program: ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE
 
-Owner real-browser production acceptance on 2026-08-24 overrode every earlier
+The Owner reopened the Layer-1 AI production incident and superseded every
+earlier whole-product closure, production-acceptance, Internal Beta readiness,
+hard 30-second AI SLA, and stale next-task pointer. The active program repairs
+and optimizes existing product paths only, processes every available
+Owner-supplied relevant source plus every AI-eligible production Library
+resource through the normal product path, and ends with a frozen full-corpus
+clean sweep and whole-product production regression. Zero additional one-time
+or monthly infrastructure cost and zero new billable GitHub usage are hard
+gates.
+
+```text
+INCIDENT_L1_AI_PRODUCTION01=OPEN
+PRODUCTION_USER_ACCEPTANCE=FAIL
+AUTONOMOUS_FULL_CORPUS_ACCEPTANCE=PENDING
+WHOLE_PRODUCT_PERFORMANCE_ACCEPTANCE=PENDING
+INTERNAL_BETA_READY=false
+INTERNAL_BETA_STARTED=false
+```
+
+Recovery on 2026-08-24 established local and remote branch HEAD
+`816f9154c58d560399e527823ea9d16ec87afa1a`; the two untracked workspace roots
+`%SystemDrive%/` and `scratch/` are preserved as pre-existing user material.
+Live production remains exact frontend/Core `17fb945220c44df71e4846a0ccd5f54e98f43858`,
+schema v25/history 001–025. Direct read-only evidence shows the service
+active/running with `NRestarts=0`, `MemoryHigh=320 MiB`, `MemoryMax=384 MiB`,
+loopback/public health and readiness 200, SQLite integrity `ok`, and zero
+foreign-key violations. The general readiness audit also found root-disk
+headroom 10,319,340 KiB below its 10 GiB gate, a CSP/profile mismatch, nine
+historical current-boot kernel OOM matches, and several concurrent-probe
+timeouts; these are baseline findings to classify, not final acceptance.
+
+All 12 Owner-supplied PDFs named in the active task are locally available and
+have immutable SHA-256 identities recorded in the active task card. No upload,
+production AI execution, deployment, provider mutation, paid usage, or source
+mutation occurred during recovery.
+
+## Historical incident evidence (superseded as current acceptance)
+
+Owner real-browser production acceptance earlier on 2026-08-24 overrode every earlier
 synthetic fixture, harness, CI, worker, and repository acceptance claim. The
 same normal deployed-website path now passes after live-boundary diagnosis and
-bounded repair. The incident is closed and Internal Beta readiness is restored;
-the quality cohort, Internal Beta, invitations, `UPLOAD-PERF01`, and unrelated
-work have not started.
+bounded repair. This remains valid historical path evidence, but its closure and
+Internal Beta conclusions were superseded by the active full-corpus contract;
+Internal Beta and invitations have still not started.
 
 ```text
 PRODUCTION_USER_ACCEPTANCE=PASS

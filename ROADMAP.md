@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-08-22
+**Last reconciled:** 2026-08-24
 
 ## Product Direction
 
@@ -25,6 +25,33 @@ Source-Grounded Intelligence
 ```
 
 The current reliability interlock changes sequencing, not this model.
+
+## Active final-stabilization interlock
+
+The Owner-authorized
+`ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE`
+program supersedes the former post-Layer-1 `UPLOAD-PERF01` next pointer and the
+earlier whole-product closure. It does not add product scope. It integrates
+correctness/stability repair, unambiguous AI-generation state, every available
+Owner source, every AI-eligible production Library resource, and material
+zero-cost performance work across existing paths. Final authority requires a
+frozen full-corpus clean sweep and whole-product production regression.
+
+```text
+FINAL_STABILIZATION — ACTIVE
+→ functional and authority repair
+→ current-feature inventory and privacy-safe baselines
+→ full acceptance manifest
+→ zero-cost structural performance repair
+→ exact qualified releases and bounded production retries
+→ frozen full-corpus clean sweep
+→ whole-product regression and cost proof
+→ only then reconsider production acceptance / Internal Beta readiness
+```
+
+No hard 30-second AI SLA applies. No new paid infrastructure, billable GitHub
+usage, Internal Beta/invitations, unrelated Layer 2/3/4 scope, whole-document
+OCR/indexing, embeddings, or RAG is authorized.
 
 ## Current Reality — Operational Maturity Interlock
 
@@ -105,10 +132,11 @@ generation, additive migration, deployment, and bounded production proof.
 Production runs exact `017a47d…` at schema v24/history 001–024 with no
 historical backfill or full-Library AI wave.
 
-Layer 1 is complete. `UPLOAD-PERF01` is the next approved, separately
-rollbackable release, but it has not started. Stop here before Internal Beta,
-user invitations, Upload Pipeline V2 implementation, or any Layer 2/3/4 work.
-The completed contract and hard boundaries remain preserved in
+Layer 1's implementation checkpoints remain historically complete, but the
+active full-corpus contract revoked project-level production acceptance and
+Internal Beta readiness. Existing upload-path optimization is now inside the
+integrated final-stabilization program; no separate `UPLOAD-PERF01` task begins.
+The completed Layer-1 contract remains preserved in
 `tasks/done/L1-INTELLIGENT-LIBRARY01.md`.
 
 ## Why this interlock exists
