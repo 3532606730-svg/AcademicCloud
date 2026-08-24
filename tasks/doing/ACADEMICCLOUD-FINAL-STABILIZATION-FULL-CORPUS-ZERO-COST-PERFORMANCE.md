@@ -189,11 +189,23 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 - Confirmed WSL is absent and both feature inspection and installation require
   elevation. No Windows optional feature, default distribution, or C-drive WSL
   state was created.
+- Recovered after the Owner's UAC/reboot action and reverified repository HEAD,
+  12/12 files, 199,835,281 bytes, and every staging SHA-256.
+- Installed the sole `AcademicCloudCompute` Ubuntu 24.04.4 distribution as WSL2
+  at `D:\AcademicCloudCompute\wsl\AcademicCloudCompute`; registry BasePath and
+  the 80 GB sparse `ext4.vhdx` are on D and registered C-drive distros are zero.
+- Provisioned reproducible base scripts, systemd, the non-root `academiccloud`
+  user, and secure worker state/temp/log directories. The Normal envelope is
+  8 processors, about 8 GB RAM, and 4 GB sparse swap explicitly on D; no default
+  C-drive swap exists.
+- Passed initial GPU visibility: `/dev/dxg`, WSL `libcuda.so.1`, and RTX 4060
+  driver 572.83 / 8,188 MiB / compute capability 8.9 are visible. This does not
+  yet claim CUDA execution or Paddle/Qwen inference.
 
 ## Remaining
 
-- Install/import WSL2 under D only after every pre-WSL gate is true; qualify GPU,
-  exact runtimes/models, resource envelope, and immutable local release.
+- Install exact Linux Node and qualify real CUDA execution, Paddle CPU/GPU,
+  Qwen CPU/CUDA, resource envelope, and the immutable local release.
 - Implement the provider-neutral pull/claim/lease/heartbeat/callback protocol,
   narrow revocable machine credential, crash/sleep/restart recovery, and
   NORMAL/PAUSED/BURST controls.
@@ -206,13 +218,9 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-One legitimate pre-install boundary remains: the Owner must approve UAC once
-and allow the required Windows restart after running
-`wsl.exe --install --no-distribution` in an Administrator terminal. This command
-intentionally installs no default Linux distribution on C. Repository work,
-remote publication, durable next-step state, and the 12 D-drive source copies
-are reboot-safe. Additional monetary cost, irreversible real-data risk, or a
-proven privacy/security authority conflict remains a mandatory hard stop.
+None. The one UAC/reboot boundary is complete. Additional monetary cost,
+irreversible real-data risk, or a proven privacy/security authority conflict
+remains a mandatory hard stop.
 
 ## Last Verification
 
@@ -223,13 +231,13 @@ length/SHA-256 matches. Production remains `17fb945…`, schema 25/history
 001–025. General readiness baseline remains 37 PASS, 4 FAIL, 3 WARN, 11 UNKNOWN,
 3 INFO; no result has been misreported as final acceptance. No GitHub-hosted
 production Compute has run since the pivot, and no WSL/Windows feature has yet
-been changed. Host preflight established the exact UAC/reboot boundary above.
+been used for production Compute. Post-reboot WSL-on-D and initial GPU
+visibility evidence above passed; CUDA execution and exact AI runtime gates are
+pending.
 
 ## Next Action
 
-After this boundary record is committed/pushed and local/remote equality is
-verified, the Owner runs `wsl.exe --install --no-distribution` once from an
-Administrator terminal and restarts Windows when requested. On continuation,
-reverify repository HEAD and all 12 staging hashes, then install/import Ubuntu
-under `D:\AcademicCloudCompute\wsl` and qualify the local GPU/runtime. Do not
-launch a GitHub-hosted production Compute probe or corpus wave.
+Checkpoint/push the reproducible WSL foundation and durable evidence, verify
+local/remote equality, then install exact Linux Node, prove real CUDA execution,
+and benchmark exact Paddle CPU/GPU plus Qwen CPU/CUDA inside the bounded Normal
+envelope. Do not launch a GitHub-hosted production Compute probe or corpus wave.

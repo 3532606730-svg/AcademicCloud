@@ -83,21 +83,38 @@ plus 2 expected runtime skips, full workspace build, and diff check passed. No
 new GitHub-hosted production probe was launched. All 12 source files were copied
 without renaming to `D:\AcademicCloudCompute\staging\acceptance-sources`; target
 count is 12, target bytes are 199,835,281, and every target length/SHA-256
-matches the immutable task manifest. WSL has not been installed or enabled by
-this program. All pre-WSL/reboot recovery gates are now complete; the next step
-was read-only host/WSL/GPU/disk inspection.
+matches the immutable task manifest. At that pre-reboot checkpoint WSL had not
+yet been installed or enabled by this program, and all recovery gates were
+complete before the read-only host/WSL/GPU/disk inspection.
 
 That preflight confirmed Windows 11 Home x64 build 26200, Ryzen 9 7945HX
 16-core/32-thread CPU, 16.84 GB physical RAM, firmware virtualization enabled,
 Hypervisor present, RTX 4060 Laptop GPU with 8,188 MiB VRAM and driver 572.83,
 15.55 GB free on C, and 113.55 GB free on D. Windows Node is v24.16.0 and Git is
-2.55.0. WSL is not installed. Both WSL status and optional-feature inspection
-show that elevation is required; no OS feature was changed. This is the one
-legitimate Owner UAC/reboot boundary. Run `wsl.exe --install --no-distribution`
-from an Administrator terminal and restart Windows when requested; the
-`--no-distribution` gate prevents a default Ubuntu/VHDX installation on C.
-After restart, reverify this repository and the 12 hashes, then place the Linux
-distribution under `D:\AcademicCloudCompute\wsl`.
+2.55.0. At that time WSL was absent, and both WSL status and optional-feature
+inspection showed that elevation was required; no OS feature had yet changed.
+The one legitimate Owner UAC/reboot boundary was an elevated
+`wsl.exe --install --no-distribution` plus restart; `--no-distribution`
+prevented a default Ubuntu/VHDX installation on C.
+After the Owner completed that one action, reboot recovery reverified local and
+remote-tracking HEAD `380fb05…` plus all 12 files, 199,835,281 bytes, and 12/12
+SHA-256 identities.
+
+The only registered distribution is now `AcademicCloudCompute`, Ubuntu 24.04.4
+LTS on WSL2. Registry `BasePath` and the physical 80 GB sparse `ext4.vhdx` are
+both under `D:\AcademicCloudCompute\wsl\AcademicCloudCompute`; registered
+C-drive distributions remain zero. WSL1 remains intentionally disabled.
+Systemd is running, the non-privileged `academiccloud` user owns the worker
+state directories, and the Normal envelope is 8 processors, approximately
+8 GB RAM, and 4 GB swap at `D:\AcademicCloudCompute\wsl\swap.vhdx`; no default
+C-drive swap exists. The audited `.wslconfig` SHA-256 is
+`0f94c64e111057528ea267ace77cdcf43d5bcc091bd731e6613651f1ffe213e6`.
+
+`/dev/dxg`, WSL `libcuda.so.1`, and the RTX 4060 Laptop GPU are visible inside
+Ubuntu with driver 572.83, 8,188 MiB VRAM, and compute capability 8.9.
+`LOCAL_WSL_INSTALLED_ON_D=PASS` and `LOCAL_GPU_VISIBLE=PASS`; CUDA execution,
+exact Node/Paddle/Qwen/llama identity, real inference, memory, and VRAM gates are
+still pending and must not be inferred from `nvidia-smi` alone.
 
 ## Historical incident evidence (superseded as current acceptance)
 

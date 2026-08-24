@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T19:22:08+08:00",
+  "updatedAt": "2026-08-24T20:06:05+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -87,7 +87,7 @@
   },
   "localComputePivot": {
     "decision": "ADR-037",
-    "status": "accepted_pre_wsl_gates_complete_awaiting_owner_uac_reboot",
+    "status": "wsl_on_d_and_gpu_visibility_pass_runtime_qualification_in_progress",
     "productionComputeControlPlane": "CORE_PULL_WORKER",
     "localPullProvider": "primary_target",
     "githubHostedProductionCompute": false,
@@ -118,12 +118,38 @@
       "hypervisorPresent": true,
       "windowsNode": "v24.16.0",
       "windowsGit": "2.55.0.windows.3",
-      "wslInstalled": false,
-      "featureInspection": "requires elevation",
-      "classification": "true UAC and likely reboot boundary; no OS feature was changed"
+      "wslInstalled": true,
+      "wslVersion": "2.7.12.0",
+      "wslKernel": "6.18.33.2-2",
+      "defaultWslVersion": 2,
+      "virtualMachinePlatform": "enabled",
+      "wsl1Enabled": false,
+      "classification": "Owner completed the one UAC/reboot boundary; WSL1 remains intentionally disabled"
     },
-    "ownerBoundaryAction": "Open Windows Terminal or PowerShell as Administrator, run: wsl.exe --install --no-distribution, approve UAC, and restart Windows when requested. This intentionally installs no default Linux distribution on C.",
-    "next": "after reboot, reverify repository/staging hashes, WSL2 status, and GPU visibility; then import/install Ubuntu under D:\\AcademicCloudCompute\\wsl without creating a default C-drive distro"
+    "wslFoundation": {
+      "gate": "LOCAL_WSL_INSTALLED_ON_D=PASS; LOCAL_GPU_VISIBLE=PASS",
+      "distribution": "AcademicCloudCompute",
+      "ubuntu": "24.04.4 LTS",
+      "version": 2,
+      "basePath": "D:\\AcademicCloudCompute\\wsl\\AcademicCloudCompute",
+      "vhdPath": "D:\\AcademicCloudCompute\\wsl\\AcademicCloudCompute\\ext4.vhdx",
+      "vhdMaximumBytes": 85899345920,
+      "registeredCDriveDistributions": 0,
+      "systemd": "running",
+      "defaultUser": "academiccloud uid/gid 1000",
+      "normalMemoryBytes": 8327397376,
+      "normalProcessors": 8,
+      "swapBytes": 4294967296,
+      "swapPath": "D:\\AcademicCloudCompute\\wsl\\swap.vhdx",
+      "defaultCSwapPresent": false,
+      "wslConfigSha256": "0f94c64e111057528ea267ace77cdcf43d5bcc091bd731e6613651f1ffe213e6",
+      "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU; driver 572.83; 8188 MiB; compute capability 8.9",
+      "dxg": true,
+      "cudaDriverLibrary": "/usr/lib/wsl/lib/libcuda.so.1",
+      "cudaExecutionQualified": false
+    },
+    "ownerBoundaryAction": null,
+    "next": "install exact Linux Node runtime, qualify real CUDA execution, then build and benchmark exact Paddle CPU/GPU and Qwen CPU/CUDA release variants before implementing the Local Pull protocol"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",

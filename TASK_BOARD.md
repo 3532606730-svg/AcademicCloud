@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRE-WSL GATES COMPLETE / AWAITING ONE OWNER UAC+REBOOT | Owner runs `wsl.exe --install --no-distribution` once in an Administrator terminal and restarts; then agent re-verifies and installs/imports Ubuntu under D only |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / WSL-ON-D + GPU VISIBILITY PASS / RUNTIME QUALIFICATION IN PROGRESS | Install exact Linux Node; qualify real CUDA execution and Paddle CPU/GPU plus Qwen CPU/CUDA before implementing Local Pull lease/heartbeat |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -79,6 +79,14 @@ present, RTX 4060 8,188 MiB, 113.55 GB free on D, and WSL absent. No Windows
 feature changed. The single required Owner action is an elevated
 `wsl.exe --install --no-distribution` followed by the requested restart; no
 default distribution may be installed on C.
+
+The Owner completed that boundary. Post-reboot source/repository checks passed,
+and the only registered distro is Ubuntu 24.04.4 `AcademicCloudCompute` on
+WSL2 with `BasePath`/80 GB sparse VHDX under D and zero C-drive distros. The
+Normal envelope is 8 CPUs, about 8 GB RAM, and 4 GB D-drive swap; systemd and
+the non-root worker user are ready. `/dev/dxg`, WSL `libcuda.so.1`, and the RTX
+4060 8,188 MiB / compute capability 8.9 are visible. Treat CUDA execution and
+real Paddle/Qwen inference as pending until their actual workloads pass.
 
 Historical independent incident gates (not current final acceptance):
 

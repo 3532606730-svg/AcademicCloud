@@ -1,0 +1,11 @@
+[wsl2]
+memory=8GB
+processors=8
+swap=4GB
+swapFile=D:\\AcademicCloudCompute\\wsl\\swap.vhdx
+guiApplications=false
+nestedVirtualization=false
+
+[experimental]
+autoMemoryReclaim=gradual
+sparseVhd=true
