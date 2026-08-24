@@ -7,22 +7,23 @@ current pointers; task cards and ADRs preserve complete contracts and evidence.
 
 ## Current Owner authorization / continuous objective
 
-`INCIDENT-L1-AI-PRODUCTION01` is **CURRENTLY OPEN / PRODUCTION USER ACCEPTANCE
-FAIL**. The Owner's real-browser observation overrides the earlier fixture,
-harness, worker, CI, and repository gates. Diagnose the first broken boundary
-through the signed-in production UI, make only the smallest repair, deploy its
-exact artifact, and re-test the same real browser path. Do not start the AI
-quality cohort, Internal Beta, `UPLOAD-PERF01`, or unrelated work.
+`INCIDENT-L1-AI-PRODUCTION01` is **CLOSED / OWNER REAL-BROWSER PATH PASS**.
+The exact 62,990,004-byte path and a 76,097,594-byte >64 MiB path both pass
+through the normal signed-in production UI. The larger run read the complete
+object in 73 bounded requests, persisted two reviewable candidates, and used
+the existing incomplete-window contract at the unchanged OCR deadline. Do not
+start the AI quality cohort, Internal Beta, `UPLOAD-PERF01`, or unrelated work
+from this closure.
 
-`ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` has its access gates resolved:
-SSH read-only evidence, Git write/push, and authorized GitHub Actions browser
-read are available. Reconcile the card at the incident checkpoint.
+`ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is complete: SSH read-only evidence,
+Git write/push, authenticated GitHub Actions read, and browser evidence remained
+available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | NEXT APPROVED / NOT STARTED | Separate independently rollbackable release; do not start from this completed program |
-| GOAL-BETA-PREP01 | HISTORICAL GATES PRESERVED / INTERNAL_BETA_READY=false | STOP — production Owner-path acceptance failed; no internal beta or invitations |
+| GOAL-BETA-PREP01 | COMPLETE / INTERNAL_BETA_READY=true | STOP — Owner decides whether/when to start Internal Beta; no invitations sent |
 | HOTFIX-META-UX01 | HISTORICAL RELEASE `53317bb…`, now the immediate app+v22 backup rollback pair for `017a47d…` | Owner manual acceptance remains pending; no action started here |
 | COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
 | ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
@@ -32,6 +33,7 @@ Independent incident gates:
 
 ```text
 PDFJS_REPAIRED_RELEASE_E2E=PASS
+PDFJS_REPAIRED_RELEASE_LEGACY_E2E=PASS
 RESOURCE_ALREADY_EXISTED=true
 PRE_FIX_FAILURE_BOUNDARY=PDFJS_RANGE_READER
 NEW_JOB_CREATED=true
@@ -45,9 +47,10 @@ TERMINAL_STATE=succeeded
 DUPLICATE_DURABLE_JOBS=0
 DUPLICATE_PROVIDER_EXECUTIONS=0
 CURRENT_62_99MB_OWNER_PATH=PASS
-LARGE_PDF_OVER_64MB_PATH=FAIL / pending repaired-worker production retry
-OWNER_REAL_BROWSER_PATH=FAIL
-INCIDENT_CLOSED=false
+LARGE_PDF_OVER_64MB_PATH=PASS
+OWNER_REAL_BROWSER_PATH=PASS
+REAL_BROWSER_E2E=PASS
+INCIDENT_CLOSED=true
 AMBIGUOUS_DISPATCH_RECOVERY=PASS
 ```
 
@@ -160,10 +163,10 @@ SEARCH_PRODUCTION_SOURCE=b19f9dc5b48e1976127704712e08a8655b1fadd5
 SEARCH_PRODUCTION=PASS
 ACTIVITY_CENTER_V0_1=PASS
 QA_GOLDEN01=PASS
-INTERNAL_BETA_READY=false
+INTERNAL_BETA_READY=true
 INTERNAL_BETA_STARTED=false
 LAYER1_COMPLETE=true
-NEXT_ACTION=INCIDENT_L1_AI_PRODUCTION01_REAL_BROWSER_REPAIR
+NEXT_ACTION=STOP_FOR_OWNER_INTERNAL_BETA_DECISION
 
 HOTFIX_META_UX01_STATE=SUPERSEDED_BY_017a47d_RETAINED_AS_ROLLBACK
 HOTFIX_META_UX01_MIGRATION_CHANGE=none

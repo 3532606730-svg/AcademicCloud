@@ -6,19 +6,20 @@
 cards preserve the complete implementation, incident, release, and rollback
 evidence without duplicating it here.
 
-## Active incident: INCIDENT-L1-AI-PRODUCTION01
+## Closed incident: INCIDENT-L1-AI-PRODUCTION01
 
-Owner real-browser production acceptance on 2026-08-24 overrides every earlier
+Owner real-browser production acceptance on 2026-08-24 overrode every earlier
 synthetic fixture, harness, CI, worker, and repository acceptance claim. The
-feature remains unusable through the normal deployed website. The incident is
-open and Internal Beta readiness is revoked until the same real Owner browser
-path passes after a live-boundary diagnosis and repair.
+same normal deployed-website path now passes after live-boundary diagnosis and
+bounded repair. The incident is closed and Internal Beta readiness is restored;
+the quality cohort, Internal Beta, invitations, `UPLOAD-PERF01`, and unrelated
+work have not started.
 
 ```text
-PRODUCTION_USER_ACCEPTANCE=FAIL
-INCIDENT_L1_AI_PRODUCTION01=CURRENTLY_OPEN
-INTERNAL_BETA_READY=false
-OWNER_REAL_BROWSER_PATH=FAIL
+PRODUCTION_USER_ACCEPTANCE=PASS
+INCIDENT_L1_AI_PRODUCTION01=CLOSED
+INTERNAL_BETA_READY=true
+OWNER_REAL_BROWSER_PATH=PASS
 ```
 
 Live production identity and the first failure boundary are now established:
@@ -31,7 +32,8 @@ PRODUCTION_CORE_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
 SCHEMA_VERSION=v25
 MIGRATION_HISTORY=001-025
 FIRST_FAILURE_BOUNDARY=H. WORKER_COMPUTE
-ROOT_CAUSE=32 MiB aggregate PDF range budget exhausts during document_load; the empty range leaves PDF.js pending until timeout
+ROOT_CAUSE=fixed aggregate PDF range ceiling was sized to fixtures instead of the admitted object, and the aggregate OCR deadline discarded already-completed bounded evidence
+FIX_COMMIT=ccde12d0f1aadff484b42841eb1136061f86cb9b
 ```
 
 The normal signed-in Owner UI opened the real canonical-Library resource
@@ -84,25 +86,54 @@ run `32695881291`, worker job `97337737363`, and attempt
 the real resource-details UI displays it with no console error. Peak worker RSS
 was 279,941,120 bytes. `CURRENT_62_99MB_OWNER_PATH=PASS`.
 
-The incident remains open because this file consumed 61,941,428 later range
-bytes plus its initial prefix, almost the entire 64 MiB allowance. PDFs above
-64 MiB are expected: uploads admit 5 GiB, Compute descriptors retain a 4 GiB
-source bound, and approved production PDFs observed read-only extend from
-72,459,070 to 922,469,003 bytes above 64 MiB. The local repair now derives
-aggregate range bytes and requests from exact object length at 1 MiB per range.
-It separately caps PDF.js's full-length backing buffer at 1 GiB, covering the
-observed production corpus while staying inside the qualified <6 GiB worker
-envelope; larger signed sources fail before object read and leave the admitted
-file untouched. The exact >64 MiB Owner retry is still pending, so overall
-Owner acceptance remains FAIL.
+That result did not by itself close the incident because it consumed 61,941,428
+later range bytes plus its initial prefix, almost the entire 64 MiB allowance.
+PDFs above 64 MiB are expected: uploads admit 5 GiB, Compute descriptors retain
+a 4 GiB source bound, and approved production PDFs observed read-only extend
+from 72,459,070 to 922,469,003 bytes. The repair now derives aggregate range
+bytes and request count from exact object length at 1 MiB per request. It
+separately caps PDF.js's full-length backing buffer at 1 GiB, covering the
+observed corpus inside the qualified <6 GiB worker envelope; larger signed
+sources fail before object read and leave the admitted file untouched.
+
+The >64 MiB gate is now green. A first 72,459,070-byte control failed only at
+later strict reasoner validation and was not counted as acceptance. The normal
+Owner retry for existing resource `1b36e0fc-e0ac-4cbb-a49c-ff6be1959141`
+(76,097,594 bytes) then proved aggregate access above 64 MiB: run `32698078764`
+read all 76,097,594 bytes in 73 bounded requests before reaching the unchanged
+300-second aggregate OCR deadline. The follow-up repair uses the existing
+explicit incomplete-window contract to retain already-completed pages at that
+aggregate boundary; it does not increase timeout, memory, page-count, or
+concurrency limits, and first-page, earlier per-page, and non-timeout failures
+still fail closed.
+
+Exact Compute source `ccde12d0f1aadff484b42841eb1136061f86cb9b`, run
+`32699116627`, worker job `97346899192`, attempt
+`783309ad-12aa-48be-ae90-e9259c960531` then succeeded on the same resource. It
+read 76,097,594 bytes in 73 bounded requests, peaked at 384,147,456 bytes RSS,
+and durably persisted result digest
+`efb16937ba71a18edbacc964c50903d56537a563720ccae465e9dcede12e31f9`
+with two candidates and `windowComplete=0`. The real signed-in production UI
+shows `AI 编目 · 可审阅`, both page-specific OCR suggestions, and the incomplete-
+content warning with no console error. No candidate was accepted and no source
+bytes, OSS identity, or human-authoritative metadata changed.
+
+```text
+CURRENT_62_99MB_OWNER_PATH=PASS
+LARGE_PDF_OVER_64MB_PATH=PASS
+OWNER_REAL_BROWSER_PATH=PASS
+REAL_BROWSER_E2E=PASS
+INCIDENT_CLOSED=true
+```
 
 Execution-access recovery `ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is
 resolved for the incident: the production SSH route, Git checkpoint/push path,
-and authorized GitHub Actions browser evidence are available. No production
-data or application deployment has changed in this checkpoint.
+and authorized GitHub Actions browser evidence are available. Frontend/Core and
+schema releases did not change; only the authorized derived job/result state was
+persisted, while source bytes and canonical metadata remained unchanged.
 
-The production-wide AI cataloguing incident is **CURRENTLY OPEN / OWNER PATH
-REPAIR IN PROGRESS**.
+The production-wide AI cataloguing incident is **CLOSED / OWNER REAL-BROWSER
+PATH PASS**. The historical diagnosis below remains preserved.
 Representative new-upload and legacy re-catalogue jobs both dispatched to
 GitHub Actions/Compute and failed at the same PDF.js range transport callback:
 `#onReceiveData - no PDFDataTransportStreamRangeReader instance found.` The
@@ -135,6 +166,7 @@ E2E; the independent existing-resource PDF.js repair gate is recorded below.
 
 ```text
 PDFJS_REPAIRED_RELEASE_E2E=PASS
+PDFJS_REPAIRED_RELEASE_LEGACY_E2E=PASS
 RESOURCE_ALREADY_EXISTED=true
 PRE_FIX_FAILURE_BOUNDARY=PDFJS_RANGE_READER
 NEW_JOB_CREATED=true
@@ -189,8 +221,8 @@ exact previous application `53317bb…` plus
 `UPLOAD-PERF01` is the next approved task but has not started. Internal Beta
 remains unstarted and no users were invited.
 
-Current production after the migration-025 release, with Owner acceptance
-revoked:
+Current production after the migration-025 release and Owner real-browser
+acceptance:
 
 ```text
 PRODUCTION_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
@@ -200,9 +232,9 @@ MIGRATIONS=001-025
 MIGRATION_025_PRODUCTION_APPLIED=true
 AUTOMATIC_ADMISSION_RELEASE_PENDING=false
 LAYER1_COMPLETE=true
-INTERNAL_BETA_READY=false
+INTERNAL_BETA_READY=true
 INTERNAL_BETA_STARTED=false
-NEXT_ACTION=INCIDENT-L1-AI-PRODUCTION01 real-browser repair (in progress)
+NEXT_ACTION=STOP for Owner Internal Beta decision
 ```
 
 ## Storage incident closure

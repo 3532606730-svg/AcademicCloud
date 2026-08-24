@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T14:25:00+08:00",
+  "updatedAt": "2026-08-24T15:05:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -13,14 +13,18 @@
     "rfSearchPhase3Accepted": true,
     "activityCenterV01Accepted": true,
     "liveProcessIdentityNeedsIncidentReverification": false,
-    "productionUserAcceptance": false,
-    "ownerRealBrowserPath": false,
+    "productionUserAcceptance": true,
+    "ownerRealBrowserPath": true,
     "current6299MbOwnerPath": true,
-    "largePdfOver64MbPath": false,
-    "incidentL1AiProduction01Closed": false
+    "largePdfOver64MbPath": true,
+    "incidentL1AiProduction01Closed": true,
+    "acceptedComputeSource": "ccde12d0f1aadff484b42841eb1136061f86cb9b",
+    "largePdfAcceptanceRun": 32699116627,
+    "largePdfAcceptanceBytes": 76097594,
+    "largePdfAcceptanceRangeRequests": 73
   },
-  "activeIncidents": ["INCIDENT-L1-AI-PRODUCTION01"],
-  "activeTasks": ["INCIDENT-L1-AI-PRODUCTION01"],
+  "activeIncidents": [],
+  "activeTasks": [],
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
     "state": "complete_deployed_verified",
@@ -455,7 +459,7 @@
       "least-scoped GitHub workflow-dispatch token held by Core",
       "one shared bootstrap secret installed in Core and the protected GitHub environment"
     ],
-    "next": "GOAL-BETA-PREP01 Phase 5: run the QA-GOLDEN01 exact-release real-browser journey, then stop at INTERNAL_BETA_READY"
+    "next": "STOP at INTERNAL_BETA_READY for Owner decision; Internal Beta and invitations have not started"
   },
   "searchReleaseCandidate": {
     "sourceCommit": "7bba7b869fd1234c1e7c67002cb93368c299209b",
@@ -502,9 +506,9 @@
     "ownerAuthorizedAt": "2026-08-21T02:52:00+08:00",
     "mode": "Codex Goal Mode autonomous bounded progression",
     "target": "INTERNAL_BETA_READY",
-    "internalBetaReady": false,
+    "internalBetaReady": true,
     "stopBeforeStartingInternalBeta": true,
-    "currentPhase": "INCIDENT-L1-AI-PRODUCTION01 CURRENTLY OPEN — production Owner browser acceptance failed; Internal Beta blocked",
+    "currentPhase": "INTERNAL_BETA_READY achieved after INCIDENT-L1-AI-PRODUCTION01 Owner real-browser closure — STOP before starting beta or invitations",
     "completedPhases": ["COMPUTE-PRECUTOVER01", "ARCH-COMPUTE01 production cutover", "RF-SEARCH01 production closure", "L1-UX08 Activity Center v0.1 + Source Recovery", "QA-GOLDEN01 exact-release golden journey"],
     "phases": [
       "COMPUTE-PRECUTOVER01: provider-specific hosted memory contract plus protected Tesseract staging repair",

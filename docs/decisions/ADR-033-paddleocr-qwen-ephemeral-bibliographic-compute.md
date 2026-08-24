@@ -185,6 +185,18 @@ worker log may record only source byte length, derived budget, range count, and
 range bytes; no URL, object key, content, OCR text, candidates, or metadata is
 added.
 
+The fixed aggregate extraction deadline remains unchanged. Exhausting it after
+one or more selected pages have completed no longer discards those bounded
+results: Compute returns the completed pages with `window.complete=false`, so
+Core and the review UI preserve the incomplete-evidence warning. A first-page
+timeout, a per-page timeout before the aggregate deadline, and every non-timeout
+OCR failure still fail closed. This uses the pre-existing partial-window
+contract instead of repeatedly increasing timeout constants. The production
+Owner retry for a 76,097,594-byte PDF read the complete object in 73 bounded
+ranges, stayed within 384,147,456 bytes peak RSS, persisted two reviewable
+candidates with an incomplete window, and succeeded on exact source
+`ccde12d0f1aadff484b42841eb1136061f86cb9b`.
+
 All heavy work stays in the existing ephemeral GitHub-hosted adapter, one clean
 process/job and concurrency one. There is no paid API, paid GPU, second server,
 Core daemon, provider mutation, private-PDF cache, rendered-image cache, or

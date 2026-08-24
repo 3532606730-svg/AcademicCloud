@@ -31,16 +31,23 @@ ADR-023, ADR-031, ADR-033, ADR-034.
 
 ## Relevant Modules / Files
 `.git`, `CURRENT_STATE.json`, `CURRENT_STATUS.md`, `TASK_BOARD.md`,
-`tasks/doing/INCIDENT-L1-AI-PRODUCTION01.md`, frontend incident UX files, and
+`tasks/done/INCIDENT-L1-AI-PRODUCTION01.md`, frontend incident UX files, and
 the fixed production-readiness audit scripts.
 
 ## Current State
-Branch `codex/project-memory-reconcile-20260817` remains at start HEAD
-`79c251fc2eba6fc87fdb648b9c37a8b6eda0ca88`. The working tree contains the
+This recovery task is complete. Branch
+`codex/project-memory-reconcile-20260817` published the exact incident repairs
+through `ccde12d0f1aadff484b42841eb1136061f86cb9b`; authenticated GitHub CLI,
+production SSH read, Git write/push, and authorized browser evidence all
+remained available through the final Owner real-browser closure. No new
+credential or provider mutation was introduced by recovery.
+
+Historically, the branch began this recovery at start HEAD
+`79c251fc2eba6fc87fdb648b9c37a8b6eda0ca88`. The working tree contained the
 previously verified eight-file incident UX/documentation diff plus known
 unrelated `scratch/` material and this task card.
 
-The active sandbox identity can read `.git` but cannot create
+The active sandbox identity at that checkpoint could read `.git` but could not create
 `.git/index.lock`; `git update-index --refresh` fails with `Permission denied`.
 ACL inspection found no stale lock and no Git process owner. The failure is the
 execution sandbox's `.git` write restriction, not a proven repository ACL defect.
@@ -57,7 +64,7 @@ SQLite integrity `ok`, foreign-key violations `0`, and aggregate durable jobs
 The prior alias failure was `SSH_CONFIG_NOT_VISIBLE` in the restricted sandbox,
 not DNS or host unavailability.
 
-The authenticated GitHub CLI session remains hidden from the restricted shell,
+The authenticated GitHub CLI session was initially hidden from the restricted shell,
 but the authorized in-app browser route now reads workflow/job evidence. No
 workflow was triggered for diagnosis and no secret/capability/document content
 was exposed.
@@ -73,15 +80,14 @@ was exposed.
 - Read representative new-upload and legacy Compute job logs plus a successful
   historical control through the authorized GitHub Actions browser route.
 - Confirmed the Git write/push checkpoint path is restored at `d1d79eb`.
+- Published and verified the final incident repair sources through `ccde12d…`,
+  followed the exact production Compute run, and completed Owner UI closure.
 
 ## Remaining
-- Reconcile this recovery card into the incident checkpoint after the bounded
-  Compute repair is committed and pushed.
+None.
 
 ## Blockers
-None. The restricted shell still cannot see the authenticated `gh` executable,
-but Git write/push and authorized browser evidence are sufficient for this
-incident's approved workflow.
+None.
 
 ## Last Verification
 ```text
@@ -95,19 +101,18 @@ FRONTEND_BUILD=PASS
 PRODUCTION_SSH_READ=PASS
 PRODUCTION_SOURCE_SHA=017a47dbd837264175d8cbcb3f469a01e3e62c92
 PRODUCTION_HEALTH=PASS (loopback/public health 200; readiness 200)
-SCHEMA_VERSION=v24
-MIGRATION_HISTORY=001-024
+SCHEMA_VERSION=v25
+MIGRATION_HISTORY=001-025
 SQLITE_INTEGRITY=ok
 FOREIGN_KEY_VIOLATIONS=0
 DURABLE_JOB_EVIDENCE=PASS (38 failed / 13 succeeded; aggregate state only)
 GITHUB_ACTIONS_READ=PASS (authorized in-app browser)
-CHECKPOINT_COMMITTED=PASS (existing d1d79eb checkpoint)
-CHECKPOINT_PUSHED=PASS (remote d1d79eb verified)
-PRODUCTION_DATA_CHANGED=false
+CHECKPOINT_COMMITTED=PASS (incident repair ccde12d)
+CHECKPOINT_PUSHED=PASS (remote ccde12d verified)
+RECOVERY_TASK_PRODUCTION_DATA_CHANGED=false
 APPLICATION_DEPLOYED=false
 NEW_CREDENTIAL_CREATED=false
 ```
 
 ## Next Action
-Close this recovery record with the incident repair checkpoint; do not create
-new credentials or mutate production through the recovery task.
+Closed with the incident. No further recovery action.

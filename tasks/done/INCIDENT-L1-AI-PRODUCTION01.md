@@ -34,19 +34,18 @@ ADR-014, ADR-022, ADR-023, ADR-031, ADR-033, ADR-034, ADR-036.
 `frontend/src/shared-library.tsx`.
 
 ## Current State
-Owner real-browser production acceptance failed on 2026-08-24 and overrides all
+Owner real-browser production acceptance failed on 2026-08-24 and overrode all
 earlier synthetic fixture, harness, CI, worker-terminal, and repository gates as
-acceptance evidence. The incident is currently open and Internal Beta readiness
-is revoked. The active task is to reproduce the normal signed-in Owner workflow
-on the deployed website, identify the first broken boundary with live browser,
-Core, schema, and durable-state evidence, then make and deploy only the smallest
-repair before re-testing that same path.
+acceptance evidence. The normal signed-in Owner workflow was reproduced,
+repaired at its first broken boundary, and re-tested through reviewable result
+display. The incident is closed; Internal Beta readiness is restored, but no
+quality cohort, Internal Beta, invitations, or unrelated work has started.
 
 ```text
-PRODUCTION_USER_ACCEPTANCE=FAIL
-INCIDENT_L1_AI_PRODUCTION01=CURRENTLY_OPEN
-INTERNAL_BETA_READY=false
-OWNER_REAL_BROWSER_PATH=FAIL
+PRODUCTION_USER_ACCEPTANCE=PASS
+INCIDENT_L1_AI_PRODUCTION01=CLOSED
+INTERNAL_BETA_READY=true
+OWNER_REAL_BROWSER_PATH=PASS
 ```
 
 The 2026-08-24 normal Owner-browser reproduction established the current first
@@ -132,6 +131,34 @@ intelligent-worker qualification; larger signed sources fail before object
 read without affecting the admitted file. Success logs gain only bounded
 source-size/range metrics, not source identity or content.
 
+Exact size-aware worker `a0a599ebbb46fd5135d9d976b7f0254f195a27d4`
+was published before the >64 MiB gate. The first 72,459,070-byte control read
+2,204,478 bytes in three requests and failed later at strict reasoner result
+validation; it was not counted as acceptance. The 76,097,594-byte resource
+`1b36e0fc-e0ac-4cbb-a49c-ff6be1959141` then read the complete object in 73
+bounded requests, proving aggregate access above 64 MiB, but reached the fixed
+300-second aggregate OCR deadline after earlier pages had already completed.
+That attempt (run `32698078764`, worker job `97343951589`, attempt
+`51ed1724-fec7-45e5-bcb3-dd06d5a2a742`) failed closed with `ocr_timeout` and
+peak RSS 377,733,120 bytes.
+
+The smallest follow-up repair did not increase any timeout, memory, page-count,
+or concurrency constant. It preserves already-completed OCR pages under the
+existing `window.complete=false` contract only when the aggregate deadline is
+exhausted; first-page, earlier per-page, and non-timeout failures still fail
+closed. Exact source `ccde12d0f1aadff484b42841eb1136061f86cb9b`, run
+`32699116627`, worker job `97346899192`, and attempt
+`783309ad-12aa-48be-ae90-e9259c960531` then completed the same 76,097,594-byte
+resource through the normal Owner UI. It read 76,097,594 bytes in 73 bounded
+requests, peaked at 384,147,456 bytes RSS, and Core persisted `succeeded`, result
+`suggestion-5bfcc701-5c79-472d-ae7a-aa6269677983-computed`, digest
+`efb16937ba71a18edbacc964c50903d56537a563720ccae465e9dcede12e31f9`, an
+explicit incomplete first-15/last-5 selected window, and two candidates. The
+real production Activity Center displays `AI 编目 · 可审阅`; resource details
+display both page-specific OCR suggestions and the incomplete-content warning
+with a clean console. No suggestion was accepted and no source bytes, OSS
+object identity, or human-authoritative metadata changed.
+
 Historical pre-override evidence established the earlier PDF.js range-reader
 boundary for both representative
 flows. New-upload job `23b6e0dc-a79d-457e-be59-f17a56736d6f` and legacy
@@ -205,34 +232,37 @@ source access. This is recorded separately from the migration-025 release.
 - Established that >64 MiB PDFs are expected and replaced the fixture-specific
   aggregate ceiling locally with an exact-object-derived range policy plus a
   separately justified 1 GiB PDF.js allocation guard.
+- Proved exact aggregate range access of 76,097,594 bytes across 73 bounded
+  requests, above 64 MiB, on an existing approved production PDF.
+- Preserved completed bounded OCR evidence as an explicit incomplete window at
+  the unchanged aggregate deadline instead of increasing timeout constants.
+- Completed the same normal Owner retry path through durable callback and real
+  reviewable-result display on exact Compute source `ccde12d…`.
 
 ## Remaining
-- Checkpoint and publish the exact size-aware range policy.
-- Re-trigger the existing 72,459,070-byte approved Library PDF through the
-  normal Owner UI and prove >64 MiB range access, callback, terminal success,
-  and reviewable result display without applying a candidate or mutating
-  source/metadata.
+None for this incident.
 
 ## Blockers
-None for live diagnosis. Incident closure, the AI quality cohort, Internal Beta,
-and unrelated work are blocked on `OWNER_REAL_BROWSER_PATH=PASS`.
+None. STOP before starting the AI quality cohort, Internal Beta, invitations,
+`UPLOAD-PERF01`, or unrelated work; those actions were not started by closure.
 
 ## Last Verification
 ```text
-PRODUCTION_USER_ACCEPTANCE=FAIL
-INCIDENT_L1_AI_PRODUCTION01=CURRENTLY_OPEN
-INTERNAL_BETA_READY=false
-OWNER_REAL_BROWSER_PATH=FAIL
+PRODUCTION_USER_ACCEPTANCE=PASS
+INCIDENT_L1_AI_PRODUCTION01=CLOSED
+INTERNAL_BETA_READY=true
+OWNER_REAL_BROWSER_PATH=PASS
 PRODUCTION_FRONTEND_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
 PRODUCTION_CORE_RELEASE=17fb945220c44df71e4846a0ccd5f54e98f43858
 SCHEMA_VERSION=v25 / 001-025
 FIRST_FAILURE_BOUNDARY=H. WORKER_COMPUTE
-ROOT_CAUSE=fixed aggregate PDF range ceiling was sized to fixtures instead of the admitted object; PDF.js also requires an explicit full-length buffer guard
+ROOT_CAUSE=fixed aggregate PDF range ceiling was sized to fixtures instead of the admitted object, and the aggregate OCR deadline discarded already-completed bounded evidence
+FIX_COMMIT=ccde12d0f1aadff484b42841eb1136061f86cb9b
 BACKEND_BASELINE=364/364 PASS
 FRONTEND_FOCUSED=175/175 PASS
 FRONTEND_FULL=273/273 PASS
 COMPUTE_CONTRACTS=2/2 PASS
-COMPUTE=66/68 PASS / 2 expected local-runtime skips
+COMPUTE=67/69 PASS / 2 expected local-runtime skips
 COMPUTE_TYPECHECK=PASS
 BACKEND_TYPECHECK=PASS
 FRONTEND_TYPECHECK=PASS
@@ -244,6 +274,7 @@ COMPUTE_PROVIDER_INFERENCE=REVERTED / NOT DEPLOYED
 PRODUCTION_DIAGNOSIS=PASS (new-upload + legacy both fail at PDF.js range callback)
 RANGE_TRANSPORT_REGRESSION=PASS (fails pre-fix on exact PDF.js assertion)
 PDFJS_REPAIRED_RELEASE_E2E=PASS (independent existing-resource gate)
+PDFJS_REPAIRED_RELEASE_LEGACY_E2E=PASS
 RESOURCE_ALREADY_EXISTED=true
 PRE_FIX_FAILURE_BOUNDARY=PDFJS_RANGE_READER
 NEW_JOB_CREATED=true
@@ -258,12 +289,12 @@ DUPLICATE_DURABLE_JOBS=0
 DUPLICATE_PROVIDER_EXECUTIONS=0
 AMBIGUOUS_DISPATCH_RECOVERY=PASS
 CURRENT_62_99MB_OWNER_PATH=PASS
-LARGE_PDF_OVER_64MB_PATH=FAIL / pending repaired-worker production retry
-INCIDENT_CLOSED=false
+LARGE_PDF_OVER_64MB_PATH=PASS
+REAL_BROWSER_E2E=PASS
+INCIDENT_CLOSED=true
 ```
 
 ## Next Action
-Checkpoint and publish the exact size-aware range repair, then retry the
-existing 72,459,070-byte Library resource through the normal signed-in Owner UI
-and follow it through result display. Do not accept candidates or mutate the
-source/authoritative metadata.
+STOP. Preserve this closed incident and its independent PDF.js/large-PDF gates;
+do not start the quality cohort, Internal Beta, invitations, `UPLOAD-PERF01`, or
+unrelated work from this closure.
