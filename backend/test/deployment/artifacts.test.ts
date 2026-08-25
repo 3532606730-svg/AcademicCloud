@@ -102,6 +102,9 @@ test("Local Pull systemd runs only the immutable D-drive WSL release with outbou
   assert.doesNotMatch(environment, /GITHUB_|BEGIN PRIVATE KEY|ac_session=/u);
   assert.match(assembler, /SOURCE_COMMIT.*\^\[a-f0-9\]\{40\}\$/u);
   assert.match(assembler, /npm ci --workspace @academiccloud\/compute-contracts --workspace @academiccloud\/compute/u);
+  assert.match(assembler, /--include-workspace-root=true/u);
+  assert.match(assembler, /npm ci --omit=dev --workspace @academiccloud\/compute-contracts --workspace @academiccloud\/compute/u);
+  assert.match(assembler, /--include-workspace-root=false/u);
   assert.match(assembler, /QWEN_SHA256="061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"/u);
   assert.match(assembler, /LLAMA_SOURCE_REVISION="de699957b92f490efebad149665b0dccf127eaff"/u);
   assert.match(assembler, /find \. -type f ! -name release-files\.sha256/u);

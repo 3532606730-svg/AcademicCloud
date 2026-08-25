@@ -61,14 +61,16 @@ chown -R academiccloud:academiccloud "$STAGING" "${COMPUTE_ROOT}/cache/npm"
 runuser -u academiccloud -- env \
   PATH="${NODE_ROOT}/bin:/usr/bin:/bin" \
   npm_config_cache="${COMPUTE_ROOT}/cache/npm" \
-  npm ci --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute --include-workspace-root=false \
+  npm ci --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute --include-workspace-root=true \
   --prefix "$SOURCE_STAGE"
 runuser -u academiccloud -- env PATH="${NODE_ROOT}/bin:/usr/bin:/bin" \
   npm run build --workspace @academiccloud/compute-contracts --prefix "$SOURCE_STAGE"
 runuser -u academiccloud -- env PATH="${NODE_ROOT}/bin:/usr/bin:/bin" \
   npm run build --workspace @academiccloud/compute --prefix "$SOURCE_STAGE"
-runuser -u academiccloud -- env PATH="${NODE_ROOT}/bin:/usr/bin:/bin" \
-  npm prune --omit=dev --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute \
+runuser -u academiccloud -- env \
+  PATH="${NODE_ROOT}/bin:/usr/bin:/bin" \
+  npm_config_cache="${COMPUTE_ROOT}/cache/npm" \
+  npm ci --omit=dev --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute \
   --include-workspace-root=false --prefix "$SOURCE_STAGE"
 
 readonly OUTPUT="${STAGING}/release"
