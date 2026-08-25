@@ -1,0 +1,49 @@
+[Unit]
+Description=AcademicCloud outbound-only Local Pull Compute worker
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300s
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=academiccloud
+Group=academiccloud
+WorkingDirectory=/srv/academiccloud-compute/current/compute
+EnvironmentFile=/srv/academiccloud-compute/control/academiccloud-local-compute.env
+ExecStart=/srv/academiccloud-compute/current/runtime/node/bin/node /srv/academiccloud-compute/current/compute/dist/local-pull-main.js
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=30s
+TimeoutStopSec=30s
+KillSignal=SIGTERM
+UMask=0077
+Nice=5
+OOMScoreAdjust=200
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+ReadWritePaths=/srv/academiccloud-compute/logs /srv/academiccloud-compute/tmp
+LimitCORE=0
+TasksMax=512
+MemoryHigh=6G
+MemoryMax=7G
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 # ADR-037 — Local Pull Worker as the Production Compute Control Plane
 
 **Date:** 2026-08-24
-**Status:** Accepted by Owner; implementation and production cutover pending
+**Status:** Accepted by Owner; local implementation/runtime qualification passed; immutable release and production cutover pending
 
 ## Context
 
@@ -157,6 +157,39 @@ same normal product path must pass a small native-text PDF, ordinary PDF,
 scan-heavy PDF, large PDF, and the same previously failed resource. The
 105-resource wave begins only after this cutover is green and never runs on
 GitHub-hosted Compute.
+
+### Qualified implementation checkpoint — 2026-08-24
+
+The sole `AcademicCloudCompute` Ubuntu 24.04 distribution and its 80 GB virtual
+disk are under `D:\AcademicCloudCompute\wsl\AcademicCloudCompute`; registered
+C-drive distributions remain zero. WSL2, systemd, the 8-CPU/about-8-GB Normal
+envelope, 4 GB D-drive swap, RTX 4060 visibility, CUDA 12.8.2, and an actual
+`sm_89` kernel passed. WSL1 remains disabled and unnecessary.
+
+Exact Linux Node 24.16.0, Paddle 3.3.1/PaddleOCR 3.7.0 with pinned PP-OCRv6
+small models, llama.cpp `b10218` at full source revision
+`de699957b92f490efebad149665b0dccf127eaff`, and Qwen3-1.7B Q8_0 passed real
+inference. The accepted llama-server SHA-256 is
+`ddfde527958667bf1b29603d8c0abe3a92e25decc5c7b5227b5736c4815c5c30`; its
+build disables curl, NCCL, and Web UI downloads. Qwen CUDA reduced the two
+generated qualification requests from 944/766 ms at about 23.75 predicted
+tokens/s to 174/154 ms at 115–121 tokens/s, with 2,060 MiB peak process RSS and
+4,387 MiB peak total GPU memory. The existing seven-case bibliographic gate
+passed 7/7. Paddle GPU reduced warm generated-page requests from roughly
+750–820 ms on CPU to 36–47 ms, with 1,850 MiB worst observed sanitized-run RSS;
+both stages passed with the production child's sanitized environment. The
+selected release configuration is Paddle GPU plus `999` llama GPU layers;
+whole-job concurrency remains one and the stages release their child runtimes
+sequentially.
+
+Core migration 026 and the Local Pull implementation add only additive lease
+state and the provider-neutral adapter. Focused tests prove machine-secret
+authorization, atomic one-worker claim, renewable heartbeat, expiry-to-new-
+attempt recovery, old-worker rejection, rejection of Local attempts on the
+legacy claim endpoint, delayed-callback rejection immediately after expiry,
+and idempotent matching duplicate terminal success/failure. Full backend acceptance passes
+373/373. These are pre-release development facts: production remains exact
+release `17fb945…` at schema v25 and provider cutover has not occurred.
 
 ## Migration and rollback
 

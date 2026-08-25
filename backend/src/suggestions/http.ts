@@ -11,12 +11,15 @@ const ID_PATTERN_REGEX = /^[A-Za-z0-9_-]{1,128}$/u;
 const idSchema = { type: "string", pattern: ID_PATTERN, minLength: 1, maxLength: 128 } as const;
 const emptyQuerySchema = { type: "object", additionalProperties: false, properties: {} } as const;
 const metadataVersionSchema = { type: "string", pattern: "^[A-Za-z0-9_-]{43}$", minLength: 43, maxLength: 43 } as const;
+const workerIdSchema = { type: "string", pattern: "^[A-Za-z0-9_.-]{1,128}$", minLength: 1, maxLength: 128 } as const;
 
 interface HoldingParams { libraryId: string; fileId: string; }
 interface RunParams extends HoldingParams { runId: string; }
 interface JobParams extends HoldingParams { jobId: string; }
 interface InternalJobParams { jobId: string; }
 interface ClaimBody { attemptId: string; }
+interface PullBody { workerId: string; waitMilliseconds?: number; }
+interface HeartbeatBody { attemptId: string; workerId: string; }
 interface AcceptBody extends SuggestionAcceptanceInput { metadata?: Record<string, unknown>; }
 interface LibraryParams { libraryId: string; }
 interface BatchPreviewQuery { fileIds: string; }
@@ -378,6 +381,72 @@ export async function registerSuggestionHttp(
       if (!secureSecretEquals(options.bootstrapSecret, supplied)) return reply.code(401).send({ error: "unauthorized" });
       try {
         return await service.claimJob(request.params.jobId, request.body.attemptId);
+      } catch (error: unknown) {
+        return sendSuggestionError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Body: PullBody }>(
+    "/api/internal/compute/pull",
+    {
+      preValidation: requireJson,
+      bodyLimit: 4 * 1024,
+      schema: {
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["workerId"],
+          properties: {
+            workerId: workerIdSchema,
+            waitMilliseconds: { type: "integer", minimum: 0, maximum: 25_000 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const supplied = request.headers.authorization?.match(/^Bearer\s+(.+)$/u)?.[1];
+      if (!secureSecretEquals(options.bootstrapSecret, supplied)) return reply.code(401).send({ error: "unauthorized" });
+      const deadline = Date.now() + (request.body.waitMilliseconds ?? 20_000);
+      try {
+        do {
+          service.recoverExpiredLocalPullLeases();
+          await service.reconcileUndispatchedJobs();
+          const claim = await service.pullLocalJob(request.body.workerId);
+          if (claim) return claim;
+          const remaining = deadline - Date.now();
+          if (remaining <= 0) break;
+          await new Promise<void>((resolve) => setTimeout(resolve, Math.min(500, remaining)));
+        } while (Date.now() < deadline);
+        return reply.code(204).send();
+      } catch (error: unknown) {
+        return sendSuggestionError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: InternalJobParams; Body: HeartbeatBody }>(
+    "/api/internal/compute/jobs/:jobId/heartbeat",
+    {
+      preValidation: requireJson,
+      bodyLimit: 4 * 1024,
+      schema: {
+        params: { type: "object", required: ["jobId"], properties: { jobId: idSchema } },
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["attemptId", "workerId"],
+          properties: { attemptId: idSchema, workerId: workerIdSchema },
+        },
+      },
+    },
+    async (request, reply) => {
+      const supplied = request.headers.authorization?.match(/^Bearer\s+(.+)$/u)?.[1];
+      if (!secureSecretEquals(options.bootstrapSecret, supplied)) return reply.code(401).send({ error: "unauthorized" });
+      try {
+        return service.heartbeatLocalJob(request.params.jobId, request.body.attemptId, request.body.workerId);
       } catch (error: unknown) {
         return sendSuggestionError(reply, error);
       }

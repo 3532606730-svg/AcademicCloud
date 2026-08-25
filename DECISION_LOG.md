@@ -393,7 +393,7 @@ same durable-generation and idempotent-result invariants.
 ## ADR-037 — Local Pull Worker as the Production Compute Control Plane
 
 **Date:** 2026-08-24
-**Status:** Accepted by Owner; implementation and production cutover pending
+**Status:** Accepted by Owner; local implementation/runtime qualification passed; immutable release and production cutover pending
 **Full record:** `docs/decisions/ADR-037-local-pull-compute-control-plane.md`
 
 The active final-stabilization program moves normal production bibliographic AI
@@ -412,3 +412,9 @@ CI/qualification, and separately authorized emergency fallback, but
 corpus. Existing Core/Compute authority, exact PP-OCRv6-small → Qwen3-1.7B
 semantics, human authority, source integrity, and zero-cost requirements remain
 unchanged.
+
+The 2026-08-24 implementation checkpoint passed WSL2-on-D, actual CUDA
+execution, exact Paddle/Qwen CPU/GPU comparisons, the 7/7 bibliographic gate,
+and focused atomic-claim/heartbeat/expiry/replacement/late-callback tests.
+Development migration head is v26; production remains v25 and has not switched
+providers.

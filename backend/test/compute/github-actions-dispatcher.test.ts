@@ -70,7 +70,7 @@ test("GitHub Actions adapter recovers an accepted run without a second dispatch"
   assert.equal(requests.length, 1);
 });
 
-test("runtime configuration fails closed unless every provider credential and route is present", () => {
+test("runtime configuration fails closed unless every provider credential and route is present", async () => {
   const disabled = loadDerivedComputeRuntime({}, "https://cloud.example.edu");
   assert.equal(disabled.bootstrapSecret, null);
   assert.throws(() => loadDerivedComputeRuntime({ COMPUTE_PROVIDER: "github_actions" }, "https://cloud.example.edu"));
@@ -84,7 +84,27 @@ test("runtime configuration fails closed unless every provider credential and ro
   }, "https://cloud.example.edu");
   assert.equal(configured.bootstrapSecret, "bootstrap-secret-that-is-long-enough");
   assert.equal(configured.coreBaseUrl, "https://cloud.example.edu");
+
+  assert.throws(() => loadDerivedComputeRuntime({ COMPUTE_PROVIDER: "local_pull" }, "https://cloud.example.edu"));
+  const local = loadDerivedComputeRuntime({
+    COMPUTE_PROVIDER: "local_pull",
+    COMPUTE_WORKER_BOOTSTRAP_SECRET: "local-machine-secret-that-is-long-enough",
+  }, "https://cloud.example.edu");
+  assert.deepEqual(await dispatchReceipt(local.dispatcher), {
+    provider: "local_pull",
+    providerJobId: "local-pull:attempt-local",
+  });
 });
+
+function dispatchReceipt(dispatcher: ReturnType<typeof loadDerivedComputeRuntime>["dispatcher"]) {
+  return dispatcher.dispatch({
+    id: "job-local",
+    attemptId: "attempt-local",
+    kind: "metadata_suggestion",
+    resourceId: "resource-local",
+    coreBaseUrl: "https://cloud.example.edu",
+  });
+}
 
 test("bootstrap comparison is exact and rejects absent or differently sized secrets", () => {
   assert.equal(secureSecretEquals("a".repeat(32), "a".repeat(32)), true);

@@ -19,6 +19,9 @@ interface JobRow {
   provider_job_id: string | null;
   capability_token_hash: string | null;
   capability_expires_at: string | null;
+  compute_worker_id: string | null;
+  lease_expires_at: string | null;
+  last_heartbeat_at: string | null;
   result_ref: string | null;
   result_digest: string | null;
   error_code: DerivedComputeErrorCode | null;
@@ -35,7 +38,8 @@ interface JobRow {
 const SELECT = `
 SELECT id, kind, scope_id, resource_id, input_version, idempotency_key, state, progress,
   attempts, active_attempt_id, provider, provider_job_id, capability_token_hash,
-  capability_expires_at, result_ref, result_digest, error_code, created_by_account_id,
+  capability_expires_at, compute_worker_id, lease_expires_at, last_heartbeat_at,
+  result_ref, result_digest, error_code, created_by_account_id,
   created_at, updated_at, started_at, finished_at, deadline_at, queue_priority, origin
 FROM derived_compute_jobs`;
 
@@ -59,6 +63,9 @@ function map(row: JobRow): DerivedJobRecord {
     providerJobId: row.provider_job_id,
     capabilityTokenHash: row.capability_token_hash,
     capabilityExpiresAt: date(row.capability_expires_at),
+    computeWorkerId: row.compute_worker_id,
+    leaseExpiresAt: date(row.lease_expires_at),
+    lastHeartbeatAt: date(row.last_heartbeat_at),
     resultRef: row.result_ref,
     resultDigest: row.result_digest,
     errorCode: row.error_code,
@@ -130,7 +137,8 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     const rows = this.database.prepare<[string, string, string], JobRow>(`
       SELECT id, kind, scope_id, resource_id, input_version, idempotency_key, state, progress,
         attempts, active_attempt_id, provider, provider_job_id, capability_token_hash,
-        capability_expires_at, result_ref, result_digest, error_code, created_by_account_id,
+        capability_expires_at, compute_worker_id, lease_expires_at, last_heartbeat_at,
+        result_ref, result_digest, error_code, created_by_account_id,
         created_at, updated_at, started_at, finished_at, deadline_at, queue_priority, origin
       FROM (
         SELECT derived_compute_jobs.*,
@@ -158,12 +166,34 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     `).all(limit).map(map);
   }
 
+  listLocalPullCandidates(limit: number): DerivedJobRecord[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("invalid derived job limit");
+    return this.database.prepare<[number], JobRow>(`
+      ${SELECT}
+      WHERE state = 'queued' AND provider = 'local_pull' AND provider_job_id IS NOT NULL
+      ORDER BY queue_priority ASC, created_at ASC, id ASC
+      LIMIT ?
+    `).all(limit).map(map);
+  }
+
+  listExpiredLocalPullLeases(now: Date, limit: number): DerivedJobRecord[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("invalid derived job limit");
+    return this.database.prepare<[string, string, number], JobRow>(`
+      ${SELECT}
+      WHERE state = 'running' AND provider = 'local_pull'
+        AND lease_expires_at IS NOT NULL AND lease_expires_at <= ? AND deadline_at > ?
+      ORDER BY lease_expires_at ASC, id ASC
+      LIMIT ?
+    `).all(now.toISOString(), now.toISOString(), limit).map(map);
+  }
+
   retry(jobId: string, expectedAttemptId: string, nextAttemptId: string, now: Date, deadlineAt: Date): DerivedJobRecord | null {
     const result = this.database.prepare(`
       UPDATE derived_compute_jobs
       SET state = 'queued', progress = 0, attempts = attempts + 1,
         active_attempt_id = ?, provider = NULL, provider_job_id = NULL,
         capability_token_hash = NULL, capability_expires_at = NULL,
+        compute_worker_id = NULL, lease_expires_at = NULL, last_heartbeat_at = NULL,
         result_ref = NULL, result_digest = NULL, error_code = NULL,
         updated_at = ?, started_at = NULL, finished_at = NULL, deadline_at = ?
       WHERE id = ? AND state = 'failed' AND active_attempt_id = ?
@@ -200,6 +230,88 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     return result.changes === 1 ? this.findById(jobId) : null;
   }
 
+  claimLocal(
+    jobId: string,
+    attemptId: string,
+    workerId: string,
+    capabilityTokenHash: string,
+    capabilityExpiresAt: Date,
+    leaseExpiresAt: Date,
+    now: Date,
+  ): DerivedJobRecord | null {
+    const result = this.database.prepare(`
+      UPDATE derived_compute_jobs
+      SET state = 'running', progress = 5, capability_token_hash = ?, capability_expires_at = ?,
+        compute_worker_id = ?, lease_expires_at = ?, last_heartbeat_at = ?,
+        updated_at = ?, started_at = ?, finished_at = NULL
+      WHERE id = ? AND state = 'queued' AND active_attempt_id = ?
+        AND provider = 'local_pull' AND provider_job_id IS NOT NULL AND deadline_at > ?
+    `).run(
+      capabilityTokenHash,
+      capabilityExpiresAt.toISOString(),
+      workerId,
+      leaseExpiresAt.toISOString(),
+      now.toISOString(),
+      now.toISOString(),
+      now.toISOString(),
+      jobId,
+      attemptId,
+      now.toISOString(),
+    );
+    return result.changes === 1 ? this.findById(jobId) : null;
+  }
+
+  heartbeatLocal(
+    jobId: string,
+    attemptId: string,
+    workerId: string,
+    capabilityExpiresAt: Date,
+    leaseExpiresAt: Date,
+    now: Date,
+  ): DerivedJobRecord | null {
+    const result = this.database.prepare(`
+      UPDATE derived_compute_jobs
+      SET capability_expires_at = ?, lease_expires_at = ?, last_heartbeat_at = ?, updated_at = ?
+      WHERE id = ? AND state = 'running' AND active_attempt_id = ?
+        AND provider = 'local_pull' AND compute_worker_id = ?
+        AND lease_expires_at > ? AND deadline_at > ?
+    `).run(
+      capabilityExpiresAt.toISOString(),
+      leaseExpiresAt.toISOString(),
+      now.toISOString(),
+      now.toISOString(),
+      jobId,
+      attemptId,
+      workerId,
+      now.toISOString(),
+      now.toISOString(),
+    );
+    return result.changes === 1 ? this.findById(jobId) : null;
+  }
+
+  recoverExpiredLocalLease(jobId: string, expectedAttemptId: string, nextAttemptId: string, now: Date): DerivedJobRecord | null {
+    const result = this.database.prepare(`
+      UPDATE derived_compute_jobs
+      SET state = 'queued', progress = 0, attempts = attempts + 1,
+        active_attempt_id = ?, provider = NULL, provider_job_id = NULL,
+        capability_token_hash = NULL, capability_expires_at = NULL,
+        compute_worker_id = NULL, lease_expires_at = NULL, last_heartbeat_at = NULL,
+        result_ref = NULL, result_digest = NULL, error_code = NULL,
+        updated_at = ?, started_at = NULL, finished_at = NULL
+      WHERE id = ? AND state = 'running' AND active_attempt_id = ?
+        AND provider = 'local_pull' AND lease_expires_at IS NOT NULL AND lease_expires_at <= ?
+        AND deadline_at > ?
+    `).run(
+      nextAttemptId,
+      now.toISOString(),
+      jobId,
+      expectedAttemptId,
+      now.toISOString(),
+      now.toISOString(),
+    );
+    return result.changes === 1 ? this.findById(jobId) : null;
+  }
+
   succeed(jobId: string, attemptId: string, resultRef: string, resultDigest: string, now: Date): DerivedJobRecord | null {
     const existing = this.findById(jobId);
     if (existing?.state === "succeeded" && existing.activeAttemptId === attemptId
@@ -207,7 +319,7 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     const result = this.database.prepare(`
       UPDATE derived_compute_jobs
       SET state = 'succeeded', progress = 100, result_ref = ?, result_digest = ?,
-        updated_at = ?, finished_at = ?, error_code = NULL
+        updated_at = ?, finished_at = ?, error_code = NULL, lease_expires_at = NULL
       WHERE id = ? AND state = 'running' AND active_attempt_id = ?
     `).run(resultRef, resultDigest, now.toISOString(), now.toISOString(), jobId, attemptId);
     return result.changes === 1 ? this.findById(jobId) : null;
@@ -219,7 +331,7 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     const result = this.database.prepare(`
       UPDATE derived_compute_jobs
       SET state = 'failed', progress = CASE WHEN progress > 99 THEN 99 ELSE progress END,
-        error_code = ?, updated_at = ?, finished_at = ?
+        error_code = ?, updated_at = ?, finished_at = ?, lease_expires_at = NULL
       WHERE id = ? AND state IN ('queued', 'running') AND active_attempt_id = ?
     `).run(errorCode, now.toISOString(), now.toISOString(), jobId, attemptId);
     return result.changes === 1 ? this.findById(jobId) : null;
@@ -229,7 +341,7 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     return this.database.prepare(`
       UPDATE derived_compute_jobs
       SET state = 'failed', progress = CASE WHEN progress > 99 THEN 99 ELSE progress END,
-        error_code = 'compute_timeout', updated_at = ?, finished_at = ?
+        error_code = 'compute_timeout', updated_at = ?, finished_at = ?, lease_expires_at = NULL
       WHERE state IN ('queued', 'running') AND deadline_at <= ?
     `).run(now.toISOString(), now.toISOString(), now.toISOString()).changes;
   }

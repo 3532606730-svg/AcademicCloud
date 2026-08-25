@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T20:06:05+08:00",
+  "updatedAt": "2026-08-24T23:00:52+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -27,7 +27,9 @@
   "activeTasks": ["ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE"],
   "finalStabilizationProgram": {
     "task": "ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE",
-    "state": "active_local_compute_pivot_pre_wsl_gates_complete",
+    "state": "active_local_compute_runtime_and_protocol_qualified_release_pending",
+    "developmentSchema": 26,
+    "developmentMigrationHistory": "001-026",
     "autonomousFullCorpusAcceptance": "pending",
     "wholeProductPerformanceAcceptance": "pending",
     "internalBetaReady": false,
@@ -74,8 +76,8 @@
       "stagedBytes": 199835281
     },
     "baseline": {
-      "localHead": "5911954ebc0ef1d8164203d995b9191a5bfc75ee verified before the source-staging reconciliation",
-      "remoteHead": "5911954ebc0ef1d8164203d995b9191a5bfc75ee verified before the source-staging reconciliation",
+      "localHead": "e8285cdb585ccf2953e2d259ac199bfd2d66dc71 verified before the runtime/protocol checkpoint",
+      "remoteHead": "e8285cdb585ccf2953e2d259ac199bfd2d66dc71 verified before the runtime/protocol checkpoint",
       "productionRelease": "17fb945220c44df71e4846a0ccd5f54e98f43858",
       "schema": 25,
       "migrationHistory": "001-025",
@@ -87,14 +89,14 @@
   },
   "localComputePivot": {
     "decision": "ADR-037",
-    "status": "wsl_on_d_and_gpu_visibility_pass_runtime_qualification_in_progress",
+    "status": "wsl_on_d_cuda_paddle_qwen_and_local_pull_protocol_qualified_release_pending",
     "productionComputeControlPlane": "CORE_PULL_WORKER",
     "localPullProvider": "primary_target",
     "githubHostedProductionCompute": false,
     "githubActionsProvider": "disabled_for_normal_production_retained_for_ci_qualification_and_separately_authorized_emergency_fallback",
     "windowsHost": "Windows 11 x64; Ryzen 9 7945HX; 16 GiB RAM; NVIDIA GeForce RTX 4060 Laptop GPU approximately 8 GiB VRAM",
     "targetRoot": "D:\\AcademicCloudCompute",
-    "wslInstalledByProgram": false,
+    "wslInstalledByProgram": true,
     "inboundPublicServiceAllowed": false,
     "workerAuthority": "disposable Compute executor only; no Library browsing, human metadata, Owner, SQLite, canonical-write, or arbitrary-object authority",
     "wholeJobConcurrency": 1,
@@ -146,10 +148,44 @@
       "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU; driver 572.83; 8188 MiB; compute capability 8.9",
       "dxg": true,
       "cudaDriverLibrary": "/usr/lib/wsl/lib/libcuda.so.1",
-      "cudaExecutionQualified": false
+      "cudaExecutionQualified": true,
+      "cudaToolkit": "12.8.2; no Linux display driver; sm_89 kernel execution pass",
+      "cudaPackageInventorySha256": "b74a97dc2d1f02c4312abca3134c67660ccf55b87b8dd5b850e9ad13f7433696"
+    },
+    "runtimeQualification": {
+      "node": "v24.16.0 linux-x64; archive sha256 d804845d34eddc21dc1092b519d643ef40b1f58ec5dec5c22b1f4bd8fabde6c9",
+      "paddle": {
+        "versions": "Paddle 3.3.1 / PaddleOCR 3.7.0 / PP-OCRv6 small det+rec",
+        "modelInventorySha256": "3b1473329a2af7be4b38cb636527bb043038c3375424fdf6ef5262301b2a7eff",
+        "cpu": "real OCR pass; startup 2030 ms; requests 820/782/750 ms; peak RSS 648 MiB",
+        "gpu": "real OCR pass; startup 3213 ms; requests 645/41/36 ms; peak RSS 1658 MiB; VRAM delta 318 MiB",
+        "selected": "gpu"
+      },
+      "llama": "b10218 / de699957b92f490efebad149665b0dccf127eaff; CUDA sm_89; server sha256 ddfde527958667bf1b29603d8c0abe3a92e25decc5c7b5227b5736c4815c5c30; UI download disabled",
+      "qwen": {
+        "model": "Qwen3-1.7B Q8_0",
+        "modelSha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+        "cpu": "startup 1823 ms; requests 944/766 ms; about 23.75 predicted tok/s; peak RSS 3000 MiB",
+        "cuda": "startup 1016 ms; requests 174/154 ms; 115-121 predicted tok/s; peak RSS 2060 MiB; peak VRAM 4387 MiB / delta 2805 MiB",
+        "sevenCaseBibliographicQualification": "7/7 pass",
+        "selectedGpuLayers": 999
+      },
+      "sanitizedChildEnvironment": "Paddle GPU and Qwen CUDA both pass without LD_LIBRARY_PATH inheritance"
+    },
+    "localPullProtocol": {
+      "developmentSchema": 26,
+      "state": "implemented_and_tested_release_pending",
+      "transport": "outbound-only HTTPS long poll; no laptop inbound endpoint",
+      "leaseMilliseconds": 90000,
+      "heartbeatMilliseconds": 30000,
+      "capabilityRenewalMilliseconds": 900000,
+      "delayedExpiredCallback": "fails closed before and after attempt replacement",
+      "legacyClaimBypass": "local_pull attempts rejected on legacy claim endpoint",
+      "recovery": "expired lease atomically queues a new attempt generation for redispatch; matching terminal success/failure retries are idempotent",
+      "tests": "backend 373/373 pass; Compute 71 pass plus 2 expected local-runtime skips; Compute contracts 2/2; all-workspace typecheck/build and diff check pass"
     },
     "ownerBoundaryAction": null,
-    "next": "install exact Linux Node runtime, qualify real CUDA execution, then build and benchmark exact Paddle CPU/GPU and Qwen CPU/CUDA release variants before implementing the Local Pull protocol"
+    "next": "finish final checks and checkpoint/push; assemble and verify the immutable Local Compute release from that exact commit; then gate Core schema-v26/provider cutover, systemd activation, forced-loss recovery, and bounded production canaries"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",

@@ -144,6 +144,10 @@ const SAFE_FILE_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 
 const PDF_MEDIA_TYPE = "application/pdf";
 const JOB_DEADLINE_MILLISECONDS = 2 * 60 * 60_000;
+const LOCAL_PULL_LEASE_MILLISECONDS = 90_000;
+const LOCAL_PULL_HEARTBEAT_MILLISECONDS = 30_000;
+const LOCAL_PULL_CAPABILITY_MILLISECONDS = 15 * 60_000;
+const LOCAL_PULL_WORKER_ID = /^[A-Za-z0-9_.-]{1,128}$/u;
 
 export function deriveMetadataCataloguingState(
   job: Pick<DerivedJobRecord, "state" | "resultRef"> | null,
@@ -369,6 +373,10 @@ export interface SuggestionComputeClaim {
   capability: { token: string; expiresAt: string };
   source: { method: "GET"; url: string; sizeBytes: number; mediaType: "application/pdf"; expiresAt: string };
   callbackUrl: string;
+}
+
+export interface SuggestionLocalPullClaim extends SuggestionComputeClaim {
+  lease: { expiresAt: string; heartbeatAfterMilliseconds: number };
 }
 
 function jobActor(job: DerivedJobRecord, repositories: RepositorySet): AuthenticatedAccount | null {
@@ -829,6 +837,25 @@ export class SuggestionService {
     return this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.expireDue(this.#now()));
   }
 
+  recoverExpiredLocalPullLeases(limit = 20): number {
+    const now = this.#now();
+    return this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(now);
+      let recovered = 0;
+      for (const job of repositories.derivedJobs.listExpiredLocalPullLeases(now, limit)) {
+        if (!job.activeAttemptId) continue;
+        const next = repositories.derivedJobs.recoverExpiredLocalLease(
+          job.id,
+          job.activeAttemptId,
+          this.#createId(),
+          now,
+        );
+        if (next) recovered += 1;
+      }
+      return recovered;
+    });
+  }
+
   /**
    * Persist the lightweight filename-derived evidence for a job if its run does
    * not exist yet. Idempotent: a repeated request reuses the exact run. The
@@ -1062,12 +1089,134 @@ export class SuggestionService {
     return dispatched;
   }
 
+  async pullLocalJob(workerId: string): Promise<SuggestionLocalPullClaim | null> {
+    if (!LOCAL_PULL_WORKER_ID.test(workerId)) throw new SuggestionError("invalid_input");
+    const now = this.#now();
+    const candidates = this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(now);
+      return repositories.derivedJobs.listLocalPullCandidates(10);
+    });
+    for (const candidate of candidates) {
+      if (!candidate.activeAttemptId) continue;
+      let snapshot: { job: DerivedJobRecord; context: HoldingContext } | null;
+      try {
+        snapshot = this.#persistence.runInTransaction((repositories) => {
+          const job = repositories.derivedJobs.findById(candidate.id);
+          if (!job || job.state !== "queued" || job.provider !== "local_pull"
+            || job.activeAttemptId !== candidate.activeAttemptId || job.deadlineAt <= now) return null;
+          const actor = jobActor(job, repositories);
+          if (!actor) throw new SuggestionError("not_found");
+          const context = resolveHolding(actor, job.scopeId, job.resourceId, repositories);
+          if (context.membership.role !== "manager" || sourceFingerprint(context.file).value !== job.inputVersion
+            || context.file.mediaType?.toLowerCase() !== PDF_MEDIA_TYPE) throw new SuggestionError("stale");
+          return { job, context };
+        });
+      } catch (error: unknown) {
+        if (!(error instanceof SuggestionError)) throw error;
+        this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
+          candidate.id,
+          candidate.activeAttemptId!,
+          error.code === "stale" ? "compute_source_stale" : "compute_authorization_changed",
+          this.#now(),
+        ));
+        continue;
+      }
+      if (!snapshot) continue;
+      const metadata = await this.#storage.statObject(snapshot.context.file.objectKey);
+      if (!objectMatchesFile(metadata, snapshot.context.file)) {
+        this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
+          snapshot!.job.id,
+          snapshot!.job.activeAttemptId!,
+          "compute_source_stale",
+          this.#now(),
+        ));
+        continue;
+      }
+      const download = await this.#storage.createDownloadAuthorization({
+        objectKey: snapshot.context.file.objectKey,
+        downloadFilename: "academiccloud-compute-source.pdf",
+        disposition: "inline",
+        expiresInSeconds: 15 * 60,
+      });
+      const token = this.#createToken();
+      const claimNow = this.#now();
+      const capabilityExpiresAt = new Date(Math.min(snapshot.job.deadlineAt.getTime(), claimNow.getTime() + LOCAL_PULL_CAPABILITY_MILLISECONDS));
+      const leaseExpiresAt = new Date(Math.min(snapshot.job.deadlineAt.getTime(), claimNow.getTime() + LOCAL_PULL_LEASE_MILLISECONDS));
+      const claimed = this.#persistence.runInTransaction((repositories) => {
+        const job = repositories.derivedJobs.findById(snapshot!.job.id);
+        if (!job || job.state !== "queued" || job.activeAttemptId !== snapshot!.job.activeAttemptId
+          || job.deadlineAt <= claimNow) return null;
+        const actor = jobActor(job, repositories);
+        if (!actor) return null;
+        const context = resolveHolding(actor, job.scopeId, job.resourceId, repositories);
+        if (context.membership.role !== "manager" || sourceFingerprint(context.file).value !== job.inputVersion) return null;
+        return repositories.derivedJobs.claimLocal(
+          job.id,
+          job.activeAttemptId!,
+          workerId,
+          tokenDigest(token),
+          capabilityExpiresAt,
+          leaseExpiresAt,
+          claimNow,
+        );
+      });
+      if (!claimed) continue;
+      return {
+        job: { id: claimed.id, attemptId: claimed.activeAttemptId!, kind: "metadata_suggestion" },
+        capability: { token, expiresAt: capabilityExpiresAt.toISOString() },
+        source: {
+          method: "GET",
+          url: download.url,
+          sizeBytes: metadata!.sizeBytes,
+          mediaType: "application/pdf",
+          expiresAt: download.expiresAt.toISOString(),
+        },
+        callbackUrl: `${this.#coreBaseUrl}/api/internal/compute/jobs/${encodeURIComponent(claimed.id)}/result`,
+        lease: {
+          expiresAt: leaseExpiresAt.toISOString(),
+          heartbeatAfterMilliseconds: LOCAL_PULL_HEARTBEAT_MILLISECONDS,
+        },
+      };
+    }
+    return null;
+  }
+
+  heartbeatLocalJob(jobId: string, attemptId: string, workerId: string): { lease: { expiresAt: string; heartbeatAfterMilliseconds: number } } {
+    if (!SAFE_FILE_ID.test(jobId) || !SAFE_FILE_ID.test(attemptId) || !LOCAL_PULL_WORKER_ID.test(workerId)) {
+      throw new SuggestionError("invalid_input");
+    }
+    const now = this.#now();
+    const renewed = this.#persistence.runInTransaction((repositories) => {
+      repositories.derivedJobs.expireDue(now);
+      const job = repositories.derivedJobs.findById(jobId);
+      if (!job || job.activeAttemptId !== attemptId) return null;
+      const capabilityExpiresAt = new Date(Math.min(job.deadlineAt.getTime(), now.getTime() + LOCAL_PULL_CAPABILITY_MILLISECONDS));
+      const leaseExpiresAt = new Date(Math.min(job.deadlineAt.getTime(), now.getTime() + LOCAL_PULL_LEASE_MILLISECONDS));
+      return repositories.derivedJobs.heartbeatLocal(
+        jobId,
+        attemptId,
+        workerId,
+        capabilityExpiresAt,
+        leaseExpiresAt,
+        now,
+      );
+    });
+    if (!renewed?.leaseExpiresAt) throw new SuggestionError("not_found");
+    return {
+      lease: {
+        expiresAt: renewed.leaseExpiresAt.toISOString(),
+        heartbeatAfterMilliseconds: LOCAL_PULL_HEARTBEAT_MILLISECONDS,
+      },
+    };
+  }
+
   async claimJob(jobId: string, attemptId: string): Promise<SuggestionComputeClaim> {
     const now = this.#now();
     const snapshot = this.#persistence.runInTransaction((repositories) => {
       repositories.derivedJobs.expireDue(now);
       const job = repositories.derivedJobs.findById(jobId);
-      if (!job || job.state !== "queued" || job.activeAttemptId !== attemptId || job.deadlineAt <= now) {
+      if (!job || job.state !== "queued" || job.activeAttemptId !== attemptId || job.deadlineAt <= now
+        || job.provider === "local_pull") {
         throw new SuggestionError("not_found");
       }
       const actor = jobActor(job, repositories);
@@ -1119,10 +1268,16 @@ export class SuggestionService {
       const job = repositories.derivedJobs.findById(result.jobId);
       if (!job || job.kind !== result.kind || job.activeAttemptId !== result.attemptId
         || !job.capabilityExpiresAt || job.capabilityExpiresAt <= now
+        || (job.provider === "local_pull" && job.state === "running"
+          && (!job.leaseExpiresAt || job.leaseExpiresAt <= now))
         || !sameDigest(job.capabilityTokenHash, capabilityToken)) throw new SuggestionError("not_found");
       return job;
     });
     if (result.state === "failed") {
+      if (snapshot.state === "failed") {
+        if (snapshot.errorCode !== result.errorCode) throw new SuggestionError("concurrent_change");
+        return publicDerivedJob(snapshot);
+      }
       const failed = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
         result.jobId, result.attemptId, result.errorCode, now,
       ));

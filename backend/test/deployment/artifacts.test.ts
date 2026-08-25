@@ -69,6 +69,52 @@ test("systemd keeps one loopback API process inside a restrictive writable bound
   assert.doesNotMatch(unit, /ExecStart=.*tsx|npm run dev/);
 });
 
+test("Local Pull systemd runs only the immutable D-drive WSL release with outbound GPU access", () => {
+  const unit = read("deployment/systemd/academiccloud-local-compute.service");
+  const environment = read("deployment/env/academiccloud-local-compute.env.example");
+  const assembler = read("scripts/local-compute/assemble-local-compute-release.sh");
+  const activation = read("scripts/local-compute/activate-local-compute-release.sh");
+
+  for (const directive of [
+    "User=academiccloud",
+    "WorkingDirectory=/srv/academiccloud-compute/current/compute",
+    "EnvironmentFile=/srv/academiccloud-compute/control/academiccloud-local-compute.env",
+    "ExecStart=/srv/academiccloud-compute/current/runtime/node/bin/node /srv/academiccloud-compute/current/compute/dist/local-pull-main.js",
+    "UMask=0077",
+    "Nice=5",
+    "NoNewPrivileges=true",
+    "PrivateTmp=true",
+    "ProtectSystem=strict",
+    "ReadWritePaths=/srv/academiccloud-compute/logs /srv/academiccloud-compute/tmp",
+    "MemoryHigh=6G",
+    "MemoryMax=7G",
+    "Restart=on-failure",
+  ]) {
+    assert.ok(unit.includes(directive), `missing ${directive}`);
+  }
+  assert.doesNotMatch(unit, /PrivateDevices=true|D:\\Projects\\AcademicCloud|npm run|tsx/u);
+  assert.match(environment, /^NODE_ENV=production$/m);
+  assert.match(environment, /^ACADEMICCLOUD_COMPUTE_CORE_BASE_URL=https:\/\//m);
+  assert.match(environment, /^ACADEMICCLOUD_COMPUTE_MODE=NORMAL$/m);
+  assert.match(environment, /^PADDLE_OCR_DEVICE=gpu$/m);
+  assert.match(environment, /^BIBLIOGRAPHY_LLAMA_GPU_LAYERS=999$/m);
+  assert.match(environment, /^ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET=replace-through-secret-installation$/m);
+  assert.doesNotMatch(environment, /GITHUB_|BEGIN PRIVATE KEY|ac_session=/u);
+  assert.match(assembler, /SOURCE_COMMIT.*\^\[a-f0-9\]\{40\}\$/u);
+  assert.match(assembler, /npm ci --workspace @academiccloud\/compute-contracts --workspace @academiccloud\/compute/u);
+  assert.match(assembler, /QWEN_SHA256="061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"/u);
+  assert.match(assembler, /LLAMA_SOURCE_REVISION="de699957b92f490efebad149665b0dccf127eaff"/u);
+  assert.match(assembler, /find \. -type f ! -name release-files\.sha256/u);
+  assert.match(activation, /sha256sum --check --strict release-files\.sha256/u);
+  assert.match(activation, /ln -sfn "\$RELEASE_ROOT"/u);
+  assert.match(activation, /mv -Tf/u);
+  assert.match(activation, /systemctl enable academiccloud-local-compute\.service/u);
+  assert.match(activation, /systemctl restart academiccloud-local-compute\.service/u);
+  assert.match(activation, /PREVIOUS_RELEASE/u);
+  assert.match(activation, /rollback-current/u);
+  assert.doesNotMatch(`${assembler}\n${activation}`, /git (?:pull|clone)|github_actions|D:\\Projects\\AcademicCloud/u);
+});
+
 test("future journald retention template is bounded and remains a repository artifact", () => {
   const journald = read("deployment/journald/90-academiccloud-retention.conf");
   assert.match(journald, /^\[Journal\]$/m);

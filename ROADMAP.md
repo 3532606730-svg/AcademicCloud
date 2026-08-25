@@ -78,6 +78,12 @@ The Owner laptop is a disposable executor, not an authority or second corpus.
 Its absence may delay AI but must not affect Library, storage, Search, citation,
 metadata, or other Core availability. Initial whole-job concurrency is one;
 the runtime uses demand-driven warming and a measured host-resource envelope.
+WSL2-on-D, CUDA `sm_89`, exact Paddle CPU/GPU, exact Qwen CPU/CUDA, the 7/7
+bibliographic gate, and the Local Pull development protocol now pass. The
+sequence is currently between protocol implementation and immutable exact-SHA
+release assembly; production remains schema v25 until release qualification,
+schema-v26/Core-provider cutover, systemd activation, and forced-loss recovery
+all pass. GitHub-hosted production Compute remains frozen.
 
 ## Current Reality — Operational Maturity Interlock
 

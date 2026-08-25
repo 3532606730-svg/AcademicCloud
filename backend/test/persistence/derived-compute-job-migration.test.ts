@@ -11,7 +11,7 @@ import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
 const NOW = new Date("2026-08-21T00:00:00.000Z");
 
-test("migration 022 upgrades v21 append-only and durable job state survives a database restart", () => {
+test("migration 022 through 026 preserves durable jobs and Local Pull leases across restart", () => {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-compute-migration-"));
   const v21Directory = join(temporaryDirectory, "v21");
   const databasePath = join(temporaryDirectory, "compute.sqlite");
@@ -29,7 +29,7 @@ test("migration 022 upgrades v21 append-only and durable job state survives a da
       INSERT INTO accounts (id, login_name, password_hash, role, auth_revision, state, created_at, updated_at)
       VALUES ('compute-owner', 'compute-owner', 'hash', 'owner', 0, 'active', ?, ?)
     `).run(NOW.toISOString(), NOW.toISOString());
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [22, 23, 24, 25], currentVersion: 25 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [22, 23, 24, 25, 26], currentVersion: 26 });
     const repository = new SqliteDerivedJobRepository(database);
     const created = repository.create({
       id: "job-restart",
@@ -53,6 +53,9 @@ test("migration 022 upgrades v21 append-only and durable job state survives a da
     assert.equal(reopened.activeAttemptId, "attempt-1");
     assert.equal(reopened.providerJobId, "provider-1");
     assert.equal(reopened.capabilityTokenHash, null);
+    assert.equal(reopened.computeWorkerId, null);
+    assert.equal(reopened.leaseExpiresAt, null);
+    assert.equal(reopened.lastHeartbeatAt, null);
     assert.equal(reopened.queuePriority, 10);
     assert.equal(reopened.origin, "interactive");
     const repositoryAfterRestart = new SqliteDerivedJobRepository(database);
@@ -72,7 +75,64 @@ test("migration 022 upgrades v21 append-only and durable job state survives a da
       queuePriority: 10,
     });
     assert.equal(repositoryAfterRestart.findLatest("metadata_suggestion", "canonical-library", "file-1")?.id, current.id);
-    assert.equal(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).currentVersion, 25);
+    const local = repositoryAfterRestart.create({
+      id: "job-local",
+      kind: "metadata_suggestion",
+      scopeId: "canonical-library",
+      resourceId: "file-local",
+      inputVersion: "input-version-local",
+      idempotencyKey: "c".repeat(64),
+      attemptId: "attempt-local-1",
+      createdByAccountId: "compute-owner",
+      createdAt: NOW,
+      deadlineAt: new Date(NOW.getTime() + 15 * 60_000),
+    });
+    assert.ok(repositoryAfterRestart.recordDispatch(local.id, "attempt-local-1", "local_pull", "local-pull:attempt-local-1", NOW));
+    assert.equal(repositoryAfterRestart.listLocalPullCandidates(10)[0]?.id, local.id);
+    const claimed = repositoryAfterRestart.claimLocal(
+      local.id,
+      "attempt-local-1",
+      "worker.local-1",
+      "d".repeat(64),
+      new Date(NOW.getTime() + 10 * 60_000),
+      new Date(NOW.getTime() + 90_000),
+      NOW,
+    )!;
+    assert.equal(claimed.state, "running");
+    assert.equal(claimed.computeWorkerId, "worker.local-1");
+    assert.equal(claimed.lastHeartbeatAt?.toISOString(), NOW.toISOString());
+    const heartbeatAt = new Date(NOW.getTime() + 30_000);
+    const heartbeat = repositoryAfterRestart.heartbeatLocal(
+      local.id,
+      "attempt-local-1",
+      "worker.local-1",
+      new Date(heartbeatAt.getTime() + 10 * 60_000),
+      new Date(heartbeatAt.getTime() + 90_000),
+      heartbeatAt,
+    )!;
+    assert.equal(heartbeat.leaseExpiresAt?.toISOString(), new Date(heartbeatAt.getTime() + 90_000).toISOString());
+    assert.deepEqual(repositoryAfterRestart.listExpiredLocalPullLeases(new Date(NOW.getTime() + 100_000), 10), []);
+    const recoveryAt = new Date(NOW.getTime() + 121_000);
+    const recovered = repositoryAfterRestart.recoverExpiredLocalLease(
+      local.id,
+      "attempt-local-1",
+      "attempt-local-2",
+      recoveryAt,
+    )!;
+    assert.equal(recovered.state, "queued");
+    assert.equal(recovered.attempts, 2);
+    assert.equal(recovered.activeAttemptId, "attempt-local-2");
+    assert.equal(recovered.provider, null);
+    assert.equal(recovered.computeWorkerId, null);
+    assert.equal(repositoryAfterRestart.heartbeatLocal(
+      local.id,
+      "attempt-local-1",
+      "worker.local-1",
+      new Date(recoveryAt.getTime() + 10 * 60_000),
+      new Date(recoveryAt.getTime() + 90_000),
+      recoveryAt,
+    ), null);
+    assert.equal(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).currentVersion, 26);
   } finally {
     database.close();
     rmSync(temporaryDirectory, { recursive: true, force: true });

@@ -21,9 +21,16 @@ export interface PaddleOcrConfig {
   sidecarPath: string;
   detectionModelPath: string;
   recognitionModelPath: string;
+  device: "cpu" | "gpu";
   engineId: typeof PADDLE_OCR_ENGINE_ID;
   /** Test-only prefix such as a local fixture script passed to Node. */
   executableArguments?: readonly string[];
+}
+
+function paddleDevice(value: string | undefined): "cpu" | "gpu" {
+  const normalized = value?.trim() || "cpu";
+  if (normalized !== "cpu" && normalized !== "gpu") throw new Error("PADDLE_OCR_DEVICE is invalid");
+  return normalized;
 }
 
 function localPath(label: string, value: string | undefined, fallback: string): string {
@@ -48,6 +55,7 @@ export function loadPaddleOcrConfig(environment: NodeJS.ProcessEnv = process.env
     sidecarPath: localPath("PADDLE_OCR_SIDECAR_PATH", production ? release.sidecar : environment.PADDLE_OCR_SIDECAR_PATH, "compute/scripts/paddle_ocr_sidecar.py"),
     detectionModelPath: localPath("PADDLE_OCR_DETECTION_MODEL_PATH", production ? release.detection : environment.PADDLE_OCR_DETECTION_MODEL_PATH, "runtime/paddle/models/PP-OCRv6_small_det"),
     recognitionModelPath: localPath("PADDLE_OCR_RECOGNITION_MODEL_PATH", production ? release.recognition : environment.PADDLE_OCR_RECOGNITION_MODEL_PATH, "runtime/paddle/models/PP-OCRv6_small_rec"),
+    device: paddleDevice(environment.PADDLE_OCR_DEVICE),
     engineId: PADDLE_OCR_ENGINE_ID,
   };
 }
@@ -149,6 +157,7 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
       ...(this.#config.executableArguments ?? ["-I"]), this.#config.sidecarPath,
       "--detection-model", this.#config.detectionModelPath,
       "--recognition-model", this.#config.recognitionModelPath,
+      "--device", this.#config.device,
     ], {
       shell: false,
       stdio: ["pipe", "pipe", "pipe"],

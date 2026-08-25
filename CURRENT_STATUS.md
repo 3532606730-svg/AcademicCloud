@@ -29,9 +29,10 @@ INTERNAL_BETA_STARTED=false
 
 The Local Compute Owner override continues this program and changes only the
 next production Compute strategy. The shared code, privacy-safe inventory tool,
-and ADR-037 checkpoint were pushed and independently verified at local/remote
-HEAD `5911954ebc0ef1d8164203d995b9191a5bfc75ee`; this source-staging evidence is
-the following reconciliation checkpoint. The two untracked workspace roots
+ADR-037, reboot gate, and WSL-on-D foundation were pushed and independently
+verified at local/remote HEAD `e8285cdb585ccf2953e2d259ac199bfd2d66dc71`;
+the runtime/protocol implementation is the following checkpoint. The two
+untracked workspace roots
 `%SystemDrive%/` and `scratch/` remain preserved as pre-existing user material.
 Live production remains exact frontend/Core
 `17fb945220c44df71e4846a0ccd5f54e98f43858`,
@@ -50,7 +51,7 @@ duplicates among the 12, and 105 unique acceptance resources. No upload,
 production AI execution, deployment, provider mutation, paid usage, or source
 mutation occurred during recovery or after the Local Compute override.
 
-## Local Compute pivot — accepted, pre-WSL checkpoint in progress
+## Local Compute pivot — runtime/protocol qualified, immutable release pending
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -112,9 +113,36 @@ C-drive swap exists. The audited `.wslconfig` SHA-256 is
 
 `/dev/dxg`, WSL `libcuda.so.1`, and the RTX 4060 Laptop GPU are visible inside
 Ubuntu with driver 572.83, 8,188 MiB VRAM, and compute capability 8.9.
-`LOCAL_WSL_INSTALLED_ON_D=PASS` and `LOCAL_GPU_VISIBLE=PASS`; CUDA execution,
-exact Node/Paddle/Qwen/llama identity, real inference, memory, and VRAM gates are
-still pending and must not be inferred from `nvidia-smi` alone.
+`LOCAL_WSL_INSTALLED_ON_D=PASS`, `LOCAL_GPU_VISIBLE=PASS`, and an actual CUDA
+12.8.2 `sm_89` kernel passed. The CUDA package inventory SHA-256 is
+`b74a97dc2d1f02c4312abca3134c67660ccf55b87b8dd5b850e9ad13f7433696`.
+
+Exact Linux Node 24.16.0, Paddle 3.3.1/PaddleOCR 3.7.0 with pinned PP-OCRv6
+small models, llama.cpp `b10218` at full revision
+`de699957b92f490efebad149665b0dccf127eaff`, and Qwen3-1.7B Q8_0 all pass real
+execution. The accepted no-network-UI CUDA llama-server SHA-256 is
+`ddfde527958667bf1b29603d8c0abe3a92e25decc5c7b5227b5736c4815c5c30`.
+Paddle GPU reduced warm requests from roughly 750–820 ms on CPU to 36–47 ms.
+Qwen CUDA reduced requests from 944/766 ms at about 23.75 predicted tokens/s to
+174/154 ms at 115–121 tokens/s, with 2,060 MiB peak RSS and 4,387 MiB peak total
+VRAM. The representative bibliographic qualification passed 7/7. Sanitized
+production-child environment repeats passed for both GPU runtimes, so the
+selected release settings are Paddle GPU and 999 llama GPU layers; stages remain
+sequential at whole-job concurrency one.
+
+Development migration 026 and the outbound-only Local Pull worker are now
+implemented. Core issues an atomic one-worker claim with a 90-second renewable
+lease and 30-second heartbeat; expiry queues a new attempt generation. The old
+worker, delayed callbacks immediately after expiry, wrong-worker heartbeats,
+and Local attempts presented to the legacy claim route fail closed. A duplicate
+successful callback remains idempotent. The service exposes no laptop inbound
+endpoint and retains separate machine and result capabilities. Backend 373/373,
+Compute 71 passing plus 2 expected local-runtime skips, Compute contracts 2/2,
+all-workspace typecheck/build, and diff checks pass. Production
+is still exact `17fb945…`, schema v25/history 001–025, and GitHub-hosted
+production Compute remains unused. Next is the exact full-check checkpoint,
+remote verification, immutable release assembly from that commit, and only then
+the gated schema-v26/Core-provider/systemd cutover and forced-loss canary.
 
 ## Historical incident evidence (superseded as current acceptance)
 

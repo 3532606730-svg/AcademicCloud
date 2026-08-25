@@ -92,11 +92,20 @@ export interface BibliographicReasoner {
 export interface LlamaReasonerConfig {
   executablePath: string;
   modelPath: string;
+  gpuLayers: number;
 }
 
 function boundedPath(label: string, value: string | undefined, fallback: string): string {
   const result = value?.trim() || fallback;
   if (result.length < 1 || result.length > 1_024 || /[\u0000\r\n]/u.test(result)) throw new Error(`${label} is invalid`);
+  return result;
+}
+
+function boundedGpuLayers(value: string | undefined): number {
+  const normalized = value?.trim() || "0";
+  if (!/^(?:0|[1-9][0-9]{0,2})$/u.test(normalized)) throw new Error("BIBLIOGRAPHY_LLAMA_GPU_LAYERS is invalid");
+  const result = Number(normalized);
+  if (result > 999) throw new Error("BIBLIOGRAPHY_LLAMA_GPU_LAYERS is invalid");
   return result;
 }
 
@@ -110,6 +119,7 @@ export function loadLlamaReasonerConfig(environment: NodeJS.ProcessEnv = process
   return {
     executablePath: boundedPath("BIBLIOGRAPHY_LLAMA_SERVER_PATH", production ? releaseExecutable : environment.BIBLIOGRAPHY_LLAMA_SERVER_PATH, "llama-server"),
     modelPath: boundedPath("BIBLIOGRAPHY_QWEN_MODEL_PATH", production ? releaseModel : environment.BIBLIOGRAPHY_QWEN_MODEL_PATH, "Qwen3-1.7B-Q8_0.gguf"),
+    gpuLayers: boundedGpuLayers(environment.BIBLIOGRAPHY_LLAMA_GPU_LAYERS),
   };
 }
 
@@ -447,6 +457,7 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
       "--ctx-size", "8192",
       "--threads", "2",
       "--parallel", "1",
+      "--gpu-layers", String(this.#config.gpuLayers),
       "--no-webui",
       "--log-disable",
     ], { shell: false, stdio: ["ignore", "ignore", "pipe"], windowsHide: true, env: { PATH: process.env.PATH, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" } });

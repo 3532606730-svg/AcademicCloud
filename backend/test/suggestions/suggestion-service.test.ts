@@ -10,6 +10,7 @@ import type {
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
+import { LocalPullComputeDispatcher } from "../../src/compute/local-pull-dispatcher.js";
 import { SuggestionError, SuggestionService } from "../../src/suggestions/suggestion-service.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createTestPersistence } from "../persistence/helpers.js";
@@ -284,6 +285,65 @@ test("request returns a durable queued identity promptly and is idempotent", asy
   assert.equal(suggestions.getJob(MEMBER, library.id, fileId, first.id).state, "queued");
 });
 
+test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection are atomic", async (context) => {
+  let now = NOW;
+  const { persistence, library, fileId, suggestions } = fixture(context, {
+    now: () => now,
+    dispatcher: new LocalPullComputeDispatcher(),
+  });
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const routed = persistence.repositories.derivedJobs.findById(job.id)!;
+  assert.equal(routed.provider, "local_pull");
+  assert.equal(routed.providerJobId, "local-pull:attempt-1");
+  await assert.rejects(
+    () => suggestions.claimJob(job.id, "attempt-1"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+
+  const first = await suggestions.pullLocalJob("owner-laptop.wsl2");
+  assert.equal(first?.job.attemptId, "attempt-1");
+  assert.equal(first?.lease.heartbeatAfterMilliseconds, 30_000);
+  assert.equal(await suggestions.pullLocalJob("second-worker"), null);
+  assert.throws(
+    () => suggestions.heartbeatLocalJob(job.id, "attempt-1", "second-worker"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+
+  now = new Date(NOW.getTime() + 30_000);
+  const heartbeat = suggestions.heartbeatLocalJob(job.id, "attempt-1", "owner-laptop.wsl2");
+  assert.equal(heartbeat.lease.expiresAt, new Date(NOW.getTime() + 120_000).toISOString());
+  now = new Date(NOW.getTime() + 100_000);
+  assert.equal(suggestions.recoverExpiredLocalPullLeases(), 0);
+
+  now = new Date(NOW.getTime() + 121_000);
+  await assert.rejects(
+    () => suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), first!.capability.token),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+  assert.equal(persistence.repositories.derivedJobs.findById(job.id)?.state, "running");
+  assert.equal(suggestions.recoverExpiredLocalPullLeases(), 1);
+  assert.equal(await suggestions.reconcileUndispatchedJobs(), 1);
+  const recovered = persistence.repositories.derivedJobs.findById(job.id)!;
+  assert.equal(recovered.state, "queued");
+  assert.equal(recovered.activeAttemptId, "attempt-2");
+  assert.equal(recovered.attempts, 2);
+  assert.throws(
+    () => suggestions.heartbeatLocalJob(job.id, "attempt-1", "owner-laptop.wsl2"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+
+  const second = await suggestions.pullLocalJob("owner-laptop.wsl2");
+  assert.equal(second?.job.attemptId, "attempt-2");
+  await assert.rejects(
+    () => suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), first!.capability.token),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+  const secondResult = successfulResult(job.id, "attempt-2");
+  const completed = await suggestions.applyComputeResult(secondResult, second!.capability.token);
+  assert.equal(completed.state, "succeeded");
+  assert.deepEqual(await suggestions.applyComputeResult(secondResult, second!.capability.token), completed);
+});
+
 test("admission dispatch failure stays durable and the reconciler records one provider receipt", async (context) => {
   let calls = 0;
   const dispatcher: DerivedComputeDispatcher = {
@@ -539,6 +599,20 @@ test("stable Compute failures and durable deadlines terminate the job safely", a
   }, claim.capability.token);
   assert.equal(failed.state, "failed");
   assert.equal(failed.errorCode, "compute_invalid_pdf");
+  assert.deepEqual(await suggestions.applyComputeResult({
+    jobId: first.id,
+    attemptId: "attempt-1",
+    kind: "metadata_suggestion",
+    state: "failed",
+    errorCode: "compute_invalid_pdf",
+  }, claim.capability.token), failed);
+  await assert.rejects(() => suggestions.applyComputeResult({
+    jobId: first.id,
+    attemptId: "attempt-1",
+    kind: "metadata_suggestion",
+    state: "failed",
+    errorCode: "compute_internal_error",
+  }, claim.capability.token), (error: unknown) => error instanceof SuggestionError && error.code === "concurrent_change");
 
   const retried = await suggestions.requestGeneration(OWNER, library.id, fileId);
   assert.equal(retried.id, first.id);

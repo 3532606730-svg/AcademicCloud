@@ -22,6 +22,9 @@ export interface DerivedJobRecord {
   providerJobId: string | null;
   capabilityTokenHash: string | null;
   capabilityExpiresAt: Date | null;
+  computeWorkerId: string | null;
+  leaseExpiresAt: Date | null;
+  lastHeartbeatAt: Date | null;
   resultRef: string | null;
   resultDigest: string | null;
   errorCode: DerivedComputeErrorCode | null;

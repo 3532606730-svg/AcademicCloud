@@ -154,6 +154,28 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
     assert.equal(dispatcher.jobs.length, 1);
     const dispatched = dispatcher.jobs[0]!;
 
+    const unauthorizedPull = await app.inject({
+      method: "POST",
+      url: "/api/internal/compute/pull",
+      headers: { "content-type": "application/json" },
+      payload: { workerId: "owner-laptop.wsl2", waitMilliseconds: 0 },
+    });
+    assert.equal(unauthorizedPull.statusCode, 401);
+    const idlePull = await app.inject({
+      method: "POST",
+      url: "/api/internal/compute/pull",
+      headers: { authorization: `Bearer ${BOOTSTRAP_SECRET}`, "content-type": "application/json" },
+      payload: { workerId: "owner-laptop.wsl2", waitMilliseconds: 0 },
+    });
+    assert.equal(idlePull.statusCode, 204);
+    const staleHeartbeat = await app.inject({
+      method: "POST",
+      url: `/api/internal/compute/jobs/${job.id}/heartbeat`,
+      headers: { authorization: `Bearer ${BOOTSTRAP_SECRET}`, "content-type": "application/json" },
+      payload: { attemptId: dispatched.attemptId, workerId: "owner-laptop.wsl2" },
+    });
+    assert.equal(staleHeartbeat.statusCode, 404);
+
     const queuedStates = await app.inject({
       method: "GET",
       url: "/api/libraries/canonical-library/metadata/suggestion-states?fileIds=suggest-http-file",

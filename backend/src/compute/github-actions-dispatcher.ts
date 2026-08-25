@@ -6,6 +6,8 @@ import type {
   DerivedComputeDispatchReceipt,
 } from "@academiccloud/compute-contracts";
 
+import { LocalPullComputeDispatcher } from "./local-pull-dispatcher.js";
+
 const REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/u;
 const WORKFLOW = /^[A-Za-z0-9_.-]{1,128}\.ya?ml$/u;
 const REF = /^[A-Za-z0-9._/-]{1,256}$/u;
@@ -155,7 +157,11 @@ export function loadDerivedComputeRuntime(
   if (provider === "disabled") {
     return { dispatcher: new UnavailableDerivedComputeDispatcher(), bootstrapSecret, coreBaseUrl };
   }
-  if (provider !== "github_actions") throw new Error("COMPUTE_PROVIDER must be disabled or github_actions");
+  if (provider === "local_pull") {
+    if (!bootstrapSecret) throw new Error("Local Pull compute requires the worker machine secret");
+    return { dispatcher: new LocalPullComputeDispatcher(), bootstrapSecret, coreBaseUrl };
+  }
+  if (provider !== "github_actions") throw new Error("COMPUTE_PROVIDER must be disabled, local_pull, or github_actions");
   const token = environment.GITHUB_COMPUTE_DISPATCH_TOKEN?.trim();
   const repository = environment.GITHUB_COMPUTE_REPOSITORY?.trim();
   const workflow = environment.GITHUB_COMPUTE_WORKFLOW?.trim() || "derived-compute-worker.yml";

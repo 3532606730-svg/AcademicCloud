@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / WSL-ON-D + GPU VISIBILITY PASS / RUNTIME QUALIFICATION IN PROGRESS | Install exact Linux Node; qualify real CUDA execution and Paddle CPU/GPU plus Qwen CPU/CUDA before implementing Local Pull lease/heartbeat |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / WSL-ON-D + CUDA/PADDLE/QWEN + LOCAL PULL DEV PASS / IMMUTABLE RELEASE PENDING | Finish full checks and exact checkpoint/push; assemble/requalify that release before schema-v26 Local Pull cutover and forced-loss canary |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -65,6 +65,13 @@ REMOTE_HEAD_CONFIRMED=true
 DURABLE_NEXT_STEP_RECORDED=true
 OWNER_SOURCES_STAGED_ON_D=true
 OWNER_SOURCE_COPY_SHA256_VERIFIED=true
+LOCAL_CUDA_EXECUTION=PASS
+LOCAL_PADDLE_CPU_GPU=PASS
+LOCAL_QWEN_CPU_CUDA=PASS
+LOCAL_BIBLIOGRAPHIC_QUALIFICATION=7/7_PASS
+LOCAL_PULL_PROTOCOL_DEVELOPMENT=PASS
+LOCAL_COMPUTE_IMMUTABLE_RELEASE=PENDING
+PRODUCTION_LOCAL_PULL_CUTOVER=PENDING
 ```
 
 Current corpus facts remain `OWNER_SUPPLIED_TOTAL=12`,
@@ -85,8 +92,10 @@ and the only registered distro is Ubuntu 24.04.4 `AcademicCloudCompute` on
 WSL2 with `BasePath`/80 GB sparse VHDX under D and zero C-drive distros. The
 Normal envelope is 8 CPUs, about 8 GB RAM, and 4 GB D-drive swap; systemd and
 the non-root worker user are ready. `/dev/dxg`, WSL `libcuda.so.1`, and the RTX
-4060 8,188 MiB / compute capability 8.9 are visible. Treat CUDA execution and
-real Paddle/Qwen inference as pending until their actual workloads pass.
+4060 8,188 MiB / compute capability 8.9 are visible. Actual CUDA `sm_89`, exact
+Paddle CPU/GPU, exact Qwen CPU/CUDA, the 7/7 bibliographic gate, and sanitized
+production-child runtime repeats now pass. The immutable exact-source release,
+production cutover, forced-loss recovery, and canaries remain pending.
 
 Historical independent incident gates (not current final acceptance):
 
@@ -207,7 +216,8 @@ PREVIOUS_PRODUCTION=3a88cfef7a4083ebe2a0277bd50b356e5fb86f46
 PRODUCTION_SCHEMA=v25 / 001-025
 MIGRATION_025_PRODUCTION_APPLIED=true
 AUTOMATIC_ADMISSION_RELEASE_PENDING=false
-DEVELOPMENT_SCHEMA=v25 / 001-025
+DEVELOPMENT_SCHEMA=v26 / 001-026
+MIGRATION_026_PRODUCTION_APPLIED=false
 MIGRATION_022_PRODUCTION_APPLIED=true
 MIGRATION_023_PRODUCTION_APPLIED=true
 MIGRATION_024_PRODUCTION_APPLIED=true

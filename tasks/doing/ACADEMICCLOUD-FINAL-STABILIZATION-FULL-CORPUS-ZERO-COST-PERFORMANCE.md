@@ -96,9 +96,10 @@ Owner-authorized on 2026-08-24 and continued by the
 not a new task: it changes only the next Compute architecture/execution
 strategy. The authoritative branch is
 `codex/project-memory-reconcile-20260817`. The shared fixes, privacy-safe
-inventory tool, and ADR-037 were pushed and independently verified at
-local/remote HEAD `5911954ebc0ef1d8164203d995b9191a5bfc75ee`; this D-drive
-source-staging evidence is the following reconciliation checkpoint.
+inventory tool, ADR-037, reboot gate, and WSL-on-D foundation were pushed and
+independently verified at local/remote HEAD
+`e8285cdb585ccf2953e2d259ac199bfd2d66dc71`; the runtime/protocol work below is
+the next checkpoint.
 Pre-existing untracked `%SystemDrive%/` and `scratch/` remain untouched.
 Production remains exact frontend/Core
 `17fb945220c44df71e4846a0ccd5f54e98f43858`, schema v25/history 001–025. No new
@@ -117,8 +118,9 @@ Pull the primary provider. GitHub Actions remains a provider-neutral CI,
 qualification, and separately authorized emergency implementation, but is
 disabled for normal production AI. The local Windows machine remains a
 disposable outbound-only Compute executor; its absence must leave AI jobs
-queued/recoverable and every non-AI Core path available. WSL has not been
-installed or enabled by this program yet.
+queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
+and the Local Pull development protocol now pass; production remains v25 with
+no provider mutation until the exact release/cutover gates pass.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -199,16 +201,48 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   8 processors, about 8 GB RAM, and 4 GB sparse swap explicitly on D; no default
   C-drive swap exists.
 - Passed initial GPU visibility: `/dev/dxg`, WSL `libcuda.so.1`, and RTX 4060
-  driver 572.83 / 8,188 MiB / compute capability 8.9 are visible. This does not
-  yet claim CUDA execution or Paddle/Qwen inference.
+  driver 572.83 / 8,188 MiB / compute capability 8.9 are visible. This was the
+  visibility-only gate before the execution qualifications below.
+- Installed exact Linux Node 24.16.0 in the D-drive distro and preserved its
+  official archive SHA-256 `d804845d…de6c9`.
+- Installed CUDA toolkit 12.8.2 without a Linux display driver and passed an
+  actual `sm_89` kernel; the package inventory SHA-256 is `b74a97dc…33696e`.
+- Qualified Paddle 3.3.1/PaddleOCR 3.7.0 and exact PP-OCRv6 small models on CPU
+  and GPU. Generated-page OCR was exact at confidence 100; CPU requests were
+  820/782/750 ms at 648 MiB peak RSS, while GPU requests were 645/41/36 ms at
+  1,658 MiB peak RSS and 318 MiB VRAM delta. A sanitized production-child
+  repeat passed at 690/47 ms and 1,850 MiB peak RSS.
+- Downloaded and hash-verified Qwen3-1.7B Q8_0 (`061b54da…cb1a`) and exact
+  llama.cpp source `b10218` / `de699957b92f490efebad149665b0dccf127eaff`.
+  Rejected the first otherwise correct binary because its build downloaded an
+  unpinned Web UI; rebuilt with curl/NCCL/UI downloads disabled. The accepted
+  CUDA `sm_89` llama-server SHA-256 is `ddfde527…c5c30`.
+- Qualified Qwen CPU versus CUDA on the same generated bibliographic contract.
+  CPU startup was 1,823 ms and requests 944/766 ms at about 23.75 predicted
+  tokens/s and 3,000 MiB peak RSS. CUDA startup was 1,016 ms and requests
+  174/154 ms at 115–121 tokens/s, 2,060 MiB peak RSS, and 4,387 MiB peak total
+  VRAM. The representative bibliographic gate passed 7/7; the selected release
+  setting is `BIBLIOGRAPHY_LLAMA_GPU_LAYERS=999`.
+- Implemented migration 026 and the outbound-only Local Pull worker: durable
+  provider receipt, atomic one-worker claim, 90-second renewable lease,
+  30-second heartbeat, attempt-generation recovery, late-result rejection,
+  idempotent duplicate success, separate machine/result credentials, and
+  NORMAL/PAUSED/BURST concurrency-one controls. The legacy claim endpoint
+  cannot bypass a Local lease.
+- Added the immutable local release assembler, inventory verifier, guarded
+  atomic activation, protected systemd unit, and secret-free environment
+  template. Backend typecheck and 373/373 tests pass; Compute focused Local
+  Pull/worker tests, full Compute 71 passing plus 2 expected local-runtime
+  skips, Compute contracts 2/2, all-workspace typecheck/build, and diff check
+  pass.
 
 ## Remaining
 
-- Install exact Linux Node and qualify real CUDA execution, Paddle CPU/GPU,
-  Qwen CPU/CUDA, resource envelope, and the immutable local release.
-- Implement the provider-neutral pull/claim/lease/heartbeat/callback protocol,
-  narrow revocable machine credential, crash/sleep/restart recovery, and
-  NORMAL/PAUSED/BURST controls.
+- Finish the exact-source full test/build/diff checkpoint, push, and remotely
+  verify it; assemble and requalify the immutable local release from that SHA.
+- Install the dedicated revocable machine credential outside Git, migrate/cut
+  Core to schema v26/`local_pull`, activate the systemd worker, and prove real
+  process-loss/lease-expiry/restart recovery plus privacy/resource envelopes.
 - Classify the root-disk, CSP, and systemd-metric audit findings by evidence.
 - Implement only measured, safe, material zero-cost performance improvements.
 - Qualify/deploy exact Core/frontend/Local Compute releases, retry the same
@@ -224,20 +258,20 @@ remains a mandatory hard stop.
 
 ## Last Verification
 
-2026-08-24: local/remote equality verified at `5911954…` after publishing all
-shared fixes, the inventory tool, and ADR-037. The following source-staging
-reconciliation records 12/12 D-drive copies, 199,835,281 bytes, and 12/12 exact
-length/SHA-256 matches. Production remains `17fb945…`, schema 25/history
-001–025. General readiness baseline remains 37 PASS, 4 FAIL, 3 WARN, 11 UNKNOWN,
-3 INFO; no result has been misreported as final acceptance. No GitHub-hosted
-production Compute has run since the pivot, and no WSL/Windows feature has yet
-been used for production Compute. Post-reboot WSL-on-D and initial GPU
-visibility evidence above passed; CUDA execution and exact AI runtime gates are
-pending.
+2026-08-24: local/remote equality was verified at `e8285cd…` before this
+runtime/protocol checkpoint. WSL-on-D, real CUDA, Paddle CPU/GPU, Qwen CPU/CUDA,
+the seven-case reasoning gate, Local Pull focused recovery tests, backend
+373/373, Compute 71 pass plus 2 expected local-runtime skips, Compute contracts
+2/2, and all-workspace typecheck/build/diff checks pass. Production remains
+`17fb945…`, schema
+25/history 001–025. The 12 D-drive source copies remain 199,835,281 bytes with
+12/12 exact identities. No GitHub-hosted production Compute has run since the
+pivot and no result is final production/full-corpus acceptance.
 
 ## Next Action
 
-Checkpoint/push the reproducible WSL foundation and durable evidence, verify
-local/remote equality, then install exact Linux Node, prove real CUDA execution,
-and benchmark exact Paddle CPU/GPU plus Qwen CPU/CUDA inside the bounded Normal
-envelope. Do not launch a GitHub-hosted production Compute probe or corpus wave.
+Review and checkpoint/push this exact implementation, verify local/remote
+equality, then assemble and qualify the immutable release from the
+exact new commit. Only after that may the evidence-gated schema-v26 Local Pull
+cutover, process-loss recovery canary, and bounded normal-path canaries begin.
+Do not launch a GitHub-hosted production Compute probe or corpus wave.

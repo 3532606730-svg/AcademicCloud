@@ -12,6 +12,7 @@
     "build": "tsc -p tsconfig.build.json",
     "worker": "npm run build --workspace @academiccloud/compute-contracts && tsx src/main.ts",
     "worker:prod": "node dist/main.js",
+    "worker:local:prod": "node dist/local-pull-main.js",
     "memory:probe": "node --expose-gc --import tsx scripts/memory-probe.ts"
   },
   "dependencies": {

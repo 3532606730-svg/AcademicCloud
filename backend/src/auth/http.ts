@@ -101,16 +101,17 @@ function isApiRequest(url: string): boolean {
   return url === "/api" || url.startsWith("/api/") || url.startsWith("/api?");
 }
 
-function isComputeCallbackRequest(url: string): boolean {
+function isComputeInternalRequest(url: string): boolean {
   const path = url.split("?", 1)[0] ?? url;
-  return path.startsWith("/api/internal/compute/jobs/");
+  return path === "/api/internal/compute/pull"
+    || /^\/api\/internal\/compute\/jobs\/[A-Za-z0-9_-]{1,128}\/(?:claim|heartbeat|result)$/u.test(path);
 }
 
 export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOptions): Promise<void> {
   const cookiePolicy = getSessionCookiePolicy(options.environment);
 
   app.addHook("onRequest", async (request, reply) => {
-    if (!isApiRequest(request.url) || !UNSAFE_METHODS.has(request.method) || isComputeCallbackRequest(request.url)) {
+    if (!isApiRequest(request.url) || !UNSAFE_METHODS.has(request.method) || isComputeInternalRequest(request.url)) {
       return;
     }
 

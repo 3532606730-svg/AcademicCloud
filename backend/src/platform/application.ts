@@ -101,6 +101,7 @@ export async function createApplication(
 
     const jobDeadlineSweep = setInterval(() => {
       try {
+        suggestionService.recoverExpiredLocalPullLeases();
         suggestionService.expireDueJobs();
         void suggestionService.reconcileUndispatchedJobs();
       } catch {
@@ -112,6 +113,7 @@ export async function createApplication(
     jobDeadlineSweep.unref();
     // Close the admission-to-provider hand-off gap promptly after startup.
     // The recurring sweep remains the durable recovery path for later crashes.
+    suggestionService.recoverExpiredLocalPullLeases();
     void suggestionService.reconcileUndispatchedJobs();
 
     app.addHook("onClose", () => {

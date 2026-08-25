@@ -14,6 +14,7 @@ test("PaddleOCR sidecar keeps rendered bytes in memory and returns pinned bounde
     sidecarPath: "ignored-by-fixture",
     detectionModelPath: "det-model",
     recognitionModelPath: "rec-model",
+    device: "cpu",
     engineId: PADDLE_OCR_ENGINE_ID,
     executableArguments: [fileURLToPath(new URL("./fixtures/fake-paddle-sidecar.mjs", import.meta.url))],
   });
@@ -37,5 +38,8 @@ test("production PaddleOCR resolves only release-local sidecar/models and reject
   assert.match(config.sidecarPath.replaceAll("\\", "/"), /runtime\/paddle\/paddle_ocr_sidecar\.py$/u);
   assert.match(config.detectionModelPath.replaceAll("\\", "/"), /runtime\/paddle\/models\/PP-OCRv6_small_det$/u);
   assert.match(config.recognitionModelPath.replaceAll("\\", "/"), /runtime\/paddle\/models\/PP-OCRv6_small_rec$/u);
+  assert.equal(config.device, "cpu");
+  assert.equal(loadPaddleOcrConfig({ NODE_ENV: "production", PADDLE_OCR_DEVICE: "gpu" }).device, "gpu");
+  assert.throws(() => loadPaddleOcrConfig({ PADDLE_OCR_DEVICE: "cuda" }), /PADDLE_OCR_DEVICE/u);
   assert.throws(() => loadPaddleOcrConfig({ NODE_ENV: "production", PADDLE_OCR_PYTHON_PATH: "/tmp/python" }), /release-local/u);
 });

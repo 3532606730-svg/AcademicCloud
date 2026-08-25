@@ -5,6 +5,7 @@ import type { IntelligentCanonicalBibliography, IntelligentBibliographicFieldNam
 
 import {
   deriveIntelligentBibliography,
+  loadLlamaReasonerConfig,
   type BibliographicReasoner,
 } from "../src/bibliographic-intelligence.js";
 import type { PdfTextInspection } from "../src/suggestion.js";
@@ -73,6 +74,14 @@ function fixture(canonical: IntelligentCanonicalBibliography, status: "auto_appl
   const reasoner: BibliographicReasoner = { async infer() { return model; } };
   return { inspection, reasoner };
 }
+
+test("llama GPU offload is explicit, bounded, and CPU-safe by default", () => {
+  assert.equal(loadLlamaReasonerConfig({}).gpuLayers, 0);
+  assert.equal(loadLlamaReasonerConfig({ NODE_ENV: "production", BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "999" }).gpuLayers, 999);
+  assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "-1" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
+  assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "1000" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
+  assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "all" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
+});
 
 test("seven bounded representative bibliographic cases remain inside the strict domain", async () => {
   const cases: Array<[string, IntelligentCanonicalBibliography, "auto_apply" | "ambiguous"]> = [];

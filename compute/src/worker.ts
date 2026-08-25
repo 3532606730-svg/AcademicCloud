@@ -28,7 +28,7 @@ export interface ComputeWorkerInput {
   bootstrapSecret: string;
 }
 
-interface WorkerClaim {
+export interface WorkerClaim {
   job: { id: string; attemptId: string; kind: "metadata_suggestion" };
   capability: { token: string; expiresAt: string };
   source: { method: "GET"; url: string; sizeBytes: number; mediaType: string; expiresAt: string };
@@ -85,7 +85,7 @@ function bearer(secret: string): Record<string, string> {
   return { authorization: `Bearer ${secret}`, "content-type": "application/json" };
 }
 
-function parseClaim(value: unknown, input: ComputeWorkerInput): WorkerClaim {
+export function parseWorkerClaim(value: unknown, input: Pick<ComputeWorkerInput, "jobId" | "attemptId">): WorkerClaim {
   if (typeof value !== "object" || value === null) throw new Error("compute claim is invalid");
   const claim = value as Partial<WorkerClaim>;
   if (claim.job?.id !== input.jobId || claim.job.attemptId !== input.attemptId || claim.job.kind !== "metadata_suggestion") {
@@ -316,6 +316,7 @@ export async function runComputeWorker(
     fetchImplementation?: typeof fetch;
     inspector?: BoundedPdfTextSource;
     reasoner?: BibliographicReasoner;
+    claim?: WorkerClaim;
     signal?: AbortSignal;
   } = {},
 ): Promise<ComputeWorkerOutcome> {
@@ -329,14 +330,19 @@ export async function runComputeWorker(
   const sampler = setInterval(sample, 10);
   sampler.unref();
   try {
-    const claimResponse = await postJson(
-      new URL(`/api/internal/compute/jobs/${encodeURIComponent(input.jobId)}/claim`, core).href,
-      bearer(input.bootstrapSecret),
-      { attemptId: input.attemptId },
-      fetchImplementation,
-    );
-    if (!claimResponse.ok) throw new Error(`compute claim failed with status ${claimResponse.status}`);
-    const claim = parseClaim(await claimResponse.json(), input);
+    let claim: WorkerClaim;
+    if (options.claim) {
+      claim = parseWorkerClaim(options.claim, input);
+    } else {
+      const claimResponse = await postJson(
+        new URL(`/api/internal/compute/jobs/${encodeURIComponent(input.jobId)}/claim`, core).href,
+        bearer(input.bootstrapSecret),
+        { attemptId: input.attemptId },
+        fetchImplementation,
+      );
+      if (!claimResponse.ok) throw new Error(`compute claim failed with status ${claimResponse.status}`);
+      claim = parseWorkerClaim(await claimResponse.json(), input);
+    }
     let result: DerivedComputeResult;
     let failureDiagnostic: ComputeWorkerOutcome["failureDiagnostic"];
     let sourceAccess: ComputeWorkerOutcome["sourceAccess"];

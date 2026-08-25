@@ -42,6 +42,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--detection-model", required=True)
     parser.add_argument("--recognition-model", required=True)
+    parser.add_argument("--device", choices=("cpu", "gpu"), default="cpu")
     args = parser.parse_args()
 
     sink = Sink()
@@ -53,6 +54,9 @@ def main() -> int:
 
         if paddle.__version__ != "3.3.1":
             return 20
+        if args.device == "gpu" and not paddle.is_compiled_with_cuda():
+            return 21
+        paddle.set_device(args.device)
         engine = PaddleOCR(
             text_detection_model_name="PP-OCRv6_small_det",
             text_detection_model_dir=args.detection_model,
@@ -63,9 +67,10 @@ def main() -> int:
             use_textline_orientation=False,
             enable_mkldnn=False,
             cpu_threads=2,
+            device=args.device,
         )
 
-    print(json.dumps({"ready": True, "engine": ENGINE_ID}, separators=(",", ":")), flush=True)
+    print(json.dumps({"ready": True, "engine": ENGINE_ID, "device": args.device}, separators=(",", ":")), flush=True)
     for line in sys.stdin:
         identifier = ""
         try:
