@@ -156,7 +156,7 @@
       "node": "v24.16.0 linux-x64; archive sha256 d804845d34eddc21dc1092b519d643ef40b1f58ec5dec5c22b1f4bd8fabde6c9",
       "paddle": {
         "versions": "Paddle 3.3.1 / PaddleOCR 3.7.0 / PP-OCRv6 small det+rec",
-        "modelInventorySha256": "3b1473329a2af7be4b38cb636527bb043038c3375424fdf6ef5262301b2a7eff",
+        "modelInventorySha256": "3b147ad31b770278ea132fd7eddd3dea4a6efafabcb8fb795967a2eb6eef7eff",
         "cpu": "real OCR pass; startup 2030 ms; requests 820/782/750 ms; peak RSS 648 MiB",
         "gpu": "real OCR pass; startup 3213 ms; requests 645/41/36 ms; peak RSS 1658 MiB; VRAM delta 318 MiB",
         "selected": "gpu"
