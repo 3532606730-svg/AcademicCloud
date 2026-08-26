@@ -407,13 +407,20 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
         if (outcome === null) throw new BibliographicIntelligenceError("reasoner_unavailable", "server_exited");
         response = outcome;
       } catch (error: unknown) {
-        if (inference.signal.aborted) throw new BibliographicIntelligenceError("reasoner_timeout");
+        if (inference.signal.aborted) {
+          this.#invalidateServer(server);
+          throw new BibliographicIntelligenceError("reasoner_timeout");
+        }
         if (error instanceof BibliographicIntelligenceError) throw error;
+        this.#invalidateServer(server);
         throw new BibliographicIntelligenceError("reasoner_unavailable", "request_failed");
       } finally {
         inference.dispose();
       }
-      if (!response.ok) throw new BibliographicIntelligenceError("reasoner_unavailable", "http_non_ok");
+      if (!response.ok) {
+        this.#invalidateServer(server);
+        throw new BibliographicIntelligenceError("reasoner_unavailable", "http_non_ok");
+      }
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (bytes.byteLength > MAX_REASONING_OUTPUT_BYTES) throw new BibliographicIntelligenceError("invalid_result", "response_too_large");
       let payload: { choices?: Array<{ message?: { content?: unknown } }> };
@@ -446,6 +453,11 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
     await server.exited;
   }
 
+  #invalidateServer(server: { origin: string; child: ReturnType<typeof spawn>; exited: Promise<void> }): void {
+    if (this.#server === server) this.#server = undefined;
+    server.child.kill("SIGKILL");
+  }
+
   async #ensureServer(signal?: AbortSignal): Promise<{ origin: string; child: ReturnType<typeof spawn>; exited: Promise<void> }> {
     if (this.#server) return this.#server;
     const port = await allocatePort();
@@ -465,6 +477,9 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
     const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
     const server = { origin, child, exited };
     this.#server = server;
+    void exited.then(() => {
+      if (this.#server === server) this.#server = undefined;
+    });
     const startup = boundedAbort(SERVER_START_TIMEOUT_MILLISECONDS, signal);
     try {
       const outcome = await Promise.race([waitForServer(origin, startup.signal).then(() => true), exited.then(() => false)]);

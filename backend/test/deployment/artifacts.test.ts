@@ -89,6 +89,8 @@ test("Local Pull systemd runs only the immutable D-drive WSL release with outbou
     "MemoryHigh=6G",
     "MemoryMax=7G",
     "Restart=on-failure",
+    "KillMode=control-group",
+    "SendSIGKILL=yes",
   ]) {
     assert.ok(unit.includes(directive), `missing ${directive}`);
   }
@@ -96,6 +98,7 @@ test("Local Pull systemd runs only the immutable D-drive WSL release with outbou
   assert.match(environment, /^NODE_ENV=production$/m);
   assert.match(environment, /^ACADEMICCLOUD_COMPUTE_CORE_BASE_URL=https:\/\//m);
   assert.match(environment, /^ACADEMICCLOUD_COMPUTE_MODE=NORMAL$/m);
+  assert.match(environment, /^ACADEMICCLOUD_COMPUTE_IDLE_TTL_MILLISECONDS=300000$/m);
   assert.match(environment, /^PADDLE_OCR_DEVICE=gpu$/m);
   assert.match(environment, /^BIBLIOGRAPHY_LLAMA_GPU_LAYERS=999$/m);
   assert.match(environment, /^ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET=replace-through-secret-installation$/m);
@@ -113,6 +116,11 @@ test("Local Pull systemd runs only the immutable D-drive WSL release with outbou
   assert.match(activation, /mv -Tf/u);
   assert.match(activation, /systemctl enable academiccloud-local-compute\.service/u);
   assert.match(activation, /systemctl restart academiccloud-local-compute\.service/u);
+  assert.match(activation, /readonly STABILITY_SECONDS=15/u);
+  assert.match(activation, /--property=NRestarts/u);
+  assert.match(activation, /Result=success/u);
+  assert.match(activation, /User=academiccloud/u);
+  assert.match(activation, /FragmentPath=\$UNIT_TARGET/u);
   assert.match(activation, /PREVIOUS_RELEASE/u);
   assert.match(activation, /rollback-current/u);
   assert.doesNotMatch(`${assembler}\n${activation}`, /git (?:pull|clone)|github_actions|D:\\Projects\\AcademicCloud/u);

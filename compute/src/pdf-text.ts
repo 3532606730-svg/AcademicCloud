@@ -120,19 +120,38 @@ export function selectedPageIndices(pageCount: number, limits: Readonly<Suggesti
 }
 
 export function isUsableNativeText(text: string): boolean {
-  const compact = text
-    .normalize("NFC")
-    .replace(/[\u0000-\u001f\u007f-\u009f]/gu, "")
-    .replace(/\s+/gu, "");
-  if (compact.length < 2 || !/[\p{L}]/u.test(compact)) return false;
-  if (/^\d+[\p{P}\p{S}]?$/u.test(compact)) return false;
-  const letters = [...compact].filter((character) => /\p{L}/u.test(character));
-  const meaningful = letters.filter((character) => /[\p{Script=Han}\p{Script=Latin}]/u.test(character));
-  if (meaningful.length < 2 || meaningful.length / Math.max(1, letters.length) < 0.55) return false;
-  // Broken font maps commonly produce long runs of replacement/private-use
-  // glyphs. A short, explicitly labelled title is still admitted by the
-  // extractor, but an opaque glyph run must not suppress OCR.
-  if (/^[\uE000-\uF8FF\uFFFD]+$/u.test(compact)) return false;
+  const normalized = text.normalize("NFC");
+  const characters = [...normalized];
+  const compact = characters.filter((character) => !/\s/u.test(character));
+  if (compact.length < 2) return false;
+
+  // Native PDF text is valid regardless of script. Admit linguistic Unicode
+  // evidence, then reject corruption signals produced by broken/custom font
+  // maps instead of treating a finite list of writing systems as authoritative.
+  const letters = compact.filter((character) => /\p{L}/u.test(character)).length;
+  const numbers = compact.filter((character) => /\p{N}/u.test(character)).length;
+  const marks = compact.filter((character) => /\p{M}/u.test(character)).length;
+  if (letters < 2) return false;
+
+  const replacements = compact.filter((character) => character === "\uFFFD").length;
+  const privateUse = compact.filter((character) => /\p{Co}/u.test(character)).length;
+  const controls = characters.filter((character) => /\p{Cc}/u.test(character) && !/[\t\n\r]/u.test(character)).length;
+  if (replacements >= 2 && replacements / compact.length >= 0.05) return false;
+  if (privateUse >= 2 && privateUse / compact.length >= 0.1) return false;
+  if (controls >= 4 && controls >= letters) return false;
+
+  const linguistic = letters + numbers + marks;
+  const punctuationOrSymbols = compact.filter((character) => /[\p{P}\p{S}]/u.test(character)).length;
+  if (linguistic / compact.length < 0.25 || punctuationOrSymbols > linguistic * 3) return false;
+
+  // Reject a whole extraction made from one repeated glyph or a tiny repeated
+  // glyph pattern. This catches common opaque-font output without assigning
+  // validity to (or withholding it from) any Unicode Script value.
+  for (let width = 1; width <= 3; width += 1) {
+    if (compact.length < width * 8 || compact.length % width !== 0) continue;
+    const pattern = compact.slice(0, width);
+    if (compact.every((character, index) => character === pattern[index % width])) return false;
+  }
   return true;
 }
 

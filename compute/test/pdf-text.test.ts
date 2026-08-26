@@ -5,12 +5,13 @@ import {
   inspectPdfFrontMatter,
   inspectPdfFrontMatterRange,
   inspectPdfText,
+  isUsableNativeText,
   pdfRangeAccessPolicy,
   PdfTextInspectionError,
 } from "../src/pdf-text.js";
 import { OcrError, type OcrAdapter, type OcrRecognition } from "../src/ocr.js";
 import { SUGGESTION_LIMITS, type SuggestionLimits } from "../src/suggestion.js";
-import { makeOversizedRealisticPdf } from "./fixtures/realistic-pdf.js";
+import { makeOversizedRealisticPdf, makeRealisticPdf } from "./fixtures/realistic-pdf.js";
 
 function makePdf(pages: string[], mediaBox = "0 0 612 792"): Uint8Array {
   const objects: string[] = [
@@ -123,6 +124,55 @@ test("malformed control characters are removed before evidence limits are applie
   const inspection = await inspectPdfText(makePdf(["Title\u0085\u0090 page"]));
   assert.equal(inspection.hasUsableTextLayer, true);
   assert.equal(/[\u0080-\u009f]/u.test(inspection.pages[0]?.text ?? ""), false);
+});
+
+test("native-text usability is script-neutral across the scholarly corpus", () => {
+  const valid = [
+    "元代蒙古帝国政治史研究",
+    "Mongolia Between China and the USSR",
+    "История Монголии и Центральной Азии",
+    "تاريخ منغوليا وآسيا الوسطى",
+    "モンゴル帝国史研究",
+    "མོང་གོལ་གྱི་ལོ་རྒྱུས།",
+    "ᠮᠣᠩᠭᠣᠯ ᠤᠯᠤᠰ",
+    "Činggis qaγan",
+    "Möngke qaγan",
+    "Qubilai qaγan",
+    "ulaγan",
+    "aγula",
+    "ǰarlig",
+    "čaǰa šöü γ ɣ",
+    "C\u030cinggis qag\u0307an",
+  ];
+  for (const text of valid) assert.equal(isUsableNativeText(text), true, text);
+});
+
+test("native-text usability rejects script-neutral corruption evidence", () => {
+  const invalid = [
+    "\uFFFD\uFFFD\uFFFD\uFFFD",
+    "\uE000\uE001\uE002\uE003",
+    "\u0001\u0002\u0003\u0004ab",
+    "★◆※—",
+    "12345.",
+    "aaaaaaaa",
+    "ab".repeat(8),
+    "A" + "!".repeat(20) + "B",
+  ];
+  for (const text of invalid) assert.equal(isUsableNativeText(text), false, JSON.stringify(text));
+});
+
+test("real Unicode Russian and Mongolistic PDFs stay on the native-text path", async () => {
+  for (const { text, requiredFragments } of [
+    { text: "История Монголии и Центральной Азии", requiredFragments: ["История", "Монголии", "Азии"] },
+    { text: "Činggis qaγan · Möngke qaɣan · Qubilai qaγan · ǰarlig", requiredFragments: ["Činggis", "γ", "Möngke", "ɣ", "ǰarli"] },
+    { text: "ᠮᠣᠩᠭᠣᠯ ᠤᠯᠤᠰ", requiredFragments: ["ᠮᠣᠩᠭᠣᠯ", "ᠤᠯᠤᠰ"] },
+  ]) {
+    const ocr = new RecordingOcrAdapter(async () => recognized("must not run"));
+    const inspection = await inspectPdfFrontMatter(makeRealisticPdf([text]), ocr);
+    assert.equal(ocr.calls.length, 0, text);
+    assert.equal(inspection.pages[0]?.evidenceOrigin, "native_text", text);
+    for (const fragment of requiredFragments) assert.equal(inspection.pages[0]?.text.includes(fragment), true, fragment);
+  }
 });
 
 test("native text bypasses OCR while image-only and mixed bounded pages use fallback selectively", async () => {

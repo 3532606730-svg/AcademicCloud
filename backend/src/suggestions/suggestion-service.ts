@@ -379,6 +379,10 @@ export interface SuggestionLocalPullClaim extends SuggestionComputeClaim {
   lease: { expiresAt: string; heartbeatAfterMilliseconds: number };
 }
 
+export interface SuggestionLocalSourceAuthorization {
+  source: SuggestionComputeClaim["source"];
+}
+
 function jobActor(job: DerivedJobRecord, repositories: RepositorySet): AuthenticatedAccount | null {
   const account = repositories.accounts.findById(job.createdByAccountId);
   if (!account || account.state !== "active") return null;
@@ -1206,6 +1210,61 @@ export class SuggestionService {
       lease: {
         expiresAt: renewed.leaseExpiresAt.toISOString(),
         heartbeatAfterMilliseconds: LOCAL_PULL_HEARTBEAT_MILLISECONDS,
+      },
+    };
+  }
+
+  async renewLocalSourceAuthorization(
+    jobId: string,
+    attemptId: string,
+    workerId: string,
+  ): Promise<SuggestionLocalSourceAuthorization> {
+    if (!SAFE_FILE_ID.test(jobId) || !SAFE_FILE_ID.test(attemptId) || !LOCAL_PULL_WORKER_ID.test(workerId)) {
+      throw new SuggestionError("invalid_input");
+    }
+    const snapshotAt = this.#now();
+    const resolveCurrent = (repositories: RepositorySet, now: Date): { job: DerivedJobRecord; context: HoldingContext } => {
+      repositories.derivedJobs.expireDue(now);
+      const job = repositories.derivedJobs.findById(jobId);
+      if (!job || job.state !== "running" || job.provider !== "local_pull"
+        || job.activeAttemptId !== attemptId || job.computeWorkerId !== workerId
+        || !job.leaseExpiresAt || job.leaseExpiresAt <= now || job.deadlineAt <= now) {
+        throw new SuggestionError("not_found");
+      }
+      const actor = jobActor(job, repositories);
+      if (!actor) throw new SuggestionError("not_found");
+      const context = resolveHolding(actor, job.scopeId, job.resourceId, repositories);
+      if (context.membership.role !== "manager" || context.file.mediaType?.toLowerCase() !== PDF_MEDIA_TYPE
+        || sourceFingerprint(context.file).value !== job.inputVersion) throw new SuggestionError("not_found");
+      return { job, context };
+    };
+
+    const snapshot = this.#persistence.runInTransaction((repositories) => resolveCurrent(repositories, snapshotAt));
+    const metadata = await this.#storage.statObject(snapshot.context.file.objectKey);
+    if (!objectMatchesFile(metadata, snapshot.context.file)) throw new SuggestionError("not_found");
+    const download = await this.#storage.createDownloadAuthorization({
+      objectKey: snapshot.context.file.objectKey,
+      downloadFilename: "academiccloud-compute-source.pdf",
+      disposition: "inline",
+      expiresInSeconds: 15 * 60,
+    });
+
+    // Storage signing crosses an external boundary. Re-check the exact attempt,
+    // lease, account authority, source fingerprint, and durable object identity
+    // immediately before returning the narrow authorization.
+    const verifiedAt = this.#now();
+    const verified = this.#persistence.runInTransaction((repositories) => resolveCurrent(repositories, verifiedAt));
+    if (verified.context.file.objectKey !== snapshot.context.file.objectKey
+      || sourceFingerprint(verified.context.file).value !== sourceFingerprint(snapshot.context.file).value) {
+      throw new SuggestionError("not_found");
+    }
+    return {
+      source: {
+        method: "GET",
+        url: download.url,
+        sizeBytes: metadata!.sizeBytes,
+        mediaType: "application/pdf",
+        expiresAt: download.expiresAt.toISOString(),
       },
     };
   }

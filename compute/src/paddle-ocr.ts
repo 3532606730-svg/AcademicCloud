@@ -250,6 +250,7 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
     this.#child = undefined;
     if (kill) child?.kill("SIGKILL");
     this.#readyReject?.(error);
+    this.#ready = undefined;
     this.#readyReject = undefined;
     this.#readyResolve = undefined;
     for (const pending of this.#pending.values()) {

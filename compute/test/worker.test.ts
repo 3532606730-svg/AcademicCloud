@@ -14,6 +14,17 @@ const INPUT = {
   bootstrapSecret: "worker-bootstrap-secret-that-is-long-enough",
 };
 
+const future = (milliseconds: number): string => new Date(Date.now() + milliseconds).toISOString();
+
+function abortableStall(signal: AbortSignal | null | undefined): Promise<Response> {
+  return new Promise<Response>((_resolve, reject) => {
+    if (!signal) return;
+    const fail = (): void => reject(signal.reason ?? new DOMException("aborted", "AbortError"));
+    if (signal.aborted) fail();
+    else signal.addEventListener("abort", fail, { once: true });
+  });
+}
+
 function inspector(): BoundedPdfTextSource {
   return {
     async inspect() { throw new Error("whole-object inspection is forbidden"); },
@@ -41,13 +52,13 @@ test("worker claims with bootstrap authority, range-reads the source, and return
     if (url.endsWith("/claim")) {
       return Response.json({
         job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
-        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: future(10 * 60_000) },
         source: {
           method: "GET",
           url: "https://storage.example/signed-source",
           sizeBytes: 5,
           mediaType: "application/pdf",
-          expiresAt: "2026-08-18T12:05:00.000Z",
+          expiresAt: future(5 * 60_000),
         },
         callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
       });
@@ -136,8 +147,8 @@ test("worker maps bounded extraction failure to a stable failed callback", async
     if (url.endsWith("/claim")) {
       return Response.json({
         job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
-        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
-        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: future(10 * 60_000) },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: future(5 * 60_000) },
         callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
       });
     }
@@ -169,8 +180,8 @@ test("worker reports only bounded PDF failure diagnostics outside the durable ca
     if (url.endsWith("/claim")) {
       return Response.json({
         job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
-        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
-        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: future(10 * 60_000) },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: future(5 * 60_000) },
         callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
       });
     }
@@ -203,8 +214,8 @@ test("worker reports a controlled post-extraction diagnostic without exposing mo
     if (url.endsWith("/claim")) {
       return Response.json({
         job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
-        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
-        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: future(10 * 60_000) },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: future(5 * 60_000) },
         callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
       });
     }
@@ -247,8 +258,8 @@ test("worker bounds successful-result callback retries and reports a terminal fa
     if (url.endsWith("/claim")) {
       return Response.json({
         job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
-        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
-        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: future(10 * 60_000) },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: future(5 * 60_000) },
         callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
       });
     }
@@ -287,8 +298,8 @@ test("worker does not retry stable result validation responses", async () => {
     if (url.endsWith("/claim")) {
       return Response.json({
         job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
-        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: "2026-08-18T12:10:00.000Z" },
-        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: "2026-08-18T12:05:00.000Z" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: future(10 * 60_000) },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: future(5 * 60_000) },
         callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
       });
     }
@@ -307,4 +318,53 @@ test("worker does not retry stable result validation responses", async () => {
     /compute callback failed with status 400/u,
   );
   assert.deepEqual(callbackStates, ["succeeded", "failed"]);
+});
+
+test("stuck callbacks time out per request, retry finitely, and remain parent-cancellable", async () => {
+  const makeFetch = (onCallback: (init: RequestInit) => Promise<Response>): typeof fetch => async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith("/claim")) {
+      return Response.json({
+        job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
+        capability: { token: "result-capability-token-that-is-long-enough", expiresAt: future(10 * 60_000) },
+        source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: future(5 * 60_000) },
+        callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
+      });
+    }
+    if (url === "https://storage.example/signed-source") {
+      return new Response(new Uint8Array([37, 80, 68, 70, 45]), { status: 206 });
+    }
+    if (url.endsWith("/result")) return onCallback(init);
+    return new Response(null, { status: 404 });
+  };
+
+  let timedOutCallbacks = 0;
+  const startedAt = Date.now();
+  await assert.rejects(
+    () => runComputeWorker(INPUT, {
+      inspector: inspector(),
+      fetchImplementation: makeFetch((init) => { timedOutCallbacks += 1; return abortableStall(init.signal); }),
+      networkTimeouts: { coreRequestMilliseconds: 10 },
+    }),
+    (error: unknown) => error instanceof DOMException && error.name === "TimeoutError",
+  );
+  assert.equal(timedOutCallbacks, 6);
+  assert.ok(Date.now() - startedAt < 2_000);
+
+  const shutdown = new AbortController();
+  let cancelledCallbacks = 0;
+  await assert.rejects(
+    () => runComputeWorker(INPUT, {
+      inspector: inspector(),
+      signal: shutdown.signal,
+      fetchImplementation: makeFetch((init) => {
+        cancelledCallbacks += 1;
+        setImmediate(() => shutdown.abort());
+        return abortableStall(init.signal);
+      }),
+      networkTimeouts: { coreRequestMilliseconds: 1_000 },
+    }),
+    (error: unknown) => error instanceof DOMException && error.name === "AbortError",
+  );
+  assert.equal(cancelledCallbacks, 1);
 });

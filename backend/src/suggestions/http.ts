@@ -20,6 +20,7 @@ interface InternalJobParams { jobId: string; }
 interface ClaimBody { attemptId: string; }
 interface PullBody { workerId: string; waitMilliseconds?: number; }
 interface HeartbeatBody { attemptId: string; workerId: string; }
+interface SourceAuthorizationBody { attemptId: string; workerId: string; }
 interface AcceptBody extends SuggestionAcceptanceInput { metadata?: Record<string, unknown>; }
 interface LibraryParams { libraryId: string; }
 interface BatchPreviewQuery { fileIds: string; }
@@ -447,6 +448,37 @@ export async function registerSuggestionHttp(
       if (!secureSecretEquals(options.bootstrapSecret, supplied)) return reply.code(401).send({ error: "unauthorized" });
       try {
         return service.heartbeatLocalJob(request.params.jobId, request.body.attemptId, request.body.workerId);
+      } catch (error: unknown) {
+        return sendSuggestionError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: InternalJobParams; Body: SourceAuthorizationBody }>(
+    "/api/internal/compute/jobs/:jobId/source",
+    {
+      preValidation: requireJson,
+      bodyLimit: 4 * 1024,
+      schema: {
+        params: { type: "object", required: ["jobId"], properties: { jobId: idSchema } },
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["attemptId", "workerId"],
+          properties: { attemptId: idSchema, workerId: workerIdSchema },
+        },
+      },
+    },
+    async (request, reply) => {
+      const supplied = request.headers.authorization?.match(/^Bearer\s+(.+)$/u)?.[1];
+      if (!secureSecretEquals(options.bootstrapSecret, supplied)) return reply.code(401).send({ error: "unauthorized" });
+      try {
+        return await service.renewLocalSourceAuthorization(
+          request.params.jobId,
+          request.body.attemptId,
+          request.body.workerId,
+        );
       } catch (error: unknown) {
         return sendSuggestionError(reply, error);
       }

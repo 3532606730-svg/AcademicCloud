@@ -104,7 +104,7 @@ function isApiRequest(url: string): boolean {
 function isComputeInternalRequest(url: string): boolean {
   const path = url.split("?", 1)[0] ?? url;
   return path === "/api/internal/compute/pull"
-    || /^\/api\/internal\/compute\/jobs\/[A-Za-z0-9_-]{1,128}\/(?:claim|heartbeat|result)$/u.test(path);
+    || /^\/api\/internal\/compute\/jobs\/[A-Za-z0-9_-]{1,128}\/(?:claim|heartbeat|source|result)$/u.test(path);
 }
 
 export async function registerAuthHttp(app: FastifyInstance, options: AuthHttpOptions): Promise<void> {

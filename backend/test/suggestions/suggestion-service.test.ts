@@ -303,6 +303,18 @@ test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection a
   const first = await suggestions.pullLocalJob("owner-laptop.wsl2");
   assert.equal(first?.job.attemptId, "attempt-1");
   assert.equal(first?.lease.heartbeatAfterMilliseconds, 30_000);
+  const renewedSource = await suggestions.renewLocalSourceAuthorization(job.id, "attempt-1", "owner-laptop.wsl2");
+  assert.equal(renewedSource.source.sizeBytes, first?.source.sizeBytes);
+  assert.equal(renewedSource.source.url, first?.source.url);
+  assert.deepEqual(Object.keys(renewedSource.source).sort(), ["expiresAt", "mediaType", "method", "sizeBytes", "url"]);
+  await assert.rejects(
+    () => suggestions.renewLocalSourceAuthorization(job.id, "wrong-attempt", "owner-laptop.wsl2"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+  await assert.rejects(
+    () => suggestions.renewLocalSourceAuthorization(job.id, "attempt-1", "second-worker"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
   assert.equal(await suggestions.pullLocalJob("second-worker"), null);
   assert.throws(
     () => suggestions.heartbeatLocalJob(job.id, "attempt-1", "second-worker"),
@@ -316,6 +328,10 @@ test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection a
   assert.equal(suggestions.recoverExpiredLocalPullLeases(), 0);
 
   now = new Date(NOW.getTime() + 121_000);
+  await assert.rejects(
+    () => suggestions.renewLocalSourceAuthorization(job.id, "attempt-1", "owner-laptop.wsl2"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
   await assert.rejects(
     () => suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), first!.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
@@ -335,6 +351,10 @@ test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection a
   const second = await suggestions.pullLocalJob("owner-laptop.wsl2");
   assert.equal(second?.job.attemptId, "attempt-2");
   await assert.rejects(
+    () => suggestions.renewLocalSourceAuthorization(job.id, "attempt-1", "owner-laptop.wsl2"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+  await assert.rejects(
     () => suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), first!.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
   );
@@ -342,6 +362,26 @@ test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection a
   const completed = await suggestions.applyComputeResult(secondResult, second!.capability.token);
   assert.equal(completed.state, "succeeded");
   assert.deepEqual(await suggestions.applyComputeResult(secondResult, second!.capability.token), completed);
+});
+
+test("Local Pull source renewal rechecks source fingerprint and requesting-account authority", async (context) => {
+  const stale = fixture(context, { dispatcher: new LocalPullComputeDispatcher() });
+  const staleJob = await stale.suggestions.requestGeneration(OWNER, stale.library.id, stale.fileId);
+  await stale.suggestions.pullLocalJob("owner-laptop.wsl2");
+  stale.database.prepare("UPDATE files SET revision = revision + 1 WHERE id = ?").run(stale.fileId);
+  await assert.rejects(
+    () => stale.suggestions.renewLocalSourceAuthorization(staleJob.id, "attempt-1", "owner-laptop.wsl2"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
+
+  const unauthorized = fixture(context, { dispatcher: new LocalPullComputeDispatcher() });
+  const unauthorizedJob = await unauthorized.suggestions.requestGeneration(OWNER, unauthorized.library.id, unauthorized.fileId);
+  await unauthorized.suggestions.pullLocalJob("owner-laptop.wsl2");
+  assert.equal(unauthorized.persistence.repositories.accounts.updateState(OWNER.id, "active", "disabled", NOW), true);
+  await assert.rejects(
+    () => unauthorized.suggestions.renewLocalSourceAuthorization(unauthorizedJob.id, "attempt-1", "owner-laptop.wsl2"),
+    (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
+  );
 });
 
 test("admission dispatch failure stays durable and the reconciler records one provider receipt", async (context) => {

@@ -36,7 +36,7 @@ class WorkerTestStorage extends InMemoryStorageAdapter {
     return {
       method: "GET",
       url: "https://storage.example/opaque-signed-source",
-      expiresAt: new Date(NOW.getTime() + 5 * 60_000),
+      expiresAt: new Date(Date.now() + 5 * 60_000),
     };
   }
 }

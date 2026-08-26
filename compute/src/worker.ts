@@ -15,11 +15,25 @@ import {
   type BibliographicReasoner,
 } from "./bibliographic-intelligence.js";
 import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfRangeSource } from "./suggestion.js";
+import { boundedNetworkSignal, cancelledBy } from "./network.js";
 
 const JOB_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 const MAX_HTTP_RANGE_BYTES = 2 * 1024 * 1024;
 const MAX_CALLBACK_RESULT_BYTES = 256 * 1024;
 const RESULT_CALLBACK_RETRY_DELAYS_MS = [100, 250] as const;
+const SOURCE_RANGE_TIMEOUT_MILLISECONDS = 45_000;
+const CORE_REQUEST_TIMEOUT_MILLISECONDS = 15_000;
+const SOURCE_RENEWAL_MARGIN_MILLISECONDS = 60_000;
+
+export interface ComputeWorkerNetworkTimeouts {
+  coreRequestMilliseconds: number;
+  sourceRangeMilliseconds: number;
+}
+
+const DEFAULT_NETWORK_TIMEOUTS: Readonly<ComputeWorkerNetworkTimeouts> = {
+  coreRequestMilliseconds: CORE_REQUEST_TIMEOUT_MILLISECONDS,
+  sourceRangeMilliseconds: SOURCE_RANGE_TIMEOUT_MILLISECONDS,
+};
 
 export interface ComputeWorkerInput {
   coreBaseUrl: string;
@@ -31,9 +45,11 @@ export interface ComputeWorkerInput {
 export interface WorkerClaim {
   job: { id: string; attemptId: string; kind: "metadata_suggestion" };
   capability: { token: string; expiresAt: string };
-  source: { method: "GET"; url: string; sizeBytes: number; mediaType: string; expiresAt: string };
+  source: { method: "GET"; url: string; sizeBytes: number; mediaType: "application/pdf"; expiresAt: string };
   callbackUrl: string;
 }
+
+export type WorkerSourceAuthorization = WorkerClaim["source"];
 
 export interface WorkerMemoryEvidence {
   cleanStartRssBytes: number;
@@ -56,6 +72,34 @@ export interface ComputeWorkerOutcome {
     detail?: BibliographicIntelligenceError["diagnostic"];
     rangeRequests?: number;
     rangeBytes?: number;
+  };
+}
+
+export interface ComputeWorkerRuntime {
+  inspector: BoundedPdfTextSource;
+  reasoner?: BibliographicReasoner;
+  close(): Promise<void>;
+}
+
+export function createDefaultComputeWorkerRuntime(): ComputeWorkerRuntime {
+  const emergencyLegacyOcr = process.env.ACADEMICCLOUD_OCR_EMERGENCY_LEGACY === "1";
+  const inspector = new PdfJsFrontMatterInspector(
+    process.env.NODE_ENV === "production" && !emergencyLegacyOcr
+      ? new PaddleOcrSidecarAdapter()
+      : new TesseractCliOcrAdapter(),
+  );
+  const reasoner = process.env.NODE_ENV === "production" ? new LlamaServerBibliographicReasoner() : undefined;
+  return {
+    inspector,
+    ...(reasoner === undefined ? {} : { reasoner }),
+    async close(): Promise<void> {
+      const cleanup = await Promise.allSettled([
+        Promise.resolve().then(() => inspector.close?.()),
+        Promise.resolve().then(() => reasoner?.close?.()),
+      ]);
+      const failure = cleanup.find((result) => result.status === "rejected");
+      if (failure?.status === "rejected") throw failure.reason;
+    },
   };
 }
 
@@ -91,27 +135,54 @@ export function parseWorkerClaim(value: unknown, input: Pick<ComputeWorkerInput,
   if (claim.job?.id !== input.jobId || claim.job.attemptId !== input.attemptId || claim.job.kind !== "metadata_suggestion") {
     throw new Error("compute claim identity mismatch");
   }
-  if (claim.source?.method !== "GET" || claim.source.mediaType !== "application/pdf"
-    || !Number.isSafeInteger(claim.source.sizeBytes) || claim.source.sizeBytes! < 5
-    || claim.source.sizeBytes! > SUGGESTION_LIMITS.maxObjectSizeBytes) {
-    throw new Error("compute source descriptor is invalid");
-  }
-  safeUrl(claim.source.url, "compute source URL");
+  const source = parseWorkerSourceAuthorization(claim.source);
   safeUrl(claim.callbackUrl!, "compute callback URL");
   if (typeof claim.capability?.token !== "string" || claim.capability.token.length < 32 || claim.capability.token.length > 512) {
     throw new Error("compute result capability is invalid");
   }
-  return claim as WorkerClaim;
+  return { ...(claim as WorkerClaim), source };
+}
+
+export function parseWorkerSourceAuthorization(value: unknown, expectedSizeBytes?: number): WorkerSourceAuthorization {
+  if (typeof value !== "object" || value === null) throw new Error("compute source descriptor is invalid");
+  const source = value as Partial<WorkerSourceAuthorization>;
+  if (source.method !== "GET" || source.mediaType !== "application/pdf"
+    || !Number.isSafeInteger(source.sizeBytes) || source.sizeBytes! < 5
+    || source.sizeBytes! > SUGGESTION_LIMITS.maxObjectSizeBytes
+    || (expectedSizeBytes !== undefined && source.sizeBytes !== expectedSizeBytes)
+    || typeof source.url !== "string" || typeof source.expiresAt !== "string") {
+    throw new Error("compute source descriptor is invalid");
+  }
+  safeUrl(source.url, "compute source URL");
+  const expiresAt = Date.parse(source.expiresAt);
+  const now = Date.now();
+  if (!Number.isFinite(expiresAt) || expiresAt <= now || expiresAt > now + 30 * 60_000) {
+    throw new Error("compute source descriptor expiry is invalid");
+  }
+  return source as WorkerSourceAuthorization;
 }
 
 export class HttpPdfRangeSource implements PdfRangeSource {
   readonly length: number;
-  readonly #url: string;
+  #url: string;
   readonly #fetch: typeof fetch;
+  readonly #renew: ((signal?: AbortSignal) => Promise<WorkerSourceAuthorization>) | undefined;
+  readonly #requestTimeoutMilliseconds: number;
+  #expiresAt: number;
+  #renewing: Promise<void> | undefined;
   #rangeRequests = 0;
   #rangeBytes = 0;
 
-  constructor(url: string, length: number, fetchImplementation: typeof fetch = fetch) {
+  constructor(
+    url: string,
+    length: number,
+    fetchImplementation: typeof fetch = fetch,
+    options: {
+      expiresAt?: string;
+      renew?: (signal?: AbortSignal) => Promise<WorkerSourceAuthorization>;
+      requestTimeoutMilliseconds?: number;
+    } = {},
+  ) {
     safeUrl(url, "compute source URL");
     if (!Number.isSafeInteger(length) || length < 5 || length > SUGGESTION_LIMITS.maxObjectSizeBytes) {
       throw new RangeError("compute source length is invalid");
@@ -119,6 +190,11 @@ export class HttpPdfRangeSource implements PdfRangeSource {
     this.#url = url;
     this.length = length;
     this.#fetch = fetchImplementation;
+    this.#renew = options.renew;
+    this.#requestTimeoutMilliseconds = options.requestTimeoutMilliseconds ?? SOURCE_RANGE_TIMEOUT_MILLISECONDS;
+    boundedNetworkSignal(undefined, this.#requestTimeoutMilliseconds);
+    this.#expiresAt = options.expiresAt === undefined ? Number.POSITIVE_INFINITY : Date.parse(options.expiresAt);
+    if (!Number.isFinite(this.#expiresAt) && options.expiresAt !== undefined) throw new Error("compute source expiry is invalid");
   }
 
   get metrics(): { rangeRequests: number; rangeBytes: number } {
@@ -130,17 +206,44 @@ export class HttpPdfRangeSource implements PdfRangeSource {
       || end > this.length || end - begin > MAX_HTTP_RANGE_BYTES) {
       throw new RangeError("compute source range is invalid");
     }
-    this.#rangeRequests += 1;
-    const response = await this.#fetch(this.#url, {
-      method: "GET",
-      headers: { range: `bytes=${begin}-${end - 1}` },
-      ...(signal === undefined ? {} : { signal }),
-    });
-    if (response.status !== 206) throw new Error("compute source range unavailable");
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength !== end - begin) throw new Error("compute source range length mismatch");
-    this.#rangeBytes += bytes.byteLength;
-    return bytes;
+    await this.#ensureAuthorization(signal, false);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      this.#rangeRequests += 1;
+      let response: Response;
+      try {
+        response = await this.#fetch(this.#url, {
+          method: "GET",
+          headers: { range: `bytes=${begin}-${end - 1}` },
+          signal: boundedNetworkSignal(signal, this.#requestTimeoutMilliseconds),
+        });
+      } catch (error: unknown) {
+        if (signal?.aborted) throw cancelledBy(signal);
+        throw error;
+      }
+      if ([401, 403].includes(response.status) && attempt === 0 && this.#renew) {
+        await this.#ensureAuthorization(signal, true);
+        continue;
+      }
+      if (response.status !== 206) throw new Error("compute source range unavailable");
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.byteLength !== end - begin) throw new Error("compute source range length mismatch");
+      this.#rangeBytes += bytes.byteLength;
+      return bytes;
+    }
+    throw new Error("compute source range unavailable");
+  }
+
+  async #ensureAuthorization(signal: AbortSignal | undefined, force: boolean): Promise<void> {
+    if (!this.#renew || (!force && Date.now() + SOURCE_RENEWAL_MARGIN_MILLISECONDS < this.#expiresAt)) return;
+    if (!this.#renewing) {
+      this.#renewing = this.#renew(signal).then((authorization) => {
+        const parsed = parseWorkerSourceAuthorization(authorization, this.length);
+        const expiresAt = Date.parse(parsed.expiresAt);
+        this.#url = parsed.url;
+        this.#expiresAt = expiresAt;
+      }).finally(() => { this.#renewing = undefined; });
+    }
+    await this.#renewing;
   }
 }
 
@@ -184,6 +287,7 @@ export async function computeMetadataSuggestions(
   reasoner?: BibliographicReasoner,
   legacyOcrFallback = false,
   onStage?: (stage: ComputeWorkerStage) => void,
+  closeResources = true,
 ): Promise<MetadataSuggestionComputeOutput> {
   if (!inspector.inspectRange) throw new Error("compute inspector requires bounded range support");
   let inspection;
@@ -192,7 +296,7 @@ export async function computeMetadataSuggestions(
     inspection = await inspector.inspectRange(source, SUGGESTION_LIMITS, signal);
   } finally {
     try {
-      await inspector.close?.();
+      if (closeResources) await inspector.close?.();
     } catch {
       // The single-job provider process exits after the callback. A cleanup
       // failure must not erase valid evidence or mask the primary boundary;
@@ -222,7 +326,7 @@ export async function computeMetadataSuggestions(
     bibliography = undefined;
   } finally {
     try {
-      await reasoner?.close?.();
+      if (closeResources) await reasoner?.close?.();
     } catch {
       // See the inspector cleanup boundary above.
     }
@@ -242,8 +346,25 @@ export async function computeMetadataSuggestions(
   });
 }
 
-async function postJson(url: string, headers: Record<string, string>, body: unknown, fetchImplementation: typeof fetch): Promise<Response> {
-  return fetchImplementation(url, { method: "POST", headers, body: JSON.stringify(body) });
+async function postJson(
+  url: string,
+  headers: Record<string, string>,
+  body: unknown,
+  fetchImplementation: typeof fetch,
+  signal: AbortSignal | undefined,
+  timeoutMilliseconds: number,
+): Promise<Response> {
+  try {
+    return await fetchImplementation(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: boundedNetworkSignal(signal, timeoutMilliseconds),
+    });
+  } catch (error: unknown) {
+    if (signal?.aborted) throw cancelledBy(signal);
+    throw error;
+  }
 }
 
 export function fitCallbackOutput(output: MetadataSuggestionComputeOutput): MetadataSuggestionComputeOutput {
@@ -286,16 +407,17 @@ async function postResultWithRetry(
   result: DerivedComputeResult,
   fetchImplementation: typeof fetch,
   signal?: AbortSignal,
+  timeoutMilliseconds = CORE_REQUEST_TIMEOUT_MILLISECONDS,
 ): Promise<void> {
   const headers = { authorization: `Bearer ${claim.capability.token}`, "content-type": "application/json" };
   let lastError: unknown;
   for (let attempt = 0; attempt <= RESULT_CALLBACK_RETRY_DELAYS_MS.length; attempt += 1) {
     let response: Response | undefined;
     try {
-      response = await postJson(claim.callbackUrl, headers, result, fetchImplementation);
+      response = await postJson(claim.callbackUrl, headers, result, fetchImplementation, signal, timeoutMilliseconds);
     } catch (error: unknown) {
       lastError = error;
-      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      if (signal?.aborted) throw cancelledBy(signal);
     }
     if (response?.ok) return;
     if (response) {
@@ -318,12 +440,18 @@ export async function runComputeWorker(
     reasoner?: BibliographicReasoner;
     claim?: WorkerClaim;
     signal?: AbortSignal;
+    sourceAuthorizationRenewal?: (signal?: AbortSignal) => Promise<WorkerSourceAuthorization>;
+    networkTimeouts?: Partial<ComputeWorkerNetworkTimeouts>;
+    retainRuntime?: boolean;
   } = {},
 ): Promise<ComputeWorkerOutcome> {
   if (!JOB_ID.test(input.jobId) || !JOB_ID.test(input.attemptId)) throw new Error("compute job identity is invalid");
   const core = safeUrl(input.coreBaseUrl, "compute Core URL");
   if (core.pathname !== "/" || core.search || core.hash) throw new Error("compute Core URL must be an exact origin");
   const fetchImplementation = options.fetchImplementation ?? fetch;
+  const networkTimeouts = { ...DEFAULT_NETWORK_TIMEOUTS, ...options.networkTimeouts };
+  boundedNetworkSignal(undefined, networkTimeouts.coreRequestMilliseconds);
+  boundedNetworkSignal(undefined, networkTimeouts.sourceRangeMilliseconds);
   const cleanStartRssBytes = process.memoryUsage.rss();
   let peakRssBytes = cleanStartRssBytes;
   const sample = (): void => { peakRssBytes = Math.max(peakRssBytes, process.memoryUsage.rss()); };
@@ -339,6 +467,8 @@ export async function runComputeWorker(
         bearer(input.bootstrapSecret),
         { attemptId: input.attemptId },
         fetchImplementation,
+        options.signal,
+        networkTimeouts.coreRequestMilliseconds,
       );
       if (!claimResponse.ok) throw new Error(`compute claim failed with status ${claimResponse.status}`);
       claim = parseWorkerClaim(await claimResponse.json(), input);
@@ -349,7 +479,11 @@ export async function runComputeWorker(
     let source: HttpPdfRangeSource | undefined;
     let workerStage: ComputeWorkerStage = "pdf_inspection";
     try {
-      source = new HttpPdfRangeSource(claim.source.url, claim.source.sizeBytes, fetchImplementation);
+      source = new HttpPdfRangeSource(claim.source.url, claim.source.sizeBytes, fetchImplementation, {
+        expiresAt: claim.source.expiresAt,
+        ...(options.sourceAuthorizationRenewal === undefined ? {} : { renew: options.sourceAuthorizationRenewal }),
+        requestTimeoutMilliseconds: networkTimeouts.sourceRangeMilliseconds,
+      });
       const emergencyLegacyOcr = process.env.ACADEMICCLOUD_OCR_EMERGENCY_LEGACY === "1";
       const inspector = options.inspector ?? new PdfJsFrontMatterInspector(
         process.env.NODE_ENV === "production" && !emergencyLegacyOcr
@@ -364,6 +498,7 @@ export async function runComputeWorker(
         reasoner,
         emergencyLegacyOcr,
         (stage) => { workerStage = stage; },
+        !options.retainRuntime,
       );
       result = { jobId: input.jobId, attemptId: input.attemptId, kind: "metadata_suggestion", state: "succeeded", output };
     } catch (error: unknown) {
@@ -398,8 +533,9 @@ export async function runComputeWorker(
     }
     sample();
     try {
-      await postResultWithRetry(claim, result, fetchImplementation, options.signal);
+      await postResultWithRetry(claim, result, fetchImplementation, options.signal, networkTimeouts.coreRequestMilliseconds);
     } catch (callbackError: unknown) {
+      if (options.signal?.aborted) throw callbackError;
       // A successful extraction whose result cannot be durably committed must
       // not strand the job in `running` until its two-hour deadline. After the
       // exact result has exhausted bounded retry, report a stable failed
@@ -414,7 +550,7 @@ export async function runComputeWorker(
           errorCode: "compute_internal_error",
         };
         try {
-          await postResultWithRetry(claim, failed, fetchImplementation, options.signal);
+          await postResultWithRetry(claim, failed, fetchImplementation, options.signal, networkTimeouts.coreRequestMilliseconds);
         } catch {
           // Preserve the original callback failure for the provider log.
         }
