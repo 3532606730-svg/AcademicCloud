@@ -98,8 +98,10 @@ strategy. The authoritative branch is
 `codex/project-memory-reconcile-20260817`. The shared fixes, privacy-safe
 inventory tool, ADR-037, reboot gate, and WSL-on-D foundation were pushed and
 independently verified at local/remote HEAD
-`e8285cdb585ccf2953e2d259ac199bfd2d66dc71`; the runtime/protocol work below is
-the next checkpoint.
+`e8285cdb585ccf2953e2d259ac199bfd2d66dc71`. The runtime/protocol checkpoint
+`71a30e6` and the Owner-review repair checkpoint
+`d1bddb6d7bd6e66d0ed52586c17dd51afd358d99` are now pushed and remotely
+verified; immutable release assembly is next.
 Pre-existing untracked `%SystemDrive%/` and `scratch/` remain untouched.
 Production remains exact frontend/Core
 `17fb945220c44df71e4846a0ccd5f54e98f43858`, schema v25/history 001–025. No new
@@ -235,11 +237,25 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   Pull/worker tests, full Compute 71 passing plus 2 expected local-runtime
   skips, Compute contracts 2/2, all-workspace typecheck/build, and diff check
   pass.
+- Closed the Owner's pre-corpus code-review gates at exact pushed checkpoint
+  `d1bddb6`: script-neutral native PDF text with multilingual and real
+  Russian/Mongolistic PDF coverage; exact-attempt source authorization renewal;
+  bounded/cancellable pull, heartbeat, source, renewal, and callback I/O;
+  concurrency-one lazy warm Paddle/Qwen reuse with failure invalidation,
+  five-minute idle unload, PAUSED cold state, and shutdown cleanup; and a
+  rollback-capable 15-second structured systemd activation stability gate.
+- Independently reviewed the repaired boundaries and further capped stuck
+  heartbeat I/O by the remaining lease. The exact tree passes Backend 374/374,
+  Frontend 283/283, Compute 81/81 plus 2 expected Windows runtime skips,
+  Compute contracts 2/2, all-workspace typecheck/build, migration-v26 coverage,
+  compiled acceptance with 26 first-run migrations and zero redeploy migrations,
+  WSL Bash syntax, `CURRENT_STATE.json` parsing, and `git diff --check`.
 
 ## Remaining
 
-- Finish the exact-source full test/build/diff checkpoint, push, and remotely
-  verify it; assemble and requalify the immutable local release from that SHA.
+- Assemble and requalify a new immutable local release from exact source
+  `d1bddb6…`; measure real cold/second/third-job warm behavior, RSS/VRAM/swap,
+  and five-minute idle unload without redownloading unchanged model bytes.
 - Install the dedicated revocable machine credential outside Git, migrate/cut
   Core to schema v26/`local_pull`, activate the systemd worker, and prove real
   process-loss/lease-expiry/restart recovery plus privacy/resource envelopes.
@@ -258,11 +274,12 @@ remains a mandatory hard stop.
 
 ## Last Verification
 
-2026-08-24: local/remote equality was verified at `e8285cd…` before this
-runtime/protocol checkpoint. WSL-on-D, real CUDA, Paddle CPU/GPU, Qwen CPU/CUDA,
-the seven-case reasoning gate, Local Pull focused recovery tests, backend
-373/373, Compute 71 pass plus 2 expected local-runtime skips, Compute contracts
-2/2, and all-workspace typecheck/build/diff checks pass. Production remains
+2026-08-26: local/remote equality was verified at the reviewed code checkpoint
+`d1bddb6…`. WSL-on-D, real CUDA, Paddle CPU/GPU, Qwen CPU/CUDA, the seven-case
+reasoning gate, all five Owner code-review repairs, Backend 374/374, Frontend
+283/283, Compute 81/81 plus 2 expected Windows runtime skips, Compute contracts
+2/2, all-workspace typecheck/build, migration-v26 and compiled acceptance,
+WSL Bash syntax, state JSON parsing, and diff checks pass. Production remains
 `17fb945…`, schema
 25/history 001–025. The 12 D-drive source copies remain 199,835,281 bytes with
 12/12 exact identities. No GitHub-hosted production Compute has run since the
@@ -270,8 +287,8 @@ pivot and no result is final production/full-corpus acceptance.
 
 ## Next Action
 
-Review and checkpoint/push this exact implementation, verify local/remote
-equality, then assemble and qualify the immutable release from the
-exact new commit. Only after that may the evidence-gated schema-v26 Local Pull
+Assemble and qualify the immutable release from exact checkpoint `d1bddb6…`,
+including real cold/warm/idle-unload and resource-envelope evidence. Only after
+that may the evidence-gated schema-v26 Local Pull
 cutover, process-loss recovery canary, and bounded normal-path canaries begin.
 Do not launch a GitHub-hosted production Compute probe or corpus wave.

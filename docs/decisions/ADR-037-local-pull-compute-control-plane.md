@@ -1,7 +1,7 @@
 # ADR-037 — Local Pull Worker as the Production Compute Control Plane
 
 **Date:** 2026-08-24
-**Status:** Accepted by Owner; local implementation/runtime qualification passed; immutable release and production cutover pending
+**Status:** Accepted by Owner; pre-corpus code review and local runtime qualification passed at `d1bddb6`; immutable release and production cutover pending
 
 ## Context
 
@@ -71,7 +71,8 @@ recoverable while Auth, Library, upload/download, preview, Search, citation,
 metadata, and every other Core path remain available.
 
 The worker uses a dedicated, independently revocable machine credential with
-only pull/claim/heartbeat/callback scope. It is stored outside Git and browser
+only pull/claim/heartbeat/source-renewal scope. Result submission uses the
+separate attempt-bound result capability. The machine credential is stored outside Git and browser
 sessions, never printed or logged, and grants neither research-data browsing nor
 human or Owner operations.
 
@@ -190,6 +191,40 @@ legacy claim endpoint, delayed-callback rejection immediately after expiry,
 and idempotent matching duplicate terminal success/failure. Full backend acceptance passes
 373/373. These are pre-release development facts: production remains exact
 release `17fb945…` at schema v25 and provider cutover has not occurred.
+
+### Pre-corpus code-review checkpoint — 2026-08-26
+
+Owner review reopened five gates before immutable release assembly and corpus
+execution. Exact checkpoint `d1bddb6d7bd6e66d0ed52586c17dd51afd358d99`
+passed them without changing production:
+
+- native PDF text usability is script-neutral and rejects corruption by
+  Unicode quality signals rather than a Han/Latin allowlist; Cyrillic,
+  Arabic/Persian, Japanese, Tibetan, Unicode Mongolian, and Poppe/Mongolistic
+  transliteration tests pass, including a real Unicode Russian/Mongolistic PDF
+  fixture that remains on the native-text path;
+- the valid current Local Pull attempt may renew a 15-minute authorization for
+  only its exact source, while wrong worker/attempt, expired or replaced lease,
+  stale fingerprint, and changed account/context authority fail closed;
+- pull, heartbeat, source range, source renewal, claim/callback exchange, and
+  callback retry have per-request timeouts plus parent cancellation; heartbeat
+  I/O is additionally capped by the remaining lease;
+- Paddle and Qwen runtimes are lazy, reused at concurrency one while healthy,
+  invalidated after component failure, closed on shutdown, and unloaded after
+  the default five-minute idle TTL; PAUSED mode stays cold; and
+- activation waits 15 seconds and verifies structured systemd state, restart
+  count, exact release selection, non-root identity, and environment-file
+  permissions before success, with rollback on failure.
+
+The exact reviewed tree passes Backend 374/374, Frontend 283/283, Compute
+contracts 2/2, Compute 81/81 with two expected Windows-only release-runtime
+skips, all-workspace typecheck/build, migration 0→26 and boundary/restart tests,
+compiled acceptance (`firstMigrationCount=26`, redeploy migration count zero),
+shell syntax, `CURRENT_STATE.json` parsing, and `git diff --check`. The commit is
+pushed and the remote branch was independently verified at the same SHA. These
+are code-review facts only: a new immutable release, real cold/warm/idle-unload
+benchmark, production cutover, multilingual canaries, forced-loss recovery,
+and full-corpus acceptance remain pending.
 
 ## Migration and rollback
 

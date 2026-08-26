@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-24
+**Last reconciled:** 2026-08-26
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
@@ -30,8 +30,9 @@ INTERNAL_BETA_STARTED=false
 The Local Compute Owner override continues this program and changes only the
 next production Compute strategy. The shared code, privacy-safe inventory tool,
 ADR-037, reboot gate, and WSL-on-D foundation were pushed and independently
-verified at local/remote HEAD `e8285cdb585ccf2953e2d259ac199bfd2d66dc71`;
-the runtime/protocol implementation is the following checkpoint. The two
+verified. The Owner-review repair implementation is now pushed and remotely
+verified at exact local/remote checkpoint
+`d1bddb6d7bd6e66d0ed52586c17dd51afd358d99`. The two
 untracked workspace roots
 `%SystemDrive%/` and `scratch/` remain preserved as pre-existing user material.
 Live production remains exact frontend/Core
@@ -51,7 +52,7 @@ duplicates among the 12, and 105 unique acceptance resources. No upload,
 production AI execution, deployment, provider mutation, paid usage, or source
 mutation occurred during recovery or after the Local Compute override.
 
-## Local Compute pivot — runtime/protocol qualified, immutable release pending
+## Local Compute pivot — pre-corpus review passed, immutable release pending
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -138,11 +139,24 @@ and Local attempts presented to the legacy claim route fail closed. A duplicate
 successful callback remains idempotent. The service exposes no laptop inbound
 endpoint and retains separate machine and result capabilities. Backend 373/373,
 Compute 71 passing plus 2 expected local-runtime skips, Compute contracts 2/2,
-all-workspace typecheck/build, and diff checks pass. Production
-is still exact `17fb945…`, schema v25/history 001–025, and GitHub-hosted
-production Compute remains unused. Next is the exact full-check checkpoint,
-remote verification, immutable release assembly from that commit, and only then
-the gated schema-v26/Core-provider/systemd cutover and forced-loss canary.
+all-workspace typecheck/build, and diff checks pass.
+
+The 2026-08-26 Owner code review is closed at exact pushed checkpoint
+`d1bddb6…`. Native-text admission is script-neutral with real Unicode
+Russian/Mongolistic PDF coverage; source authorization renews only for the exact
+valid attempt and durable source; every Local Pull network fetch is bounded and
+parent-cancellable, with heartbeat additionally capped by remaining lease;
+Paddle/Qwen are lazily reused at concurrency one, invalidated after failure,
+closed on shutdown, and unloaded after a five-minute idle TTL; PAUSED remains
+cold; and systemd activation now has a rollback-capable 15-second structured
+stability gate. Final exact-tree evidence is Backend 374/374, Frontend 283/283,
+Compute contracts 2/2, Compute 81/81 plus two expected Windows runtime skips,
+all-workspace typecheck/build, migration-v26 and compiled acceptance, WSL Bash
+syntax, state JSON parsing, and diff checks. Production is still exact
+`17fb945…`, schema v25/history 001–025, and GitHub-hosted production Compute
+remains unused. Next is immutable release assembly and real cold/warm/idle
+qualification from `d1bddb6…`, and only then the gated schema-v26/Core-provider/
+systemd cutover and forced-loss canary.
 
 ## Historical incident evidence (superseded as current acceptance)
 

@@ -418,3 +418,16 @@ execution, exact Paddle/Qwen CPU/GPU comparisons, the 7/7 bibliographic gate,
 and focused atomic-claim/heartbeat/expiry/replacement/late-callback tests.
 Development migration head is v26; production remains v25 and has not switched
 providers.
+
+The 2026-08-26 Owner code-review override did not alter ADR-037's architecture;
+it added five pre-corpus implementation gates. Exact pushed checkpoint
+`d1bddb6d7bd6e66d0ed52586c17dd51afd358d99` passes script-neutral native PDF
+text (including real Russian/Mongolistic fixture coverage), exact-attempt source
+authorization renewal, bounded/cancellable Local Pull network I/O, lazy warm
+Paddle/Qwen reuse with failure invalidation and idle unload, and a structured
+15-second systemd activation stability gate. Backend 374/374, Frontend 283/283,
+Compute contracts 2/2, Compute 81/81 plus two expected Windows runtime skips,
+all-workspace typecheck/build, migration-v26/compiled acceptance, shell syntax,
+state JSON, and diff checks pass. Production remains v25; a new immutable
+release, real warm-runtime benchmark, cutover, canaries, forced-loss recovery,
+and corpus execution remain pending.

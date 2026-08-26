@@ -1,6 +1,6 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-24
+**Last reconciled:** 2026-08-26
 
 The board is the executable priority view. `CURRENT_STATE.json` holds compact
 current pointers; task cards and ADRs preserve complete contracts and evidence.
@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / WSL-ON-D + CUDA/PADDLE/QWEN + LOCAL PULL DEV PASS / IMMUTABLE RELEASE PENDING | Finish full checks and exact checkpoint/push; assemble/requalify that release before schema-v26 Local Pull cutover and forced-loss canary |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / OWNER CODE-REVIEW GATES PASS AT `d1bddb6…` / IMMUTABLE RELEASE PENDING | Assemble/requalify exact `d1bddb6…`, including cold/warm/idle/resource evidence, before schema-v26 Local Pull cutover and forced-loss canary |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -70,6 +70,7 @@ LOCAL_PADDLE_CPU_GPU=PASS
 LOCAL_QWEN_CPU_CUDA=PASS
 LOCAL_BIBLIOGRAPHIC_QUALIFICATION=7/7_PASS
 LOCAL_PULL_PROTOCOL_DEVELOPMENT=PASS
+LOCAL_PRE_CORPUS_CODE_REVIEW=d1bddb6_PASS
 LOCAL_COMPUTE_IMMUTABLE_RELEASE=PENDING
 PRODUCTION_LOCAL_PULL_CUTOVER=PENDING
 ```

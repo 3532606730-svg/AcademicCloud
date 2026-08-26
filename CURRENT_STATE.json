@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24T23:00:52+08:00",
+  "updatedAt": "2026-08-26T10:46:49+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -27,7 +27,7 @@
   "activeTasks": ["ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE"],
   "finalStabilizationProgram": {
     "task": "ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE",
-    "state": "active_local_compute_runtime_and_protocol_qualified_release_pending",
+    "state": "active_local_compute_pre_corpus_code_review_passed_release_pending",
     "developmentSchema": 26,
     "developmentMigrationHistory": "001-026",
     "autonomousFullCorpusAcceptance": "pending",
@@ -57,9 +57,12 @@
       "cataloguingStateAndActivityBatch": "a4a1c4b",
       "librarySearchBatchHydration": "1497bec",
       "computeStageDiagnostics": "c9ab369",
-      "backend": "typecheck pass; 371/371 tests pass",
+      "localComputePreCorpusReview": "d1bddb6d7bd6e66d0ed52586c17dd51afd358d99",
+      "backend": "typecheck pass; 374/374 tests pass",
       "frontend": "typecheck pass; 283/283 tests pass",
-      "compute": "typecheck pass; 68 pass plus 2 expected runtime skips",
+      "compute": "typecheck pass; 81/81 pass plus 2 expected Windows release-runtime skips",
+      "computeContracts": "2/2 pass",
+      "compiledAcceptance": "pass; first migration count 26; redeploy migration count 0",
       "workspaceBuild": "pass",
       "diffCheck": "pass"
     },
@@ -89,7 +92,7 @@
   },
   "localComputePivot": {
     "decision": "ADR-037",
-    "status": "wsl_on_d_cuda_paddle_qwen_and_local_pull_protocol_qualified_release_pending",
+    "status": "pre_corpus_code_review_passed_exact_d1bddb6_release_pending",
     "productionComputeControlPlane": "CORE_PULL_WORKER",
     "localPullProvider": "primary_target",
     "githubHostedProductionCompute": false,
@@ -174,18 +177,24 @@
     },
     "localPullProtocol": {
       "developmentSchema": 26,
-      "state": "implemented_and_tested_release_pending",
+      "state": "owner_review_blockers_repaired_and_tested_release_pending",
       "transport": "outbound-only HTTPS long poll; no laptop inbound endpoint",
       "leaseMilliseconds": 90000,
       "heartbeatMilliseconds": 30000,
       "capabilityRenewalMilliseconds": 900000,
+      "sourceAuthorization": "renewable only for exact running local_pull job/attempt/worker, unexpired lease/deadline, active manager context, unchanged source fingerprint and exact object",
+      "networkBounds": "pull 25s; heartbeat 10s and no later than lease expiry; source renewal/core callback 15s; source range 45s; all parent-cancellable with finite callback retry",
+      "nativeText": "script-neutral Unicode quality gate; multilingual plus real Russian/Mongolistic PDF fixture pass",
+      "runtimeLifecycle": "lazy concurrency-one Paddle/Qwen reuse; five-minute idle TTL; PAUSED cold; component failure invalidation; shutdown cgroup cleanup",
+      "activationGate": "15-second structured systemd stability, restart-count, exact release, non-root identity and environment-permission verification with rollback",
+      "reviewCheckpoint": "d1bddb6d7bd6e66d0ed52586c17dd51afd358d99 pushed and remote verified",
       "delayedExpiredCallback": "fails closed before and after attempt replacement",
       "legacyClaimBypass": "local_pull attempts rejected on legacy claim endpoint",
       "recovery": "expired lease atomically queues a new attempt generation for redispatch; matching terminal success/failure retries are idempotent",
-      "tests": "backend 373/373 pass; Compute 71 pass plus 2 expected local-runtime skips; Compute contracts 2/2; all-workspace typecheck/build and diff check pass"
+      "tests": "Backend 374/374; Frontend 283/283; Compute 81/81 plus 2 expected Windows release-runtime skips; Compute contracts 2/2; all-workspace typecheck/build; migration v26 and compiled acceptance; WSL Bash syntax; CURRENT_STATE JSON; diff check pass"
     },
     "ownerBoundaryAction": null,
-    "next": "finish final checks and checkpoint/push; assemble and verify the immutable Local Compute release from that exact commit; then gate Core schema-v26/provider cutover, systemd activation, forced-loss recovery, and bounded production canaries"
+    "next": "assemble and verify immutable Local Compute release from d1bddb6; run real cold/second/third-job warm, RSS/VRAM/swap and idle-unload qualification; then gate Core schema-v26/provider cutover, systemd activation, forced-loss recovery, and bounded production multilingual canaries"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
