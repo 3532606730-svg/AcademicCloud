@@ -50,6 +50,20 @@ test("Local Pull configuration is outbound-only and fails closed on malformed id
     ACADEMICCLOUD_COMPUTE_WORKER_ID: "owner-laptop",
     ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET: MACHINE_SECRET,
   }), /HTTPS origin/u);
+  assert.equal(loadLocalPullWorkerConfig({
+    ACADEMICCLOUD_COMPUTE_CORE_BASE_URL: "https://core.example",
+    ACADEMICCLOUD_COMPUTE_WORKER_ID: "owner-laptop",
+    ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET: MACHINE_SECRET,
+    ACADEMICCLOUD_COMPUTE_PULL_WAIT_MILLISECONDS: "5000",
+  }).waitMilliseconds, 5_000);
+  for (const invalid of ["0", "999", "25001", "1.5", "invalid"]) {
+    assert.throws(() => loadLocalPullWorkerConfig({
+      ACADEMICCLOUD_COMPUTE_CORE_BASE_URL: "https://core.example",
+      ACADEMICCLOUD_COMPUTE_WORKER_ID: "owner-laptop",
+      ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET: MACHINE_SECRET,
+      ACADEMICCLOUD_COMPUTE_PULL_WAIT_MILLISECONDS: invalid,
+    }), /wait interval/u);
+  }
   assert.throws(() => parseLocalPullClaim({ ...claim(), lease: { expiresAt: new Date(Date.now() - 1).toISOString(), heartbeatAfterMilliseconds: 1_000 } }), /lease/u);
   assert.throws(() => parseLocalPullClaim({ ...claim(), job: { id: "../job", attemptId: "attempt-local", kind: "metadata_suggestion" } }), /identity/u);
   assert.throws(() => parseLocalPullClaim({ ...claim(), lease: { expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(), heartbeatAfterMilliseconds: 1_000 } }), /lease/u);
@@ -197,6 +211,21 @@ test("PAUSED mode neither pulls nor initializes runtime components", async () =>
   await running;
   assert.equal(pulls, 0);
   assert.equal(runtimeStarts, 0);
+});
+
+test("worker shutdown during failed-iteration backoff is a clean cancellation", async () => {
+  const shutdown = new AbortController();
+  const events: string[] = [];
+  await runLocalPullWorker(config(), {
+    signal: shutdown.signal,
+    fetchImplementation: async () => new Response(null, { status: 502 }),
+    runtimeFactory: () => { throw new Error("runtime must stay cold without a claim"); },
+    onEvent(event) {
+      events.push(event.event);
+      if (event.event === "compute.local_pull.iteration_failed") shutdown.abort();
+    },
+  });
+  assert.deepEqual(events, ["compute.local_pull.iteration_failed"]);
 });
 
 test("source range renews once on the narrow endpoint and retries only the exact range", async () => {

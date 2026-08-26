@@ -68,6 +68,15 @@ function idleTtl(value: string | undefined): number {
   return milliseconds;
 }
 
+function pullWait(value: string | undefined): number {
+  if (value === undefined) return 20_000;
+  const milliseconds = Number(value);
+  if (!Number.isSafeInteger(milliseconds) || milliseconds < 1_000 || milliseconds > 25_000) {
+    throw new Error("Local Pull wait interval is invalid");
+  }
+  return milliseconds;
+}
+
 export function loadLocalPullWorkerConfig(environment: NodeJS.ProcessEnv = process.env): LocalPullWorkerConfig {
   const coreBaseUrl = environment.ACADEMICCLOUD_COMPUTE_CORE_BASE_URL;
   const workerId = environment.ACADEMICCLOUD_COMPUTE_WORKER_ID?.trim();
@@ -81,7 +90,7 @@ export function loadLocalPullWorkerConfig(environment: NodeJS.ProcessEnv = proce
     workerId,
     machineSecret: machineSecret(secret),
     mode,
-    waitMilliseconds: 20_000,
+    waitMilliseconds: pullWait(environment.ACADEMICCLOUD_COMPUTE_PULL_WAIT_MILLISECONDS),
     idleTtlMilliseconds: idleTtl(environment.ACADEMICCLOUD_COMPUTE_IDLE_TTL_MILLISECONDS),
   };
 }
@@ -429,7 +438,12 @@ export async function runLocalPullWorker(
       } catch (error: unknown) {
         if (options.signal?.aborted) return;
         options.onEvent?.({ event: error instanceof Error ? "compute.local_pull.iteration_failed" : "compute.local_pull.unknown_failure" });
-        await delay(2_000, options.signal);
+        try {
+          await delay(2_000, options.signal);
+        } catch (delayError: unknown) {
+          if (options.signal?.aborted) return;
+          throw delayError;
+        }
       }
     }
   } finally {
