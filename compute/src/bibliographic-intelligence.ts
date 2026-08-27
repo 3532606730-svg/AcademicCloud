@@ -85,6 +85,7 @@ export class BibliographicIntelligenceError extends Error {
       | "canonical_schema_invalid"
       | "field_evidence_invalid"
       | "result_schema_invalid" = "unspecified",
+    readonly repairFieldKeys: readonly string[] = [],
   ) {
     super(code);
     this.name = "BibliographicIntelligenceError";
@@ -713,18 +714,20 @@ function multiPageEvidence(
     // contributor). Such evidence is not a fact and must not poison the whole
     // otherwise valid result.
     if (!required.has(key)) continue;
-    if (fields.has(key)) throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+    if (fields.has(key)) {
+      throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", [...required].sort());
+    }
     try {
       fields.set(key, authoritativeEvidence(field, inspection));
     } catch (error: unknown) {
       if (error instanceof BibliographicIntelligenceError) {
-        throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+        throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", [...required].sort());
       }
       throw error;
     }
   }
   if (fields.size !== required.size || [...required].some((key) => !fields.has(key))) {
-    throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+    throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", [...required].sort());
   }
   return [...fields.values()];
 }
@@ -783,13 +786,11 @@ function deterministicWarnings(result: IntelligentBibliographyResult): string[] 
   return [...new Set(warnings)];
 }
 
-export async function deriveIntelligentBibliography(
+function deriveIntelligentBibliographyFromModel(
+  model: unknown,
   inspection: PdfTextInspection,
-  reasoner: BibliographicReasoner,
-  signal?: AbortSignal,
   legacyFallback = false,
-): Promise<IntelligentBibliographyResult> {
-  const model = await reasoner.infer(promptFor(inspection), signal);
+): IntelligentBibliographyResult {
   const raw = sparseRecord(model, ["status", "overallConfidence", "canonical", "fields", "warnings"]);
   if (!Array.isArray(raw.fields) || !Array.isArray(raw.warnings)) throw new BibliographicIntelligenceError("invalid_result");
   let normalizedCanonical: IntelligentCanonicalBibliography | null;
@@ -867,5 +868,36 @@ export async function deriveIntelligentBibliography(
   } catch (error: unknown) {
     if (error instanceof BibliographicIntelligenceError) throw error;
     throw new BibliographicIntelligenceError("invalid_result", "result_schema_invalid");
+  }
+}
+
+function evidenceRepairPromptFor(inspection: PdfTextInspection, requiredFieldKeys: readonly string[]): string {
+  const base = JSON.parse(promptFor(inspection)) as Record<string, unknown>;
+  return JSON.stringify({
+    ...base,
+    repair: {
+      reason: "previous_field_evidence_invalid",
+      requiredFieldKeys: [...new Set(requiredFieldKeys)].sort(),
+      instruction: "Return a complete new result object. Preserve only facts directly supported by the supplied authority-eligible pages or embedded metadata. The fields array must contain every requiredFieldKey exactly once, contain no other field/scope pair, and use only the supplied pageIndex/evidenceOrigin or embedded_pdf_metadata with null sourcePageIndex.",
+    },
+  });
+}
+
+export async function deriveIntelligentBibliography(
+  inspection: PdfTextInspection,
+  reasoner: BibliographicReasoner,
+  signal?: AbortSignal,
+  legacyFallback = false,
+): Promise<IntelligentBibliographyResult> {
+  const initialPrompt = promptFor(inspection);
+  const model = await reasoner.infer(initialPrompt, signal);
+  try {
+    return deriveIntelligentBibliographyFromModel(model, inspection, legacyFallback);
+  } catch (error: unknown) {
+    if (!(error instanceof BibliographicIntelligenceError)
+      || error.diagnostic !== "field_evidence_invalid"
+      || error.repairFieldKeys.length === 0) throw error;
+    const repaired = await reasoner.infer(evidenceRepairPromptFor(inspection, error.repairFieldKeys), signal);
+    return deriveIntelligentBibliographyFromModel(repaired, inspection, legacyFallback);
   }
 }

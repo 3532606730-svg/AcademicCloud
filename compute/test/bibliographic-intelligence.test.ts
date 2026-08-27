@@ -156,6 +156,87 @@ test("Qwen receives only authority-eligible pages and exact field scopes", async
   assert.equal(new Set(result.fields.map((field) => `${field.fieldName}:${field.scopeKey}`)).size, result.fields.length);
 });
 
+test("missing field provenance gets one bounded schema-key repair pass", async () => {
+  const canonical = {
+    ...emptyCanonical("近代中国史研究"),
+    publication: {
+      publisher: null,
+      place: null,
+      publicationDate: null,
+      editionNumber: "第1版",
+      printing: null,
+    },
+  };
+  const inspection: PdfTextInspection = {
+    pageCount: 2,
+    pageIndices: [1, 2],
+    pages: [{
+      pageIndex: 1,
+      text: "题名：近代中国史研究\n作者：王明",
+      evidenceOrigin: "native_text",
+      ocrEngine: null,
+      ocrConfidence: null,
+    }, {
+      pageIndex: 2,
+      text: "版权页\n第1版",
+      evidenceOrigin: "native_text",
+      ocrEngine: null,
+      ocrConfidence: null,
+    }],
+    embeddedMetadata: {},
+    complete: true,
+    hasUsableTextLayer: true,
+  };
+  const completeFields = populatedFields(canonical);
+  const incompleteFields = completeFields.filter((field) => ![
+    "materialClass",
+    "contributor.label",
+    "publication.editionNumber",
+  ].includes(field.fieldName));
+  const repairPrompts: Array<Record<string, unknown>> = [];
+  let calls = 0;
+  const reasoner: BibliographicReasoner = {
+    async infer(prompt) {
+      calls += 1;
+      if (calls === 2) repairPrompts.push(JSON.parse(prompt) as Record<string, unknown>);
+      return {
+        status: "auto_apply",
+        overallConfidence: 95,
+        canonical,
+        fields: calls === 1 ? incompleteFields : completeFields,
+        warnings: [],
+      };
+    },
+  };
+
+  const result = await deriveIntelligentBibliography(inspection, reasoner);
+  assert.equal(result.status, "auto_apply");
+  assert.equal(calls, 2);
+  const repair = repairPrompts[0]?.repair as Record<string, unknown>;
+  assert.equal(repair.reason, "previous_field_evidence_invalid");
+  assert.deepEqual(repair.requiredFieldKeys, [
+    "canonicalTitle:",
+    "contributor.label:contributor:0",
+    "contributor.role:contributor:0",
+    "materialClass:",
+    "publication.editionNumber:",
+  ]);
+
+  calls = 0;
+  const persistentlyInvalid: BibliographicReasoner = {
+    async infer() {
+      calls += 1;
+      return { status: "auto_apply", overallConfidence: 95, canonical, fields: incompleteFields, warnings: [] };
+    },
+  };
+  await assert.rejects(
+    deriveIntelligentBibliography(inspection, persistentlyInvalid),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
+  assert.equal(calls, 2);
+});
+
 test("seven bounded representative bibliographic cases remain inside the strict domain", async () => {
   const cases: Array<[string, IntelligentCanonicalBibliography, "auto_apply" | "ambiguous"]> = [];
   cases.push(["Chinese modern monograph", { ...emptyCanonical("近代中国史研究"), publication: { publisher: "学术出版社", place: "北京", publicationDate: "2026", editionNumber: null, printing: null }, language: "中文" }, "auto_apply"]);
