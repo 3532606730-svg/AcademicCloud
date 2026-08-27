@@ -107,6 +107,55 @@ test("Qwen completion budget fits the pinned context and truncated JSON fails ex
   assert.deepEqual(parseLlamaChatCompletionResponse(complete), { status: "ambiguous" });
 });
 
+test("Qwen receives only authority-eligible pages and exact field scopes", async () => {
+  const canonical = emptyCanonical("近代中国史研究");
+  const titlePage = {
+    pageIndex: 1,
+    text: "题名：近代中国史研究\n作者：王明",
+    evidenceOrigin: "native_text" as const,
+    ocrEngine: null,
+    ocrConfidence: null,
+  };
+  const inspection: PdfTextInspection = {
+    pageCount: 2,
+    pageIndices: [1, 2],
+    pages: [titlePage, {
+      pageIndex: 2,
+      text: "本页是没有书目标签的正文段落。",
+      evidenceOrigin: "native_text",
+      ocrEngine: null,
+      ocrConfidence: null,
+    }],
+    embeddedMetadata: {},
+    complete: true,
+    hasUsableTextLayer: true,
+  };
+  let observedPrompt: Record<string, unknown> | undefined;
+  const reasoner: BibliographicReasoner = {
+    async infer(prompt) {
+      observedPrompt = JSON.parse(prompt) as Record<string, unknown>;
+      return {
+        status: "auto_apply",
+        overallConfidence: 95,
+        canonical,
+        fields: populatedFields(canonical),
+        warnings: [],
+      };
+    },
+  };
+
+  const result = await deriveIntelligentBibliography(inspection, reasoner);
+  assert.equal(result.status, "auto_apply");
+  const pages = observedPrompt?.pages as Array<Record<string, unknown>>;
+  assert.deepEqual(pages.map(({ pageIndex, pageClass, evidenceOrigin }) => ({ pageIndex, pageClass, evidenceOrigin })), [{
+    pageIndex: 1,
+    pageClass: "title_page",
+    evidenceOrigin: "native_text",
+  }]);
+  assert.match(String(observedPrompt?.task), /scopeKey MUST be the empty string/u);
+  assert.equal(new Set(result.fields.map((field) => `${field.fieldName}:${field.scopeKey}`)).size, result.fields.length);
+});
+
 test("seven bounded representative bibliographic cases remain inside the strict domain", async () => {
   const cases: Array<[string, IntelligentCanonicalBibliography, "auto_apply" | "ambiguous"]> = [];
   cases.push(["Chinese modern monograph", { ...emptyCanonical("近代中国史研究"), publication: { publisher: "学术出版社", place: "北京", publicationDate: "2026", editionNumber: null, printing: null }, language: "中文" }, "auto_apply"]);

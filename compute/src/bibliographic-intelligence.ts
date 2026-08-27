@@ -54,6 +54,10 @@ const MODEL_WARNING_CODES = [
   "uncertain_edition",
   "conflicting_evidence",
 ] as const;
+const CONTRIBUTOR_FIELD_NAMES = ["contributor.label", "contributor.role", "contributor.roleLabel"] as const;
+const NON_CONTRIBUTOR_FIELD_NAMES = INTELLIGENT_BIBLIOGRAPHIC_FIELD_NAMES.filter(
+  (fieldName) => !CONTRIBUTOR_FIELD_NAMES.includes(fieldName as (typeof CONTRIBUTOR_FIELD_NAMES)[number]),
+);
 const AUTO_APPLY_CONFIDENCE = 85;
 const MAX_REASONING_INPUT_CHARACTERS = 64 * 1024;
 const MAX_REASONING_OUTPUT_BYTES = 384 * 1024;
@@ -217,7 +221,38 @@ const MODEL_OUTPUT_SCHEMA = {
         },
       }],
     },
-    fields: { type: "array", maxItems: 128, items: { type: "object", additionalProperties: false, required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"], properties: { fieldName: { type: "string", enum: INTELLIGENT_BIBLIOGRAPHIC_FIELD_NAMES }, scopeKey: { type: "string" }, confidence: { type: "integer", minimum: 0, maximum: 100 }, sourcePageIndex: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] }, evidenceOrigin: { type: "string", enum: ["native_text", "ocr", "embedded_pdf_metadata"] } } } },
+    fields: {
+      type: "array",
+      maxItems: 128,
+      items: {
+        anyOf: [
+          {
+            type: "object",
+            additionalProperties: false,
+            required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"],
+            properties: {
+              fieldName: { type: "string", enum: NON_CONTRIBUTOR_FIELD_NAMES },
+              scopeKey: { type: "string", const: "" },
+              confidence: { type: "integer", minimum: 0, maximum: 100 },
+              sourcePageIndex: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
+              evidenceOrigin: { type: "string", enum: ["native_text", "ocr", "embedded_pdf_metadata"] },
+            },
+          },
+          {
+            type: "object",
+            additionalProperties: false,
+            required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"],
+            properties: {
+              fieldName: { type: "string", enum: CONTRIBUTOR_FIELD_NAMES },
+              scopeKey: { type: "string", pattern: "^contributor:(?:0|[1-9][0-9]*)$" },
+              confidence: { type: "integer", minimum: 0, maximum: 100 },
+              sourcePageIndex: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
+              evidenceOrigin: { type: "string", enum: ["native_text", "ocr", "embedded_pdf_metadata"] },
+            },
+          },
+        ],
+      },
+    },
     warnings: { type: "array", maxItems: 32, items: { type: "string", enum: MODEL_WARNING_CODES } },
   },
 } as const;
@@ -514,12 +549,14 @@ function promptFor(inspection: PdfTextInspection): string {
   let remaining = MAX_REASONING_INPUT_CHARACTERS;
   for (const page of inspection.pages) {
     if (remaining <= 0) break;
+    const pageClass = classifySuggestionPage(page);
+    if (!sourceTypeFor(pageClass)) continue;
     const text = page.text.normalize("NFC").slice(0, Math.min(8_192, remaining));
     remaining -= text.length;
-    pages.push({ pageIndex: page.pageIndex, pageClass: classifySuggestionPage(page), evidenceOrigin: page.evidenceOrigin ?? "native_text", text });
+    pages.push({ pageIndex: page.pageIndex, pageClass, evidenceOrigin: page.evidenceOrigin ?? "native_text", text });
   }
   return JSON.stringify({
-    task: "Extract only directly supported canonical bibliographic facts. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. Explicit 题名/書名/作者/著者/出版社/出版年 labels without conflict MUST use auto_apply with confidence >=90 and no warning. Explicit 文章题名 plus 刊名/期号 means journal_article. Use contributor:N scope keys. Every populated fact needs one field evidence row that points only to the supplied pageIndex/evidenceOrigin; the trusted runtime derives page class and source type. warnings may use only the supplied controlled warning codes and must never quote source text. Return ambiguous with a warning code only when facts genuinely conflict or remain unsupported.",
+    task: "Extract only directly supported canonical bibliographic facts. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. Explicit 题名/書名/作者/著者/出版社/出版年 labels without conflict MUST use auto_apply with confidence >=90 and no warning. Explicit 文章题名 plus 刊名/期号 means journal_article. The pages array contains only authority-eligible pages. Emit exactly one field evidence row for every populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime derives page class and source type. warnings may use only the supplied controlled warning codes and must never quote source text. Return ambiguous with a warning code only when facts genuinely conflict or remain unsupported.",
     controlledValues: { materialClasses: INTELLIGENT_MATERIAL_CLASSES, contributorRoles: INTELLIGENT_CONTRIBUTOR_ROLES, editionTypes: INTELLIGENT_EDITION_TYPES },
     controlledWarnings: MODEL_WARNING_CODES,
     embeddedMetadata: inspection.embeddedMetadata,
