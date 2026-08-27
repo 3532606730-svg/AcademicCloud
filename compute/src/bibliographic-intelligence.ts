@@ -911,6 +911,20 @@ function evidenceRepairPromptFor(inspection: PdfTextInspection, requiredFieldKey
   });
 }
 
+function evidenceOnlyRepair(original: unknown, repaired: unknown): Record<string, unknown> {
+  const keys = ["status", "overallConfidence", "canonical", "fields", "warnings"] as const;
+  const originalResult = sparseRecord(original, keys);
+  const repairedResult = sparseRecord(repaired, keys);
+  if (!Array.isArray(repairedResult.fields)) {
+    throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+  }
+  // The second inference is a provenance repair, not a second opportunity to
+  // change facts. Keep the first normalized fact proposal and accept only the
+  // repaired field-evidence rows, which still pass the full authority/schema
+  // validation below.
+  return { ...originalResult, fields: repairedResult.fields };
+}
+
 export async function deriveIntelligentBibliography(
   inspection: PdfTextInspection,
   reasoner: BibliographicReasoner,
@@ -927,6 +941,10 @@ export async function deriveIntelligentBibliography(
       || error.diagnostic !== "field_evidence_invalid"
       || error.repairFieldKeys.length === 0) throw error;
     const repaired = await reasoner.infer(evidenceRepairPromptFor(reasoningInspection, error.repairFieldKeys), signal);
-    return deriveIntelligentBibliographyFromModel(repaired, reasoningInspection, legacyFallback);
+    return deriveIntelligentBibliographyFromModel(
+      evidenceOnlyRepair(model, repaired),
+      reasoningInspection,
+      legacyFallback,
+    );
   }
 }

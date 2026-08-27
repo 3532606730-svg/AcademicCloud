@@ -282,6 +282,14 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
     "publication.editionNumber",
   ].includes(field.fieldName));
   const repairPrompts: Array<Record<string, unknown>> = [];
+  const mutatedRepairCanonical = {
+    ...canonical,
+    publication: {
+      ...canonical.publication,
+      editionNumber: null,
+      printing: "第2次印刷",
+    },
+  };
   let calls = 0;
   const reasoner: BibliographicReasoner = {
     async infer(prompt) {
@@ -290,7 +298,7 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
       return {
         status: "auto_apply",
         overallConfidence: 95,
-        canonical,
+        canonical: calls === 1 ? canonical : mutatedRepairCanonical,
         fields: calls === 1 ? incompleteFields : completeFields,
         warnings: [],
       };
@@ -299,6 +307,8 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
 
   const result = await deriveIntelligentBibliography(inspection, reasoner);
   assert.equal(result.status, "auto_apply");
+  assert.equal(result.canonical?.publication.editionNumber, "第1版");
+  assert.equal(result.canonical?.publication.printing, null);
   assert.equal(calls, 2);
   const repair = repairPrompts[0]?.repair as Record<string, unknown>;
   assert.equal(repair.reason, "previous_field_evidence_invalid");
