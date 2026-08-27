@@ -137,6 +137,58 @@ test("Qwen never receives corrupt OCR or suspicious bare embedded metadata as us
   assert.equal(inspection.embeddedMetadata.author, "亦郊真", "raw bounded provenance was mutated");
 });
 
+test("gated embedded metadata owns its null page identity even when Qwen copies a page index", async () => {
+  const embeddedAuthor = "Nicholas Poppe";
+  const canonical = {
+    ...emptyCanonical("The Secret History of the Mongols"),
+    contributors: [{ label: embeddedAuthor, role: "author" as const, roleLabel: null }],
+  };
+  const inspection: PdfTextInspection = {
+    pageCount: 2,
+    pageIndices: [1],
+    pages: [{
+      pageIndex: 1,
+      text: "ず之 fO v f 107の652 1987",
+      evidenceOrigin: "ocr",
+      ocrEngine: "academiccloud-paddleocr-test",
+      ocrConfidence: 60,
+    }],
+    embeddedMetadata: { title: canonical.canonicalTitle, author: embeddedAuthor },
+    complete: true,
+    hasUsableTextLayer: false,
+  };
+  const model = {
+    status: "auto_apply",
+    overallConfidence: 95,
+    canonical,
+    fields: populatedFields(canonical).map((field) => ({
+      ...field,
+      sourcePageIndex: 1,
+      evidenceOrigin: "embedded_pdf_metadata",
+    })),
+    warnings: [],
+  };
+
+  const result = await deriveIntelligentBibliography(inspection, { async infer() { return model; } });
+  assert.equal(result.status, "auto_apply");
+  assert.ok(result.fields.every((field) => (
+    field.sourcePageIndex === null && field.evidenceOrigin === "embedded_pdf_metadata"
+  )));
+
+  let calls = 0;
+  await assert.rejects(
+    deriveIntelligentBibliography({ ...inspection, embeddedMetadata: {} }, {
+      async infer() {
+        calls += 1;
+        return model;
+      },
+    }),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
+  assert.equal(calls, 2);
+});
+
 test("Qwen receives only authority-eligible pages and exact field scopes", async () => {
   const canonical = emptyCanonical("近代中国史研究");
   const titlePage = {

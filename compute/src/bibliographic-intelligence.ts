@@ -664,9 +664,16 @@ function sourceTypeFor(pageClass: ReturnType<typeof classifySuggestionPage>): (t
 function authoritativeEvidence(field: unknown, inspection: PdfTextInspection): Record<string, unknown> {
   const input = sparseRecord(field, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"]);
   if (input.evidenceOrigin === "embedded_pdf_metadata") {
-    if (input.sourcePageIndex !== null) throw new BibliographicIntelligenceError("invalid_result");
+    const hasUsableEmbeddedMetadata = Object.values(inspection.embeddedMetadata)
+      .some((value) => typeof value === "string" && value.length > 0);
+    if (!hasUsableEmbeddedMetadata) throw new BibliographicIntelligenceError("invalid_result");
     return {
       ...input,
+      // Embedded Info values have no PDF page. Small local models sometimes
+      // copy a page index into every field row even when the prompt contains no
+      // pages. The trusted runtime owns this structural fact, so normalize the
+      // non-authoritative model value while still requiring gated metadata.
+      sourcePageIndex: null,
       sourceType: "embedded_pdf_metadata",
       pageClass: null,
       evidenceSha256: sha256(JSON.stringify(inspection.embeddedMetadata)),
