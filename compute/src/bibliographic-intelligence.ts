@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   INTELLIGENT_BIBLIOGRAPHIC_FIELD_NAMES,
+  INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION,
   INTELLIGENT_CONTRIBUTOR_ROLES,
   INTELLIGENT_EDITION_TYPES,
   INTELLIGENT_MATERIAL_CLASSES,
@@ -18,7 +19,7 @@ import { classifySuggestionPage } from "./extractor.js";
 import { isUsableBibliographicEvidence, usableEmbeddedMetadata } from "./evidence-usability.js";
 import type { PdfTextInspection } from "./suggestion.js";
 
-export const INTELLIGENT_RULESET_VERSION = "l1-intelligent-library01-v3" as const;
+export const INTELLIGENT_RULESET_VERSION = INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION;
 export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v3" as const;
 export const PADDLE_OCR_PACKAGE_VERSION = "3.7.0" as const;
 export const PADDLE_RUNTIME_VERSION = "3.3.1" as const;

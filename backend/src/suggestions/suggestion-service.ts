@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 import {
+  INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION,
   parseIntelligentBibliographyResult,
   type DerivedComputeDispatcher,
   type DerivedComputeResult,
@@ -1022,6 +1023,7 @@ export class SuggestionService {
         .update(JSON.stringify([
           "metadata_suggestion",
           SUGGESTION_RULESET_VERSION,
+          INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION,
           libraryId,
           fileId,
           fingerprint.value,

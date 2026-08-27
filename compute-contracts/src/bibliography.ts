@@ -1,3 +1,10 @@
+/**
+ * Binds durable Compute admission/idempotency to the exact bibliography
+ * reasoning generation. A prompt/ruleset change must not reuse an older
+ * succeeded job for unchanged source bytes.
+ */
+export const INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION = "l1-intelligent-library01-v3" as const;
+
 export const INTELLIGENT_MATERIAL_CLASSES = [
   "scholarly_monograph",
   "edited_volume",

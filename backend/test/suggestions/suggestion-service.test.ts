@@ -8,6 +8,7 @@ import type {
   DerivedComputeResult,
   IntelligentBibliographyResult,
 } from "@academiccloud/compute-contracts";
+import { INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION } from "@academiccloud/compute-contracts";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
@@ -293,14 +294,42 @@ test("request returns a durable queued identity promptly and is idempotent", asy
 
   const fingerprint = database.prepare("SELECT input_version, idempotency_key FROM derived_compute_jobs WHERE id = ?")
     .get(first.id) as { input_version: string; idempotency_key: string };
-  const v2Key = createHash("sha256").update(JSON.stringify([
+  const v3Key = createHash("sha256").update(JSON.stringify([
+    "metadata_suggestion", SUGGESTION_RULESET_VERSION, INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION,
+    library.id, fileId, fingerprint.input_version,
+  ])).digest("hex");
+  const previousPipelineKey = createHash("sha256").update(JSON.stringify([
     "metadata_suggestion", SUGGESTION_RULESET_VERSION, library.id, fileId, fingerprint.input_version,
   ])).digest("hex");
   const historicalV1Key = createHash("sha256").update(JSON.stringify([
     "metadata_suggestion", library.id, fileId, fingerprint.input_version,
   ])).digest("hex");
-  assert.equal(fingerprint.idempotency_key, v2Key);
-  assert.notEqual(v2Key, historicalV1Key, "a v1 success must not suppress the v2 quality-gate run");
+  assert.equal(fingerprint.idempotency_key, v3Key);
+  assert.notEqual(v3Key, previousPipelineKey, "a v2 bibliography success must not suppress the v3 reasoning run");
+  assert.notEqual(v3Key, historicalV1Key, "a v1 success must not suppress the current quality-gate run");
+});
+
+test("a same-source succeeded job from the previous bibliography pipeline cannot suppress v3 inference", async (context) => {
+  const { database, library, fileId, suggestions, dispatcher } = fixture(context);
+  const previous = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(previous.id, "attempt-1");
+  await suggestions.applyComputeResult(intelligentResult(previous.id, "attempt-1", { status: "ambiguous" }), claim.capability.token);
+
+  const row = database.prepare("SELECT input_version FROM derived_compute_jobs WHERE id = ?")
+    .get(previous.id) as { input_version: string };
+  const previousPipelineKey = createHash("sha256").update(JSON.stringify([
+    "metadata_suggestion", SUGGESTION_RULESET_VERSION, library.id, fileId, row.input_version,
+  ])).digest("hex");
+  database.prepare("UPDATE derived_compute_jobs SET idempotency_key = ? WHERE id = ?")
+    .run(previousPipelineKey, previous.id);
+
+  const current = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  assert.equal(previous.state, "queued");
+  assert.equal(current.id, "job-2");
+  assert.equal(current.state, "queued");
+  assert.notEqual(current.id, previous.id);
+  assert.equal((dispatcher as CapturingDispatcher).jobs.length, 2);
+  assert.equal(suggestions.getLatestJob(OWNER, library.id, fileId)?.id, current.id);
 });
 
 test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection are atomic", async (context) => {
