@@ -101,10 +101,15 @@ independently verified at local/remote HEAD
 `e8285cdb585ccf2953e2d259ac199bfd2d66dc71`. The runtime/protocol checkpoint
 `71a30e6` and the Owner-review repair checkpoint
 `d1bddb6d7bd6e66d0ed52586c17dd51afd358d99` are now pushed and remotely
-verified; immutable release assembly is next.
+verified. Local Pull production cutover and a real structured Qwen canary then
+passed. The evidence-quality v2 checkpoint
+`6c71ac94c60d49e65e7eca59305b59ba6e461167` is pushed and remotely verified;
+its immutable release and migration 027 are next.
 Pre-existing untracked `%SystemDrive%/` and `scratch/` remain untouched.
-Production remains exact frontend/Core
-`17fb945220c44df71e4846a0ccd5f54e98f43858`, schema v25/history 001–025. No new
+Production is exact frontend/Core
+`f658fdc2835a4ac63fb02ab7b005aa9f108f5292`, schema v26/history 001–026 with
+`local_pull`; exact Compute `120ae02…` is active while the main worker remains
+PAUSED. No new
 GitHub-hosted production Compute probe was launched after the override.
 
 Current acceptance inventory is 12 Owner PDFs plus 93 production-eligible PDFs,
@@ -121,8 +126,9 @@ qualification, and separately authorized emergency implementation, but is
 disabled for normal production AI. The local Windows machine remains a
 disposable outbound-only Compute executor; its absence must leave AI jobs
 queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
-and the Local Pull development protocol now pass; production remains v25 with
-no provider mutation until the exact release/cutover gates pass.
+and the Local Pull protocol now pass in production. No v27 migration or worker
+NORMAL transition occurs until the exact release, encrypted off-host backup,
+and PAUSED one-shot quality canary gates pass.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -250,15 +256,35 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   Compute contracts 2/2, all-workspace typecheck/build, migration-v26 coverage,
   compiled acceptance with 26 first-run migrations and zero redeploy migrations,
   WSL Bash syntax, `CURRENT_STATE.json` parsing, and `git diff --check`.
+- Deployed exact Core `f658fdc2835a4ac63fb02ab7b005aa9f108f5292`
+  at schema v26 with `local_pull`; activated exact Local Compute release
+  `120ae02adbd8a6c53771f0bab22d09c49c247add` and kept the main worker PAUSED.
+  A normal-product 40,421,440-byte canary completed Qwen structured inference,
+  callback, and current-attempt persistence under the strict AI-success gate.
+- Repaired the newly observed corrupt-evidence path at exact pushed checkpoint
+  `6c71ac94c60d49e65e7eca59305b59ba6e461167`: script-neutral evidence
+  usability, low-confidence short OCR protection, embedded-metadata sanity and
+  corroboration, raw bounded provenance retention, v2 candidate/Qwen versions,
+  version-bound job idempotency, and append-only migration 027. Regression
+  fixtures withhold OCR `ず之` and embedded author `亦郊真` while admitting
+  legitimate Japanese, Mongolian, Cyrillic, Arabic/Persian, Tibetan, and Poppe
+  transliteration. Backend 376/376, Frontend 283/283, Compute 93/93 plus two
+  expected release-runtime skips, contracts 2/2, typecheck/build, compiled
+  acceptance (27 initial migrations, zero redeploy), OSS contract, integrity,
+  foreign keys, v1 preservation, and v2 admission pass.
 
 ## Remaining
 
-- Assemble and requalify a new immutable local release from exact source
-  `d1bddb6…`; measure real cold/second/third-job warm behavior, RSS/VRAM/swap,
-  and five-minute idle unload without redownloading unchanged model bytes.
-- Install the dedicated revocable machine credential outside Git, migrate/cut
-  Core to schema v26/`local_pull`, activate the systemd worker, and prove real
-  process-loss/lease-expiry/restart recovery plus privacy/resource envelopes.
+- Assemble and verify immutable Core and Local Compute releases from exact
+  source `6c71ac9…`; do not redownload unchanged model/runtime bytes.
+- Keep the main worker PAUSED. Before migration 027, produce and verify a fresh
+  encrypted off-host schema-v26 backup. Deploy v27/Core, activate only the
+  exact new Compute release in PAUSED mode, then run one normal-product one-shot
+  Qwen canary proving garbage OCR/embedded metadata is withheld and strict
+  success semantics remain intact.
+- After the v2 canary passes, measure real cold/second/third-job warm behavior,
+  RSS/VRAM/swap and idle unload, then prove forced-loss lease/heartbeat/restart
+  recovery before restoring NORMAL.
 - Classify the root-disk, CSP, and systemd-metric audit findings by evidence.
 - Implement only measured, safe, material zero-cost performance improvements.
 - Qualify/deploy exact Core/frontend/Local Compute releases, retry the same
@@ -274,21 +300,21 @@ remains a mandatory hard stop.
 
 ## Last Verification
 
-2026-08-26: local/remote equality was verified at the reviewed code checkpoint
-`d1bddb6…`. WSL-on-D, real CUDA, Paddle CPU/GPU, Qwen CPU/CUDA, the seven-case
-reasoning gate, all five Owner code-review repairs, Backend 374/374, Frontend
-283/283, Compute 81/81 plus 2 expected Windows runtime skips, Compute contracts
-2/2, all-workspace typecheck/build, migration-v26 and compiled acceptance,
-WSL Bash syntax, state JSON parsing, and diff checks pass. Production remains
-`17fb945…`, schema
-25/history 001–025. The 12 D-drive source copies remain 199,835,281 bytes with
-12/12 exact identities. No GitHub-hosted production Compute has run since the
-pivot and no result is final production/full-corpus acceptance.
+2026-08-27: local/remote equality is verified at evidence-quality checkpoint
+`6c71ac9…`. Backend 376/376, Frontend 283/283, Compute 93/93 plus two expected
+release-runtime skips, contracts 2/2, typecheck/build, migration 027 preservation
+and admission, compiled acceptance, OSS contract, JSON parsing, and diff checks
+pass. Production is exact `f658fdc…`, schema v26/history 001–026, local_pull;
+Core is active/ready. Exact Compute `120ae02…` is active/running, NRestarts=0,
+main worker PAUSED. No GitHub-hosted production Compute or paid service was
+used; final production/full-corpus acceptance remains pending.
 
 ## Next Action
 
-Assemble and qualify the immutable release from exact checkpoint `d1bddb6…`,
-including real cold/warm/idle-unload and resource-envelope evidence. Only after
-that may the evidence-gated schema-v26 Local Pull
-cutover, process-loss recovery canary, and bounded normal-path canaries begin.
-Do not launch a GitHub-hosted production Compute probe or corpus wave.
+Assemble immutable Core/Compute releases from exact checkpoint `6c71ac9…`.
+Pass a fresh encrypted off-host schema-v26 backup gate before migration 027,
+then deploy v27 and run a PAUSED one-shot real Qwen canary. Only after its
+structured callback/current-attempt persistence and corrupt-candidate absence
+pass may NORMAL, warm/idle benchmarks, forced-loss recovery, corpus
+recomputation, and full-corpus execution resume. Do not launch GitHub-hosted
+production Compute.

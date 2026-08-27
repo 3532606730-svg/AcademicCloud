@@ -1,6 +1,6 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-26
+**Last reconciled:** 2026-08-27
 
 The board is the executable priority view. `CURRENT_STATE.json` holds compact
 current pointers; task cards and ADRs preserve complete contracts and evidence.
@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / OWNER CODE-REVIEW GATES PASS AT `d1bddb6…` / IMMUTABLE RELEASE PENDING | Assemble/requalify exact `d1bddb6…`, including cold/warm/idle/resource evidence, before schema-v26 Local Pull cutover and forced-loss canary |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / LOCAL PULL PRODUCTION PAUSED / EVIDENCE-QUALITY V2 PASS AT `6c71ac9…` | Assemble exact `6c71ac9…`; pass a fresh encrypted off-host v26 backup gate; migrate/deploy v27; run a PAUSED one-shot real canary before NORMAL, forced-loss, benchmarks, and full corpus |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -71,8 +71,13 @@ LOCAL_QWEN_CPU_CUDA=PASS
 LOCAL_BIBLIOGRAPHIC_QUALIFICATION=7/7_PASS
 LOCAL_PULL_PROTOCOL_DEVELOPMENT=PASS
 LOCAL_PRE_CORPUS_CODE_REVIEW=d1bddb6_PASS
-LOCAL_COMPUTE_IMMUTABLE_RELEASE=PENDING
-PRODUCTION_LOCAL_PULL_CUTOVER=PENDING
+PRODUCTION_CORE=f658fdc_SCHEMA_V26_LOCAL_PULL_PASS
+LOCAL_COMPUTE_IMMUTABLE_RELEASE=120ae02_ACTIVE
+PRODUCTION_LOCAL_PULL_CUTOVER=PASS
+MAIN_LOCAL_WORKER=PAUSED
+REAL_QWEN_STRUCTURED_CANARY=PASS
+EVIDENCE_QUALITY_V2=6c71ac9_PASS_RELEASE_PENDING
+PRODUCTION_SCHEMA_V27=PENDING_OFF_HOST_BACKUP_GATE
 ```
 
 Current corpus facts remain `OWNER_SUPPLIED_TOTAL=12`,
@@ -81,7 +86,7 @@ before final execution. No 105-resource wave starts before Local Pull cutover.
 The 12 D-drive staging copies retain their exact filenames, contain 199,835,281
 bytes, and passed all manifest length/SHA-256 checks.
 
-Host preflight passed the hardware/storage prerequisites and confirmed a true
+Historical pre-install host preflight passed the hardware/storage prerequisites and confirmed a true
 UAC boundary: Windows 11 build 26200, virtualization enabled, Hypervisor
 present, RTX 4060 8,188 MiB, 113.55 GB free on D, and WSL absent. No Windows
 feature changed. The single required Owner action is an elevated
@@ -212,13 +217,14 @@ None of this queue is authorized by GOAL-BETA-PREP01.
 ## Current release boundary
 
 ```text
-DECLARED_PRODUCTION=17fb945220c44df71e4846a0ccd5f54e98f43858
-PREVIOUS_PRODUCTION=3a88cfef7a4083ebe2a0277bd50b356e5fb86f46
-PRODUCTION_SCHEMA=v25 / 001-025
+DECLARED_PRODUCTION=f658fdc2835a4ac63fb02ab7b005aa9f108f5292
+PREVIOUS_PRODUCTION=17fb945220c44df71e4846a0ccd5f54e98f43858
+PRODUCTION_SCHEMA=v26 / 001-026
 MIGRATION_025_PRODUCTION_APPLIED=true
 AUTOMATIC_ADMISSION_RELEASE_PENDING=false
-DEVELOPMENT_SCHEMA=v26 / 001-026
-MIGRATION_026_PRODUCTION_APPLIED=false
+DEVELOPMENT_SCHEMA=v27 / 001-027
+MIGRATION_026_PRODUCTION_APPLIED=true
+MIGRATION_027_PRODUCTION_APPLIED=false
 MIGRATION_022_PRODUCTION_APPLIED=true
 MIGRATION_023_PRODUCTION_APPLIED=true
 MIGRATION_024_PRODUCTION_APPLIED=true

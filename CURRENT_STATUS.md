@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-26
+**Last reconciled:** 2026-08-27
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
@@ -28,31 +28,34 @@ INTERNAL_BETA_STARTED=false
 ```
 
 The Local Compute Owner override continues this program and changes only the
-next production Compute strategy. The shared code, privacy-safe inventory tool,
-ADR-037, reboot gate, and WSL-on-D foundation were pushed and independently
-verified. The Owner-review repair implementation is now pushed and remotely
-verified at exact local/remote checkpoint
-`d1bddb6d7bd6e66d0ed52586c17dd51afd358d99`. The two
-untracked workspace roots
-`%SystemDrive%/` and `scratch/` remain preserved as pre-existing user material.
-Live production remains exact frontend/Core
-`17fb945220c44df71e4846a0ccd5f54e98f43858`,
-schema v25/history 001–025. Direct read-only evidence shows the service
-active/running with `NRestarts=0`, `MemoryHigh=320 MiB`, `MemoryMax=384 MiB`,
-loopback/public health and readiness 200, SQLite integrity `ok`, and zero
-foreign-key violations. The general readiness audit also found root-disk
-headroom 10,319,340 KiB below its 10 GiB gate, a CSP/profile mismatch, nine
-historical current-boot kernel OOM matches, and several concurrent-probe
-timeouts; these are baseline findings to classify, not final acceptance.
+production Compute strategy. Live production now serves exact frontend/Core
+`f658fdc2835a4ac63fb02ab7b005aa9f108f5292` at schema v26/history
+001–026 with `COMPUTE_PROVIDER=local_pull`; loopback health/readiness, SQLite
+integrity, and foreign keys pass. The exact active Local Compute release is
+`120ae02adbd8a6c53771f0bab22d09c49c247add`; systemd is active/running with
+`NRestarts=0`, while the main worker is deliberately `PAUSED`. A normal-product
+40,421,440-byte canary completed actual Qwen inference, structured-result
+validation, callback, and current-attempt persistence. Full-corpus acceptance
+and Internal Beta readiness remain revoked/pending.
+
+The newly observed corrupt-evidence defect is repaired and pushed at exact
+local/remote checkpoint `6c71ac94c60d49e65e7eca59305b59ba6e461167`.
+OCR recognition confidence is no longer treated as bibliographic confidence;
+embedded metadata presence is no longer treated as trust. Script-neutral
+corruption/usability gates with v2 ruleset/prompt provenance withhold the
+reported `ず之` OCR fragment and suspicious `亦郊真` embedded author while
+preserving raw bounded embedded provenance and admitting legitimate Japanese,
+Mongolian, Cyrillic, Arabic/Persian, Tibetan, and Poppe transliteration. The
+two untracked workspace roots `%SystemDrive%/` and `scratch/` remain preserved.
 
 All 12 Owner-supplied PDFs named in the active task remain locally available and
 have immutable SHA-256 identities recorded in the active task card. The current
 manifest is 12 Owner PDFs plus 93 production-eligible PDFs, zero exact production
-duplicates among the 12, and 105 unique acceptance resources. No upload,
-production AI execution, deployment, provider mutation, paid usage, or source
-mutation occurred during recovery or after the Local Compute override.
+duplicates among the 12, and 105 unique acceptance resources. No paid usage,
+source-byte mutation, OSS identity mutation, or human-authority rewrite
+occurred.
 
-## Local Compute pivot — pre-corpus review passed, immutable release pending
+## Local Compute pivot — production active; v2 evidence release pending
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -131,32 +134,23 @@ production-child environment repeats passed for both GPU runtimes, so the
 selected release settings are Paddle GPU and 999 llama GPU layers; stages remain
 sequential at whole-job concurrency one.
 
-Development migration 026 and the outbound-only Local Pull worker are now
-implemented. Core issues an atomic one-worker claim with a 90-second renewable
+Migration 026 and the outbound-only Local Pull worker are deployed. Core issues
+an atomic one-worker claim with a 90-second renewable
 lease and 30-second heartbeat; expiry queues a new attempt generation. The old
 worker, delayed callbacks immediately after expiry, wrong-worker heartbeats,
 and Local attempts presented to the legacy claim route fail closed. A duplicate
 successful callback remains idempotent. The service exposes no laptop inbound
-endpoint and retains separate machine and result capabilities. Backend 373/373,
-Compute 71 passing plus 2 expected local-runtime skips, Compute contracts 2/2,
-all-workspace typecheck/build, and diff checks pass.
+endpoint and retains separate machine and result capabilities.
 
-The 2026-08-26 Owner code review is closed at exact pushed checkpoint
-`d1bddb6…`. Native-text admission is script-neutral with real Unicode
-Russian/Mongolistic PDF coverage; source authorization renews only for the exact
-valid attempt and durable source; every Local Pull network fetch is bounded and
-parent-cancellable, with heartbeat additionally capped by remaining lease;
-Paddle/Qwen are lazily reused at concurrency one, invalidated after failure,
-closed on shutdown, and unloaded after a five-minute idle TTL; PAUSED remains
-cold; and systemd activation now has a rollback-capable 15-second structured
-stability gate. Final exact-tree evidence is Backend 374/374, Frontend 283/283,
-Compute contracts 2/2, Compute 81/81 plus two expected Windows runtime skips,
-all-workspace typecheck/build, migration-v26 and compiled acceptance, WSL Bash
-syntax, state JSON parsing, and diff checks. Production is still exact
-`17fb945…`, schema v25/history 001–025, and GitHub-hosted production Compute
-remains unused. Next is immutable release assembly and real cold/warm/idle
-qualification from `d1bddb6…`, and only then the gated schema-v26/Core-provider/
-systemd cutover and forced-loss canary.
+The exact evidence-quality v2 tree passes Backend 376/376, Frontend 283/283,
+Compute contracts 2/2, Compute 93/93 plus two expected release-runtime skips,
+all-workspace typecheck/build, migration-v27 v1-preservation/v2-admission,
+compiled acceptance with 27 first-run migrations and zero redeploy migrations,
+OSS contract checks, and diff checks. Migration 027 is not deployed. Next is an
+immutable release from `6c71ac9…`, a fresh encrypted off-host schema-v26 backup
+gate, v27/Core release activation, and a PAUSED one-shot real canary. Only that
+canary may authorize resuming NORMAL, forced-loss recovery, benchmarks, and the
+authoritative full corpus. GitHub-hosted production Compute remains unused.
 
 ## Historical incident evidence (superseded as current acceptance)
 
