@@ -103,13 +103,17 @@ independently verified at local/remote HEAD
 `d1bddb6d7bd6e66d0ed52586c17dd51afd358d99` are now pushed and remotely
 verified. Local Pull production cutover and a real structured Qwen canary then
 passed. The evidence-quality v2 checkpoint
-`6c71ac94c60d49e65e7eca59305b59ba6e461167` is pushed and remotely verified;
-its immutable release and migration 027 are next.
+`6c71ac94c60d49e65e7eca59305b59ba6e461167` is pushed, deployed, and remotely
+verified at schema v27. The next canonical-bibliography UI and work-versus-
+manifestation classification repair passes at exact pushed checkpoint
+`7c839e5bebe729e11c2ffa8a9d5ce3ef57578e26`; its immutable releases, backup
+gate, migration 028, and real UI canary remain pending.
 Pre-existing untracked `%SystemDrive%/` and `scratch/` remain untouched.
 Production is exact frontend/Core
-`f658fdc2835a4ac63fb02ab7b005aa9f108f5292`, schema v26/history 001–026 with
-`local_pull`; exact Compute `120ae02…` is active while the main worker remains
-PAUSED. No new
+`6c71ac94c60d49e65e7eca59305b59ba6e461167`, schema v27/history 001–027 with
+`local_pull`; the exact current Compute symlink is `fdc0c2d…`. Its systemd
+service is intentionally inactive after the WSL cold start, with `NRestarts=0`;
+three queued benchmark jobs remain untouched. No new
 GitHub-hosted production Compute probe was launched after the override.
 
 Current acceptance inventory is 12 Owner PDFs plus 93 production-eligible PDFs,
@@ -126,9 +130,9 @@ qualification, and separately authorized emergency implementation, but is
 disabled for normal production AI. The local Windows machine remains a
 disposable outbound-only Compute executor; its absence must leave AI jobs
 queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
-and the Local Pull protocol now pass in production. No v27 migration or worker
-NORMAL transition occurs until the exact release, encrypted off-host backup,
-and PAUSED one-shot quality canary gates pass.
+and the Local Pull protocol now pass in production. No v28 migration or worker
+NORMAL transition occurs until the exact checkpoint/release, encrypted off-host
+schema-v27 backup, and isolated one-shot canonical UI canary gates pass.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -272,17 +276,44 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   expected release-runtime skips, contracts 2/2, typecheck/build, compiled
   acceptance (27 initial migrations, zero redeploy), OSS contract, integrity,
   foreign keys, v1 preservation, and v2 admission pass.
+- Deployed exact Core/frontend `6c71ac9…` at schema v27 and exact Compute
+  `fdc0c2d…`; the real quality canary completed Paddle/Qwen, structured-result
+  validation, callback, and current-attempt persistence without the reported
+  corrupt OCR/embedded-metadata candidates. The worker service is now
+  intentionally inactive after a WSL cold start and has not claimed the three
+  queued benchmark jobs.
+- Audited the Qwen structured result → bibliography run → canonical projection
+  → Resource Details chain. Implemented a primary `AI 建议书目记录`, complete
+  sparse Book fields with explicit unrecognized values, secondary expandable
+  field provenance, and collapsed candidate/conflict review while preserving
+  human authority.
+- Amended the shared catalogue projection so positively classified modern
+  scholarship renders `author + title`, historical/primary sources render
+  `title + supported version`, and unknown/other/unprofiled records never use a
+  person field to guess authorship. Authorized download filenames reuse that
+  projection plus only the safe original extension; original filename and
+  `objectKey` remain unchanged.
+- Added work-versus-manifestation Qwen ruleset/prompt v3 and append-only
+  migration 028. Modern publisher/date/ISBN/person presence no longer implies
+  a modern scholarly work or author role; unknown classification cannot
+  auto-apply. Migration tests preserve immutable v1/v2 evidence and admit only
+  exact v3 provenance.
+- Current local verification passes Backend 379/379, Frontend 284/284, Compute
+  96/96 plus two expected release-runtime skips, Compute contracts 2/2, full
+  workspace typecheck/build, compiled acceptance with 28 first-run migrations
+  and zero redeploy migrations, SQLite integrity/FK, and `git diff --check`.
 
 ## Remaining
 
 - Assemble and verify immutable Core and Local Compute releases from exact
-  source `6c71ac9…`; do not redownload unchanged model/runtime bytes.
-- Keep the main worker PAUSED. Before migration 027, produce and verify a fresh
-  encrypted off-host schema-v26 backup. Deploy v27/Core, activate only the
-  exact new Compute release in PAUSED mode, then run one normal-product one-shot
-  Qwen canary proving garbage OCR/embedded metadata is withheld and strict
-  success semantics remain intact.
-- After the v2 canary passes, measure real cold/second/third-job warm behavior,
+  checkpoint `7c839e5…`; reuse unchanged Paddle/Qwen/llama runtime bytes.
+- Keep the main worker inactive. Before migration 028, produce, encrypt,
+  publish off-host, and independently verify a fresh schema-v27 backup. Deploy
+  v28/Core, install only the exact new Compute release, and run one isolated
+  normal-product Qwen canary for 《元朝秘史》 proving correct material class,
+  `title + supported version`, full/partial AI record UI, no person-prefix
+  guessing, and strict current-attempt success semantics.
+- After the v3/UI canary passes, measure real cold/second/third-job warm behavior,
   RSS/VRAM/swap and idle unload, then prove forced-loss lease/heartbeat/restart
   recovery before restoring NORMAL.
 - Classify the root-disk, CSP, and systemd-metric audit findings by evidence.
@@ -300,21 +331,22 @@ remains a mandatory hard stop.
 
 ## Last Verification
 
-2026-08-27: local/remote equality is verified at evidence-quality checkpoint
-`6c71ac9…`. Backend 376/376, Frontend 283/283, Compute 93/93 plus two expected
-release-runtime skips, contracts 2/2, typecheck/build, migration 027 preservation
-and admission, compiled acceptance, OSS contract, JSON parsing, and diff checks
-pass. Production is exact `f658fdc…`, schema v26/history 001–026, local_pull;
-Core is active/ready. Exact Compute `120ae02…` is active/running, NRestarts=0,
-main worker PAUSED. No GitHub-hosted production Compute or paid service was
-used; final production/full-corpus acceptance remains pending.
+2026-08-28: canonical UI/classification v3/schema-v28 is exact pushed checkpoint
+`7c839e5…`. Backend 379/379, Frontend 284/284, Compute 96/96 plus two
+expected release-runtime skips, contracts 2/2, typecheck/build, migration 028
+v1/v2 preservation/v3 admission, compiled acceptance, and diff checks pass.
+Read-only production verification shows exact `6c71ac9…`, schema/history 27,
+integrity `ok`, FK 0, Core active with health/ready green and NRestarts=0. Exact
+Compute symlink `fdc0c2d…` is inactive with NRestarts=0. No GitHub-hosted
+production Compute or paid service was used; full-corpus acceptance remains
+pending.
 
 ## Next Action
 
-Assemble immutable Core/Compute releases from exact checkpoint `6c71ac9…`.
-Pass a fresh encrypted off-host schema-v26 backup gate before migration 027,
-then deploy v27 and run a PAUSED one-shot real Qwen canary. Only after its
-structured callback/current-attempt persistence and corrupt-candidate absence
-pass may NORMAL, warm/idle benchmarks, forced-loss recovery, corpus
+Assemble immutable Core/Compute releases from exact `7c839e5…` without
+rebuilding unchanged runtime bytes.
+Pass a fresh encrypted off-host schema-v27 backup gate before migration 028,
+then deploy and run the isolated real 《元朝秘史》 UI/classification canary. Only
+after that pass may NORMAL, warm/idle benchmarks, forced-loss recovery, corpus
 recomputation, and full-corpus execution resume. Do not launch GitHub-hosted
 production Compute.

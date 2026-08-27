@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-27
+**Last reconciled:** 2026-08-28
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
@@ -28,18 +28,19 @@ INTERNAL_BETA_STARTED=false
 ```
 
 The Local Compute Owner override continues this program and changes only the
-production Compute strategy. Live production now serves exact frontend/Core
-`f658fdc2835a4ac63fb02ab7b005aa9f108f5292` at schema v26/history
-001–026 with `COMPUTE_PROVIDER=local_pull`; loopback health/readiness, SQLite
-integrity, and foreign keys pass. The exact active Local Compute release is
-`120ae02adbd8a6c53771f0bab22d09c49c247add`; systemd is active/running with
-`NRestarts=0`, while the main worker is deliberately `PAUSED`. A normal-product
-40,421,440-byte canary completed actual Qwen inference, structured-result
-validation, callback, and current-attempt persistence. Full-corpus acceptance
-and Internal Beta readiness remain revoked/pending.
+production Compute strategy. Read-only verification on 2026-08-28 shows exact
+frontend/Core `6c71ac94c60d49e65e7eca59305b59ba6e461167` at schema v27/history
+001–027 with `COMPUTE_PROVIDER=local_pull`; Core is active with `NRestarts=0`,
+loopback health/readiness pass, SQLite integrity is `ok`, and foreign keys are
+clean. The exact Local Compute symlink is `fdc0c2d34236d876afc1c62682cdbbe564701596`;
+systemd is intentionally inactive after the WSL cold start with `NRestarts=0`,
+so three queued benchmark jobs remain untouched. The v2 quality canary already
+completed actual Qwen inference, structured-result validation, callback, and
+current-attempt persistence. Full-corpus acceptance and Internal Beta readiness
+remain revoked/pending.
 
-The newly observed corrupt-evidence defect is repaired and pushed at exact
-local/remote checkpoint `6c71ac94c60d49e65e7eca59305b59ba6e461167`.
+The corrupt-evidence defect is repaired, deployed, and canary-verified at exact
+checkpoint `6c71ac94c60d49e65e7eca59305b59ba6e461167`.
 OCR recognition confidence is no longer treated as bibliographic confidence;
 embedded metadata presence is no longer treated as trust. Script-neutral
 corruption/usability gates with v2 ruleset/prompt provenance withhold the
@@ -48,6 +49,17 @@ preserving raw bounded embedded provenance and admitting legitimate Japanese,
 Mongolian, Cyrillic, Arabic/Persian, Tibetan, and Poppe transliteration. The
 two untracked workspace roots `%SystemDrive%/` and `scratch/` remain preserved.
 
+Exact pushed checkpoint `7c839e5bebe729e11c2ffa8a9d5ce3ef57578e26`
+connects immutable Qwen structured output to a primary
+`AI 建议书目记录`, keeps field candidates as secondary conflict/evidence review,
+applies the Owner display rule (modern scholarship `author + title`, historical
+source `title + supported version`, unknown/unprofiled title-only), and projects
+only the display/download filename while leaving original filename and
+`objectKey` unchanged. Qwen ruleset/prompt v3 classifies intellectual work before
+modern manifestation and person metadata; migration 028 admits exact v3
+provenance while preserving immutable v1/v2 evidence. Unknown classification
+cannot auto-apply.
+
 All 12 Owner-supplied PDFs named in the active task remain locally available and
 have immutable SHA-256 identities recorded in the active task card. The current
 manifest is 12 Owner PDFs plus 93 production-eligible PDFs, zero exact production
@@ -55,7 +67,7 @@ duplicates among the 12, and 105 unique acceptance resources. No paid usage,
 source-byte mutation, OSS identity mutation, or human-authority rewrite
 occurred.
 
-## Local Compute pivot — production active; v2 evidence release pending
+## Local Compute pivot — production v27 active; canonical UI/v3 release pending
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -142,13 +154,13 @@ and Local attempts presented to the legacy claim route fail closed. A duplicate
 successful callback remains idempotent. The service exposes no laptop inbound
 endpoint and retains separate machine and result capabilities.
 
-The exact evidence-quality v2 tree passes Backend 376/376, Frontend 283/283,
-Compute contracts 2/2, Compute 93/93 plus two expected release-runtime skips,
-all-workspace typecheck/build, migration-v27 v1-preservation/v2-admission,
-compiled acceptance with 27 first-run migrations and zero redeploy migrations,
-OSS contract checks, and diff checks. Migration 027 is not deployed. Next is an
-immutable release from `6c71ac9…`, a fresh encrypted off-host schema-v26 backup
-gate, v27/Core release activation, and a PAUSED one-shot real canary. Only that
+The current worktree passes Backend 379/379, Frontend 284/284, Compute contracts
+2/2, Compute 96/96 plus two expected release-runtime skips, all-workspace
+typecheck/build, migration-v28 v1/v2-preservation/v3-admission, compiled
+acceptance with 28 first-run migrations and zero redeploy migrations, and diff
+checks. Migration 028 is not deployed. Next is an immutable release from exact
+`7c839e5…`, a fresh encrypted/off-host schema-v27 backup gate, v28/Core
+activation, and an isolated real 《元朝秘史》 classification/UI canary. Only that
 canary may authorize resuming NORMAL, forced-loss recovery, benchmarks, and the
 authoritative full corpus. GitHub-hosted production Compute remains unused.
 
