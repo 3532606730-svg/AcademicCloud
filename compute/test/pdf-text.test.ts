@@ -331,6 +331,30 @@ test("range-backed inspector accepts an object larger than the whole-object comp
   assert.ok(requests.every(([begin, end]) => end > begin && end - begin <= SUGGESTION_LIMITS.rangeChunkBytes));
 });
 
+test("range-backed document loading uses the aggregate request budget while later parser work stays bounded", async () => {
+  const bytes = makeOversizedRealisticPdf(["Range-backed title evidence"], {}, 3 * 1024 * 1024);
+  let reads = 0;
+  const source = {
+    length: bytes.byteLength,
+    async read(begin: number, end: number): Promise<Uint8Array> {
+      reads += 1;
+      if (reads > 1) await new Promise((resolve) => setTimeout(resolve, 50));
+      return bytes.slice(begin, end);
+    },
+  };
+  const inspection = await inspectPdfFrontMatterRange(
+    source,
+    new RecordingOcrAdapter(async () => recognized("unused")),
+    limits({
+      rangeChunkBytes: 512 * 1024,
+      timeoutMilliseconds: 20,
+      totalRequestTimeoutMilliseconds: 1_000,
+    }),
+  );
+  assert.equal(inspection.pages[0]?.text.includes("Range-backed title evidence"), true);
+  assert.ok(reads > 1);
+});
+
 test("range-backed inspector ignores a stale response after PDF.js settles its reader", async () => {
   const bytes = makeOversizedRealisticPdf(["Range-backed title evidence"]);
   let reads = 0;

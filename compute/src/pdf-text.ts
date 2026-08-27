@@ -419,14 +419,13 @@ async function inspectPdf(options: {
   let loadingTask: ReturnType<typeof getDocument> | undefined;
   let rangeTransport: PdfRangeTransport | undefined;
   const startedAt = Date.now();
-  const parserDeadline = startedAt + limits.timeoutMilliseconds;
   const requestDeadline = startedAt + (ocr === undefined ? limits.timeoutMilliseconds : limits.totalRequestTimeoutMilliseconds);
   let releaseOcrRequest: (() => void) | undefined;
   try {
     const initialData = source
       ? await atInspectionStage("initial_range", () => withTimeout(
         source.read(0, Math.min(source.length, limits.rangeChunkBytes), signal),
-        operationBudget(parserDeadline, limits.timeoutMilliseconds),
+        operationBudget(requestDeadline, limits.timeoutMilliseconds),
         signal,
       ))
       : undefined;
@@ -445,9 +444,14 @@ async function inspectPdf(options: {
     });
     const document = await atInspectionStage("document_load", () => withTimeout(
       loadingTask!.promise,
-      operationBudget(parserDeadline, limits.timeoutMilliseconds),
+      operationBudget(requestDeadline, ocr === undefined ? limits.timeoutMilliseconds : limits.totalRequestTimeoutMilliseconds),
       signal,
     ));
+    // Range-backed PDF.js may need most of a large object merely to resolve
+    // its document structure. Keep each later parser operation inside the
+    // existing parser timeout while sharing the unchanged aggregate request
+    // deadline with document loading and OCR.
+    const parserDeadline = Math.min(requestDeadline, Date.now() + limits.timeoutMilliseconds);
     const pageCount = document.numPages;
     if (!Number.isSafeInteger(pageCount) || pageCount < 1 || pageCount > 100_000) {
       throw new PdfTextInspectionError("limit_exceeded");
