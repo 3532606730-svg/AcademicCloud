@@ -252,7 +252,10 @@ async function verifyArchive(archiveOption, manifestOption, checksumOption, evid
 
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-prod-artifact-"));
   try {
-    run("tar", ["-xzf", archivePath, "-C", temporaryDirectory]);
+    // Verify the archive's declared modes, not modes filtered by the caller's
+    // umask. Production verification commonly runs under UMask=0077 while the
+    // deterministic archive intentionally contains readable 0644/0664 files.
+    run("tar", ["--same-permissions", "-xzf", archivePath, "-C", temporaryDirectory]);
     const internalManifestPath = join(temporaryDirectory, manifestName);
     const externalManifestText = readFileSync(manifestPath, "utf8");
     const internalManifestText = readFileSync(internalManifestPath, "utf8");

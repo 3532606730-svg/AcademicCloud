@@ -160,6 +160,7 @@ test("Core production artifact excludes OCR/PDF-render runtime and retains only 
   assert.match(artifact, /schemaVersion: 3/u);
   assert.match(artifact, /coreOcrRuntime: false/u);
   assert.match(artifact, /corePdfRenderRuntime: false/u);
+  assert.match(artifact, /\["--same-permissions", "-xzf", archivePath, "-C", temporaryDirectory\]/u);
   assert.doesNotMatch(artifact, /verifyTesseractRuntime|verifyIntelligentComputeRuntime|verifyPdfJsRuntime|runtime\/(?:tesseract|paddle|qwen|llama)/u);
   assert.doesNotMatch(backendPackage, /pdfjs-dist|@napi-rs\/canvas|tesseract|paddle|qwen|llama/iu);
   assert.doesNotMatch(workflow, /build-(?:tesseract|intelligent-compute)-runtime|realistic-(?:ocr|paddle-ocr)-e2e|runtime\/(?:tesseract|paddle|qwen|llama)/iu);
