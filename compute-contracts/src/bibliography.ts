@@ -132,12 +132,18 @@ export interface IntelligentBibliographyProvenance {
     runtimeSha256: string;
   };
   selectedPages: number[];
-  promptVersion: "l1-intelligent-library01-prompt-v1" | "l1-intelligent-library01-prompt-v2";
+  promptVersion:
+    | "l1-intelligent-library01-prompt-v1"
+    | "l1-intelligent-library01-prompt-v2"
+    | "l1-intelligent-library01-prompt-v3";
 }
 
 export interface IntelligentBibliographyResult {
   contractVersion: 1;
-  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2";
+  rulesetVersion:
+    | "l1-intelligent-library01-v1"
+    | "l1-intelligent-library01-v2"
+    | "l1-intelligent-library01-v3";
   status: IntelligentBibliographyStatus;
   overallConfidence: number;
   canonical: IntelligentCanonicalBibliography | null;
@@ -355,6 +361,7 @@ function parseProvenance(value: unknown): IntelligentBibliographyProvenance {
     promptVersion: oneOf(provenance.promptVersion, [
       "l1-intelligent-library01-prompt-v1",
       "l1-intelligent-library01-prompt-v2",
+      "l1-intelligent-library01-prompt-v3",
     ] as const, "promptVersion"),
   };
 }
@@ -366,6 +373,7 @@ export function parseIntelligentBibliographyResult(value: unknown): IntelligentB
   const rulesetVersion = oneOf(input.rulesetVersion, [
     "l1-intelligent-library01-v1",
     "l1-intelligent-library01-v2",
+    "l1-intelligent-library01-v3",
   ] as const, "bibliography.rulesetVersion");
   const status = oneOf(input.status, INTELLIGENT_BIBLIOGRAPHY_STATUSES, "bibliography.status");
   const canonical = input.canonical === null ? null : parseIntelligentCanonicalBibliography(input.canonical);

@@ -890,6 +890,7 @@ export class DriveService {
   async createDownloadForAuthorizedFile(
     file: StoredFile,
     disposition: "attachment" | "inline" = "attachment",
+    downloadFilename: string = file.displayName,
   ): Promise<ResumableDownloadAuthorization> {
     if (file.state !== "active" || file.storageProvider !== this.storage.provider) {
       throw new DriveError("not_found");
@@ -922,7 +923,7 @@ export class DriveService {
       }
       const authorization = await this.storage.createDownloadAuthorization({
         objectKey: file.objectKey,
-        downloadFilename: file.displayName,
+        downloadFilename,
         disposition,
       });
       return {

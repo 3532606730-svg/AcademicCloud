@@ -98,6 +98,12 @@ test("intelligent bibliography contract is closed, provenance-rich, and rejects 
     provenance: { ...value.provenance, promptVersion: "l1-intelligent-library01-prompt-v2" },
   };
   assert.deepEqual(parseIntelligentBibliographyResult(v2), v2);
+  const v3 = {
+    ...value,
+    rulesetVersion: "l1-intelligent-library01-v3",
+    provenance: { ...value.provenance, promptVersion: "l1-intelligent-library01-prompt-v3" },
+  };
+  assert.deepEqual(parseIntelligentBibliographyResult(v3), v3);
   assert.throws(() => parseIntelligentBibliographyResult({ ...value, rawOcrText: "forbidden" }), /unsupported field/u);
   assert.throws(() => parseIntelligentBibliographyResult({ ...value, overallConfidence: 84 }), /confidence gate/u);
   assert.throws(() => parseIntelligentBibliographyResult({

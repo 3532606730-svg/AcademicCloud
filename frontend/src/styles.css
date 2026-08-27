@@ -661,7 +661,20 @@ input:hover { border-color: #a7b2a8; }
 .metadata-suggestions-status { margin: 0; color: var(--muted); font-size: 0.82rem; font-weight: 650; }
 .metadata-suggestions-status--ambiguous, .metadata-suggestions-status--stale { color: #8a4d13; }
 .metadata-suggestions-status--ocr_deferred, .metadata-suggestions-status--unsupported { color: #6b4f10; }
+.ai-bibliographic-record { display: grid; gap: 0.75rem; padding: 1rem; border: 1px solid rgba(36, 79, 59, 0.28); border-radius: 0.65rem; background: var(--paper); }
+.ai-bibliographic-record__header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.ai-bibliographic-record__header h4 { margin: 0.15rem 0 0; color: var(--ink); font-size: 1.05rem; line-height: 1.45; }
+.ai-bibliographic-record__confidence { flex: 0 0 auto; padding: 0.25rem 0.5rem; border-radius: 999px; background: var(--forest-soft); color: var(--forest-deep); font-size: 0.76rem; font-weight: 650; }
+.ai-bibliographic-record__facts { display: grid; grid-template-columns: minmax(7rem, 0.32fr) minmax(0, 1fr); gap: 0.38rem 0.85rem; margin: 0; }
+.ai-bibliographic-record__facts dt { color: var(--muted); font-size: 0.8rem; font-weight: 650; }
+.ai-bibliographic-record__facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.ai-bibliographic-record__provenance, .metadata-suggestions-review { border-top: 1px solid var(--line); padding-top: 0.65rem; }
+.ai-bibliographic-record__provenance summary, .metadata-suggestions-review summary { cursor: pointer; color: var(--ink); font-size: 0.82rem; font-weight: 650; }
+.ai-bibliographic-record__evidence-list { display: grid; gap: 0.45rem; margin-top: 0.65rem; }
+.ai-bibliographic-record__evidence-list article { display: grid; gap: 0.12rem; padding: 0.55rem; border-radius: 0.45rem; background: var(--forest-soft); font-size: 0.78rem; }
+.ai-bibliographic-record__evidence-list span { color: var(--muted); }
 .metadata-suggestions-list { display: grid; gap: 0.65rem; }
+.metadata-suggestions-review .metadata-suggestions-list { margin-top: 0.65rem; }
 .metadata-suggestion { display: grid; gap: 0.6rem; min-width: 0; padding: 0.7rem; border: 1px solid var(--line); border-radius: 0.5rem; background: white; }
 .metadata-suggestion.is-selected { border-color: #63826d; box-shadow: 0 0 0 1px rgba(99, 130, 109, 0.18); }
 .metadata-suggestion-main { display: flex; min-width: 0; align-items: flex-start; gap: 0.55rem; }

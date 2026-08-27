@@ -1,4 +1,8 @@
-import type { BibliographicProfile, ContributorRole, EditionType, MaterialClass } from "../bibliography/bibliography.js";
+import type {
+  ContributorRole,
+  EditionType,
+  MaterialClass,
+} from "../bibliography/bibliography.js";
 
 /**
  * Presentation-only catalogue composition.  The returned title is never a
@@ -16,8 +20,16 @@ const MODERN_SCHOLARLY_CLASSES: ReadonlySet<MaterialClass> = new Set([
   "reference_work",
   "dictionary_lexicon",
   "catalogue_bibliography",
-  "other",
-  "unknown",
+]);
+
+const HISTORICAL_SOURCE_CLASSES: ReadonlySet<MaterialClass> = new Set([
+  "primary_source_modern_edition",
+  "traditional_book",
+  "archival_document",
+  "inscription_epigraphy",
+  "rubbing",
+  "manuscript",
+  "collected_documents",
 ]);
 
 const EDITION_TYPE_LABELS: Readonly<Record<EditionType, string>> = {
@@ -63,7 +75,47 @@ export interface CatalogueDisplayInput {
   canonicalTitle: string | null;
   fallbackDisplayName: string;
   legacyAuthorLabels?: readonly string[];
-  bibliography: BibliographicProfile | null;
+  bibliography: CatalogueBibliography | null;
+}
+
+/**
+ * The catalogue identity rule consumes only bibliographic facts. Keeping this
+ * view structural lets immutable AI suggestions use the exact same display
+ * projection as persisted canonical profiles without fabricating record ids,
+ * revisions, or actor provenance.
+ */
+export interface CatalogueBibliography {
+  materialClass: MaterialClass;
+  contributors: ReadonlyArray<{
+    label: string;
+    role: ContributorRole;
+    roleLabel?: string | null | undefined;
+  }>;
+  publication: {
+    publisher?: string | null | undefined;
+    place?: string | null | undefined;
+    publicationDate?: string | null | undefined;
+    editionNumber?: string | null | undefined;
+    printing?: string | null | undefined;
+  };
+  carrierEdition: {
+    editionType?: EditionType | null | undefined;
+    editionStatement?: string | null | undefined;
+    facsimileStatement?: string | null | undefined;
+  };
+  sourceEdition: {
+    dynasty?: string | null | undefined;
+    reignTitle?: string | null | undefined;
+    reignYear?: string | null | undefined;
+    absoluteYear?: number | null | undefined;
+    printer?: string | null | undefined;
+    imprint?: string | null | undefined;
+    bookshop?: string | null | undefined;
+    institution?: string | null | undefined;
+    printingPlace?: string | null | undefined;
+    editionType?: EditionType | null | undefined;
+    editionStatement?: string | null | undefined;
+  };
 }
 
 export interface CatalogueDisplay {
@@ -84,8 +136,8 @@ function unique(values: readonly (string | null | undefined)[]): string[] {
   return result;
 }
 
-function appendUnique(parts: string[], raw: string | number | undefined): void {
-  if (raw === undefined) return;
+function appendUnique(parts: string[], raw: string | number | null | undefined): void {
+  if (raw === undefined || raw === null) return;
   const value = String(raw).normalize("NFC").trim();
   if (!value) return;
   const compact = parts.join("").replace(/[\s\p{P}\p{S}]+/gu, "");
@@ -106,19 +158,19 @@ function mergeStatements(values: readonly (string | null | undefined)[]): string
   return result || null;
 }
 
-function editionTypeLabel(type: EditionType | undefined): string | undefined {
+function editionTypeLabel(type: EditionType | null | undefined): string | undefined {
   if (!type || type === "unknown") return undefined;
   return EDITION_TYPE_LABELS[type];
 }
 
-function sourceEditionStatement(profile: BibliographicProfile): string | null {
+function sourceEditionStatement(profile: CatalogueBibliography): string | null {
   const source = profile.sourceEdition;
   const parts: string[] = [];
   appendUnique(parts, source.dynasty);
   appendUnique(parts, source.reignTitle);
   if (source.reignYear) {
     appendUnique(parts, /年$/u.test(source.reignYear) ? source.reignYear : `${source.reignYear}年`);
-  } else if (source.absoluteYear !== undefined) {
+  } else if (source.absoluteYear !== undefined && source.absoluteYear !== null) {
     appendUnique(parts, `${source.absoluteYear}年`);
   }
   appendUnique(parts, source.printingPlace);
@@ -131,7 +183,7 @@ function sourceEditionStatement(profile: BibliographicProfile): string | null {
   return mergeStatements(parts);
 }
 
-function editorialRoleLabels(profile: BibliographicProfile): string[] {
+function editorialRoleLabels(profile: CatalogueBibliography): string[] {
   return unique(profile.contributors.flatMap((contributor) => {
     if (contributor.role === "author" || contributor.role === "other") return [];
     return contributor.roleLabel
@@ -140,21 +192,24 @@ function editorialRoleLabels(profile: BibliographicProfile): string[] {
   }));
 }
 
-function carrierEditionStatement(profile: BibliographicProfile): string | null {
+function carrierEditionStatement(profile: CatalogueBibliography): string | null {
   const carrier = profile.carrierEdition;
   const parts: string[] = [];
   appendUnique(parts, profile.publication.publisher);
-  appendUnique(parts, profile.publication.publicationDate);
-  const roles = editorialRoleLabels(profile);
-  for (const role of roles) appendUnique(parts, role.endsWith("本") ? role : `${role}本`);
-  appendUnique(parts, carrier.editionStatement);
-  if (roles.length === 0 && !carrier.editionStatement) appendUnique(parts, editionTypeLabel(carrier.editionType));
+  if (carrier.editionStatement) {
+    appendUnique(parts, carrier.editionStatement);
+  } else {
+    appendUnique(parts, profile.publication.publicationDate);
+    const roles = editorialRoleLabels(profile);
+    for (const role of roles) appendUnique(parts, role.endsWith("本") ? role : `${role}本`);
+    if (roles.length === 0) appendUnique(parts, editionTypeLabel(carrier.editionType));
+  }
   appendUnique(parts, profile.publication.editionNumber);
   appendUnique(parts, profile.publication.printing);
   return mergeStatements(parts);
 }
 
-function historicalEditionStatement(profile: BibliographicProfile): string | null {
+function historicalEditionStatement(profile: CatalogueBibliography): string | null {
   const source = sourceEditionStatement(profile);
   const carrier = carrierEditionStatement(profile);
   if (profile.carrierEdition.facsimileStatement) {
@@ -180,9 +235,8 @@ export function composeCatalogueDisplay(input: CatalogueDisplayInput): Catalogue
     return { title: input.fallbackDisplayName, contributorLabels, editionStatement: null };
   }
   if (!profile) {
-    const authors = unique(input.legacyAuthorLabels ?? []);
     return {
-      title: authors.length > 0 ? `${authors.join("、")} ${canonicalTitle}` : canonicalTitle,
+      title: canonicalTitle,
       contributorLabels,
       editionStatement: null,
     };
@@ -197,6 +251,9 @@ export function composeCatalogueDisplay(input: CatalogueDisplayInput): Catalogue
       editionStatement: carrierEditionStatement(profile),
     };
   }
+  if (!HISTORICAL_SOURCE_CLASSES.has(profile.materialClass)) {
+    return { title: canonicalTitle, contributorLabels, editionStatement: null };
+  }
   const editionStatement = historicalEditionStatement(profile);
   return {
     title: editionStatement ? `${canonicalTitle} ${editionStatement}` : canonicalTitle,
@@ -207,4 +264,30 @@ export function composeCatalogueDisplay(input: CatalogueDisplayInput): Catalogue
 
 export function editionTypeDisplayLabel(type: EditionType): string {
   return EDITION_TYPE_LABELS[type];
+}
+
+const SAFE_EXTENSION = /^\.[A-Za-z0-9]{1,16}$/u;
+
+function truncateFilenameBase(value: string, maximumCodeUnits: number): string {
+  let result = "";
+  for (const character of value) {
+    if (result.length + character.length > maximumCodeUnits) break;
+    result += character;
+  }
+  return result.trim();
+}
+
+/**
+ * Project a catalogue identity into a download filename while preserving only
+ * the original, already-authorized file extension. Object storage identity is
+ * deliberately absent from this presentation-only function.
+ */
+export function composeCatalogueFilename(catalogueTitle: string, originalFilename: string): string {
+  const dot = originalFilename.lastIndexOf(".");
+  const extension = dot > 0 ? originalFilename.slice(dot) : "";
+  const safeExtension = SAFE_EXTENSION.test(extension) ? extension : "";
+  const titleAlreadyHasExtension = safeExtension !== "" && catalogueTitle.toLowerCase().endsWith(safeExtension.toLowerCase());
+  const projectedExtension = titleAlreadyHasExtension ? "" : safeExtension;
+  const base = truncateFilenameBase(catalogueTitle, 255 - projectedExtension.length);
+  return `${base}${projectedExtension}`;
 }

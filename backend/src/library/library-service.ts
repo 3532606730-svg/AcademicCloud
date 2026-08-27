@@ -18,6 +18,7 @@ import type {
   LibraryRole,
 } from "./library.js";
 import { libraryHoldingView, type LibraryHoldingView } from "./holding-view.js";
+import { composeCatalogueDisplay, composeCatalogueFilename } from "./catalogue-display.js";
 import {
   collectAllHoldings,
   searchHoldings,
@@ -893,7 +894,18 @@ export class LibraryService {
     const file = repositories.files.findByDomainId(library.ownerDomainId, fileId);
     if (!file) throw new LibraryError("not_found");
     try {
-      return await this.#drive.createDownloadForAuthorizedFile(file, disposition);
+      const bibliography = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
+      const display = composeCatalogueDisplay({
+        canonicalTitle: holding.canonicalTitle,
+        fallbackDisplayName: file.displayName,
+        legacyAuthorLabels: holding.authorLabels,
+        bibliography,
+      });
+      return await this.#drive.createDownloadForAuthorizedFile(
+        file,
+        disposition,
+        composeCatalogueFilename(display.title, file.displayName),
+      );
     } catch (error: unknown) {
       throw error;
     }

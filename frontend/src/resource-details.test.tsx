@@ -107,6 +107,58 @@ const SUGGESTION_RUN: MetadataSuggestionRun = {
   createdAt: "2026-08-18T00:00:00.000Z",
 };
 
+const AI_SUGGESTION_RUN: MetadataSuggestionRun = {
+  ...SUGGESTION_RUN,
+  aiBibliography: {
+    id: "bibliography-job-1",
+    contractVersion: 1,
+    rulesetVersion: "l1-intelligent-library01-v2",
+    status: "ambiguous",
+    overallConfidence: 91,
+    displayTitle: "元朝秘史 中华书局1980整理本",
+    editionStatement: "中华书局1980整理本",
+    canonical: {
+      materialClass: "primary_source_modern_edition",
+      canonicalTitle: "元朝秘史",
+      subtitle: null,
+      alternativeTitles: ["蒙古秘史"],
+      dateStatement: "1980",
+      identifiers: [],
+      contributors: [
+        { label: "亦邻真", role: "author", roleLabel: null },
+        { label: "额尔登泰", role: "editor", roleLabel: "整理" },
+      ],
+      publication: { publisher: "中华书局", place: "北京", publicationDate: "1980", editionNumber: null, printing: null },
+      series: null,
+      volume: null,
+      language: "中文",
+      carrierEdition: { editionType: "annotated_edition", editionStatement: null, facsimileStatement: null },
+      sourceEdition: { dynasty: null, reignTitle: null, reignYear: null, absoluteYear: null, printer: null, imprint: null, bookshop: null, institution: null, printingPlace: null, editionType: null, editionStatement: null, holdingInformation: null },
+    },
+    fields: [{
+      fieldName: "canonicalTitle", scopeKey: "", confidence: 96, sourceType: "title_page", sourcePageIndex: 2,
+      pageClass: "title_page", evidenceOrigin: "ocr", evidenceSha256: "a".repeat(64),
+    }],
+    warnings: [],
+    provenance: {
+      ocr: {
+        used: true, family: "PaddleOCR", packageVersion: "3.7.0", runtimeFamily: "PaddlePaddle", runtimeVersion: "3.3.1", legacyFallback: false,
+        detectionModel: { name: "PP-OCRv6_small_det", revision: "det", sha256: "b".repeat(64) },
+        recognitionModel: { name: "PP-OCRv6_small_rec", revision: "rec", sha256: "c".repeat(64) },
+      },
+      reasoning: {
+        family: "Qwen3", name: "Qwen3-1.7B-GGUF", revision: "qwen", sha256: "d".repeat(64), quantization: "Q8_0",
+        runtimeFamily: "llama.cpp", runtimeVersion: "b10218", runtimeRevision: "de69995", runtimeSha256: "e".repeat(64),
+      },
+      selectedPages: [1, 2],
+      promptVersion: "l1-intelligent-library01-prompt-v2",
+    },
+    autoApplied: false,
+    appliedFields: [],
+    createdAt: "2026-08-18T00:00:02.000Z",
+  },
+};
+
 const SUCCEEDED_JOB: DerivedMetadataJob = {
   id: "job-1",
   kind: "metadata_suggestion",
@@ -340,6 +392,37 @@ describe("Resource details", () => {
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText(/Local OCR · 88%/)).toBeInTheDocument();
     expect(screen.getByText("AI recognition results")).toBeInTheDocument();
+    expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
+  });
+
+  it("presents a historical AI bibliographic record before the collapsed field evidence review", async () => {
+    const getSuggestions = vi.fn().mockResolvedValue(AI_SUGGESTION_RUN);
+    const { api } = renderDetails({ api: {
+      getLibraryMetadataSuggestions: getSuggestions,
+      getLatestLibraryMetadataSuggestionJob: vi.fn().mockResolvedValue(SUCCEEDED_JOB),
+      getLatestLibraryMetadataSuggestionStates: vi.fn().mockResolvedValue([{
+        fileId: HOLDING.file.id,
+        state: "ai_succeeded_reviewable",
+        job: SUCCEEDED_JOB,
+      }]),
+    } });
+
+    const record = await screen.findByRole("heading", { name: "元朝秘史 中华书局1980整理本" });
+    const article = record.closest("article");
+    expect(article).not.toBeNull();
+    expect(within(article!).getByText("AI suggested bibliographic record")).toBeInTheDocument();
+    expect(within(article!).getByText("Modern primary-source edition")).toBeInTheDocument();
+    expect(within(article!).getByText("元朝秘史")).toBeInTheDocument();
+    expect(within(article!).getByText("蒙古秘史")).toBeInTheDocument();
+    expect(within(article!).getByText("额尔登泰")).toBeInTheDocument();
+    expect(within(article!).getByText("北京")).toBeInTheDocument();
+    expect(within(article!).getByText("中华书局")).toBeInTheDocument();
+    expect(within(article!).getByText("中华书局1980整理本")).toBeInTheDocument();
+    expect(within(article!).getAllByText("Unrecognized").length).toBeGreaterThanOrEqual(2);
+    expect(record).not.toHaveTextContent("亦邻真");
+
+    const review = screen.getByText("Field evidence and conflict review (2)").closest("details");
+    expect(review).not.toHaveAttribute("open");
     expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
   });
 

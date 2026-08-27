@@ -10,13 +10,18 @@ import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
 const NOW = "2026-08-27T12:00:00.000Z";
 
-test("migration 027 preserves immutable v1 AI evidence and admits exact v2 provenance", () => {
+test("migrations 027/028 preserve immutable v1/v2 AI evidence and admit exact v3 provenance", () => {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-bibliography-ruleset-v2-"));
   const v26Directory = join(temporaryDirectory, "v26");
+  const v27Directory = join(temporaryDirectory, "v27");
   mkdirSync(v26Directory);
+  mkdirSync(v27Directory);
   for (const filename of readdirSync(INITIAL_MIGRATIONS_DIRECTORY)) {
     if (Number(filename.slice(0, 3)) <= 26) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v26Directory, filename));
+    }
+    if (Number(filename.slice(0, 3)) <= 27) {
+      copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v27Directory, filename));
     }
   }
   const database = openSqliteDatabase(join(temporaryDirectory, "ruleset.sqlite"));
@@ -80,7 +85,7 @@ test("migration 027 preserves immutable v1 AI evidence and admits exact v2 prove
       )
     `).run("a".repeat(64), NOW);
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+    assert.deepEqual(runMigrations(database, v27Directory), {
       appliedVersions: [27], currentVersion: 27,
     });
     assert.deepEqual(database.prepare<[], { ruleset_version: string; prompt_version: string }>(`
@@ -112,6 +117,53 @@ test("migration 027 preserves immutable v1 AI evidence and admits exact v2 prove
       "ai-v3", "l1-intelligent-library01-v3", "c".repeat(64),
       "l1-intelligent-library01-prompt-v3", NOW,
     ), /CHECK constraint failed/u);
+
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+      appliedVersions: [28], currentVersion: 28,
+    });
+    assert.deepEqual(database.prepare<[], { id: string; ruleset_version: string; prompt_version: string }>(`
+      SELECT id, ruleset_version, prompt_version
+        FROM scholarly_bibliographic_ai_runs
+       ORDER BY id
+    `).all(), [{
+      id: "ai-v1",
+      ruleset_version: "l1-intelligent-library01-v1",
+      prompt_version: "l1-intelligent-library01-prompt-v1",
+    }, {
+      id: "ai-v2",
+      ruleset_version: "l1-intelligent-library01-v2",
+      prompt_version: "l1-intelligent-library01-prompt-v2",
+    }]);
+    insertSuggestionRun.run("suggestion-v3", "rf-frontmatterocr-v2", "v3-source", NOW);
+    database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        'ai-v3', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v3',
+        1, 'l1-intelligent-library01-v3', 'ambiguous', 70,
+        '{}', ?, 'l1-intelligent-library01-prompt-v3',
+        'PaddleOCR/v3', 'Qwen3/v3', '[1]', 0, '[]', ?
+      )
+    `).run("c".repeat(64), NOW);
+    insertSuggestionRun.run("suggestion-v4", "rf-frontmatterocr-v2", "v4-source", NOW);
+    assert.throws(() => database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        'ai-v4', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v4',
+        1, 'l1-intelligent-library01-v4', 'ambiguous', 70,
+        '{}', ?, 'l1-intelligent-library01-prompt-v4',
+        'PaddleOCR/v4', 'Qwen3/v4', '[1]', 0, '[]', ?
+      )
+    `).run("d".repeat(64), NOW), /CHECK constraint failed/u);
     assert.throws(
       () => database.prepare("UPDATE scholarly_bibliographic_ai_runs SET overall_confidence = 71 WHERE id = 'ai-v1'").run(),
       /bibliographic AI evidence is immutable/u,

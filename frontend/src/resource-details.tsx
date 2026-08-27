@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateActio
 import {
   ApiError,
   type AcademicCloudApi,
+  type AiSuggestedBibliography,
   type AuthorityRole,
   type AuthorityType,
   type BibliographicFieldAuthority,
@@ -1127,9 +1128,8 @@ function BibliographyReadOnly({
   </section>;
 }
 
-function authorityFieldLabel(
-  authority: BibliographicFieldAuthority,
-  bibliography: LibraryHoldingDetails["bibliography"],
+function bibliographyFieldLabel(
+  fieldName: BibliographicFieldName,
   t: ReturnType<typeof useLanguage>["t"],
 ): string {
   const labels: Partial<Record<BibliographicFieldName, string>> = {
@@ -1148,7 +1148,15 @@ function authorityFieldLabel(
     "contributor.role": t("metadata.contributorRole"), "contributor.roleLabel": t("metadata.contributorRoleLabel"),
     "contributor.authorityId": t("metadata.authorities"),
   };
-  const base = labels[authority.fieldName] ?? authority.fieldName;
+  return labels[fieldName] ?? fieldName;
+}
+
+function authorityFieldLabel(
+  authority: BibliographicFieldAuthority,
+  bibliography: LibraryHoldingDetails["bibliography"],
+  t: ReturnType<typeof useLanguage>["t"],
+): string {
+  const base = bibliographyFieldLabel(authority.fieldName, t);
   if (!authority.scopeKey) return base;
   const contributor = bibliography?.contributors.find((entry) => entry.id === authority.scopeKey);
   return contributor ? `${base} — ${contributor.label}` : base;
@@ -1294,6 +1302,78 @@ function suggestionFieldLabel(candidate: MetadataSuggestionCandidate, t: ReturnT
   return candidate.fieldPath;
 }
 
+function suggestedValue(value: string | null | undefined, t: ReturnType<typeof useLanguage>["t"]): string {
+  return value?.trim() || t("metadata.suggestions.unrecognized");
+}
+
+function suggestedList(values: readonly string[], t: ReturnType<typeof useLanguage>["t"]): string {
+  return values.length > 0 ? values.join(" · ") : t("metadata.suggestions.unrecognized");
+}
+
+function suggestedContributors(
+  suggestion: AiSuggestedBibliography,
+  role: ContributorRole,
+  t: ReturnType<typeof useLanguage>["t"],
+): string {
+  const labels = suggestion.canonical?.contributors
+    .filter((contributor) => contributor.role === role)
+    .map((contributor) => contributor.label) ?? [];
+  return suggestedList(labels, t);
+}
+
+function AiSuggestedBibliographicRecord({
+  suggestion,
+  t,
+}: {
+  suggestion: AiSuggestedBibliography;
+  t: ReturnType<typeof useLanguage>["t"];
+}) {
+  const canonical = suggestion.canonical;
+  if (!canonical) return null;
+  const identifiers = canonical.identifiers.map((identifier) => `${identifier.scheme.toUpperCase()}: ${identifier.value}`);
+  const publicationDate = canonical.dateStatement ?? canonical.publication.publicationDate;
+  return <article className="ai-bibliographic-record" aria-labelledby="ai-bibliographic-record-title">
+    <header className="ai-bibliographic-record__header">
+      <div>
+        <p className="eyebrow">{t("metadata.suggestions.recordEyebrow")}</p>
+        <h4 id="ai-bibliographic-record-title">{suggestion.displayTitle ?? canonical.canonicalTitle}</h4>
+      </div>
+      <span className="ai-bibliographic-record__confidence">{t("metadata.suggestions.recordConfidence", { confidence: suggestion.overallConfidence })}</span>
+    </header>
+    <p className="muted">{t("metadata.suggestions.recordAuthority")}</p>
+    <dl className="ai-bibliographic-record__facts">
+      <ReactFact label={t("librarySearch.materialClass")} value={materialClassLabel(canonical.materialClass, t)} />
+      <ReactFact label={t("metadata.canonicalTitle")} value={suggestedValue(canonical.canonicalTitle, t)} />
+      <ReactFact label={t("metadata.subtitle")} value={suggestedValue(canonical.subtitle, t)} />
+      <ReactFact label={t("metadata.alternativeTitles")} value={suggestedList(canonical.alternativeTitles, t)} />
+      <ReactFact label={t("metadata.role.author")} value={suggestedContributors(suggestion, "author", t)} />
+      <ReactFact label={t("metadata.role.editor")} value={suggestedContributors(suggestion, "editor", t)} />
+      <ReactFact label={t("metadata.role.translator")} value={suggestedContributors(suggestion, "translator", t)} />
+      <ReactFact label={t("metadata.place")} value={suggestedValue(canonical.publication.place, t)} />
+      <ReactFact label={t("metadata.publisher")} value={suggestedValue(canonical.publication.publisher, t)} />
+      <ReactFact label={t("metadata.publicationDate")} value={suggestedValue(publicationDate, t)} />
+      <ReactFact label={t("metadata.suggestions.editionIdentity")} value={suggestedValue(suggestion.editionStatement, t)} />
+      <ReactFact label={t("metadata.volume")} value={suggestedValue(canonical.volume, t)} />
+      <ReactFact label={t("metadata.identifiers")} value={suggestedList(identifiers, t)} />
+    </dl>
+    <details className="ai-bibliographic-record__provenance">
+      <summary>{t("metadata.suggestions.structuredEvidence", { count: suggestion.fields.length })}</summary>
+      <div className="ai-bibliographic-record__evidence-list">
+        {suggestion.fields.map((field) => {
+          const contributorIndex = field.scopeKey.startsWith("contributor:") ? Number(field.scopeKey.slice("contributor:".length)) : null;
+          const contributor = contributorIndex === null ? null : canonical.contributors[contributorIndex] ?? null;
+          const label = bibliographyFieldLabel(field.fieldName, t);
+          return <article key={`${field.fieldName}:${field.scopeKey}`}>
+            <strong>{contributor ? `${label} — ${contributor.label}` : label}</strong>
+            <span>{suggestionSourceLabel(field.sourceType, t)}{field.sourcePageIndex === null ? "" : ` · ${t("metadata.suggestions.page", { page: field.sourcePageIndex })}`}</span>
+            <span>{suggestionOriginLabel(field.evidenceOrigin, t)} · {t("metadata.suggestions.recordConfidence", { confidence: field.confidence })}</span>
+          </article>;
+        })}
+      </div>
+    </details>
+  </article>;
+}
+
 function MetadataSuggestionsPanel({
   run,
   job,
@@ -1358,7 +1438,10 @@ function MetadataSuggestionsPanel({
           {run.status === "ocr_deferred" && <p className="muted">{t("metadata.suggestions.ocrDeferredDescription")}</p>}
           {run.status === "unsupported" && <p className="muted">{t("metadata.suggestions.unsupportedDescription")}</p>}
           {run.status === "stale" && <p className="muted">{t("metadata.suggestions.staleDescription")}</p>}
-          {run.candidates.length > 0 && <div className="metadata-suggestions-list">
+          {run.aiBibliography?.canonical && <AiSuggestedBibliographicRecord suggestion={run.aiBibliography} t={t} />}
+          {run.candidates.length > 0 && <details className="metadata-suggestions-review" open={!run.aiBibliography?.canonical}>
+            <summary>{t("metadata.suggestions.fieldReview", { count: run.candidates.length })}</summary>
+            <div className="metadata-suggestions-list">
             {run.candidates.map((candidate) => {
               const selected = selectedIds.has(candidate.id);
               return <article className={`metadata-suggestion${selected ? " is-selected" : ""}`} key={candidate.id}>
@@ -1389,7 +1472,7 @@ function MetadataSuggestionsPanel({
                 </button>}
               </article>;
             })}
-          </div>}
+            </div>
           {run.candidates.some((candidate) => candidate.fieldPath === "authority") && <p className="muted">{t("metadata.suggestions.authorityReview")}</p>}
           {!manager && run.candidates.length > 0 && <p className="muted">{t("metadata.suggestions.managerOnly")}</p>}
           {manager && requiresEditor && reviewable && run.candidates.length > 0 && <p className="muted">{t("metadata.suggestions.editBeforeAccept")}</p>}
@@ -1398,6 +1481,7 @@ function MetadataSuggestionsPanel({
               {accepting ? t("metadata.suggestions.accepting") : t("metadata.suggestions.accept")}
             </button>
           </footer>}
+          </details>}
         </>
       )}
     </section>

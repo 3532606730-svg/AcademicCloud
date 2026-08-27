@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { BibliographicProfile } from "../../src/bibliography/bibliography.js";
-import { composeCatalogueDisplay } from "../../src/library/catalogue-display.js";
+import { composeCatalogueDisplay, composeCatalogueFilename } from "../../src/library/catalogue-display.js";
 
 function profile(overrides: Partial<BibliographicProfile>): BibliographicProfile {
   return {
@@ -47,6 +47,19 @@ test("modern edited and traditional-source displays keep carrier and source fact
   });
   assert.equal(modern.title, "元史 中华书局1976点校本");
 
+  const explicitModern = composeCatalogueDisplay({
+    canonicalTitle: "元史",
+    fallbackDisplayName: "yuan-shi.pdf",
+    bibliography: profile({
+      materialClass: "primary_source_modern_edition",
+      contributors: [{ id: "c3", label: "顾颉刚", role: "annotator", roleLabel: "点校" }],
+      publication: { publisher: "中华书局", publicationDate: "1976" },
+      carrierEdition: { editionStatement: "1976年点校本" },
+      sourceEdition: {},
+    }),
+  });
+  assert.equal(explicitModern.title, "元史 中华书局1976年点校本");
+
   const traditional = composeCatalogueDisplay({
     canonicalTitle: "某书",
     fallbackDisplayName: "old.pdf",
@@ -85,4 +98,36 @@ test("modern edited and traditional-source displays keep carrier and source fact
 test("display falls back safely and never invents missing edition placeholders", () => {
   assert.equal(composeCatalogueDisplay({ canonicalTitle: null, fallbackDisplayName: "safe.pdf", bibliography: null }).title, "safe.pdf");
   assert.equal(composeCatalogueDisplay({ canonicalTitle: "已有题名", fallbackDisplayName: "safe.pdf", bibliography: profile({ materialClass: "traditional_book" }) }).title, "已有题名");
+  assert.equal(composeCatalogueDisplay({ canonicalTitle: "已有题名", fallbackDisplayName: "safe.pdf", legacyAuthorLabels: ["人物字段"], bibliography: null }).title, "已有题名");
+  assert.equal(composeCatalogueDisplay({
+    canonicalTitle: "已有题名",
+    fallbackDisplayName: "safe.pdf",
+    bibliography: profile({ materialClass: "unknown", contributors: [{ id: "c1", label: "人物字段", role: "author" }] }),
+  }).title, "已有题名");
+});
+
+test("historical display never treats a generic person field as modern authorship", () => {
+  const historical = composeCatalogueDisplay({
+    canonicalTitle: "元朝秘史",
+    fallbackDisplayName: "source.pdf",
+    bibliography: profile({
+      materialClass: "primary_source_modern_edition",
+      contributors: [{ id: "c1", label: "亦邻真", role: "author" }],
+      publication: {},
+      carrierEdition: {},
+      sourceEdition: {},
+    }),
+  });
+  assert.equal(historical.title, "元朝秘史");
+  assert.equal(historical.title.includes("亦邻真"), false);
+});
+
+test("catalogue download filenames preserve only the authorized extension", () => {
+  assert.equal(composeCatalogueFilename("杉山正明 モンゴル帝国の興亡", "scan.pdf"), "杉山正明 モンゴル帝国の興亡.pdf");
+  assert.equal(composeCatalogueFilename("元朝秘史 明万历刻本.pdf", "scan.pdf"), "元朝秘史 明万历刻本.pdf");
+  assert.equal(composeCatalogueFilename("元朝秘史", "source.bad-extension-too-long"), "元朝秘史");
+  const bounded = composeCatalogueFilename(`${"史".repeat(248)}📚附录`, "scan.pdf");
+  assert.equal(bounded.length, 255);
+  assert.equal(bounded.endsWith(".pdf"), true);
+  assert.equal(new TextDecoder().decode(new TextEncoder().encode(bounded)), bounded);
 });

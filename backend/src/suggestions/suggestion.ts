@@ -1,3 +1,6 @@
+import type { IntelligentBibliographyResult } from "@academiccloud/compute-contracts";
+
+import type { BibliographicFieldName } from "../bibliography/bibliography.js";
 import type { AuthorityRole, AuthorityType, TypeFieldName } from "../metadata/metadata.js";
 
 export const LEGACY_SUGGESTION_RULESET_VERSION = "rf-metasuggest-v1" as const;
@@ -159,6 +162,23 @@ export interface SuggestionRunSummary {
   sourceVersion: string;
   window: SuggestionWindow;
   candidates: SuggestionCandidate[];
+  createdAt: string;
+  /**
+   * Validated immutable Qwen bibliography output for this exact suggestion
+   * run. It remains a proposal even when some unlocked defaults were safely
+   * applied; human-authoritative canonical fields are a separate contract.
+   */
+  aiBibliography?: AiSuggestedBibliography;
+}
+
+export interface AiSuggestedBibliography extends IntelligentBibliographyResult {
+  id: string;
+  /** Owner catalogue display projection; null when no bibliography exists. */
+  displayTitle: string | null;
+  /** Distinctive version identity used by historical-source display rules. */
+  editionStatement: string | null;
+  autoApplied: boolean;
+  appliedFields: Array<{ fieldName: BibliographicFieldName; scopeKey: string }>;
   createdAt: string;
 }
 

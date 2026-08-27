@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-22
 
-**Status:** Accepted
+**Status:** Accepted / Owner-amended 2026-08-28
 
 **Task:** `L1-INTELLIGENT-LIBRARY01` Checkpoint C
 
@@ -41,16 +41,22 @@ become authoritative.
 5. Relevance and normal Library sorting remain separate concepts. The existing
    six holding-list sort implementations and SQL/Pinyin policy are unchanged;
    Search may explicitly request the same ordering without redefining it.
-6. Scholarly display labels are presentation-only projections:
-   modern scholarly works use contributor plus canonical title; historical or
-   primary-source works use canonical title plus a supported carrier/source
-   edition statement. Current carrier and historical source facts remain
-   distinct. The composed label is returned in DTOs but is never written to
-   `canonicalTitle`, storage keys, or filenames and is not the sole search
-   identity.
-7. Missing structured facts fall back through existing canonical metadata to
-   the safe display name. No guessed dynasty, edition precision, contributor,
-   or placeholder is introduced.
+6. Scholarly display labels are presentation-only projections. A positively
+   classified modern scholarly work uses author plus canonical title. A
+   positively classified historical or primary-source work uses canonical
+   title plus a supported version identity assembled from distinct carrier,
+   source-edition, editorial-role, and necessary publication facts. A generic
+   person value never becomes a historical-source author prefix.
+7. Missing structured components are omitted. An `unknown`, `other`, or
+   unprofiled work displays only its supported canonical title (or the safe
+   original display name when no canonical title exists); it never borrows a
+   legacy person field to guess the modern `author + title` format. No guessed
+   work class, dynasty, edition precision, contributor role, or placeholder is
+   introduced into the composed label.
+8. The composed label may be projected into the browser attachment/download
+   filename while preserving only the already-authorized safe original
+   extension. It is never persisted as a physical filename or canonical fact,
+   and `objectKey` never changes.
 
 ## Consequences
 
@@ -59,6 +65,9 @@ become authoritative.
   present.
 - Library lists, Search results, and Library-scoped Favorites receive the same
   non-persisted catalogue display projection.
+- Resource Details and authorized attachment downloads consume the same
+  projection, while canonical facts, the original filename, and object storage
+  identity remain separate.
 - The current bounded whole-accessible-corpus search remains appropriate for
   the present small corpus. A later scale-driven indexed search may replace
   its execution strategy only if it preserves this authority, ranking, filter,

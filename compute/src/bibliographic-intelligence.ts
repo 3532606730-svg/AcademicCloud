@@ -18,8 +18,8 @@ import { classifySuggestionPage } from "./extractor.js";
 import { isUsableBibliographicEvidence, usableEmbeddedMetadata } from "./evidence-usability.js";
 import type { PdfTextInspection } from "./suggestion.js";
 
-export const INTELLIGENT_RULESET_VERSION = "l1-intelligent-library01-v2" as const;
-export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v2" as const;
+export const INTELLIGENT_RULESET_VERSION = "l1-intelligent-library01-v3" as const;
+export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v3" as const;
 export const PADDLE_OCR_PACKAGE_VERSION = "3.7.0" as const;
 export const PADDLE_RUNTIME_VERSION = "3.3.1" as const;
 export const PADDLE_DETECTION_MODEL = Object.freeze({
@@ -558,7 +558,16 @@ function promptFor(inspection: PdfTextInspection): string {
     pages.push({ pageIndex: page.pageIndex, pageClass, evidenceOrigin: page.evidenceOrigin ?? "native_text", text });
   }
   return JSON.stringify({
-    task: "Extract only directly supported canonical bibliographic facts. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. Explicit 题名/書名/作者/著者/出版社/出版年 labels without conflict MUST use auto_apply with confidence >=90 and no warning. Explicit 文章题名 plus 刊名/期号 means journal_article. The pages array contains only authority-eligible evidence that passed the runtime corruption/usability gate. Emit exactly one field evidence row for every populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime derives page class and source type. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous with a warning code only when usable facts genuinely conflict or remain unsupported.",
+    task: "Extract only directly supported canonical bibliographic facts. First classify the intellectual work, independently from the physical or modern publication that carries it. A historical chronicle, classical text, archival source, inscription, manuscript, collected primary document, or modern edition/translation/facsimile of such a work is a historical/primary source; a modern publisher, publication date, ISBN, or named modern contributor does not turn that work into a scholarly_monograph. Use primary_source_modern_edition when a historical/primary work is presented through a supported modern edited, translated, transcribed, restored, reprinted, or facsimile manifestation. Use traditional_book only when evidence supports the artifact itself as a traditional edition. Use scholarly_monograph only when the work itself is modern scholarly analysis. A person value or embedded metadata author field alone never proves either the work class or the author role; preserve only contributor roles directly supported by usable evidence, otherwise omit the contributor. If the work class cannot be supported, use unknown with uncertain_material_class instead of guessing. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. Explicit 题名/書名/作者/著者/出版社/出版年 labels without conflict MUST use auto_apply with confidence >=90 and no warning only when the material class and every emitted role are also supported. Explicit 文章题名 plus 刊名/期号 means journal_article. The pages array contains only authority-eligible evidence that passed the runtime corruption/usability gate. Emit exactly one field evidence row for every populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime derives page class and source type. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous with a warning code only when usable facts genuinely conflict or remain unsupported.",
+    classificationRules: {
+      intellectualWorkBeforeManifestation: true,
+      modernPublicationDoesNotImplyScholarlyWork: true,
+      personPresenceDoesNotImplyAuthor: true,
+      unsupportedClass: "unknown",
+      historicalModernManifestation: "primary_source_modern_edition",
+      traditionalArtifact: "traditional_book",
+      modernScholarlyAnalysis: "scholarly_monograph",
+    },
     controlledValues: { materialClasses: INTELLIGENT_MATERIAL_CLASSES, contributorRoles: INTELLIGENT_CONTRIBUTOR_ROLES, editionTypes: INTELLIGENT_EDITION_TYPES },
     controlledWarnings: MODEL_WARNING_CODES,
     embeddedMetadata: inspection.embeddedMetadata,
@@ -797,6 +806,7 @@ function deterministicWarnings(result: IntelligentBibliographyResult): string[] 
   if (!canonical) return [];
   const warnings: string[] = [];
   const titleKey = compactKey(canonical.canonicalTitle);
+  if (canonical.materialClass === "unknown") warnings.push("uncertain_material_class");
   if (/\.pdf$/iu.test(canonical.canonicalTitle) || /^(?:download|document|scan|untitled|academiccloud)/iu.test(titleKey)
     || /^[a-f0-9]{32,}$/iu.test(titleKey)) warnings.push("suspicious_title");
   if (canonical.subtitle !== null && compactKey(canonical.subtitle) === titleKey) warnings.push("duplicate_title_subtitle");

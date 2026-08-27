@@ -1,16 +1,18 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
-import type {
-  DerivedComputeDispatcher,
-  DerivedComputeResult,
-  DerivedMetadataCandidate,
-  IntelligentBibliographyResult,
+import {
+  parseIntelligentBibliographyResult,
+  type DerivedComputeDispatcher,
+  type DerivedComputeResult,
+  type DerivedMetadataCandidate,
+  type IntelligentBibliographyResult,
 } from "@academiccloud/compute-contracts";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import type { StoredFile } from "../drive/file.js";
 import type { Library, LibraryHolding, LibraryMembership } from "../library/library.js";
+import { composeCatalogueDisplay } from "../library/catalogue-display.js";
 import {
   publicDerivedJob,
   type DerivedJobOrigin,
@@ -205,7 +207,38 @@ function sourceFingerprint(file: StoredFile): {
   };
 }
 
-function publicRun(run: SuggestionRunRecord): SuggestionRunSummary {
+function publicRun(run: SuggestionRunRecord, repositories: RepositorySet): SuggestionRunSummary {
+  const aiEvidence = repositories.bibliography.findAiRunEvidenceBySuggestionRun(run.ownerDomainId, run.id);
+  let aiBibliography: SuggestionRunSummary["aiBibliography"];
+  if (aiEvidence) {
+    if (aiEvidence.fileId !== run.fileId || aiEvidence.recordId !== run.recordId || aiEvidence.suggestionRunId !== run.id) {
+      throw new Error("bibliographic AI evidence binding mismatch");
+    }
+    const actualSha256 = createHash("sha256").update(aiEvidence.structuredOutputJson, "utf8").digest("hex");
+    if (actualSha256 !== aiEvidence.structuredOutputSha256) throw new Error("bibliographic AI evidence integrity mismatch");
+    const structured = parseIntelligentBibliographyResult(JSON.parse(aiEvidence.structuredOutputJson));
+    if (structured.status !== aiEvidence.status
+      || structured.rulesetVersion !== aiEvidence.rulesetVersion
+      || structured.provenance.promptVersion !== aiEvidence.promptVersion) {
+      throw new Error("bibliographic AI evidence identity mismatch");
+    }
+    const display = structured.canonical
+      ? composeCatalogueDisplay({
+          canonicalTitle: structured.canonical.canonicalTitle,
+          fallbackDisplayName: structured.canonical.canonicalTitle,
+          bibliography: structured.canonical,
+        })
+      : null;
+    aiBibliography = {
+      ...structured,
+      id: aiEvidence.id,
+      displayTitle: display?.title ?? null,
+      editionStatement: display?.editionStatement ?? null,
+      autoApplied: aiEvidence.autoApplied,
+      appliedFields: aiEvidence.appliedFields.map((field) => ({ ...field })),
+      createdAt: aiEvidence.createdAt.toISOString(),
+    };
+  }
   return {
     id: run.id,
     libraryId: run.libraryId,
@@ -222,6 +255,7 @@ function publicRun(run: SuggestionRunRecord): SuggestionRunSummary {
     },
     candidates: run.candidates.map((candidate) => ({ ...candidate })),
     createdAt: run.createdAt,
+    ...(aiBibliography === undefined ? {} : { aiBibliography }),
   };
 }
 
@@ -822,9 +856,9 @@ export class SuggestionService {
           run.status,
           "stale",
         );
-        return publicRun(stale ?? { ...run, status: "stale" });
+        return publicRun(stale ?? { ...run, status: "stale" }, repositories);
       }
-      return publicRun(run);
+      return publicRun(run, repositories);
     });
   }
 
@@ -834,7 +868,7 @@ export class SuggestionService {
       const context = resolveHolding(actor, libraryId, fileId, repositories);
       return repositories.suggestions
         .listRuns(context.library.ownerDomainId, libraryId, fileId, limit)
-        .map((run) => publicRun(run));
+        .map((run) => publicRun(run, repositories));
     });
   }
 
@@ -1562,6 +1596,6 @@ export class SuggestionService {
       return updated ?? repositories.suggestions.findRun(snapshot.context.library.ownerDomainId, snapshot.run.id);
     });
     if (!accepted) throw new SuggestionError("conflict");
-    return { detail, run: publicRun(accepted) };
+    return { detail, run: publicRun(accepted, this.#persistence.repositories) };
   }
 }

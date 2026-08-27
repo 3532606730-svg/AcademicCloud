@@ -237,7 +237,27 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
       inspector,
       reasoner: {
         async infer() {
-          return { status: "no_bibliography", overallConfidence: 100, canonical: null, fields: [], warnings: [] };
+          return {
+            status: "ambiguous",
+            overallConfidence: 80,
+            canonical: {
+              materialClass: "scholarly_monograph",
+              canonicalTitle: "HTTP suggestion title",
+              subtitle: null,
+              alternativeTitles: [],
+              dateStatement: null,
+              identifiers: [],
+              contributors: [{ label: "Peter Jackson", role: "author", roleLabel: null }],
+              publication: { publisher: null, place: null, publicationDate: null, editionNumber: null, printing: null },
+              series: null,
+              volume: null,
+              language: null,
+              carrierEdition: { editionType: null, editionStatement: null, facsimileStatement: null },
+              sourceEdition: { dynasty: null, reignTitle: null, reignYear: null, absoluteYear: null, printer: null, imprint: null, bookshop: null, institution: null, printingPlace: null, editionType: null, editionStatement: null, holdingInformation: null },
+            },
+            fields: [],
+            warnings: [],
+          };
         },
       },
     });
@@ -245,9 +265,25 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
 
     const latest = await app.inject({ method: "GET", url: base, headers: headers(ownerCookie) });
     assert.equal(latest.statusCode, 200);
-    const run = (latest.json() as { run: { id: string; status: string; candidates: Array<Record<string, unknown>> } }).run;
+    const run = (latest.json() as { run: {
+      id: string;
+      status: string;
+      candidates: Array<Record<string, unknown>>;
+      aiBibliography: {
+        displayTitle: string;
+        canonical: { materialClass: string; canonicalTitle: string; contributors: Array<{ label: string; role: string }> };
+        fields: Array<{ fieldName: string; confidence: number }>;
+        autoApplied: boolean;
+      };
+    } }).run;
     assert.equal(run.status, "ready");
     assert.equal(run.candidates.some((candidate) => "objectKey" in candidate || "checksum" in candidate || "favorites" in candidate), false);
+    assert.equal(run.aiBibliography.displayTitle, "Peter Jackson HTTP suggestion title");
+    assert.equal(run.aiBibliography.canonical.materialClass, "scholarly_monograph");
+    assert.equal(run.aiBibliography.canonical.canonicalTitle, "HTTP suggestion title");
+    assert.deepEqual(run.aiBibliography.canonical.contributors, [{ label: "Peter Jackson", role: "author", roleLabel: null }]);
+    assert.equal(run.aiBibliography.fields.some((field) => field.fieldName === "canonicalTitle" && field.confidence === 80), true);
+    assert.equal(run.aiBibliography.autoApplied, false);
 
     const succeededStates = await app.inject({
       method: "GET",
@@ -257,7 +293,7 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
     assert.equal(succeededStates.statusCode, 200);
     assert.equal(
       (succeededStates.json() as { states: Array<{ state: string }> }).states[0]?.state,
-      "extraction_only",
+      "ai_succeeded_reviewable",
     );
 
     const memberLatest = await app.inject({ method: "GET", url: base, headers: headers(memberCookie) });

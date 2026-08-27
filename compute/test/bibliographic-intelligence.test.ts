@@ -137,6 +137,42 @@ test("Qwen never receives corrupt OCR or suspicious bare embedded metadata as us
   assert.equal(inspection.embeddedMetadata.author, "亦郊真", "raw bounded provenance was mutated");
 });
 
+test("Qwen v3 prompt classifies the intellectual work before its modern manifestation or person metadata", async () => {
+  const inspection: PdfTextInspection = {
+    pageCount: 2,
+    pageIndices: [1, 2],
+    pages: [{
+      pageIndex: 1,
+      text: "書名：某史料\n整理者：某甲\n出版社：某出版社\n出版年：1987",
+      evidenceOrigin: "native_text",
+      ocrEngine: null,
+      ocrConfidence: null,
+    }],
+    embeddedMetadata: { author: "某甲" },
+    complete: true,
+    hasUsableTextLayer: true,
+  };
+  let prompt: Record<string, unknown> | undefined;
+  await deriveIntelligentBibliography(inspection, {
+    async infer(value) {
+      prompt = JSON.parse(value) as Record<string, unknown>;
+      return { status: "no_bibliography", overallConfidence: 0, canonical: null, fields: [], warnings: [] };
+    },
+  });
+  assert.equal(prompt?.classificationRules && (prompt.classificationRules as Record<string, unknown>).intellectualWorkBeforeManifestation, true);
+  assert.equal((prompt?.classificationRules as Record<string, unknown>).historicalModernManifestation, "primary_source_modern_edition");
+  assert.match(String(prompt?.task), /modern publisher.*does not turn that work into a scholarly_monograph/u);
+  assert.match(String(prompt?.task), /person value or embedded metadata author field alone never proves/u);
+});
+
+test("unknown work classification cannot be promoted to auto-apply by model confidence", async () => {
+  const source = fixture({ ...emptyCanonical("尚待分类的资料"), materialClass: "unknown" });
+  source.inspection.pages[0]!.text = "题名：尚待分类的资料";
+  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+  assert.equal(result.status, "ambiguous");
+  assert.ok(result.warnings.includes("uncertain_material_class"));
+});
+
 test("gated embedded metadata owns its null page identity even when Qwen copies a page index", async () => {
   const embeddedAuthor = "Nicholas Poppe";
   const canonical = {

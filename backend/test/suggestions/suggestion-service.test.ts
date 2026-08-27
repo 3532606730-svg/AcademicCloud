@@ -109,15 +109,19 @@ function extractionOnlyResult(jobId: string, attemptId: string): DerivedComputeR
 
 function intelligentResult(jobId: string, attemptId: string, options: {
   title?: string;
-  materialClass?: "scholarly_monograph" | "edited_volume";
+  materialClass?: NonNullable<IntelligentBibliographyResult["canonical"]>["materialClass"];
   contributor?: string;
+  contributorRole?: NonNullable<IntelligentBibliographyResult["canonical"]>["contributors"][number]["role"];
   publisher?: string | null;
+  sourceEditionStatement?: string | null;
   status?: "auto_apply" | "ambiguous";
 } = {}): DerivedComputeResult {
   const title = options.title ?? "近代中国史研究";
   const materialClass = options.materialClass ?? "scholarly_monograph";
   const contributor = options.contributor ?? "王明";
+  const contributorRole = options.contributorRole ?? "author";
   const publisher = options.publisher ?? null;
+  const sourceEditionStatement = options.sourceEditionStatement ?? null;
   const evidence = (fieldName: IntelligentBibliographyResult["fields"][number]["fieldName"], scopeKey = "") => ({
     fieldName,
     scopeKey,
@@ -130,7 +134,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
   });
   const bibliography: IntelligentBibliographyResult = {
     contractVersion: 1,
-    rulesetVersion: "l1-intelligent-library01-v2",
+    rulesetVersion: "l1-intelligent-library01-v3",
     status: options.status ?? "auto_apply",
     overallConfidence: 96,
     canonical: {
@@ -140,13 +144,13 @@ function intelligentResult(jobId: string, attemptId: string, options: {
       alternativeTitles: [],
       dateStatement: null,
       identifiers: [],
-      contributors: [{ label: contributor, role: "author", roleLabel: null }],
+      contributors: [{ label: contributor, role: contributorRole, roleLabel: null }],
       publication: { publisher, place: null, publicationDate: null, editionNumber: null, printing: null },
       series: null,
       volume: null,
       language: null,
       carrierEdition: { editionType: null, editionStatement: null, facsimileStatement: null },
-      sourceEdition: { dynasty: null, reignTitle: null, reignYear: null, absoluteYear: null, printer: null, imprint: null, bookshop: null, institution: null, printingPlace: null, editionType: null, editionStatement: null, holdingInformation: null },
+      sourceEdition: { dynasty: null, reignTitle: null, reignYear: null, absoluteYear: null, printer: null, imprint: null, bookshop: null, institution: null, printingPlace: null, editionType: null, editionStatement: sourceEditionStatement, holdingInformation: null },
     },
     fields: [
       evidence("materialClass"),
@@ -154,6 +158,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
       evidence("contributor.label", "contributor:0"),
       evidence("contributor.role", "contributor:0"),
       ...(publisher === null ? [] : [evidence("publication.publisher")]),
+      ...(sourceEditionStatement === null ? [] : [evidence("sourceEdition.editionStatement")]),
     ],
     warnings: [],
     provenance: {
@@ -171,7 +176,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
         runtimeSha256: "78ec7a1964710918030e85c132a0995b10b07e4f43001bdf54fe0fd48d1eb85b",
       },
       selectedPages: [1, 2],
-      promptVersion: "l1-intelligent-library01-prompt-v2",
+      promptVersion: "l1-intelligent-library01-prompt-v3",
     },
   };
   const legacy = extractionOnlyResult(jobId, attemptId);
@@ -492,6 +497,11 @@ test("validated structured Qwen callback creates reviewable candidates without c
   assert.equal(run.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")?.value,
     "The Mongols and the West, 1221-1410");
   assert.equal(run.candidates.some((candidate) => candidate.sourceType === "filename"), false);
+  assert.equal(run.aiBibliography?.displayTitle, "王明 近代中国史研究");
+  assert.equal(run.aiBibliography?.canonical?.canonicalTitle, "近代中国史研究");
+  assert.equal(run.aiBibliography?.canonical?.contributors[0]?.role, "author");
+  assert.equal(run.aiBibliography?.fields.some((field) => field.fieldName === "canonicalTitle"), true);
+  assert.equal(run.aiBibliography?.autoApplied, false);
   assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "ai_succeeded_reviewable");
   assert.equal(persistence.repositories.suggestions.listRuns(library.ownerDomainId, library.id, fileId, 10).length, 2);
 
@@ -505,6 +515,26 @@ test("validated structured Qwen callback creates reviewable candidates without c
     } as DerivedComputeResult, claim.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "concurrent_change",
   );
+});
+
+test("AI bibliography projection applies historical title-plus-version identity without person-prefix guessing", async (context) => {
+  const { library, fileId, suggestions } = fixture(context);
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+  await suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", {
+    status: "ambiguous",
+    title: "元朝秘史",
+    materialClass: "primary_source_modern_edition",
+    contributor: "亦邻真",
+    contributorRole: "author",
+    sourceEditionStatement: "明万历刻本",
+  }), claim.capability.token);
+
+  const run = suggestions.getLatest(OWNER, library.id, fileId)!;
+  assert.equal(run.aiBibliography?.canonical?.materialClass, "primary_source_modern_edition");
+  assert.equal(run.aiBibliography?.displayTitle, "元朝秘史 明万历刻本");
+  assert.equal(run.aiBibliography?.editionStatement, "明万历刻本");
+  assert.equal(run.aiBibliography?.displayTitle?.includes("亦邻真"), false);
 });
 
 test("filename candidates and extraction-only output cannot mark the AI pipeline succeeded", async (context) => {
@@ -548,8 +578,8 @@ test("safe intelligent callback auto-applies canonical defaults, exact-binds one
   assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "applied");
   const evidence = persistence.repositories.bibliography.findAiRunEvidence(library.ownerDomainId, `bibliography-${job.id}`)!;
   assert.equal(evidence.status, "auto_apply");
-  assert.equal(evidence.rulesetVersion, "l1-intelligent-library01-v2");
-  assert.equal(evidence.promptVersion, "l1-intelligent-library01-prompt-v2");
+  assert.equal(evidence.rulesetVersion, "l1-intelligent-library01-v3");
+  assert.equal(evidence.promptVersion, "l1-intelligent-library01-prompt-v3");
   assert.equal(evidence.autoApplied, true);
   assert.ok(evidence.appliedFields.some((field) => field.fieldName === "canonicalTitle"));
   assert.equal(evidence.structuredOutputJson.includes("近代中国史研究"), true);

@@ -136,6 +136,7 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
   readonly #listAuthorityAliases;
   readonly #insertAiRunEvidence;
   readonly #findAiRunEvidence;
+  readonly #findAiRunEvidenceBySuggestionRun;
 
   constructor(database: SqliteDatabase) {
     this.#database = database;
@@ -272,6 +273,17 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
         applied_fields_json, created_at
       FROM scholarly_bibliographic_ai_runs
       WHERE owner_domain_id = ? AND id = ?
+    `);
+    this.#findAiRunEvidenceBySuggestionRun = database.prepare<[string, string], AiRunRow>(`
+      SELECT id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        ruleset_version, status, overall_confidence, structured_output_json,
+        structured_output_sha256, prompt_version, ocr_engine_id,
+        reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      FROM scholarly_bibliographic_ai_runs
+      WHERE owner_domain_id = ? AND suggestion_run_id = ?
+      ORDER BY created_at DESC, id DESC
+      LIMIT 1
     `);
   }
 
@@ -529,27 +541,35 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
 
   findAiRunEvidence(ownerDomainId: string, id: string): BibliographicAiRunEvidence | null {
     const row = this.#findAiRunEvidence.get(ownerDomainId, id);
-    if (!row) return null;
-    return {
-      id: row.id,
-      ownerDomainId: row.owner_domain_id,
-      recordId: row.record_id,
-      fileId: row.file_id,
-      suggestionRunId: row.suggestion_run_id,
-      status: row.status,
-      overallConfidence: row.overall_confidence,
-      structuredOutputJson: row.structured_output_json,
-      structuredOutputSha256: row.structured_output_sha256,
-      rulesetVersion: row.ruleset_version,
-      promptVersion: row.prompt_version,
-      ocrEngineId: row.ocr_engine_id,
-      reasoningEngineId: row.reasoning_engine_id,
-      selectedPages: JSON.parse(row.selected_pages_json) as number[],
-      autoApplied: row.auto_applied === 1,
-      appliedFields: JSON.parse(row.applied_fields_json) as BibliographicAiRunEvidence["appliedFields"],
-      createdAt: fromDatabaseTimestamp(row.created_at)!,
-    };
+    return row ? publicAiRunEvidence(row) : null;
   }
+
+  findAiRunEvidenceBySuggestionRun(ownerDomainId: string, suggestionRunId: string): BibliographicAiRunEvidence | null {
+    const row = this.#findAiRunEvidenceBySuggestionRun.get(ownerDomainId, suggestionRunId);
+    return row ? publicAiRunEvidence(row) : null;
+  }
+}
+
+function publicAiRunEvidence(row: AiRunRow): BibliographicAiRunEvidence {
+  return {
+    id: row.id,
+    ownerDomainId: row.owner_domain_id,
+    recordId: row.record_id,
+    fileId: row.file_id,
+    suggestionRunId: row.suggestion_run_id,
+    status: row.status,
+    overallConfidence: row.overall_confidence,
+    structuredOutputJson: row.structured_output_json,
+    structuredOutputSha256: row.structured_output_sha256,
+    rulesetVersion: row.ruleset_version,
+    promptVersion: row.prompt_version,
+    ocrEngineId: row.ocr_engine_id,
+    reasoningEngineId: row.reasoning_engine_id,
+    selectedPages: JSON.parse(row.selected_pages_json) as number[],
+    autoApplied: row.auto_applied === 1,
+    appliedFields: JSON.parse(row.applied_fields_json) as BibliographicAiRunEvidence["appliedFields"],
+    createdAt: fromDatabaseTimestamp(row.created_at)!,
+  };
 }
 
 function compact<T extends Record<string, unknown>>(value: T): T {

@@ -167,6 +167,9 @@ test("Library holdings project ordered author labels without denormalizing canon
   assert.deepEqual(libraries.listHoldings(MEMBER.id, library.id)[0]?.authorLabels, ["作者甲", "作者乙"]);
   const download = await libraries.createDownload(MEMBER.id, library.id, fileId);
   assert.match(download.url, /objects%2Faa%2F/);
+  const contentDisposition = new URL(download.url).searchParams.get("response-content-disposition") ?? "";
+  const utf8Filename = /filename\*=UTF-8''([^;]+)/u.exec(contentDisposition)?.[1] ?? "";
+  assert.equal(decodeURIComponent(utf8Filename), "作者甲 书名.pdf");
   const preview = await libraries.createDownload(MEMBER.id, library.id, fileId, "inline");
   assert.match(preview.url, /inline/);
 

@@ -197,7 +197,7 @@ test("metadata HTTP is exact-holding scoped, manager-only for writes, CAS guarde
     });
     assert.equal(ownerWrite.statusCode, 200);
     const saved = ownerWrite.json() as { displayTitle: string; originalFilename: string; metadataVersion: string; metadata: { authorityLinks: Array<{ canonicalLabel: string }> } };
-    assert.equal(saved.displayTitle, "Canonical title");
+    assert.equal(saved.displayTitle, "Canonical title 中华书局1976年点校本");
     assert.equal(saved.originalFilename, "accepted -- source.pdf");
     assert.equal(saved.metadata.authorityLinks[0]?.canonicalLabel, "陈垣");
 
@@ -263,7 +263,7 @@ test("metadata HTTP is exact-holding scoped, manager-only for writes, CAS guarde
     });
     assert.equal(inaccessibleAuthority.statusCode, 404);
     const after = await app.inject({ method: "GET", url: detailUrl, headers: baseHeaders(memberCookie) });
-    assert.equal((after.json() as { displayTitle: string }).displayTitle, "Canonical title");
+    assert.equal((after.json() as { displayTitle: string }).displayTitle, "Canonical title 中华书局1976年点校本");
 
     assert.equal((await app.inject({ method: "GET", url: `/api/libraries/guessed/holdings/metadata-http-file/details`, headers: baseHeaders(ownerCookie) })).statusCode, 404);
     assert.equal((await app.inject({ method: "GET", url: `/api/libraries/${libraryId}/holdings/guessed/details`, headers: baseHeaders(ownerCookie) })).statusCode, 404);

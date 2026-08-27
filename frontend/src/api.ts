@@ -551,6 +551,75 @@ export interface MetadataSuggestionWindow {
   pageIndices: number[];
   complete: boolean;
 }
+export interface AiSuggestedBibliographicCanonical {
+  materialClass: MaterialClass;
+  canonicalTitle: string;
+  subtitle: string | null;
+  alternativeTitles: string[];
+  dateStatement: string | null;
+  identifiers: MetadataIdentifier[];
+  contributors: Array<{ label: string; role: ContributorRole; roleLabel: string | null }>;
+  publication: {
+    publisher: string | null;
+    place: string | null;
+    publicationDate: string | null;
+    editionNumber: string | null;
+    printing: string | null;
+  };
+  series: string | null;
+  volume: string | null;
+  language: string | null;
+  carrierEdition: {
+    editionType: EditionType | null;
+    editionStatement: string | null;
+    facsimileStatement: string | null;
+  };
+  sourceEdition: {
+    dynasty: string | null;
+    reignTitle: string | null;
+    reignYear: string | null;
+    absoluteYear: number | null;
+    printer: string | null;
+    imprint: string | null;
+    bookshop: string | null;
+    institution: string | null;
+    printingPlace: string | null;
+    editionType: EditionType | null;
+    editionStatement: string | null;
+    holdingInformation: string | null;
+  };
+}
+export interface AiSuggestedBibliographicFieldEvidence {
+  fieldName: BibliographicFieldName;
+  scopeKey: string;
+  confidence: number;
+  sourceType: Exclude<MetadataSuggestionSourceType, "filename">;
+  sourcePageIndex: number | null;
+  pageClass: MetadataSuggestionPageClass | null;
+  evidenceOrigin: Exclude<MetadataSuggestionEvidenceOrigin, "filename">;
+  evidenceSha256: string;
+}
+export interface AiSuggestedBibliography {
+  id: string;
+  contractVersion: 1;
+  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2" | "l1-intelligent-library01-v3";
+  status: "auto_apply" | "ambiguous" | "no_bibliography";
+  overallConfidence: number;
+  displayTitle: string | null;
+  editionStatement: string | null;
+  canonical: AiSuggestedBibliographicCanonical | null;
+  fields: AiSuggestedBibliographicFieldEvidence[];
+  warnings: string[];
+  provenance: {
+    ocr: { used: boolean; family: "PaddleOCR"; packageVersion: string; runtimeFamily: string; runtimeVersion: string; legacyFallback: boolean; detectionModel: { name: string; revision: string; sha256: string }; recognitionModel: { name: string; revision: string; sha256: string } };
+    reasoning: { family: "Qwen3"; name: string; revision: string; sha256: string; quantization: string; runtimeFamily: string; runtimeVersion: string; runtimeRevision: string; runtimeSha256: string };
+    selectedPages: number[];
+    promptVersion: "l1-intelligent-library01-prompt-v1" | "l1-intelligent-library01-prompt-v2" | "l1-intelligent-library01-prompt-v3";
+  };
+  autoApplied: boolean;
+  appliedFields: Array<{ fieldName: BibliographicFieldName; scopeKey: string }>;
+  createdAt: string;
+}
 export interface MetadataSuggestionRun {
   id: string;
   libraryId: string;
@@ -561,6 +630,7 @@ export interface MetadataSuggestionRun {
   window: MetadataSuggestionWindow;
   candidates: MetadataSuggestionCandidate[];
   createdAt: string;
+  aiBibliography?: AiSuggestedBibliography;
 }
 export interface MetadataSuggestionResponse {
   run: MetadataSuggestionRun | null;

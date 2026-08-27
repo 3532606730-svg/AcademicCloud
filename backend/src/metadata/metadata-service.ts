@@ -5,6 +5,7 @@ import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
 import type { AuditEventKind, AuditReasonCode } from "../audit/audit-event.js";
 import type { Library, LibraryHolding, LibraryMembership } from "../library/library.js";
+import { composeCatalogueDisplay } from "../library/catalogue-display.js";
 import {
   BIBLIOGRAPHIC_FIELD_NAMES,
   BibliographyValidationError,
@@ -641,8 +642,14 @@ export class CanonicalMetadataService {
     const bibliography = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
     const fieldAuthorities = repositories.bibliography.listFieldAuthorities(library.ownerDomainId, holding.recordId);
     const publicMetadata = metadata ? this.#publicMetadata(repositories, metadata) : null;
+    const display = composeCatalogueDisplay({
+      canonicalTitle: publicMetadata?.canonicalTitle ?? null,
+      fallbackDisplayName: holding.file.displayName,
+      legacyAuthorLabels: holding.authorLabels,
+      bibliography,
+    });
     return {
-      displayTitle: publicMetadata?.canonicalTitle ?? holding.file.displayName,
+      displayTitle: display.title,
       originalFilename: holding.file.displayName,
       metadataVersion: metadataVersion(holding.recordId, metadata),
       metadata: publicMetadata,

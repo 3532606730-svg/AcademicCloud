@@ -5,7 +5,7 @@ Record only meaningful product, architecture, security, infrastructure, or workf
 ## ADR-001 — Modular Architecture Is Mandatory
 
 **Date:** 2026-08-11  
-**Status:** Accepted
+**Status:** Accepted / Owner-amended 2026-08-28
 
 AcademicCloud uses modular boundaries and explicit interfaces. A failure, change, or replacement in one module must not unnecessarily affect unrelated modules.
 
@@ -324,11 +324,15 @@ query, normalized filters, and sort mode form one cursor identity; the existing
 six normal Library sorts remain unchanged.
 
 Modern and historical catalogue labels are non-persisted presentation
-projections. They never become `canonicalTitle`, a physical filename, an object
-key, or the only searchable identity. Carrier and source editions remain
-separate, unsupported precision is omitted, and legacy canonical/safe filename
-fallback remains available. No schema, data, object, provider, or production
-change is part of this decision.
+projections. Positively classified modern scholarship uses `author + title`;
+positively classified historical/primary sources use `title + supported version`.
+Unknown, other, and unprofiled records never borrow a person field to guess the
+modern form. Carrier and source editions remain separate and unsupported
+precision is omitted. The projection may become an authorized attachment
+filename with only the safe original extension, but never changes the original
+filename, `canonicalTitle`, or `objectKey`. The 2026-08-28 amendment adds only
+this display/download projection rule; schema v28 separately admits exact v3
+AI provenance for the work-versus-manifestation classification repair.
 
 ## ADR-035 — Deterministic CSL Citation Projection and Style Pinning
 

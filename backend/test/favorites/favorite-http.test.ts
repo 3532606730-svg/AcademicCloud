@@ -312,7 +312,7 @@ test("favorites listing preserves Library scope and holding identity instead of 
     materialClass: null,
     contributorLabels: ["Author A", "Author B"],
     editionStatement: null,
-    catalogueDisplayTitle: "Author A、Author B Canonical favorite title",
+    catalogueDisplayTitle: "Canonical favorite title",
     artifactId,
     versionId,
     version: body.libraryHoldings[0]?.holding.version,
