@@ -1,5 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -21,6 +23,7 @@ export interface PaddleOcrConfig {
   sidecarPath: string;
   detectionModelPath: string;
   recognitionModelPath: string;
+  cachePath: string;
   device: "cpu" | "gpu";
   engineId: typeof PADDLE_OCR_ENGINE_ID;
   /** Test-only prefix such as a local fixture script passed to Node. */
@@ -55,6 +58,7 @@ export function loadPaddleOcrConfig(environment: NodeJS.ProcessEnv = process.env
     sidecarPath: localPath("PADDLE_OCR_SIDECAR_PATH", production ? release.sidecar : environment.PADDLE_OCR_SIDECAR_PATH, "compute/scripts/paddle_ocr_sidecar.py"),
     detectionModelPath: localPath("PADDLE_OCR_DETECTION_MODEL_PATH", production ? release.detection : environment.PADDLE_OCR_DETECTION_MODEL_PATH, "runtime/paddle/models/PP-OCRv6_small_det"),
     recognitionModelPath: localPath("PADDLE_OCR_RECOGNITION_MODEL_PATH", production ? release.recognition : environment.PADDLE_OCR_RECOGNITION_MODEL_PATH, "runtime/paddle/models/PP-OCRv6_small_rec"),
+    cachePath: join(tmpdir(), "academiccloud-paddlex"),
     device: paddleDevice(environment.PADDLE_OCR_DEVICE),
     engineId: PADDLE_OCR_ENGINE_ID,
   };
@@ -168,6 +172,9 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
         LC_ALL: "C.UTF-8",
         DISABLE_MODEL_SOURCE_CHECK: "True",
         PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True",
+        // PaddleX creates temp/lock directories while importing. Keep them in
+        // systemd's isolated PrivateTmp instead of the protected user home.
+        PADDLE_PDX_CACHE_HOME: this.#config.cachePath,
         FLAGS_use_mkldnn: "0",
         OMP_NUM_THREADS: "2",
       },
