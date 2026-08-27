@@ -4,8 +4,11 @@ import test from "node:test";
 import type { IntelligentCanonicalBibliography, IntelligentBibliographicFieldName } from "@academiccloud/compute-contracts";
 
 import {
+  BibliographicIntelligenceError,
   deriveIntelligentBibliography,
   loadLlamaReasonerConfig,
+  parseLlamaChatCompletionResponse,
+  QWEN_MAX_COMPLETION_TOKENS,
   type BibliographicReasoner,
 } from "../src/bibliographic-intelligence.js";
 import type { PdfTextInspection } from "../src/suggestion.js";
@@ -81,6 +84,24 @@ test("llama GPU offload is explicit, bounded, and CPU-safe by default", () => {
   assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "-1" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
   assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "1000" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
   assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "all" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
+});
+
+test("Qwen completion budget fits the pinned context and truncated JSON fails explicitly", () => {
+  assert.equal(QWEN_MAX_COMPLETION_TOKENS, 4_096);
+  const truncated = new TextEncoder().encode(JSON.stringify({
+    choices: [{ finish_reason: "length", message: { content: "{\"status\":\"ambiguous\"" } }],
+  }));
+  assert.throws(
+    () => parseLlamaChatCompletionResponse(truncated),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.code === "invalid_result"
+      && error.diagnostic === "content_truncated",
+  );
+
+  const complete = new TextEncoder().encode(JSON.stringify({
+    choices: [{ finish_reason: "stop", message: { content: "```json\n{\"status\":\"ambiguous\"}\n```" } }],
+  }));
+  assert.deepEqual(parseLlamaChatCompletionResponse(complete), { status: "ambiguous" });
 });
 
 test("seven bounded representative bibliographic cases remain inside the strict domain", async () => {

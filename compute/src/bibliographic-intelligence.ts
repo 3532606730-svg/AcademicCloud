@@ -57,6 +57,7 @@ const MODEL_WARNING_CODES = [
 const AUTO_APPLY_CONFIDENCE = 85;
 const MAX_REASONING_INPUT_CHARACTERS = 64 * 1024;
 const MAX_REASONING_OUTPUT_BYTES = 384 * 1024;
+export const QWEN_MAX_COMPLETION_TOKENS = 4_096;
 const SERVER_START_TIMEOUT_MILLISECONDS = 120_000;
 // Two GitHub-hosted CPU cores can require more than three minutes to emit the
 // complete strict bibliography object. Keep this below the worker's bounded
@@ -74,6 +75,7 @@ export class BibliographicIntelligenceError extends Error {
       | "response_too_large"
       | "response_json_invalid"
       | "content_missing"
+      | "content_truncated"
       | "content_json_invalid"
       | "canonical_schema_invalid"
       | "field_evidence_invalid"
@@ -93,6 +95,32 @@ export interface LlamaReasonerConfig {
   executablePath: string;
   modelPath: string;
   gpuLayers: number;
+}
+
+export function parseLlamaChatCompletionResponse(bytes: Uint8Array): unknown {
+  if (bytes.byteLength > MAX_REASONING_OUTPUT_BYTES) {
+    throw new BibliographicIntelligenceError("invalid_result", "response_too_large");
+  }
+  let payload: { choices?: Array<{ finish_reason?: unknown; message?: { content?: unknown } }> };
+  try {
+    payload = JSON.parse(new TextDecoder().decode(bytes)) as typeof payload;
+  } catch {
+    throw new BibliographicIntelligenceError("invalid_result", "response_json_invalid");
+  }
+  const choice = payload.choices?.[0];
+  if (choice?.finish_reason === "length") {
+    throw new BibliographicIntelligenceError("invalid_result", "content_truncated");
+  }
+  const content = choice?.message?.content;
+  if (typeof content !== "string" || content.length > MAX_REASONING_OUTPUT_BYTES) {
+    throw new BibliographicIntelligenceError("invalid_result", "content_missing");
+  }
+  const normalized = content.trim().replace(/^```(?:json)?\s*/u, "").replace(/\s*```$/u, "");
+  try {
+    return JSON.parse(normalized);
+  } catch {
+    throw new BibliographicIntelligenceError("invalid_result", "content_json_invalid");
+  }
 }
 
 function boundedPath(label: string, value: string | undefined, fallback: string): string {
@@ -393,7 +421,7 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
               model: QWEN_REASONING_MODEL.name,
               temperature: 0,
               seed: 0,
-              max_tokens: 2_500,
+              max_tokens: QWEN_MAX_COMPLETION_TOKENS,
               messages: [
                 { role: "system", content: "You extract bibliographic facts from bounded front/back matter. Return only schema-valid JSON. Never guess, never promote filenames, and keep physical carrier edition separate from historical source edition. /no_think" },
                 { role: "user", content: prompt },
@@ -421,24 +449,7 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
         this.#invalidateServer(server);
         throw new BibliographicIntelligenceError("reasoner_unavailable", "http_non_ok");
       }
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (bytes.byteLength > MAX_REASONING_OUTPUT_BYTES) throw new BibliographicIntelligenceError("invalid_result", "response_too_large");
-      let payload: { choices?: Array<{ message?: { content?: unknown } }> };
-      try {
-        payload = JSON.parse(new TextDecoder().decode(bytes)) as typeof payload;
-      } catch {
-        throw new BibliographicIntelligenceError("invalid_result", "response_json_invalid");
-      }
-      const content = payload.choices?.[0]?.message?.content;
-      if (typeof content !== "string" || content.length > MAX_REASONING_OUTPUT_BYTES) {
-        throw new BibliographicIntelligenceError("invalid_result", "content_missing");
-      }
-      const normalized = content.trim().replace(/^```(?:json)?\s*/u, "").replace(/\s*```$/u, "");
-      try {
-        return JSON.parse(normalized);
-      } catch {
-        throw new BibliographicIntelligenceError("invalid_result", "content_json_invalid");
-      }
+      return parseLlamaChatCompletionResponse(new Uint8Array(await response.arrayBuffer()));
     } catch (error: unknown) {
       if (error instanceof BibliographicIntelligenceError) throw error;
       throw new BibliographicIntelligenceError("reasoner_unavailable");
