@@ -8,6 +8,7 @@ import {
   deriveIntelligentBibliography,
   loadLlamaReasonerConfig,
   parseLlamaChatCompletionResponse,
+  QWEN_CONTEXT_TOKENS,
   QWEN_MAX_COMPLETION_TOKENS,
   type BibliographicReasoner,
 } from "../src/bibliographic-intelligence.js";
@@ -87,7 +88,9 @@ test("llama GPU offload is explicit, bounded, and CPU-safe by default", () => {
 });
 
 test("Qwen completion budget fits the pinned context and truncated JSON fails explicitly", () => {
-  assert.equal(QWEN_MAX_COMPLETION_TOKENS, 4_096);
+  assert.equal(QWEN_CONTEXT_TOKENS, 16_384);
+  assert.equal(QWEN_MAX_COMPLETION_TOKENS, 8_192);
+  assert.ok(QWEN_MAX_COMPLETION_TOKENS < QWEN_CONTEXT_TOKENS);
   const truncated = new TextEncoder().encode(JSON.stringify({
     choices: [{ finish_reason: "length", message: { content: "{\"status\":\"ambiguous\"" } }],
   }));

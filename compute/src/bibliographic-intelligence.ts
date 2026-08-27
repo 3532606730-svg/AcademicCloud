@@ -57,7 +57,8 @@ const MODEL_WARNING_CODES = [
 const AUTO_APPLY_CONFIDENCE = 85;
 const MAX_REASONING_INPUT_CHARACTERS = 64 * 1024;
 const MAX_REASONING_OUTPUT_BYTES = 384 * 1024;
-export const QWEN_MAX_COMPLETION_TOKENS = 4_096;
+export const QWEN_CONTEXT_TOKENS = 16_384;
+export const QWEN_MAX_COMPLETION_TOKENS = 8_192;
 const SERVER_START_TIMEOUT_MILLISECONDS = 120_000;
 // Two GitHub-hosted CPU cores can require more than three minutes to emit the
 // complete strict bibliography object. Keep this below the worker's bounded
@@ -477,7 +478,7 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
       "--model", this.#config.modelPath,
       "--host", "127.0.0.1",
       "--port", String(port),
-      "--ctx-size", "8192",
+      "--ctx-size", String(QWEN_CONTEXT_TOKENS),
       "--threads", "2",
       "--parallel", "1",
       "--gpu-layers", String(this.#config.gpuLayers),
