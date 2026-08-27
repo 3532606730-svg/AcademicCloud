@@ -131,14 +131,16 @@ test("Qwen receives only authority-eligible pages and exact field scopes", async
     hasUsableTextLayer: true,
   };
   let observedPrompt: Record<string, unknown> | undefined;
+  let inferenceCalls = 0;
   const reasoner: BibliographicReasoner = {
     async infer(prompt) {
+      inferenceCalls += 1;
       observedPrompt = JSON.parse(prompt) as Record<string, unknown>;
       return {
         status: "auto_apply",
         overallConfidence: 95,
         canonical,
-        fields: populatedFields(canonical),
+        fields: [],
         warnings: [],
       };
     },
@@ -146,13 +148,17 @@ test("Qwen receives only authority-eligible pages and exact field scopes", async
 
   const result = await deriveIntelligentBibliography(inspection, reasoner);
   assert.equal(result.status, "auto_apply");
+  assert.equal(inferenceCalls, 1);
   const pages = observedPrompt?.pages as Array<Record<string, unknown>>;
   assert.deepEqual(pages.map(({ pageIndex, pageClass, evidenceOrigin }) => ({ pageIndex, pageClass, evidenceOrigin })), [{
     pageIndex: 1,
     pageClass: "title_page",
     evidenceOrigin: "native_text",
   }]);
+  assert.deepEqual(observedPrompt?.embeddedMetadata, {});
   assert.match(String(observedPrompt?.task), /scopeKey MUST be the empty string/u);
+  assert.equal(result.fields.length, populatedFields(canonical).length);
+  assert.ok(result.fields.every((field) => field.sourcePageIndex === 1 && field.evidenceOrigin === "native_text"));
   assert.equal(new Set(result.fields.map((field) => `${field.fieldName}:${field.scopeKey}`)).size, result.fields.length);
 });
 

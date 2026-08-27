@@ -565,6 +565,16 @@ function promptFor(inspection: PdfTextInspection): string {
   });
 }
 
+function reasoningInspectionFor(inspection: PdfTextInspection): PdfTextInspection {
+  const pages = inspection.pages.filter((page) => sourceTypeFor(classifySuggestionPage(page)) !== undefined);
+  return {
+    ...inspection,
+    pageIndices: pages.map((page) => page.pageIndex),
+    pages,
+    embeddedMetadata: pages.length > 0 ? {} : inspection.embeddedMetadata,
+  };
+}
+
 function normalizedModelWarnings(
   value: unknown[],
   inspection: PdfTextInspection,
@@ -889,15 +899,16 @@ export async function deriveIntelligentBibliography(
   signal?: AbortSignal,
   legacyFallback = false,
 ): Promise<IntelligentBibliographyResult> {
-  const initialPrompt = promptFor(inspection);
+  const reasoningInspection = reasoningInspectionFor(inspection);
+  const initialPrompt = promptFor(reasoningInspection);
   const model = await reasoner.infer(initialPrompt, signal);
   try {
-    return deriveIntelligentBibliographyFromModel(model, inspection, legacyFallback);
+    return deriveIntelligentBibliographyFromModel(model, reasoningInspection, legacyFallback);
   } catch (error: unknown) {
     if (!(error instanceof BibliographicIntelligenceError)
       || error.diagnostic !== "field_evidence_invalid"
       || error.repairFieldKeys.length === 0) throw error;
-    const repaired = await reasoner.infer(evidenceRepairPromptFor(inspection, error.repairFieldKeys), signal);
-    return deriveIntelligentBibliographyFromModel(repaired, inspection, legacyFallback);
+    const repaired = await reasoner.infer(evidenceRepairPromptFor(reasoningInspection, error.repairFieldKeys), signal);
+    return deriveIntelligentBibliographyFromModel(repaired, reasoningInspection, legacyFallback);
   }
 }
