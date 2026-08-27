@@ -3,6 +3,78 @@ import { test } from "node:test";
 
 import { extractSuggestions } from "../src/extractor.js";
 
+test("OCR recognition confidence and embedded metadata presence do not bypass evidence usability", () => {
+  const result = extractSuggestions({
+    pages: [{
+      pageIndex: 2,
+      text: "ず之 fO v f 107の652 1987",
+      evidenceOrigin: "ocr",
+      ocrEngine: "academiccloud-paddleocr-test",
+      ocrConfidence: 60,
+    }],
+    embeddedMetadata: { title: "元朝秘史 蒙文", author: "亦郊真" },
+    filename: "document.pdf",
+    hasUsableTextLayer: false,
+  });
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.candidates.map(({ fieldPath, value, sourceType, confidence }) => ({
+    fieldPath,
+    value,
+    sourceType,
+    confidence,
+  })), [{
+    fieldPath: "canonicalTitle",
+    value: "元朝秘史 蒙文",
+    sourceType: "embedded_pdf_metadata",
+    confidence: "low",
+  }]);
+  assert.equal(result.candidates.some((candidate) => candidate.value === "ず之" || candidate.value === "亦郊真"), false);
+  assert.ok(result.candidates.every((candidate) => candidate.rulesetVersion === "rf-frontmatterocr-v2"));
+});
+
+test("low-confidence labelled OCR fragments stay unusable even when a label looks bibliographic", () => {
+  const result = extractSuggestions({
+    pages: [{
+      pageIndex: 2,
+      text: "题名：ず之",
+      evidenceOrigin: "ocr",
+      ocrEngine: "academiccloud-paddleocr-test",
+      ocrConfidence: 60,
+    }],
+    embeddedMetadata: {},
+    filename: "document.pdf",
+    hasUsableTextLayer: false,
+  });
+  assert.equal(result.status, "no_suggestions");
+  assert.equal(result.candidates.length, 0);
+});
+
+test("script-neutral OCR evidence admits legitimate scholarly titles across writing systems", () => {
+  const titles = [
+    "モンゴル帝国史研究",
+    "ᠮᠣᠩᠭᠣᠯ ᠤᠯᠤᠰ",
+    "История Монголии и Центральной Азии",
+    "تاريخ منغوليا وآسيا الوسطى",
+    "མོང་གོལ་གྱི་ལོ་རྒྱུས།",
+    "Činggis qaγan and Möngke qaɣan",
+  ];
+  for (const title of titles) {
+    const result = extractSuggestions({
+      pages: [{
+        pageIndex: 1,
+        text: title,
+        evidenceOrigin: "ocr",
+        ocrEngine: "academiccloud-paddleocr-test",
+        ocrConfidence: 60,
+      }],
+      embeddedMetadata: {},
+      filename: "document.pdf",
+      hasUsableTextLayer: false,
+    });
+    assert.equal(result.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")?.value, title, title);
+  }
+});
+
 test("Chinese title/CIP evidence produces bounded canonical and publication suggestions", () => {
   const result = extractSuggestions({
     pages: [

@@ -161,6 +161,21 @@ test("native-text usability rejects script-neutral corruption evidence", () => {
   for (const text of invalid) assert.equal(isUsableNativeText(text), false, JSON.stringify(text));
 });
 
+test("recognized OCR still requires script-neutral bibliographic evidence usability", async () => {
+  const ocr = new RecordingOcrAdapter(async () => recognized("ず之 fO v f 107の652 1987", 60));
+  const inspection = await inspectPdfFrontMatter(makeRealisticPdf([""]), ocr);
+  assert.equal(inspection.ocrPageCount, 1);
+  assert.equal(inspection.pages[0]?.evidenceOrigin, "ocr");
+  assert.equal(inspection.pages[0]?.ocrConfidence, 60);
+  assert.equal(inspection.pages[0]?.text, "");
+  assert.equal(inspection.hasUsableEvidence, false);
+
+  const labelled = new RecordingOcrAdapter(async () => recognized("题名：ず之", 60));
+  const labelledInspection = await inspectPdfFrontMatter(makeRealisticPdf([""]), labelled);
+  assert.equal(labelledInspection.pages[0]?.text, "");
+  assert.equal(labelledInspection.hasUsableEvidence, false);
+});
+
 test("real Unicode Russian and Mongolistic PDFs stay on the native-text path", async () => {
   for (const { text, requiredFragments } of [
     { text: "История Монголии и Центральной Азии", requiredFragments: ["История", "Монголии", "Азии"] },
@@ -227,11 +242,12 @@ test("OCR timeout and engine failure fail closed without returning partial evide
 });
 
 test("per-page and total OCR text limits plus total request timeout are enforced", async () => {
-  const bounded = new RecordingOcrAdapter(async () => recognized("A".repeat(SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage + 500)));
+  const longEvidence = "Bibliographic evidence ".repeat(SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage);
+  const bounded = new RecordingOcrAdapter(async () => recognized(longEvidence));
   const onePage = await inspectPdfFrontMatter(makePdf([""]), bounded);
   assert.equal(onePage.pages[0]?.text.length, SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage);
 
-  const total = new RecordingOcrAdapter(async () => recognized("A".repeat(SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage)));
+  const total = new RecordingOcrAdapter(async () => recognized(longEvidence));
   await assert.rejects(
     () => inspectPdfFrontMatter(makePdf(["", "", "", "", ""]), total),
     (error: unknown) => error instanceof PdfTextInspectionError && error.code === "limit_exceeded",

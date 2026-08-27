@@ -1,6 +1,7 @@
 import type { PDFPageProxy } from "pdfjs-dist";
 import { getDocument, PDFDataRangeTransport } from "pdfjs-dist/legacy/build/pdf.mjs";
 
+import { isUsableBibliographicEvidence } from "./evidence-usability.js";
 import { OcrError, TesseractCliOcrAdapter, type OcrAdapter } from "./ocr.js";
 import {
   SUGGESTION_LIMITS,
@@ -120,39 +121,7 @@ export function selectedPageIndices(pageCount: number, limits: Readonly<Suggesti
 }
 
 export function isUsableNativeText(text: string): boolean {
-  const normalized = text.normalize("NFC");
-  const characters = [...normalized];
-  const compact = characters.filter((character) => !/\s/u.test(character));
-  if (compact.length < 2) return false;
-
-  // Native PDF text is valid regardless of script. Admit linguistic Unicode
-  // evidence, then reject corruption signals produced by broken/custom font
-  // maps instead of treating a finite list of writing systems as authoritative.
-  const letters = compact.filter((character) => /\p{L}/u.test(character)).length;
-  const numbers = compact.filter((character) => /\p{N}/u.test(character)).length;
-  const marks = compact.filter((character) => /\p{M}/u.test(character)).length;
-  if (letters < 2) return false;
-
-  const replacements = compact.filter((character) => character === "\uFFFD").length;
-  const privateUse = compact.filter((character) => /\p{Co}/u.test(character)).length;
-  const controls = characters.filter((character) => /\p{Cc}/u.test(character) && !/[\t\n\r]/u.test(character)).length;
-  if (replacements >= 2 && replacements / compact.length >= 0.05) return false;
-  if (privateUse >= 2 && privateUse / compact.length >= 0.1) return false;
-  if (controls >= 4 && controls >= letters) return false;
-
-  const linguistic = letters + numbers + marks;
-  const punctuationOrSymbols = compact.filter((character) => /[\p{P}\p{S}]/u.test(character)).length;
-  if (linguistic / compact.length < 0.25 || punctuationOrSymbols > linguistic * 3) return false;
-
-  // Reject a whole extraction made from one repeated glyph or a tiny repeated
-  // glyph pattern. This catches common opaque-font output without assigning
-  // validity to (or withholding it from) any Unicode Script value.
-  for (let width = 1; width <= 3; width += 1) {
-    if (compact.length < width * 8 || compact.length % width !== 0) continue;
-    const pattern = compact.slice(0, width);
-    if (compact.every((character, index) => character === pattern[index % width])) return false;
-  }
-  return true;
+  return isUsableBibliographicEvidence(text, "native_text");
 }
 
 class PdfRangeTransport extends PDFDataRangeTransport {
@@ -611,9 +580,17 @@ async function inspectPdf(options: {
             limits,
             ...(signal === undefined ? {} : { signal }),
           }));
-          const text = recognized.status === "recognized"
+          const boundedRecognition = recognized.status === "recognized"
             ? asBoundedText(recognized.text, limits.maxOcrOutputCharactersPerPage)
             : "";
+          // Paddle/Tesseract confidence describes glyph recognition only. A
+          // separate script-neutral gate decides whether the result may enter
+          // bibliography extraction or Qwen reasoning as usable evidence.
+          const text = isUsableBibliographicEvidence(
+            boundedRecognition,
+            "ocr",
+            { ocrConfidence: recognized.confidence },
+          ) ? boundedRecognition : "";
           totalOcrCharacters += text.length;
           totalCharacters += text.length;
           if (totalOcrCharacters > limits.maxTotalOcrOutputCharacters || totalCharacters > limits.maxTotalTextCharacters) {
@@ -663,7 +640,11 @@ async function inspectPdf(options: {
       embeddedMetadata,
       complete: complete && pages.length === pageIndices.length,
       hasUsableTextLayer: pages.some((page) => page.evidenceOrigin === "native_text" && isUsableNativeText(page.text)),
-      hasUsableEvidence: pages.some((page) => isUsableNativeText(page.text)),
+      hasUsableEvidence: pages.some((page) => isUsableBibliographicEvidence(
+        page.text,
+        page.evidenceOrigin === "ocr" ? "ocr" : "native_text",
+        { ocrConfidence: page.ocrConfidence },
+      )),
       nativePageCount,
       ocrPageCount,
     };

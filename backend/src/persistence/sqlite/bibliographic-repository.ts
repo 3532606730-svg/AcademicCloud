@@ -100,6 +100,7 @@ interface AiRunRow {
   overall_confidence: number;
   structured_output_json: string;
   structured_output_sha256: string;
+  ruleset_version: BibliographicAiRunEvidence["rulesetVersion"];
   prompt_version: BibliographicAiRunEvidence["promptVersion"];
   ocr_engine_id: string;
   reasoning_engine_id: string;
@@ -257,7 +258,7 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
         applied_fields_json, created_at
       ) VALUES (
         @id, @ownerDomainId, @recordId, @fileId, @suggestionRunId,
-        1, 'l1-intelligent-library01-v1', @status, @overallConfidence,
+        1, @rulesetVersion, @status, @overallConfidence,
         @structuredOutputJson, @structuredOutputSha256, @promptVersion,
         @ocrEngineId, @reasoningEngineId, @selectedPagesJson, @autoApplied,
         @appliedFieldsJson, @createdAt
@@ -265,7 +266,7 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
     `);
     this.#findAiRunEvidence = database.prepare<[string, string], AiRunRow>(`
       SELECT id, owner_domain_id, record_id, file_id, suggestion_run_id,
-        status, overall_confidence, structured_output_json,
+        ruleset_version, status, overall_confidence, structured_output_json,
         structured_output_sha256, prompt_version, ocr_engine_id,
         reasoning_engine_id, selected_pages_json, auto_applied,
         applied_fields_json, created_at
@@ -539,6 +540,7 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
       overallConfidence: row.overall_confidence,
       structuredOutputJson: row.structured_output_json,
       structuredOutputSha256: row.structured_output_sha256,
+      rulesetVersion: row.ruleset_version,
       promptVersion: row.prompt_version,
       ocrEngineId: row.ocr_engine_id,
       reasoningEngineId: row.reasoning_engine_id,

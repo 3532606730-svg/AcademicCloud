@@ -13,6 +13,11 @@ import {
   type AuthorityType,
   type TypeFieldName,
 } from "./suggestion.js";
+import {
+  isUsableBibliographicEvidence,
+  isUsableCandidateValue,
+  usableEmbeddedMetadata,
+} from "./evidence-usability.js";
 
 export interface SuggestionExtractionInput {
   pages: readonly PdfTextPage[];
@@ -179,6 +184,11 @@ function pageContexts(pages: readonly PdfTextPage[]): PageContext[] {
   return pages
     .slice()
     .sort((a, b) => a.pageIndex - b.pageIndex)
+    .filter((page) => isUsableBibliographicEvidence(
+      page.text,
+      page.evidenceOrigin === "ocr" ? "ocr" : "native_text",
+      { ocrConfidence: page.ocrConfidence },
+    ))
     .map((page) => {
       const pageClass = classifySuggestionPage(page);
       return {
@@ -224,6 +234,7 @@ function confidenceFor(
 ): SuggestionConfidence {
   let confidence: SuggestionConfidence;
   if (source === "filename") confidence = "low";
+  else if (source === "embedded_pdf_metadata") confidence = "low";
   else if (explicit || source === "cip_page" || source === "copyright_page") confidence = "high";
   else confidence = "medium";
   if (page?.evidenceOrigin !== "ocr") return confidence;
@@ -556,6 +567,15 @@ function addSeed(seeds: CandidateSeed[], context: PageContext | null, seed: Seed
   if (!sourceType) return;
   if (context?.pageClass === "ordinary_body") return;
   const pageText = context?.page.text ?? value;
+  const origin = evidenceOrigin(context, sourceType);
+  if (!isUsableCandidateValue({
+    value,
+    origin,
+    fieldPath: seed.fieldPath,
+    explicit: seed.explicit ?? false,
+    ocrConfidence: context?.page.ocrConfidence,
+    ...(context === null ? {} : { contextText: pageText }),
+  })) return;
   const candidate: CandidateSeed = {
     fieldPath: seed.fieldPath,
     typeFieldName: seed.typeFieldName ?? null,
@@ -568,7 +588,7 @@ function addSeed(seeds: CandidateSeed[], context: PageContext | null, seed: Seed
     pageClass: context?.pageClass ?? null,
     confidence: confidenceFor(sourceType, seed.explicit ?? false, context?.page),
     evidenceExcerpt: excerpt(pageText, value),
-    evidenceOrigin: evidenceOrigin(context, sourceType),
+    evidenceOrigin: origin,
     ocrEngine: context?.page.evidenceOrigin === "ocr" ? context.page.ocrEngine ?? null : null,
     ocrConfidence: context?.page.evidenceOrigin === "ocr" ? context.page.ocrConfidence ?? null : null,
   };
@@ -802,14 +822,16 @@ function parsePage(context: PageContext, seeds: CandidateSeed[]): void {
   }
 }
 
-function embeddedCandidates(metadata: PdfEmbeddedMetadata, seeds: CandidateSeed[]): void {
-  if (metadata.title && plausibleTitle(metadata.title) && !isGenericPlaceholder(metadata.title)) {
-    addSeed(seeds, null, { fieldPath: "canonicalTitle", value: metadata.title, sourceType: "embedded_pdf_metadata" });
+function embeddedCandidates(metadata: PdfEmbeddedMetadata, pages: readonly PdfTextPage[], seeds: CandidateSeed[]): void {
+  const corroboratingText = pages.map((page) => page.text).join("\n");
+  const usable = usableEmbeddedMetadata(metadata, corroboratingText);
+  if (usable.title && plausibleTitle(usable.title) && !isGenericPlaceholder(usable.title)) {
+    addSeed(seeds, null, { fieldPath: "canonicalTitle", value: usable.title, sourceType: "embedded_pdf_metadata" });
   }
-  if (metadata.author && clean(metadata.author) && !isGenericPlaceholder(metadata.author)) {
+  if (usable.author && clean(usable.author) && !isGenericPlaceholder(usable.author)) {
     // Map explicitly: passing `clean` straight to `map` would bind the array
     // index to its `max` argument and truncate authors.
-    const authors = metadata.author.split(/\s*(?:;|；|\||\band\b|和)\s*/iu).map((author) => clean(author)).filter(Boolean).slice(0, 8);
+    const authors = usable.author.split(/\s*(?:;|；|\||\band\b|和)\s*/iu).map((author) => clean(author)).filter(Boolean).slice(0, 8);
     for (const author of authors) {
       addSeed(seeds, null, {
         fieldPath: "authority",
@@ -899,7 +921,7 @@ export function extractSuggestions(input: SuggestionExtractionInput): Suggestion
   const seeds: CandidateSeed[] = [];
   const contexts = pageContexts(input.pages);
   for (const context of contexts) parsePage(context, seeds);
-  embeddedCandidates(input.embeddedMetadata, seeds);
+  embeddedCandidates(input.embeddedMetadata, input.pages, seeds);
   const filename = filenameFacts(input.filename);
   if (filename.title && !seeds.some((seed) => seed.fieldPath === "canonicalTitle")) {
     addSeed(seeds, null, { fieldPath: "canonicalTitle", value: filename.title, sourceType: "filename" });

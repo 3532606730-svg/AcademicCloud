@@ -92,6 +92,12 @@ test("derived compute result validation rejects raw evidence and malformed prove
 test("intelligent bibliography contract is closed, provenance-rich, and rejects unsafe auto-apply shapes", () => {
   const value = bibliography();
   assert.deepEqual(parseIntelligentBibliographyResult(value), value);
+  const v2 = {
+    ...value,
+    rulesetVersion: "l1-intelligent-library01-v2",
+    provenance: { ...value.provenance, promptVersion: "l1-intelligent-library01-prompt-v2" },
+  };
+  assert.deepEqual(parseIntelligentBibliographyResult(v2), v2);
   assert.throws(() => parseIntelligentBibliographyResult({ ...value, rawOcrText: "forbidden" }), /unsupported field/u);
   assert.throws(() => parseIntelligentBibliographyResult({ ...value, overallConfidence: 84 }), /confidence gate/u);
   assert.throws(() => parseIntelligentBibliographyResult({

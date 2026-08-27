@@ -1,9 +1,11 @@
 import type { AuthorityRole, AuthorityType, TypeFieldName } from "../metadata/metadata.js";
 
 export const LEGACY_SUGGESTION_RULESET_VERSION = "rf-metasuggest-v1" as const;
-export const SUGGESTION_RULESET_VERSION = "rf-frontmatterocr-v1" as const;
+export const PREVIOUS_SUGGESTION_RULESET_VERSION = "rf-frontmatterocr-v1" as const;
+export const SUGGESTION_RULESET_VERSION = "rf-frontmatterocr-v2" as const;
 export type SuggestionRulesetVersion =
   | typeof LEGACY_SUGGESTION_RULESET_VERSION
+  | typeof PREVIOUS_SUGGESTION_RULESET_VERSION
   | typeof SUGGESTION_RULESET_VERSION;
 export const SUGGESTION_WINDOW = Object.freeze({ firstPages: 15, lastPages: 5 });
 export interface SuggestionLimits {

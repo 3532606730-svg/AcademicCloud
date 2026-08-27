@@ -57,7 +57,7 @@ async function inspectFixture(fixture: RealisticFixture, bytes: Uint8Array) {
   return { inspection, requests: null };
 }
 
-test("A–L realistic fixture corpus runs through the full bounded pipeline", async (context) => {
+test("A–M realistic fixture corpus runs through the full bounded pipeline", async (context) => {
   for (const fixture of REALISTIC_FIXTURES) {
     await context.test(`${fixture.id} — ${fixture.label}`, async () => {
       const bytes = fixture.build();
@@ -86,6 +86,11 @@ test("A–L realistic fixture corpus runs through the full bounded pipeline", as
       }
 
       const { inspection, requests } = await inspectFixture(fixture, bytes);
+      if (fixture.kind === "corrupt-ocr-metadata") {
+        assert.equal(inspection.embeddedMetadata.author, "亦郊真", "raw bounded metadata provenance changed");
+        assert.equal(inspection.pages[0]?.text, "", "unusable OCR entered the evidence set");
+        assert.equal(inspection.pages[0]?.ocrConfidence, 60, "recognition confidence provenance was lost");
+      }
       if (fixture.kind === "large-range") {
         assert.ok((requests?.length ?? 0) >= (fixture.expected.minRangeRequests ?? 1), "range path made no bounded reads");
         const chunkLimit = fixture.expected.maxChunkBytes ?? 2 * 1024 * 1024;

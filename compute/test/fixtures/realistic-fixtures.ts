@@ -20,7 +20,8 @@ export type FixtureKind =
   | "malformed"
   | "multi-author-embedded"
   | "labelled-after-page4"
-  | "binary-comment-header";
+  | "binary-comment-header"
+  | "corrupt-ocr-metadata";
 
 export interface OcrScriptEntry {
   text: string;
@@ -236,6 +237,19 @@ export const REALISTIC_FIXTURES: readonly RealisticFixture[] = [
       status: "ready",
       title: mongolsTitle,
       authors: ["Peter Jackson"],
+    },
+  },
+  {
+    id: "M",
+    kind: "corrupt-ocr-metadata",
+    label: "Corrupt OCR and suspicious embedded metadata remain provenance but produce no normal candidate",
+    filename: "document.pdf",
+    build: () => makeRealisticPdf([""], { info: { title: "Ã¥ÂÂ", author: "亦郊真" } }),
+    ocrScript: { 1: { text: "ず之 fO v f 107の652 1987", confidence: 60 } },
+    expected: {
+      status: "no_suggestions",
+      title: null,
+      authors: [],
     },
   },
 ];

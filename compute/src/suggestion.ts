@@ -11,7 +11,7 @@ import type {
   DerivedTypeFieldName,
 } from "@academiccloud/compute-contracts";
 
-export const SUGGESTION_RULESET_VERSION = "rf-frontmatterocr-v1" as const;
+export const SUGGESTION_RULESET_VERSION = "rf-frontmatterocr-v2" as const;
 export const SUGGESTION_WINDOW = Object.freeze({ firstPages: 15, lastPages: 5 });
 
 export interface SuggestionLimits {

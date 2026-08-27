@@ -40,6 +40,7 @@ import {
 import type { StorageAdapter } from "../storage/storage-adapter.js";
 import { extractLightweightSuggestions, mergeSuggestionCandidates } from "./lightweight-extractor.js";
 import {
+  SUGGESTION_RULESET_VERSION,
   type NewSuggestionRun,
   type SuggestionCandidate,
   type SuggestionRunRecord,
@@ -984,7 +985,13 @@ export class SuggestionService {
       }
       const fingerprint = sourceFingerprint(context.file);
       const idempotencyKey = createHash("sha256")
-        .update(JSON.stringify(["metadata_suggestion", libraryId, fileId, fingerprint.value]))
+        .update(JSON.stringify([
+          "metadata_suggestion",
+          SUGGESTION_RULESET_VERSION,
+          libraryId,
+          fileId,
+          fingerprint.value,
+        ]))
         .digest("hex");
       const existing = repositories.derivedJobs.findByIdempotencyKey(idempotencyKey);
       let job: DerivedJobRecord;
@@ -1439,6 +1446,7 @@ export class SuggestionService {
           overallConfidence: result.output.bibliography.overallConfidence,
           structuredOutputJson,
           structuredOutputSha256: createHash("sha256").update(structuredOutputJson, "utf8").digest("hex"),
+          rulesetVersion: result.output.bibliography.rulesetVersion,
           promptVersion: provenance.promptVersion,
           ocrEngineId: !provenance.ocr.used
             ? "not_used/native_or_embedded_text"

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test, type TestContext } from "node:test";
 
 import type {
@@ -12,6 +13,7 @@ import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
 import { LocalPullComputeDispatcher } from "../../src/compute/local-pull-dispatcher.js";
 import { SuggestionError, SuggestionService } from "../../src/suggestions/suggestion-service.js";
+import { SUGGESTION_RULESET_VERSION } from "../../src/suggestions/suggestion.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createTestPersistence } from "../persistence/helpers.js";
 
@@ -99,7 +101,7 @@ function extractionOnlyResult(jobId: string, attemptId: string): DerivedComputeR
         evidenceOrigin: "native_text",
         ocrEngine: null,
         ocrConfidence: null,
-        rulesetVersion: "rf-frontmatterocr-v1",
+        rulesetVersion: "rf-frontmatterocr-v2",
       }],
     },
   };
@@ -128,7 +130,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
   });
   const bibliography: IntelligentBibliographyResult = {
     contractVersion: 1,
-    rulesetVersion: "l1-intelligent-library01-v1",
+    rulesetVersion: "l1-intelligent-library01-v2",
     status: options.status ?? "auto_apply",
     overallConfidence: 96,
     canonical: {
@@ -169,7 +171,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
         runtimeSha256: "78ec7a1964710918030e85c132a0995b10b07e4f43001bdf54fe0fd48d1eb85b",
       },
       selectedPages: [1, 2],
-      promptVersion: "l1-intelligent-library01-prompt-v1",
+      promptVersion: "l1-intelligent-library01-prompt-v2",
     },
   };
   const legacy = extractionOnlyResult(jobId, attemptId);
@@ -263,7 +265,7 @@ function fixture(context: TestContext, options: { now?: () => Date; dispatcher?:
 }
 
 test("request returns a durable queued identity promptly and is idempotent", async (context) => {
-  const { library, fileId, suggestions, dispatcher } = fixture(context);
+  const { database, library, fileId, suggestions, dispatcher } = fixture(context);
   const first = await suggestions.requestGeneration(OWNER, library.id, fileId);
   assert.equal(first.id, "job-1");
   assert.equal(first.state, "queued");
@@ -283,6 +285,17 @@ test("request returns a durable queued identity promptly and is idempotent", asy
   assert.equal((dispatcher as CapturingDispatcher).jobs.length, 1);
   assert.equal(suggestions.getLatestJob(MEMBER, library.id, fileId)?.id, first.id);
   assert.equal(suggestions.getJob(MEMBER, library.id, fileId, first.id).state, "queued");
+
+  const fingerprint = database.prepare("SELECT input_version, idempotency_key FROM derived_compute_jobs WHERE id = ?")
+    .get(first.id) as { input_version: string; idempotency_key: string };
+  const v2Key = createHash("sha256").update(JSON.stringify([
+    "metadata_suggestion", SUGGESTION_RULESET_VERSION, library.id, fileId, fingerprint.input_version,
+  ])).digest("hex");
+  const historicalV1Key = createHash("sha256").update(JSON.stringify([
+    "metadata_suggestion", library.id, fileId, fingerprint.input_version,
+  ])).digest("hex");
+  assert.equal(fingerprint.idempotency_key, v2Key);
+  assert.notEqual(v2Key, historicalV1Key, "a v1 success must not suppress the v2 quality-gate run");
 });
 
 test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection are atomic", async (context) => {
@@ -535,6 +548,8 @@ test("safe intelligent callback auto-applies canonical defaults, exact-binds one
   assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "applied");
   const evidence = persistence.repositories.bibliography.findAiRunEvidence(library.ownerDomainId, `bibliography-${job.id}`)!;
   assert.equal(evidence.status, "auto_apply");
+  assert.equal(evidence.rulesetVersion, "l1-intelligent-library01-v2");
+  assert.equal(evidence.promptVersion, "l1-intelligent-library01-prompt-v2");
   assert.equal(evidence.autoApplied, true);
   assert.ok(evidence.appliedFields.some((field) => field.fieldName === "canonicalTitle"));
   assert.equal(evidence.structuredOutputJson.includes("近代中国史研究"), true);

@@ -34,7 +34,8 @@ export interface BibliographicAiRunEvidence {
   overallConfidence: number;
   structuredOutputJson: string;
   structuredOutputSha256: string;
-  promptVersion: "l1-intelligent-library01-prompt-v1";
+  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2";
+  promptVersion: "l1-intelligent-library01-prompt-v1" | "l1-intelligent-library01-prompt-v2";
   ocrEngineId: string;
   reasoningEngineId: string;
   selectedPages: number[];

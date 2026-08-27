@@ -132,12 +132,12 @@ export interface IntelligentBibliographyProvenance {
     runtimeSha256: string;
   };
   selectedPages: number[];
-  promptVersion: "l1-intelligent-library01-prompt-v1";
+  promptVersion: "l1-intelligent-library01-prompt-v1" | "l1-intelligent-library01-prompt-v2";
 }
 
 export interface IntelligentBibliographyResult {
   contractVersion: 1;
-  rulesetVersion: "l1-intelligent-library01-v1";
+  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2";
   status: IntelligentBibliographyStatus;
   overallConfidence: number;
   canonical: IntelligentCanonicalBibliography | null;
@@ -352,14 +352,21 @@ function parseProvenance(value: unknown): IntelligentBibliographyProvenance {
       runtimeSha256: oneOf(reasoning.runtimeSha256, ["78ec7a1964710918030e85c132a0995b10b07e4f43001bdf54fe0fd48d1eb85b"] as const, "reasoning.runtimeSha256"),
     },
     selectedPages,
-    promptVersion: oneOf(provenance.promptVersion, ["l1-intelligent-library01-prompt-v1"] as const, "promptVersion"),
+    promptVersion: oneOf(provenance.promptVersion, [
+      "l1-intelligent-library01-prompt-v1",
+      "l1-intelligent-library01-prompt-v2",
+    ] as const, "promptVersion"),
   };
 }
 
 export function parseIntelligentBibliographyResult(value: unknown): IntelligentBibliographyResult {
   const input = record(value, "bibliography");
   keys(input, ["contractVersion", "rulesetVersion", "status", "overallConfidence", "canonical", "fields", "warnings", "provenance"], "bibliography");
-  if (input.contractVersion !== 1 || input.rulesetVersion !== "l1-intelligent-library01-v1") throw new TypeError("bibliography contract is invalid");
+  if (input.contractVersion !== 1) throw new TypeError("bibliography contract is invalid");
+  const rulesetVersion = oneOf(input.rulesetVersion, [
+    "l1-intelligent-library01-v1",
+    "l1-intelligent-library01-v2",
+  ] as const, "bibliography.rulesetVersion");
   const status = oneOf(input.status, INTELLIGENT_BIBLIOGRAPHY_STATUSES, "bibliography.status");
   const canonical = input.canonical === null ? null : parseIntelligentCanonicalBibliography(input.canonical);
   if ((status === "no_bibliography") !== (canonical === null)) {
@@ -391,7 +398,7 @@ export function parseIntelligentBibliographyResult(value: unknown): IntelligentB
   }
   return {
     contractVersion: 1,
-    rulesetVersion: "l1-intelligent-library01-v1",
+    rulesetVersion,
     status,
     overallConfidence,
     canonical,

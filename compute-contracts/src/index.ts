@@ -154,7 +154,7 @@ export interface DerivedMetadataCandidate {
   evidenceOrigin: DerivedSuggestionEvidenceOrigin;
   ocrEngine: string | null;
   ocrConfidence: number | null;
-  rulesetVersion: "rf-frontmatterocr-v1";
+  rulesetVersion: "rf-frontmatterocr-v1" | "rf-frontmatterocr-v2";
 }
 
 export interface DerivedSuggestionWindow {
@@ -257,7 +257,7 @@ function parseCandidate(value: unknown, position: number): DerivedMetadataCandid
     ocrConfidence: candidate.ocrConfidence === null
       ? null
       : boundedInteger(candidate.ocrConfidence, "candidate.ocrConfidence", 0, 100),
-    rulesetVersion: oneOf(candidate.rulesetVersion, ["rf-frontmatterocr-v1"] as const, "candidate.rulesetVersion"),
+    rulesetVersion: oneOf(candidate.rulesetVersion, ["rf-frontmatterocr-v1", "rf-frontmatterocr-v2"] as const, "candidate.rulesetVersion"),
   };
   if (parsed.position !== position) throw new TypeError("candidate positions must be canonical and contiguous");
   if (parsed.evidenceOrigin === "ocr" && (parsed.ocrEngine === null || parsed.ocrConfidence === null || parsed.sourcePageIndex === null)) {

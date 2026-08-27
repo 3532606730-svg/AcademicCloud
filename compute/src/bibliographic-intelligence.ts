@@ -15,10 +15,11 @@ import {
 } from "@academiccloud/compute-contracts";
 
 import { classifySuggestionPage } from "./extractor.js";
+import { isUsableBibliographicEvidence, usableEmbeddedMetadata } from "./evidence-usability.js";
 import type { PdfTextInspection } from "./suggestion.js";
 
-export const INTELLIGENT_RULESET_VERSION = "l1-intelligent-library01-v1" as const;
-export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v1" as const;
+export const INTELLIGENT_RULESET_VERSION = "l1-intelligent-library01-v2" as const;
+export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v2" as const;
 export const PADDLE_OCR_PACKAGE_VERSION = "3.7.0" as const;
 export const PADDLE_RUNTIME_VERSION = "3.3.1" as const;
 export const PADDLE_DETECTION_MODEL = Object.freeze({
@@ -557,7 +558,7 @@ function promptFor(inspection: PdfTextInspection): string {
     pages.push({ pageIndex: page.pageIndex, pageClass, evidenceOrigin: page.evidenceOrigin ?? "native_text", text });
   }
   return JSON.stringify({
-    task: "Extract only directly supported canonical bibliographic facts. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. Explicit 题名/書名/作者/著者/出版社/出版年 labels without conflict MUST use auto_apply with confidence >=90 and no warning. Explicit 文章题名 plus 刊名/期号 means journal_article. The pages array contains only authority-eligible pages. Emit exactly one field evidence row for every populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime derives page class and source type. warnings may use only the supplied controlled warning codes and must never quote source text. Return ambiguous with a warning code only when facts genuinely conflict or remain unsupported.",
+    task: "Extract only directly supported canonical bibliographic facts. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. Explicit 题名/書名/作者/著者/出版社/出版年 labels without conflict MUST use auto_apply with confidence >=90 and no warning. Explicit 文章题名 plus 刊名/期号 means journal_article. The pages array contains only authority-eligible evidence that passed the runtime corruption/usability gate. Emit exactly one field evidence row for every populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime derives page class and source type. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous with a warning code only when usable facts genuinely conflict or remain unsupported.",
     controlledValues: { materialClasses: INTELLIGENT_MATERIAL_CLASSES, contributorRoles: INTELLIGENT_CONTRIBUTOR_ROLES, editionTypes: INTELLIGENT_EDITION_TYPES },
     controlledWarnings: MODEL_WARNING_CODES,
     embeddedMetadata: inspection.embeddedMetadata,
@@ -566,12 +567,22 @@ function promptFor(inspection: PdfTextInspection): string {
 }
 
 function reasoningInspectionFor(inspection: PdfTextInspection): PdfTextInspection {
-  const pages = inspection.pages.filter((page) => sourceTypeFor(classifySuggestionPage(page)) !== undefined);
+  const pages = inspection.pages.filter((page) => (
+    isUsableBibliographicEvidence(
+      page.text,
+      page.evidenceOrigin === "ocr" ? "ocr" : "native_text",
+      { ocrConfidence: page.ocrConfidence },
+    )
+    && sourceTypeFor(classifySuggestionPage(page)) !== undefined
+  ));
   return {
     ...inspection,
     pageIndices: pages.map((page) => page.pageIndex),
     pages,
-    embeddedMetadata: pages.length > 0 ? {} : inspection.embeddedMetadata,
+    // Keep the raw bounded metadata on the original inspection for provenance;
+    // Qwen receives only the non-corrupt view, and only when no authoritative
+    // page is available, preserving the single-source evidence contract.
+    embeddedMetadata: pages.length > 0 ? {} : usableEmbeddedMetadata(inspection.embeddedMetadata),
   };
 }
 

@@ -29,7 +29,7 @@ test("migration 022 through 026 preserves durable jobs and Local Pull leases acr
       INSERT INTO accounts (id, login_name, password_hash, role, auth_revision, state, created_at, updated_at)
       VALUES ('compute-owner', 'compute-owner', 'hash', 'owner', 0, 'active', ?, ?)
     `).run(NOW.toISOString(), NOW.toISOString());
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [22, 23, 24, 25, 26], currentVersion: 26 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [22, 23, 24, 25, 26, 27], currentVersion: 27 });
     const repository = new SqliteDerivedJobRepository(database);
     const created = repository.create({
       id: "job-restart",
@@ -132,7 +132,7 @@ test("migration 022 through 026 preserves durable jobs and Local Pull leases acr
       new Date(recoveryAt.getTime() + 90_000),
       recoveryAt,
     ), null);
-    assert.equal(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).currentVersion, 26);
+    assert.equal(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).currentVersion, 27);
   } finally {
     database.close();
     rmSync(temporaryDirectory, { recursive: true, force: true });

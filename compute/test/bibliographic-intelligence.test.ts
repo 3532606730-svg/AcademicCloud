@@ -107,6 +107,36 @@ test("Qwen completion budget fits the pinned context and truncated JSON fails ex
   assert.deepEqual(parseLlamaChatCompletionResponse(complete), { status: "ambiguous" });
 });
 
+test("Qwen never receives corrupt OCR or suspicious bare embedded metadata as usable evidence", async () => {
+  const inspection: PdfTextInspection = {
+    pageCount: 1,
+    pageIndices: [1],
+    pages: [{
+      pageIndex: 1,
+      text: "ず之 fO v f 107の652 1987",
+      evidenceOrigin: "ocr",
+      ocrEngine: "academiccloud-paddleocr-test",
+      ocrConfidence: 60,
+    }],
+    embeddedMetadata: { title: "Ã¥ÂÂ", author: "亦郊真" },
+    complete: true,
+    hasUsableTextLayer: false,
+  };
+  let prompt: Record<string, unknown> | undefined;
+  const result = await deriveIntelligentBibliography(inspection, {
+    async infer(value) {
+      prompt = JSON.parse(value) as Record<string, unknown>;
+      return { status: "no_bibliography", overallConfidence: 0, canonical: null, fields: [], warnings: [] };
+    },
+  });
+  assert.equal(result.status, "no_bibliography");
+  assert.deepEqual(prompt?.pages, []);
+  assert.deepEqual(prompt?.embeddedMetadata, {});
+  assert.match(String(prompt?.task), /OCR confidence measures recognition only/u);
+  assert.match(String(prompt?.task), /Embedded PDF metadata presence alone/u);
+  assert.equal(inspection.embeddedMetadata.author, "亦郊真", "raw bounded provenance was mutated");
+});
+
 test("Qwen receives only authority-eligible pages and exact field scopes", async () => {
   const canonical = emptyCanonical("近代中国史研究");
   const titlePage = {
