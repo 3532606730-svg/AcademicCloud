@@ -28,16 +28,19 @@ INTERNAL_BETA_STARTED=false
 ```
 
 The Local Compute Owner override continues this program and changes only the
-production Compute strategy. Read-only verification on 2026-08-28 shows exact
-frontend/Core `6c71ac94c60d49e65e7eca59305b59ba6e461167` at schema v27/history
-001–027 with `COMPUTE_PROVIDER=local_pull`; Core is active with `NRestarts=0`,
-loopback health/readiness pass, SQLite integrity is `ok`, and foreign keys are
-clean. The exact Local Compute symlink is `fdc0c2d34236d876afc1c62682cdbbe564701596`;
-systemd is intentionally inactive after the WSL cold start with `NRestarts=0`,
-so three queued benchmark jobs remain untouched. The v2 quality canary already
-completed actual Qwen inference, structured-result validation, callback, and
-current-attempt persistence. Full-corpus acceptance and Internal Beta readiness
-remain revoked/pending.
+production Compute strategy. Exact frontend/Core
+`5d4fddd542d352b2570d01feebda14c871be1d04` is active at schema v28/history
+001–028 with `COMPUTE_PROVIDER=local_pull`; the fresh encrypted schema-v27
+off-host backup gate passed before migration, and Core health/readiness,
+SQLite integrity, and foreign keys passed after cutover. The exact Local
+Compute symlink is also `5d4fddd542d352b2570d01feebda14c871be1d04`;
+systemd remains `disabled`/`inactive`, the environment remains `PAUSED`, and
+no production job has been claimed by this release. A post-deploy browser
+attempt on the real 《元朝秘史》 resource exposed a durable-admission defect:
+the same-source v2 succeeded job suppressed creation of the required v3 Qwen
+run. Exact pushed repair `cee8decbf45d13e13818368323b12b01e3de04d3`
+binds job idempotency to the bibliography reasoning generation. Full-corpus
+acceptance and Internal Beta readiness remain revoked/pending.
 
 The corrupt-evidence defect is repaired, deployed, and canary-verified at exact
 checkpoint `6c71ac94c60d49e65e7eca59305b59ba6e461167`.
@@ -49,7 +52,7 @@ preserving raw bounded embedded provenance and admitting legitimate Japanese,
 Mongolian, Cyrillic, Arabic/Persian, Tibetan, and Poppe transliteration. The
 two untracked workspace roots `%SystemDrive%/` and `scratch/` remain preserved.
 
-Exact pushed checkpoint `7c839e5bebe729e11c2ffa8a9d5ce3ef57578e26`
+Exact deployed checkpoint `5d4fddd542d352b2570d01feebda14c871be1d04`
 connects immutable Qwen structured output to a primary
 `AI 建议书目记录`, keeps field candidates as secondary conflict/evidence review,
 applies the Owner display rule (modern scholarship `author + title`, historical
@@ -58,7 +61,11 @@ only the display/download filename while leaving original filename and
 `objectKey` unchanged. Qwen ruleset/prompt v3 classifies intellectual work before
 modern manifestation and person metadata; migration 028 admits exact v3
 provenance while preserving immutable v1/v2 evidence. Unknown classification
-cannot auto-apply.
+cannot auto-apply. The real UI correctly rendered the complete record shell,
+but its old v2 result remained `scholarly_monograph` and therefore still showed
+the old person prefix. The new `cee8dec…` admission repair is required so the
+canary actually executes v3 classification instead of reusing that historical
+result.
 
 All 12 Owner-supplied PDFs named in the active task remain locally available and
 have immutable SHA-256 identities recorded in the active task card. The current
@@ -67,7 +74,7 @@ duplicates among the 12, and 105 unique acceptance resources. No paid usage,
 source-byte mutation, OSS identity mutation, or human-authority rewrite
 occurred.
 
-## Local Compute pivot — production v27 active; canonical UI/v3 release pending
+## Local Compute pivot — production v28 active; v3 admission repair pending release
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -154,15 +161,17 @@ and Local attempts presented to the legacy claim route fail closed. A duplicate
 successful callback remains idempotent. The service exposes no laptop inbound
 endpoint and retains separate machine and result capabilities.
 
-The current worktree passes Backend 379/379, Frontend 284/284, Compute contracts
-2/2, Compute 96/96 plus two expected release-runtime skips, all-workspace
-typecheck/build, migration-v28 v1/v2-preservation/v3-admission, compiled
-acceptance with 28 first-run migrations and zero redeploy migrations, and diff
-checks. Migration 028 is not deployed. Next is an immutable release from exact
-`7c839e5…`, a fresh encrypted/off-host schema-v27 backup gate, v28/Core
-activation, and an isolated real 《元朝秘史》 classification/UI canary. Only that
-canary may authorize resuming NORMAL, forced-loss recovery, benchmarks, and the
-authoritative full corpus. GitHub-hosted production Compute remains unused.
+The v3 admission repair passes Backend 380/380, Compute contracts 2/2,
+Compute 96/96 plus two expected release-runtime skips, all-workspace Linux
+typecheck/build, compiled acceptance with 28 first-run migrations and zero
+redeploy migrations, and diff checks. Existing Frontend 284/284 remains valid
+because the repair changes no frontend source. Migration 028 and the fresh
+encrypted/off-host backup gate are already deployed/passed. Next is a new
+immutable Core/Compute release from exact `cee8dec…`, followed by an isolated
+real 《元朝秘史》 v3 Qwen classification/UI canary while the main worker remains
+disabled. Only that canary may authorize resuming NORMAL, forced-loss recovery,
+benchmarks, and the authoritative full corpus. GitHub-hosted production Compute
+remains unused.
 
 ## Historical incident evidence (superseded as current acceptance)
 

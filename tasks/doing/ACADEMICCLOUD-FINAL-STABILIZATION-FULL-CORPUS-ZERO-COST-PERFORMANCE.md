@@ -104,16 +104,20 @@ independently verified at local/remote HEAD
 verified. Local Pull production cutover and a real structured Qwen canary then
 passed. The evidence-quality v2 checkpoint
 `6c71ac94c60d49e65e7eca59305b59ba6e461167` is pushed, deployed, and remotely
-verified at schema v27. The next canonical-bibliography UI and work-versus-
-manifestation classification repair passes at exact pushed checkpoint
-`7c839e5bebe729e11c2ffa8a9d5ce3ef57578e26`; its immutable releases, backup
-gate, migration 028, and real UI canary remain pending.
+verified at schema v27. Canonical-bibliography UI, work-versus-manifestation
+classification, and migration 028 are deployed at exact
+`5d4fddd542d352b2570d01feebda14c871be1d04` after the fresh encrypted/off-host
+schema-v27 backup gate passed. The first post-deploy real UI attempt proved the
+record projection but did not create an actual v3 inference because a prior v2
+succeeded job shared the same durable idempotency identity. Exact pushed repair
+`cee8decbf45d13e13818368323b12b01e3de04d3` binds admission to the bibliography
+pipeline generation; its new immutable releases and real v3 canary remain pending.
 Pre-existing untracked `%SystemDrive%/` and `scratch/` remain untouched.
 Production is exact frontend/Core
-`6c71ac94c60d49e65e7eca59305b59ba6e461167`, schema v27/history 001–027 with
-`local_pull`; the exact current Compute symlink is `fdc0c2d…`. Its systemd
-service is intentionally inactive after the WSL cold start, with `NRestarts=0`;
-three queued benchmark jobs remain untouched. No new
+`5d4fddd542d352b2570d01feebda14c871be1d04`, schema v28/history 001–028 with
+`local_pull`; the exact current Compute symlink is also `5d4fddd…`. Its systemd
+service is `disabled`/`inactive`, the environment is `PAUSED`, and no job was
+claimed during the UI diagnosis. No new
 GitHub-hosted production Compute probe was launched after the override.
 
 Current acceptance inventory is 12 Owner PDFs plus 93 production-eligible PDFs,
@@ -130,9 +134,10 @@ qualification, and separately authorized emergency implementation, but is
 disabled for normal production AI. The local Windows machine remains a
 disposable outbound-only Compute executor; its absence must leave AI jobs
 queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
-and the Local Pull protocol now pass in production. No v28 migration or worker
-NORMAL transition occurs until the exact checkpoint/release, encrypted off-host
-schema-v27 backup, and isolated one-shot canonical UI canary gates pass.
+and the Local Pull protocol now pass in production. Migration 028 and the
+encrypted off-host schema-v27 backup gate have passed. No worker NORMAL
+transition occurs until a new exact `cee8dec…` release and isolated one-shot
+actual-v3 canonical UI canary pass.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -302,15 +307,31 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   96/96 plus two expected release-runtime skips, Compute contracts 2/2, full
   workspace typecheck/build, compiled acceptance with 28 first-run migrations
   and zero redeploy migrations, SQLite integrity/FK, and `git diff --check`.
+- Published and independently re-read the exact four-item encrypted schema-v27
+  backup set to the private off-host repository at commit `c750648…`, with
+  exact parent preservation, non-force CAS, per-blob size/SHA-256 verification,
+  and `plaintextPublished=false`; only then migrated production to schema v28.
+- Deployed and verified exact Core/frontend `5d4fddd…` at schema/history 28 and
+  selected exact Compute `5d4fddd…` while preserving `disabled`/`inactive` and
+  `PAUSED`. Core health/readiness, SQLite integrity, and foreign keys passed.
+- The first real post-deploy 《元朝秘史》 UI attempt proved the complete AI
+  record projection but reused the old v2 success, so it could not qualify v3
+  material classification. Root cause was a durable idempotency key that bound
+  extraction v2 but not the Qwen bibliography pipeline generation.
+- Repaired that boundary at exact pushed checkpoint `cee8decbf45d13e13818368323b12b01e3de04d3`.
+  A same-source previous-generation success now creates a new v3 job. Linux
+  verification passes Backend 380/380, Compute 96/96 plus two expected runtime
+  skips, contracts 2/2, workspace typecheck/build, compiled acceptance with 28
+  initial migrations and zero redeploy migrations, and diff checks.
 
 ## Remaining
 
 - Assemble and verify immutable Core and Local Compute releases from exact
-  checkpoint `7c839e5…`; reuse unchanged Paddle/Qwen/llama runtime bytes.
-- Keep the main worker inactive. Before migration 028, produce, encrypt,
-  publish off-host, and independently verify a fresh schema-v27 backup. Deploy
-  v28/Core, install only the exact new Compute release, and run one isolated
-  normal-product Qwen canary for 《元朝秘史》 proving correct material class,
+  checkpoint `cee8dec…`; reuse unchanged Paddle/Qwen/llama runtime bytes.
+- Keep the main worker disabled/inactive and `PAUSED`. Deploy the exact new
+  Core/Compute release without a schema change, then create and execute one
+  isolated normal-product Qwen canary for 《元朝秘史》 proving actual v3
+  inference, correct material class,
   `title + supported version`, full/partial AI record UI, no person-prefix
   guessing, and strict current-attempt success semantics.
 - After the v3/UI canary passes, measure real cold/second/third-job warm behavior,
@@ -331,22 +352,22 @@ remains a mandatory hard stop.
 
 ## Last Verification
 
-2026-08-28: canonical UI/classification v3/schema-v28 is exact pushed checkpoint
-`7c839e5…`. Backend 379/379, Frontend 284/284, Compute 96/96 plus two
-expected release-runtime skips, contracts 2/2, typecheck/build, migration 028
-v1/v2 preservation/v3 admission, compiled acceptance, and diff checks pass.
-Read-only production verification shows exact `6c71ac9…`, schema/history 27,
-integrity `ok`, FK 0, Core active with health/ready green and NRestarts=0. Exact
-Compute symlink `fdc0c2d…` is inactive with NRestarts=0. No GitHub-hosted
-production Compute or paid service was used; full-corpus acceptance remains
-pending.
+2026-08-28: production Core/frontend is exact `5d4fddd…`, schema/history 28;
+the encrypted schema-v27 off-host backup gate passed before migration, and
+post-cutover health/ready, integrity, and foreign keys are green. Exact Compute
+symlink `5d4fddd…` remains disabled/inactive/PAUSED. The real UI exposed
+previous-generation job reuse before any new Compute claim. Exact pushed repair
+`cee8dec…` passes Backend 380/380, existing Frontend 284/284, Compute 96/96 plus
+two expected release-runtime skips, contracts 2/2, Linux workspace
+typecheck/build, compiled acceptance, and diff checks. No GitHub-hosted
+production Compute or paid service was used; actual-v3 canary and full-corpus
+acceptance remain pending.
 
 ## Next Action
 
-Assemble immutable Core/Compute releases from exact `7c839e5…` without
-rebuilding unchanged runtime bytes.
-Pass a fresh encrypted off-host schema-v27 backup gate before migration 028,
-then deploy and run the isolated real 《元朝秘史》 UI/classification canary. Only
-after that pass may NORMAL, warm/idle benchmarks, forced-loss recovery, corpus
-recomputation, and full-corpus execution resume. Do not launch GitHub-hosted
-production Compute.
+Assemble immutable Core/Compute releases from exact `cee8dec…` without
+rebuilding unchanged runtime bytes. Keep the main worker disabled/inactive and
+run the isolated real 《元朝秘史》 actual-v3 Qwen UI/classification canary after
+the exact release switch. Only after that pass may NORMAL, warm/idle benchmarks,
+forced-loss recovery, corpus recomputation, and full-corpus execution resume.
+Do not launch GitHub-hosted production Compute.
