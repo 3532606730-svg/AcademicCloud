@@ -15,6 +15,14 @@ import { HttpPdfRangeSource, type ComputeWorkerRuntime } from "../src/worker.js"
 
 const MACHINE_SECRET = "local-machine-secret-that-is-long-enough";
 
+function successfulReasoner() {
+  return {
+    async infer() {
+      return { status: "no_bibliography", overallConfidence: 100, canonical: null, fields: [], warnings: [] };
+    },
+  };
+}
+
 function claim() {
   const now = Date.now();
   return {
@@ -291,7 +299,7 @@ test("source range renews once on the narrow endpoint and retries only the exact
       };
     },
   };
-  const outcome = await runLocalPullIteration(config(), { fetchImplementation, inspector });
+  const outcome = await runLocalPullIteration(config(), { fetchImplementation, inspector, reasoner: successfulReasoner() });
   assert.equal(outcome?.result.state, "succeeded");
   assert.equal(renewals, 1);
   assert.equal(oldReads, 0);
@@ -385,7 +393,7 @@ test("one Local Pull iteration uses the preclaimed attempt, heartbeats, and call
     mode: "NORMAL",
     waitMilliseconds: 0,
     idleTtlMilliseconds: 300_000,
-  }, { fetchImplementation, inspector, testHeartbeatDelayMilliseconds: 5 });
+  }, { fetchImplementation, inspector, reasoner: successfulReasoner(), testHeartbeatDelayMilliseconds: 5 });
   assert.equal(outcome?.result.state, "succeeded");
   assert.equal(pullRequests, 1);
   assert.ok(heartbeatRequests >= 1);

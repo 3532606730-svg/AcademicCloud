@@ -73,7 +73,7 @@ function ids(...values: string[]): () => string {
   return () => values[position++] ?? `generated-${position}`;
 }
 
-function successfulResult(jobId: string, attemptId: string): DerivedComputeResult {
+function extractionOnlyResult(jobId: string, attemptId: string): DerivedComputeResult {
   return {
     jobId,
     attemptId,
@@ -172,7 +172,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
       promptVersion: "l1-intelligent-library01-prompt-v1",
     },
   };
-  const legacy = successfulResult(jobId, attemptId);
+  const legacy = extractionOnlyResult(jobId, attemptId);
   if (legacy.state !== "succeeded") throw new Error("test fixture is invalid");
   return { ...legacy, output: { ...legacy.output, bibliography } };
 }
@@ -333,7 +333,7 @@ test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection a
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
   );
   await assert.rejects(
-    () => suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), first!.capability.token),
+    () => suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", { status: "ambiguous" }), first!.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
   );
   assert.equal(persistence.repositories.derivedJobs.findById(job.id)?.state, "running");
@@ -355,10 +355,10 @@ test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection a
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
   );
   await assert.rejects(
-    () => suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), first!.capability.token),
+    () => suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", { status: "ambiguous" }), first!.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
   );
-  const secondResult = successfulResult(job.id, "attempt-2");
+  const secondResult = intelligentResult(job.id, "attempt-2", { status: "ambiguous" });
   const completed = await suggestions.applyComputeResult(secondResult, second!.capability.token);
   assert.equal(completed.state, "succeeded");
   assert.deepEqual(await suggestions.applyComputeResult(secondResult, second!.capability.token), completed);
@@ -456,7 +456,7 @@ test("restart reconciliation preserves one provider execution across an accepted
   assert.equal(first.persistence.repositories.derivedJobs.findById(queued.id)?.state, "running");
 });
 
-test("Compute claim and callback create reviewable candidates without canonical writes", async (context) => {
+test("validated structured Qwen callback creates reviewable candidates without canonical writes", async (context) => {
   const { persistence, library, fileId, suggestions, metadata } = fixture(context);
   const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
   const claim = await suggestions.claimJob(job.id, "attempt-1");
@@ -466,7 +466,7 @@ test("Compute claim and callback create reviewable candidates without canonical 
   assert.equal(claim.callbackUrl, `https://academiccloud.example/api/internal/compute/jobs/${job.id}/result`);
   assert.equal(suggestions.getJob(OWNER, library.id, fileId, job.id).state, "running");
 
-  const result = successfulResult(job.id, "attempt-1");
+  const result = intelligentResult(job.id, "attempt-1", { status: "ambiguous" });
   const completed = await suggestions.applyComputeResult(result, claim.capability.token);
   assert.equal(completed.state, "succeeded");
   // Fast naming persists the lightweight run first, so the callback lands in a
@@ -479,7 +479,7 @@ test("Compute claim and callback create reviewable candidates without canonical 
   assert.equal(run.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")?.value,
     "The Mongols and the West, 1221-1410");
   assert.equal(run.candidates.some((candidate) => candidate.sourceType === "filename"), false);
-  assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "extraction_only");
+  assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "ai_succeeded_reviewable");
   assert.equal(persistence.repositories.suggestions.listRuns(library.ownerDomainId, library.id, fileId, 10).length, 2);
 
   const replay = await suggestions.applyComputeResult(result, claim.capability.token);
@@ -492,6 +492,31 @@ test("Compute claim and callback create reviewable candidates without canonical 
     } as DerivedComputeResult, claim.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "concurrent_change",
   );
+});
+
+test("filename candidates and extraction-only output cannot mark the AI pipeline succeeded", async (context) => {
+  const { persistence, library, fileId, suggestions } = fixture(context);
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const fastRun = suggestions.getLatest(OWNER, library.id, fileId)!;
+  assert.equal(fastRun.candidates.some((candidate) => candidate.sourceType === "filename"), true);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+
+  const failed = await suggestions.applyComputeResult(
+    extractionOnlyResult(job.id, "attempt-1"),
+    claim.capability.token,
+  );
+  assert.equal(failed.state, "failed");
+  assert.equal(failed.errorCode, "compute_invalid_result");
+  assert.equal(failed.resultRef, null);
+  assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "failed");
+  assert.equal(suggestions.getLatest(OWNER, library.id, fileId)?.id, fastRun.id);
+  assert.equal(persistence.repositories.suggestions.listRuns(library.ownerDomainId, library.id, fileId, 10).length, 1);
+
+  const replay = await suggestions.applyComputeResult(extractionOnlyResult(job.id, "attempt-1"), claim.capability.token);
+  assert.deepEqual(replay, failed);
+  const retry = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  assert.equal(retry.state, "queued");
+  assert.equal(retry.attempts, 2);
 });
 
 test("safe intelligent callback auto-applies canonical defaults, exact-binds one person, and retains immutable provenance", async (context) => {
@@ -616,11 +641,11 @@ test("callback capability and attempt identity fail closed", async (context) => 
   const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
   const claim = await suggestions.claimJob(job.id, "attempt-1");
   await assert.rejects(
-    () => suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), "wrong-token"),
+    () => suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", { status: "ambiguous" }), "wrong-token"),
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
   );
   await assert.rejects(
-    () => suggestions.applyComputeResult(successfulResult(job.id, "wrong-attempt"), claim.capability.token),
+    () => suggestions.applyComputeResult(intelligentResult(job.id, "wrong-attempt", { status: "ambiguous" }), claim.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",
   );
 });
@@ -669,7 +694,7 @@ test("manager acceptance preserves RF-META01 authority and private overlays", as
   const { database, library, fileId, suggestions, metadata } = fixture(context);
   const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
   const claim = await suggestions.claimJob(job.id, "attempt-1");
-  await suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), claim.capability.token);
+  await suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", { status: "ambiguous" }), claim.capability.token);
   const run = suggestions.getLatest(OWNER, library.id, fileId)!;
   const title = run.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")!;
   const detail = metadata.getDetails(OWNER, library.id, fileId);
@@ -781,7 +806,7 @@ test("later OCR candidates supersede the fast run with a second immutable eviden
   assert.ok(fastRun.candidates.some((candidate) => candidate.sourceType === "filename"));
 
   const claim = await suggestions.claimJob(job.id, "attempt-1");
-  const result = successfulResult(job.id, "attempt-1");
+  const result = intelligentResult(job.id, "attempt-1", { status: "ambiguous" });
   await suggestions.applyComputeResult(result, claim.capability.token);
 
   const latest = suggestions.getLatest(MEMBER, library.id, fileId)!;
@@ -803,7 +828,7 @@ test("later OCR candidates supersede the fast run with a second immutable eviden
 });
 
 test("an accepted fast run is frozen and later OCR cannot silently rewrite it", async (context) => {
-  const { library, fileId, suggestions, metadata } = fixture(context);
+  const { persistence, library, fileId, suggestions, metadata } = fixture(context);
   const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
   const fastRun = suggestions.getLatest(OWNER, library.id, fileId)!;
   const title = fastRun.candidates.find((candidate) => candidate.fieldPath === "canonicalTitle")!;
@@ -825,11 +850,14 @@ test("an accepted fast run is frozen and later OCR cannot silently rewrite it", 
   const candidateIdsBefore = accepted.candidates.map((candidate) => candidate.id).sort();
 
   const claim = await suggestions.claimJob(job.id, "attempt-1");
-  const completed = await suggestions.applyComputeResult(successfulResult(job.id, "attempt-1"), claim.capability.token);
+  const completed = await suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", { status: "ambiguous" }), claim.capability.token);
   assert.equal(completed.state, "succeeded");
   const after = suggestions.getLatest(OWNER, library.id, fileId)!;
-  assert.equal(after.status, "accepted", "accepted evidence stays frozen");
-  assert.deepEqual(after.candidates.map((candidate) => candidate.id).sort(), candidateIdsBefore);
+  assert.equal(after.id, `suggestion-${job.id}-computed`);
+  assert.equal(after.status, "ready");
+  const acceptedAfter = persistence.repositories.suggestions.findRun(library.ownerDomainId, accepted.id)!;
+  assert.equal(acceptedAfter.status, "accepted", "accepted evidence stays frozen");
+  assert.deepEqual(acceptedAfter.candidates.map((candidate) => candidate.id).sort(), candidateIdsBefore);
   assert.equal(metadata.getDetails(OWNER, library.id, fileId).metadata?.canonicalTitle, title.value);
 });
 

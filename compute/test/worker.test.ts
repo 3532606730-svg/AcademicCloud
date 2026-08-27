@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import type { MetadataSuggestionComputeOutput } from "@academiccloud/compute-contracts";
 import type { BoundedPdfTextSource } from "../src/suggestion.js";
-import { BibliographicIntelligenceError } from "../src/bibliographic-intelligence.js";
+import { BibliographicIntelligenceError, type BibliographicReasoner } from "../src/bibliographic-intelligence.js";
 import { PdfTextInspectionError } from "../src/pdf-text.js";
 import { computeMetadataSuggestions, fitCallbackOutput, runComputeWorker } from "../src/worker.js";
 
@@ -42,6 +42,14 @@ function inspector(): BoundedPdfTextSource {
   };
 }
 
+function successfulReasoner(): BibliographicReasoner {
+  return {
+    async infer() {
+      return { status: "no_bibliography", overallConfidence: 100, canonical: null, fields: [], warnings: [] };
+    },
+  };
+}
+
 test("worker claims with bootstrap authority, range-reads the source, and returns candidates only", async () => {
   const calls: Array<{ url: string; method: string; authorization: string | null; body: unknown }> = [];
   const fetchImplementation: typeof fetch = async (input, init = {}) => {
@@ -71,7 +79,7 @@ test("worker claims with bootstrap authority, range-reads the source, and return
     return new Response(null, { status: 404 });
   };
 
-  const outcome = await runComputeWorker(INPUT, { fetchImplementation, inspector: inspector() });
+  const outcome = await runComputeWorker(INPUT, { fetchImplementation, inspector: inspector(), reasoner: successfulReasoner() });
   assert.equal(outcome.result.state, "succeeded");
   assert.ok(outcome.memory.cleanStartRssBytes > 0);
   assert.ok(outcome.memory.peakRssBytes >= outcome.memory.cleanStartRssBytes);
@@ -87,22 +95,52 @@ test("worker claims with bootstrap authority, range-reads the source, and return
   assert.equal("canonicalMetadata" in callback, false);
 });
 
-test("worker preserves extracted candidates when the optional reasoner is unavailable", async () => {
-  const output = await computeMetadataSuggestions(
-    { length: 5, async read() { return new Uint8Array([37, 80, 68, 70, 45]); } },
-    inspector(),
-    undefined,
-    {
-      async infer() { throw new BibliographicIntelligenceError("reasoner_unavailable", "request_failed"); },
-    },
+test("extracted candidates cannot become success when Qwen is unavailable", async () => {
+  await assert.rejects(
+    () => computeMetadataSuggestions(
+      { length: 5, async read() { return new Uint8Array([37, 80, 68, 70, 45]); } },
+      inspector(),
+      undefined,
+      {
+        async infer() { throw new BibliographicIntelligenceError("reasoner_unavailable", "request_failed"); },
+      },
+    ),
+    (error: unknown) => error instanceof BibliographicIntelligenceError && error.code === "reasoner_unavailable",
   );
-  assert.equal(output.bibliography, undefined);
-  assert.equal(output.status, "ready");
-  assert.ok(output.candidates.length > 0);
-  assert.ok(Buffer.byteLength(JSON.stringify(output), "utf8") < 256 * 1024);
 });
 
-test("worker drops an oversized optional bibliography before callback", async () => {
+test("successful OCR evidence cannot become pipeline success when Qwen fails", async () => {
+  const ocrInspector: BoundedPdfTextSource = {
+    async inspect() { throw new Error("whole-object inspection is forbidden"); },
+    async inspectRange() {
+      return {
+        pageCount: 1,
+        pageIndices: [1],
+        pages: [{
+          pageIndex: 1,
+          text: "OCR Derived Title",
+          evidenceOrigin: "ocr" as const,
+          ocrEngine: "PP-OCRv6-small",
+          ocrConfidence: 96,
+        }],
+        embeddedMetadata: {},
+        complete: true,
+        hasUsableTextLayer: false,
+      };
+    },
+  };
+  await assert.rejects(
+    () => computeMetadataSuggestions(
+      { length: 5, async read() { return new Uint8Array([37, 80, 68, 70, 45]); } },
+      ocrInspector,
+      undefined,
+      { async infer() { throw new BibliographicIntelligenceError("reasoner_timeout"); } },
+    ),
+    (error: unknown) => error instanceof BibliographicIntelligenceError && error.code === "reasoner_timeout",
+  );
+});
+
+test("worker rejects a callback that cannot retain its structured Qwen result", () => {
   const output = {
     status: "ready",
     window: { firstPages: 15, lastPages: 5, pageCount: 1, pageIndices: [1], complete: true },
@@ -128,16 +166,11 @@ test("worker drops an oversized optional bibliography before callback", async ()
     bibliography: { oversized: "x".repeat(500_000) },
   } as unknown as MetadataSuggestionComputeOutput;
 
-  const fitted = fitCallbackOutput(output);
-  assert.equal(fitted.bibliography, undefined);
-  assert.ok(fitted.candidates.length < output.candidates.length);
-  assert.ok(Buffer.byteLength(JSON.stringify({
-    jobId: "x".repeat(128),
-    attemptId: "x".repeat(128),
-    kind: "metadata_suggestion",
-    state: "succeeded",
-    output: fitted,
-  }), "utf8") <= 256 * 1024);
+  assert.throws(
+    () => fitCallbackOutput(output),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.code === "invalid_result" && error.diagnostic === "response_too_large",
+  );
 });
 
 test("worker maps bounded extraction failure to a stable failed callback", async () => {
@@ -278,7 +311,7 @@ test("worker bounds successful-result callback retries and reports a terminal fa
   };
 
   await assert.rejects(
-    () => runComputeWorker(INPUT, { fetchImplementation, inspector: inspector() }),
+    () => runComputeWorker(INPUT, { fetchImplementation, inspector: inspector(), reasoner: successfulReasoner() }),
     /compute callback failed with status 500/u,
   );
   assert.equal(callbacks.filter((callback) => (callback as { state?: string }).state === "succeeded").length, 3);
@@ -314,7 +347,7 @@ test("worker does not retry stable result validation responses", async () => {
   };
 
   await assert.rejects(
-    () => runComputeWorker(INPUT, { fetchImplementation, inspector: inspector() }),
+    () => runComputeWorker(INPUT, { fetchImplementation, inspector: inspector(), reasoner: successfulReasoner() }),
     /compute callback failed with status 400/u,
   );
   assert.deepEqual(callbackStates, ["succeeded", "failed"]);
@@ -343,6 +376,7 @@ test("stuck callbacks time out per request, retry finitely, and remain parent-ca
   await assert.rejects(
     () => runComputeWorker(INPUT, {
       inspector: inspector(),
+      reasoner: successfulReasoner(),
       fetchImplementation: makeFetch((init) => { timedOutCallbacks += 1; return abortableStall(init.signal); }),
       networkTimeouts: { coreRequestMilliseconds: 10 },
     }),
@@ -356,6 +390,7 @@ test("stuck callbacks time out per request, retry finitely, and remain parent-ca
   await assert.rejects(
     () => runComputeWorker(INPUT, {
       inspector: inspector(),
+      reasoner: successfulReasoner(),
       signal: shutdown.signal,
       fetchImplementation: makeFetch((init) => {
         cancelledCallbacks += 1;

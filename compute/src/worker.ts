@@ -316,17 +316,10 @@ export async function computeMetadataSuggestions(
   let bibliography;
   try {
     onStage?.("bibliographic_reasoning");
-    bibliography = reasoner === undefined
-      ? undefined
-      : await deriveIntelligentBibliography(inspection, reasoner, signal, legacyOcrFallback);
-  } catch (error: unknown) {
-    // PDF.js/OCR extraction is independently useful. A bounded model startup
-    // or inference outage must not discard that already-completed result, while
-    // invalid model output remains fail-closed through the rethrow below.
-    const recoverable = error instanceof BibliographicIntelligenceError
-      && ["reasoner_unavailable", "reasoner_timeout"].includes(error.code);
-    if (!recoverable) throw error;
-    bibliography = undefined;
+    // Extraction and OCR are evidence stages, not successful AI cataloguing.
+    // A successful callback must retain one schema-validated Qwen result.
+    if (reasoner === undefined) throw new BibliographicIntelligenceError("reasoner_unavailable");
+    bibliography = await deriveIntelligentBibliography(inspection, reasoner, signal, legacyOcrFallback);
   } finally {
     try {
       if (closeResources) await reasoner?.close?.();
@@ -371,6 +364,10 @@ async function postJson(
 }
 
 export function fitCallbackOutput(output: MetadataSuggestionComputeOutput): MetadataSuggestionComputeOutput {
+  // Never shrink a callback by deleting the proof that Qwen completed.
+  if (output.bibliography === undefined) {
+    throw new BibliographicIntelligenceError("invalid_result", "result_schema_invalid");
+  }
   let candidates = output.candidates;
   const callbackBytes = (value: MetadataSuggestionComputeOutput): number => Buffer.byteLength(JSON.stringify({
     jobId: "x".repeat(128),
@@ -382,9 +379,9 @@ export function fitCallbackOutput(output: MetadataSuggestionComputeOutput): Meta
   while (candidates.length > 0 && callbackBytes({ ...output, candidates }) > MAX_CALLBACK_RESULT_BYTES) {
     candidates = candidates.slice(0, -1);
   }
-  let fitted = candidates.length === output.candidates.length ? output : { ...output, candidates };
-  if (fitted.bibliography !== undefined && callbackBytes(fitted) > MAX_CALLBACK_RESULT_BYTES) {
-    delete fitted.bibliography;
+  const fitted = candidates.length === output.candidates.length ? output : { ...output, candidates };
+  if (callbackBytes(fitted) > MAX_CALLBACK_RESULT_BYTES) {
+    throw new BibliographicIntelligenceError("invalid_result", "response_too_large");
   }
   return fitted;
 }

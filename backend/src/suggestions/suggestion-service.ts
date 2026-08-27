@@ -1343,6 +1343,19 @@ export class SuggestionService {
       if (!failed) throw new SuggestionError("concurrent_change");
       return publicDerivedJob(failed);
     }
+    if (result.output.bibliography === undefined) {
+      // Candidate/extraction payloads from an old or invalid worker cannot
+      // complete the current attempt without structured Qwen evidence.
+      if (snapshot.state === "failed") {
+        if (snapshot.errorCode !== "compute_invalid_result") throw new SuggestionError("concurrent_change");
+        return publicDerivedJob(snapshot);
+      }
+      const failed = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.fail(
+        result.jobId, result.attemptId, "compute_invalid_result", now,
+      ));
+      if (!failed) throw new SuggestionError("concurrent_change");
+      return publicDerivedJob(failed);
+    }
     const digest = createHash("sha256").update(JSON.stringify(result)).digest("hex");
     if (snapshot.state === "succeeded") {
       if (snapshot.resultDigest !== digest) throw new SuggestionError("concurrent_change");
@@ -1381,14 +1394,6 @@ export class SuggestionService {
       if (context.membership.role !== "manager" || fingerprint.value !== job.inputVersion) throw new SuggestionError("stale");
       const runId = `suggestion-${job.id}`;
       const existingRun = repositories.suggestions.findRun(context.library.ownerDomainId, runId);
-      // An accepted fast run remains immutable. The structured callback still
-      // receives its own append-only run and may fill only fields that have no
-      // human authority; acceptance never becomes permission to overwrite.
-      if (existingRun?.status === "accepted" && result.output.bibliography === undefined) {
-        const succeeded = repositories.derivedJobs.succeed(job.id, result.attemptId, existingRun.id, digest, now);
-        if (!succeeded) throw new SuggestionError("concurrent_change");
-        return succeeded;
-      }
       const merged = mergeSuggestionCandidates(
         result.output.candidates.map(derivedCandidate),
         existingRun?.candidates.map((candidate) => ({ ...candidate })) ?? [],

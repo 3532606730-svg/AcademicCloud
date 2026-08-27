@@ -232,7 +232,15 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
       jobId: job.id,
       attemptId: dispatched.attemptId,
       bootstrapSecret: BOOTSTRAP_SECRET,
-    }, { fetchImplementation: workerFetch, inspector });
+    }, {
+      fetchImplementation: workerFetch,
+      inspector,
+      reasoner: {
+        async infer() {
+          return { status: "no_bibliography", overallConfidence: 100, canonical: null, fields: [], warnings: [] };
+        },
+      },
+    });
     assert.equal(worker.result.state, "succeeded");
 
     const latest = await app.inject({ method: "GET", url: base, headers: headers(ownerCookie) });
