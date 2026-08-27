@@ -207,6 +207,7 @@ export class HttpPdfRangeSource implements PdfRangeSource {
       throw new RangeError("compute source range is invalid");
     }
     await this.#ensureAuthorization(signal, false);
+    const requestSignal = boundedNetworkSignal(signal, this.#requestTimeoutMilliseconds);
     for (let attempt = 0; attempt < 2; attempt += 1) {
       this.#rangeRequests += 1;
       let response: Response;
@@ -214,10 +215,12 @@ export class HttpPdfRangeSource implements PdfRangeSource {
         response = await this.#fetch(this.#url, {
           method: "GET",
           headers: { range: `bytes=${begin}-${end - 1}` },
-          signal: boundedNetworkSignal(signal, this.#requestTimeoutMilliseconds),
+          signal: requestSignal,
         });
       } catch (error: unknown) {
         if (signal?.aborted) throw cancelledBy(signal);
+        if (requestSignal.aborted) throw requestSignal.reason ?? error;
+        if (attempt === 0) continue;
         throw error;
       }
       if ([401, 403].includes(response.status) && attempt === 0 && this.#renew) {

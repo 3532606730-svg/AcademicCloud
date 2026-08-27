@@ -157,6 +157,31 @@ test("stuck pull, source range, parent cancellation, and worker shutdown are bou
   assert.equal(runtimeStarts, 0);
 });
 
+test("source range retries one transient transport failure within the same timeout budget", async () => {
+  const bytes = new TextEncoder().encode("%PDF-");
+  const requestSignals: Array<AbortSignal | null | undefined> = [];
+  let requests = 0;
+  const source = new HttpPdfRangeSource("https://storage.example/source", bytes.byteLength,
+    async (_input, init = {}) => {
+      requests += 1;
+      requestSignals.push(init.signal);
+      if (requests === 1) {
+        const failure = new TypeError("fetch failed");
+        Object.defineProperty(failure, "cause", { value: { code: "UND_ERR_CONNECT_TIMEOUT" } });
+        throw failure;
+      }
+      return new Response(bytes, { status: 206 });
+    }, {
+      expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+      requestTimeoutMilliseconds: 1_000,
+    });
+
+  assert.equal(new TextDecoder().decode(await source.read(0, bytes.byteLength)), "%PDF-");
+  assert.equal(requests, 2);
+  assert.equal(requestSignals[0], requestSignals[1]);
+  assert.deepEqual(source.metrics, { rangeRequests: 2, rangeBytes: bytes.byteLength });
+});
+
 test("a stuck heartbeat aborts the active attempt at lease expiry instead of wedging the worker", async () => {
   const startedAt = Date.now();
   const expiring = {
