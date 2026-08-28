@@ -28,18 +28,19 @@ INTERNAL_BETA_STARTED=false
 ```
 
 The Local Compute Owner override continues this program and changes only the
-production Compute strategy. Exact frontend/Core
-`5d4fddd542d352b2570d01feebda14c871be1d04` is active at schema v28/history
-001–028 with `COMPUTE_PROVIDER=local_pull`; the fresh encrypted schema-v27
-off-host backup gate passed before migration, and Core health/readiness,
-SQLite integrity, and foreign keys passed after cutover. The exact Local
-Compute symlink is also `5d4fddd542d352b2570d01feebda14c871be1d04`;
-systemd remains `disabled`/`inactive`, the environment remains `PAUSED`, and
-no production job has been claimed by this release. A post-deploy browser
-attempt on the real 《元朝秘史》 resource exposed a durable-admission defect:
-the same-source v2 succeeded job suppressed creation of the required v3 Qwen
-run. Exact pushed repair `cee8decbf45d13e13818368323b12b01e3de04d3`
-binds job idempotency to the bibliography reasoning generation. Full-corpus
+production Compute strategy. Exact frontend/Core and Local Compute
+`2c0ebd26377ceb98a13a320753796451fc7e503e` are active/selected at schema
+v28/history 001–028 with `COMPUTE_PROVIDER=local_pull`. Local Compute systemd
+remains `disabled`/`inactive` and its persistent environment remains `PAUSED`.
+The isolated exact-attempt v3 canary completed real Qwen inference, structured
+validation, callback, and current-attempt persistence while keeping the main
+worker stopped. The browser record then exposed a second quality defect:
+modern scholarly monograph 《明朝佛教史论稿》 was classified as
+`primary_source_modern_edition` and displayed as title plus publisher/date.
+Exact pushed repair `cdb99869607231ebb39c1b47d234100077ced5b8` introduces
+ruleset v4 and append-only migration 029. A modern publication statement plus
+a clearly analytical title now classifies as `scholarly_monograph`, while
+explicit primary/traditional edition evidence retains precedence. Full-corpus
 acceptance and Internal Beta readiness remain revoked/pending.
 
 The corrupt-evidence defect is repaired, deployed, and canary-verified at exact
@@ -74,7 +75,7 @@ duplicates among the 12, and 105 unique acceptance resources. No paid usage,
 source-byte mutation, OSS identity mutation, or human-authority rewrite
 occurred.
 
-## Local Compute pivot — production v28 active; v3 admission repair pending release
+## Local Compute pivot — production v28 active; v4 classification repair pending release
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -161,17 +162,20 @@ and Local attempts presented to the legacy claim route fail closed. A duplicate
 successful callback remains idempotent. The service exposes no laptop inbound
 endpoint and retains separate machine and result capabilities.
 
-The v3 admission repair passes Backend 380/380, Compute contracts 2/2,
-Compute 96/96 plus two expected release-runtime skips, all-workspace Linux
-typecheck/build, compiled acceptance with 28 first-run migrations and zero
-redeploy migrations, and diff checks. Existing Frontend 284/284 remains valid
-because the repair changes no frontend source. Migration 028 and the fresh
-encrypted/off-host backup gate are already deployed/passed. Next is a new
-immutable Core/Compute release from exact `cee8dec…`, followed by an isolated
-real 《元朝秘史》 v3 Qwen classification/UI canary while the main worker remains
-disabled. Only that canary may authorize resuming NORMAL, forced-loss recovery,
-benchmarks, and the authoritative full corpus. GitHub-hosted production Compute
-remains unused.
+The v3 admission repair is deployed at exact `2c0ebd2…`. Its isolated one-shot
+canary passed actual Qwen, callback/current-attempt persistence, AI-state
+semantic isolation, and structured-record rendering, but failed the Owner
+modern scholarly display gate because the model conservatively chose a modern
+primary-source edition without edition evidence. Exact pushed ruleset-v4 repair
+`cdb9986…` passes Backend 380/380, Frontend 284/284, Compute contracts 3/3,
+Compute 99/99 plus two expected release-runtime skips, all-workspace Linux
+typecheck/build, migration 029 preservation/admission coverage, compiled
+acceptance with 29 first-run migrations and zero redeploy migrations, and diff
+checks. Next is an immutable Core/Compute release from exact `cdb9986…`, a
+fresh encrypted/off-host schema-v28 backup gate, schema v29 migration, and an
+isolated v4 canary while the main worker remains disabled. Only that canary may
+authorize resuming NORMAL, forced-loss recovery, benchmarks, and the
+authoritative full corpus. GitHub-hosted production Compute remains unused.
 
 ## Historical incident evidence (superseded as current acceptance)
 

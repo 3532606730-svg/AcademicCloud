@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-28T01:57:23+08:00",
+  "updatedAt": "2026-08-28T12:27:28+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
-    "declaredRelease": "5d4fddd542d352b2570d01feebda14c871be1d04",
-    "previousRelease": "6c71ac94c60d49e65e7eca59305b59ba6e461167",
+    "declaredRelease": "2c0ebd26377ceb98a13a320753796451fc7e503e",
+    "previousRelease": "5d4fddd542d352b2570d01feebda14c871be1d04",
     "schema": 28,
     "migrationHead": 28,
     "migrationHistory": "001-028",
@@ -18,10 +18,10 @@
     "current6299MbOwnerPath": false,
     "largePdfOver64MbPath": false,
     "incidentL1AiProduction01Closed": false,
-    "acceptedComputeSource": "5d4fddd542d352b2570d01feebda14c871be1d04",
+    "acceptedComputeSource": "2c0ebd26377ceb98a13a320753796451fc7e503e",
     "localPullProviderActive": true,
     "mainLocalWorkerMode": "DISABLED_PAUSED_SAFE_ISOLATION",
-    "currentLocalComputeRelease": "5d4fddd542d352b2570d01feebda14c871be1d04",
+    "currentLocalComputeRelease": "2c0ebd26377ceb98a13a320753796451fc7e503e",
     "currentLocalComputeCanary": {
       "bytes": 40421440,
       "jobId": "dbb7bf26-21e6-4cd5-94ff-be29903b0c28",
@@ -30,13 +30,17 @@
       "callbackPersistedCurrentAttempt": true
     },
     "canonicalUiV3Canary": {
-      "resourceId": "722d65e6-f100-4607-9a14-5703e3af9bcc",
-      "bytes": 40421440,
+      "resourceId": "80317bb8-0815-43be-b3d4-110ec6ad5ae9",
+      "jobId": "2cbd2690-26cf-4924-a254-64bec2fd4484",
+      "attemptId": "6edae59d-e421-45aa-8d0d-c8ae6c4d60c8",
       "recordProjectionRendered": true,
-      "actualV3Inference": false,
-      "blockingDefect": "previous bibliography pipeline success reused because durable idempotency omitted the reasoning generation",
-      "repairCheckpoint": "cee8decbf45d13e13818368323b12b01e3de04d3",
-      "status": "new immutable release and isolated actual-v3 canary pending"
+      "actualV3Inference": true,
+      "qwenStructuredResultValidated": true,
+      "callbackPersistedCurrentAttempt": true,
+      "mainWorkerStayedDisabledInactivePaused": true,
+      "blockingDefect": "modern scholarly monograph 明朝佛教史论稿 classified as primary_source_modern_edition without explicit edition evidence",
+      "repairCheckpoint": "cdb99869607231ebb39c1b47d234100077ced5b8",
+      "status": "ruleset-v4 immutable release, schema-v28 off-host gate, v29 migration, and isolated retry pending"
     },
     "offHostBackupGate": {
       "status": "pass",
@@ -53,9 +57,9 @@
   "activeTasks": ["ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE"],
   "finalStabilizationProgram": {
     "task": "ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE",
-    "state": "active_production_v28_worker_disabled_paused_v3_admission_fix_release_pending",
-    "developmentSchema": 28,
-    "developmentMigrationHistory": "001-028",
+    "state": "active_production_v28_worker_disabled_paused_v4_classification_fix_release_pending",
+    "developmentSchema": 29,
+    "developmentMigrationHistory": "001-029",
     "autonomousFullCorpusAcceptance": "pending",
     "wholeProductPerformanceAcceptance": "pending",
     "internalBetaReady": false,
@@ -84,15 +88,16 @@
       "librarySearchBatchHydration": "1497bec",
       "computeStageDiagnostics": "c9ab369",
       "localComputePreCorpusReview": "d1bddb6d7bd6e66d0ed52586c17dd51afd358d99",
-      "productionQwenCanaryCompute": "5d4fddd542d352b2570d01feebda14c871be1d04 selected but intentionally inactive",
+      "productionQwenCanaryCompute": "2c0ebd26377ceb98a13a320753796451fc7e503e selected; isolated v3 target completed; main worker intentionally inactive",
       "evidenceQualityV2": "6c71ac94c60d49e65e7eca59305b59ba6e461167",
-      "canonicalBibliographyProjectionV3": "5d4fddd542d352b2570d01feebda14c871be1d04 deployed at schema v28",
-      "bibliographyPipelineIdempotencyV3": "cee8decbf45d13e13818368323b12b01e3de04d3 pushed and remote verified; immutable release pending",
+      "canonicalBibliographyProjectionV3": "2c0ebd26377ceb98a13a320753796451fc7e503e deployed at schema v28",
+      "bibliographyPipelineIdempotencyV3": "2c0ebd26377ceb98a13a320753796451fc7e503e deployed; actual v3 canary pass",
+      "bibliographyMaterialClassificationV4": "cdb99869607231ebb39c1b47d234100077ced5b8 pushed and remote verified; immutable release and schema v29 pending",
       "backend": "typecheck/build pass; 380/380 tests pass",
       "frontend": "typecheck/build pass; 284/284 tests pass",
-      "compute": "typecheck/build pass; 96/96 pass plus 2 expected release-runtime skips",
-      "computeContracts": "2/2 pass",
-      "compiledAcceptance": "pass; first migration count 28; redeploy migration count 0",
+      "compute": "typecheck/build pass; 99/99 pass plus 2 expected release-runtime skips",
+      "computeContracts": "3/3 pass",
+      "compiledAcceptance": "pass; first migration count 29; redeploy migration count 0",
       "workspaceBuild": "pass",
       "diffCheck": "pass"
     },
@@ -122,7 +127,7 @@
   },
   "localComputePivot": {
     "decision": "ADR-037",
-    "status": "production_v28_green_worker_disabled_paused_v3_admission_fix_release_pending",
+    "status": "production_v28_green_worker_disabled_paused_v4_classification_fix_release_pending",
     "productionComputeControlPlane": "CORE_PULL_WORKER",
     "localPullProvider": "production",
     "githubHostedProductionCompute": false,
@@ -206,8 +211,8 @@
       "sanitizedChildEnvironment": "Paddle GPU and Qwen CUDA both pass without LD_LIBRARY_PATH inheritance"
     },
     "localPullProtocol": {
-      "developmentSchema": 28,
-      "state": "production_v28_green_worker_disabled_paused_v3_admission_fix_release_pending",
+      "developmentSchema": 29,
+      "state": "production_v28_green_worker_disabled_paused_v4_classification_fix_release_pending",
       "transport": "outbound-only HTTPS long poll; no laptop inbound endpoint",
       "leaseMilliseconds": 90000,
       "heartbeatMilliseconds": 30000,
@@ -217,17 +222,17 @@
       "nativeText": "script-neutral Unicode quality gate; multilingual plus real Russian/Mongolistic PDF fixture pass",
       "runtimeLifecycle": "lazy concurrency-one Paddle/Qwen reuse; five-minute idle TTL; PAUSED cold; component failure invalidation; shutdown cgroup cleanup",
       "activationGate": "15-second structured systemd stability, restart-count, exact release, non-root identity and environment-permission verification with rollback",
-      "reviewCheckpoint": "cee8decbf45d13e13818368323b12b01e3de04d3 bibliography pipeline idempotency v3 pushed and remote verified",
-      "evidenceQuality": "script-neutral corruption/usability gate deployed at v2; OCR confidence remains recognition provenance only; embedded metadata requires sanity/corroboration; v3 adds work-before-manifestation classification and unknown cannot auto-apply",
-      "productionCore": "5d4fddd542d352b2570d01feebda14c871be1d04; schema 28; local_pull; active; health/ready/integrity/FK pass",
-      "activeComputeRelease": "5d4fddd542d352b2570d01feebda14c871be1d04; systemd disabled/inactive; environment PAUSED; no diagnosis-time claim",
+      "reviewCheckpoint": "cdb99869607231ebb39c1b47d234100077ced5b8 bibliography material classification v4 pushed and remote verified",
+      "evidenceQuality": "script-neutral corruption/usability gate deployed at v2; OCR confidence remains recognition provenance only; embedded metadata requires sanity/corroboration; v3 adds work-before-manifestation classification; v4 deterministically recognizes evidenced modern analytical monographs after explicit primary/traditional gates",
+      "productionCore": "2c0ebd26377ceb98a13a320753796451fc7e503e; schema 28; local_pull; active; health/ready pass",
+      "activeComputeRelease": "2c0ebd26377ceb98a13a320753796451fc7e503e; systemd disabled/inactive; environment PAUSED; one isolated exact-attempt v3 canary completed",
       "delayedExpiredCallback": "fails closed before and after attempt replacement",
       "legacyClaimBypass": "local_pull attempts rejected on legacy claim endpoint",
       "recovery": "expired lease atomically queues a new attempt generation for redispatch; matching terminal success/failure retries are idempotent",
-      "tests": "Backend 380/380; unchanged Frontend 284/284; Compute 96/96 plus 2 expected release-runtime skips; Compute contracts 2/2; all-workspace Linux typecheck/build; compiled acceptance first migration count 28 and redeploy count 0; diff check pass"
+      "tests": "Backend 380/380; Frontend 284/284; Compute 99/99 plus 2 expected release-runtime skips; Compute contracts 3/3; all-workspace Linux typecheck/build; compiled acceptance first migration count 29 and redeploy count 0; diff check pass"
     },
     "ownerBoundaryAction": null,
-    "next": "assemble immutable Core/Local Compute releases from exact checkpoint cee8decbf45d13e13818368323b12b01e3de04d3 without rebuilding unchanged runtimes; keep worker disabled/inactive and PAUSED; deploy with no schema change and run the isolated real 元朝秘史 actual-v3 Qwen classification/UI canary; then resume benchmarks, forced-loss recovery, authoritative corpus recomputation, full corpus, and final clean sweep"
+    "next": "assemble immutable Core/Local Compute releases from exact checkpoint cdb99869607231ebb39c1b47d234100077ced5b8 without rebuilding unchanged runtimes; keep worker disabled/inactive and PAUSED; pass the fresh encrypted schema-v28 off-host backup gate; migrate production to schema v29; run the isolated real 明朝佛教史论稿 v4 Qwen classification/UI retry; then resume benchmarks, forced-loss recovery, authoritative corpus recomputation, full corpus, and final clean sweep"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",

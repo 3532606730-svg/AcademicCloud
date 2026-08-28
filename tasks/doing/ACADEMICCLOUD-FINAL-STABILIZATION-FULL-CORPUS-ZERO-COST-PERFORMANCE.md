@@ -323,18 +323,38 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   verification passes Backend 380/380, Compute 96/96 plus two expected runtime
   skips, contracts 2/2, workspace typecheck/build, compiled acceptance with 28
   initial migrations and zero redeploy migrations, and diff checks.
+- Deployed exact Core/Compute `2c0ebd26377ceb98a13a320753796451fc7e503e`
+  at schema/history 28 with the main worker still disabled/inactive/PAUSED.
+  After the queue became target-only, one hardened isolated iteration claimed
+  only job `2cbd2690-26cf-4924-a254-64bec2fd4484` attempt
+  `6edae59d-e421-45aa-8d0d-c8ae6c4d60c8`. It completed Qwen structured
+  inference, callback, and current-attempt persistence in 61,581 ms; the main
+  worker remained stopped. The browser UI proved the primary structured record
+  and strict AI-success semantics, then exposed a real classification failure:
+  modern scholarly monograph 《明朝佛教史论稿》 was labeled modern primary-source
+  edition and displayed as `明朝佛教史论稿 宗教文化出版社2016.11`.
+- Repaired that bounded defect at exact pushed checkpoint
+  `cdb99869607231ebb39c1b47d234100077ced5b8`. Ruleset v4 deterministically
+  classifies an evidenced modern publication with a clearly analytical title as
+  scholarly, after higher-priority explicit primary/traditional edition gates;
+  it does not infer a missing author from the filename. Append-only migration
+  029 admits v4 while preserving immutable v1-v3 evidence and prompt v1-v3.
+  Verification passes contracts 3/3, Compute 99/99 plus two expected
+  release-runtime skips, Backend 380/380, Frontend 284/284, workspace
+  typecheck/build, compiled acceptance with 29 initial migrations and zero
+  redeploy migrations, and diff checks.
 
 ## Remaining
 
 - Assemble and verify immutable Core and Local Compute releases from exact
-  checkpoint `cee8dec…`; reuse unchanged Paddle/Qwen/llama runtime bytes.
+  checkpoint `cdb9986…`; reuse unchanged Paddle/Qwen/llama runtime bytes.
 - Keep the main worker disabled/inactive and `PAUSED`. Deploy the exact new
-  Core/Compute release without a schema change, then create and execute one
-  isolated normal-product Qwen canary for 《元朝秘史》 proving actual v3
-  inference, correct material class,
-  `title + supported version`, full/partial AI record UI, no person-prefix
-  guessing, and strict current-attempt success semantics.
-- After the v3/UI canary passes, measure real cold/second/third-job warm behavior,
+  Core/Compute release only after a fresh encrypted schema-v28 off-host backup
+  gate passes, migrate to schema v29, then execute one isolated normal-product
+  retry of 《明朝佛教史论稿》 proving actual v4 inference, scholarly material
+  class, missing-author omission, title-only primary display, full/partial AI
+  record UI, and strict current-attempt success semantics.
+- After the v4/UI canary passes, measure real cold/second/third-job warm behavior,
   RSS/VRAM/swap and idle unload, then prove forced-loss lease/heartbeat/restart
   recovery before restoring NORMAL.
 - Classify the root-disk, CSP, and systemd-metric audit findings by evidence.
@@ -352,22 +372,24 @@ remains a mandatory hard stop.
 
 ## Last Verification
 
-2026-08-28: production Core/frontend is exact `5d4fddd…`, schema/history 28;
-the encrypted schema-v27 off-host backup gate passed before migration, and
-post-cutover health/ready, integrity, and foreign keys are green. Exact Compute
-symlink `5d4fddd…` remains disabled/inactive/PAUSED. The real UI exposed
-previous-generation job reuse before any new Compute claim. Exact pushed repair
-`cee8dec…` passes Backend 380/380, existing Frontend 284/284, Compute 96/96 plus
-two expected release-runtime skips, contracts 2/2, Linux workspace
-typecheck/build, compiled acceptance, and diff checks. No GitHub-hosted
-production Compute or paid service was used; actual-v3 canary and full-corpus
+2026-08-28: production Core/frontend and selected Compute are exact `2c0ebd2…`
+at schema/history 28; health/ready and the stopped main-worker invariant are
+green. The isolated target-only v3 canary completed real Qwen/callback/current
+attempt persistence and rendered its structured record, but the UI exposed a
+modern-scholarly classification/display defect. Exact pushed repair `cdb9986…`
+passes Backend 380/380, Frontend 284/284, Compute 99/99 plus two expected
+release-runtime skips, contracts 3/3, Linux workspace typecheck/build,
+migration-029 coverage, compiled acceptance, and diff checks. No
+GitHub-hosted production Compute or paid service was used; the fresh
+schema-v28 off-host backup gate, v29 migration, v4 canary, and full-corpus
 acceptance remain pending.
 
 ## Next Action
 
-Assemble immutable Core/Compute releases from exact `cee8dec…` without
-rebuilding unchanged runtime bytes. Keep the main worker disabled/inactive and
-run the isolated real 《元朝秘史》 actual-v3 Qwen UI/classification canary after
-the exact release switch. Only after that pass may NORMAL, warm/idle benchmarks,
-forced-loss recovery, corpus recomputation, and full-corpus execution resume.
-Do not launch GitHub-hosted production Compute.
+Assemble immutable Core/Compute releases from exact `cdb9986…` without
+rebuilding unchanged runtime bytes. Keep the main worker disabled/inactive,
+complete the fresh encrypted/off-host schema-v28 backup gate, migrate to v29,
+and run the isolated real 《明朝佛教史论稿》 v4 Qwen UI/classification retry.
+Only after that pass may NORMAL, warm/idle benchmarks, forced-loss recovery,
+corpus recomputation, and full-corpus execution resume. Do not launch
+GitHub-hosted production Compute.
