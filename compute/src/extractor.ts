@@ -122,9 +122,12 @@ function excerpt(text: string, value: string): string {
   const bounded = clean(text, 512);
   if (!bounded) return "";
   const index = matchingText(bounded).indexOf(matchingText(value));
-  if (index < 0) return bounded.slice(0, 240);
+  if (index < 0) return bounded.slice(0, 240).trim();
   const start = Math.max(0, index - 80);
-  return bounded.slice(start, start + 320);
+  // The database requires immutable evidence excerpts to be trimmed and free
+  // of controls. A middle slice can otherwise start or end on whitespace even
+  // though the full page text was cleaned before slicing.
+  return bounded.slice(start, start + 320).trim();
 }
 
 export function classifySuggestionPage(page: PdfTextPage): PageClass {

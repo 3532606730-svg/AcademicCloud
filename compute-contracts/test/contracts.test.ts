@@ -89,6 +89,52 @@ test("derived compute result validation rejects raw evidence and malformed prove
   }), /OCR candidates require/u);
 });
 
+test("candidate callback validation exactly enforces SQLite persistence bounds", () => {
+  const candidate = {
+    position: 0,
+    fieldPath: "canonicalTitle",
+    typeFieldName: null,
+    authorityType: null,
+    authorityRole: null,
+    identifierScheme: null,
+    value: "Candidate",
+    sourceType: "title_page",
+    sourcePageIndex: 1,
+    pageClass: "title_page",
+    confidence: "medium",
+    precedenceRank: 10,
+    evidenceExcerpt: "Candidate evidence",
+    evidenceOrigin: "native_text",
+    ocrEngine: null,
+    ocrConfidence: null,
+    rulesetVersion: "rf-frontmatterocr-v2",
+  };
+  const result = {
+    jobId: "job-1",
+    attemptId: "attempt-1",
+    kind: "metadata_suggestion",
+    state: "succeeded",
+    output: {
+      status: "ready",
+      window: { firstPages: 15, lastPages: 5, pageCount: 1, pageIndices: [1], complete: true },
+      candidates: [candidate],
+    },
+  };
+  assert.deepEqual(parseDerivedComputeResult(result), result);
+  assert.throws(() => parseDerivedComputeResult({
+    ...result,
+    output: { ...result.output, candidates: [{ ...candidate, evidenceExcerpt: " Candidate evidence " }] },
+  }), /candidate\.evidenceExcerpt/u);
+  assert.throws(() => parseDerivedComputeResult({
+    ...result,
+    output: { ...result.output, candidates: [{ ...candidate, precedenceRank: 256 }] },
+  }), /candidate\.precedenceRank/u);
+  assert.throws(() => parseDerivedComputeResult({
+    ...result,
+    output: { ...result.output, candidates: [{ ...candidate, typeFieldName: "editionStatement" }] },
+  }), /non-type candidates/u);
+});
+
 test("intelligent bibliography contract is closed, provenance-rich, and rejects unsafe auto-apply shapes", () => {
   const value = bibliography();
   assert.deepEqual(parseIntelligentBibliographyResult(value), value);

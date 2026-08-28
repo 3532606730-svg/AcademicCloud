@@ -92,6 +92,22 @@ test("Chinese title/CIP evidence produces bounded canonical and publication sugg
   assert.equal(result.candidates.find((candidate) => candidate.fieldPath === "typeField")?.typeFieldName, "editionStatement");
 });
 
+test("middle-sliced evidence excerpts remain SQLite-safe after boundary trimming", () => {
+  const result = extractSuggestions({
+    pages: [{
+      pageIndex: 2,
+      text: `版权信息 ${"a ".repeat(100)}\n题名：数据库安全题名`,
+    }],
+    embeddedMetadata: {},
+    filename: "fallback.pdf",
+  });
+  const candidate = result.candidates.find((item) => item.value === "数据库安全题名");
+  assert.ok(candidate);
+  assert.ok(candidate.evidenceExcerpt);
+  assert.equal(candidate.evidenceExcerpt, candidate.evidenceExcerpt.trim());
+  assert.equal(/[\u0000\u0009\u000a\u000d]/u.test(candidate.evidenceExcerpt), false);
+});
+
 test("structured Chinese and English CIP lines preserve title, creator, publication place, publisher, and date precedence", () => {
   const chinese = extractSuggestions({
     pages: [{

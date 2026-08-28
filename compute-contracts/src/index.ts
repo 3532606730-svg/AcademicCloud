@@ -218,6 +218,14 @@ function boundedString(value: unknown, label: string, maximum: number, nullable 
   return value;
 }
 
+function persistentCandidateString(value: unknown, label: string, maximum: number, nullable = false): string | null {
+  const parsed = boundedString(value, label, maximum, nullable);
+  if (parsed !== null && (parsed !== parsed.trim() || /[\u0000\u0009\u000a\u000d]/u.test(parsed))) {
+    throw new TypeError(`${label} is invalid`);
+  }
+  return parsed;
+}
+
 function boundedInteger(value: unknown, label: string, minimum: number, maximum: number): number {
   if (!Number.isSafeInteger(value) || (value as number) < minimum || (value as number) > maximum) {
     throw new TypeError(`${label} is invalid`);
@@ -243,17 +251,17 @@ function parseCandidate(value: unknown, position: number): DerivedMetadataCandid
     authorityType: nullableOneOf(candidate.authorityType, AUTHORITY_TYPES, "candidate.authorityType"),
     authorityRole: nullableOneOf(candidate.authorityRole, AUTHORITY_ROLES, "candidate.authorityRole"),
     identifierScheme: boundedString(candidate.identifierScheme, "candidate.identifierScheme", 64, true),
-    value: boundedString(candidate.value, "candidate.value", 512)!,
+    value: persistentCandidateString(candidate.value, "candidate.value", 512)!,
     sourceType: oneOf(candidate.sourceType, SUGGESTION_SOURCE_TYPES, "candidate.sourceType"),
     sourcePageIndex: candidate.sourcePageIndex === null
       ? null
       : boundedInteger(candidate.sourcePageIndex, "candidate.sourcePageIndex", 1, 1_000_000),
     pageClass: nullableOneOf(candidate.pageClass, SUGGESTION_PAGE_CLASSES, "candidate.pageClass"),
     confidence: oneOf(candidate.confidence, SUGGESTION_CONFIDENCES, "candidate.confidence"),
-    precedenceRank: boundedInteger(candidate.precedenceRank, "candidate.precedenceRank", 0, 10_000),
-    evidenceExcerpt: boundedString(candidate.evidenceExcerpt, "candidate.evidenceExcerpt", 512, true),
+    precedenceRank: boundedInteger(candidate.precedenceRank, "candidate.precedenceRank", 0, 255),
+    evidenceExcerpt: persistentCandidateString(candidate.evidenceExcerpt, "candidate.evidenceExcerpt", 512, true),
     evidenceOrigin: oneOf(candidate.evidenceOrigin, SUGGESTION_EVIDENCE_ORIGINS, "candidate.evidenceOrigin"),
-    ocrEngine: boundedString(candidate.ocrEngine, "candidate.ocrEngine", 256, true),
+    ocrEngine: persistentCandidateString(candidate.ocrEngine, "candidate.ocrEngine", 128, true),
     ocrConfidence: candidate.ocrConfidence === null
       ? null
       : boundedInteger(candidate.ocrConfidence, "candidate.ocrConfidence", 0, 100),
@@ -265,6 +273,26 @@ function parseCandidate(value: unknown, position: number): DerivedMetadataCandid
   }
   if (parsed.evidenceOrigin !== "ocr" && (parsed.ocrEngine !== null || parsed.ocrConfidence !== null)) {
     throw new TypeError("non-OCR candidates cannot carry OCR provenance");
+  }
+  if (parsed.fieldPath !== "typeField" && parsed.typeFieldName !== null) {
+    throw new TypeError("non-type candidates cannot carry a type field name");
+  }
+  if (parsed.fieldPath !== "authority" && (parsed.authorityType !== null || parsed.authorityRole !== null)) {
+    throw new TypeError("non-authority candidates cannot carry authority provenance");
+  }
+  if (parsed.fieldPath !== "identifier" && parsed.identifierScheme !== null) {
+    throw new TypeError("non-identifier candidates cannot carry an identifier scheme");
+  }
+  if ((parsed.evidenceOrigin === "native_text" || parsed.evidenceOrigin === "ocr")
+    && (parsed.sourcePageIndex === null || parsed.sourceType === "embedded_pdf_metadata" || parsed.sourceType === "filename")) {
+    throw new TypeError("page evidence requires page-scoped provenance");
+  }
+  if (parsed.evidenceOrigin === "embedded_pdf_metadata"
+    && (parsed.sourceType !== "embedded_pdf_metadata" || parsed.sourcePageIndex !== null)) {
+    throw new TypeError("embedded metadata evidence requires embedded provenance");
+  }
+  if (parsed.evidenceOrigin === "filename" && (parsed.sourceType !== "filename" || parsed.sourcePageIndex !== null)) {
+    throw new TypeError("filename evidence requires filename provenance");
   }
   return parsed;
 }
