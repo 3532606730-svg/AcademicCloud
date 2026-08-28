@@ -256,6 +256,28 @@ test("an analytical model title absent from usable evidence cannot override the 
   assert.equal(result.canonical?.materialClass, "primary_source_modern_edition");
 });
 
+test("unlabeled title-page publication text supports the modern analytical override only by exact model value", async () => {
+  const canonical = {
+    ...emptyCanonical("明朝佛教史论稿"),
+    materialClass: "primary_source_modern_edition" as const,
+    contributors: [],
+    publication: {
+      publisher: "宗教文化出版社",
+      place: null,
+      publicationDate: "2016.11",
+      editionNumber: null,
+      printing: null,
+    },
+  };
+  const supported = fixture(canonical, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
+  supported.inspection.pages[0]!.text = "明朝佛教史论稿\n宗教文化出版社\n2016年11月";
+  const unsupported = fixture(canonical, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
+  unsupported.inspection.pages[0]!.text = "明朝佛教史论稿\n某出版机构\n2016年11月";
+
+  assert.equal((await deriveIntelligentBibliography(supported.inspection, supported.reasoner)).canonical?.materialClass, "scholarly_monograph");
+  assert.equal((await deriveIntelligentBibliography(unsupported.inspection, unsupported.reasoner)).canonical?.materialClass, "primary_source_modern_edition");
+});
+
 test("gated embedded metadata owns its null page identity even when Qwen copies a page index", async () => {
   const embeddedAuthor = "Nicholas Poppe";
   const canonical = {

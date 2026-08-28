@@ -320,7 +320,19 @@ function evidencedAnalyticalTitle(inspection: PdfTextInspection, modelTitle: unk
   return compactInspectionText(inspection).includes(key) ? normalized : null;
 }
 
-function authoritativeMaterialClass(inspection: PdfTextInspection, modelClass: unknown, modelTitle?: unknown): unknown {
+function evidencedModelValue(inspection: PdfTextInspection, value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const normalized = value.normalize("NFC").trim();
+  const key = compactKey(normalized);
+  return [...key].length >= 2 && [...normalized].length <= 512 && compactInspectionText(inspection).includes(key);
+}
+
+function authoritativeMaterialClass(
+  inspection: PdfTextInspection,
+  modelClass: unknown,
+  modelTitle?: unknown,
+  modelPublication?: Record<string, unknown>,
+): unknown {
   const text = inspectionText(inspection);
   const compact = compactInspectionText(inspection);
   if (/(?:文章题名|文章題名|篇名)/u.test(compact) && /(?:刊名|期号|期號|第[0-9一二三四五六七八九十百]+期)/u.test(compact)) {
@@ -335,7 +347,9 @@ function authoritativeMaterialClass(inspection: PdfTextInspection, modelClass: u
     return "traditional_book";
   }
   const hasModernPublicationStatement = uniqueLabeledValue(inspection, ["出版社", "出版者"]) !== null
-    || uniqueLabeledValue(inspection, ["出版日期", "出版年"]) !== null;
+    || uniqueLabeledValue(inspection, ["出版日期", "出版年"]) !== null
+    || evidencedModelValue(inspection, modelPublication?.publisher)
+    || evidencedModelValue(inspection, modelPublication?.publicationDate);
   if (hasModernPublicationStatement && evidencedAnalyticalTitle(inspection, modelTitle) !== null) return "scholarly_monograph";
   return modelClass;
 }
@@ -368,10 +382,10 @@ function authoritativeSourceEdition(inspection: PdfTextInspection, model: Record
 function normalizeSparseCanonical(value: unknown, inspection: PdfTextInspection): unknown {
   if (value === null) return null;
   const input = sparseRecord(value, ["materialClass", "canonicalTitle", "subtitle", "alternativeTitles", "dateStatement", "identifiers", "contributors", "publication", "series", "volume", "language", "carrierEdition", "sourceEdition"]);
-  const materialClass = authoritativeMaterialClass(inspection, input.materialClass, input.canonicalTitle);
+  const publication = sparseRecord(supplied(input, "publication", {}), ["publisher", "place", "publicationDate", "editionNumber", "printing"]);
+  const materialClass = authoritativeMaterialClass(inspection, input.materialClass, input.canonicalTitle, publication);
   const contributors = authoritativeContributors(inspection) ?? supplied(input, "contributors", []);
   if (!Array.isArray(contributors)) throw new BibliographicIntelligenceError("invalid_result");
-  const publication = sparseRecord(supplied(input, "publication", {}), ["publisher", "place", "publicationDate", "editionNumber", "printing"]);
   const authoritativePublisher = uniqueLabeledValue(inspection, ["出版社", "出版者"]);
   const authoritativePlace = uniqueLabeledValue(inspection, ["出版地"]);
   const authoritativeDate = uniqueLabeledValue(inspection, ["出版日期", "出版年"]);

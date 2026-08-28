@@ -61,7 +61,7 @@ test("verified backup receipt is safe, exact, fresh, and no-clobber", async () =
     assert.equal(fixture.receipt.backupCreatedAt, NOW.toISOString());
     assert.equal(fixture.receipt.receiptCreatedAt, NOW.toISOString());
     assert.equal(fixture.receipt.offHostStatus, "unknown");
-    assert.equal(fixture.receipt.databaseSchemaVersion, 30);
+    assert.equal(fixture.receipt.databaseSchemaVersion, 31);
     assert.equal(fixture.receipt.sourceCommit, SOURCE_COMMIT);
 
     const verified = await verifyBackupReceipt(
