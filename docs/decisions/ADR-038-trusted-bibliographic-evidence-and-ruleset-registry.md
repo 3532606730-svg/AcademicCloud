@@ -1,7 +1,7 @@
 # ADR-038 — Trusted Bibliographic Evidence Validation and Ruleset Registry
 
 **Date:** 2026-08-28
-**Status:** Accepted by Owner; implementation and production schema v32 cutover pending
+**Status:** Accepted by Owner; implementation and production schema v32 cutover complete; three-canary acceptance pending
 
 ## Context
 
@@ -63,6 +63,12 @@ status. Unsupported optional facts are omitted during the bounded evidence
 repair path; a repair may only remove facts or downgrade class to `unknown`,
 never introduce or change a fact. Unsupported required title evidence or a
 repair that still invents provenance fails the result closed.
+
+The local llama.cpp transport uses its compatible generic `json_object` response
+mode rather than the hosted-only nested JSON-Schema grammar. The trusted
+runtime still performs the complete schema, evidence, class-support, and
+authority validation before any callback can be persisted; transport mode does
+not weaken the structured-output contract.
 
 ### Human authority and first contributor enrichment
 

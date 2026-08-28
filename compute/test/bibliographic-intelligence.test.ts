@@ -6,6 +6,7 @@ import type { IntelligentCanonicalBibliography, IntelligentBibliographicFieldNam
 import {
   BibliographicIntelligenceError,
   deriveIntelligentBibliography,
+  LLAMA_RESPONSE_FORMAT,
   loadLlamaReasonerConfig,
   parseLlamaChatCompletionResponse,
   QWEN_CONTEXT_TOKENS,
@@ -13,6 +14,10 @@ import {
   type BibliographicReasoner,
 } from "../src/bibliographic-intelligence.js";
 import type { PdfTextInspection } from "../src/suggestion.js";
+
+test("llama transport uses the compatible generic JSON response mode", () => {
+  assert.deepEqual(LLAMA_RESPONSE_FORMAT, { type: "json_object" });
+});
 
 function emptyCanonical(title: string): IntelligentCanonicalBibliography {
   return {

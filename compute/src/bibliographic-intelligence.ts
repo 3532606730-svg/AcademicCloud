@@ -88,6 +88,10 @@ const MAX_REASONING_INPUT_CHARACTERS = 64 * 1024;
 const MAX_REASONING_OUTPUT_BYTES = 384 * 1024;
 export const QWEN_CONTEXT_TOKENS = 16_384;
 export const QWEN_MAX_COMPLETION_TOKENS = 8_192;
+// llama.cpp's grammar compiler rejects the deeply nested JSON Schema form used
+// by the hosted API. Keep the transport-level constraint to generic JSON and
+// retain the exact schema/authority validation in deriveIntelligentBibliography.
+export const LLAMA_RESPONSE_FORMAT = Object.freeze({ type: "json_object" as const });
 const SERVER_START_TIMEOUT_MILLISECONDS = 120_000;
 // Two GitHub-hosted CPU cores can require more than three minutes to emit the
 // complete strict bibliography object. Keep this below the worker's bounded
@@ -434,7 +438,7 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
                 { role: "system", content: "You extract bibliographic facts from bounded front/back matter. Return only schema-valid JSON. Never guess, never promote filenames, and keep physical carrier edition separate from historical source edition. /no_think" },
                 { role: "user", content: prompt },
               ],
-              response_format: { type: "json_schema", json_schema: { name: "academiccloud_bibliography", strict: true, schema: MODEL_OUTPUT_SCHEMA } },
+              response_format: LLAMA_RESPONSE_FORMAT,
               chat_template_kwargs: { enable_thinking: false },
             }),
           }),
