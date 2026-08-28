@@ -309,6 +309,9 @@ function authoritativeContributors(inspection: PdfTextInspection): Array<Record<
 function authoritativeMaterialClass(inspection: PdfTextInspection, modelClass: unknown): unknown {
   const text = inspectionText(inspection);
   const compact = compactInspectionText(inspection);
+  const title = uniqueLabeledValue(inspection, [
+    "文章题名", "文章題名", "题名页题名", "題名頁題名", "封面题名", "封面題名", "题名", "題名", "书名", "書名",
+  ]);
   if (/(?:文章题名|文章題名|篇名)/u.test(compact) && /(?:刊名|期号|期號|第[0-9一二三四五六七八九十百]+期)/u.test(compact)) {
     return "journal_article";
   }
@@ -320,6 +323,10 @@ function authoritativeMaterialClass(inspection: PdfTextInspection, modelClass: u
       && /(?:刻本|钞本|鈔本|抄本|写本|寫本|活字本|武英殿)/u.test(compact))) {
     return "traditional_book";
   }
+  const hasModernPublicationStatement = uniqueLabeledValue(inspection, ["出版社", "出版者"]) !== null
+    || uniqueLabeledValue(inspection, ["出版日期", "出版年"]) !== null;
+  const modernAnalyticalTitle = title !== null && /(?:研究|史论|史論|论稿|論稿|论著|論著|考论|考論|专论|專論|探究|考察|述论|述論|study|studies|research|analysis|monograph|исследован(?:ие|ия)?|анализ)/iu.test(title);
+  if (hasModernPublicationStatement && modernAnalyticalTitle) return "scholarly_monograph";
   return modelClass;
 }
 

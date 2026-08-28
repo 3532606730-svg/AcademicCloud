@@ -173,6 +173,48 @@ test("unknown work classification cannot be promoted to auto-apply by model conf
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
+test("a supported modern analytical title overrides a conservative primary-source guess", async () => {
+  const source = fixture({
+    ...emptyCanonical("明朝佛教史论稿"),
+    materialClass: "primary_source_modern_edition",
+    contributors: [],
+    publication: {
+      publisher: "宗教文化出版社",
+      place: null,
+      publicationDate: "2016.11",
+      editionNumber: null,
+      printing: null,
+    },
+  }, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
+  source.inspection.pages[0]!.text = "题名：明朝佛教史论稿\n出版社：宗教文化出版社\n出版日期：2016.11";
+
+  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+
+  assert.equal(result.status, "ambiguous");
+  assert.equal(result.canonical?.materialClass, "scholarly_monograph");
+  assert.equal(result.canonical?.canonicalTitle, "明朝佛教史论稿");
+  assert.deepEqual(result.canonical?.contributors, []);
+  assert.deepEqual(result.canonical?.carrierEdition, {
+    editionType: null,
+    editionStatement: null,
+    facsimileStatement: null,
+  });
+  assert.deepEqual(result.canonical?.sourceEdition, {
+    dynasty: null,
+    reignTitle: null,
+    reignYear: null,
+    absoluteYear: null,
+    printer: null,
+    imprint: null,
+    bookshop: null,
+    institution: null,
+    printingPlace: null,
+    editionType: null,
+    editionStatement: null,
+    holdingInformation: null,
+  });
+});
+
 test("gated embedded metadata owns its null page identity even when Qwen copies a page index", async () => {
   const embeddedAuthor = "Nicholas Poppe";
   const canonical = {
