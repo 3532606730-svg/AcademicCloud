@@ -435,3 +435,31 @@ all-workspace typecheck/build, migration-v26/compiled acceptance, shell syntax,
 state JSON, and diff checks pass. Production remains v25; a new immutable
 release, real warm-runtime benchmark, cutover, canaries, forced-loss recovery,
 and corpus execution remain pending.
+
+## ADR-038 — Trusted Bibliographic Evidence Validation and Ruleset Registry
+
+**Date:** 2026-08-28
+**Status:** Accepted by Owner; implementation and schema v32 cutover pending
+**Full record:** `docs/decisions/ADR-038-trusted-bibliographic-evidence-and-ruleset-registry.md`
+
+Qwen proposes bibliographic class and facts; the trusted Compute runtime now
+must validate exact per-field value support and bounded positive class-support
+signals. A page identity or overall confidence can never synthesize missing
+fact provenance. Unsupported or conflicting class proposals become unknown,
+and `primary_source_modern_edition` specifically requires both positive
+historical-source and modern-edition mediation evidence. Finite analytical-title
+keyword overrides are retired.
+
+Schema v32 is the one final ruleset-admission rebuild. An append-only composite
+ruleset registry preserves v1–v6 history, admits final v7/prompt-v4, rejects
+unknown identities by foreign key, and lets later rulesets be explicitly
+registered without rebuilding immutable AI evidence. Human contributor
+authority remains absolute, while an empty unowned existing contributor set may
+receive its first valid AI contributor.
+
+Project acceptance additionally requires the ordinary signed-in Owner browser
+path for both new-upload automatic cataloguing and existing-resource retry after
+the exact worker is deliberately placed in NORMAL, enabled, active, and
+concurrency one. One-shot jobs, SSH, database writes, and internal endpoints do
+not satisfy this gate. Offline Local Compute is represented as safely queued,
+not immediate cloud execution.

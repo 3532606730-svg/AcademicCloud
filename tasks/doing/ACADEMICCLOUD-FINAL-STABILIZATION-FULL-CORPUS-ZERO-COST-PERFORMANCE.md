@@ -343,20 +343,45 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   release-runtime skips, Backend 380/380, Frontend 284/284, workspace
   typecheck/build, compiled acceptance with 29 initial migrations and zero
   redeploy migrations, and diff checks.
+- Deployed subsequent exact v4/v5/v6 releases through schema/history 29–31
+  after fresh encrypted off-host gates. Live read-only reconciliation confirms
+  exact Core/frontend and selected Compute `fd97542…`, Core health/readiness
+  green, SQLite integrity `ok`, foreign keys zero, Local Compute
+  disabled/inactive/PAUSED, and no active Local Pull job. No v6 final product
+  canary was executed.
+- Owner FINAL ARCHITECTURE CORRECTION accepted ADR-038 after all four reported
+  blockers were reproduced in current code: second-classifier title/inspection
+  heuristics, false single-page fact provenance, blocked first contributor
+  enrichment on empty unowned profiles, and repeated evidence-table rebuilds
+  for ruleset admission.
 
 ## Remaining
 
-- Assemble and verify immutable Core and Local Compute releases from exact
-  checkpoint `cdb9986…`; reuse unchanged Paddle/Qwen/llama runtime bytes.
-- Keep the main worker disabled/inactive and `PAUSED`. Deploy the exact new
-  Core/Compute release only after a fresh encrypted schema-v28 off-host backup
-  gate passes, migrate to schema v29, then execute one isolated normal-product
-  retry of 《明朝佛教史论稿》 proving actual v4 inference, scholarly material
-  class, missing-author omission, title-only primary display, full/partial AI
-  record UI, and strict current-attempt success semantics.
-- After the v4/UI canary passes, measure real cold/second/third-job warm behavior,
-  RSS/VRAM/swap and idle unload, then prove forced-loss lease/heartbeat/restart
-  recovery before restoring NORMAL.
+- Implement final ruleset v7/prompt-v4: Qwen-proposed class with positive,
+  page-bound trusted-runtime validation; exact value-supported per-field
+  provenance with no one-page synthesis; and fail-closed omission/ambiguity for
+  unsupported facts.
+- Repair existing-profile contributor enrichment without weakening any human
+  contributor authority or exact AI authority/provenance binding.
+- Add the one final append-only schema32 migration with an immutable composite
+  ruleset registry preserving v1–v6 and admitting v7 without future evidence-
+  table rebuilds; keep unknown/unregistered identities fail-closed.
+- Pass full backend/frontend/Compute/contracts tests, typecheck/build/compiled
+  acceptance, assemble exact immutable Core/Compute releases, and complete a
+  fresh encrypted/off-host schema31 gate before schema32 cutover.
+- Keep the main worker disabled/inactive and `PAUSED` through three isolated
+  real canaries: modern scholarly monograph, historical/primary-source modern
+  edition, and OCR-needed multilingual resource. Verify class support, every
+  fact's provenance, no hallucination, display, human authority, callback,
+  current attempt, API, and UI.
+- After the three canaries pass, prove forced-loss/lease recovery, then place
+  the exact worker in NORMAL, enabled/active, concurrency one.
+- Pass the ordinary signed-in Owner website gate for both new-upload automatic
+  cataloguing and existing-resource retry, including queue/running/success,
+  refresh/relogin persistence, failure/retry UX, object-key preservation, and
+  display/download projection. No SSH/manual job/DB/internal/one-shot path may
+  satisfy this gate; offline Local Compute must remain visibly queued and
+  resume automatically.
 - Classify the root-disk, CSP, and systemd-metric audit findings by evidence.
 - Implement only measured, safe, material zero-cost performance improvements.
 - Qualify/deploy exact Core/frontend/Local Compute releases, retry the same
@@ -372,24 +397,20 @@ remains a mandatory hard stop.
 
 ## Last Verification
 
-2026-08-28: production Core/frontend and selected Compute are exact `2c0ebd2…`
-at schema/history 28; health/ready and the stopped main-worker invariant are
-green. The isolated target-only v3 canary completed real Qwen/callback/current
-attempt persistence and rendered its structured record, but the UI exposed a
-modern-scholarly classification/display defect. Exact pushed repair `cdb9986…`
-passes Backend 380/380, Frontend 284/284, Compute 99/99 plus two expected
-release-runtime skips, contracts 3/3, Linux workspace typecheck/build,
-migration-029 coverage, compiled acceptance, and diff checks. No
-GitHub-hosted production Compute or paid service was used; the fresh
-schema-v28 off-host backup gate, v29 migration, v4 canary, and full-corpus
-acceptance remain pending.
+2026-08-28 live reconciliation: production Core/frontend and selected Compute
+are exact `fd97542…` at schema/history 31. Core service, health/readiness,
+SQLite integrity, and foreign keys are green. Local Compute is exact
+`fd97542…`, `PAUSED`, disabled, inactive, and the Local Pull active queue is
+empty. P0-A, P0-B, P1-C, and P1-D all reproduce from current source/migrations;
+ADR-038 is accepted. No v6 final canary, NORMAL transition, forced-loss, corpus
+run, GitHub-hosted production Compute, or paid service was used.
 
 ## Next Action
 
-Assemble immutable Core/Compute releases from exact `cdb9986…` without
-rebuilding unchanged runtime bytes. Keep the main worker disabled/inactive,
-complete the fresh encrypted/off-host schema-v28 backup gate, migrate to v29,
-and run the isolated real 《明朝佛教史论稿》 v4 Qwen UI/classification retry.
-Only after that pass may NORMAL, warm/idle benchmarks, forced-loss recovery,
-corpus recomputation, and full-corpus execution resume. Do not launch
-GitHub-hosted production Compute.
+Implement ADR-038 final v7/prompt-v4 plus schema32 registry with failure-first
+regressions for class support, single-page value provenance, hallucinated
+author/edition/language, first contributor enrichment, immutable history, and
+unknown ruleset rejection. Keep production fd97542/schema31 healthy and the
+main worker PAUSED/disabled/inactive. Do not run v6 canary, NORMAL, forced-loss,
+or corpus execution before the corrected exact release and three isolated
+canaries pass.

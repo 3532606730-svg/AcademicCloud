@@ -28,20 +28,26 @@ INTERNAL_BETA_STARTED=false
 ```
 
 The Local Compute Owner override continues this program and changes only the
-production Compute strategy. Exact frontend/Core and Local Compute
-`2c0ebd26377ceb98a13a320753796451fc7e503e` are active/selected at schema
-v28/history 001–028 with `COMPUTE_PROVIDER=local_pull`. Local Compute systemd
-remains `disabled`/`inactive` and its persistent environment remains `PAUSED`.
-The isolated exact-attempt v3 canary completed real Qwen inference, structured
-validation, callback, and current-attempt persistence while keeping the main
-worker stopped. The browser record then exposed a second quality defect:
-modern scholarly monograph 《明朝佛教史论稿》 was classified as
-`primary_source_modern_edition` and displayed as title plus publisher/date.
-Exact pushed repair `cdb99869607231ebb39c1b47d234100077ced5b8` introduces
-ruleset v4 and append-only migration 029. A modern publication statement plus
-a clearly analytical title now classifies as `scholarly_monograph`, while
-explicit primary/traditional edition evidence retains precedence. Full-corpus
-acceptance and Internal Beta readiness remain revoked/pending.
+production Compute strategy. Live read-only reconciliation on 2026-08-28
+confirmed exact frontend/Core and selected Local Compute
+`fd97542ea37f0422d0ef6b7c9af9f68cf032b6b1` at schema/history 31 with
+`COMPUTE_PROVIDER=local_pull`. `academiccloud.service` is active/running with
+health and readiness green, SQLite integrity is `ok`, and foreign-key
+violations are zero. Local Compute remains exact `fd97542…`, systemd
+`disabled`/`inactive`, and persistently `PAUSED`; the active Local Pull queue is
+empty.
+
+Rulesets v4–v6 are deployed historical attempts, not final acceptance. The
+Owner's FINAL ARCHITECTURE CORRECTION and ADR-038 block the v6 single-book
+canary, NORMAL, forced-loss, and corpus execution. Code review confirmed that
+the runtime had become a second semantic classifier through a finite analytical
+title vocabulary and whole-inspection edition markers; single-page evidence
+could synthesize provenance for facts Qwen never evidenced; an existing empty
+unowned contributor set could not receive its first valid AI contributor; and
+migrations 029–031 rebuilt immutable AI evidence only to extend version checks.
+Final ruleset v7/prompt-v4 and one schema32 registry migration must repair all
+four boundaries before new production work. Full-corpus and normal-browser
+product acceptance remain revoked/pending.
 
 The corrupt-evidence defect is repaired, deployed, and canary-verified at exact
 checkpoint `6c71ac94c60d49e65e7eca59305b59ba6e461167`.
@@ -75,7 +81,7 @@ duplicates among the 12, and 105 unique acceptance resources. No paid usage,
 source-byte mutation, OSS identity mutation, or human-authority rewrite
 occurred.
 
-## Local Compute pivot — production v28 active; v4 classification repair pending release
+## Local Compute pivot — production v31 active; final architecture correction pending
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -162,20 +168,29 @@ and Local attempts presented to the legacy claim route fail closed. A duplicate
 successful callback remains idempotent. The service exposes no laptop inbound
 endpoint and retains separate machine and result capabilities.
 
-The v3 admission repair is deployed at exact `2c0ebd2…`. Its isolated one-shot
-canary passed actual Qwen, callback/current-attempt persistence, AI-state
-semantic isolation, and structured-record rendering, but failed the Owner
-modern scholarly display gate because the model conservatively chose a modern
-primary-source edition without edition evidence. Exact pushed ruleset-v4 repair
-`cdb9986…` passes Backend 380/380, Frontend 284/284, Compute contracts 3/3,
-Compute 99/99 plus two expected release-runtime skips, all-workspace Linux
-typecheck/build, migration 029 preservation/admission coverage, compiled
-acceptance with 29 first-run migrations and zero redeploy migrations, and diff
-checks. Next is an immutable Core/Compute release from exact `cdb9986…`, a
-fresh encrypted/off-host schema-v28 backup gate, schema v29 migration, and an
-isolated v4 canary while the main worker remains disabled. Only that canary may
-authorize resuming NORMAL, forced-loss recovery, benchmarks, and the
-authoritative full corpus. GitHub-hosted production Compute remains unused.
+The v3 admission repair and v4/v5/v6 classification attempts are now historical
+evidence. Production advanced through exact encrypted off-host gates and
+append-only migrations 029–031 to exact `fd97542…`/schema31, but no v6 final
+canary was run. ADR-038 replaces the per-book correction loop: Qwen proposes
+class and facts; the trusted runtime validates positive page-bound class
+support and exact field-value support, otherwise class becomes unknown and
+unsupported facts cannot receive provenance. Human contributor authority is
+preserved while an empty unowned profile may receive its first valid AI
+contributor. Schema32 introduces an append-only composite ruleset registry,
+preserves immutable v1–v6 evidence, admits final v7/prompt-v4, and removes the
+need to rebuild the evidence table for later bounded admissions.
+
+After full local verification, exact release, fresh encrypted/off-host
+schema31 backup, and schema32 cutover, three isolated real canaries must cover
+modern scholarship, a modern edition of a historical/primary source, and an
+OCR-needed multilingual resource. Forced-loss follows. Only then may the exact
+worker enter NORMAL, enabled/active, concurrency one. Final acceptance still
+requires both new-upload automatic cataloguing and existing-resource retry
+through the ordinary signed-in Owner website without Codex-created jobs, SSH,
+database writes, internal endpoints, or one-shot worker commands. When the
+Owner machine is offline, the product must show safe queueing and automatic
+resume rather than implying immediate cloud execution. GitHub-hosted production
+Compute remains unused.
 
 ## Historical incident evidence (superseded as current acceptance)
 
