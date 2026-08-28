@@ -44,7 +44,7 @@
     },
     "finalArchitectureCorrection": {
       "decision": "ADR-038",
-      "status": "implementation_pending",
+      "status": "implementation_verified_pending_release",
       "productionFrozenAt": "fd97542ea37f0422d0ef6b7c9af9f68cf032b6b1",
       "productionSchema": 31,
       "finalRuleset": "l1-intelligent-library01-v7",
@@ -52,7 +52,10 @@
       "developmentSchema": 32,
       "v6CanaryAllowed": false,
       "normalAllowedBeforeThreeCanaries": false,
-      "normalOwnerBrowserPathRequired": true
+      "normalOwnerBrowserPathRequired": true,
+      "implementationVerification": "Backend 381/381; Frontend 284/284; Compute 103/103 plus 2 expected release-runtime skips; Compute contracts 3/3; workspace typecheck/build; compiled acceptance first migration count 32 and redeploy 0; ops auditor 48/48",
+      "productionUnchanged": true,
+      "mainWorker": "PAUSED/disabled/inactive"
     },
     "offHostBackupGate": {
       "status": "pass",
@@ -105,12 +108,12 @@
       "canonicalBibliographyProjectionV3": "fd97542ea37f0422d0ef6b7c9af9f68cf032b6b1 deployed at schema v31",
       "bibliographyPipelineIdempotencyV3": "fd97542ea37f0422d0ef6b7c9af9f68cf032b6b1 deployed; historical v3 canary pass",
       "bibliographyMaterialClassificationV4V5V6": "historical attempts deployed through fd97542/schema31; not final acceptance",
-      "bibliographyFinalArchitectureV7": "ADR-038 accepted; implementation and schema32 pending",
-      "backend": "fd97542 baseline: typecheck/build pass; 380/380 tests pass",
+      "bibliographyFinalArchitectureV7": "ADR-038 implemented and locally verified; exact release and production gates pending",
+      "backend": "v7 working tree: typecheck/build pass; 381/381 tests pass",
       "frontend": "fd97542 baseline: typecheck/build pass; 284/284 tests pass",
-      "compute": "fd97542 baseline: typecheck/build pass; 102/102 pass plus 2 expected release-runtime skips",
+      "compute": "v7 working tree: typecheck/build pass; 103/103 pass plus 2 expected release-runtime skips",
       "computeContracts": "3/3 pass",
-      "compiledAcceptance": "fd97542 baseline pass; first migration count 31; redeploy migration count 0",
+      "compiledAcceptance": "v7 working tree pass; first migration count 32; redeploy migration count 0",
       "workspaceBuild": "pass",
       "diffCheck": "pass"
     },
@@ -235,17 +238,17 @@
       "nativeText": "script-neutral Unicode quality gate; multilingual plus real Russian/Mongolistic PDF fixture pass",
       "runtimeLifecycle": "lazy concurrency-one Paddle/Qwen reuse; five-minute idle TTL; PAUSED cold; component failure invalidation; shutdown cgroup cleanup",
       "activationGate": "15-second structured systemd stability, restart-count, exact release, non-root identity and environment-permission verification with rollback",
-      "reviewCheckpoint": "ADR-038 final trusted-evidence architecture accepted; implementation pending on fd97542",
-      "evidenceQuality": "script-neutral corruption/usability remains; v7 must require exact field-value support and positive page-bound class support without per-book title overrides",
+      "reviewCheckpoint": "ADR-038 final trusted-evidence architecture implemented and locally verified; exact release pending on fd97542",
+      "evidenceQuality": "script-neutral corruption/usability remains; v7 requires exact field-value support and positive page-bound class support without per-book title overrides",
       "productionCore": "fd97542ea37f0422d0ef6b7c9af9f68cf032b6b1; schema 31; local_pull; active; health/ready/integrity/foreign-keys pass",
       "activeComputeRelease": "fd97542ea37f0422d0ef6b7c9af9f68cf032b6b1; systemd disabled/inactive; environment PAUSED; active queue empty",
       "delayedExpiredCallback": "fails closed before and after attempt replacement",
       "legacyClaimBypass": "local_pull attempts rejected on legacy claim endpoint",
       "recovery": "expired lease atomically queues a new attempt generation for redispatch; matching terminal success/failure retries are idempotent",
-      "tests": "fd97542 baseline: Backend 380/380; Frontend 284/284; Compute 102/102 plus 2 expected release-runtime skips; Compute contracts 3/3; all-workspace Linux typecheck/build; compiled acceptance first migration count 31 and redeploy count 0; final ADR-038 verification pending"
+      "tests": "v7 working tree: Backend 381/381; Frontend 284/284; Compute 103/103 plus 2 expected release-runtime skips; Compute contracts 3/3; all-workspace typecheck/build; compiled acceptance first migration count 32 and redeploy count 0; ops auditor 48/48"
     },
     "ownerBoundaryAction": null,
-    "next": "implement ADR-038 final ruleset v7/prompt-v4 and schema32 registry with failure-first regressions; keep production fd97542/schema31 healthy and worker disabled/inactive/PAUSED; only after full verification, exact release, fresh encrypted schema31 off-host gate, schema32 cutover, and three isolated canaries may forced-loss and NORMAL proceed; final acceptance requires normal Owner browser new-upload and existing-resource retry paths"
+    "next": "review and checkpoint verified ADR-038 v7/prompt-v4 implementation; assemble immutable release, pass fresh encrypted schema31 off-host gate, then schema32 cutover and three isolated canaries while production remains fd97542/schema31 and worker PAUSED/disabled/inactive; final acceptance requires normal Owner browser new-upload and existing-resource retry paths"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",

@@ -34,7 +34,6 @@ function emptyCanonical(title: string): IntelligentCanonicalBibliography {
 
 function populatedFields(canonical: IntelligentCanonicalBibliography) {
   const fields: Array<{ fieldName: IntelligentBibliographicFieldName; scopeKey: string }> = [
-    { fieldName: "materialClass", scopeKey: "" },
     { fieldName: "canonicalTitle", scopeKey: "" },
   ];
   if (canonical.subtitle !== null) fields.push({ fieldName: "subtitle", scopeKey: "" });
@@ -58,12 +57,92 @@ function populatedFields(canonical: IntelligentCanonicalBibliography) {
   }));
 }
 
+function defaultClassSignals(materialClass: IntelligentCanonicalBibliography["materialClass"]): string[] {
+  const signals: Record<IntelligentCanonicalBibliography["materialClass"], string[]> = {
+    scholarly_monograph: ["scholarly_analysis"],
+    edited_volume: ["scholarly_analysis", "edited_collection"],
+    journal_article: ["serial_article"],
+    book_chapter: ["chapter_container"],
+    thesis_dissertation: ["thesis"],
+    conference_paper: ["conference"],
+    review: ["review"],
+    reference_work: ["reference_work"],
+    dictionary_lexicon: ["dictionary_lexicon"],
+    primary_source_modern_edition: ["historical_primary_work", "edition_mediation"],
+    traditional_book: ["historical_primary_work", "traditional_artifact"],
+    archival_document: ["archival_document"],
+    inscription_epigraphy: ["inscription_epigraphy"],
+    rubbing: ["rubbing"],
+    manuscript: ["manuscript"],
+    collected_documents: ["historical_primary_work", "collected_documents"],
+    catalogue_bibliography: ["catalogue_bibliography"],
+    other: ["other_material"],
+    unknown: [],
+  };
+  return signals[materialClass];
+}
+
+function sourceRoleLabel(role: IntelligentCanonicalBibliography["contributors"][number]["role"]): string {
+  const labels: Record<typeof role, string> = {
+    annotator: "annotator",
+    author: "author",
+    collator: "collator",
+    editor: "editor",
+    translator: "translator",
+    compiler: "compiler",
+    commentator: "commentator",
+    organizer: "organizer",
+    punctuator: "punctuator",
+    reviser: "reviser",
+    selector: "selector",
+    other: "contributor",
+  };
+  return labels[role];
+}
+
 function fixture(canonical: IntelligentCanonicalBibliography, status: "auto_apply" | "ambiguous" = "auto_apply", warnings: string[] = []) {
-  const page = { pageIndex: 1, text: `${canonical.canonicalTitle}\n${canonical.contributors[0]?.label ?? "编者"} 著`, evidenceOrigin: "native_text" as const, ocrEngine: null, ocrConfidence: null };
+  const evidencedCanonical: IntelligentCanonicalBibliography = {
+    ...canonical,
+    contributors: canonical.contributors.map((entry) => ({
+      ...entry,
+      roleLabel: entry.roleLabel ?? sourceRoleLabel(entry.role),
+    })),
+  };
+  const pageValues = [
+    evidencedCanonical.canonicalTitle,
+    evidencedCanonical.subtitle,
+    ...evidencedCanonical.alternativeTitles,
+    evidencedCanonical.dateStatement,
+    ...evidencedCanonical.identifiers.map((entry) => entry.value),
+    ...evidencedCanonical.contributors.flatMap((entry) => [entry.label, entry.roleLabel]),
+    ...Object.values(evidencedCanonical.publication),
+    evidencedCanonical.series,
+    evidencedCanonical.volume,
+    evidencedCanonical.language,
+    evidencedCanonical.carrierEdition.editionStatement,
+    evidencedCanonical.carrierEdition.facsimileStatement,
+    ...Object.entries(evidencedCanonical.sourceEdition)
+      .filter(([key]) => key !== "editionType")
+      .map(([, value]) => value === null ? null : String(value)),
+  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+  const page = {
+    pageIndex: 1,
+    text: [`题名：${evidencedCanonical.canonicalTitle}`, ...new Set(pageValues)].join("\n"),
+    evidenceOrigin: "native_text" as const,
+    ocrEngine: null,
+    ocrConfidence: null,
+  };
+  const classPage = {
+    pageIndex: 2,
+    text: `This bounded preface paragraph states the intellectual nature of the supplied work as ${evidencedCanonical.materialClass}. It supplies independent narrative context for classification and is not a title, publisher, publication date, identifier, edition label, or person line.`,
+    evidenceOrigin: "native_text" as const,
+    ocrEngine: null,
+    ocrConfidence: null,
+  };
   const inspection: PdfTextInspection = {
-    pageCount: 1,
-    pageIndices: [1],
-    pages: [page],
+    pageCount: 2,
+    pageIndices: [1, 2],
+    pages: [page, classPage],
     embeddedMetadata: {},
     complete: true,
     hasUsableTextLayer: true,
@@ -71,12 +150,33 @@ function fixture(canonical: IntelligentCanonicalBibliography, status: "auto_appl
   const model = {
     status,
     overallConfidence: status === "auto_apply" ? 95 : 60,
-    canonical,
-    fields: populatedFields(canonical),
+    canonical: evidencedCanonical,
+    classSupport: defaultClassSignals(evidencedCanonical.materialClass).map((signal) => ({
+      signal,
+      confidence: 95,
+      sourcePageIndex: signal === "edition_mediation" || signal === "traditional_artifact" ? 1 : 2,
+      evidenceOrigin: "native_text",
+    })),
+    fields: populatedFields(evidencedCanonical),
     warnings,
   };
-  const reasoner: BibliographicReasoner = { async infer() { return model; } };
-  return { inspection, reasoner };
+  const reasoner: BibliographicReasoner = {
+    async infer() {
+      return {
+        ...model,
+        classSupport: model.classSupport.map((entry) => ({
+          ...entry,
+          evidenceText: inspection.pages.find((candidate) => candidate.pageIndex === entry.sourcePageIndex)!
+            .text.normalize("NFKC").replace(/\s+/gu, " ").trim(),
+        })),
+        fields: model.fields.map((entry) => ({
+          ...entry,
+          evidenceText: page.text.normalize("NFKC").replace(/\s+/gu, " ").trim(),
+        })),
+      };
+    },
+  };
+  return { inspection, reasoner, model };
 }
 
 test("llama GPU offload is explicit, bounded, and CPU-safe by default", () => {
@@ -126,7 +226,7 @@ test("Qwen never receives corrupt OCR or suspicious bare embedded metadata as us
   const result = await deriveIntelligentBibliography(inspection, {
     async infer(value) {
       prompt = JSON.parse(value) as Record<string, unknown>;
-      return { status: "no_bibliography", overallConfidence: 0, canonical: null, fields: [], warnings: [] };
+      return { status: "no_bibliography", overallConfidence: 0, canonical: null, classSupport: [], fields: [], warnings: [] };
     },
   });
   assert.equal(result.status, "no_bibliography");
@@ -137,7 +237,7 @@ test("Qwen never receives corrupt OCR or suspicious bare embedded metadata as us
   assert.equal(inspection.embeddedMetadata.author, "亦郊真", "raw bounded provenance was mutated");
 });
 
-test("Qwen v3 prompt classifies the intellectual work before its modern manifestation or person metadata", async () => {
+test("Qwen v4 prompt requests positive class support independently from manifestation or person metadata", async () => {
   const inspection: PdfTextInspection = {
     pageCount: 2,
     pageIndices: [1, 2],
@@ -156,133 +256,182 @@ test("Qwen v3 prompt classifies the intellectual work before its modern manifest
   await deriveIntelligentBibliography(inspection, {
     async infer(value) {
       prompt = JSON.parse(value) as Record<string, unknown>;
-      return { status: "no_bibliography", overallConfidence: 0, canonical: null, fields: [], warnings: [] };
+      return { status: "no_bibliography", overallConfidence: 0, canonical: null, classSupport: [], fields: [], warnings: [] };
     },
   });
   assert.equal(prompt?.classificationRules && (prompt.classificationRules as Record<string, unknown>).intellectualWorkBeforeManifestation, true);
   assert.equal((prompt?.classificationRules as Record<string, unknown>).historicalModernManifestation, "primary_source_modern_edition");
-  assert.match(String(prompt?.task), /modern publisher.*does not turn that work into a scholarly_monograph/u);
+  assert.match(String(prompt?.task), /modern publisher.*neither necessary nor sufficient class support/u);
   assert.match(String(prompt?.task), /person value or embedded metadata author field alone never proves/u);
+  assert.deepEqual((prompt?.classificationRules as Record<string, unknown>).primarySourceModernEditionRequires, [
+    "historical_primary_work", "edition_mediation",
+  ]);
 });
 
 test("unknown work classification cannot be promoted to auto-apply by model confidence", async () => {
-  const source = fixture({ ...emptyCanonical("尚待分类的资料"), materialClass: "unknown" });
+  const source = fixture({ ...emptyCanonical("尚待分类的资料"), materialClass: "unknown", contributors: [] });
   source.inspection.pages[0]!.text = "题名：尚待分类的资料";
   const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
   assert.equal(result.status, "ambiguous");
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
-test("a supported modern analytical title overrides a conservative primary-source guess", async () => {
+test("publisher and date cannot retain a primary-source modern-edition proposal without positive edition evidence", async () => {
   const source = fixture({
-    ...emptyCanonical("明朝佛教史论稿"),
+    ...emptyCanonical("A General History of Inner Asia"),
     materialClass: "primary_source_modern_edition",
     contributors: [],
     publication: {
-      publisher: "宗教文化出版社",
+      publisher: "Academic Press",
       place: null,
-      publicationDate: "2016.11",
+      publicationDate: "2026",
       editionNumber: null,
       printing: null,
     },
-  }, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
-  source.inspection.pages[0]!.text = "题名：明朝佛教史论稿\n出版社：宗教文化出版社\n出版日期：2016.11";
+  }, "ambiguous", ["uncertain_material_class"]);
+  source.inspection.pages[0]!.text = "A General History of Inner Asia\nAcademic Press\n2026";
+  source.model.classSupport = ["historical_primary_work", "edition_mediation"].map((signal) => ({
+    signal,
+    confidence: 95,
+    sourcePageIndex: 1,
+    evidenceOrigin: "native_text",
+  }));
 
   const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
 
+  assert.equal(result.canonical?.materialClass, "unknown");
   assert.equal(result.status, "ambiguous");
-  assert.equal(result.canonical?.materialClass, "scholarly_monograph");
-  assert.equal(result.canonical?.canonicalTitle, "明朝佛教史论稿");
-  assert.deepEqual(result.canonical?.contributors, []);
-  assert.deepEqual(result.canonical?.carrierEdition, {
-    editionType: null,
-    editionStatement: null,
-    facsimileStatement: null,
-  });
-  assert.deepEqual(result.canonical?.sourceEdition, {
-    dynasty: null,
-    reignTitle: null,
-    reignYear: null,
-    absoluteYear: null,
-    printer: null,
-    imprint: null,
-    bookshop: null,
-    institution: null,
-    printingPlace: null,
-    editionType: null,
-    editionStatement: null,
-    holdingInformation: null,
-  });
+  assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
-test("an unlabeled Qwen title can classify a modern analytical work only when usable evidence contains it", async () => {
-  const source = fixture({
-    ...emptyCanonical("明朝佛教史论稿"),
-    materialClass: "primary_source_modern_edition",
-    contributors: [],
+test("one page cannot synthesize provenance for hallucinated author edition or language", async () => {
+  const canonical = {
+    ...emptyCanonical("A General History of Inner Asia"),
+    contributors: [{ label: "Invented Author", role: "author" as const, roleLabel: null }],
     publication: {
-      publisher: "宗教文化出版社",
+      publisher: "Academic Press",
       place: null,
-      publicationDate: "2016.11",
+      publicationDate: "2026",
       editionNumber: null,
       printing: null,
     },
-  }, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
-  source.inspection.pages[0]!.text = "明朝佛教史论稿\n出版社：宗教文化出版社\n出版日期：2016.11";
+    language: "Invented Language",
+    carrierEdition: {
+      editionType: "critical_edition" as const,
+      editionStatement: "Invented Critical Edition",
+      facsimileStatement: null,
+    },
+  };
+  const inspection: PdfTextInspection = {
+    pageCount: 1,
+    pageIndices: [1],
+    pages: [{
+      pageIndex: 1,
+      text: "A General History of Inner Asia\nAcademic Press\n2026",
+      evidenceOrigin: "native_text",
+      ocrEngine: null,
+      ocrConfidence: null,
+    }],
+    embeddedMetadata: {},
+    complete: true,
+    hasUsableTextLayer: true,
+  };
+  const supportedFields = populatedFields(canonical).filter((field) => [
+    "materialClass", "canonicalTitle", "publication.publisher", "publication.publicationDate",
+  ].includes(field.fieldName));
+  const reasoner: BibliographicReasoner = {
+    async infer() {
+      const evidenceText = inspection.pages[0]!.text;
+      return {
+        status: "auto_apply",
+        overallConfidence: 96,
+        canonical,
+        classSupport: [{
+          signal: "scholarly_analysis",
+          confidence: 96,
+          sourcePageIndex: 1,
+          evidenceOrigin: "native_text",
+          evidenceText,
+        }],
+        fields: supportedFields.map((field) => ({ ...field, evidenceText })),
+        warnings: [],
+      };
+    },
+  };
+
+  await assert.rejects(
+    () => deriveIntelligentBibliography(inspection, reasoner),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
+});
+
+test("positive scholarly class support retains a Qwen proposal without title-keyword dependence", async () => {
+  const source = fixture({
+    ...emptyCanonical("A General History of Inner Asia"),
+    materialClass: "scholarly_monograph",
+    contributors: [],
+    publication: {
+      publisher: "Academic Press",
+      place: null,
+      publicationDate: "2026",
+      editionNumber: null,
+      printing: null,
+    },
+  });
+  source.inspection.pages[0]!.text = "A General History of Inner Asia\nAcademic Press\n2026";
 
   const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
 
+  assert.equal(result.status, "auto_apply");
   assert.equal(result.canonical?.materialClass, "scholarly_monograph");
-  assert.equal(result.canonical?.canonicalTitle, "明朝佛教史论稿");
+  assert.equal(result.canonical?.canonicalTitle, "A General History of Inner Asia");
+  assert.equal(JSON.stringify(result).includes("evidenceText"), false, "transient excerpts must not persist");
+  assert.equal(JSON.stringify(result).includes("classSupport"), false, "transient class rationale must not persist");
 });
 
-test("an analytical model title absent from usable evidence cannot override the model work class", async () => {
+test("primary-source modern edition is retained only with both work and mediation support", async () => {
   const source = fixture({
-    ...emptyCanonical("明朝佛教史论稿"),
+    ...emptyCanonical("元朝秘史"),
     materialClass: "primary_source_modern_edition",
     contributors: [],
-    publication: {
-      publisher: "宗教文化出版社",
-      place: null,
-      publicationDate: "2016.11",
-      editionNumber: null,
-      printing: null,
-    },
-  }, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
-  source.inspection.pages[0]!.text = "某历史文献整理本\n出版社：宗教文化出版社\n出版日期：2016.11";
+    carrierEdition: { editionType: "critical_edition", editionStatement: "点校本", facsimileStatement: null },
+  });
+  source.inspection.pages[0]!.text = "题名：元朝秘史\n版本：点校本";
 
   const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
 
   assert.equal(result.canonical?.materialClass, "primary_source_modern_edition");
+  assert.equal(result.canonical?.carrierEdition.editionStatement, "点校本");
 });
 
-test("unlabeled title-page publication text supports the modern analytical override only by exact model value", async () => {
-  const canonical = {
-    ...emptyCanonical("明朝佛教史论稿"),
-    materialClass: "primary_source_modern_edition" as const,
+test("conflicting scholarly and historical-work support downgrades class to unknown", async () => {
+  const source = fixture({
+    ...emptyCanonical("A General History of Inner Asia"),
+    materialClass: "scholarly_monograph",
     contributors: [],
-    publication: {
-      publisher: "宗教文化出版社",
-      place: null,
-      publicationDate: "2016.11",
-      editionNumber: null,
-      printing: null,
-    },
-  };
-  const supported = fixture(canonical, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
-  supported.inspection.pages[0]!.text = "明朝佛教史论稿\n宗教文化出版社\n2016年11月";
-  const unsupported = fixture(canonical, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
-  unsupported.inspection.pages[0]!.text = "明朝佛教史论稿\n某出版机构\n2016年11月";
+  });
+  source.inspection.pages[0]!.text = "A General History of Inner Asia";
+  source.model.classSupport.push({
+    signal: "historical_primary_work",
+    confidence: 95,
+    sourcePageIndex: 2,
+    evidenceOrigin: "native_text",
+  });
 
-  assert.equal((await deriveIntelligentBibliography(supported.inspection, supported.reasoner)).canonical?.materialClass, "scholarly_monograph");
-  assert.equal((await deriveIntelligentBibliography(unsupported.inspection, unsupported.reasoner)).canonical?.materialClass, "primary_source_modern_edition");
+  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+
+  assert.equal(result.canonical?.materialClass, "unknown");
+  assert.equal(result.status, "ambiguous");
+  assert.ok(result.warnings.includes("conflicting_evidence"));
 });
 
-test("gated embedded metadata owns its null page identity even when Qwen copies a page index", async () => {
+test("gated embedded metadata requires exact value support and a null page identity", async () => {
   const embeddedAuthor = "Nicholas Poppe";
   const canonical = {
     ...emptyCanonical("The Secret History of the Mongols"),
-    contributors: [{ label: embeddedAuthor, role: "author" as const, roleLabel: null }],
+    materialClass: "unknown" as const,
+    contributors: [],
   };
   const inspection: PdfTextInspection = {
     pageCount: 2,
@@ -299,22 +448,57 @@ test("gated embedded metadata owns its null page identity even when Qwen copies 
     hasUsableTextLayer: false,
   };
   const model = {
-    status: "auto_apply",
+    status: "ambiguous",
     overallConfidence: 95,
     canonical,
+    classSupport: [],
     fields: populatedFields(canonical).map((field) => ({
       ...field,
-      sourcePageIndex: 1,
+      sourcePageIndex: null,
       evidenceOrigin: "embedded_pdf_metadata",
+      evidenceText: canonical.canonicalTitle,
     })),
     warnings: [],
   };
 
   const result = await deriveIntelligentBibliography(inspection, { async infer() { return model; } });
-  assert.equal(result.status, "auto_apply");
+  assert.equal(result.status, "ambiguous");
   assert.ok(result.fields.every((field) => (
     field.sourcePageIndex === null && field.evidenceOrigin === "embedded_pdf_metadata"
   )));
+
+  const metadataOnlyPerson = {
+    ...canonical,
+    contributors: [{ label: embeddedAuthor, role: "author" as const, roleLabel: null }],
+  };
+  await assert.rejects(
+    deriveIntelligentBibliography(inspection, {
+      async infer() {
+        return {
+          ...model,
+          canonical: metadataOnlyPerson,
+          fields: populatedFields(metadataOnlyPerson).map((field) => ({
+            ...field,
+            sourcePageIndex: null,
+            evidenceOrigin: "embedded_pdf_metadata",
+            evidenceText: field.fieldName === "canonicalTitle" ? canonical.canonicalTitle : embeddedAuthor,
+          })),
+        };
+      },
+    }),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
+
+  await assert.rejects(
+    deriveIntelligentBibliography(inspection, {
+      async infer() {
+        return { ...model, fields: model.fields.map((field) => ({ ...field, sourcePageIndex: 1 })) };
+      },
+    }),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
 
   let calls = 0;
   await assert.rejects(
@@ -330,8 +514,11 @@ test("gated embedded metadata owns its null page identity even when Qwen copies 
   assert.equal(calls, 2);
 });
 
-test("Qwen receives only authority-eligible pages and exact field scopes", async () => {
-  const canonical = emptyCanonical("近代中国史研究");
+test("Qwen receives usable class pages while fact evidence stays exact-field scoped", async () => {
+  const canonical = {
+    ...emptyCanonical("近代中国史研究"),
+    contributors: [{ label: "王明", role: "author" as const, roleLabel: "作者" }],
+  };
   const titlePage = {
     pageIndex: 1,
     text: "题名：近代中国史研究\n作者：王明",
@@ -344,7 +531,7 @@ test("Qwen receives only authority-eligible pages and exact field scopes", async
     pageIndices: [1, 2],
     pages: [titlePage, {
       pageIndex: 2,
-      text: "本页是没有书目标签的正文段落。",
+      text: "This preface explains that the book analyzes problems in modern Chinese history, compares primary evidence and scholarly methods, and develops an independent argument beyond its title, publisher, date, identifier, edition, or contributor lines.",
       evidenceOrigin: "native_text",
       ocrEngine: null,
       ocrConfidence: null,
@@ -363,7 +550,14 @@ test("Qwen receives only authority-eligible pages and exact field scopes", async
         status: "auto_apply",
         overallConfidence: 95,
         canonical,
-        fields: [],
+        classSupport: [{
+          signal: "scholarly_analysis",
+          confidence: 95,
+          sourcePageIndex: 2,
+          evidenceOrigin: "native_text",
+          evidenceText: inspection.pages[1]!.text,
+        }],
+        fields: populatedFields(canonical).map((field) => ({ ...field, evidenceText: titlePage.text })),
         warnings: [],
       };
     },
@@ -373,21 +567,31 @@ test("Qwen receives only authority-eligible pages and exact field scopes", async
   assert.equal(result.status, "auto_apply");
   assert.equal(inferenceCalls, 1);
   const pages = observedPrompt?.pages as Array<Record<string, unknown>>;
-  assert.deepEqual(pages.map(({ pageIndex, pageClass, evidenceOrigin }) => ({ pageIndex, pageClass, evidenceOrigin })), [{
+  assert.deepEqual(pages.map(({ pageIndex, pageClass, evidenceOrigin, fieldEvidenceEligible }) => ({ pageIndex, pageClass, evidenceOrigin, fieldEvidenceEligible })), [{
     pageIndex: 1,
     pageClass: "title_page",
     evidenceOrigin: "native_text",
+    fieldEvidenceEligible: true,
+  }, {
+    pageIndex: 2,
+    pageClass: "ordinary_body",
+    evidenceOrigin: "native_text",
+    fieldEvidenceEligible: false,
   }]);
   assert.deepEqual(observedPrompt?.embeddedMetadata, {});
   assert.match(String(observedPrompt?.task), /scopeKey MUST be the empty string/u);
-  assert.equal(result.fields.length, populatedFields(canonical).length);
-  assert.ok(result.fields.every((field) => field.sourcePageIndex === 1 && field.evidenceOrigin === "native_text"));
+  assert.equal(result.fields.length, populatedFields(canonical).length + 1);
+  assert.equal(result.fields.find((field) => field.fieldName === "materialClass")?.sourcePageIndex, 2);
+  assert.equal(result.fields.find((field) => field.fieldName === "materialClass")?.sourceType, "class_support");
+  assert.ok(result.fields.filter((field) => field.fieldName !== "materialClass")
+    .every((field) => field.sourcePageIndex === 1 && field.evidenceOrigin === "native_text"));
   assert.equal(new Set(result.fields.map((field) => `${field.fieldName}:${field.scopeKey}`)).size, result.fields.length);
 });
 
 test("missing field provenance gets one bounded schema-key repair pass", async () => {
   const canonical = {
     ...emptyCanonical("近代中国史研究"),
+    contributors: [{ label: "王明", role: "author" as const, roleLabel: "作者" }],
     publication: {
       publisher: null,
       place: null,
@@ -397,8 +601,8 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
     },
   };
   const inspection: PdfTextInspection = {
-    pageCount: 2,
-    pageIndices: [1, 2],
+    pageCount: 3,
+    pageIndices: [1, 2, 3],
     pages: [{
       pageIndex: 1,
       text: "题名：近代中国史研究\n作者：王明",
@@ -411,14 +615,25 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
       evidenceOrigin: "native_text",
       ocrEngine: null,
       ocrConfidence: null,
+    }, {
+      pageIndex: 3,
+      text: "This preface explains that the book presents sustained scholarly analysis, compares evidence and interpretations, and develops an original historical argument independently from its title, publisher, date, edition, identifier, or contributor lines.",
+      evidenceOrigin: "native_text",
+      ocrEngine: null,
+      ocrConfidence: null,
     }],
     embeddedMetadata: {},
     complete: true,
     hasUsableTextLayer: true,
   };
-  const completeFields = populatedFields(canonical);
+  const completeFields = populatedFields(canonical).map((field) => ({
+    ...field,
+    sourcePageIndex: field.fieldName === "publication.editionNumber" ? 2 : 1,
+    evidenceText: field.fieldName === "publication.editionNumber"
+      ? inspection.pages[1]!.text
+      : inspection.pages[0]!.text,
+  }));
   const incompleteFields = completeFields.filter((field) => ![
-    "materialClass",
     "contributor.label",
     "publication.editionNumber",
   ].includes(field.fieldName));
@@ -428,9 +643,16 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
     publication: {
       ...canonical.publication,
       editionNumber: null,
-      printing: "第2次印刷",
     },
   };
+  const repairedFields = completeFields.filter((field) => field.fieldName !== "publication.editionNumber");
+  const classSupport = [{
+    signal: "scholarly_analysis",
+    confidence: 95,
+    sourcePageIndex: 3,
+    evidenceOrigin: "native_text",
+    evidenceText: inspection.pages[2]!.text,
+  }];
   let calls = 0;
   const reasoner: BibliographicReasoner = {
     async infer(prompt) {
@@ -440,7 +662,8 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
         status: "auto_apply",
         overallConfidence: 95,
         canonical: calls === 1 ? canonical : mutatedRepairCanonical,
-        fields: calls === 1 ? incompleteFields : completeFields,
+        classSupport,
+        fields: calls === 1 ? incompleteFields : repairedFields,
         warnings: [],
       };
     },
@@ -448,7 +671,7 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
 
   const result = await deriveIntelligentBibliography(inspection, reasoner);
   assert.equal(result.status, "auto_apply");
-  assert.equal(result.canonical?.publication.editionNumber, "第1版");
+  assert.equal(result.canonical?.publication.editionNumber, null);
   assert.equal(result.canonical?.publication.printing, null);
   assert.equal(calls, 2);
   const repair = repairPrompts[0]?.repair as Record<string, unknown>;
@@ -457,7 +680,7 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
     "canonicalTitle:",
     "contributor.label:contributor:0",
     "contributor.role:contributor:0",
-    "materialClass:",
+    "contributor.roleLabel:contributor:0",
     "publication.editionNumber:",
   ]);
 
@@ -465,7 +688,7 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
   const persistentlyInvalid: BibliographicReasoner = {
     async infer() {
       calls += 1;
-      return { status: "auto_apply", overallConfidence: 95, canonical, fields: incompleteFields, warnings: [] };
+      return { status: "auto_apply", overallConfidence: 95, canonical, classSupport, fields: incompleteFields, warnings: [] };
     },
   };
   await assert.rejects(
@@ -481,8 +704,8 @@ test("seven bounded representative bibliographic cases remain inside the strict 
   cases.push(["Chinese modern monograph", { ...emptyCanonical("近代中国史研究"), publication: { publisher: "学术出版社", place: "北京", publicationDate: "2026", editionNumber: null, printing: null }, language: "中文" }, "auto_apply"]);
   cases.push(["Japanese monograph", { ...emptyCanonical("近代日本史研究"), contributors: [{ label: "山田太郎", role: "author", roleLabel: null }], language: "日本語" }, "auto_apply"]);
   cases.push(["modern edited source", { ...emptyCanonical("清代档案选编"), materialClass: "primary_source_modern_edition", contributors: [{ label: "李文", role: "editor", roleLabel: null }], carrierEdition: { editionType: "critical_edition", editionStatement: "点校本", facsimileStatement: null } }, "auto_apply"]);
-  cases.push(["modern facsimile", { ...emptyCanonical("宋刻本影印集"), materialClass: "primary_source_modern_edition", carrierEdition: { editionType: "facsimile", editionStatement: "影印本", facsimileStatement: "据藏本影印" }, sourceEdition: { ...emptyCanonical("x").sourceEdition, dynasty: "宋", editionType: "engraved" } }, "auto_apply"]);
-  cases.push(["traditional vertical", { ...emptyCanonical("資治通鑑"), materialClass: "traditional_book", language: "繁體中文", sourceEdition: { ...emptyCanonical("x").sourceEdition, dynasty: "清", reignTitle: "乾隆", reignYear: "十二年", absoluteYear: 1747, editionType: "engraved" } }, "auto_apply"]);
+  cases.push(["modern facsimile", { ...emptyCanonical("宋刻本影印集"), materialClass: "primary_source_modern_edition", carrierEdition: { editionType: "facsimile", editionStatement: "影印本", facsimileStatement: "据藏本影印" }, sourceEdition: { ...emptyCanonical("x").sourceEdition, dynasty: "宋", editionType: "engraved", editionStatement: "宋刻本" } }, "auto_apply"]);
+  cases.push(["traditional vertical", { ...emptyCanonical("資治通鑑"), materialClass: "traditional_book", language: "繁體中文", sourceEdition: { ...emptyCanonical("x").sourceEdition, dynasty: "清", reignTitle: "乾隆", reignYear: "十二年", absoluteYear: 1747, editionType: "engraved", editionStatement: "刻本" } }, "auto_apply"]);
   cases.push(["journal article", { ...emptyCanonical("边疆史研究的新进展"), materialClass: "journal_article", volume: "第12卷", publication: { publisher: null, place: null, publicationDate: "2025", editionNumber: null, printing: null } }, "auto_apply"]);
   cases.push(["ambiguous", { ...emptyCanonical("历史研究"), subtitle: "历史研究" }, "ambiguous"]);
 
@@ -491,7 +714,7 @@ test("seven bounded representative bibliographic cases remain inside the strict 
     const result = await deriveIntelligentBibliography(inspection, reasoner);
     assert.equal(result.status, expected, label);
     assert.equal(result.canonical?.materialClass, canonical.materialClass, label);
-    assert.equal(result.provenance.selectedPages.length, 1, label);
+    assert.equal(result.provenance.selectedPages.length, 2, label);
   }
 });
 
@@ -501,10 +724,10 @@ test("invalid ISBN facts and publisher-shaped people are removed before auto-app
     identifiers: [{ scheme: "isbn", value: "978-0-000-00000-0" }],
   };
   const invalid = fixture(invalidIsbn);
-  invalid.inspection.pageCount = 2;
-  invalid.inspection.pageIndices = [1, 2];
+  invalid.inspection.pageCount = 3;
+  invalid.inspection.pageIndices = [1, 2, 3];
   invalid.inspection.pages.push({
-    pageIndex: 2,
+    pageIndex: 3,
     text: "版权页",
     evidenceOrigin: "native_text",
     ocrEngine: null,
@@ -530,10 +753,17 @@ test("invalid ISBN facts and publisher-shaped people are removed before auto-app
 
 test("sparse model facts are normalized locally before the strict shared contract", async () => {
   const page = { pageIndex: 1, text: "题名：近代中国史研究\n作者：王明", evidenceOrigin: "native_text" as const, ocrEngine: null, ocrConfidence: null };
+  const classPage = {
+    pageIndex: 2,
+    text: "This preface explains that the book presents sustained scholarly analysis, compares evidence and interpretations, and develops an original historical argument independently from its title, publisher, date, edition, identifier, or contributor lines.",
+    evidenceOrigin: "native_text" as const,
+    ocrEngine: null,
+    ocrConfidence: null,
+  };
   const inspection: PdfTextInspection = {
-    pageCount: 1,
-    pageIndices: [1],
-    pages: [page],
+    pageCount: 2,
+    pageIndices: [1, 2],
+    pages: [page, classPage],
     embeddedMetadata: {},
     complete: true,
     hasUsableTextLayer: true,
@@ -546,14 +776,22 @@ test("sparse model facts are normalized locally before the strict shared contrac
         canonical: {
           materialClass: "scholarly_monograph",
           canonicalTitle: "近代中国史研究",
-          contributors: [{ label: "王明", role: "author" }],
+          contributors: [{ label: "王明", role: "author", roleLabel: "作者" }],
         },
-        fields: ["materialClass", "canonicalTitle", "contributor.label", "contributor.role"].map((fieldName) => ({
+        classSupport: [{
+          signal: "scholarly_analysis",
+          confidence: 95,
+          sourcePageIndex: 2,
+          evidenceOrigin: "native_text",
+          evidenceText: classPage.text,
+        }],
+        fields: ["canonicalTitle", "contributor.label", "contributor.role", "contributor.roleLabel"].map((fieldName) => ({
           fieldName,
           scopeKey: fieldName.startsWith("contributor.") ? "contributor:0" : "",
           confidence: 95,
           sourcePageIndex: 1,
           evidenceOrigin: "native_text",
+          evidenceText: page.text,
         })),
         warnings: [],
       };
@@ -564,8 +802,10 @@ test("sparse model facts are normalized locally before the strict shared contrac
   assert.equal(result.status, "auto_apply");
   assert.deepEqual(result.canonical?.publication, { publisher: null, place: null, publicationDate: null, editionNumber: null, printing: null });
   assert.deepEqual(result.canonical?.carrierEdition, { editionType: null, editionStatement: null, facsimileStatement: null });
-  assert.equal(result.canonical?.contributors[0]?.roleLabel, null);
-  assert.ok(result.fields.every((field) => field.sourceType === "title_page" && field.pageClass === "title_page"));
+  assert.equal(result.canonical?.contributors[0]?.roleLabel, "作者");
+  assert.equal(result.fields.find((field) => field.fieldName === "materialClass")?.sourceType, "class_support");
+  assert.ok(result.fields.filter((field) => field.fieldName !== "materialClass")
+    .every((field) => field.sourceType === "title_page" && field.pageClass === "title_page"));
 
   const singlePageFallback: BibliographicReasoner = {
     async infer() {
@@ -573,10 +813,11 @@ test("sparse model facts are normalized locally before the strict shared contrac
       return { ...model, fields: [] };
     },
   };
-  const fallbackResult = await deriveIntelligentBibliography(inspection, singlePageFallback);
-  assert.equal(fallbackResult.status, "auto_apply");
-  assert.equal(fallbackResult.fields.length, 4);
-  assert.ok(fallbackResult.fields.every((field) => field.confidence === 95 && field.sourcePageIndex === 1));
+  await assert.rejects(
+    deriveIntelligentBibliography(inspection, singlePageFallback),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
 
   const nonAuthoritativeClassification: BibliographicReasoner = {
     async infer() {
@@ -599,7 +840,7 @@ test("sparse model facts are normalized locally before the strict shared contrac
     },
   };
   const downgraded = await deriveIntelligentBibliography(inspection, contradictoryStatus);
-  assert.equal(downgraded.status, "auto_apply");
+  assert.equal(downgraded.status, "ambiguous");
   assert.equal(downgraded.canonical?.canonicalTitle, "近代中国史研究");
 
   const unsafeWarningText: BibliographicReasoner = {
@@ -613,57 +854,34 @@ test("sparse model facts are normalized locally before the strict shared contrac
   assert.deepEqual(scrubbed.warnings, ["model_uncertainty"]);
 });
 
-test("explicit unconflicted labels authoritatively classify common material shapes and may promote conservative model status", async () => {
-  const traditional = fixture({
-    ...emptyCanonical("資治通鑑"),
+test("whole-inspection edition markers never override a positively supported Qwen work class", async () => {
+  const source = fixture({
+    ...emptyCanonical("A General History of Inner Asia"),
     materialClass: "scholarly_monograph",
+    contributors: [],
   });
-  const traditionalModel = await traditional.reasoner.infer("") as Record<string, unknown>;
-  traditional.reasoner = { async infer() {
-    return {
-      ...traditionalModel,
-      status: "ambiguous",
-      canonical: {
-        ...(traditionalModel.canonical as Record<string, unknown>),
-        publication: { publisher: "武英殿" },
-      },
-      warnings: ["uncertain_title", "uncertain_material_class", "uncertain_contributor", "uncertain_publication", "uncertain_edition"],
-    };
-  } };
-  traditional.inspection.pages[0]!.text = "書名：資治通鑑\n撰者：司馬光\n歷史源版本：清乾隆十二年武英殿刻本\n版式：繁體直排";
-  const traditionalResult = await deriveIntelligentBibliography(traditional.inspection, traditional.reasoner);
-  assert.equal(traditionalResult.status, "auto_apply");
-  assert.equal(traditionalResult.canonical?.materialClass, "traditional_book");
-  assert.equal(traditionalResult.canonical?.sourceEdition.dynasty, "清");
-  assert.deepEqual(traditionalResult.canonical?.contributors, [{ label: "司馬光", role: "author", roleLabel: null }]);
-  assert.deepEqual(traditionalResult.canonical?.publication, { publisher: null, place: null, publicationDate: null, editionNumber: null, printing: null });
+  source.inspection.pages[0]!.text = "题名：A General History of Inner Asia\n现代载体版本：点校本\n影印说明：据旧本影印";
 
-  const facsimile = fixture({ ...emptyCanonical("宋刻本影印集"), materialClass: "scholarly_monograph" });
-  const facsimileModel = await facsimile.reasoner.infer("") as Record<string, unknown>;
-  facsimile.reasoner = { async infer() { return { ...facsimileModel, status: "ambiguous", warnings: ["uncertain_title"] }; } };
-  facsimile.inspection.pages[0]!.text = "题名：宋刻本影印集\n现代载体版本：影印本\n影印说明：据国家图书馆藏宋刻本影印";
-  const facsimileResult = await deriveIntelligentBibliography(facsimile.inspection, facsimile.reasoner);
-  assert.equal(facsimileResult.status, "auto_apply");
-  assert.equal(facsimileResult.canonical?.materialClass, "primary_source_modern_edition");
-  assert.equal(facsimileResult.canonical?.carrierEdition.editionType, "facsimile");
-  assert.equal(facsimileResult.canonical?.sourceEdition.dynasty, "宋");
+  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
 
-  const edited = fixture({
-    ...emptyCanonical("清代档案选编"),
-    sourceEdition: { ...emptyCanonical("x").sourceEdition, dynasty: "清", editionType: "engraved" },
+  assert.equal(result.canonical?.materialClass, "scholarly_monograph");
+  assert.deepEqual(result.canonical?.carrierEdition, {
+    editionType: null,
+    editionStatement: null,
+    facsimileStatement: null,
   });
-  edited.inspection.pages[0]!.text = "题名：清代档案选编\n编者：李文\n点校本\n出版社：中华书局\n出版日期：2024年";
-  const editedResult = await deriveIntelligentBibliography(edited.inspection, edited.reasoner);
-  assert.equal(editedResult.canonical?.materialClass, "primary_source_modern_edition");
-  assert.equal(editedResult.canonical?.carrierEdition.editionType, "critical_edition");
-  assert.equal(editedResult.canonical?.sourceEdition.dynasty, null);
-
-  const journal = fixture({ ...emptyCanonical("模型误读"), materialClass: "scholarly_monograph", subtitle: "" });
-  const journalModel = await journal.reasoner.infer("") as Record<string, unknown>;
-  journal.reasoner = { async infer() { return { ...journalModel, status: "ambiguous" }; } };
-  journal.inspection.pages[0]!.text = "文章题名：边疆史研究的新进展\n作者：陈新\n刊名：历史研究\n2025年第3期";
-  const journalResult = await deriveIntelligentBibliography(journal.inspection, journal.reasoner);
-  assert.equal(journalResult.status, "auto_apply");
-  assert.equal(journalResult.canonical?.canonicalTitle, "边疆史研究的新进展");
-  assert.equal(journalResult.canonical?.materialClass, "journal_article");
+  assert.deepEqual(result.canonical?.sourceEdition, {
+    dynasty: null,
+    reignTitle: null,
+    reignYear: null,
+    absoluteYear: null,
+    printer: null,
+    imprint: null,
+    bookshop: null,
+    institution: null,
+    printingPlace: null,
+    editionType: null,
+    editionStatement: null,
+    holdingInformation: null,
+  });
 });

@@ -18,7 +18,7 @@ const MACHINE_SECRET = "local-machine-secret-that-is-long-enough";
 function successfulReasoner() {
   return {
     async infer() {
-      return { status: "no_bibliography", overallConfidence: 100, canonical: null, fields: [], warnings: [] };
+      return { status: "no_bibliography", overallConfidence: 100, canonical: null, classSupport: [], fields: [], warnings: [] };
     },
   };
 }

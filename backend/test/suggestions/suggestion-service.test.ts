@@ -127,9 +127,9 @@ function intelligentResult(jobId: string, attemptId: string, options: {
     fieldName,
     scopeKey,
     confidence: 96,
-    sourceType: "title_page" as const,
-    sourcePageIndex: 1,
-    pageClass: "title_page" as const,
+    sourceType: fieldName === "materialClass" ? "class_support" as const : "title_page" as const,
+    sourcePageIndex: fieldName === "materialClass" ? 2 : 1,
+    pageClass: fieldName === "materialClass" ? "ordinary_body" as const : "title_page" as const,
     evidenceOrigin: "native_text" as const,
     evidenceSha256: "a".repeat(64),
   });
@@ -145,7 +145,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
       alternativeTitles: [],
       dateStatement: null,
       identifiers: [],
-      contributors: [{ label: contributor, role: contributorRole, roleLabel: null }],
+      contributors: [{ label: contributor, role: contributorRole, roleLabel: contributorRole }],
       publication: { publisher, place: null, publicationDate: null, editionNumber: null, printing: null },
       series: null,
       volume: null,
@@ -158,6 +158,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
       evidence("canonicalTitle"),
       evidence("contributor.label", "contributor:0"),
       evidence("contributor.role", "contributor:0"),
+      evidence("contributor.roleLabel", "contributor:0"),
       ...(publisher === null ? [] : [evidence("publication.publisher")]),
       ...(sourceEditionStatement === null ? [] : [evidence("sourceEdition.editionStatement")]),
     ],
@@ -177,7 +178,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
         runtimeSha256: "78ec7a1964710918030e85c132a0995b10b07e4f43001bdf54fe0fd48d1eb85b",
       },
       selectedPages: [1, 2],
-      promptVersion: "l1-intelligent-library01-prompt-v3",
+      promptVersion: "l1-intelligent-library01-prompt-v4",
     },
   };
   const legacy = extractionOnlyResult(jobId, attemptId);
@@ -314,7 +315,7 @@ test("request returns a durable queued identity promptly and is idempotent", asy
   assert.notEqual(v6Key, historicalV1Key, "a v1 success must not suppress the current quality-gate run");
 });
 
-test("a same-source succeeded job from v5 cannot suppress v6 inference", async (context) => {
+test("a same-source succeeded job from v6 cannot suppress v7 inference", async (context) => {
   const { database, library, fileId, suggestions, dispatcher } = fixture(context);
   const previous = await suggestions.requestGeneration(OWNER, library.id, fileId);
   const claim = await suggestions.claimJob(previous.id, "attempt-1");
@@ -323,7 +324,7 @@ test("a same-source succeeded job from v5 cannot suppress v6 inference", async (
   const row = database.prepare("SELECT input_version FROM derived_compute_jobs WHERE id = ?")
     .get(previous.id) as { input_version: string };
   const previousPipelineKey = createHash("sha256").update(JSON.stringify([
-    "metadata_suggestion", SUGGESTION_RULESET_VERSION, "l1-intelligent-library01-v5",
+    "metadata_suggestion", SUGGESTION_RULESET_VERSION, "l1-intelligent-library01-v6",
     library.id, fileId, row.input_version,
   ])).digest("hex");
   database.prepare("UPDATE derived_compute_jobs SET idempotency_key = ? WHERE id = ?")
@@ -608,13 +609,13 @@ test("safe intelligent callback auto-applies canonical defaults, exact-binds one
   const detail = metadata.getDetails(OWNER, library.id, fileId);
   assert.equal(detail.metadata?.canonicalTitle, "近代中国史研究");
   assert.equal(detail.bibliography?.materialClass, "scholarly_monograph");
-  assert.deepEqual(detail.bibliography?.contributors, [{ id: "attempt-2", label: "王明", role: "author", authorityId: authority.id }]);
+  assert.deepEqual(detail.bibliography?.contributors, [{ id: "attempt-2", label: "王明", role: "author", roleLabel: "author", authorityId: authority.id }]);
   assert.ok(detail.fieldAuthorities.every((field) => field.source === "ai"));
   assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "applied");
   const evidence = persistence.repositories.bibliography.findAiRunEvidence(library.ownerDomainId, `bibliography-${job.id}`)!;
   assert.equal(evidence.status, "auto_apply");
   assert.equal(evidence.rulesetVersion, INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION);
-  assert.equal(evidence.promptVersion, "l1-intelligent-library01-prompt-v3");
+  assert.equal(evidence.promptVersion, "l1-intelligent-library01-prompt-v4");
   assert.equal(evidence.autoApplied, true);
   assert.ok(evidence.appliedFields.some((field) => field.fieldName === "canonicalTitle"));
   assert.equal(evidence.structuredOutputJson.includes("近代中国史研究"), true);
@@ -627,6 +628,39 @@ test("safe intelligent callback auto-applies canonical defaults, exact-binds one
     () => database.prepare("DELETE FROM scholarly_bibliographic_ai_runs WHERE id = ?").run(evidence.id),
     /bibliographic AI evidence is retained/,
   );
+});
+
+test("valid AI can add the first contributor to an existing empty unowned bibliography profile", async (context) => {
+  const { persistence, library, fileId, suggestions, metadata } = fixture(context);
+  const existing = persistence.repositories.bibliography.saveProfile({
+    recordId: "suggestion-record",
+    ownerDomainId: library.ownerDomainId,
+    actorAccountId: OWNER.id,
+    expectedRevision: null,
+    now: NOW,
+    materialClass: "unknown",
+    contributors: [],
+    publication: {},
+    carrierEdition: {},
+    sourceEdition: {},
+  });
+  assert.ok(existing);
+  assert.deepEqual(existing.contributors, []);
+  assert.equal(persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record")
+    .some((entry) => entry.fieldName.startsWith("contributor.")), false);
+
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+  await suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1", {
+    contributor: "王明",
+    contributorRole: "author",
+  }), claim.capability.token);
+
+  const detail = metadata.getDetails(OWNER, library.id, fileId);
+  assert.deepEqual(detail.bibliography?.contributors.map((entry) => [entry.label, entry.role]), [["王明", "author"]]);
+  const authorities = persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record");
+  assert.equal(authorities.find((entry) => entry.fieldName === "contributor.label")?.source, "ai");
+  assert.equal(authorities.find((entry) => entry.fieldName === "contributor.role")?.source, "ai");
 });
 
 test("structured ambiguous AI evidence is reviewable while extraction alone is not", async (context) => {

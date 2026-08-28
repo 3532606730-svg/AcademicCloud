@@ -151,11 +151,38 @@ test("intelligent bibliography contract is closed, provenance-rich, and rejects 
   };
   assert.deepEqual(parseIntelligentBibliographyResult(v3), v3);
 
-  const v4 = {
+  const v6 = {
     ...v3,
     rulesetVersion: "l1-intelligent-library01-v6",
   };
-  assert.deepEqual(parseIntelligentBibliographyResult(v4), v4);
+  assert.deepEqual(parseIntelligentBibliographyResult(v6), v6);
+  const v7 = {
+    ...v6,
+    rulesetVersion: "l1-intelligent-library01-v7",
+    provenance: { ...v6.provenance, promptVersion: "l1-intelligent-library01-prompt-v4" },
+    fields: v6.fields.map((field) => field.fieldName === "materialClass" ? {
+      ...field,
+      sourceType: "class_support",
+      pageClass: "ordinary_body",
+    } : field),
+  };
+  assert.deepEqual(parseIntelligentBibliographyResult(v7), v7);
+  assert.throws(() => parseIntelligentBibliographyResult({
+    ...v7,
+    fields: v6.fields,
+  }), /requires class-support/u);
+  assert.throws(() => parseIntelligentBibliographyResult({
+    ...v7,
+    fields: v7.fields.map((field) => field.fieldName === "canonicalTitle" ? {
+      ...field,
+      sourceType: "class_support",
+      pageClass: "ordinary_body",
+    } : field),
+  }), /restricted to materialClass/u);
+  assert.throws(() => parseIntelligentBibliographyResult({
+    ...v6,
+    fields: v7.fields,
+  }), /historical bibliography rulesets/u);
   assert.throws(() => parseIntelligentBibliographyResult({ ...value, rawOcrText: "forbidden" }), /unsupported field/u);
   assert.throws(() => parseIntelligentBibliographyResult({ ...value, overallConfidence: 84 }), /confidence gate/u);
   assert.throws(() => parseIntelligentBibliographyResult({

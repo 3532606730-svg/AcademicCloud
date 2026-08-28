@@ -3,7 +3,7 @@
  * reasoning generation. A prompt/ruleset change must not reuse an older
  * succeeded job for unchanged source bytes.
  */
-export const INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION = "l1-intelligent-library01-v6" as const;
+export const INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION = "l1-intelligent-library01-v7" as const;
 
 export const INTELLIGENT_MATERIAL_CLASSES = [
   "scholarly_monograph",
@@ -108,7 +108,7 @@ export interface IntelligentFieldEvidence {
   /** Empty for scalar fields; `contributor:N` for contributor fields. */
   scopeKey: string;
   confidence: number;
-  sourceType: "title_page" | "copyright_page" | "cip_page" | "colophon" | "series_page" | "embedded_pdf_metadata";
+  sourceType: "title_page" | "copyright_page" | "cip_page" | "colophon" | "series_page" | "class_support" | "embedded_pdf_metadata";
   sourcePageIndex: number | null;
   pageClass: "cover" | "half_title" | "title_page" | "copyright_page" | "cip_page" | "colophon" | "series_page" | "contents_preface" | "ordinary_body" | "unknown" | null;
   evidenceOrigin: "native_text" | "ocr" | "embedded_pdf_metadata";
@@ -142,7 +142,8 @@ export interface IntelligentBibliographyProvenance {
   promptVersion:
     | "l1-intelligent-library01-prompt-v1"
     | "l1-intelligent-library01-prompt-v2"
-    | "l1-intelligent-library01-prompt-v3";
+    | "l1-intelligent-library01-prompt-v3"
+    | "l1-intelligent-library01-prompt-v4";
 }
 
 export interface IntelligentBibliographyResult {
@@ -153,7 +154,8 @@ export interface IntelligentBibliographyResult {
     | "l1-intelligent-library01-v3"
     | "l1-intelligent-library01-v4"
     | "l1-intelligent-library01-v5"
-    | "l1-intelligent-library01-v6";
+    | "l1-intelligent-library01-v6"
+    | "l1-intelligent-library01-v7";
   status: IntelligentBibliographyStatus;
   overallConfidence: number;
   canonical: IntelligentCanonicalBibliography | null;
@@ -162,7 +164,7 @@ export interface IntelligentBibliographyResult {
   provenance: IntelligentBibliographyProvenance;
 }
 
-const SOURCES = ["title_page", "copyright_page", "cip_page", "colophon", "series_page", "embedded_pdf_metadata"] as const;
+const SOURCES = ["title_page", "copyright_page", "cip_page", "colophon", "series_page", "class_support", "embedded_pdf_metadata"] as const;
 const PAGE_CLASSES = ["cover", "half_title", "title_page", "copyright_page", "cip_page", "colophon", "series_page", "contents_preface", "ordinary_body", "unknown"] as const;
 const ORIGINS = ["native_text", "ocr", "embedded_pdf_metadata"] as const;
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -303,6 +305,9 @@ function parseFields(value: unknown, contributorCount: number): IntelligentField
       : field.sourceType === "embedded_pdf_metadata" || field.pageClass === null) {
       throw new TypeError("bibliography evidence source is inconsistent");
     }
+    if (field.sourceType === "class_support" && fieldName !== "materialClass") {
+      throw new TypeError("bibliography class-support evidence is restricted to materialClass");
+    }
     const evidenceSha256 = typeof field.evidenceSha256 === "string" ? field.evidenceSha256 : "";
     if (!SHA256.test(evidenceSha256)) throw new TypeError("bibliography evidence digest is invalid");
     return {
@@ -372,6 +377,7 @@ function parseProvenance(value: unknown): IntelligentBibliographyProvenance {
       "l1-intelligent-library01-prompt-v1",
       "l1-intelligent-library01-prompt-v2",
       "l1-intelligent-library01-prompt-v3",
+      "l1-intelligent-library01-prompt-v4",
     ] as const, "promptVersion"),
   };
 }
@@ -387,6 +393,7 @@ export function parseIntelligentBibliographyResult(value: unknown): IntelligentB
     "l1-intelligent-library01-v4",
     "l1-intelligent-library01-v5",
     "l1-intelligent-library01-v6",
+    "l1-intelligent-library01-v7",
   ] as const, "bibliography.rulesetVersion");
   const status = oneOf(input.status, INTELLIGENT_BIBLIOGRAPHY_STATUSES, "bibliography.status");
   const canonical = input.canonical === null ? null : parseIntelligentCanonicalBibliography(input.canonical);
@@ -395,6 +402,24 @@ export function parseIntelligentBibliographyResult(value: unknown): IntelligentB
   }
   const fields = parseFields(input.fields, canonical?.contributors.length ?? 0);
   const provenance = parseProvenance(input.provenance);
+  const expectedPromptVersion = rulesetVersion === "l1-intelligent-library01-v1"
+    ? "l1-intelligent-library01-prompt-v1"
+    : rulesetVersion === "l1-intelligent-library01-v2"
+      ? "l1-intelligent-library01-prompt-v2"
+      : rulesetVersion === "l1-intelligent-library01-v7"
+        ? "l1-intelligent-library01-prompt-v4"
+        : "l1-intelligent-library01-prompt-v3";
+  if (provenance.promptVersion !== expectedPromptVersion) {
+    throw new TypeError("bibliography ruleset and prompt identities are inconsistent");
+  }
+  const materialClassField = fields.find((field) => field.fieldName === "materialClass");
+  if (rulesetVersion === "l1-intelligent-library01-v7") {
+    if (canonical !== null && canonical.materialClass !== "unknown" && materialClassField?.sourceType !== "class_support") {
+      throw new TypeError("v7 materialClass requires class-support evidence");
+    }
+  } else if (fields.some((field) => field.sourceType === "class_support")) {
+    throw new TypeError("historical bibliography rulesets cannot use class-support evidence");
+  }
   const overallConfidence = integer(input.overallConfidence, 0, 100, "bibliography.overallConfidence");
   const warnings = stringList(input.warnings, 32, 160, "bibliography.warnings");
   const requiredFields = canonical === null ? new Set<string>() : populatedFieldKeys(canonical);

@@ -357,18 +357,9 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Remaining
 
-- Implement final ruleset v7/prompt-v4: Qwen-proposed class with positive,
-  page-bound trusted-runtime validation; exact value-supported per-field
-  provenance with no one-page synthesis; and fail-closed omission/ambiguity for
-  unsupported facts.
-- Repair existing-profile contributor enrichment without weakening any human
-  contributor authority or exact AI authority/provenance binding.
-- Add the one final append-only schema32 migration with an immutable composite
-  ruleset registry preserving v1–v6 and admitting v7 without future evidence-
-  table rebuilds; keep unknown/unregistered identities fail-closed.
-- Pass full backend/frontend/Compute/contracts tests, typecheck/build/compiled
-  acceptance, assemble exact immutable Core/Compute releases, and complete a
-  fresh encrypted/off-host schema31 gate before schema32 cutover.
+- Assemble exact immutable Core/Compute releases from the verified v7/prompt-v4
+  implementation and complete a fresh encrypted/off-host schema31 gate before
+  schema32 cutover.
 - Keep the main worker disabled/inactive and `PAUSED` through three isolated
   real canaries: modern scholarly monograph, historical/primary-source modern
   edition, and OCR-needed multilingual resource. Verify class support, every
@@ -391,26 +382,31 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-None. The one UAC/reboot boundary is complete. Additional monetary cost,
-irreversible real-data risk, or a proven privacy/security authority conflict
-remains a mandatory hard stop.
+Release gates remain intentionally pending: exact release assembly, fresh
+schema31 encrypted/off-host backup, schema32 production migration, three
+isolated real canaries, forced-loss recovery, and the ordinary Owner browser
+acceptance. Production remains safely frozen at fd97542/schema31 with Local
+Compute PAUSED/disabled/inactive.
 
 ## Last Verification
 
-2026-08-28 live reconciliation: production Core/frontend and selected Compute
-are exact `fd97542…` at schema/history 31. Core service, health/readiness,
-SQLite integrity, and foreign keys are green. Local Compute is exact
-`fd97542…`, `PAUSED`, disabled, inactive, and the Local Pull active queue is
-empty. P0-A, P0-B, P1-C, and P1-D all reproduce from current source/migrations;
-ADR-038 is accepted. No v6 final canary, NORMAL transition, forced-loss, corpus
-run, GitHub-hosted production Compute, or paid service was used.
+2026-08-28: P0-A, P0-B, P1-C, and P1-D reproduced and were repaired under
+ADR-038. Final v7/prompt-v4 now uses Qwen-proposed class plus trusted positive
+evidence validation, exact field-value evidence excerpts, no single-page
+provenance synthesis, empty-unowned contributor enrichment, and schema32's
+append-only composite ruleset registry. Full verification is green: Backend
+381/381, Frontend 284/284, Compute 103/103 plus 2 expected release-runtime
+skips, Compute contracts 3/3, workspace typecheck/build, compiled acceptance
+first migration count 32/redeploy 0, and ops auditor 48/48. Production remains
+exact `fd97542…` schema/history 31; Core is healthy and Local Compute remains
+`PAUSED`, disabled, inactive. No v6 final canary, NORMAL transition,
+forced-loss, corpus run, GitHub-hosted production Compute, or paid service was
+used.
 
 ## Next Action
 
-Implement ADR-038 final v7/prompt-v4 plus schema32 registry with failure-first
-regressions for class support, single-page value provenance, hallucinated
-author/edition/language, first contributor enrichment, immutable history, and
-unknown ruleset rejection. Keep production fd97542/schema31 healthy and the
-main worker PAUSED/disabled/inactive. Do not run v6 canary, NORMAL, forced-loss,
-or corpus execution before the corrected exact release and three isolated
-canaries pass.
+Review and checkpoint the verified ADR-038 implementation, assemble the exact
+immutable Core/Compute release, pass the fresh encrypted/off-host schema31
+backup gate, then perform the authorized schema32 cutover and three isolated
+real canaries while the main worker remains PAUSED/disabled/inactive. Do not
+run v6 canary, NORMAL, forced-loss, or corpus execution before those gates.

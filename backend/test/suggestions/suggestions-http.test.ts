@@ -197,9 +197,13 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
       async inspectRange(source) {
         assert.equal(new TextDecoder("ascii").decode(await source.read(0, 5)), "%PDF-");
         return {
-          pageCount: 1,
-          pageIndices: [1],
-          pages: [{ pageIndex: 1, text: "HTTP suggestion title\nby\nPeter Jackson", evidenceOrigin: "native_text" }],
+          pageCount: 2,
+          pageIndices: [1, 2],
+          pages: [{ pageIndex: 1, text: "HTTP suggestion title\nby\nPeter Jackson", evidenceOrigin: "native_text" }, {
+            pageIndex: 2,
+            text: "This preface explains that the book presents sustained scholarly analysis, compares historical evidence and interpretations, and develops an independent argument beyond its title, publisher, date, identifier, edition, or contributor lines.",
+            evidenceOrigin: "native_text",
+          }],
           embeddedMetadata: {},
           complete: true,
           hasUsableTextLayer: true,
@@ -237,6 +241,8 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
       inspector,
       reasoner: {
         async infer() {
+          const evidenceText = "HTTP suggestion title by Peter Jackson";
+          const classEvidenceText = "This preface explains that the book presents sustained scholarly analysis, compares historical evidence and interpretations, and develops an independent argument beyond its title, publisher, date, identifier, edition, or contributor lines.";
           return {
             status: "ambiguous",
             overallConfidence: 80,
@@ -247,7 +253,7 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
               alternativeTitles: [],
               dateStatement: null,
               identifiers: [],
-              contributors: [{ label: "Peter Jackson", role: "author", roleLabel: null }],
+              contributors: [{ label: "Peter Jackson", role: "author", roleLabel: "by" }],
               publication: { publisher: null, place: null, publicationDate: null, editionNumber: null, printing: null },
               series: null,
               volume: null,
@@ -255,7 +261,19 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
               carrierEdition: { editionType: null, editionStatement: null, facsimileStatement: null },
               sourceEdition: { dynasty: null, reignTitle: null, reignYear: null, absoluteYear: null, printer: null, imprint: null, bookshop: null, institution: null, printingPlace: null, editionType: null, editionStatement: null, holdingInformation: null },
             },
-            fields: [],
+            classSupport: [{
+              signal: "scholarly_analysis",
+              confidence: 80,
+              sourcePageIndex: 2,
+              evidenceOrigin: "native_text",
+              evidenceText: classEvidenceText,
+            }],
+            fields: [
+              { fieldName: "canonicalTitle", scopeKey: "", confidence: 80, sourcePageIndex: 1, evidenceOrigin: "native_text", evidenceText },
+              { fieldName: "contributor.label", scopeKey: "contributor:0", confidence: 80, sourcePageIndex: 1, evidenceOrigin: "native_text", evidenceText },
+              { fieldName: "contributor.role", scopeKey: "contributor:0", confidence: 80, sourcePageIndex: 1, evidenceOrigin: "native_text", evidenceText },
+              { fieldName: "contributor.roleLabel", scopeKey: "contributor:0", confidence: 80, sourcePageIndex: 1, evidenceOrigin: "native_text", evidenceText },
+            ],
             warnings: [],
           };
         },
@@ -281,7 +299,7 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
     assert.equal(run.aiBibliography.displayTitle, "Peter Jackson HTTP suggestion title");
     assert.equal(run.aiBibliography.canonical.materialClass, "scholarly_monograph");
     assert.equal(run.aiBibliography.canonical.canonicalTitle, "HTTP suggestion title");
-    assert.deepEqual(run.aiBibliography.canonical.contributors, [{ label: "Peter Jackson", role: "author", roleLabel: null }]);
+    assert.deepEqual(run.aiBibliography.canonical.contributors, [{ label: "Peter Jackson", role: "author", roleLabel: "by" }]);
     assert.equal(run.aiBibliography.fields.some((field) => field.fieldName === "canonicalTitle" && field.confidence === 80), true);
     assert.equal(run.aiBibliography.autoApplied, false);
 

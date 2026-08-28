@@ -596,7 +596,11 @@ function autoApplyIntelligentBibliography(options: {
   };
   const contributorHumanAuthority = authorities.some((entry) => entry.source === "human" && entry.fieldName.startsWith("contributor."));
   const contributorAiAuthority = authorities.some((entry) => entry.source === "ai" && entry.fieldName.startsWith("contributor."));
-  const contributors = currentProfile && (contributorHumanAuthority || !contributorAiAuthority)
+  const preserveExistingContributors = currentProfile !== null && (
+    contributorHumanAuthority
+    || (currentProfile.contributors.length > 0 && !contributorAiAuthority)
+  );
+  const contributors = preserveExistingContributors
     ? currentProfile.contributors.map((entry) => ({ ...entry }))
     : canonical.contributors.map((entry) => ({
         id: createId(),

@@ -20,7 +20,7 @@ import { isUsableBibliographicEvidence, usableEmbeddedMetadata } from "./evidenc
 import type { PdfTextInspection } from "./suggestion.js";
 
 export const INTELLIGENT_RULESET_VERSION = INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION;
-export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v3" as const;
+export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v4" as const;
 export const PADDLE_OCR_PACKAGE_VERSION = "3.7.0" as const;
 export const PADDLE_RUNTIME_VERSION = "3.3.1" as const;
 export const PADDLE_DETECTION_MODEL = Object.freeze({
@@ -60,6 +60,29 @@ const CONTRIBUTOR_FIELD_NAMES = ["contributor.label", "contributor.role", "contr
 const NON_CONTRIBUTOR_FIELD_NAMES = INTELLIGENT_BIBLIOGRAPHIC_FIELD_NAMES.filter(
   (fieldName) => !CONTRIBUTOR_FIELD_NAMES.includes(fieldName as (typeof CONTRIBUTOR_FIELD_NAMES)[number]),
 );
+const MODEL_FACT_FIELD_NAMES = NON_CONTRIBUTOR_FIELD_NAMES.filter((fieldName) => fieldName !== "materialClass");
+const MATERIAL_CLASS_SUPPORT_SIGNALS = [
+  "scholarly_analysis",
+  "edited_collection",
+  "serial_article",
+  "chapter_container",
+  "thesis",
+  "conference",
+  "review",
+  "reference_work",
+  "dictionary_lexicon",
+  "historical_primary_work",
+  "edition_mediation",
+  "traditional_artifact",
+  "archival_document",
+  "inscription_epigraphy",
+  "rubbing",
+  "manuscript",
+  "collected_documents",
+  "catalogue_bibliography",
+  "other_material",
+] as const;
+type MaterialClassSupportSignal = (typeof MATERIAL_CLASS_SUPPORT_SIGNALS)[number];
 const AUTO_APPLY_CONFIDENCE = 85;
 const MAX_REASONING_INPUT_CHARACTERS = 64 * 1024;
 const MAX_REASONING_OUTPUT_BYTES = 384 * 1024;
@@ -202,7 +225,7 @@ async function waitForServer(origin: string, signal: AbortSignal): Promise<void>
 const MODEL_OUTPUT_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["status", "overallConfidence", "canonical", "fields", "warnings"],
+  required: ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"],
   properties: {
     status: { type: "string", enum: ["auto_apply", "ambiguous", "no_bibliography"] },
     overallConfidence: { type: "integer", minimum: 0, maximum: 100 },
@@ -224,6 +247,22 @@ const MODEL_OUTPUT_SCHEMA = {
         },
       }],
     },
+    classSupport: {
+      type: "array",
+      maxItems: 16,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["signal", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"],
+        properties: {
+          signal: { type: "string", enum: MATERIAL_CLASS_SUPPORT_SIGNALS },
+          confidence: { type: "integer", minimum: 0, maximum: 100 },
+          sourcePageIndex: { type: "integer", minimum: 1 },
+          evidenceOrigin: { type: "string", enum: ["native_text", "ocr"] },
+          evidenceText: { type: "string", minLength: 1, maxLength: 2048 },
+        },
+      },
+    },
     fields: {
       type: "array",
       maxItems: 128,
@@ -232,25 +271,27 @@ const MODEL_OUTPUT_SCHEMA = {
           {
             type: "object",
             additionalProperties: false,
-            required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"],
+            required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"],
             properties: {
-              fieldName: { type: "string", enum: NON_CONTRIBUTOR_FIELD_NAMES },
+              fieldName: { type: "string", enum: MODEL_FACT_FIELD_NAMES },
               scopeKey: { type: "string", const: "" },
               confidence: { type: "integer", minimum: 0, maximum: 100 },
               sourcePageIndex: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
               evidenceOrigin: { type: "string", enum: ["native_text", "ocr", "embedded_pdf_metadata"] },
+              evidenceText: { type: "string", minLength: 1, maxLength: 2048 },
             },
           },
           {
             type: "object",
             additionalProperties: false,
-            required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"],
+            required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"],
             properties: {
               fieldName: { type: "string", enum: CONTRIBUTOR_FIELD_NAMES },
               scopeKey: { type: "string", pattern: "^contributor:(?:0|[1-9][0-9]*)$" },
               confidence: { type: "integer", minimum: 0, maximum: 100 },
               sourcePageIndex: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
               evidenceOrigin: { type: "string", enum: ["native_text", "ocr", "embedded_pdf_metadata"] },
+              evidenceText: { type: "string", minLength: 1, maxLength: 2048 },
             },
           },
         ],
@@ -284,119 +325,16 @@ function compactInspectionText(inspection: PdfTextInspection): string {
   return inspectionText(inspection).replace(/[\s\p{P}\p{S}]+/gu, "");
 }
 
-function uniqueLabeledValue(inspection: PdfTextInspection, labels: string[]): string | null {
-  const pattern = new RegExp(`(?:^|\\n)\\s*(?:${labels.join("|")})\\s*[:：]?\\s*([^\\r\\n]{1,300})`, "gu");
-  const values = [...inspectionText(inspection).matchAll(pattern)]
-    .map((match) => match[1]?.trim() ?? "")
-    .filter((value) => value.length > 0);
-  const unique = [...new Map(values.map((value) => [compactKey(value), value])).values()];
-  return unique.length === 1 ? unique[0]! : null;
-}
-
-function authoritativeContributors(inspection: PdfTextInspection): Array<Record<string, unknown>> | null {
-  const labeled: Array<{ labels: string[]; role: string }> = [
-    { labels: ["作者", "著者", "撰者"], role: "author" },
-    { labels: ["主编", "主編", "编者", "編者"], role: "editor" },
-    { labels: ["译者", "譯者"], role: "translator" },
-  ];
-  const contributors = labeled.flatMap(({ labels, role }) => {
-    const value = uniqueLabeledValue(inspection, labels);
-    return value === null ? [] : [{ label: value, role, roleLabel: null }];
-  });
-  return contributors.length > 0 ? contributors : null;
-}
-
-const MODERN_ANALYTICAL_TITLE = /(?:研究|史论|史論|论稿|論稿|论著|論著|考论|考論|专论|專論|探究|考察|述论|述論|study|studies|research|analysis|monograph|исследован(?:ие|ия)?|анализ)/iu;
-
-function evidencedAnalyticalTitle(inspection: PdfTextInspection, modelTitle: unknown): string | null {
-  const labeled = uniqueLabeledValue(inspection, [
-    "文章题名", "文章題名", "题名页题名", "題名頁題名", "封面题名", "封面題名", "题名", "題名", "书名", "書名",
-  ]);
-  if (labeled !== null) return MODERN_ANALYTICAL_TITLE.test(labeled) ? labeled : null;
-  if (typeof modelTitle !== "string") return null;
-  const normalized = modelTitle.normalize("NFC").trim();
-  const key = compactKey(normalized);
-  if ([...key].length < 4 || [...normalized].length > 512 || !MODERN_ANALYTICAL_TITLE.test(normalized)) return null;
-  return compactInspectionText(inspection).includes(key) ? normalized : null;
-}
-
-function evidencedModelValue(inspection: PdfTextInspection, value: unknown): boolean {
-  if (typeof value !== "string") return false;
-  const normalized = value.normalize("NFC").trim();
-  const key = compactKey(normalized);
-  return [...key].length >= 2 && [...normalized].length <= 512 && compactInspectionText(inspection).includes(key);
-}
-
-function authoritativeMaterialClass(
-  inspection: PdfTextInspection,
-  modelClass: unknown,
-  modelTitle?: unknown,
-  modelPublication?: Record<string, unknown>,
-): unknown {
-  const text = inspectionText(inspection);
-  const compact = compactInspectionText(inspection);
-  if (/(?:文章题名|文章題名|篇名)/u.test(compact) && /(?:刊名|期号|期號|第[0-9一二三四五六七八九十百]+期)/u.test(compact)) {
-    return "journal_article";
-  }
-  if (/(?:现代载体版本|現代載體版本|影印说明|影印說明|点校本|點校本|校注本|校註本|整理本)/u.test(compact)) {
-    return "primary_source_modern_edition";
-  }
-  if (/(?:历史源版本|歷史源版本|繁体直排|繁體直排)/u.test(compact)
-    || (/(?:元|明|清|宋|唐|汉|漢|隋|晋|晉)[^\n]{0,24}(?:年|朝)/u.test(text)
-      && /(?:刻本|钞本|鈔本|抄本|写本|寫本|活字本|武英殿)/u.test(compact))) {
-    return "traditional_book";
-  }
-  const hasModernPublicationStatement = uniqueLabeledValue(inspection, ["出版社", "出版者"]) !== null
-    || uniqueLabeledValue(inspection, ["出版日期", "出版年"]) !== null
-    || evidencedModelValue(inspection, modelPublication?.publisher)
-    || evidencedModelValue(inspection, modelPublication?.publicationDate);
-  if (hasModernPublicationStatement && evidencedAnalyticalTitle(inspection, modelTitle) !== null) return "scholarly_monograph";
-  return modelClass;
-}
-
-function authoritativeCarrierEdition(inspection: PdfTextInspection, model: Record<string, unknown>): Record<string, unknown> {
-  const compact = compactInspectionText(inspection);
-  if (/(?:现代载体版本|現代載體版本)?影印本|(?:影印说明|影印說明)/u.test(compact)) {
-    return {
-      ...model,
-      editionType: "facsimile",
-      editionStatement: optionalText(model, "editionStatement") ?? "影印本",
-    };
-  }
-  if (/(?:点校本|點校本|校注本|校註本)/u.test(compact)) {
-    return {
-      ...model,
-      editionType: "critical_edition",
-      editionStatement: optionalText(model, "editionStatement") ?? (/点校本|點校本/u.test(compact) ? "点校本" : "校注本"),
-    };
-  }
-  return model;
-}
-
-function authoritativeSourceEdition(inspection: PdfTextInspection, model: Record<string, unknown>): Record<string, unknown> {
-  const compact = compactInspectionText(inspection);
-  const dynasty = compact.match(/(?:历史源版本|歷史源版本)?(元|明|清|宋|唐|汉|漢|隋|晋|晉)(?:[^代]{0,8})(?:年|朝|刻本|钞本|鈔本|抄本|写本|寫本|活字本)/u)?.[1];
-  return dynasty ? { ...model, dynasty } : model;
-}
-
 function normalizeSparseCanonical(value: unknown, inspection: PdfTextInspection): unknown {
   if (value === null) return null;
   const input = sparseRecord(value, ["materialClass", "canonicalTitle", "subtitle", "alternativeTitles", "dateStatement", "identifiers", "contributors", "publication", "series", "volume", "language", "carrierEdition", "sourceEdition"]);
   const publication = sparseRecord(supplied(input, "publication", {}), ["publisher", "place", "publicationDate", "editionNumber", "printing"]);
-  const materialClass = authoritativeMaterialClass(inspection, input.materialClass, input.canonicalTitle, publication);
-  const contributors = authoritativeContributors(inspection) ?? supplied(input, "contributors", []);
+  const materialClass = input.materialClass;
+  const contributors = supplied(input, "contributors", []);
   if (!Array.isArray(contributors)) throw new BibliographicIntelligenceError("invalid_result");
-  const authoritativePublisher = uniqueLabeledValue(inspection, ["出版社", "出版者"]);
-  const authoritativePlace = uniqueLabeledValue(inspection, ["出版地"]);
-  const authoritativeDate = uniqueLabeledValue(inspection, ["出版日期", "出版年"]);
-  const carrier = authoritativeCarrierEdition(inspection, sparseRecord(supplied(input, "carrierEdition", {}), ["editionType", "editionStatement", "facsimileStatement"]));
-  const sourceInput = authoritativeSourceEdition(inspection, sparseRecord(supplied(input, "sourceEdition", {}), ["dynasty", "reignTitle", "reignYear", "absoluteYear", "printer", "imprint", "bookshop", "institution", "printingPlace", "editionType", "editionStatement", "holdingInformation"]));
-  const explicitSourceEdition = /(?:历史源版本|歷史源版本|据|據)[^\n]{0,80}(?:刻本|钞本|鈔本|抄本|写本|寫本|活字本|底本|原本)/u.test(inspectionText(inspection));
-  const source = typeof materialClass === "string" && (
-    ["scholarly_monograph", "edited_volume", "journal_article", "book_chapter", "thesis_dissertation", "conference_paper", "review", "reference_work", "dictionary_lexicon"].includes(materialClass)
-    || (materialClass === "primary_source_modern_edition" && !explicitSourceEdition)
-  ) ? {} : sourceInput;
-  const publisherValue = authoritativePublisher ?? optionalText(publication, "publisher");
+  const carrier = sparseRecord(supplied(input, "carrierEdition", {}), ["editionType", "editionStatement", "facsimileStatement"]);
+  const source = sparseRecord(supplied(input, "sourceEdition", {}), ["dynasty", "reignTitle", "reignYear", "absoluteYear", "printer", "imprint", "bookshop", "institution", "printingPlace", "editionType", "editionStatement", "holdingInformation"]);
+  const publisherValue = optionalText(publication, "publisher");
   const publisherKey = publisherValue === null ? null : compactKey(publisherValue);
   const normalizedContributors = contributors.map((value) => sparseRecord(value, ["label", "role", "roleLabel"]))
     .filter((contributor) => typeof contributor.label !== "string" || (
@@ -428,7 +366,7 @@ function normalizeSparseCanonical(value: unknown, inspection: PdfTextInspection)
   })).values()].slice(0, 32);
   return {
     materialClass,
-    canonicalTitle: uniqueLabeledValue(inspection, ["文章题名", "文章題名", "题名页题名", "題名頁題名", "封面题名", "封面題名", "题名", "題名", "书名", "書名"]) ?? input.canonicalTitle,
+    canonicalTitle: input.canonicalTitle,
     subtitle: optionalText(input, "subtitle"),
     alternativeTitles: normalizedAlternativeTitles,
     dateStatement: optionalText(input, "dateStatement"),
@@ -438,8 +376,8 @@ function normalizeSparseCanonical(value: unknown, inspection: PdfTextInspection)
     }),
     publication: {
       publisher: publisherValue,
-      place: authoritativePlace ?? optionalText(publication, "place"),
-      publicationDate: authoritativeDate ?? optionalText(publication, "publicationDate"),
+      place: optionalText(publication, "place"),
+      publicationDate: optionalText(publication, "publicationDate"),
       editionNumber: optionalText(publication, "editionNumber"),
       printing: optionalText(publication, "printing"),
     },
@@ -579,18 +517,25 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
 }
 
 function promptFor(inspection: PdfTextInspection): string {
-  const pages: Array<{ pageIndex: number; pageClass: string; evidenceOrigin: string; text: string }> = [];
-  let remaining = MAX_REASONING_INPUT_CHARACTERS;
+  const pages: Array<{
+    pageIndex: number;
+    pageClass: string;
+    evidenceOrigin: string;
+    fieldEvidenceEligible: boolean;
+    text: string;
+  }> = [];
   for (const page of inspection.pages) {
-    if (remaining <= 0) break;
     const pageClass = classifySuggestionPage(page);
-    if (!sourceTypeFor(pageClass)) continue;
-    const text = page.text.normalize("NFC").slice(0, Math.min(8_192, remaining));
-    remaining -= text.length;
-    pages.push({ pageIndex: page.pageIndex, pageClass, evidenceOrigin: page.evidenceOrigin ?? "native_text", text });
+    pages.push({
+      pageIndex: page.pageIndex,
+      pageClass,
+      evidenceOrigin: page.evidenceOrigin ?? "native_text",
+      fieldEvidenceEligible: sourceTypeFor(pageClass) !== undefined,
+      text: page.text,
+    });
   }
   return JSON.stringify({
-    task: "Extract only directly supported canonical bibliographic facts. First classify the intellectual work, independently from the physical or modern publication that carries it. A historical chronicle, classical text, archival source, inscription, manuscript, collected primary document, or modern edition/translation/facsimile of such a work is a historical/primary source; a modern publisher, publication date, ISBN, or named modern contributor does not turn that work into a scholarly_monograph. Use primary_source_modern_edition when a historical/primary work is presented through a supported modern edited, translated, transcribed, restored, reprinted, or facsimile manifestation. Use traditional_book only when evidence supports the artifact itself as a traditional edition. Use scholarly_monograph only when the work itself is modern scholarly analysis. A person value or embedded metadata author field alone never proves either the work class or the author role; preserve only contributor roles directly supported by usable evidence, otherwise omit the contributor. If the work class cannot be supported, use unknown with uncertain_material_class instead of guessing. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. Explicit 题名/書名/作者/著者/出版社/出版年 labels without conflict MUST use auto_apply with confidence >=90 and no warning only when the material class and every emitted role are also supported. Explicit 文章题名 plus 刊名/期号 means journal_article. The pages array contains only authority-eligible evidence that passed the runtime corruption/usability gate. Emit exactly one field evidence row for every populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime derives page class and source type. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous with a warning code only when usable facts genuinely conflict or remain unsupported.",
+    task: "Extract only directly supported canonical bibliographic facts. Qwen proposes the intellectual-work class; the trusted runtime validates page-bound positive support and never replaces the proposal with title-keyword classification. For every proposed non-unknown class, emit only its required classSupport signals with an exact evidenceText excerpt. scholarly_analysis and historical_primary_work require narrative contents/preface/body evidence independent from a title, publisher, date, ISBN, or person line. primary_source_modern_edition requires BOTH historical_primary_work and edition_mediation support, and edition_mediation must bind a concrete retained edition/mediation fact. traditional_book requires BOTH historical_primary_work and traditional_artifact support, and traditional_artifact must bind a concrete retained source-edition fact. A modern publisher, publication date, ISBN, person, or analytical-looking title is auxiliary context only and is neither necessary nor sufficient class support. If positive support is missing, extraneous, or conflicting, propose unknown with uncertain_material_class instead of guessing. A person value or embedded metadata author field alone never proves either the work class or the contributor role. Preserve each contributor role only when canonical.roleLabel carries the exact source wording (for example by/author/editor/译者 in whatever script the source uses); otherwise omit that contributor. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy and cannot support materialClass or contributor roles. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. The pages array contains only script-neutral usable evidence. Non-class fields may cite only a page whose fieldEvidenceEligible is true, or usable embedded metadata; classSupport may cite any supplied non-embedded page subject to the positive-evidence rules above. classSupport evidenceText and every field evidenceText must be an exact bounded excerpt of the cited page or usable embedded metadata. Do not emit materialClass in fields because classSupport owns its independent provenance. Emit exactly one field evidence row for every other populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime validates the excerpt and actual fact value, derives page class/source type/digest, and strips evidenceText before persistence. Never use overallConfidence to fill missing field evidence. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous when facts or class remain unsupported or conflicting.",
     classificationRules: {
       intellectualWorkBeforeManifestation: true,
       modernPublicationDoesNotImplyScholarlyWork: true,
@@ -599,6 +544,10 @@ function promptFor(inspection: PdfTextInspection): string {
       historicalModernManifestation: "primary_source_modern_edition",
       traditionalArtifact: "traditional_book",
       modernScholarlyAnalysis: "scholarly_monograph",
+      classSupportSignals: MATERIAL_CLASS_SUPPORT_SIGNALS,
+      primarySourceModernEditionRequires: ["historical_primary_work", "edition_mediation"],
+      traditionalBookRequires: ["historical_primary_work", "traditional_artifact"],
+      modernPublisherDatePersonAndTitleShapeAreAuxiliaryOnly: true,
     },
     controlledValues: { materialClasses: INTELLIGENT_MATERIAL_CLASSES, contributorRoles: INTELLIGENT_CONTRIBUTOR_ROLES, editionTypes: INTELLIGENT_EDITION_TYPES },
     controlledWarnings: MODEL_WARNING_CODES,
@@ -608,14 +557,27 @@ function promptFor(inspection: PdfTextInspection): string {
 }
 
 function reasoningInspectionFor(inspection: PdfTextInspection): PdfTextInspection {
-  const pages = inspection.pages.filter((page) => (
+  const usablePages = inspection.pages.filter((page) => (
     isUsableBibliographicEvidence(
       page.text,
       page.evidenceOrigin === "ocr" ? "ocr" : "native_text",
       { ocrConfidence: page.ocrConfidence },
     )
-    && sourceTypeFor(classifySuggestionPage(page)) !== undefined
   ));
+  const priorityPages = [
+    ...usablePages.filter((page) => sourceTypeFor(classifySuggestionPage(page)) !== undefined),
+    ...usablePages.filter((page) => sourceTypeFor(classifySuggestionPage(page)) === undefined),
+  ];
+  let remaining = MAX_REASONING_INPUT_CHARACTERS;
+  const pages: PdfTextInspection["pages"] = [];
+  for (const page of priorityPages) {
+    if (remaining <= 0) break;
+    const text = page.text.normalize("NFC").slice(0, Math.min(8_192, remaining));
+    remaining -= text.length;
+    if (text.length > 0) pages.push({ ...page, text });
+  }
+  pages.sort((left, right) => left.pageIndex - right.pageIndex);
+  const hasFieldEvidencePage = pages.some((page) => sourceTypeFor(classifySuggestionPage(page)) !== undefined);
   return {
     ...inspection,
     pageIndices: pages.map((page) => page.pageIndex),
@@ -623,7 +585,7 @@ function reasoningInspectionFor(inspection: PdfTextInspection): PdfTextInspectio
     // Keep the raw bounded metadata on the original inspection for provenance;
     // Qwen receives only the non-corrupt view, and only when no authoritative
     // page is available, preserving the single-source evidence contract.
-    embeddedMetadata: pages.length > 0 ? {} : usableEmbeddedMetadata(inspection.embeddedMetadata),
+    embeddedMetadata: hasFieldEvidencePage ? {} : usableEmbeddedMetadata(inspection.embeddedMetadata),
   };
 }
 
@@ -631,6 +593,7 @@ function normalizedModelWarnings(
   value: unknown[],
   inspection: PdfTextInspection,
   canonical: IntelligentCanonicalBibliography | null,
+  materialClassSupported: boolean,
 ): string[] {
   const normalized = value.map((entry) => (
     typeof entry === "string" && MODEL_WARNING_CODES.includes(entry as (typeof MODEL_WARNING_CODES)[number])
@@ -643,7 +606,6 @@ function normalizedModelWarnings(
   const explicitContributor = /(?:作者|著者|编者|編者|撰者|译者|譯者)\s*[:：]?\s*\S+/u.test(text);
   const explicitPublication = /(?:出版社|出版者|出版地|出版日期|出版年)\s*[:：]?\s*\S+/u.test(text);
   const explicitEdition = /(?:历史源版本|歷史源版本|现代载体版本|現代載體版本|影印本|点校本|點校本|校注本|校註本|刻本|钞本|鈔本|抄本|写本|寫本|活字本)/u.test(compact);
-  const explicitClass = authoritativeMaterialClass(inspection, "unknown") !== "unknown";
   const hasPublicationFact = canonical !== null && Object.values(canonical.publication).some((entry) => entry !== null);
   const hasEditionFact = canonical !== null && (
     Object.values(canonical.carrierEdition).some((entry) => entry !== null)
@@ -651,7 +613,7 @@ function normalizedModelWarnings(
   );
   return [...new Set(normalized)].filter((warning) => {
     if (warning === "uncertain_title" && explicitTitle) return false;
-    if (warning === "uncertain_material_class" && explicitClass) return false;
+    if (warning === "uncertain_material_class" && materialClassSupported) return false;
     if (warning === "uncertain_contributor" && explicitContributor) return false;
     if (warning === "uncertain_publication" && (explicitPublication || !hasPublicationFact)) return false;
     if (warning === "uncertain_edition" && (explicitEdition || !hasEditionFact)) return false;
@@ -702,92 +664,317 @@ function sourceTypeFor(pageClass: ReturnType<typeof classifySuggestionPage>): (t
   return undefined;
 }
 
-function authoritativeEvidence(field: unknown, inspection: PdfTextInspection): Record<string, unknown> {
-  const input = sparseRecord(field, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"]);
+interface ValidatedEvidenceExcerpt {
+  persisted: Record<string, unknown>;
+  evidenceText: string;
+  pageClass: ReturnType<typeof classifySuggestionPage> | null;
+}
+
+interface MaterialClassResolution {
+  materialClass: IntelligentCanonicalBibliography["materialClass"];
+  evidence: Record<string, unknown>;
+  warnings: string[];
+}
+
+const MATERIAL_CLASS_REQUIREMENTS: Record<
+  IntelligentCanonicalBibliography["materialClass"],
+  readonly MaterialClassSupportSignal[]
+> = {
+  scholarly_monograph: ["scholarly_analysis"],
+  edited_volume: ["scholarly_analysis", "edited_collection"],
+  journal_article: ["serial_article"],
+  book_chapter: ["chapter_container"],
+  thesis_dissertation: ["thesis"],
+  conference_paper: ["conference"],
+  review: ["review"],
+  reference_work: ["reference_work"],
+  dictionary_lexicon: ["dictionary_lexicon"],
+  primary_source_modern_edition: ["historical_primary_work", "edition_mediation"],
+  traditional_book: ["historical_primary_work", "traditional_artifact"],
+  archival_document: ["archival_document"],
+  inscription_epigraphy: ["inscription_epigraphy"],
+  rubbing: ["rubbing"],
+  manuscript: ["manuscript"],
+  collected_documents: ["historical_primary_work", "collected_documents"],
+  catalogue_bibliography: ["catalogue_bibliography"],
+  other: ["other_material"],
+  unknown: [],
+};
+
+function normalizedEvidenceText(value: unknown): string {
+  if (typeof value !== "string") throw new BibliographicIntelligenceError("invalid_result");
+  const normalized = value.normalize("NFKC").replace(/\s+/gu, " ").trim();
+  if (!normalized || [...normalized].length > 2_048 || /[\u0000-\u001f\u007f-\u009f]/u.test(normalized)) {
+    throw new BibliographicIntelligenceError("invalid_result");
+  }
+  return normalized;
+}
+
+function authoritativeEvidence(
+  field: unknown,
+  inspection: PdfTextInspection,
+  purpose: "field" | "class" = "field",
+): ValidatedEvidenceExcerpt {
+  const input = sparseRecord(field, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"]);
+  const evidenceText = normalizedEvidenceText(input.evidenceText);
+  const { evidenceText: _discarded, ...persistedInput } = input;
   if (input.evidenceOrigin === "embedded_pdf_metadata") {
-    const hasUsableEmbeddedMetadata = Object.values(inspection.embeddedMetadata)
-      .some((value) => typeof value === "string" && value.length > 0);
-    if (!hasUsableEmbeddedMetadata) throw new BibliographicIntelligenceError("invalid_result");
+    if (purpose === "class") throw new BibliographicIntelligenceError("invalid_result");
+    if (input.sourcePageIndex !== null) throw new BibliographicIntelligenceError("invalid_result");
+    const metadataValues = Object.values(inspection.embeddedMetadata)
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .map((value) => value.normalize("NFKC").replace(/\s+/gu, " ").trim());
+    if (!metadataValues.some((value) => value.includes(evidenceText))) {
+      throw new BibliographicIntelligenceError("invalid_result");
+    }
     return {
-      ...input,
-      // Embedded Info values have no PDF page. Small local models sometimes
-      // copy a page index into every field row even when the prompt contains no
-      // pages. The trusted runtime owns this structural fact, so normalize the
-      // non-authoritative model value while still requiring gated metadata.
-      sourcePageIndex: null,
-      sourceType: "embedded_pdf_metadata",
+      evidenceText,
+      persisted: {
+        ...persistedInput,
+        sourcePageIndex: null,
+        sourceType: "embedded_pdf_metadata",
+        pageClass: null,
+        evidenceSha256: sha256(JSON.stringify(inspection.embeddedMetadata)),
+      },
       pageClass: null,
-      evidenceSha256: sha256(JSON.stringify(inspection.embeddedMetadata)),
     };
   }
   if (!Number.isSafeInteger(input.sourcePageIndex)) throw new BibliographicIntelligenceError("invalid_result");
   const page = inspection.pages.find((entry) => entry.pageIndex === input.sourcePageIndex);
   if (!page || page.evidenceOrigin !== input.evidenceOrigin) throw new BibliographicIntelligenceError("invalid_result");
+  const normalizedPage = page.text.normalize("NFKC").replace(/\s+/gu, " ").trim();
+  if (!normalizedPage.includes(evidenceText)) throw new BibliographicIntelligenceError("invalid_result");
   const pageClass = classifySuggestionPage(page);
-  const sourceType = sourceTypeFor(pageClass);
+  const sourceType = purpose === "class" ? "class_support" : sourceTypeFor(pageClass);
   if (!sourceType) throw new BibliographicIntelligenceError("invalid_result");
-  return { ...input, sourceType, pageClass, evidenceSha256: sha256(page.text) };
+  return {
+    evidenceText,
+    persisted: { ...persistedInput, sourceType, pageClass, evidenceSha256: sha256(page.text) },
+    pageClass,
+  };
 }
 
-function singlePageEvidence(
-  canonical: IntelligentCanonicalBibliography,
-  modelFields: unknown[],
-  inspection: PdfTextInspection,
-  overallConfidence: unknown,
-): Array<Record<string, unknown>> {
+function unknownMaterialClassEvidence(inspection: PdfTextInspection): Record<string, unknown> {
   const page = inspection.pages[0];
-  if (!page || inspection.pages.length !== 1 || inspection.pageIndices.length !== 1 || inspection.pageIndices[0] !== page.pageIndex
-    || !Number.isSafeInteger(overallConfidence)) throw new BibliographicIntelligenceError("invalid_result");
-  const confidenceByField = new Map<string, number>();
-  for (const value of modelFields) {
-    const field = sparseRecord(value, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"]);
-    if (typeof field.fieldName !== "string" || !INTELLIGENT_BIBLIOGRAPHIC_FIELD_NAMES.includes(field.fieldName as (typeof INTELLIGENT_BIBLIOGRAPHIC_FIELD_NAMES)[number])
-      || typeof field.scopeKey !== "string" || !Number.isSafeInteger(field.confidence)
-      || (field.confidence as number) < 0 || (field.confidence as number) > 100
-      || field.sourcePageIndex !== page.pageIndex || field.evidenceOrigin !== (page.evidenceOrigin ?? "native_text")) {
-      throw new BibliographicIntelligenceError("invalid_result");
-    }
-    const key = `${field.fieldName}:${field.scopeKey}`;
-    confidenceByField.set(key, Math.min(confidenceByField.get(key) ?? 100, field.confidence as number));
-  }
-  return [...populatedFieldKeys(canonical)].map((key) => {
-    const separator = key.indexOf(":");
+  if (page) {
     return authoritativeEvidence({
-      fieldName: key.slice(0, separator),
-      scopeKey: key.slice(separator + 1),
-      confidence: Math.min(overallConfidence as number, confidenceByField.get(key) ?? overallConfidence as number),
+      fieldName: "materialClass",
+      scopeKey: "",
+      confidence: 0,
       sourcePageIndex: page.pageIndex,
       evidenceOrigin: page.evidenceOrigin ?? "native_text",
-    }, inspection);
+      evidenceText: page.text.normalize("NFKC").replace(/\s+/gu, " ").trim().slice(0, 2_048),
+    }, inspection, "class").persisted;
+  }
+  const embeddedValue = Object.values(inspection.embeddedMetadata)
+    .find((value): value is string => typeof value === "string" && value.length > 0);
+  if (embeddedValue) {
+    return authoritativeEvidence({
+      fieldName: "materialClass",
+      scopeKey: "",
+      confidence: 0,
+      sourcePageIndex: null,
+      evidenceOrigin: "embedded_pdf_metadata",
+      evidenceText: embeddedValue,
+    }, inspection).persisted;
+  }
+  throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", ["materialClass:"]);
+}
+
+const NARRATIVE_CLASS_PAGE_CLASSES = new Set<ReturnType<typeof classifySuggestionPage>>([
+  "contents_preface",
+  "ordinary_body",
+]);
+
+function evidenceContainsValue(evidenceText: string, value: string | number): boolean {
+  const normalizedEvidence = evidenceText.normalize("NFKC").toLocaleLowerCase().replace(/\s+/gu, " ").trim();
+  const normalizedValue = String(value).normalize("NFKC").toLocaleLowerCase().replace(/\s+/gu, " ").trim();
+  if (!normalizedValue) return false;
+  let position = normalizedEvidence.indexOf(normalizedValue);
+  while (position >= 0) {
+    if (!/^\d+$/u.test(normalizedValue)) return true;
+    const before = normalizedEvidence[position - 1] ?? "";
+    const after = normalizedEvidence[position + normalizedValue.length] ?? "";
+    if (!/\d/u.test(before) && !/\d/u.test(after)) return true;
+    position = normalizedEvidence.indexOf(normalizedValue, position + 1);
+  }
+  return false;
+}
+
+function evidenceContainsAnyValue(evidenceText: string, values: Array<string | number | null>): boolean {
+  return values.some((value) => {
+    if (value === null) return false;
+    return evidenceContainsValue(evidenceText, value);
   });
 }
 
-function multiPageEvidence(
+function positivelySupportsClassSignal(
+  signal: MaterialClassSupportSignal,
+  evidence: ValidatedEvidenceExcerpt,
+  canonical: IntelligentCanonicalBibliography,
+): boolean {
+  if (signal === "scholarly_analysis" || signal === "historical_primary_work") {
+    return evidence.pageClass !== null && NARRATIVE_CLASS_PAGE_CLASSES.has(evidence.pageClass);
+  }
+  if (signal === "edition_mediation") {
+    const mediationRoleLabels = canonical.contributors
+      .filter((entry) => ["editor", "translator", "compiler", "commentator"].includes(entry.role))
+      .map((entry) => entry.roleLabel);
+    return evidenceContainsAnyValue(evidence.evidenceText, [
+      canonical.carrierEdition.editionStatement,
+      canonical.carrierEdition.facsimileStatement,
+      canonical.publication.editionNumber,
+      canonical.publication.printing,
+      ...mediationRoleLabels,
+    ]);
+  }
+  if (signal === "traditional_artifact") {
+    return evidenceContainsAnyValue(evidence.evidenceText, [
+      canonical.sourceEdition.dynasty,
+      canonical.sourceEdition.reignTitle,
+      canonical.sourceEdition.reignYear,
+      canonical.sourceEdition.absoluteYear,
+      canonical.sourceEdition.printer,
+      canonical.sourceEdition.imprint,
+      canonical.sourceEdition.bookshop,
+      canonical.sourceEdition.institution,
+      canonical.sourceEdition.printingPlace,
+      canonical.sourceEdition.editionStatement,
+    ]);
+  }
+  return true;
+}
+
+function resolveMaterialClass(
+  proposed: IntelligentCanonicalBibliography["materialClass"],
+  rawSupport: unknown[],
+  inspection: PdfTextInspection,
+  canonical: IntelligentCanonicalBibliography,
+): MaterialClassResolution {
+  const support = new Map<MaterialClassSupportSignal, ValidatedEvidenceExcerpt>();
+  for (const value of rawSupport) {
+    try {
+      const input = sparseRecord(value, ["signal", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"]);
+      if (typeof input.signal !== "string"
+        || !MATERIAL_CLASS_SUPPORT_SIGNALS.includes(input.signal as MaterialClassSupportSignal)
+        || !Number.isSafeInteger(input.confidence)
+        || (input.confidence as number) < 0
+        || (input.confidence as number) > 100
+        || input.evidenceOrigin === "embedded_pdf_metadata") continue;
+      const signal = input.signal as MaterialClassSupportSignal;
+      if (!support.has(signal)) {
+        support.set(signal, authoritativeEvidence({
+          fieldName: "materialClass",
+          scopeKey: "",
+          confidence: input.confidence,
+          sourcePageIndex: input.sourcePageIndex,
+          evidenceOrigin: input.evidenceOrigin,
+          evidenceText: input.evidenceText,
+        }, inspection, "class"));
+      }
+    } catch {
+      // An untrusted or stale class citation cannot retain a semantic class.
+    }
+  }
+  const requirements = MATERIAL_CLASS_REQUIREMENTS[proposed];
+  const positiveSupport = new Map([...support].filter(([signal, evidence]) => (
+    positivelySupportsClassSignal(signal, evidence, canonical)
+  )));
+  const conflicts = [...positiveSupport.keys()].some((signal) => !requirements.includes(signal));
+  const supported = proposed !== "unknown" && !conflicts && requirements.length > 0
+    && requirements.every((signal) => positiveSupport.has(signal));
+  if (!supported) {
+    return {
+      materialClass: "unknown",
+      evidence: positiveSupport.values().next().value?.persisted ?? unknownMaterialClassEvidence(inspection),
+      warnings: conflicts ? ["uncertain_material_class", "conflicting_evidence"] : ["uncertain_material_class"],
+    };
+  }
+  const evidence = positiveSupport.get(requirements[0]!)!;
+  return { materialClass: proposed, evidence: evidence.persisted, warnings: [] };
+}
+
+function canonicalFactValues(canonical: IntelligentCanonicalBibliography, fieldName: string, scopeKey: string): string[] {
+  const publication = canonical.publication;
+  const carrier = canonical.carrierEdition;
+  const source = canonical.sourceEdition;
+  if (fieldName === "canonicalTitle") return [canonical.canonicalTitle];
+  if (fieldName === "subtitle") return canonical.subtitle === null ? [] : [canonical.subtitle];
+  if (fieldName === "alternativeTitles") return canonical.alternativeTitles;
+  if (fieldName === "dateStatement") return canonical.dateStatement === null ? [] : [canonical.dateStatement];
+  if (fieldName === "identifiers") return canonical.identifiers.map((entry) => entry.value);
+  if (fieldName.startsWith("publication.")) {
+    const value = publication[fieldName.slice("publication.".length) as keyof typeof publication];
+    return value === null ? [] : [value];
+  }
+  if (fieldName === "series" || fieldName === "volume" || fieldName === "language") {
+    const value = canonical[fieldName];
+    return value === null ? [] : [value];
+  }
+  if (fieldName.startsWith("carrierEdition.")) {
+    const key = fieldName.slice("carrierEdition.".length) as keyof typeof carrier;
+    const value = carrier[key];
+    if (key === "editionType") return value === null ? [] : [carrier.editionStatement ?? carrier.facsimileStatement ?? ""];
+    return value === null ? [] : [value];
+  }
+  if (fieldName.startsWith("sourceEdition.")) {
+    const key = fieldName.slice("sourceEdition.".length) as keyof typeof source;
+    const value = source[key];
+    if (key === "editionType") return value === null ? [] : [source.editionStatement ?? ""];
+    return value === null ? [] : [String(value)];
+  }
+  if (fieldName.startsWith("contributor.")) {
+    const index = Number(scopeKey.slice("contributor:".length));
+    const contributor = canonical.contributors[index];
+    if (!contributor) return [];
+    if (fieldName === "contributor.label") return [contributor.label];
+    if (fieldName === "contributor.roleLabel") return contributor.roleLabel === null ? [] : [contributor.roleLabel];
+    return contributor.roleLabel === null ? [] : [contributor.label, contributor.roleLabel];
+  }
+  return [];
+}
+
+function validatesCanonicalFact(
+  canonical: IntelligentCanonicalBibliography,
+  fieldName: string,
+  scopeKey: string,
+  evidenceText: string,
+): boolean {
+  const values = canonicalFactValues(canonical, fieldName, scopeKey);
+  if (values.length === 0) return false;
+  return values.every((value) => evidenceContainsValue(evidenceText, value));
+}
+
+function validatedFieldEvidence(
   canonical: IntelligentCanonicalBibliography,
   modelFields: unknown[],
   inspection: PdfTextInspection,
+  materialClassEvidence: Record<string, unknown>,
 ): Array<Record<string, unknown>> {
   const required = populatedFieldKeys(canonical);
-  const fields = new Map<string, Record<string, unknown>>();
+  required.delete("materialClass:");
+  const fields = new Map<string, Record<string, unknown>>([["materialClass:", materialClassEvidence]]);
   for (const value of modelFields) {
     let field: Record<string, unknown>;
     try {
-      field = sparseRecord(value, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin"]);
+      field = sparseRecord(value, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"]);
     } catch {
       continue;
     }
     if (typeof field.fieldName !== "string" || typeof field.scopeKey !== "string") continue;
     const key = `${field.fieldName}:${field.scopeKey}`;
-    // The strict model can return evidence for a fact removed by deterministic
-    // normalization (for example an invalid ISBN or publisher-shaped
-    // contributor). Such evidence is not a fact and must not poison the whole
-    // otherwise valid result.
+    // Facts removed by normalization do not acquire evidence or poison a valid
+    // sparse result.
     if (!required.has(key)) continue;
     if (fields.has(key)) {
       throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", [...required].sort());
     }
     try {
-      fields.set(key, authoritativeEvidence(field, inspection));
+      const validated = authoritativeEvidence(field, inspection);
+      if (!validatesCanonicalFact(canonical, field.fieldName, field.scopeKey, validated.evidenceText)) {
+        throw new BibliographicIntelligenceError("invalid_result");
+      }
+      fields.set(key, validated.persisted);
     } catch (error: unknown) {
       if (error instanceof BibliographicIntelligenceError) {
         throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", [...required].sort());
@@ -795,7 +982,7 @@ function multiPageEvidence(
       throw error;
     }
   }
-  if (fields.size !== required.size || [...required].some((key) => !fields.has(key))) {
+  if ([...required].some((key) => !fields.has(key))) {
     throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", [...required].sort());
   }
   return [...fields.values()];
@@ -861,8 +1048,10 @@ function deriveIntelligentBibliographyFromModel(
   inspection: PdfTextInspection,
   legacyFallback = false,
 ): IntelligentBibliographyResult {
-  const raw = sparseRecord(model, ["status", "overallConfidence", "canonical", "fields", "warnings"]);
-  if (!Array.isArray(raw.fields) || !Array.isArray(raw.warnings)) throw new BibliographicIntelligenceError("invalid_result");
+  const raw = sparseRecord(model, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"]);
+  if (!Array.isArray(raw.classSupport) || !Array.isArray(raw.fields) || !Array.isArray(raw.warnings)) {
+    throw new BibliographicIntelligenceError("invalid_result");
+  }
   let normalizedCanonical: IntelligentCanonicalBibliography | null;
   try {
     normalizedCanonical = raw.canonical === null ? null : parseIntelligentCanonicalBibliography(normalizeSparseCanonical(raw.canonical, inspection));
@@ -871,15 +1060,33 @@ function deriveIntelligentBibliographyFromModel(
     throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
   }
   let canonical: IntelligentCanonicalBibliography | null;
+  let materialClassResolution: MaterialClassResolution | null = null;
   try {
-    canonical = normalizedCanonical === null ? null : discardUnresolvedModelFacts(normalizedCanonical, raw.warnings, inspection);
+    if (normalizedCanonical === null) {
+      if (raw.classSupport.length > 0) throw new BibliographicIntelligenceError("invalid_result");
+      canonical = null;
+    } else {
+      materialClassResolution = resolveMaterialClass(
+        normalizedCanonical.materialClass,
+        raw.classSupport,
+        inspection,
+        normalizedCanonical,
+      );
+      canonical = discardUnresolvedModelFacts(parseIntelligentCanonicalBibliography({
+        ...normalizedCanonical,
+        materialClass: materialClassResolution.materialClass,
+      }), raw.warnings, inspection);
+    }
   } catch (error: unknown) {
     if (error instanceof BibliographicIntelligenceError) throw error;
     throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
   }
-  const fields = canonical !== null && inspection.pages.length === 1
-    ? singlePageEvidence(canonical, raw.fields, inspection, raw.overallConfidence)
-    : canonical === null ? [] : multiPageEvidence(canonical, raw.fields, inspection);
+  const fields = canonical === null ? [] : validatedFieldEvidence(
+    canonical,
+    raw.fields,
+    inspection,
+    materialClassResolution!.evidence,
+  );
   const requestedStatus = raw.status;
   // Parse model output first as non-authoritative evidence. Only the final pass
   // below may promote a schema-valid, deterministic-warning-free result to
@@ -894,7 +1101,15 @@ function deriveIntelligentBibliographyFromModel(
     overallConfidence: raw.overallConfidence,
     canonical,
     fields,
-    warnings: normalizedModelWarnings(raw.warnings, inspection, canonical),
+    warnings: [...new Set([
+      ...normalizedModelWarnings(
+        raw.warnings,
+        inspection,
+        canonical,
+        materialClassResolution !== null && materialClassResolution.warnings.length === 0,
+      ),
+      ...(materialClassResolution?.warnings ?? []),
+    ])],
     provenance: {
       ocr: {
         used: inspection.pages.some((page) => page.evidenceOrigin === "ocr"),
@@ -927,7 +1142,7 @@ function deriveIntelligentBibliographyFromModel(
   }
   if (candidate.status === "no_bibliography") return candidate;
   const warnings = [...new Set([...candidate.warnings, ...deterministicWarnings(candidate)])];
-  const statusAllowsPromotion = requestedStatus === "auto_apply" || hasExplicitUnconflictedTitleEvidence(inspection);
+  const statusAllowsPromotion = requestedStatus === "auto_apply";
   try {
     return parseIntelligentBibliographyResult({
       ...candidate,
@@ -948,23 +1163,52 @@ function evidenceRepairPromptFor(inspection: PdfTextInspection, requiredFieldKey
     repair: {
       reason: "previous_field_evidence_invalid",
       requiredFieldKeys: [...new Set(requiredFieldKeys)].sort(),
-      instruction: "Return a complete new result object. Preserve only facts directly supported by the supplied authority-eligible pages or embedded metadata. The fields array must contain every requiredFieldKey exactly once, contain no other field/scope pair, and use only the supplied pageIndex/evidenceOrigin or embedded_pdf_metadata with null sourcePageIndex.",
+      instruction: "Return a complete new result object. You may only retain original proposed facts, omit unsupported optional facts/contributors, downgrade materialClass to unknown, or return no_bibliography; never add or change a fact. Every retained non-class fact needs exactly one fields row with an exact bounded evidenceText excerpt containing the actual value. materialClass uses classSupport, not fields. Never use overallConfidence or a one-page shortcut to create missing provenance.",
     },
   });
 }
 
+function proposalSubset(original: unknown, candidate: unknown, path = ""): boolean {
+  if (candidate === null) return true;
+  if (typeof candidate !== "object") {
+    return path === "canonical.materialClass" && candidate === "unknown"
+      ? true
+      : Object.is(original, candidate);
+  }
+  if (Array.isArray(candidate)) {
+    if (!Array.isArray(original)) return false;
+    let position = 0;
+    return candidate.every((entry) => {
+      while (position < original.length && !proposalSubset(original[position], entry, `${path}[]`)) position += 1;
+      if (position >= original.length) return false;
+      position += 1;
+      return true;
+    });
+  }
+  if (typeof original !== "object" || original === null || Array.isArray(original)) return false;
+  return Object.entries(candidate as Record<string, unknown>).every(([key, value]) => (
+    Object.prototype.hasOwnProperty.call(original, key)
+    && proposalSubset((original as Record<string, unknown>)[key], value, path ? `${path}.${key}` : key)
+  ));
+}
+
 function evidenceOnlyRepair(original: unknown, repaired: unknown): Record<string, unknown> {
-  const keys = ["status", "overallConfidence", "canonical", "fields", "warnings"] as const;
+  const keys = ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"] as const;
   const originalResult = sparseRecord(original, keys);
   const repairedResult = sparseRecord(repaired, keys);
-  if (!Array.isArray(repairedResult.fields)) {
+  if (!Array.isArray(repairedResult.classSupport) || !Array.isArray(repairedResult.fields)
+    || !Array.isArray(repairedResult.warnings)
+    || !proposalSubset(originalResult.canonical, repairedResult.canonical, "canonical")) {
     throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
   }
-  // The second inference is a provenance repair, not a second opportunity to
-  // change facts. Keep the first normalized fact proposal and accept only the
-  // repaired field-evidence rows, which still pass the full authority/schema
-  // validation below.
-  return { ...originalResult, fields: repairedResult.fields };
+  const originalConfidence = Number.isSafeInteger(originalResult.overallConfidence)
+    ? originalResult.overallConfidence as number : 0;
+  const repairedConfidence = Number.isSafeInteger(repairedResult.overallConfidence)
+    ? repairedResult.overallConfidence as number : 0;
+  return {
+    ...repairedResult,
+    overallConfidence: Math.min(originalConfidence, repairedConfidence),
+  };
 }
 
 export async function deriveIntelligentBibliography(

@@ -45,9 +45,11 @@ title vocabulary and whole-inspection edition markers; single-page evidence
 could synthesize provenance for facts Qwen never evidenced; an existing empty
 unowned contributor set could not receive its first valid AI contributor; and
 migrations 029–031 rebuilt immutable AI evidence only to extend version checks.
-Final ruleset v7/prompt-v4 and one schema32 registry migration must repair all
-four boundaries before new production work. Full-corpus and normal-browser
-product acceptance remain revoked/pending.
+Final ruleset v7/prompt-v4 and one schema32 registry migration now repair all
+four boundaries in the working tree, with full verification green. Exact
+release assembly, fresh schema31 backup, schema32 production cutover,
+three-canary acceptance, and normal-browser product acceptance remain
+revoked/pending.
 
 The corrupt-evidence defect is repaired, deployed, and canary-verified at exact
 checkpoint `6c71ac94c60d49e65e7eca59305b59ba6e461167`.
@@ -179,6 +181,13 @@ preserved while an empty unowned profile may receive its first valid AI
 contributor. Schema32 introduces an append-only composite ruleset registry,
 preserves immutable v1–v6 evidence, admits final v7/prompt-v4, and removes the
 need to rebuild the evidence table for later bounded admissions.
+
+The implementation checkpoint is verified locally: Backend 381/381,
+Frontend 284/284, Compute 103/103 plus 2 expected release-runtime skips,
+Compute contracts 3/3, workspace typecheck/build, compiled acceptance with
+first migration count 32 and redeploy count 0, and ops auditor 48/48. The
+main worker remains disabled/inactive/PAUSED and production remains unchanged
+at fd97542/schema31.
 
 After full local verification, exact release, fresh encrypted/off-host
 schema31 backup, and schema32 cutover, three isolated real canaries must cover

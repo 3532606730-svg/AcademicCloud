@@ -10,18 +10,20 @@ import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
 const NOW = "2026-08-27T12:00:00.000Z";
 
-test("migrations 027-031 preserve immutable v1-v5 AI evidence and admit exact v6 provenance", () => {
+test("migration 032 preserves immutable v1-v6 evidence and admits exact v7 through an append-only registry", () => {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-bibliography-ruleset-v2-"));
   const v26Directory = join(temporaryDirectory, "v26");
   const v27Directory = join(temporaryDirectory, "v27");
   const v28Directory = join(temporaryDirectory, "v28");
   const v29Directory = join(temporaryDirectory, "v29");
   const v30Directory = join(temporaryDirectory, "v30");
+  const v31Directory = join(temporaryDirectory, "v31");
   mkdirSync(v26Directory);
   mkdirSync(v27Directory);
   mkdirSync(v28Directory);
   mkdirSync(v29Directory);
   mkdirSync(v30Directory);
+  mkdirSync(v31Directory);
   for (const filename of readdirSync(INITIAL_MIGRATIONS_DIRECTORY)) {
     if (Number(filename.slice(0, 3)) <= 26) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v26Directory, filename));
@@ -37,6 +39,9 @@ test("migrations 027-031 preserve immutable v1-v5 AI evidence and admit exact v6
     }
     if (Number(filename.slice(0, 3)) <= 30) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v30Directory, filename));
+    }
+    if (Number(filename.slice(0, 3)) <= 31) {
+      copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v31Directory, filename));
     }
   }
   const database = openSqliteDatabase(join(temporaryDirectory, "ruleset.sqlite"));
@@ -223,10 +228,34 @@ test("migrations 027-031 preserve immutable v1-v5 AI evidence and admit exact v6
     `);
     assert.throws(() => insertV6.run("f".repeat(64), NOW), /CHECK constraint failed/u);
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+    assert.deepEqual(runMigrations(database, v31Directory), {
       appliedVersions: [31], currentVersion: 31,
     });
     insertV6.run("f".repeat(64), NOW);
+    const historicalEvidenceBeforeV32 = database.prepare(`
+      SELECT * FROM scholarly_bibliographic_ai_runs ORDER BY id
+    `).all();
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+      appliedVersions: [32], currentVersion: 32,
+    });
+    assert.deepEqual(database.prepare(`
+      SELECT * FROM scholarly_bibliographic_ai_runs ORDER BY id
+    `).all(), historicalEvidenceBeforeV32, "migration 032 changed immutable contract or digest evidence");
+    insertSuggestionRun.run("suggestion-v7", "rf-frontmatterocr-v2", "v7-source", NOW);
+    database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        'ai-v7', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v7',
+        1, 'l1-intelligent-library01-v7', 'ambiguous', 70,
+        '{}', ?, 'l1-intelligent-library01-prompt-v4',
+        'PaddleOCR/v7', 'Qwen3/v7', '[1]', 0, '[]', ?
+      )
+    `).run("7".repeat(64), NOW);
     assert.deepEqual(database.prepare<[], { id: string; ruleset_version: string; prompt_version: string }>(`
       SELECT id, ruleset_version, prompt_version
         FROM scholarly_bibliographic_ai_runs
@@ -255,7 +284,52 @@ test("migrations 027-031 preserve immutable v1-v5 AI evidence and admit exact v6
       id: "ai-v6",
       ruleset_version: "l1-intelligent-library01-v6",
       prompt_version: "l1-intelligent-library01-prompt-v3",
+    }, {
+      id: "ai-v7",
+      ruleset_version: "l1-intelligent-library01-v7",
+      prompt_version: "l1-intelligent-library01-prompt-v4",
     }]);
+    assert.equal(database.prepare<[], { count: number }>(`
+      SELECT count(*) AS count FROM scholarly_bibliographic_ruleset_registry
+    `).get()!.count, 7);
+
+    insertSuggestionRun.run("suggestion-v8", "rf-frontmatterocr-v2", "v8-source", NOW);
+    const insertV8 = database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        'ai-v8', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v8',
+        1, 'l1-intelligent-library01-v8', 'ambiguous', 70,
+        '{}', ?, 'l1-intelligent-library01-prompt-v4',
+        'PaddleOCR/v8', 'Qwen3/v8', '[1]', 0, '[]', ?
+      )
+    `);
+    assert.throws(() => insertV8.run("8".repeat(64), NOW), /FOREIGN KEY constraint failed/u);
+    database.prepare(`
+      INSERT INTO scholarly_bibliographic_ruleset_registry (
+        contract_version, ruleset_version, prompt_version, admitted_at
+      ) VALUES (1, 'l1-intelligent-library01-v8', 'l1-intelligent-library01-prompt-v4', ?)
+    `).run(NOW);
+    insertV8.run("8".repeat(64), NOW);
+    assert.throws(
+      () => database.prepare(`
+        UPDATE scholarly_bibliographic_ruleset_registry
+           SET admitted_at = admitted_at
+         WHERE ruleset_version = 'l1-intelligent-library01-v1'
+      `).run(),
+      /bibliographic ruleset admission is immutable/u,
+    );
+    assert.throws(
+      () => database.prepare(`
+        DELETE FROM scholarly_bibliographic_ruleset_registry
+         WHERE ruleset_version = 'l1-intelligent-library01-v1'
+      `).run(),
+      /bibliographic ruleset admission is retained/u,
+    );
     assert.throws(
       () => database.prepare("UPDATE scholarly_bibliographic_ai_runs SET overall_confidence = 71 WHERE id = 'ai-v1'").run(),
       /bibliographic AI evidence is immutable/u,

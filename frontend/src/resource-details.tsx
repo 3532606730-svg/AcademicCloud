@@ -275,12 +275,15 @@ function authorityKey(authority: Pick<BibliographicFieldAuthority, "fieldName" |
   return JSON.stringify([authority.fieldName, authority.scopeKey]);
 }
 
-const SUGGESTION_SOURCE_KEYS: Record<MetadataSuggestionSourceType, MessageKey> = {
+type BibliographicEvidenceSourceType = MetadataSuggestionSourceType | "class_support";
+
+const SUGGESTION_SOURCE_KEYS: Record<BibliographicEvidenceSourceType, MessageKey> = {
   title_page: "metadata.suggestions.source.titlePage",
   copyright_page: "metadata.suggestions.source.copyrightPage",
   cip_page: "metadata.suggestions.source.cipPage",
   colophon: "metadata.suggestions.source.colophon",
   series_page: "metadata.suggestions.source.seriesPage",
+  class_support: "metadata.suggestions.source.classSupport",
   embedded_pdf_metadata: "metadata.suggestions.source.embedded",
   filename: "metadata.suggestions.source.filename",
 };
@@ -327,7 +330,7 @@ function safeSuggestionError(error: unknown): ApiError {
   return new ApiError(500, "metadata_suggestion_internal_error");
 }
 
-function suggestionSourceLabel(value: MetadataSuggestionSourceType, t: ReturnType<typeof useLanguage>["t"]): string {
+function suggestionSourceLabel(value: BibliographicEvidenceSourceType, t: ReturnType<typeof useLanguage>["t"]): string {
   return t(SUGGESTION_SOURCE_KEYS[value]);
 }
 function suggestionConfidenceLabel(value: MetadataSuggestionConfidence, t: ReturnType<typeof useLanguage>["t"]): string {
