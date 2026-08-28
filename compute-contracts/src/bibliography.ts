@@ -3,7 +3,7 @@
  * reasoning generation. A prompt/ruleset change must not reuse an older
  * succeeded job for unchanged source bytes.
  */
-export const INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION = "l1-intelligent-library01-v4" as const;
+export const INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION = "l1-intelligent-library01-v5" as const;
 
 export const INTELLIGENT_MATERIAL_CLASSES = [
   "scholarly_monograph",
@@ -151,7 +151,8 @@ export interface IntelligentBibliographyResult {
     | "l1-intelligent-library01-v1"
     | "l1-intelligent-library01-v2"
     | "l1-intelligent-library01-v3"
-    | "l1-intelligent-library01-v4";
+    | "l1-intelligent-library01-v4"
+    | "l1-intelligent-library01-v5";
   status: IntelligentBibliographyStatus;
   overallConfidence: number;
   canonical: IntelligentCanonicalBibliography | null;
@@ -383,6 +384,7 @@ export function parseIntelligentBibliographyResult(value: unknown): IntelligentB
     "l1-intelligent-library01-v2",
     "l1-intelligent-library01-v3",
     "l1-intelligent-library01-v4",
+    "l1-intelligent-library01-v5",
   ] as const, "bibliography.rulesetVersion");
   const status = oneOf(input.status, INTELLIGENT_BIBLIOGRAPHY_STATUSES, "bibliography.status");
   const canonical = input.canonical === null ? null : parseIntelligentCanonicalBibliography(input.canonical);

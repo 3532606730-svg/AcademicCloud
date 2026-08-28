@@ -10,14 +10,16 @@ import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
 const NOW = "2026-08-27T12:00:00.000Z";
 
-test("migrations 027-029 preserve immutable v1-v3 AI evidence and admit exact v4 provenance", () => {
+test("migrations 027-030 preserve immutable v1-v4 AI evidence and admit exact v5 provenance", () => {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-bibliography-ruleset-v2-"));
   const v26Directory = join(temporaryDirectory, "v26");
   const v27Directory = join(temporaryDirectory, "v27");
   const v28Directory = join(temporaryDirectory, "v28");
+  const v29Directory = join(temporaryDirectory, "v29");
   mkdirSync(v26Directory);
   mkdirSync(v27Directory);
   mkdirSync(v28Directory);
+  mkdirSync(v29Directory);
   for (const filename of readdirSync(INITIAL_MIGRATIONS_DIRECTORY)) {
     if (Number(filename.slice(0, 3)) <= 26) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v26Directory, filename));
@@ -27,6 +29,9 @@ test("migrations 027-029 preserve immutable v1-v3 AI evidence and admit exact v4
     }
     if (Number(filename.slice(0, 3)) <= 28) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v28Directory, filename));
+    }
+    if (Number(filename.slice(0, 3)) <= 29) {
+      copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v29Directory, filename));
     }
   }
   const database = openSqliteDatabase(join(temporaryDirectory, "ruleset.sqlite"));
@@ -171,10 +176,31 @@ test("migrations 027-029 preserve immutable v1-v3 AI evidence and admit exact v4
     `);
     assert.throws(() => insertV4.run("d".repeat(64), NOW), /CHECK constraint failed/u);
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+    assert.deepEqual(runMigrations(database, v29Directory), {
       appliedVersions: [29], currentVersion: 29,
     });
     insertV4.run("d".repeat(64), NOW);
+    insertSuggestionRun.run("suggestion-v5", "rf-frontmatterocr-v2", "v5-source", NOW);
+    const insertV5 = database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        'ai-v5', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v5',
+        1, 'l1-intelligent-library01-v5', 'ambiguous', 70,
+        '{}', ?, 'l1-intelligent-library01-prompt-v3',
+        'PaddleOCR/v5', 'Qwen3/v5', '[1]', 0, '[]', ?
+      )
+    `);
+    assert.throws(() => insertV5.run("e".repeat(64), NOW), /CHECK constraint failed/u);
+
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+      appliedVersions: [30], currentVersion: 30,
+    });
+    insertV5.run("e".repeat(64), NOW);
     assert.deepEqual(database.prepare<[], { id: string; ruleset_version: string; prompt_version: string }>(`
       SELECT id, ruleset_version, prompt_version
         FROM scholarly_bibliographic_ai_runs
@@ -194,6 +220,10 @@ test("migrations 027-029 preserve immutable v1-v3 AI evidence and admit exact v4
     }, {
       id: "ai-v4",
       ruleset_version: "l1-intelligent-library01-v4",
+      prompt_version: "l1-intelligent-library01-prompt-v3",
+    }, {
+      id: "ai-v5",
+      ruleset_version: "l1-intelligent-library01-v5",
       prompt_version: "l1-intelligent-library01-prompt-v3",
     }]);
     assert.throws(

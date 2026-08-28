@@ -215,6 +215,47 @@ test("a supported modern analytical title overrides a conservative primary-sourc
   });
 });
 
+test("an unlabeled Qwen title can classify a modern analytical work only when usable evidence contains it", async () => {
+  const source = fixture({
+    ...emptyCanonical("明朝佛教史论稿"),
+    materialClass: "primary_source_modern_edition",
+    contributors: [],
+    publication: {
+      publisher: "宗教文化出版社",
+      place: null,
+      publicationDate: "2016.11",
+      editionNumber: null,
+      printing: null,
+    },
+  }, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
+  source.inspection.pages[0]!.text = "明朝佛教史论稿\n出版社：宗教文化出版社\n出版日期：2016.11";
+
+  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+
+  assert.equal(result.canonical?.materialClass, "scholarly_monograph");
+  assert.equal(result.canonical?.canonicalTitle, "明朝佛教史论稿");
+});
+
+test("an analytical model title absent from usable evidence cannot override the model work class", async () => {
+  const source = fixture({
+    ...emptyCanonical("明朝佛教史论稿"),
+    materialClass: "primary_source_modern_edition",
+    contributors: [],
+    publication: {
+      publisher: "宗教文化出版社",
+      place: null,
+      publicationDate: "2016.11",
+      editionNumber: null,
+      printing: null,
+    },
+  }, "ambiguous", ["uncertain_material_class", "uncertain_contributor"]);
+  source.inspection.pages[0]!.text = "某历史文献整理本\n出版社：宗教文化出版社\n出版日期：2016.11";
+
+  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+
+  assert.equal(result.canonical?.materialClass, "primary_source_modern_edition");
+});
+
 test("gated embedded metadata owns its null page identity even when Qwen copies a page index", async () => {
   const embeddedAuthor = "Nicholas Poppe";
   const canonical = {
