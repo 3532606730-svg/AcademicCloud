@@ -173,17 +173,18 @@ The failed A-canary attempt
 `f876257a-d5f5-4509-80de-b89145caba16` proved a scheduling defect rather than
 a Core or network rejection. Claim completed at 01:13:46.755Z; heartbeats at
 01:14:18.838Z and 01:14:50.830Z both returned HTTP 200 and renewed the lease to
-approximately 01:16:20.829Z. No third heartbeat reached Core. The isolated
-worker exited at 01:16:20.859Z and Core recovered a new attempt at
-01:16:27.841Z. The compiled failure was raised immediately after the heartbeat
-timer returned and before `fetch`, proving category A: the heartbeat did not
-receive event-loop scheduling in time. Exact Paddle and Qwen stage timestamps
-were not emitted by that release and are therefore unavailable. The correction
-moves production lease maintenance to an independent Node worker thread,
-retains the 90-second lease, and checks shared atomic lease state before any
-callback. Deterministic tests prove repeated renewal beyond the original lease
-under synchronous main-loop starvation and zero callbacks after real lease
-failure.
+approximately 01:16:20.829Z. No third heartbeat reached Core. Attempt 8 then
+tested immutable worker-thread release `be2e26d…`: heartbeats at 10:08:53,
+10:09:25, and 10:09:57 all returned HTTP 200, but no fourth request reached
+Core and the thread reported expiry at 10:11:27, exactly 90 seconds after the
+last renewal. This is still category A, now proven at the same-process worker-
+thread boundary; no rejection, HTTP timeout, or 5xx was observed. Exact
+Paddle/Qwen timestamps were not emitted and are not inferred. The next
+correction moves lease maintenance into a lightweight independent Node child
+process, retains the 90-second lease, and actively probes lease state over IPC
+before every callback attempt. Deterministic tests prove repeated renewal
+beyond the original lease under main-process starvation and zero callbacks
+after real lease failure.
 
 The v3 admission repair and v4/v5/v6 classification attempts are now historical
 evidence. Production advanced through exact encrypted off-host gates and
@@ -197,7 +198,7 @@ contributor. Schema32 introduces an append-only composite ruleset registry,
 preserves immutable v1–v6 evidence, admits final v7/prompt-v4, and removes the
 need to rebuild the evidence table for later bounded admissions.
 
-The architecture checkpoint is deployed; the new lease correction passes
+The architecture checkpoint is deployed; the child-process lease correction passes
 Compute typecheck/build, Local Pull 12/12, full Compute 107/107 plus 2 expected
 release-runtime skips, Compute contracts 3/3, and focused Backend 28/28. The
 main worker remains disabled/inactive/PAUSED.

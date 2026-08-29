@@ -408,12 +408,12 @@ async function postResultWithRetry(
   fetchImplementation: typeof fetch,
   signal?: AbortSignal,
   timeoutMilliseconds = CORE_REQUEST_TIMEOUT_MILLISECONDS,
-  beforeRequest?: () => void,
+  beforeRequest?: () => void | Promise<void>,
 ): Promise<void> {
   const headers = { authorization: `Bearer ${claim.capability.token}`, "content-type": "application/json" };
   let lastError: unknown;
   for (let attempt = 0; attempt <= RESULT_CALLBACK_RETRY_DELAYS_MS.length; attempt += 1) {
-    beforeRequest?.();
+    await beforeRequest?.();
     let response: Response | undefined;
     try {
       response = await postJson(claim.callbackUrl, headers, result, fetchImplementation, signal, timeoutMilliseconds);
@@ -446,7 +446,7 @@ export async function runComputeWorker(
     networkTimeouts?: Partial<ComputeWorkerNetworkTimeouts>;
     retainRuntime?: boolean;
     /** Last fail-closed lease check before any terminal callback leaves the worker. */
-    beforeResultCallback?: () => void;
+    beforeResultCallback?: () => void | Promise<void>;
   } = {},
 ): Promise<ComputeWorkerOutcome> {
   if (!JOB_ID.test(input.jobId) || !JOB_ID.test(input.attemptId)) throw new Error("compute job identity is invalid");

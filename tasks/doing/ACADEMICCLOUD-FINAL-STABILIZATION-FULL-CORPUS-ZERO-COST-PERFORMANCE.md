@@ -357,12 +357,24 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   original lease and prove repeated renewal; the unavailable-heartbeat case
   proves expiry with zero callback. The 90-second lease is unchanged and no
   schema migration is required.
+- Exact release `be2e26de7e77fedfcc0ceefd57ef982f45ca03e3` passed all file
+  hashes (inventory `609ce303…5531`) and compiled worker-thread qualification.
+  Normal UI created attempt 8
+  `4312e463-1b44-488c-8431-89002769d40e`, which that release claimed exactly.
+  It renewed three times with Core HTTP 200, then emitted no fourth heartbeat
+  and expired exactly 90 seconds after the last renewal. No callback persisted;
+  Core safely recovered attempt 9
+  `53f1e1c7-3fe0-4a2b-b780-44b4e88e3612`. The main worker remained stopped.
+- Replaced insufficient same-process worker-thread isolation with a lightweight
+  child process that imports no PDF/native/model modules. Lease authority is
+  sent only over private IPC; every callback request/retry requires an active
+  child probe. Deterministic renew/failure and callback-retry regressions pass.
 
 ## Remaining
 
 - Checkpoint and assemble one exact immutable Compute release containing both
-  the `60205d…` llama transport repair and independent lease keeper; verify its
-  full release hash and compiled worker-thread execution.
+  the llama transport repair and child-process lease keeper; verify its full
+  release hash and compiled process isolation.
 - Re-read the current A job/attempt and deadline without claiming. If eligible,
   run exactly one hardened isolated A iteration with the threaded keeper while
   the main worker remains disabled/inactive/PAUSED. Then continue B/C only after
@@ -393,9 +405,10 @@ forced-loss, or corpus execution before A passes.
 
 ## Last Verification
 
-2026-08-29: root-cause classification A is proven by Core/access logs, isolated
-unit journal, compiled failure site, and durable lease state. The independent
-keeper correction passes Compute typecheck/build, Local Pull 12/12, full
+2026-08-29: root-cause classification A is proven by Core logs, isolated unit
+journal, compiled failure site, and durable lease state. Attempt 8 proved the
+same-process worker thread insufficient after three HTTP-200 renewals. The
+child-process keeper correction passes Compute typecheck/build, Local Pull 12/12, full
 Compute 107/107 plus two expected release-runtime skips, Compute contracts 3/3,
 focused Backend 28/28, and `git diff --check`. The PDF cancellation anomaly did
 not reproduce in either the isolated 20/20 PDF test or the full Compute rerun;

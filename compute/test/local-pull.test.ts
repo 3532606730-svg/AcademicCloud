@@ -296,7 +296,7 @@ test("a stuck heartbeat aborts the active attempt at lease expiry instead of wed
   assert.ok(Date.now() - startedAt < 500, "heartbeat I/O must not outlive the attempt lease");
 });
 
-test("threaded lease keeper renews continuously while the compute event loop is starved beyond the original lease", async (context) => {
+test("process-isolated lease keeper renews continuously while the compute process is blocked beyond the original lease", async (context) => {
   const heartbeatServer = await independentHeartbeatServer("renew");
   context.after(() => heartbeatServer.close());
   const current = {
@@ -336,7 +336,7 @@ test("threaded lease keeper renews continuously while the compute event loop is 
     fetchImplementation,
     inspector,
     reasoner: successfulReasoner(),
-    leaseKeeperMode: "threaded",
+    leaseKeeperMode: "process",
     testHeartbeatDelayMilliseconds: 20,
     networkTimeouts: { heartbeatMilliseconds: 100 },
   });
@@ -345,7 +345,7 @@ test("threaded lease keeper renews continuously while the compute event loop is 
   assert.ok(await heartbeatServer.stats() >= 3, "the isolated keeper must renew throughout main-thread starvation");
 });
 
-test("threaded lease failure remains fail-closed and cannot callback after main-thread starvation", async (context) => {
+test("process-isolated lease failure remains fail-closed and cannot callback after main-process starvation", async (context) => {
   const heartbeatServer = await independentHeartbeatServer("unavailable", 120);
   context.after(() => heartbeatServer.close());
   const current = {
@@ -385,7 +385,7 @@ test("threaded lease failure remains fail-closed and cannot callback after main-
       fetchImplementation,
       inspector,
       reasoner: successfulReasoner(),
-      leaseKeeperMode: "threaded",
+      leaseKeeperMode: "process",
       testHeartbeatDelayMilliseconds: 20,
       networkTimeouts: { heartbeatMilliseconds: 50 },
     }),

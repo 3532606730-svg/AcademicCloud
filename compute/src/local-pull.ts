@@ -1,6 +1,7 @@
 import type { BibliographicReasoner } from "./bibliographic-intelligence.js";
 import type { BoundedPdfTextSource } from "./suggestion.js";
-import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
+import { fork, type ChildProcess } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
   parseWorkerSourceAuthorization,
   parseWorkerClaim,
@@ -21,15 +22,13 @@ const PULL_TRANSPORT_MARGIN_MILLISECONDS = 5_000;
 const HEARTBEAT_TIMEOUT_MILLISECONDS = 10_000;
 const SOURCE_RENEWAL_TIMEOUT_MILLISECONDS = 15_000;
 const DEFAULT_IDLE_TTL_MILLISECONDS = 5 * 60_000;
-const LEASE_KEEPER_WORKER_KIND = "academiccloud-local-pull-lease-keeper-v1";
 const LEASE_KEEPER_ACTIVE = 0;
 const LEASE_KEEPER_EXPIRED = 1;
 const LEASE_KEEPER_REJECTED = 2;
 const LEASE_KEEPER_FAILED = 3;
 const LEASE_KEEPER_STOPPED = 4;
 
-interface LeaseKeeperWorkerData {
-  kind: typeof LEASE_KEEPER_WORKER_KIND;
+interface LeaseKeeperChildConfig {
   coreBaseUrl: string;
   workerId: string;
   machineSecret: string;
@@ -39,13 +38,12 @@ interface LeaseKeeperWorkerData {
   heartbeatAfterMilliseconds: number;
   timeoutMilliseconds: number;
   testHeartbeatDelayMilliseconds?: number;
-  state: SharedArrayBuffer;
 }
 
 interface LocalPullLeaseKeeper {
   readonly ready: Promise<void>;
   readonly completed: Promise<void>;
-  assertActive(): void;
+  assertActive(): void | Promise<void>;
   stop(): Promise<void>;
 }
 
@@ -331,86 +329,6 @@ function leaseKeeperError(state: number): Error {
   return new Error("Local Pull lease keeper failed");
 }
 
-function setLeaseKeeperFailure(state: Int32Array, failure: number): void {
-  const previous = Atomics.compareExchange(state, 0, LEASE_KEEPER_ACTIVE, failure);
-  if (previous === LEASE_KEEPER_ACTIVE) parentPort?.postMessage({ type: "failed" });
-}
-
-function isLeaseKeeperWorkerData(value: unknown): value is LeaseKeeperWorkerData {
-  if (typeof value !== "object" || value === null) return false;
-  const data = value as Partial<LeaseKeeperWorkerData>;
-  return data.kind === LEASE_KEEPER_WORKER_KIND
-    && typeof data.coreBaseUrl === "string"
-    && typeof data.workerId === "string"
-    && typeof data.machineSecret === "string"
-    && typeof data.jobId === "string"
-    && typeof data.attemptId === "string"
-    && typeof data.expiresAt === "string"
-    && typeof data.heartbeatAfterMilliseconds === "number"
-    && typeof data.timeoutMilliseconds === "number"
-    && data.state instanceof SharedArrayBuffer;
-}
-
-async function runLeaseKeeperWorker(data: LeaseKeeperWorkerData): Promise<void> {
-  const state = new Int32Array(data.state);
-  const stop = new AbortController();
-  parentPort?.on("message", (message: unknown) => {
-    if (typeof message === "object" && message !== null && (message as { type?: unknown }).type === "stop") {
-      stop.abort();
-    }
-  });
-  let leaseExpiresAt = Date.parse(data.expiresAt);
-  const heartbeatDelay = data.testHeartbeatDelayMilliseconds ?? data.heartbeatAfterMilliseconds;
-  parentPort?.postMessage({ type: "ready" });
-  try {
-    while (Atomics.load(state, 0) === LEASE_KEEPER_ACTIVE && !stop.signal.aborted) {
-      const remaining = leaseExpiresAt - Date.now();
-      if (remaining <= 0) {
-        setLeaseKeeperFailure(state, LEASE_KEEPER_EXPIRED);
-        return;
-      }
-      await delay(Math.min(heartbeatDelay, remaining), stop.signal);
-      if (stop.signal.aborted || Atomics.load(state, 0) !== LEASE_KEEPER_ACTIVE) return;
-      const requestRemaining = leaseExpiresAt - Date.now();
-      if (requestRemaining <= 0) {
-        setLeaseKeeperFailure(state, LEASE_KEEPER_EXPIRED);
-        return;
-      }
-      try {
-        const response = await fetch(
-          `${data.coreBaseUrl}/api/internal/compute/jobs/${encodeURIComponent(data.jobId)}/heartbeat`,
-          {
-            method: "POST",
-            headers: authorization(data.machineSecret),
-            body: JSON.stringify({ attemptId: data.attemptId, workerId: data.workerId }),
-            signal: boundedNetworkSignal(stop.signal, Math.min(data.timeoutMilliseconds, requestRemaining)),
-          },
-        );
-        if (response.ok) {
-          const renewed = parseLease((await response.json() as { lease?: unknown }).lease);
-          leaseExpiresAt = Date.parse(renewed.expiresAt);
-          continue;
-        }
-        if (response.status < 500 && response.status !== 429) {
-          setLeaseKeeperFailure(state, LEASE_KEEPER_REJECTED);
-          return;
-        }
-      } catch (error: unknown) {
-        if (stop.signal.aborted || Atomics.load(state, 0) !== LEASE_KEEPER_ACTIVE) return;
-      }
-      const retryRemaining = leaseExpiresAt - Date.now();
-      if (retryRemaining <= 0) {
-        setLeaseKeeperFailure(state, LEASE_KEEPER_EXPIRED);
-        return;
-      }
-      await delay(Math.min(2_000, retryRemaining), stop.signal);
-    }
-  } catch (error: unknown) {
-    if (stop.signal.aborted || Atomics.load(state, 0) === LEASE_KEEPER_STOPPED) return;
-    setLeaseKeeperFailure(state, LEASE_KEEPER_FAILED);
-  }
-}
-
 class InlineLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
   readonly #controller = new AbortController();
   #error: unknown;
@@ -450,11 +368,14 @@ class InlineLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
   }
 }
 
-class ThreadedLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
-  readonly #state = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
-  readonly #worker: Worker;
+class ProcessLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
+  #state = LEASE_KEEPER_ACTIVE;
+  readonly #child: ChildProcess;
   #settled = false;
   #readySettled = false;
+  #spawned = false;
+  #nextProbeId = 1;
+  readonly #probes = new Map<number, { resolve: () => void; reject: (error: unknown) => void; timer: ReturnType<typeof setTimeout> }>();
   readonly ready: Promise<void>;
   readonly completed: Promise<void>;
   readonly #resolveReady: () => void;
@@ -484,8 +405,7 @@ class ThreadedLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
     });
     this.#resolve = resolve;
     this.#reject = reject;
-    const data: LeaseKeeperWorkerData = {
-      kind: LEASE_KEEPER_WORKER_KIND,
+    const data: LeaseKeeperChildConfig = {
       coreBaseUrl: config.coreBaseUrl,
       workerId: config.workerId,
       machineSecret: config.machineSecret,
@@ -495,44 +415,104 @@ class ThreadedLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
       heartbeatAfterMilliseconds: claim.lease.heartbeatAfterMilliseconds,
       timeoutMilliseconds,
       ...(testHeartbeatDelayMilliseconds === undefined ? {} : { testHeartbeatDelayMilliseconds }),
-      state: this.#state.buffer as SharedArrayBuffer,
     };
-    this.#worker = new Worker(new URL(import.meta.url), { workerData: data });
-    this.#worker.on("message", (message: unknown) => {
+    const childModule = import.meta.url.endsWith(".ts")
+      ? new URL("./lease-keeper-child.ts", import.meta.url)
+      : new URL("./lease-keeper-child.js", import.meta.url);
+    this.#child = fork(fileURLToPath(childModule), [], {
+      stdio: ["ignore", "ignore", "ignore", "ipc"],
+      env: {
+        PATH: process.env.PATH,
+        LANG: "C.UTF-8",
+        LC_ALL: "C.UTF-8",
+        NODE_ENV: "production",
+      },
+    });
+    this.#child.on("message", (message: unknown) => {
       if (typeof message !== "object" || message === null) return;
       const type = (message as { type?: unknown }).type;
       if (type === "ready" && !this.#readySettled) {
         this.#readySettled = true;
         this.#resolveReady();
+      } else if (type === "probe") {
+        const id = (message as { id?: unknown }).id;
+        if (typeof id !== "number") return;
+        const pending = this.#probes.get(id);
+        if (!pending) return;
+        clearTimeout(pending.timer);
+        this.#probes.delete(id);
+        const state = this.#parseChildState((message as { state?: unknown }).state);
+        if (state === LEASE_KEEPER_ACTIVE) pending.resolve();
+        else {
+          this.#state = state;
+          pending.reject(leaseKeeperError(state));
+        }
       } else if (type === "failed") {
+        this.#state = this.#parseChildState((message as { state?: unknown }).state);
         this.#settleFailure();
       }
     });
-    this.#worker.once("error", () => {
-      const previous = Atomics.compareExchange(this.#state, 0, LEASE_KEEPER_ACTIVE, LEASE_KEEPER_FAILED);
-      if (previous === LEASE_KEEPER_STOPPED) this.#settleSuccess();
-      else this.#settleFailure();
+    this.#child.once("spawn", () => { this.#spawned = true; });
+    this.#child.on("error", () => {
+      if (this.#state === LEASE_KEEPER_STOPPED) return;
+      if (!this.#spawned) {
+        this.#state = LEASE_KEEPER_FAILED;
+        this.#settleFailure();
+      } else if (this.#state !== LEASE_KEEPER_ACTIVE) {
+        this.#settleFailure();
+      }
     });
-    this.#worker.once("exit", () => {
+    this.#child.once("exit", (code) => {
       if (this.#settled) return;
-      const state = Atomics.load(this.#state, 0);
-      if (state === LEASE_KEEPER_STOPPED) this.#settleSuccess();
+      if (this.#state === LEASE_KEEPER_STOPPED) this.#settleSuccess();
       else {
-        Atomics.compareExchange(this.#state, 0, LEASE_KEEPER_ACTIVE, LEASE_KEEPER_FAILED);
+        if (this.#state === LEASE_KEEPER_ACTIVE) {
+          this.#state = code === 21 ? LEASE_KEEPER_EXPIRED
+            : code === 22 ? LEASE_KEEPER_REJECTED
+              : LEASE_KEEPER_FAILED;
+        }
         this.#settleFailure();
       }
+    });
+    this.#child.send({ type: "start", config: data }, (error) => {
+      if (!error || this.#settled) return;
+      this.#state = LEASE_KEEPER_FAILED;
+      this.#settleFailure();
     });
   }
 
-  assertActive(): void {
-    const state = Atomics.load(this.#state, 0);
-    if (state !== LEASE_KEEPER_ACTIVE) throw leaseKeeperError(state);
+  async assertActive(): Promise<void> {
+    if (this.#state !== LEASE_KEEPER_ACTIVE) throw leaseKeeperError(this.#state);
+    const id = this.#nextProbeId;
+    this.#nextProbeId += 1;
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.#probes.delete(id);
+        this.#state = LEASE_KEEPER_FAILED;
+        reject(leaseKeeperError(this.#state));
+      }, 5_000);
+      timer.unref();
+      this.#probes.set(id, { resolve, reject, timer });
+      this.#child.send({ type: "probe", id }, (error) => {
+        if (!error) return;
+        // The child may have already encoded an exact lease failure in its
+        // exit status. Keep the probe pending for that exit event; its bounded
+        // timer remains the fallback for a genuinely wedged IPC channel.
+      });
+    });
+    if (this.#state !== LEASE_KEEPER_ACTIVE) throw leaseKeeperError(this.#state);
   }
 
   async stop(): Promise<void> {
-    Atomics.compareExchange(this.#state, 0, LEASE_KEEPER_ACTIVE, LEASE_KEEPER_STOPPED);
-    this.#worker.postMessage({ type: "stop" });
-    await this.completed;
+    if (this.#state === LEASE_KEEPER_ACTIVE) this.#state = LEASE_KEEPER_STOPPED;
+    if (this.#child.connected) this.#child.send({ type: "stop" });
+    const killTimer = setTimeout(() => this.#child.kill("SIGKILL"), 2_000);
+    killTimer.unref();
+    try {
+      await this.completed;
+    } finally {
+      clearTimeout(killTimer);
+    }
   }
 
   #settleSuccess(): void {
@@ -543,18 +523,26 @@ class ThreadedLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
 
   #settleFailure(): void {
     if (this.#settled) return;
-    const error = leaseKeeperError(Atomics.load(this.#state, 0));
+    const error = leaseKeeperError(this.#state);
     if (!this.#readySettled) {
       this.#readySettled = true;
       this.#rejectReady(error);
     }
     this.#settled = true;
+    for (const pending of this.#probes.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+    this.#probes.clear();
     this.#reject(error);
   }
-}
 
-if (!isMainThread && isLeaseKeeperWorkerData(workerData)) {
-  void runLeaseKeeperWorker(workerData).finally(() => parentPort?.close());
+  #parseChildState(value: unknown): number {
+    if (value === "active") return LEASE_KEEPER_ACTIVE;
+    if (value === "expired") return LEASE_KEEPER_EXPIRED;
+    if (value === "rejected") return LEASE_KEEPER_REJECTED;
+    return LEASE_KEEPER_FAILED;
+  }
 }
 
 export async function runLocalPullIteration(
@@ -566,8 +554,8 @@ export async function runLocalPullIteration(
     signal?: AbortSignal;
     /** Test-only: production always uses the Core-issued heartbeat interval. */
     testHeartbeatDelayMilliseconds?: number;
-    /** Injected transports use inline scheduling unless a real isolated keeper is explicitly required. */
-    leaseKeeperMode?: "threaded" | "inline";
+    /** Injected transports use inline scheduling unless a real process-isolated keeper is explicitly required. */
+    leaseKeeperMode?: "process" | "inline";
     networkTimeouts?: Partial<LocalPullNetworkTimeouts>;
     runtimePool?: DemandDrivenComputeRuntimePool;
   } = {},
@@ -591,9 +579,9 @@ export async function runLocalPullIteration(
   } else {
     options.signal?.addEventListener("abort", onParentAbort, { once: true });
   }
-  const leaseKeeperMode = options.leaseKeeperMode ?? (options.fetchImplementation === undefined ? "threaded" : "inline");
-  const leaseKeeper: LocalPullLeaseKeeper = leaseKeeperMode === "threaded"
-    ? new ThreadedLocalPullLeaseKeeper(
+  const leaseKeeperMode = options.leaseKeeperMode ?? (options.fetchImplementation === undefined ? "process" : "inline");
+  const leaseKeeper: LocalPullLeaseKeeper = leaseKeeperMode === "process"
+    ? new ProcessLocalPullLeaseKeeper(
         config,
         claim,
         networkTimeouts.heartbeatMilliseconds,
@@ -615,7 +603,7 @@ export async function runLocalPullIteration(
   let operationError: unknown;
   try {
     await leaseKeeper.ready;
-    leaseKeeper.assertActive();
+    await leaseKeeper.assertActive();
     const execute = (runtime?: ComputeWorkerRuntime): Promise<ComputeWorkerOutcome> => runComputeWorker({
       coreBaseUrl: config.coreBaseUrl,
       jobId: claim.job.id,
@@ -653,7 +641,7 @@ export async function runLocalPullIteration(
       operationError = error;
     }
     try {
-      leaseKeeper.assertActive();
+      await leaseKeeper.assertActive();
     } catch (error: unknown) {
       leaseError ??= error;
     }

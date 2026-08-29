@@ -254,6 +254,25 @@ beyond the original lease and proves repeated renewal; the matching unavailable
 heartbeat case proves lease expiry and zero callback. No schema change or
 longer lease is part of this correction.
 
+The first exact worker-thread release did not close the incident. Normal UI
+created attempt 8, and immutable release
+`be2e26de7e77fedfcc0ceefd57ef982f45ca03e3` claimed only that identity.
+Heartbeats at 10:08:53, 10:09:25, and 10:09:57 all completed with HTTP 200;
+no fourth request reached Core, and the keeper reported expiry at 10:11:27,
+exactly 90 seconds after the last successful renewal. The worker thread was
+therefore still affected by the same-process PDF/native execution boundary.
+This remains category A; there is no Core rejection, network timeout, or 5xx
+evidence.
+
+The final isolation boundary is a lightweight Node child process that imports
+no PDF, canvas, Paddle, or Qwen module. Machine authority is sent over the
+private IPC channel rather than command-line arguments or a copied environment.
+The child owns heartbeat scheduling and bounded network I/O. Before every
+callback request or retry, the compute process requires an explicit current
+lease probe response; child exit codes preserve expired versus rejected versus
+internal-failure classification even when IPC closes concurrently. The 90-
+second lease, Core attempt authority, and schema remain unchanged.
+
 ## Migration and rollback
 
 Implementation adds the smallest provider-neutral Core protocol and durable
