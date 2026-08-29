@@ -251,25 +251,60 @@ connect-timeout events, 43 probes with an HTTP error, DNS failures 0, health
 median TTFB about 1.92 seconds among numeric samples, and a longest failure
 streak of about 230 seconds. Several Windows and WSL failures occurred within
 seconds of one another, so `NETWORK_STABILITY_GATE=FAIL`; prioritize the shared
-local-exit/ISP/VPN/router or production host/provider path, with additional WSL
-path instability, before any application change.
+path plus the WSL amplification separately before any application change. The
+following bounded differential isolates the currently proven layers.
 
-Read-only host qualification found root filesystem total/used/available
-`20,747,476,992 / 9,730,990,080 / 9,936,613,376` bytes against the
+The differential diagnosis now identifies the shared failing path more
+precisely. `cloud.ajtlab.top` has one A record (`47.250.126.42`) and no AAAA;
+Windows and WSL resolve the same address, neither has a proxy environment, and
+curl/OpenSSL/Windows Node/exact WSL Node all succeed when the path is healthy.
+Windows routes the target through the active `sing-tun` adapter; WSL uses NAT
+through that Windows route. Paired source-bound probes kept the physical WLAN
+green for HTTPS 12/12 and SSH 5/5 while the TUN path independently produced one
+TCP connect timeout in each series (HTTPS 11/12, SSH 4/5). TUN and WSL MTU are
+both 1400, DF behavior is correct, and there is no PMTU black-hole evidence.
+The current restarted WSL sample was 12/12, so the prior WSL amplification is
+localized to NAT traversing the unstable TUN but no second DNS/IPv6/MTU/proxy/
+client/vSwitch cause is proven. WSL configuration remains unchanged.
+
+The minimum proposed network correction is an exact, temporary split-tunnel
+bypass for the currently resolved `47.250.126.42/32` through the physical WLAN,
+followed by paired Windows/WSL qualification and removal of the temporary route.
+No route/VPN mutation occurred: the current process is not elevated and any
+system/VPN change requires explicit Owner authorization. Because the same-class
+TUN timeout reproduced, no post-fix 15-minute qualification was claimed.
+
+Read-only host qualification most recently found root filesystem
+total/used/available `20,747,476,992 / 9,731,420,160 / 9,936,183,296` bytes against the
 `10,737,418,240`-byte minimum gate. The largest bounded consumers were
 `/var/log` 2,349,509,285 bytes (journald reported 1.7G) and old immutable
 releases 1,831,508,935 bytes. No files were deleted; current/rollback releases,
 DB, backups, corpus, `/var/tmp`, `/tmp`, and diagnostics remain intact.
 
-The disk deficit is 800,804,864 bytes. The proposed minimum remediation is not
-yet executed: first resolve every release directory against current/rollback
-pins, service symlinks, the live process path, and exact checkpoint/hash
-inventory; then remove only old immutable releases proven unreferenced and
-rebuildable from a published checkpoint, one at a time with disk remeasurement.
-Package cache may be cleared only if still needed. Logs remain preserved until
-their bounded evidence-retention requirement is resolved; production DB,
-backups, corpus, current/rollback releases, unknown Owner files, and diagnostic
-directories are excluded.
+The exact inventory found 36 valid Core releases under the real production root
+`/opt/academiccloud/releases`; production has no `/srv/academiccloud*` root.
+Every manifest source matches its directory, every commit exists on a pushed
+remote ref, and every checkpoint contains the exact production builder/workflow.
+Current `58b8468…` and rollback `fd97542…` are protected. The other 34 releases
+have no symlink, service, process, or rollback reference and are therefore
+cleanup candidates totaling 1,756,213,590 bytes. Removing all of them would
+raise available space to 11,692,396,886 bytes, only 954,978,646 bytes above the
+hard gate—118,763,178 bytes short of a full 1 GiB buffer.
+
+The package cache is 25,363,040 bytes and bounded `/var/tmp` is 116,493,594
+bytes with zero open-file or symlink references. `/var/tmp` remains protected as
+diagnostic/unknown task material. Even if the disposable package cache were
+separately approved, the compliant plan would leave 980,341,686 bytes above the
+hard gate—still 93,400,138 bytes short of a full 1 GiB buffer. Therefore no
+sufficient production deletion plan exists yet. Logs/journal, DB, backups,
+corpus, unknown files, current/rollback releases, and diagnostics remain
+protected.
+
+The separate D-backed WSL filesystem currently has 4,479,467,520 bytes
+available of 269,965,701,120. Its current `58b8468…`, rollback `fd97542…`, and
+exact candidate `64d2136…` are protected; 22 other manifest-verified, pushed,
+reconstructible releases have 187,428,646,130 apparent bytes. This is not part
+of the production-root gate and no WSL release deletion is authorized.
 
 The OOM counter is historical host-wide evidence: three kernel `oom_kill`
 events on 2026-08-16 (nine matching journal lines) killed `MainThread` outside

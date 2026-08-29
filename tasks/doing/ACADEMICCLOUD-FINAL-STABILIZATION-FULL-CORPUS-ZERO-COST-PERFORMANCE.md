@@ -421,7 +421,11 @@ but the job is now failed/`compute_timeout` at attempts 11 with no eligible
 local_pull job. Production remains last-known healthy at `58b8468…`/schema32;
 main Compute remains `58b8468…`, PAUSED/disabled/inactive. The bounded network
 gate then recorded 3 Windows and 52 WSL connect-timeout events, including
-overlapping failures. Root available space is 9,936,613,376 bytes against the
+overlapping failures. Paired source-bound probes now prove the intermittent
+shared failure is on the active sing-tun route: direct WLAN stayed green while
+both HTTPS and SSH each reproduced a TUN-only TCP connect timeout. WSL NAT uses
+that route, but no second WSL-specific DNS/IPv6/MTU/proxy/client/vSwitch cause
+is proven. Root available space is 9,936,183,296 bytes against the
 10,737,418,240-byte gate. Do not create or claim another attempt or enter B/C,
 NORMAL, forced-loss, or corpus execution until both readiness gates pass.
 
@@ -458,19 +462,47 @@ connect-timeout events and a longest failure window near 20 seconds; WSL had 52
 connect-timeout events and a longest failure window near 230 seconds. DNS had
 zero failures, and several Windows/WSL failures overlapped. The network gate is
 therefore `FAIL`, not an application or lease finding. Read-only disk inventory
-also placed root free space 800,804,864 bytes below the hard gate. Three kernel
+also placed root free space 801,234,944 bytes below the hard gate. Three kernel
 OOM kills are historical host-wide events from 2026-08-16; current Core and
 Local Compute cgroups remain zero. Live CSP includes the files domain in both
 required directives. No mutation or cleanup was performed.
+
+The differential network audit found one A record and no AAAA, identical
+Windows/WSL DNS results, no proxy environment, matching 1400-byte TUN/WSL MTU,
+correct DF behavior, and green curl/OpenSSL/Windows Node/exact WSL Node when the
+path is available. Direct WLAN was HTTPS 12/12 and SSH 5/5; sing-tun was HTTPS
+11/12 and SSH 4/5 with one TCP connect timeout in each paired series. WSL after
+restart was 12/12, so its earlier 7/60 result remains amplification through the
+same unstable TUN rather than evidence for an independent fix. No route, VPN,
+WSL, or application configuration changed. A temporary exact `/32` WLAN bypass
+is the proposed bounded test, but needs Owner authorization and elevation.
+
+The production disk audit found 36 valid immutable Core releases. Current
+`58b8468…` and rollback `fd97542…` are the only referenced releases; all 34
+others have matching manifests, pushed commits, exact rebuild tooling, and no
+symlink/service/process/rollback reference. They total 1,756,213,590 bytes.
+Release cleanup alone would leave 954,978,646 bytes above the hard gate, still
+118,763,178 bytes short of a one-GiB buffer. Adding the disposable package
+cache still leaves the compliant projection 93,400,138 bytes short of
+the one-GiB buffer; `/var/tmp` remains protected as diagnostic/unknown material.
+There is therefore no sufficient production deletion plan yet. WSL separately
+has 4,479,467,520 bytes available; current, rollback, and `64d2136…` are
+protected, while 22 unreferenced exact releases account for 187,428,646,130
+apparent bytes. No production or WSL files were removed.
 
 ## Next Action
 
 Keep production Core at last-known `58b8468…`/schema32 and main Compute
 `58b8468…` PAUSED/disabled/inactive. Do not claim the recovered attempt
-`fc5b2dd3…` or create any new canary. First restore and requalify network
-stability, then lift root available space above the exact disk gate using only
-confirmed disposable content. Reverify Core health, main-worker isolation, and
-release `64d2136…`; only then create a fresh A through the ordinary production
-UI and read its exact identity before one isolated iteration. Do not proceed to
-B/C, NORMAL, forced-loss, or corpus execution while either readiness gate or A
-is not PASS.
+`fc5b2dd3…` or create any new canary. The next network action requires an
+Owner-authorized, elevated, temporary exact-IP WLAN bypass followed by at least
+15 minutes of paired Windows/WSL/SSH qualification and unconditional route
+removal. The disk action requires separate explicit Owner deletion approval for
+the exact inventory, but the currently compliant set is still 93,400,138 bytes
+short of the required buffer, so do not request or execute deletion yet. Do not
+reclassify protected `/var/tmp`, diagnostics, logs, journal, data, backups,
+corpus, or unknown files merely to close that gap. Reverify Core health,
+main-worker isolation, and release `64d2136…` only after both gates pass; only
+then create a fresh A through the ordinary production UI and read its exact
+identity before one isolated iteration. Do not proceed to B/C, NORMAL,
+forced-loss, or corpus execution while either readiness gate or A is not PASS.
