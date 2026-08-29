@@ -82,7 +82,7 @@ duplicates among the 12, and 105 unique acceptance resources. No paid usage,
 source-byte mutation, OSS identity mutation, or human-authority rewrite
 occurred.
 
-## Local Compute pivot — production v32 active; A canary blocked on connectivity
+## Local Compute pivot — production v32 active; A retry failed on network path
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -215,13 +215,22 @@ is category C (network/HTTP connect failure) with no evidence of Core rejection;
 the current live queue and health cannot be reverified until connectivity
 returns. No further claim or retry is authorized in this window.
 
-The current hard stop is WSL/production HTTPS and SSH connectivity: DNS resolves
-`cloud.ajtlab.top` to `47.250.126.42`, but TCP connect to port 443 times out
-after 10 seconds; the production host's SSH path is also timing out. The last
-known production release is `58b8468…`/schema32 and the main worker remains
-`58b8468…`, PAUSED/disabled/inactive, but live health/queue must be reverified
-before any further action. Do not claim attempt 10 or enter B/C, NORMAL,
-forced-loss, or corpus execution while this hard stop remains.
+The latest isolated retry of attempt
+`ca2f3aa1-886a-4ee3-b2ea-affc54a9df15` on exact release `64d2136…` started at
+11:27:38+08:00. Core received three HTTP-200 heartbeats at 11:28:13.536,
+11:28:46.218, and 11:29:19.208+08:00; no fourth request arrived before the
+worker failed closed at 11:30:49+08:00 with `Local Pull lease expired`. No
+callback was sent. During the same window a production SSH probe timed out;
+subsequent bounded WSL HTTPS probes recovered with HTTP 200 and approximately
+2-second TTFB. The synchronized transport interruption supports category C,
+while the child currently reports only the generic fail-closed expiry because
+network errors are intentionally not surfaced as secrets. Core then left job
+`11efe8d0-c2e9-424f-aa64-804bd90919b4` failed/`compute_timeout` at attempts 11
+with no eligible local_pull job. Production remains last-known healthy at
+`58b8468…`/schema32 and the main worker remains `58b8468…`,
+PAUSED/disabled/inactive. Do not claim another attempt or enter B/C, NORMAL,
+forced-loss, or corpus execution until a fresh normal-product A target exists
+and the network/lease evidence is revalidated.
 
 After exact immutable Compute release assembly and hash verification, exactly
 one isolated A retry must pass before canaries B and C. Forced-loss follows only

@@ -284,6 +284,21 @@ is category C (network/HTTP connect failure), not Core rejection. Because the
 live queue and health are currently unreachable, no further claim or retry is
 permitted until connectivity is restored and reverified.
 
+After connectivity returned, one and only one post-fix isolated retry used the
+same exact child-process release `64d213684d14ecd605f41aff42a1daa4ebf5b6e6`
+against attempt `ca2f3aa1-886a-4ee3-b2ea-affc54a9df15`. The Core application
+recorded three heartbeat requests with HTTP 200 at
+`2026-08-29T03:28:13.536Z`, `03:28:46.218Z`, and `03:29:19.208Z`; no fourth
+request arrived before the worker failed closed at approximately
+`03:30:49Z` with `Local Pull lease expired`, and no callback was sent. A
+production SSH probe timed out in that same interval; subsequent bounded WSL
+HTTPS probes returned HTTP 200 with approximately two-second TTFB. The
+synchronized transport evidence supports category C (network-path
+interruption), while the child intentionally exposes only the generic
+fail-closed expiry. Core left the job failed with `compute_timeout`, attempts
+`11`, and no eligible `local_pull` job. This is not an A PASS and does not
+authorize B/C, NORMAL, forced-loss, or corpus work.
+
 ## Migration and rollback
 
 Implementation adds the smallest provider-neutral Core protocol and durable

@@ -401,16 +401,20 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-The current blocker is WSL/production HTTPS and SSH connectivity. The
-process-isolated release `64d2136…` is exact, hash-verified, and qualification
-green, but its A retry attempt
-`53f1e1c7-3fe0-4a2b-b780-44b4e88e3612` failed category C with
-`UND_ERR_CONNECT_TIMEOUT` after four successful heartbeats; Core recovered
-attempt `ca2f3aa1-886a-4ee3-b2ea-affc54a9df15`. Production remains last-known
-healthy at `58b8468…`/schema32; main Compute remains `58b8468…`,
-PAUSED/disabled/inactive. Do not claim another attempt or enter B/C, NORMAL,
-forced-loss, or corpus execution until connectivity and live queue/health are
-reverified.
+The current blocker is the latest A retry's category C network-path
+interruption plus exhaustion of the queued canary deadline. Exact release
+`64d2136…` is hash-verified and qualification green. Its retry of attempt
+`ca2f3aa1-886a-4ee3-b2ea-affc54a9df15` received three Core HTTP-200 heartbeat
+renewals at 11:28:13.536, 11:28:46.218, and 11:29:19.208+08:00, then failed
+closed at 11:30:49+08:00 with `Local Pull lease expired`; no callback was sent.
+A production SSH probe timed out in the same window and subsequent WSL HTTPS
+probes recovered, supporting category C rather than Core rejection or callback
+authority loss. Core recovered attempt `fc5b2dd3-fe1d-469f-88c9-92613a28d0a4`
+but the job is now failed/`compute_timeout` at attempts 11 with no eligible
+local_pull job. Production remains last-known healthy at `58b8468…`/schema32;
+main Compute remains `58b8468…`, PAUSED/disabled/inactive. Do not claim another
+attempt or enter B/C, NORMAL, forced-loss, or corpus execution until a fresh
+normal-product A target exists and network/lease evidence is revalidated.
 
 ## Last Verification
 
@@ -433,11 +437,18 @@ resolved `47.250.126.42`, while TCP 443 and production SSH both timed out;
 this is category C and a real connectivity hard stop. No PDF product change
 was made and production/main-worker safety state is unchanged.
 
+The next exact child-process retry of attempt `ca2f3aa1…` was intentionally the
+single post-fix isolated iteration. It proved three successful Core heartbeats
+but no fourth request before fail-closed expiry; the resulting job state and
+live production safety state were read back without mutation. This retry is not
+an A PASS.
+
 ## Next Action
 
 Keep production Core at last-known `58b8468…`/schema32 and main Compute
-`58b8468…` PAUSED/disabled/inactive. Restore or observe WSL→Core HTTPS and SSH
-connectivity, then perform only read-only live health/queue/attempt/deadline
-reconciliation. Do not claim or retry while connectivity is unavailable; after
-safe revalidation, use exact child-process release `64d2136…` for one isolated A
-retry and do not proceed to B/C until A passes.
+`58b8468…` PAUSED/disabled/inactive. Do not claim the recovered attempt
+`fc5b2dd3…` or create another canary through internal means. A fresh A target
+must come from the ordinary product path after stable WSL/Core connectivity and
+an observability decision for the child heartbeat transport; only then may one
+new isolated retry be considered. Do not proceed to B/C, NORMAL, forced-loss,
+or corpus execution while A is not PASS.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-29T11:12:01+08:00",
+  "updatedAt": "2026-08-29T16:30:54+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -47,7 +47,7 @@
     },
     "finalArchitectureCorrection": {
       "decision": "ADR-038",
-      "status": "production_v32_three_canaries_blocked_on_lease_keeper",
+      "status": "production_v32_three_canaries_blocked_on_a_retry_network_failure",
       "productionFrozenAt": "58b8468eac37fb994f06994375b81a6f53a6de79",
       "productionSchema": 32,
       "finalRuleset": "l1-intelligent-library01-v7",
@@ -63,13 +63,28 @@
     "aCanaryLeaseIncident": {
       "jobId": "11efe8d0-c2e9-424f-aa64-804bd90919b4",
       "failedAttemptId": "f876257a-d5f5-4509-80de-b89145caba16",
-      "recoveredAttemptId": "ca2f3aa1-886a-4ee3-b2ea-affc54a9df15",
+      "recoveredAttemptId": "fc5b2dd3-fe1d-469f-88c9-92613a28d0a4",
       "initialRecoveryAttemptId": "6fb2dde0-dbd3-4427-bfd7-6bc5d603dd27",
       "threadedAttemptId": "4312e463-1b44-488c-8431-89002769d40e",
       "threadedRecoveryAttemptId": "53f1e1c7-3fe0-4a2b-b780-44b4e88e3612",
       "processIsolatedRelease": "64d213684d14ecd605f41aff42a1daa4ebf5b6e6",
       "processIsolatedAttemptId": "53f1e1c7-3fe0-4a2b-b780-44b4e88e3612",
       "processIsolatedRecoveryAttemptId": "ca2f3aa1-886a-4ee3-b2ea-affc54a9df15",
+      "latestRetryAttemptId": "ca2f3aa1-886a-4ee3-b2ea-affc54a9df15",
+      "latestRetryRecoveryAttemptId": "fc5b2dd3-fe1d-469f-88c9-92613a28d0a4",
+      "latestRetryRelease": "64d213684d14ecd605f41aff42a1daa4ebf5b6e6",
+      "latestRetryStartedAt": "2026-08-29T03:27:38Z",
+      "latestRetryHeartbeatTimes": [
+        "2026-08-29T03:28:13.536Z",
+        "2026-08-29T03:28:46.218Z",
+        "2026-08-29T03:29:19.208Z"
+      ],
+      "latestRetryHeartbeatStatuses": [200, 200, 200],
+      "latestRetryFailureAt": "2026-08-29T03:30:49Z",
+      "latestRetryFailure": "Local Pull lease expired after no fourth heartbeat reached Core",
+      "latestRetryCallbackSent": false,
+      "latestRetryJobStateAfterRecovery": "failed/compute_timeout; attempts=11; activeLocalPullJobs=0",
+      "latestRetryClassification": "C_network_path_interruption_supported_by_synchronized_HTTPS_and_SSH_timeouts",
       "classification": "C_network_http_connect_timeout",
       "initialLeaseMilliseconds": 90000,
       "heartbeatAfterMilliseconds": 30000,
@@ -81,7 +96,7 @@
       "processIsolatedFailure": "UND_ERR_CONNECT_TIMEOUT cloud.ajtlab.top:443",
       "processIsolatedFailureTimestamp": "2026-08-29T11:02:08Z",
       "networkEvidence": "WSL DNS resolved 47.250.126.42; TCP 443 connect timed out after 10s; production SSH also timed out",
-      "liveCoreReverification": "pending connectivity recovery; no queue/health claim permitted",
+      "liveCoreReverification": "PASS after retry: Core 58b8468/schema32 active; health/ready 200; integrity ok; FK 0; active local_pull jobs 0; main worker PAUSED/disabled/inactive",
       "exactPaddleQwenStageTimesAvailable": false,
       "fix": "lightweight independent Node child-process lease keeper with callback-time IPC probe",
       "schemaChangeRequired": false,
@@ -102,7 +117,7 @@
   "activeTasks": ["ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE"],
   "finalStabilizationProgram": {
     "task": "ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE",
-    "state": "active_production_v32_worker_disabled_paused_network_hard_stop",
+    "state": "active_production_v32_worker_disabled_paused_a_retry_failed",
     "developmentSchema": 32,
     "developmentMigrationHistory": "001-032",
     "autonomousFullCorpusAcceptance": "pending",
@@ -133,12 +148,12 @@
       "librarySearchBatchHydration": "1497bec",
       "computeStageDiagnostics": "c9ab369",
       "localComputePreCorpusReview": "d1bddb6d7bd6e66d0ed52586c17dd51afd358d99",
-      "productionQwenCanaryCompute": "64d213684d14ecd605f41aff42a1daa4ebf5b6e6 exact child-process release claimed A attempt 9; four heartbeats HTTP 200; callback blocked by UND_ERR_CONNECT_TIMEOUT; main current remains 58b8468 and inactive",
+      "productionQwenCanaryCompute": "64d213684d14ecd605f41aff42a1daa4ebf5b6e6 exact child-process release: prior A attempt 9 had four heartbeats then UND_ERR_CONNECT_TIMEOUT; latest A retry attempt 10 had three HTTP-200 heartbeats then fail-closed lease expiry during an intermittent network window; main current remains 58b8468 and inactive",
       "evidenceQualityV2": "6c71ac94c60d49e65e7eca59305b59ba6e461167",
       "canonicalBibliographyProjectionV3": "58b8468eac37fb994f06994375b81a6f53a6de79 deployed at schema v32",
       "bibliographyPipelineIdempotencyV3": "58b8468eac37fb994f06994375b81a6f53a6de79 deployed; historical v3 canary pass",
       "bibliographyMaterialClassificationV4V5V6": "historical attempts deployed through fd97542/schema31; not final acceptance",
-      "bibliographyFinalArchitectureV7": "ADR-038 v7/prompt-v4 deployed at 58b8468/schema32; child-process lease keeper qualified; A canary blocked on network connectivity",
+      "bibliographyFinalArchitectureV7": "ADR-038 v7/prompt-v4 deployed at 58b8468/schema32; child-process lease keeper qualified; A canary blocked after latest retry category C network-path interruption and no eligible queued attempt",
       "backend": "v7 working tree: typecheck/build pass; 381/381 tests pass",
       "frontend": "58b8468 production baseline: 284/284 tests previously passed",
       "compute": "64d2136 child-process lease correction exact release: typecheck/build pass; 107/107 pass plus 2 expected release-runtime skips; Local Pull 12/12",
@@ -173,7 +188,7 @@
   },
   "localComputePivot": {
     "decision": "ADR-037",
-    "status": "production_v32_green_worker_disabled_paused_network_hard_stop",
+    "status": "production_v32_green_worker_disabled_paused_a_retry_failed",
     "productionComputeControlPlane": "CORE_PULL_WORKER",
     "localPullProvider": "production",
     "githubHostedProductionCompute": false,
@@ -258,7 +273,7 @@
     },
     "localPullProtocol": {
       "developmentSchema": 32,
-      "state": "production_v32_green_worker_disabled_paused_network_hard_stop",
+      "state": "production_v32_green_worker_disabled_paused_a_retry_failed",
       "transport": "outbound-only HTTPS long poll; no laptop inbound endpoint",
       "leaseMilliseconds": 90000,
       "heartbeatMilliseconds": 30000,
@@ -280,7 +295,7 @@
       "tests": "lease correction: Compute typecheck/build; Local Pull 12/12; full Compute 107/107 plus 2 expected release-runtime skips; Compute contracts 3/3; focused Backend 28/28; diff check"
     },
     "ownerBoundaryAction": null,
-    "next": "restore WSL/Core HTTPS connectivity, reverify live Core health/schema/integrity/FK and queue identity read-only, then assess one isolated A retry only if safely eligible; keep main worker PAUSED/disabled/inactive and do not enter B/C before A passes"
+    "next": "do not claim; latest isolated A retry exhausted the job deadline and left no eligible local_pull job. Preserve PAUSED/disabled/inactive, require a fresh normal-product A canary target and stable WSL/Core connectivity before any further isolated retry; do not enter B/C, NORMAL, forced-loss, or corpus execution"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
