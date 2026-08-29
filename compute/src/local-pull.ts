@@ -1,5 +1,6 @@
 import type { BibliographicReasoner } from "./bibliographic-intelligence.js";
 import type { BoundedPdfTextSource } from "./suggestion.js";
+import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
 import {
   parseWorkerSourceAuthorization,
   parseWorkerClaim,
@@ -20,6 +21,33 @@ const PULL_TRANSPORT_MARGIN_MILLISECONDS = 5_000;
 const HEARTBEAT_TIMEOUT_MILLISECONDS = 10_000;
 const SOURCE_RENEWAL_TIMEOUT_MILLISECONDS = 15_000;
 const DEFAULT_IDLE_TTL_MILLISECONDS = 5 * 60_000;
+const LEASE_KEEPER_WORKER_KIND = "academiccloud-local-pull-lease-keeper-v1";
+const LEASE_KEEPER_ACTIVE = 0;
+const LEASE_KEEPER_EXPIRED = 1;
+const LEASE_KEEPER_REJECTED = 2;
+const LEASE_KEEPER_FAILED = 3;
+const LEASE_KEEPER_STOPPED = 4;
+
+interface LeaseKeeperWorkerData {
+  kind: typeof LEASE_KEEPER_WORKER_KIND;
+  coreBaseUrl: string;
+  workerId: string;
+  machineSecret: string;
+  jobId: string;
+  attemptId: string;
+  expiresAt: string;
+  heartbeatAfterMilliseconds: number;
+  timeoutMilliseconds: number;
+  testHeartbeatDelayMilliseconds?: number;
+  state: SharedArrayBuffer;
+}
+
+interface LocalPullLeaseKeeper {
+  readonly ready: Promise<void>;
+  readonly completed: Promise<void>;
+  assertActive(): void;
+  stop(): Promise<void>;
+}
 
 export interface LocalPullNetworkTimeouts extends ComputeWorkerNetworkTimeouts {
   pullMilliseconds: number;
@@ -297,6 +325,238 @@ async function maintainLease(
   }
 }
 
+function leaseKeeperError(state: number): Error {
+  if (state === LEASE_KEEPER_EXPIRED) return new Error("Local Pull lease expired");
+  if (state === LEASE_KEEPER_REJECTED) return new Error("Local Pull lease was rejected");
+  return new Error("Local Pull lease keeper failed");
+}
+
+function setLeaseKeeperFailure(state: Int32Array, failure: number): void {
+  const previous = Atomics.compareExchange(state, 0, LEASE_KEEPER_ACTIVE, failure);
+  if (previous === LEASE_KEEPER_ACTIVE) parentPort?.postMessage({ type: "failed" });
+}
+
+function isLeaseKeeperWorkerData(value: unknown): value is LeaseKeeperWorkerData {
+  if (typeof value !== "object" || value === null) return false;
+  const data = value as Partial<LeaseKeeperWorkerData>;
+  return data.kind === LEASE_KEEPER_WORKER_KIND
+    && typeof data.coreBaseUrl === "string"
+    && typeof data.workerId === "string"
+    && typeof data.machineSecret === "string"
+    && typeof data.jobId === "string"
+    && typeof data.attemptId === "string"
+    && typeof data.expiresAt === "string"
+    && typeof data.heartbeatAfterMilliseconds === "number"
+    && typeof data.timeoutMilliseconds === "number"
+    && data.state instanceof SharedArrayBuffer;
+}
+
+async function runLeaseKeeperWorker(data: LeaseKeeperWorkerData): Promise<void> {
+  const state = new Int32Array(data.state);
+  const stop = new AbortController();
+  parentPort?.on("message", (message: unknown) => {
+    if (typeof message === "object" && message !== null && (message as { type?: unknown }).type === "stop") {
+      stop.abort();
+    }
+  });
+  let leaseExpiresAt = Date.parse(data.expiresAt);
+  const heartbeatDelay = data.testHeartbeatDelayMilliseconds ?? data.heartbeatAfterMilliseconds;
+  parentPort?.postMessage({ type: "ready" });
+  try {
+    while (Atomics.load(state, 0) === LEASE_KEEPER_ACTIVE && !stop.signal.aborted) {
+      const remaining = leaseExpiresAt - Date.now();
+      if (remaining <= 0) {
+        setLeaseKeeperFailure(state, LEASE_KEEPER_EXPIRED);
+        return;
+      }
+      await delay(Math.min(heartbeatDelay, remaining), stop.signal);
+      if (stop.signal.aborted || Atomics.load(state, 0) !== LEASE_KEEPER_ACTIVE) return;
+      const requestRemaining = leaseExpiresAt - Date.now();
+      if (requestRemaining <= 0) {
+        setLeaseKeeperFailure(state, LEASE_KEEPER_EXPIRED);
+        return;
+      }
+      try {
+        const response = await fetch(
+          `${data.coreBaseUrl}/api/internal/compute/jobs/${encodeURIComponent(data.jobId)}/heartbeat`,
+          {
+            method: "POST",
+            headers: authorization(data.machineSecret),
+            body: JSON.stringify({ attemptId: data.attemptId, workerId: data.workerId }),
+            signal: boundedNetworkSignal(stop.signal, Math.min(data.timeoutMilliseconds, requestRemaining)),
+          },
+        );
+        if (response.ok) {
+          const renewed = parseLease((await response.json() as { lease?: unknown }).lease);
+          leaseExpiresAt = Date.parse(renewed.expiresAt);
+          continue;
+        }
+        if (response.status < 500 && response.status !== 429) {
+          setLeaseKeeperFailure(state, LEASE_KEEPER_REJECTED);
+          return;
+        }
+      } catch (error: unknown) {
+        if (stop.signal.aborted || Atomics.load(state, 0) !== LEASE_KEEPER_ACTIVE) return;
+      }
+      const retryRemaining = leaseExpiresAt - Date.now();
+      if (retryRemaining <= 0) {
+        setLeaseKeeperFailure(state, LEASE_KEEPER_EXPIRED);
+        return;
+      }
+      await delay(Math.min(2_000, retryRemaining), stop.signal);
+    }
+  } catch (error: unknown) {
+    if (stop.signal.aborted || Atomics.load(state, 0) === LEASE_KEEPER_STOPPED) return;
+    setLeaseKeeperFailure(state, LEASE_KEEPER_FAILED);
+  }
+}
+
+class InlineLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
+  readonly #controller = new AbortController();
+  #error: unknown;
+  #stopping = false;
+  readonly ready = Promise.resolve();
+  readonly completed: Promise<void>;
+
+  constructor(
+    config: LocalPullWorkerConfig,
+    claim: LocalPullClaim,
+    fetchImplementation: typeof fetch,
+    testHeartbeatDelayMilliseconds: number | undefined,
+    timeoutMilliseconds: number,
+  ) {
+    this.completed = maintainLease(
+      config,
+      claim,
+      fetchImplementation,
+      this.#controller.signal,
+      testHeartbeatDelayMilliseconds,
+      timeoutMilliseconds,
+    ).catch((error: unknown) => {
+      if (this.#stopping && error instanceof DOMException && error.name === "AbortError") return;
+      this.#error = error;
+      throw error;
+    });
+  }
+
+  assertActive(): void {
+    if (this.#error !== undefined) throw this.#error;
+  }
+
+  async stop(): Promise<void> {
+    this.#stopping = true;
+    this.#controller.abort();
+    await this.completed;
+  }
+}
+
+class ThreadedLocalPullLeaseKeeper implements LocalPullLeaseKeeper {
+  readonly #state = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+  readonly #worker: Worker;
+  #settled = false;
+  #readySettled = false;
+  readonly ready: Promise<void>;
+  readonly completed: Promise<void>;
+  readonly #resolveReady: () => void;
+  readonly #rejectReady: (error: unknown) => void;
+  readonly #resolve: () => void;
+  readonly #reject: (error: unknown) => void;
+
+  constructor(
+    config: LocalPullWorkerConfig,
+    claim: LocalPullClaim,
+    timeoutMilliseconds: number,
+    testHeartbeatDelayMilliseconds?: number,
+  ) {
+    let resolveReady!: () => void;
+    let rejectReady!: (error: unknown) => void;
+    this.ready = new Promise<void>((onResolve, onReject) => {
+      resolveReady = onResolve;
+      rejectReady = onReject;
+    });
+    this.#resolveReady = resolveReady;
+    this.#rejectReady = rejectReady;
+    let resolve!: () => void;
+    let reject!: (error: unknown) => void;
+    this.completed = new Promise<void>((onResolve, onReject) => {
+      resolve = onResolve;
+      reject = onReject;
+    });
+    this.#resolve = resolve;
+    this.#reject = reject;
+    const data: LeaseKeeperWorkerData = {
+      kind: LEASE_KEEPER_WORKER_KIND,
+      coreBaseUrl: config.coreBaseUrl,
+      workerId: config.workerId,
+      machineSecret: config.machineSecret,
+      jobId: claim.job.id,
+      attemptId: claim.job.attemptId,
+      expiresAt: claim.lease.expiresAt,
+      heartbeatAfterMilliseconds: claim.lease.heartbeatAfterMilliseconds,
+      timeoutMilliseconds,
+      ...(testHeartbeatDelayMilliseconds === undefined ? {} : { testHeartbeatDelayMilliseconds }),
+      state: this.#state.buffer as SharedArrayBuffer,
+    };
+    this.#worker = new Worker(new URL(import.meta.url), { workerData: data });
+    this.#worker.on("message", (message: unknown) => {
+      if (typeof message !== "object" || message === null) return;
+      const type = (message as { type?: unknown }).type;
+      if (type === "ready" && !this.#readySettled) {
+        this.#readySettled = true;
+        this.#resolveReady();
+      } else if (type === "failed") {
+        this.#settleFailure();
+      }
+    });
+    this.#worker.once("error", () => {
+      const previous = Atomics.compareExchange(this.#state, 0, LEASE_KEEPER_ACTIVE, LEASE_KEEPER_FAILED);
+      if (previous === LEASE_KEEPER_STOPPED) this.#settleSuccess();
+      else this.#settleFailure();
+    });
+    this.#worker.once("exit", () => {
+      if (this.#settled) return;
+      const state = Atomics.load(this.#state, 0);
+      if (state === LEASE_KEEPER_STOPPED) this.#settleSuccess();
+      else {
+        Atomics.compareExchange(this.#state, 0, LEASE_KEEPER_ACTIVE, LEASE_KEEPER_FAILED);
+        this.#settleFailure();
+      }
+    });
+  }
+
+  assertActive(): void {
+    const state = Atomics.load(this.#state, 0);
+    if (state !== LEASE_KEEPER_ACTIVE) throw leaseKeeperError(state);
+  }
+
+  async stop(): Promise<void> {
+    Atomics.compareExchange(this.#state, 0, LEASE_KEEPER_ACTIVE, LEASE_KEEPER_STOPPED);
+    this.#worker.postMessage({ type: "stop" });
+    await this.completed;
+  }
+
+  #settleSuccess(): void {
+    if (this.#settled) return;
+    this.#settled = true;
+    this.#resolve();
+  }
+
+  #settleFailure(): void {
+    if (this.#settled) return;
+    const error = leaseKeeperError(Atomics.load(this.#state, 0));
+    if (!this.#readySettled) {
+      this.#readySettled = true;
+      this.#rejectReady(error);
+    }
+    this.#settled = true;
+    this.#reject(error);
+  }
+}
+
+if (!isMainThread && isLeaseKeeperWorkerData(workerData)) {
+  void runLeaseKeeperWorker(workerData).finally(() => parentPort?.close());
+}
+
 export async function runLocalPullIteration(
   config: LocalPullWorkerConfig,
   options: {
@@ -306,6 +566,8 @@ export async function runLocalPullIteration(
     signal?: AbortSignal;
     /** Test-only: production always uses the Core-issued heartbeat interval. */
     testHeartbeatDelayMilliseconds?: number;
+    /** Injected transports use inline scheduling unless a real isolated keeper is explicitly required. */
+    leaseKeeperMode?: "threaded" | "inline";
     networkTimeouts?: Partial<LocalPullNetworkTimeouts>;
     runtimePool?: DemandDrivenComputeRuntimePool;
   } = {},
@@ -323,28 +585,37 @@ export async function runLocalPullIteration(
   const claim = await pullLocalClaim(config, fetchImplementation, options.signal, networkTimeouts.pullMilliseconds);
   if (!claim) return null;
   const attemptController = new AbortController();
-  const heartbeatController = new AbortController();
   const onParentAbort = (): void => attemptController.abort();
   if (options.signal?.aborted) {
     attemptController.abort();
   } else {
     options.signal?.addEventListener("abort", onParentAbort, { once: true });
   }
-  let heartbeatError: unknown;
-  const heartbeat = maintainLease(
-    config,
-    claim,
-    fetchImplementation,
-    heartbeatController.signal,
-    options.testHeartbeatDelayMilliseconds,
-    networkTimeouts.heartbeatMilliseconds,
-  ).catch((error: unknown) => {
-    if (!(error instanceof DOMException && error.name === "AbortError")) {
-      heartbeatError = error;
-      attemptController.abort();
-    }
+  const leaseKeeperMode = options.leaseKeeperMode ?? (options.fetchImplementation === undefined ? "threaded" : "inline");
+  const leaseKeeper: LocalPullLeaseKeeper = leaseKeeperMode === "threaded"
+    ? new ThreadedLocalPullLeaseKeeper(
+        config,
+        claim,
+        networkTimeouts.heartbeatMilliseconds,
+        options.testHeartbeatDelayMilliseconds,
+      )
+    : new InlineLocalPullLeaseKeeper(
+        config,
+        claim,
+        fetchImplementation,
+        options.testHeartbeatDelayMilliseconds,
+        networkTimeouts.heartbeatMilliseconds,
+      );
+  let leaseError: unknown;
+  const leaseCompletion = leaseKeeper.completed.catch((error: unknown) => {
+    leaseError = error;
+    attemptController.abort();
   });
+  let outcome: ComputeWorkerOutcome | undefined;
+  let operationError: unknown;
   try {
+    await leaseKeeper.ready;
+    leaseKeeper.assertActive();
     const execute = (runtime?: ComputeWorkerRuntime): Promise<ComputeWorkerOutcome> => runComputeWorker({
       coreBaseUrl: config.coreBaseUrl,
       jobId: claim.job.id,
@@ -372,23 +643,33 @@ export async function runLocalPullIteration(
         coreRequestMilliseconds: networkTimeouts.coreRequestMilliseconds,
         sourceRangeMilliseconds: networkTimeouts.sourceRangeMilliseconds,
       },
+      beforeResultCallback: () => leaseKeeper.assertActive(),
     });
-    let outcome: ComputeWorkerOutcome;
     try {
       outcome = options.runtimePool === undefined
         ? await execute()
         : await options.runtimePool.use((runtime) => execute(runtime));
     } catch (error: unknown) {
-      if (heartbeatError !== undefined) throw heartbeatError;
-      throw error;
+      operationError = error;
     }
-    if (heartbeatError !== undefined) throw heartbeatError;
-    return outcome;
+    try {
+      leaseKeeper.assertActive();
+    } catch (error: unknown) {
+      leaseError ??= error;
+    }
   } finally {
-    heartbeatController.abort();
-    await heartbeat;
+    try {
+      await leaseKeeper.stop();
+    } catch (error: unknown) {
+      leaseError ??= error;
+    }
+    await leaseCompletion;
     options.signal?.removeEventListener("abort", onParentAbort);
   }
+  if (leaseError !== undefined) throw leaseError;
+  if (operationError !== undefined) throw operationError;
+  if (outcome === undefined) throw new Error("Local Pull iteration produced no outcome");
+  return outcome;
 }
 
 export async function runLocalPullWorker(

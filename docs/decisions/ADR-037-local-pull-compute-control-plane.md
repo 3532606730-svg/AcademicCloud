@@ -1,7 +1,7 @@
 # ADR-037 — Local Pull Worker as the Production Compute Control Plane
 
 **Date:** 2026-08-24
-**Status:** Accepted by Owner; pre-corpus code review and local runtime qualification passed at `d1bddb6`; immutable release and production cutover pending
+**Status:** Accepted and deployed; production v32 is healthy; final canaries are blocked on the A-canary lease-keeper correction
 
 ## Context
 
@@ -225,6 +225,34 @@ pushed and the remote branch was independently verified at the same SHA. These
 are code-review facts only: a new immutable release, real cold/warm/idle-unload
 benchmark, production cutover, multilingual canaries, forced-loss recovery,
 and full-corpus acceptance remain pending.
+
+### A-canary lease incident and keeper isolation — 2026-08-29
+
+The first schema32/v7 modern-scholarship canary exposed a lease scheduling
+failure in isolated attempt `f876257a-d5f5-4509-80de-b89145caba16`. Claim
+completed at 01:13:46.755Z. Heartbeats completed at 01:14:18.838Z and
+01:14:50.830Z with HTTP 200, and the second response renewed expiry to
+approximately 01:16:20.829Z. No third heartbeat reached Core. The worker exited
+at 01:16:20.859Z, and Core recovered the job into a new attempt at
+01:16:27.841Z. The compiled stack ended in the guard immediately after the
+heartbeat delay and before its `fetch`; Core and access logs contain no third
+request. This directly classifies the failure as main-event-loop starvation,
+not Core rejection, network/5xx failure, or failure to adopt a renewed expiry.
+The release did not emit exact Paddle/Qwen stage timestamps, so none are
+inferred.
+
+Production lease duration remains 90 seconds. The correction gives lease
+maintenance its own Node worker-thread event loop and network path, with one
+shared atomic state read by the compute thread before callback. The main
+attempt is aborted when the keeper records expiry, rejection, or internal
+failure; an expired/replaced attempt remains rejected by Core as the final
+authority. Normal stop versus expiry uses compare-and-swap so a completed
+callback is not retroactively misreported. Injected test transports remain
+inline by default, while production and isolated real canaries explicitly use
+the threaded keeper. Deterministic regression blocks the compute event loop
+beyond the original lease and proves repeated renewal; the matching unavailable
+heartbeat case proves lease expiry and zero callback. No schema change or
+longer lease is part of this correction.
 
 ## Migration and rollback
 

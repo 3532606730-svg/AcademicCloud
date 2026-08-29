@@ -95,30 +95,16 @@ Owner-authorized on 2026-08-24 and continued by the
 `ACADEMICCLOUD-FINAL-STABILIZATION-LOCAL-COMPUTE-PIVOT` Owner override. This is
 not a new task: it changes only the next Compute architecture/execution
 strategy. The authoritative branch is
-`codex/project-memory-reconcile-20260817`. The shared fixes, privacy-safe
-inventory tool, ADR-037, reboot gate, and WSL-on-D foundation were pushed and
-independently verified at local/remote HEAD
-`e8285cdb585ccf2953e2d259ac199bfd2d66dc71`. The runtime/protocol checkpoint
-`71a30e6` and the Owner-review repair checkpoint
-`d1bddb6d7bd6e66d0ed52586c17dd51afd358d99` are now pushed and remotely
-verified. Local Pull production cutover and a real structured Qwen canary then
-passed. The evidence-quality v2 checkpoint
-`6c71ac94c60d49e65e7eca59305b59ba6e461167` is pushed, deployed, and remotely
-verified at schema v27. Canonical-bibliography UI, work-versus-manifestation
-classification, and migration 028 are deployed at exact
-`5d4fddd542d352b2570d01feebda14c871be1d04` after the fresh encrypted/off-host
-schema-v27 backup gate passed. The first post-deploy real UI attempt proved the
-record projection but did not create an actual v3 inference because a prior v2
-succeeded job shared the same durable idempotency identity. Exact pushed repair
-`cee8decbf45d13e13818368323b12b01e3de04d3` binds admission to the bibliography
-pipeline generation; its new immutable releases and real v3 canary remain pending.
-Pre-existing untracked `%SystemDrive%/` and `scratch/` remain untouched.
-Production is exact frontend/Core
-`5d4fddd542d352b2570d01feebda14c871be1d04`, schema v28/history 001–028 with
-`local_pull`; the exact current Compute symlink is also `5d4fddd…`. Its systemd
-service is `disabled`/`inactive`, the environment is `PAUSED`, and no job was
-claimed during the UI diagnosis. No new
-GitHub-hosted production Compute probe was launched after the override.
+`codex/project-memory-reconcile-20260817`; pushed HEAD before this correction is
+`60205d09c64e510e293a6cef4e971b7fe710030a`. Production is exact frontend/Core
+`58b8468eac37fb994f06994375b81a6f53a6de79`, schema v32/history 001–032 with
+`local_pull`. ADR-038 final v7/prompt-v4 and the append-only ruleset registry are
+live. The main Compute symlink still selects exact `58b8468…`; systemd remains
+disabled/inactive and the environment remains `PAUSED`. Immutable release
+`60205d…` is present and hash-verified and contains the llama structured-response
+transport repair, but is not main current and must not be enabled. Pre-existing
+untracked `%SystemDrive%/` and `scratch/` remain untouched. No GitHub-hosted
+production Compute was used.
 
 Current acceptance inventory is 12 Owner PDFs plus 93 production-eligible PDFs,
 with zero exact production duplicate among the 12 and a current unique manifest
@@ -134,10 +120,9 @@ qualification, and separately authorized emergency implementation, but is
 disabled for normal production AI. The local Windows machine remains a
 disposable outbound-only Compute executor; its absence must leave AI jobs
 queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
-and the Local Pull protocol now pass in production. Migration 028 and the
-encrypted off-host schema-v27 backup gate have passed. No worker NORMAL
-transition occurs until a new exact `cee8dec…` release and isolated one-shot
-actual-v3 canonical UI canary pass.
+and the Local Pull protocol are deployed. The current release blocker is the
+A-canary heartbeat scheduling defect described below. No worker NORMAL
+transition occurs before an exact corrected Compute release and A/B/C pass.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -354,17 +339,35 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   heuristics, false single-page fact provenance, blocked first contributor
   enrichment on empty unowned profiles, and repeated evidence-table rebuilds
   for ruleset admission.
+- Deployed exact Core/frontend `58b8468…` at schema/history 32 after the fresh
+  encrypted/off-host schema31 gate. Immutable Compute `60205d…` contains the
+  llama `json_object` transport repair but main current remains `58b8468…`,
+  PAUSED/disabled/inactive.
+- Reconstructed failed A attempt
+  `f876257a-d5f5-4509-80de-b89145caba16`: claim completed at 01:13:46.755Z;
+  heartbeats at 01:14:18.838Z and 01:14:50.830Z both returned HTTP 200, with the
+  latter extending expiry to about 01:16:20.829Z; no third heartbeat reached
+  Core; the worker exited at 01:16:20.859Z; Core recovered attempt 7 at
+  01:16:27.841Z. The compiled stack failed after the heartbeat timer and before
+  `fetch`, proving main-event-loop starvation (category A). Exact Paddle/Qwen
+  stage timestamps were not recorded and were not invented.
+- Moved production lease maintenance to an independent Node worker thread with
+  shared atomic active/expired/rejected/failed state and a final pre-callback
+  lease check. Deterministic regressions block the main event loop beyond the
+  original lease and prove repeated renewal; the unavailable-heartbeat case
+  proves expiry with zero callback. The 90-second lease is unchanged and no
+  schema migration is required.
 
 ## Remaining
 
-- Assemble exact immutable Core/Compute releases from the verified v7/prompt-v4
-  implementation and complete a fresh encrypted/off-host schema31 gate before
-  schema32 cutover.
-- Keep the main worker disabled/inactive and `PAUSED` through three isolated
-  real canaries: modern scholarly monograph, historical/primary-source modern
-  edition, and OCR-needed multilingual resource. Verify class support, every
-  fact's provenance, no hallucination, display, human authority, callback,
-  current attempt, API, and UI.
+- Checkpoint and assemble one exact immutable Compute release containing both
+  the `60205d…` llama transport repair and independent lease keeper; verify its
+  full release hash and compiled worker-thread execution.
+- Re-read the current A job/attempt and deadline without claiming. If eligible,
+  run exactly one hardened isolated A iteration with the threaded keeper while
+  the main worker remains disabled/inactive/PAUSED. Then continue B/C only after
+  A passes class support, every fact's provenance, no hallucination, display,
+  human authority, callback, current attempt, API, and UI.
 - After the three canaries pass, prove forced-loss/lease recovery, then place
   the exact worker in NORMAL, enabled/active, concurrency one.
 - Pass the ordinary signed-in Owner website gate for both new-upload automatic
@@ -382,31 +385,26 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-Release gates remain intentionally pending: exact release assembly, fresh
-schema31 encrypted/off-host backup, schema32 production migration, three
-isolated real canaries, forced-loss recovery, and the ordinary Owner browser
-acceptance. Production remains safely frozen at fd97542/schema31 with Local
-Compute PAUSED/disabled/inactive.
+The only current blocker is exact release and isolated qualification of the
+lease-keeper correction. Production remains healthy at `58b8468…`/schema32;
+main Compute remains `58b8468…`, PAUSED/disabled/inactive. Do not claim current
+attempt 7 before the new exact release, and do not enter B/C, NORMAL,
+forced-loss, or corpus execution before A passes.
 
 ## Last Verification
 
-2026-08-28: P0-A, P0-B, P1-C, and P1-D reproduced and were repaired under
-ADR-038. Final v7/prompt-v4 now uses Qwen-proposed class plus trusted positive
-evidence validation, exact field-value evidence excerpts, no single-page
-provenance synthesis, empty-unowned contributor enrichment, and schema32's
-append-only composite ruleset registry. Full verification is green: Backend
-381/381, Frontend 284/284, Compute 103/103 plus 2 expected release-runtime
-skips, Compute contracts 3/3, workspace typecheck/build, compiled acceptance
-first migration count 32/redeploy 0, and ops auditor 48/48. Production remains
-exact `fd97542…` schema/history 31; Core is healthy and Local Compute remains
-`PAUSED`, disabled, inactive. No v6 final canary, NORMAL transition,
-forced-loss, corpus run, GitHub-hosted production Compute, or paid service was
-used.
+2026-08-29: root-cause classification A is proven by Core/access logs, isolated
+unit journal, compiled failure site, and durable lease state. The independent
+keeper correction passes Compute typecheck/build, Local Pull 12/12, full
+Compute 107/107 plus two expected release-runtime skips, Compute contracts 3/3,
+focused Backend 28/28, and `git diff --check`. The PDF cancellation anomaly did
+not reproduce in either the isolated 20/20 PDF test or the full Compute rerun;
+no PDF product change was made. Production/main-worker safety state is
+unchanged.
 
 ## Next Action
 
-Review and checkpoint the verified ADR-038 implementation, assemble the exact
-immutable Core/Compute release, pass the fresh encrypted/off-host schema31
-backup gate, then perform the authorized schema32 cutover and three isolated
-real canaries while the main worker remains PAUSED/disabled/inactive. Do not
-run v6 canary, NORMAL, forced-loss, or corpus execution before those gates.
+Checkpoint and push the lease correction, assemble and hash-verify the new
+immutable Compute release, then re-read the A queue identity/deadline and run
+exactly one isolated threaded-keeper retry if eligible. Keep main Compute
+PAUSED/disabled/inactive; do not proceed to B/C until A passes.

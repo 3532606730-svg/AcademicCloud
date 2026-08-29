@@ -324,6 +324,44 @@ test("worker bounds successful-result callback retries and reports a terminal fa
   });
 });
 
+test("worker rechecks lease authority before every callback retry", async () => {
+  let callbackRequests = 0;
+  let leaseChecks = 0;
+  await assert.rejects(
+    () => runComputeWorker(INPUT, {
+      inspector: inspector(),
+      reasoner: successfulReasoner(),
+      beforeResultCallback() {
+        leaseChecks += 1;
+        if (leaseChecks > 1) throw new Error("Local Pull lease expired");
+      },
+      fetchImplementation: async (input, init = {}) => {
+        const url = String(input);
+        if (url.endsWith("/claim")) {
+          return Response.json({
+            job: { id: INPUT.jobId, attemptId: INPUT.attemptId, kind: "metadata_suggestion" },
+            capability: { token: "result-capability-token-that-is-long-enough", expiresAt: future(10 * 60_000) },
+            source: { method: "GET", url: "https://storage.example/signed-source", sizeBytes: 5, mediaType: "application/pdf", expiresAt: future(5 * 60_000) },
+            callbackUrl: "https://core.example/api/internal/compute/jobs/job-1/result",
+          });
+        }
+        if (url === "https://storage.example/signed-source") {
+          return new Response(new Uint8Array([37, 80, 68, 70, 45]), { status: 206 });
+        }
+        if (url.endsWith("/result")) {
+          callbackRequests += 1;
+          assert.equal((JSON.parse(String(init.body)) as { state?: string }).state, "succeeded");
+          return Response.json({}, { status: 503 });
+        }
+        return new Response(null, { status: 404 });
+      },
+    }),
+    /Local Pull lease expired/u,
+  );
+  assert.equal(callbackRequests, 1);
+  assert.equal(leaseChecks, 3, "the failed-result fallback must also remain lease-gated");
+});
+
 test("worker does not retry stable result validation responses", async () => {
   const callbackStates: string[] = [];
   const fetchImplementation: typeof fetch = async (input, init = {}) => {

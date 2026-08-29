@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-28
+**Last reconciled:** 2026-08-29
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
@@ -28,14 +28,14 @@ INTERNAL_BETA_STARTED=false
 ```
 
 The Local Compute Owner override continues this program and changes only the
-production Compute strategy. Live read-only reconciliation on 2026-08-28
-confirmed exact frontend/Core and selected Local Compute
-`fd97542ea37f0422d0ef6b7c9af9f68cf032b6b1` at schema/history 31 with
-`COMPUTE_PROVIDER=local_pull`. `academiccloud.service` is active/running with
-health and readiness green, SQLite integrity is `ok`, and foreign-key
-violations are zero. Local Compute remains exact `fd97542…`, systemd
-`disabled`/`inactive`, and persistently `PAUSED`; the active Local Pull queue is
-empty.
+production Compute strategy. Live production is exact frontend/Core
+`58b8468eac37fb994f06994375b81a6f53a6de79` at schema/history 32 with
+`COMPUTE_PROVIDER=local_pull`. Schema32 and final v7/prompt-v4 are deployed.
+The main Local Compute symlink still selects exact `58b8468…`, systemd remains
+`disabled`/`inactive`, and the environment remains `PAUSED`; this release must
+not be enabled. Immutable release `60205d09c64e510e293a6cef4e971b7fe710030a`
+is present and hash-verified and contains the llama structured-response
+transport repair, but it is not the main selection.
 
 Rulesets v4–v6 are deployed historical attempts, not final acceptance. The
 Owner's FINAL ARCHITECTURE CORRECTION and ADR-038 block the v6 single-book
@@ -45,11 +45,10 @@ title vocabulary and whole-inspection edition markers; single-page evidence
 could synthesize provenance for facts Qwen never evidenced; an existing empty
 unowned contributor set could not receive its first valid AI contributor; and
 migrations 029–031 rebuilt immutable AI evidence only to extend version checks.
-Final ruleset v7/prompt-v4 and one schema32 registry migration now repair all
-four boundaries in the working tree, with full verification green. Exact
-release assembly, fresh schema31 backup, schema32 production cutover,
-three-canary acceptance, and normal-browser product acceptance remain
-revoked/pending.
+Final ruleset v7/prompt-v4 and the schema32 registry migration repair all four
+boundaries and are live. The first isolated modern-scholarship canary did not
+reach a terminal callback because its Local Pull lease expired during compute.
+Three-canary acceptance and normal-browser product acceptance remain pending.
 
 The corrupt-evidence defect is repaired, deployed, and canary-verified at exact
 checkpoint `6c71ac94c60d49e65e7eca59305b59ba6e461167`.
@@ -83,7 +82,7 @@ duplicates among the 12, and 105 unique acceptance resources. No paid usage,
 source-byte mutation, OSS identity mutation, or human-authority rewrite
 occurred.
 
-## Local Compute pivot — production v31 active; final architecture correction pending
+## Local Compute pivot — production v32 active; A canary lease correction pending
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -170,10 +169,26 @@ and Local attempts presented to the legacy claim route fail closed. A duplicate
 successful callback remains idempotent. The service exposes no laptop inbound
 endpoint and retains separate machine and result capabilities.
 
+The failed A-canary attempt
+`f876257a-d5f5-4509-80de-b89145caba16` proved a scheduling defect rather than
+a Core or network rejection. Claim completed at 01:13:46.755Z; heartbeats at
+01:14:18.838Z and 01:14:50.830Z both returned HTTP 200 and renewed the lease to
+approximately 01:16:20.829Z. No third heartbeat reached Core. The isolated
+worker exited at 01:16:20.859Z and Core recovered a new attempt at
+01:16:27.841Z. The compiled failure was raised immediately after the heartbeat
+timer returned and before `fetch`, proving category A: the heartbeat did not
+receive event-loop scheduling in time. Exact Paddle and Qwen stage timestamps
+were not emitted by that release and are therefore unavailable. The correction
+moves production lease maintenance to an independent Node worker thread,
+retains the 90-second lease, and checks shared atomic lease state before any
+callback. Deterministic tests prove repeated renewal beyond the original lease
+under synchronous main-loop starvation and zero callbacks after real lease
+failure.
+
 The v3 admission repair and v4/v5/v6 classification attempts are now historical
 evidence. Production advanced through exact encrypted off-host gates and
-append-only migrations 029–031 to exact `fd97542…`/schema31, but no v6 final
-canary was run. ADR-038 replaces the per-book correction loop: Qwen proposes
+append-only migration 032 to exact `58b8468…`/schema32. ADR-038 replaces the
+per-book correction loop: Qwen proposes
 class and facts; the trusted runtime validates positive page-bound class
 support and exact field-value support, otherwise class becomes unknown and
 unsupported facts cannot receive provenance. Human contributor authority is
@@ -182,17 +197,14 @@ contributor. Schema32 introduces an append-only composite ruleset registry,
 preserves immutable v1–v6 evidence, admits final v7/prompt-v4, and removes the
 need to rebuild the evidence table for later bounded admissions.
 
-The implementation checkpoint is verified locally: Backend 381/381,
-Frontend 284/284, Compute 103/103 plus 2 expected release-runtime skips,
-Compute contracts 3/3, workspace typecheck/build, compiled acceptance with
-first migration count 32 and redeploy count 0, and ops auditor 48/48. The
-main worker remains disabled/inactive/PAUSED and production remains unchanged
-at fd97542/schema31.
+The architecture checkpoint is deployed; the new lease correction passes
+Compute typecheck/build, Local Pull 12/12, full Compute 107/107 plus 2 expected
+release-runtime skips, Compute contracts 3/3, and focused Backend 28/28. The
+main worker remains disabled/inactive/PAUSED.
 
-After full local verification, exact release, fresh encrypted/off-host
-schema31 backup, and schema32 cutover, three isolated real canaries must cover
-modern scholarship, a modern edition of a historical/primary source, and an
-OCR-needed multilingual resource. Forced-loss follows. Only then may the exact
+After exact immutable Compute release assembly and hash verification, exactly
+one isolated A retry must pass before canaries B and C. Forced-loss follows only
+after all three canaries. Only then may the exact
 worker enter NORMAL, enabled/active, concurrency one. Final acceptance still
 requires both new-upload automatic cataloguing and existing-resource retry
 through the ordinary signed-in Owner website without Codex-created jobs, SSH,

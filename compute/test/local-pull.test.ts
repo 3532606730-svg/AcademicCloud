@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { Worker } from "node:worker_threads";
 
 import {
   DemandDrivenComputeRuntimePool,
@@ -14,6 +15,70 @@ import type { BoundedPdfTextSource } from "../src/suggestion.js";
 import { HttpPdfRangeSource, type ComputeWorkerRuntime } from "../src/worker.js";
 
 const MACHINE_SECRET = "local-machine-secret-that-is-long-enough";
+
+async function independentHeartbeatServer(mode: "renew" | "unavailable", leaseMilliseconds = 150): Promise<{
+  origin: string;
+  stats(): Promise<number>;
+  close(): Promise<void>;
+}> {
+  const worker = new Worker(`
+    const http = require("node:http");
+    const { parentPort, workerData } = require("node:worker_threads");
+    let requests = 0;
+    const server = http.createServer((request, response) => {
+      request.resume();
+      request.once("end", () => {
+        requests += 1;
+        if (workerData.mode === "renew") {
+          response.writeHead(200, { "content-type": "application/json" });
+          response.end(JSON.stringify({ lease: {
+            expiresAt: new Date(Date.now() + workerData.leaseMilliseconds).toISOString(),
+            heartbeatAfterMilliseconds: 1000,
+          } }));
+          return;
+        }
+        response.writeHead(503, { "content-type": "application/json" });
+        response.end("{}");
+      });
+    });
+    parentPort.on("message", (message) => {
+      if (message === "stats") parentPort.postMessage({ type: "stats", requests });
+      if (message === "close") server.close(() => parentPort.postMessage({ type: "closed" }));
+    });
+    server.listen(0, "127.0.0.1", () => {
+      parentPort.postMessage({ type: "ready", port: server.address().port });
+    });
+  `, { eval: true, workerData: { mode, leaseMilliseconds } });
+  const message = <T extends { type: string }>(type: T["type"]): Promise<T> => new Promise((resolve, reject) => {
+    const onMessage = (value: T): void => {
+      if (value.type !== type) return;
+      cleanup();
+      resolve(value);
+    };
+    const onError = (error: Error): void => { cleanup(); reject(error); };
+    const cleanup = (): void => {
+      worker.off("message", onMessage);
+      worker.off("error", onError);
+    };
+    worker.on("message", onMessage);
+    worker.on("error", onError);
+  });
+  const ready = await message<{ type: "ready"; port: number }>("ready");
+  return {
+    origin: `http://127.0.0.1:${ready.port}`,
+    async stats() {
+      const waiting = message<{ type: "stats"; requests: number }>("stats");
+      worker.postMessage("stats");
+      return (await waiting).requests;
+    },
+    async close() {
+      const waiting = message<{ type: "closed" }>("closed");
+      worker.postMessage("close");
+      await waiting;
+      await worker.terminate();
+    },
+  };
+}
 
 function successfulReasoner() {
   return {
@@ -229,6 +294,105 @@ test("a stuck heartbeat aborts the active attempt at lease expiry instead of wed
   );
   assert.ok(heartbeatRequests >= 1);
   assert.ok(Date.now() - startedAt < 500, "heartbeat I/O must not outlive the attempt lease");
+});
+
+test("threaded lease keeper renews continuously while the compute event loop is starved beyond the original lease", async (context) => {
+  const heartbeatServer = await independentHeartbeatServer("renew");
+  context.after(() => heartbeatServer.close());
+  const current = {
+    ...claim(),
+    callbackUrl: `${heartbeatServer.origin}/api/internal/compute/jobs/job-local/result`,
+    lease: { expiresAt: new Date(Date.now() + 500).toISOString(), heartbeatAfterMilliseconds: 1_000 },
+  };
+  let callbacks = 0;
+  const fetchImplementation: typeof fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/api/internal/compute/pull") return Response.json(current);
+    if (url.pathname.endsWith("/result")) {
+      callbacks += 1;
+      return Response.json({ job: { state: "succeeded" } });
+    }
+    throw new Error(`unexpected main-thread request: ${url.href}`);
+  };
+  const inspector: BoundedPdfTextSource = {
+    async inspect() { throw new Error("whole-object reads are forbidden"); },
+    async inspectRange() {
+      const blockedUntil = Date.now() + 700;
+      while (Date.now() < blockedUntil) {
+        // Deterministically model a synchronous PDF/render/native boundary
+        // without relying on a timer that would yield the event loop.
+      }
+      return {
+        pageCount: 1,
+        pageIndices: [1],
+        pages: [{ pageIndex: 1, text: "题名：近代中国史研究", evidenceOrigin: "native_text" }],
+        embeddedMetadata: {},
+        complete: true,
+        hasUsableTextLayer: true,
+      };
+    },
+  };
+  const outcome = await runLocalPullIteration(config({ coreBaseUrl: heartbeatServer.origin }), {
+    fetchImplementation,
+    inspector,
+    reasoner: successfulReasoner(),
+    leaseKeeperMode: "threaded",
+    testHeartbeatDelayMilliseconds: 20,
+    networkTimeouts: { heartbeatMilliseconds: 100 },
+  });
+  assert.equal(outcome?.result.state, "succeeded");
+  assert.equal(callbacks, 1);
+  assert.ok(await heartbeatServer.stats() >= 3, "the isolated keeper must renew throughout main-thread starvation");
+});
+
+test("threaded lease failure remains fail-closed and cannot callback after main-thread starvation", async (context) => {
+  const heartbeatServer = await independentHeartbeatServer("unavailable", 120);
+  context.after(() => heartbeatServer.close());
+  const current = {
+    ...claim(),
+    callbackUrl: `${heartbeatServer.origin}/api/internal/compute/jobs/job-local/result`,
+    lease: { expiresAt: new Date(Date.now() + 1_000).toISOString(), heartbeatAfterMilliseconds: 1_000 },
+  };
+  let callbacks = 0;
+  const fetchImplementation: typeof fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/api/internal/compute/pull") return Response.json(current);
+    if (url.pathname.endsWith("/result")) {
+      callbacks += 1;
+      return Response.json({ job: { state: "succeeded" } });
+    }
+    throw new Error(`unexpected main-thread request: ${url.href}`);
+  };
+  const inspector: BoundedPdfTextSource = {
+    async inspect() { throw new Error("whole-object reads are forbidden"); },
+    async inspectRange() {
+      const blockedUntil = Date.now() + 1_200;
+      while (Date.now() < blockedUntil) {
+        // The keeper fails while the main thread cannot process its message.
+      }
+      return {
+        pageCount: 1,
+        pageIndices: [1],
+        pages: [{ pageIndex: 1, text: "题名：近代中国史研究", evidenceOrigin: "native_text" }],
+        embeddedMetadata: {},
+        complete: true,
+        hasUsableTextLayer: true,
+      };
+    },
+  };
+  await assert.rejects(
+    () => runLocalPullIteration(config({ coreBaseUrl: heartbeatServer.origin }), {
+      fetchImplementation,
+      inspector,
+      reasoner: successfulReasoner(),
+      leaseKeeperMode: "threaded",
+      testHeartbeatDelayMilliseconds: 20,
+      networkTimeouts: { heartbeatMilliseconds: 50 },
+    }),
+    /Local Pull lease expired/u,
+  );
+  assert.equal(callbacks, 0);
+  assert.ok(await heartbeatServer.stats() >= 1);
 });
 
 test("PAUSED mode neither pulls nor initializes runtime components", async () => {

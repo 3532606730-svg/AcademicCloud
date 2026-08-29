@@ -408,10 +408,12 @@ async function postResultWithRetry(
   fetchImplementation: typeof fetch,
   signal?: AbortSignal,
   timeoutMilliseconds = CORE_REQUEST_TIMEOUT_MILLISECONDS,
+  beforeRequest?: () => void,
 ): Promise<void> {
   const headers = { authorization: `Bearer ${claim.capability.token}`, "content-type": "application/json" };
   let lastError: unknown;
   for (let attempt = 0; attempt <= RESULT_CALLBACK_RETRY_DELAYS_MS.length; attempt += 1) {
+    beforeRequest?.();
     let response: Response | undefined;
     try {
       response = await postJson(claim.callbackUrl, headers, result, fetchImplementation, signal, timeoutMilliseconds);
@@ -443,6 +445,8 @@ export async function runComputeWorker(
     sourceAuthorizationRenewal?: (signal?: AbortSignal) => Promise<WorkerSourceAuthorization>;
     networkTimeouts?: Partial<ComputeWorkerNetworkTimeouts>;
     retainRuntime?: boolean;
+    /** Last fail-closed lease check before any terminal callback leaves the worker. */
+    beforeResultCallback?: () => void;
   } = {},
 ): Promise<ComputeWorkerOutcome> {
   if (!JOB_ID.test(input.jobId) || !JOB_ID.test(input.attemptId)) throw new Error("compute job identity is invalid");
@@ -533,7 +537,14 @@ export async function runComputeWorker(
     }
     sample();
     try {
-      await postResultWithRetry(claim, result, fetchImplementation, options.signal, networkTimeouts.coreRequestMilliseconds);
+      await postResultWithRetry(
+        claim,
+        result,
+        fetchImplementation,
+        options.signal,
+        networkTimeouts.coreRequestMilliseconds,
+        options.beforeResultCallback,
+      );
     } catch (callbackError: unknown) {
       if (options.signal?.aborted) throw callbackError;
       // A successful extraction whose result cannot be durably committed must
@@ -550,7 +561,14 @@ export async function runComputeWorker(
           errorCode: "compute_internal_error",
         };
         try {
-          await postResultWithRetry(claim, failed, fetchImplementation, options.signal, networkTimeouts.coreRequestMilliseconds);
+          await postResultWithRetry(
+            claim,
+            failed,
+            fetchImplementation,
+            options.signal,
+            networkTimeouts.coreRequestMilliseconds,
+            options.beforeResultCallback,
+          );
         } catch {
           // Preserve the original callback failure for the provider log.
         }
