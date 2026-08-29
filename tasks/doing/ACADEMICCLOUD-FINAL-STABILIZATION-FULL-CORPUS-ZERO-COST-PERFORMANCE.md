@@ -377,15 +377,13 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Remaining
 
-- Restore network readiness and repeat the same bounded low-frequency Windows
-  and WSL qualification. Any comparable connect timeout is a gate failure.
-  Restore root free space above 10,737,418,240 bytes only through a separately
-  verified disposable-content cleanup. Then re-read Core and worker invariants,
-  re-verify exact release `64d2136…`, and create a fresh A target through the
-  ordinary production UI. Run exactly one isolated iteration only after reading
-  its exact job/attempt identity; main worker stays disabled/inactive/PAUSED. A
-  still must pass positive class support, exact field provenance, no hallucinated
-  fact promotion, display, human authority, callback/current-attempt, API, and UI.
+- Use a clean modern-scholarly resource through the ordinary production UI for
+  the next A target and execute only its exact job/attempt on isolated
+  `64d2136…`; main worker stays disabled/inactive/PAUSED. A must pass positive
+  class support, exact field provenance, no hallucinated fact promotion,
+  display, human authority, callback/current-attempt, API, and UI. Transient
+  network failures are acceptable only when they fail safe, requeue/recover,
+  and later complete without false metadata.
 - After the three canaries pass, prove forced-loss/lease recovery, then place
   the exact worker in NORMAL, enabled/active, concurrency one.
 - Pass the ordinary signed-in Owner website gate for both new-upload automatic
@@ -394,12 +392,9 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   display/download projection. No SSH/manual job/DB/internal/one-shot path may
   satisfy this gate; offline Local Compute must remain visibly queued and
   resume automatically.
-- Resolve the root-disk blocker by first proving which immutable releases are
-  unreferenced by current/rollback/service/process state and rebuildable from
-  exact published checkpoints. Remove nothing until then; preserve logs, DB,
-  backups, corpus, unknown Owner files, and diagnostic directories. Historical
-  host-wide OOM and the CSP parser discrepancy require no current application
-  or memory-limit change.
+- Keep the passed production disk state; no further cleanup or WSL release
+  deletion is in scope. Historical host-wide OOM and the CSP parser discrepancy
+  require no current application or memory-limit change.
 - Implement only measured, safe, material zero-cost performance improvements.
 - Qualify/deploy exact Core/frontend/Local Compute releases, retry the same
   affected resources, and compare local versus historical hosted stage timings.
@@ -408,26 +403,16 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-The current blockers are the failed network-stability gate, the failed
-production disk hard gate, and exhaustion of the queued canary deadline. Exact
-release `64d2136…` is hash-verified and qualification green. Its retry of attempt
-`ca2f3aa1-886a-4ee3-b2ea-affc54a9df15` received three Core HTTP-200 heartbeat
-renewals at 11:28:13.536, 11:28:46.218, and 11:29:19.208+08:00, then failed
-closed at 11:30:49+08:00 with `Local Pull lease expired`; no callback was sent.
-A production SSH probe timed out in the same window and subsequent WSL HTTPS
-probes recovered, supporting category C rather than Core rejection or callback
-authority loss. Core recovered attempt `fc5b2dd3-fe1d-469f-88c9-92613a28d0a4`
-but the job is now failed/`compute_timeout` at attempts 11 with no eligible
-local_pull job. Production remains last-known healthy at `58b8468…`/schema32;
-main Compute remains `58b8468…`, PAUSED/disabled/inactive. The bounded network
-gate then recorded 3 Windows and 52 WSL connect-timeout events, including
-overlapping failures. Paired source-bound probes now prove the intermittent
-shared failure is on the active sing-tun route: direct WLAN stayed green while
-both HTTPS and SSH each reproduced a TUN-only TCP connect timeout. WSL NAT uses
-that route, but no second WSL-specific DNS/IPv6/MTU/proxy/client/vSwitch cause
-is proven. Root available space is 9,936,183,296 bytes against the
-10,737,418,240-byte gate. Do not create or claim another attempt or enter B/C,
-NORMAL, forced-loss, or corpus execution until both readiness gates pass.
+The only current sequence blocker is A canary success. The Owner superseded the
+absolute-zero-timeout gate with a transient-network resilience contract, and
+the production disk hard gate passes. Fresh normal-UI A job `746866b2…` /
+attempt `e0f03b31…` on exact `64d2136…` reached Qwen reasoning with healthy
+range access and two HTTP-200 heartbeats, then failed closed as
+`compute_invalid_result`. Core persisted no structured AI evidence or
+canonical metadata, and the main worker remained PAUSED/disabled/inactive.
+This is correct fail-safe behavior but not A acceptance. Use a different clean
+modern-scholarly resource; do not enter B/C, forced-loss, NORMAL, or corpus
+execution until A passes.
 
 ## Last Verification
 
@@ -474,39 +459,40 @@ path is available. Direct WLAN was HTTPS 12/12 and SSH 5/5; sing-tun was HTTPS
 11/12 and SSH 4/5 with one TCP connect timeout in each paired series. WSL after
 restart was 12/12, so its earlier 7/60 result remains amplification through the
 same unstable TUN rather than evidence for an independent fix. No route, VPN,
-WSL, or application configuration changed. A temporary exact `/32` WLAN bypass
-is the proposed bounded test, but needs Owner authorization and elevation.
+WSL, or application configuration changed. The later authorized temporary
+`/32` WLAN bypass ran 90 paired probes: 89 complete successes, one Windows
+`/ready` connect timeout, zero DNS/SSH failures, and WSL green. The ActiveStore
+route was automatically removed with zero exact route remaining. The Owner now
+accepts transient network loss subject to fail-safe recovery and eventual
+success, so no broader network hardening follows.
 
 The production disk audit found 36 valid immutable Core releases. Current
 `58b8468…` and rollback `fd97542…` are the only referenced releases; all 34
 others have matching manifests, pushed commits, exact rebuild tooling, and no
 symlink/service/process/rollback reference. They total 1,756,213,590 bytes.
-Release cleanup alone would leave 954,978,646 bytes above the hard gate, still
-118,763,178 bytes short of a one-GiB buffer. Ten task-owned `/var/tmp` artifact
-staging directories then passed embedded tar/zip sidecar re-hashing, exact
-source-commit binding, pushed-ref, rebuild-tooling, open-file, and symlink checks;
-they total 116,369,148 bytes. Combining only those ten directories and the
-25,363,040-byte package cache with the old releases projects 1,096,710,834
-bytes above the hard gate, 22,969,010 above one GiB. This sufficient exact plan
-is still Owner deletion-gated; all other `/var/tmp` and diagnostics remain
-protected. WSL separately has 4,479,467,520 bytes available; current, rollback,
-and `64d2136…` are protected, while 22 unreferenced exact releases account for
-187,428,646,130 apparent bytes. No production or WSL files were removed.
+Release cleanup plus ten hash-verified task-owned staging directories and apt
+cache was explicitly approved and executed only after a second live preflight.
+Root available space rose from 9,935,462,400 to 12,535,619,584 bytes and later
+re-read as 12,568,662,016. Current/rollback/database were preserved; Core is
+active with zero restarts, schema32, integrity `ok`, and FK 0. All WSL
+releases, logs/journal, backups, corpus, diagnostics, and Owner/unknown files
+remain untouched.
+
+2026-08-30: the ordinary production UI created fresh A job `746866b2…` /
+attempt `e0f03b31…` for a cleanly named modern scholarly resource. Exact
+`64d2136…` claimed only that identity, completed seven bounded ranges, and
+received two Core HTTP-200 heartbeats. Qwen result validation failed closed as
+`compute_invalid_result`; Core retained no AI evidence/canonical promotion and
+the main worker remained PAUSED/disabled/inactive. This validates fail-safe
+semantics but not the required eventual A success.
 
 ## Next Action
 
-Keep production Core at last-known `58b8468…`/schema32 and main Compute
-`58b8468…` PAUSED/disabled/inactive. Do not claim the recovered attempt
-`fc5b2dd3…` or create any new canary. The next network action requires an
-Owner-authorized, elevated, temporary exact-IP WLAN bypass followed by at least
-15 minutes of paired Windows/WSL/SSH qualification and unconditional route
-removal. The disk action requires separate explicit Owner deletion approval for
-exactly the 34 listed releases, apt cache, and ten verified task-owned staging
-directories. Recheck every symlink/process/rollback reference immediately
-before removal and stop unless post-cleanup free space is at least one GiB over
-the gate. Do not touch any other `/var/tmp`, local diagnostic, log, journal,
-data, backup, corpus, or unknown file. Reverify Core health,
-main-worker isolation, and release `64d2136…` only after both gates pass; only
-then create a fresh A through the ordinary production UI and read its exact
-identity before one isolated iteration. Do not proceed to B/C, NORMAL,
-forced-loss, or corpus execution while either readiness gate or A is not PASS.
+Keep production Core `58b8468…`/schema32 and main Compute `58b8468…`
+PAUSED/disabled/inactive. Through the ordinary production UI select a clean
+modern-scholarly resource, create a new current-generation A job, read its exact
+identity, and run one isolated `64d2136…` iteration. A PASS unlocks B/C; all
+three unlock forced-loss, exact main-release cutover, NORMAL, browser-only
+automatic-cataloguing acceptance, concurrency-one corpus execution, and the
+final clean sweep. Do not add network or architecture hardening outside a
+direct data-integrity, authority, security, or unrecoverable failure.

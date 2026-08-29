@@ -250,9 +250,10 @@ failure streak of about 20 seconds. WSL sampled 60 probes over 1,347.7 seconds
 connect-timeout events, 43 probes with an HTTP error, DNS failures 0, health
 median TTFB about 1.92 seconds among numeric samples, and a longest failure
 streak of about 230 seconds. Several Windows and WSL failures occurred within
-seconds of one another, so `NETWORK_STABILITY_GATE=FAIL`; prioritize the shared
-path plus the WSL amplification separately before any application change. The
-following bounded differential isolates the currently proven layers.
+seconds of one another, so the former absolute-zero-timeout gate recorded
+`FAIL`; that criterion is historical and has since been superseded by the
+Owner's transient-network resilience contract. The following bounded
+differential isolates the observed layers.
 
 The differential diagnosis now identifies the shared failing path more
 precisely. `cloud.ajtlab.top` has one A record (`47.250.126.42`) and no AAAA;
@@ -267,40 +268,27 @@ The current restarted WSL sample was 12/12, so the prior WSL amplification is
 localized to NAT traversing the unstable TUN but no second DNS/IPv6/MTU/proxy/
 client/vSwitch cause is proven. WSL configuration remains unchanged.
 
-The minimum proposed network correction is an exact, temporary split-tunnel
-bypass for the currently resolved `47.250.126.42/32` through the physical WLAN,
-followed by paired Windows/WSL qualification and removal of the temporary route.
-No route/VPN mutation occurred: the current process is not elevated and any
-system/VPN change requires explicit Owner authorization. Because the same-class
-TUN timeout reproduced, no post-fix 15-minute qualification was claimed.
+The Owner-authorized temporary `47.250.126.42/32` physical-WLAN route test ran
+90 paired Windows/WSL probes over 15 minutes. Eighty-nine probes were complete
+successes; DNS and SSH were 90/90, WSL remained green, and one Windows
+`/ready` connection timed out. The ActiveStore route was then automatically
+removed with zero exact route remaining. This evidence confirms ordinary
+transient path loss rather than a persistent WSL fault. The Owner subsequently
+superseded the absolute-zero-timeout gate: network acceptance now requires
+fail-safe handling, no false callback or metadata promotion, automatic
+requeue/recovery, and eventual success in an available window. Broad network
+diagnosis is closed.
 
-Read-only host qualification most recently found root filesystem
-total/used/available `20,747,476,992 / 9,731,420,160 / 9,936,183,296` bytes against the
-`10,737,418,240`-byte minimum gate. The largest bounded consumers were
-`/var/log` 2,349,509,285 bytes (journald reported 1.7G) and old immutable
-releases 1,831,508,935 bytes. No files were deleted; current/rollback releases,
-DB, backups, corpus, `/var/tmp`, `/tmp`, and diagnostics remain intact.
-
-The exact inventory found 36 valid Core releases under the real production root
-`/opt/academiccloud/releases`; production has no `/srv/academiccloud*` root.
-Every manifest source matches its directory, every commit exists on a pushed
-remote ref, and every checkpoint contains the exact production builder/workflow.
-Current `58b8468…` and rollback `fd97542…` are protected. The other 34 releases
-have no symlink, service, process, or rollback reference and are therefore
-cleanup candidates totaling 1,756,213,590 bytes. Removing all of them would
-raise available space to 11,692,396,886 bytes, only 954,978,646 bytes above the
-hard gate—118,763,178 bytes short of a full 1 GiB buffer.
-
-The package cache is 25,363,040 bytes and bounded `/var/tmp` is 116,493,594
-bytes with zero open-file or symlink references. Ten task-owned artifact staging
-directories account for 116,369,148 bytes; their embedded tar/zip sidecars were
-re-hashed, source commits match pushed checkpoints, and exact rebuild tooling is
-present. Combining only those ten directories and the package cache with all 34
-old releases projects 11,834,129,074 available bytes, 1,096,710,834 above the
-hard gate and 22,969,010 above a full 1 GiB buffer. This exact sufficient plan
-remains Owner deletion-gated. Every other `/var/tmp` entry, local dirty
-diagnostic, log/journal, DB, backup, corpus, unknown file, current/rollback
-release, and Compute `64d2136…` remains protected.
+After live reference, manifest, pushed-checkpoint, artifact-hash, and projected-
+space preflight, the approved exact disk set was removed: 34 unreferenced Core
+releases, ten task-owned verified staging directories, and apt cache. No WSL
+release was removed. Current `58b8468…`, rollback `fd97542…`, the production
+database, backups, corpus, logs/journal, diagnostics, Owner/unknown files, and
+Compute `64d2136…` were preserved. Root available space rose from
+`9,935,462,400` to `12,535,619,584` bytes and later re-read as
+`12,568,662,016`; `PRODUCTION_DISK_HARD_GATE=PASS`. Core remains
+`active/running` with zero restarts, schema 32, SQLite integrity `ok`, and
+zero foreign-key violations.
 
 The separate D-backed WSL filesystem currently has 4,479,467,520 bytes
 available of 269,965,701,120. Its current `58b8468…`, rollback `fd97542…`, and
@@ -316,23 +304,20 @@ headers currently include `https://files.ajtlab.top` in both `img-src` and
 `frame-src`; the readiness profile discrepancy does not block the AI API path
 and remains a browser/display gate finding only.
 
-Consequently both `NETWORK_STABILITY_GATE` and the production disk hard gate
-are `FAIL`. No new A canary may be created or claimed, and B/C, NORMAL,
-forced-loss, and full-corpus execution remain blocked. The next product action
-is allowed only after a fresh bounded network qualification has zero comparable
-connect timeouts, the disk gate passes, Core is healthy, the main worker is
-still PAUSED/disabled/inactive, and release `64d2136…` re-verifies exactly.
-
-After both readiness gates pass and exact release verification is repeated,
-exactly one isolated A retry must pass before canaries B and C. Forced-loss
-follows only after all three canaries. Only then may the exact
-worker enter NORMAL, enabled/active, concurrency one. Final acceptance still
-requires both new-upload automatic cataloguing and existing-resource retry
-through the ordinary signed-in Owner website without Codex-created jobs, SSH,
-database writes, internal endpoints, or one-shot worker commands. When the
-Owner machine is offline, the product must show safe queueing and automatic
-resume rather than implying immediate cloud execution. GitHub-hosted production
-Compute remains unused.
+The first fresh schema32/v7 A job created through the normal production website
+was exact job `746866b2-9c67-441d-9751-39805dbc836a`, attempt
+`e0f03b31-1ccb-4e90-9eaa-947467d795a0`. Isolated release `64d2136…` claimed
+that identity, completed seven bounded range requests, renewed its lease twice
+with Core HTTP 200, and failed closed at `bibliographic_reasoning` because the
+Qwen result did not pass trusted runtime validation. Core persisted
+`compute_invalid_result`; there was no success callback, structured evidence,
+or canonical metadata promotion. The main worker remained
+PAUSED/disabled/inactive. This proves the tightened fail-safe boundary but is
+not an A PASS. Use another clean modern-scholarly resource through the ordinary
+UI; B/C remain blocked on A. Forced-loss follows all three canaries, then the
+exact worker may enter NORMAL, enabled/active, concurrency one. Final browser
+acceptance and full-corpus execution remain as previously defined; GitHub-
+hosted production Compute remains unused.
 
 ## Historical incident evidence (superseded as current acceptance)
 
