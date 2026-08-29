@@ -232,6 +232,14 @@ PAUSED/disabled/inactive. Do not claim another attempt or enter B/C, NORMAL,
 forced-loss, or corpus execution until a fresh normal-product A target exists
 and the network/lease evidence is revalidated.
 
+The fresh read-only production readiness audit (2026-08-29T03:22:09Z) also
+returned `NOT_READY` for separate release-engineering findings: root-disk
+availability 9,741,028 KiB below the 10,485,760 KiB gate; a kernel OOM counter
+of 9 despite zero cgroup `oom_kill` and zero recent service errors; and a
+post-UX01 CSP profile mismatch for the files domain. The worktree cleanliness
+check also fails only because preserved untracked task diagnostics remain.
+These findings were not changed or used to reinterpret the canary failure.
+
 After exact immutable Compute release assembly and hash verification, exactly
 one isolated A retry must pass before canaries B and C. Forced-loss follows only
 after all three canaries. Only then may the exact

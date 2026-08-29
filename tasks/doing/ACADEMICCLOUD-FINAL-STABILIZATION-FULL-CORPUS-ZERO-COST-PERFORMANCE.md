@@ -392,7 +392,10 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   display/download projection. No SSH/manual job/DB/internal/one-shot path may
   satisfy this gate; offline Local Compute must remain visibly queued and
   resume automatically.
-- Classify the root-disk, CSP, and systemd-metric audit findings by evidence.
+- Treat the fresh readiness-audit findings as separate release-engineering
+  blockers: root disk below the reviewed gate, kernel OOM counter evidence, and
+  the post-UX01 files-domain CSP mismatch. Do not change them while the A retry
+  and network-path blocker remain unresolved.
 - Implement only measured, safe, material zero-cost performance improvements.
 - Qualify/deploy exact Core/frontend/Local Compute releases, retry the same
   affected resources, and compare local versus historical hosted stage timings.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-29T16:30:54+08:00",
+  "updatedAt": "2026-08-29T16:33:59+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -101,6 +101,23 @@
       "fix": "lightweight independent Node child-process lease keeper with callback-time IPC probe",
       "schemaChangeRequired": false,
       "retryAllowedBeforeExactRelease": false
+    },
+    "latestReadinessAudit": {
+      "observedAt": "2026-08-29T03:22:09Z",
+      "overall": "NOT_READY",
+      "transport": "SSH PASS; public and loopback health/readiness 200",
+      "productionRelease": "58b8468eac37fb994f06994375b81a6f53a6de79",
+      "schema": 32,
+      "integrity": "ok",
+      "foreignKeyViolations": 0,
+      "service": "active/running; NRestarts=0",
+      "separateFindings": [
+        "root filesystem available 9741028 KiB below 10485760 KiB gate",
+        "kernel OOM counter 9 while cgroup oom_kill=0 and recent service errors=0",
+        "post-UX01 CSP profile expects files domain in img/frame sources but live response does not",
+        "worktree cleanliness check fails because preserved untracked task diagnostics remain"
+      ],
+      "mutationPerformed": false
     },
     "offHostBackupGate": {
       "status": "pass",
