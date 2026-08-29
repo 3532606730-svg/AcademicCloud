@@ -482,13 +482,16 @@ The production disk audit found 36 valid immutable Core releases. Current
 others have matching manifests, pushed commits, exact rebuild tooling, and no
 symlink/service/process/rollback reference. They total 1,756,213,590 bytes.
 Release cleanup alone would leave 954,978,646 bytes above the hard gate, still
-118,763,178 bytes short of a one-GiB buffer. Adding the disposable package
-cache still leaves the compliant projection 93,400,138 bytes short of
-the one-GiB buffer; `/var/tmp` remains protected as diagnostic/unknown material.
-There is therefore no sufficient production deletion plan yet. WSL separately
-has 4,479,467,520 bytes available; current, rollback, and `64d2136…` are
-protected, while 22 unreferenced exact releases account for 187,428,646,130
-apparent bytes. No production or WSL files were removed.
+118,763,178 bytes short of a one-GiB buffer. Ten task-owned `/var/tmp` artifact
+staging directories then passed embedded tar/zip sidecar re-hashing, exact
+source-commit binding, pushed-ref, rebuild-tooling, open-file, and symlink checks;
+they total 116,369,148 bytes. Combining only those ten directories and the
+25,363,040-byte package cache with the old releases projects 1,096,710,834
+bytes above the hard gate, 22,969,010 above one GiB. This sufficient exact plan
+is still Owner deletion-gated; all other `/var/tmp` and diagnostics remain
+protected. WSL separately has 4,479,467,520 bytes available; current, rollback,
+and `64d2136…` are protected, while 22 unreferenced exact releases account for
+187,428,646,130 apparent bytes. No production or WSL files were removed.
 
 ## Next Action
 
@@ -498,10 +501,11 @@ Keep production Core at last-known `58b8468…`/schema32 and main Compute
 Owner-authorized, elevated, temporary exact-IP WLAN bypass followed by at least
 15 minutes of paired Windows/WSL/SSH qualification and unconditional route
 removal. The disk action requires separate explicit Owner deletion approval for
-the exact inventory, but the currently compliant set is still 93,400,138 bytes
-short of the required buffer, so do not request or execute deletion yet. Do not
-reclassify protected `/var/tmp`, diagnostics, logs, journal, data, backups,
-corpus, or unknown files merely to close that gap. Reverify Core health,
+exactly the 34 listed releases, apt cache, and ten verified task-owned staging
+directories. Recheck every symlink/process/rollback reference immediately
+before removal and stop unless post-cleanup free space is at least one GiB over
+the gate. Do not touch any other `/var/tmp`, local diagnostic, log, journal,
+data, backup, corpus, or unknown file. Reverify Core health,
 main-worker isolation, and release `64d2136…` only after both gates pass; only
 then create a fresh A through the ordinary production UI and read its exact
 identity before one isolated iteration. Do not proceed to B/C, NORMAL,

@@ -292,13 +292,15 @@ raise available space to 11,692,396,886 bytes, only 954,978,646 bytes above the
 hard gate—118,763,178 bytes short of a full 1 GiB buffer.
 
 The package cache is 25,363,040 bytes and bounded `/var/tmp` is 116,493,594
-bytes with zero open-file or symlink references. `/var/tmp` remains protected as
-diagnostic/unknown task material. Even if the disposable package cache were
-separately approved, the compliant plan would leave 980,341,686 bytes above the
-hard gate—still 93,400,138 bytes short of a full 1 GiB buffer. Therefore no
-sufficient production deletion plan exists yet. Logs/journal, DB, backups,
-corpus, unknown files, current/rollback releases, and diagnostics remain
-protected.
+bytes with zero open-file or symlink references. Ten task-owned artifact staging
+directories account for 116,369,148 bytes; their embedded tar/zip sidecars were
+re-hashed, source commits match pushed checkpoints, and exact rebuild tooling is
+present. Combining only those ten directories and the package cache with all 34
+old releases projects 11,834,129,074 available bytes, 1,096,710,834 above the
+hard gate and 22,969,010 above a full 1 GiB buffer. This exact sufficient plan
+remains Owner deletion-gated. Every other `/var/tmp` entry, local dirty
+diagnostic, log/journal, DB, backup, corpus, unknown file, current/rollback
+release, and Compute `64d2136…` remains protected.
 
 The separate D-backed WSL filesystem currently has 4,479,467,520 bytes
 available of 269,965,701,120. Its current `58b8468…`, rollback `fd97542…`, and

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-29T20:39:19+08:00",
+  "updatedAt": "2026-08-29T20:47:07+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -103,7 +103,7 @@
       "retryAllowedBeforeExactRelease": false
     },
     "latestReadinessAudit": {
-      "observedAt": "2026-08-29T12:39:19Z",
+      "observedAt": "2026-08-29T12:47:07Z",
       "overall": "NOT_READY",
       "transport": "SSH/public/loopback health probes are reachable intermittently; network stability gate failed",
       "productionRelease": "58b8468eac37fb994f06994375b81a6f53a6de79",
@@ -208,11 +208,26 @@
           "varTmpOpenFileReferences": 0,
           "varTmpSymlinkReferences": 0,
           "aptCacheCleanupAuthorized": false,
-          "varTmpProtectedAsDiagnosticAndUnknownTaskMaterial": true,
-          "maximumCompliantPlanReclaimBytes": 1781576630,
-          "maximumCompliantPlanPostCleanupAvailableBytes": 11717759926,
-          "maximumCompliantPlanBufferAboveGateBytes": 980341686,
-          "shortOfOneGiBBufferBytes": 93400138
+          "verifiedTaskOwnedStagingCleanupAuthorized": false,
+          "verifiedTaskOwnedStagingBytes": 116369148,
+          "verifiedTaskOwnedStaging": [
+            {"path": "/var/tmp/academiccloud-17fb945", "sourceCommit": "17fb945220c44df71e4846a0ccd5f54e98f43858", "bytes": 10553098, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-core-2c0ebd2", "sourceCommit": "2c0ebd26377ceb98a13a320753796451fc7e503e", "bytes": 10570397, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-core-58b8468eac37fb994f06994375b81a6f53a6de79", "sourceCommit": "58b8468eac37fb994f06994375b81a6f53a6de79", "bytes": 10573647, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-core-5d4fddd542d352b2570d01feebda14c871be1d04", "sourceCommit": "5d4fddd542d352b2570d01feebda14c871be1d04", "bytes": 21162860, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-core-76cee2a", "sourceCommit": "76cee2afb5a27511b0b2447beeae2c522d7469ae", "bytes": 10594084, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-core-cdb9986", "sourceCommit": "cdb99869607231ebb39c1b47d234100077ced5b8", "bytes": 10595977, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-core-fd97542", "sourceCommit": "fd97542ea37f0422d0ef6b7c9af9f68cf032b6b1", "bytes": 10588542, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-local-pull-v26-71a30e6", "sourceCommit": "71a30e6c0b29b307d71d9a46c21acddf236654ab", "bytes": 10564174, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-prod02h-localpullv26-71a30e6", "sourceCommit": "71a30e6c0b29b307d71d9a46c21acddf236654ab", "bytes": 10565190, "artifactHashVerified": true},
+            {"path": "/var/tmp/academiccloud-v3-cee8dec", "sourceCommit": "cee8decbf45d13e13818368323b12b01e3de04d3", "bytes": 10601179, "artifactHashVerified": true}
+          ],
+          "allStagingSourceCommitsPushedAndRebuildable": true,
+          "remainingVarTmpProtectedBytes": 124446,
+          "compliantPlanReclaimBytes": 1897945778,
+          "compliantPlanPostCleanupAvailableBytes": 11834129074,
+          "compliantPlanBufferAboveGateBytes": 1096710834,
+          "bufferAboveOneGiBTargetBytes": 22969010
         },
         "wslComputeFilesystem": {
           "totalBytes": 269965701120,
@@ -252,7 +267,7 @@
           "cleanupAuthorized": false
         },
         "preferredReclaim": "after explicit Owner deletion approval, remove only listed unreferenced immutable releases one at a time with symlink/process recheck and disk remeasurement; current, rollback, and Compute 64d remain protected",
-        "secondaryReclaim": "even with separately approved disposable apt cache, the compliant plan remains 93400138 bytes short of the one-GiB buffer target; /var/tmp diagnostics, logs, and journal remain protected, so no sufficient production deletion plan exists yet",
+        "secondaryReclaim": "the exact sufficient plan adds disposable apt cache and only ten task-owned, hash-verified, pushed-and-rebuildable /var/tmp artifact staging directories; every other /var/tmp entry, local dirty diagnostic, log, and journal remains protected; deletion still requires explicit Owner approval",
         "protected": ["current release", "rollback release", "production database", "backups", "original corpus", "unknown Owner files", "diagnostic directories"]
       },
       "separateFindings": [
@@ -513,7 +528,7 @@
       "tests": "lease correction: Compute typecheck/build; Local Pull 12/12; full Compute 107/107 plus 2 expected release-runtime skips; Compute contracts 3/3; focused Backend 28/28; diff check"
     },
     "ownerBoundaryAction": null,
-    "next": "do not create or claim a canary. Preserve PAUSED/disabled/inactive. The network gate awaits explicit Owner authority for an elevated temporary exact-IP WLAN bypass, then a 15-minute zero-timeout Windows/WSL/SSH qualification. The disk plan remains read-only because all Core cleanup candidates plus disposable apt cache still miss the one-GiB buffer by 93400138 bytes; identify additional confirmed disposable content without touching protected /var/tmp, diagnostics, logs, journal, data, backups, corpus, or unknown files before seeking deletion approval. Then reverify Core and release 64d2136 before the ordinary product UI creates a fresh A target; do not enter B/C, NORMAL, forced-loss, or corpus execution"
+    "next": "do not create or claim a canary. Preserve PAUSED/disabled/inactive. Await explicit Owner authority for an elevated temporary exact-IP WLAN bypass, then require a 15-minute zero-timeout Windows/WSL/SSH qualification. Separately await explicit Owner deletion approval for exactly the 34 unreferenced Core releases, apt cache, and ten hash-verified task-owned /var/tmp artifact staging directories; recheck every reference before deletion and require at least one GiB above the disk gate afterward. Protect current, rollback, Compute 64d2136, every other /var/tmp entry, local dirty diagnostics, logs, journal, data, backups, corpus, and unknown files. Then reverify Core and release 64d2136 before the ordinary product UI creates a fresh A target; do not enter B/C, NORMAL, forced-loss, or corpus execution"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",
