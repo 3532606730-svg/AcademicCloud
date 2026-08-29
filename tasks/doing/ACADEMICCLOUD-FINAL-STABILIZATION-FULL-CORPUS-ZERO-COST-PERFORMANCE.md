@@ -122,11 +122,12 @@ disposable outbound-only Compute executor; its absence must leave AI jobs
 queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
 and the Local Pull protocol are deployed. The same-process and worker-thread
 lease scheduling defects are repaired by exact child-process release
-`64d2136…`; its isolated A retry instead failed at a direct
-`UND_ERR_CONNECT_TIMEOUT` to `cloud.ajtlab.top:443` after four Core HTTP-200
-heartbeats. WSL HTTPS and production SSH are currently unreachable, so this is
-the active release blocker. No worker NORMAL transition occurs before
-connectivity/live-state revalidation and exact A/B/C pass.
+`64d2136…`; its isolated A retries instead failed during intermittent network
+windows after Core had accepted repeated HTTP-200 heartbeats. A bounded
+Windows/WSL qualification reproduced comparable connect timeouts, and the
+production root filesystem is also below its hard free-space gate. No new A
+target, worker NORMAL transition, or B/C execution occurs before both readiness
+gates pass.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -376,14 +377,15 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Remaining
 
-- Reverify WSL→Core HTTPS and production SSH connectivity. Once reachable,
-  re-read Core health/readiness/schema/integrity/foreign keys and the current A
-  queue/attempt/deadline without claiming. Only if the queue is safe and an
-  eligible A attempt exists, run exactly one hardened isolated iteration using
-  child-process release `64d2136…` while the main worker remains
-  disabled/inactive/PAUSED. Then continue B/C only after A passes class support,
-  every fact's provenance, no hallucination, display, human authority,
-  callback, current attempt, API, and UI.
+- Restore network readiness and repeat the same bounded low-frequency Windows
+  and WSL qualification. Any comparable connect timeout is a gate failure.
+  Restore root free space above 10,737,418,240 bytes only through a separately
+  verified disposable-content cleanup. Then re-read Core and worker invariants,
+  re-verify exact release `64d2136…`, and create a fresh A target through the
+  ordinary production UI. Run exactly one isolated iteration only after reading
+  its exact job/attempt identity; main worker stays disabled/inactive/PAUSED. A
+  still must pass positive class support, exact field provenance, no hallucinated
+  fact promotion, display, human authority, callback/current-attempt, API, and UI.
 - After the three canaries pass, prove forced-loss/lease recovery, then place
   the exact worker in NORMAL, enabled/active, concurrency one.
 - Pass the ordinary signed-in Owner website gate for both new-upload automatic
@@ -392,10 +394,12 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
   display/download projection. No SSH/manual job/DB/internal/one-shot path may
   satisfy this gate; offline Local Compute must remain visibly queued and
   resume automatically.
-- Treat the fresh readiness-audit findings as separate release-engineering
-  blockers: root disk below the reviewed gate, kernel OOM counter evidence, and
-  the post-UX01 files-domain CSP mismatch. Do not change them while the A retry
-  and network-path blocker remain unresolved.
+- Resolve the root-disk blocker by first proving which immutable releases are
+  unreferenced by current/rollback/service/process state and rebuildable from
+  exact published checkpoints. Remove nothing until then; preserve logs, DB,
+  backups, corpus, unknown Owner files, and diagnostic directories. Historical
+  host-wide OOM and the CSP parser discrepancy require no current application
+  or memory-limit change.
 - Implement only measured, safe, material zero-cost performance improvements.
 - Qualify/deploy exact Core/frontend/Local Compute releases, retry the same
   affected resources, and compare local versus historical hosted stage timings.
@@ -404,9 +408,9 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-The current blocker is the latest A retry's category C network-path
-interruption plus exhaustion of the queued canary deadline. Exact release
-`64d2136…` is hash-verified and qualification green. Its retry of attempt
+The current blockers are the failed network-stability gate, the failed
+production disk hard gate, and exhaustion of the queued canary deadline. Exact
+release `64d2136…` is hash-verified and qualification green. Its retry of attempt
 `ca2f3aa1-886a-4ee3-b2ea-affc54a9df15` received three Core HTTP-200 heartbeat
 renewals at 11:28:13.536, 11:28:46.218, and 11:29:19.208+08:00, then failed
 closed at 11:30:49+08:00 with `Local Pull lease expired`; no callback was sent.
@@ -415,9 +419,11 @@ probes recovered, supporting category C rather than Core rejection or callback
 authority loss. Core recovered attempt `fc5b2dd3-fe1d-469f-88c9-92613a28d0a4`
 but the job is now failed/`compute_timeout` at attempts 11 with no eligible
 local_pull job. Production remains last-known healthy at `58b8468…`/schema32;
-main Compute remains `58b8468…`, PAUSED/disabled/inactive. Do not claim another
-attempt or enter B/C, NORMAL, forced-loss, or corpus execution until a fresh
-normal-product A target exists and network/lease evidence is revalidated.
+main Compute remains `58b8468…`, PAUSED/disabled/inactive. The bounded network
+gate then recorded 3 Windows and 52 WSL connect-timeout events, including
+overlapping failures. Root available space is 9,936,613,376 bytes against the
+10,737,418,240-byte gate. Do not create or claim another attempt or enter B/C,
+NORMAL, forced-loss, or corpus execution until both readiness gates pass.
 
 ## Last Verification
 
@@ -446,12 +452,25 @@ but no fourth request before fail-closed expiry; the resulting job state and
 live production safety state were read back without mutation. This retry is not
 an A PASS.
 
+The subsequent low-frequency network qualification sampled Windows 65 times
+over about 15.5 minutes and WSL 60 times over 1,347.7 seconds. Windows had 3
+connect-timeout events and a longest failure window near 20 seconds; WSL had 52
+connect-timeout events and a longest failure window near 230 seconds. DNS had
+zero failures, and several Windows/WSL failures overlapped. The network gate is
+therefore `FAIL`, not an application or lease finding. Read-only disk inventory
+also placed root free space 800,804,864 bytes below the hard gate. Three kernel
+OOM kills are historical host-wide events from 2026-08-16; current Core and
+Local Compute cgroups remain zero. Live CSP includes the files domain in both
+required directives. No mutation or cleanup was performed.
+
 ## Next Action
 
 Keep production Core at last-known `58b8468…`/schema32 and main Compute
 `58b8468…` PAUSED/disabled/inactive. Do not claim the recovered attempt
-`fc5b2dd3…` or create another canary through internal means. A fresh A target
-must come from the ordinary product path after stable WSL/Core connectivity and
-an observability decision for the child heartbeat transport; only then may one
-new isolated retry be considered. Do not proceed to B/C, NORMAL, forced-loss,
-or corpus execution while A is not PASS.
+`fc5b2dd3…` or create any new canary. First restore and requalify network
+stability, then lift root available space above the exact disk gate using only
+confirmed disposable content. Reverify Core health, main-worker isolation, and
+release `64d2136…`; only then create a fresh A through the ordinary production
+UI and read its exact identity before one isolated iteration. Do not proceed to
+B/C, NORMAL, forced-loss, or corpus execution while either readiness gate or A
+is not PASS.

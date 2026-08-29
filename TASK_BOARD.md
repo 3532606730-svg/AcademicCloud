@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION reverified `58b8468…` V32 / MAIN WORKER `58b8468…` DISABLED+PAUSED / A RETRY FAILED CATEGORY C | Child-process release `64d2136…` exact; attempt 10 (`ca2f3aa1…`) had three HTTP-200 heartbeats then fail-closed lease expiry during an intermittent network window; job is failed with no eligible local_pull attempt; obtain a fresh normal-product A target and revalidate before any B/C, NORMAL, forced-loss, or corpus work |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `58b8468…` V32 / MAIN WORKER `58b8468…` DISABLED+PAUSED / NETWORK+DISK GATES FAILED | Child-process release `64d2136…` exact; bounded Windows/WSL probes reproduced connect timeouts and root free space is 9,936,613,376 bytes below the 10,737,418,240-byte gate. Do not create or claim A until both gates pass; then use only the normal product UI to create a fresh target |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -93,7 +93,11 @@ OFF_HOST_SCHEMA_V30_BACKUP_GATE=PASS
 PRODUCTION_SCHEMA_V31=PASS
 OFF_HOST_SCHEMA_V31_BACKUP_GATE=PASS
 A_CANARY=ATTEMPT10_FAILED_LEASE_EXPIRY_AFTER_THREE_HTTP200_HEARTBEATS_CATEGORY_C
-PRODUCTION_CONNECTIVITY=REVERIFIED_INTERMITTENT_WINDOW; CURRENTLY_HEALTHY_BUT_RETRY_NOT_SAFE
+NETWORK_STABILITY_GATE=FAIL_WINDOWS_AND_WSL_CONNECT_TIMEOUTS
+PRODUCTION_DISK_HARD_GATE=FAIL_9936613376_AVAILABLE_LT_10737418240
+PRODUCTION_CONNECTIVITY=INTERMITTENT_NOT_READY
+PRODUCTION_OOM_FINDING=THREE_HISTORICAL_HOST_WIDE_EVENTS; CURRENT_CORE_AND_LOCAL_COMPUTE_ZERO
+PRODUCTION_CSP_FINDING=FILES_DOMAIN_PRESENT; BROWSER_PROFILE_DISCREPANCY_ONLY
 B_C_CANARIES=BLOCKED_ON_A
 FINAL_NORMAL_OWNER_BROWSER_PATH=PENDING
 ```

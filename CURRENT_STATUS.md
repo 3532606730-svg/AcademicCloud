@@ -229,8 +229,8 @@ network errors are intentionally not surfaced as secrets. Core then left job
 with no eligible local_pull job. Production remains last-known healthy at
 `58b8468…`/schema32 and the main worker remains `58b8468…`,
 PAUSED/disabled/inactive. Do not claim another attempt or enter B/C, NORMAL,
-forced-loss, or corpus execution until a fresh normal-product A target exists
-and the network/lease evidence is revalidated.
+forced-loss, or corpus execution until network and disk readiness gates pass;
+only then may the ordinary product UI create a fresh normal-product A target.
 
 The fresh read-only production readiness audit (2026-08-29T03:22:09Z) also
 returned `NOT_READY` for separate release-engineering findings: root-disk
@@ -240,9 +240,55 @@ post-UX01 CSP profile mismatch for the files domain. The worktree cleanliness
 check also fails only because preserved untracked task diagnostics remain.
 These findings were not changed or used to reinterpret the canary failure.
 
-After exact immutable Compute release assembly and hash verification, exactly
-one isolated A retry must pass before canaries B and C. Forced-loss follows only
-after all three canaries. Only then may the exact
+The required low-frequency network qualification then ran independently on the
+Windows host and in `AcademicCloudCompute` WSL. Windows sampled 65 probes over
+approximately 15.5 minutes: 57 complete successes, 3 TCP connect-timeout
+events, 5 probes with an HTTP error, DNS failures 0, health/ready median TTFB
+about 1.83/1.80 seconds, maximum observed TTFB 5.02 seconds, and a longest
+failure streak of about 20 seconds. WSL sampled 60 probes over 1,347.7 seconds
+(timeouts extended the wall clock): only 7 complete successes, 52 TCP
+connect-timeout events, 43 probes with an HTTP error, DNS failures 0, health
+median TTFB about 1.92 seconds among numeric samples, and a longest failure
+streak of about 230 seconds. Several Windows and WSL failures occurred within
+seconds of one another, so `NETWORK_STABILITY_GATE=FAIL`; prioritize the shared
+local-exit/ISP/VPN/router or production host/provider path, with additional WSL
+path instability, before any application change.
+
+Read-only host qualification found root filesystem total/used/available
+`20,747,476,992 / 9,730,990,080 / 9,936,613,376` bytes against the
+`10,737,418,240`-byte minimum gate. The largest bounded consumers were
+`/var/log` 2,349,509,285 bytes (journald reported 1.7G) and old immutable
+releases 1,831,508,935 bytes. No files were deleted; current/rollback releases,
+DB, backups, corpus, `/var/tmp`, `/tmp`, and diagnostics remain intact.
+
+The disk deficit is 800,804,864 bytes. The proposed minimum remediation is not
+yet executed: first resolve every release directory against current/rollback
+pins, service symlinks, the live process path, and exact checkpoint/hash
+inventory; then remove only old immutable releases proven unreferenced and
+rebuildable from a published checkpoint, one at a time with disk remeasurement.
+Package cache may be cleared only if still needed. Logs remain preserved until
+their bounded evidence-retention requirement is resolved; production DB,
+backups, corpus, current/rollback releases, unknown Owner files, and diagnostic
+directories are excluded.
+
+The OOM counter is historical host-wide evidence: three kernel `oom_kill`
+events on 2026-08-16 (nine matching journal lines) killed `MainThread` outside
+the AcademicCloud cgroup. Current Core cgroup `oom_kill=0`, Local Compute OOM
+counter `0`, and no memory-limit change was made. Direct Nginx/public CSP
+headers currently include `https://files.ajtlab.top` in both `img-src` and
+`frame-src`; the readiness profile discrepancy does not block the AI API path
+and remains a browser/display gate finding only.
+
+Consequently both `NETWORK_STABILITY_GATE` and the production disk hard gate
+are `FAIL`. No new A canary may be created or claimed, and B/C, NORMAL,
+forced-loss, and full-corpus execution remain blocked. The next product action
+is allowed only after a fresh bounded network qualification has zero comparable
+connect timeouts, the disk gate passes, Core is healthy, the main worker is
+still PAUSED/disabled/inactive, and release `64d2136…` re-verifies exactly.
+
+After both readiness gates pass and exact release verification is repeated,
+exactly one isolated A retry must pass before canaries B and C. Forced-loss
+follows only after all three canaries. Only then may the exact
 worker enter NORMAL, enabled/active, concurrency one. Final acceptance still
 requires both new-upload automatic cataloguing and existing-resource retry
 through the ordinary signed-in Owner website without Codex-created jobs, SSH,
