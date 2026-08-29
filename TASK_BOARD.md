@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `58b8468…` V32 GREEN / MAIN WORKER `58b8468…` DISABLED+PAUSED / A LEASE FIX | Worker-thread release `be2e26d…` failed A attempt 8; exact-release the child-process keeper, then run one isolated A retry; no B/C, NORMAL, forced-loss, or corpus work before A passes |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION last-known `58b8468…` V32 / MAIN WORKER `58b8468…` DISABLED+PAUSED / HARD STOP: WSL→Core CONNECT TIMEOUT | Child-process release `64d2136…` passed compiled qualification but A attempt 9 failed category C after four HTTP-200 heartbeats; reverify connectivity/live queue before any further retry; no B/C, NORMAL, forced-loss, or corpus work |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -92,7 +92,8 @@ PRODUCTION_SCHEMA_V28=PASS
 OFF_HOST_SCHEMA_V30_BACKUP_GATE=PASS
 PRODUCTION_SCHEMA_V31=PASS
 OFF_HOST_SCHEMA_V31_BACKUP_GATE=PASS
-A_CANARY=ATTEMPT8_FAILED_SAME_PROCESS_THREAD_STARVATION_CHILD_PROCESS_FIX_PENDING_EXACT_RELEASE
+A_CANARY=ATTEMPT9_FAILED_NETWORK_CONNECT_TIMEOUT_AFTER_FOUR_HEARTBEATS
+PRODUCTION_CONNECTIVITY=WSL_CORE_HTTPS_TIMEOUT_AND_SSH_TIMEOUT_HARD_STOP
 B_C_CANARIES=BLOCKED_ON_A
 FINAL_NORMAL_OWNER_BROWSER_PATH=PENDING
 ```

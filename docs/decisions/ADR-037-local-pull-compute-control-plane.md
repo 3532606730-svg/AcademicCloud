@@ -273,6 +273,17 @@ lease probe response; child exit codes preserve expired versus rejected versus
 internal-failure classification even when IPC closes concurrently. The 90-
 second lease, Core attempt authority, and schema remain unchanged.
 
+The process-isolated A retry for attempt
+`53f1e1c7-3fe0-4a2b-b780-44b4e88e3612` then received four successful Core
+heartbeats (10:59:21.910Z, 10:59:53.828Z, 11:00:26.003Z, 11:00:58.184Z) and
+sent no callback. At 11:02:08Z the worker failed with an
+`UND_ERR_CONNECT_TIMEOUT` to `cloud.ajtlab.top:443`; Core recovered attempt
+`ca2f3aa1-886a-4ee3-b2ea-affc54a9df15`. A read-only WSL curl reproduced the
+10-second TCP connect timeout and the production SSH path also timed out. This
+is category C (network/HTTP connect failure), not Core rejection. Because the
+live queue and health are currently unreachable, no further claim or retry is
+permitted until connectivity is restored and reverified.
+
 ## Migration and rollback
 
 Implementation adds the smallest provider-neutral Core protocol and durable

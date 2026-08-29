@@ -120,9 +120,13 @@ qualification, and separately authorized emergency implementation, but is
 disabled for normal production AI. The local Windows machine remains a
 disposable outbound-only Compute executor; its absence must leave AI jobs
 queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
-and the Local Pull protocol are deployed. The current release blocker is the
-A-canary heartbeat scheduling defect described below. No worker NORMAL
-transition occurs before an exact corrected Compute release and A/B/C pass.
+and the Local Pull protocol are deployed. The same-process and worker-thread
+lease scheduling defects are repaired by exact child-process release
+`64d2136…`; its isolated A retry instead failed at a direct
+`UND_ERR_CONNECT_TIMEOUT` to `cloud.ajtlab.top:443` after four Core HTTP-200
+heartbeats. WSL HTTPS and production SSH are currently unreachable, so this is
+the active release blocker. No worker NORMAL transition occurs before
+connectivity/live-state revalidation and exact A/B/C pass.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -372,14 +376,14 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Remaining
 
-- Checkpoint and assemble one exact immutable Compute release containing both
-  the llama transport repair and child-process lease keeper; verify its full
-  release hash and compiled process isolation.
-- Re-read the current A job/attempt and deadline without claiming. If eligible,
-  run exactly one hardened isolated A iteration with the threaded keeper while
-  the main worker remains disabled/inactive/PAUSED. Then continue B/C only after
-  A passes class support, every fact's provenance, no hallucination, display,
-  human authority, callback, current attempt, API, and UI.
+- Reverify WSL→Core HTTPS and production SSH connectivity. Once reachable,
+  re-read Core health/readiness/schema/integrity/foreign keys and the current A
+  queue/attempt/deadline without claiming. Only if the queue is safe and an
+  eligible A attempt exists, run exactly one hardened isolated iteration using
+  child-process release `64d2136…` while the main worker remains
+  disabled/inactive/PAUSED. Then continue B/C only after A passes class support,
+  every fact's provenance, no hallucination, display, human authority,
+  callback, current attempt, API, and UI.
 - After the three canaries pass, prove forced-loss/lease recovery, then place
   the exact worker in NORMAL, enabled/active, concurrency one.
 - Pass the ordinary signed-in Owner website gate for both new-upload automatic
@@ -397,11 +401,16 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-The only current blocker is exact release and isolated qualification of the
-lease-keeper correction. Production remains healthy at `58b8468…`/schema32;
-main Compute remains `58b8468…`, PAUSED/disabled/inactive. Do not claim current
-attempt 7 before the new exact release, and do not enter B/C, NORMAL,
-forced-loss, or corpus execution before A passes.
+The current blocker is WSL/production HTTPS and SSH connectivity. The
+process-isolated release `64d2136…` is exact, hash-verified, and qualification
+green, but its A retry attempt
+`53f1e1c7-3fe0-4a2b-b780-44b4e88e3612` failed category C with
+`UND_ERR_CONNECT_TIMEOUT` after four successful heartbeats; Core recovered
+attempt `ca2f3aa1-886a-4ee3-b2ea-affc54a9df15`. Production remains last-known
+healthy at `58b8468…`/schema32; main Compute remains `58b8468…`,
+PAUSED/disabled/inactive. Do not claim another attempt or enter B/C, NORMAL,
+forced-loss, or corpus execution until connectivity and live queue/health are
+reverified.
 
 ## Last Verification
 
@@ -415,9 +424,20 @@ not reproduce in either the isolated 20/20 PDF test or the full Compute rerun;
 no PDF product change was made. Production/main-worker safety state is
 unchanged.
 
+The exact child-process release `64d2136…` then claimed A attempt
+`53f1e1c7-3fe0-4a2b-b780-44b4e88e3612`, received four Core HTTP-200 heartbeat
+renewals, sent no callback, and failed at `UND_ERR_CONNECT_TIMEOUT`
+(`cloud.ajtlab.top:443`) at approximately `2026-08-29T11:02:08Z`. Core
+recovered attempt `ca2f3aa1-886a-4ee3-b2ea-affc54a9df15`. Read-only WSL DNS
+resolved `47.250.126.42`, while TCP 443 and production SSH both timed out;
+this is category C and a real connectivity hard stop. No PDF product change
+was made and production/main-worker safety state is unchanged.
+
 ## Next Action
 
-Checkpoint and push the lease correction, assemble and hash-verify the new
-immutable Compute release, then re-read the A queue identity/deadline and run
-exactly one isolated threaded-keeper retry if eligible. Keep main Compute
-PAUSED/disabled/inactive; do not proceed to B/C until A passes.
+Keep production Core at last-known `58b8468…`/schema32 and main Compute
+`58b8468…` PAUSED/disabled/inactive. Restore or observe WSL→Core HTTPS and SSH
+connectivity, then perform only read-only live health/queue/attempt/deadline
+reconciliation. Do not claim or retry while connectivity is unavailable; after
+safe revalidation, use exact child-process release `64d2136…` for one isolated A
+retry and do not proceed to B/C until A passes.

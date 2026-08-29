@@ -82,7 +82,7 @@ duplicates among the 12, and 105 unique acceptance resources. No paid usage,
 source-byte mutation, OSS identity mutation, or human-authority rewrite
 occurred.
 
-## Local Compute pivot — production v32 active; A canary lease correction pending
+## Local Compute pivot — production v32 active; A canary blocked on connectivity
 
 ADR-037 changes the normal production provider from per-document GitHub-hosted
 Actions to an outbound-only Local Pull worker on the Owner's existing Windows
@@ -202,6 +202,26 @@ The architecture checkpoint is deployed; the child-process lease correction pass
 Compute typecheck/build, Local Pull 12/12, full Compute 107/107 plus 2 expected
 release-runtime skips, Compute contracts 3/3, and focused Backend 28/28. The
 main worker remains disabled/inactive/PAUSED.
+
+The process-isolated retry for attempt
+`53f1e1c7-3fe0-4a2b-b780-44b4e88e3612` claimed the exact identity and received
+four Core HTTP-200 heartbeat renewals at 10:59:21.910Z, 10:59:53.828Z,
+11:00:26.003Z, and 11:00:58.184Z. No callback was sent. The worker then failed
+with a direct `UND_ERR_CONNECT_TIMEOUT` to `cloud.ajtlab.top:443` at 11:02:08Z;
+Core recovered attempt `ca2f3aa1-886a-4ee3-b2ea-affc54a9df15` and left it
+queued. A subsequent read-only WSL curl reproduced a 10-second TCP connect
+timeout to the same host, while the production SSH path also timed out. This
+is category C (network/HTTP connect failure) with no evidence of Core rejection;
+the current live queue and health cannot be reverified until connectivity
+returns. No further claim or retry is authorized in this window.
+
+The current hard stop is WSL/production HTTPS and SSH connectivity: DNS resolves
+`cloud.ajtlab.top` to `47.250.126.42`, but TCP connect to port 443 times out
+after 10 seconds; the production host's SSH path is also timing out. The last
+known production release is `58b8468…`/schema32 and the main worker remains
+`58b8468…`, PAUSED/disabled/inactive, but live health/queue must be reverified
+before any further action. Do not claim attempt 10 or enter B/C, NORMAL,
+forced-loss, or corpus execution while this hard stop remains.
 
 After exact immutable Compute release assembly and hash verification, exactly
 one isolated A retry must pass before canaries B and C. Forced-loss follows only
