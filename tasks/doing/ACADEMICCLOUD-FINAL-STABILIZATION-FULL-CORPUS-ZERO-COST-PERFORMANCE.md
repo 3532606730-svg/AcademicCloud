@@ -404,16 +404,20 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Blockers
 
-The only current sequence blocker is A canary success. The Owner superseded the
-absolute-zero-timeout gate with a transient-network resilience contract, and
-the production disk hard gate passes. Fresh normal-UI A job `746866b2…` /
-attempt `e0f03b31…` on exact `64d2136…` reached Qwen reasoning with healthy
-range access and two HTTP-200 heartbeats, then failed closed as
-`compute_invalid_result`. Core persisted no structured AI evidence or
-canonical metadata, and the main worker remained PAUSED/disabled/inactive.
-This is correct fail-safe behavior but not A acceptance. Use a different clean
-modern-scholarly resource; do not enter B/C, forced-loss, NORMAL, or corpus
-execution until A passes.
+A is green on live v8/schema33. Normal UI job `7496e55d…` / attempt
+`e37f03a9…` on exact isolated `b349595…` persisted a structured modern
+scholarly record with positive class evidence, exact per-field provenance, no
+invented contributor, no human-authority write, and refresh-stable UI.
+
+The current sequence blocker is bounded B transport tolerance. Normal UI B job
+`d127fb0e…` / attempt `dabf828b…` received four Core HTTP-200 heartbeats before
+a public-network interruption exceeded the former 90-second lease. The old
+attempt failed closed without callback and Core requeued exact attempt
+`e2194dca…`. The Owner authorized the minimum robustness change to a 180-second
+lease while retaining the 30-second cadence, independent keeper, stale-attempt
+rejection, and fail-closed callback checks. Exact-release and deploy that change,
+then run one B retry. Do not enter C, forced-loss, NORMAL, or corpus execution
+until B passes.
 
 ## Last Verification
 
@@ -496,13 +500,22 @@ retained positive page-bound scholarly class evidence and only value-supported
 facts, with no invented contributor or incompatible source-edition promotion.
 This is a release gate, not production A acceptance.
 
+The exact v8/schema33 checkpoint `b349595…` was then released and deployed only
+after the fresh encrypted schema32 off-host backup gate. Migration 033 was the
+only applied migration; integrity/FK and all health/ready gates passed. Fresh A
+then passed the durable structured-output, current-attempt callback, positive
+class evidence, per-field provenance, human-authority, display, and normal-UI
+refresh-persistence gates. B's first isolated attempt safely recovered from a
+network interruption but did not complete. The bounded lease-tolerance change
+passes Backend 381/381, workspace typecheck/build, and compiled acceptance.
+
 ## Next Action
 
-Keep production Core `58b8468…`/schema32 and main Compute `58b8468…`
-PAUSED/disabled/inactive. Freeze and push the exact v8/schema33 checkpoint,
-assemble immutable Core and Compute releases, pass a fresh encrypted schema32
-off-host backup gate, then perform the one append-only schema33 cutover. Only
-after that, use the ordinary production UI to create a fresh A job and run one
-isolated exact-release iteration. A PASS unlocks B/C; all three unlock forced-
-loss, exact main-release cutover, NORMAL, browser-only automatic-cataloguing
-acceptance, concurrency-one corpus execution, and the final clean sweep.
+Keep production Core `b349595…`/schema33 healthy and main Compute `58b8468…`
+PAUSED/disabled/inactive. Freeze/push the bounded lease-tolerance checkpoint,
+assemble exact immutable Core and Compute releases without rebuilding unrelated
+GPU runtimes, deploy the same-schema Core correction, and run exactly one
+isolated retry of B's current queued attempt. B PASS unlocks C; all three then
+unlock forced-loss, exact main-release cutover, NORMAL, browser-only automatic-
+cataloguing acceptance, concurrency-one corpus execution, and the final clean
+sweep.

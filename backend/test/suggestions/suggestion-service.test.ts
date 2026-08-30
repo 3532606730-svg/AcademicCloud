@@ -357,6 +357,7 @@ test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection a
   const first = await suggestions.pullLocalJob("owner-laptop.wsl2");
   assert.equal(first?.job.attemptId, "attempt-1");
   assert.equal(first?.lease.heartbeatAfterMilliseconds, 30_000);
+  assert.equal(first?.lease.expiresAt, new Date(NOW.getTime() + 180_000).toISOString());
   const renewedSource = await suggestions.renewLocalSourceAuthorization(job.id, "attempt-1", "owner-laptop.wsl2");
   assert.equal(renewedSource.source.sizeBytes, first?.source.sizeBytes);
   assert.equal(renewedSource.source.url, first?.source.url);
@@ -377,11 +378,11 @@ test("Local Pull claim, heartbeat, lease recovery, and stale-attempt rejection a
 
   now = new Date(NOW.getTime() + 30_000);
   const heartbeat = suggestions.heartbeatLocalJob(job.id, "attempt-1", "owner-laptop.wsl2");
-  assert.equal(heartbeat.lease.expiresAt, new Date(NOW.getTime() + 120_000).toISOString());
-  now = new Date(NOW.getTime() + 100_000);
+  assert.equal(heartbeat.lease.expiresAt, new Date(NOW.getTime() + 210_000).toISOString());
+  now = new Date(NOW.getTime() + 190_000);
   assert.equal(suggestions.recoverExpiredLocalPullLeases(), 0);
 
-  now = new Date(NOW.getTime() + 121_000);
+  now = new Date(NOW.getTime() + 211_000);
   await assert.rejects(
     () => suggestions.renewLocalSourceAuthorization(job.id, "attempt-1", "owner-laptop.wsl2"),
     (error: unknown) => error instanceof SuggestionError && error.code === "not_found",

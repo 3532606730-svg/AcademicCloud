@@ -1,6 +1,6 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-29
+**Last reconciled:** 2026-08-30
 
 The board is the executable priority view. `CURRENT_STATE.json` holds compact
 current pointers; task cards and ADRs preserve complete contracts and evidence.
@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `58b8468…` V32 / V8+SCHEMA33 RELEASE PENDING / MAIN WORKER DISABLED+PAUSED | v8/prompt-v5 and registry-only migration 033 pass full tests plus real local GPU qualification. Freeze exact checkpoint, assemble immutable releases, pass encrypted schema32 off-host backup, cut over schema33, then create a fresh normal-UI A canary; B/C remain blocked on A |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `b349595…` V33 / A PASS / B ROBUSTNESS RELEASE PENDING / MAIN WORKER DISABLED+PAUSED | A passed exact structured/provenance/authority/UI gates. B recovered safely after the public-network gap exceeded the former 90-second lease. Exact-release/deploy the bounded 180-second tolerance, then retry B once; C remains blocked on B |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |

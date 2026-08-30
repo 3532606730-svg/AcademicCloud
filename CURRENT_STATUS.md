@@ -29,15 +29,14 @@ INTERNAL_BETA_STARTED=false
 
 The Local Compute Owner override continues this program and changes only the
 production Compute strategy. Live production is exact frontend/Core
-`58b8468eac37fb994f06994375b81a6f53a6de79` at schema/history 32 with
-`COMPUTE_PROVIDER=local_pull`. Schema32 and final v7/prompt-v4 are deployed.
+`b34959527396bc15b94fec991f3ccc93a5529a23` at schema/history 33 with
+`COMPUTE_PROVIDER=local_pull`. Schema33 and final v8/prompt-v5 are deployed.
 The main Local Compute symlink still selects exact `58b8468…`, systemd remains
-`disabled`/`inactive`, and the environment remains `PAUSED`; this release must
-not be enabled. Immutable release `60205d09c64e510e293a6cef4e971b7fe710030a`
-is present and hash-verified and contains the llama structured-response
-transport repair, but it is not the main selection.
+`disabled`/`inactive`, and the environment remains `PAUSED`; this old release
+must not be enabled. Immutable Compute release `b349595…` is hash-verified and
+was used only for isolated A/B canary work.
 
-The first normal-UI v7 A run then exposed a bounded llama.cpp transport defect,
+The first normal-UI v7 A run exposed a bounded llama.cpp transport defect,
 not an authority or persistence escape: the deeply nested fact schema could not
 be used as a reliable grammar, and an otherwise useful result could mis-address
 the selected-page array. The pending v8/prompt-v5 correction keeps the generic
@@ -48,9 +47,9 @@ trusted runtime. Unsupported facts and structurally incompatible source-edition
 facts are removed. Migration 033 only registers the immutable v8 identity; it
 does not rebuild or alter historical evidence. Full repository tests,
 typecheck/build, compiled acceptance (33 migrations, 0 on redeploy), and a real
-local GPU qualification on a modern scholarly monograph pass. Production is
-still unchanged at v7/schema32 pending exact release, encrypted backup, and
-schema33 cutover.
+local GPU qualification on a modern scholarly monograph pass. Exact checkpoint
+`b349595…`, immutable Core/Compute releases, the fresh encrypted schema32
+off-host backup, and the one append-only schema33 cutover all completed.
 
 Rulesets v4–v6 are deployed historical attempts, not final acceptance. The
 Owner's FINAL ARCHITECTURE CORRECTION and ADR-038 block the v6 single-book
@@ -334,13 +333,32 @@ exact worker may enter NORMAL, enabled/active, concurrency one. Final browser
 acceptance and full-corpus execution remain as previously defined; GitHub-
 hosted production Compute remains unused.
 
-The bounded v8/prompt-v5 successor has now passed local full-pipeline GPU
-qualification on `Mongolia: politics, economics and society`: the class-only
-pass selected page-bound scholarly evidence, the fact result retained only
-value-supported bibliographic fields, invented contributors were absent, and
-modern classification removed incompatible source-edition facts. No source
-content was emitted or persisted by the qualifier. This is release
-qualification only; it is not production A acceptance.
+The bounded v8/prompt-v5 successor passed local full-pipeline GPU qualification
+and then the fresh production A canary on `Mongolia: politics, economics and
+society`. Normal UI created exact job `7496e55d-ce63-4fc6-aeba-853622d0aa37`
+/ attempt `e37f03a9-8d36-40b1-b9b5-b3c7efb5f9ef`; isolated exact Compute
+`b349595…` completed and Core persisted the current attempt. The structured
+digest, v8/prompt-v5 identity, page-bound positive scholarly class evidence,
+all 11 populated fact evidence rows, no invented contributor, no incompatible
+source-edition facts, no human-authority write, unchanged object identity, and
+title-only modern display (missing author omitted) passed. After reload the
+normal website still showed `AI 编目已成功——已有可复核证据` and the complete
+`AI 建议书目记录` with expandable field evidence. `A_CANARY=PASS`.
+
+The normal website then created B job
+`d127fb0e-2bdd-4eb2-a44a-f6a25768ae0f` / attempt
+`dabf828b-9d86-47df-a3b4-cf39646e7c7c` for `敦煌变文校注`. Exact isolated
+Compute `b349595…` received Core HTTP-200 heartbeat renewals at 22:55:42,
+22:56:14, 22:56:45, and 22:57:17+08:00. The following public-network window
+prevented renewal through the former 90-second lease; the worker failed closed
+at 22:58:47, sent no callback, and Core atomically requeued attempt
+`e2194dca-7f9d-4e1e-a8b6-66616de595ce` at 22:58:57. This proves safe recovery
+but not B completion. The Owner-authorized bounded robustness correction changes
+only the lease from 90 to 180 seconds while retaining the 30-second cadence,
+independent child keeper, stale-attempt rejection, and fail-closed callback
+checks. Backend 381/381, workspace typecheck/build, and compiled acceptance
+pass. Exact release/deployment of this correction precedes one B retry; C,
+forced-loss, NORMAL, and corpus work remain blocked meanwhile.
 
 ## Historical incident evidence (superseded as current acceptance)
 
