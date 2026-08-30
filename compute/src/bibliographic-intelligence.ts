@@ -316,9 +316,28 @@ function supplied(input: Record<string, unknown>, key: string, fallback: unknown
   return Object.prototype.hasOwnProperty.call(input, key) ? input[key] : fallback;
 }
 
-function optionalText(input: Record<string, unknown>, key: string): string | null {
+function optionalText(input: Record<string, unknown>, key: string, maximumLength = 512): string | null {
   const value = supplied(input, key, null);
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+  if (typeof value !== "string") return null;
+  const normalized = value.normalize("NFC").trim();
+  return normalized.length > 0
+    && [...normalized].length <= maximumLength
+    && !/[\u0000-\u001f\u007f-\u009f]/u.test(normalized)
+    ? normalized : null;
+}
+
+function optionalEditionType(input: Record<string, unknown>, key: string): (typeof INTELLIGENT_EDITION_TYPES)[number] | null {
+  const value = optionalText(input, key);
+  return value !== null && INTELLIGENT_EDITION_TYPES.includes(value as (typeof INTELLIGENT_EDITION_TYPES)[number])
+    ? value as (typeof INTELLIGENT_EDITION_TYPES)[number]
+    : null;
+}
+
+function optionalAbsoluteYear(input: Record<string, unknown>, key: string): number | null {
+  const value = supplied(input, key, null);
+  return Number.isSafeInteger(value) && (value as number) >= -9_999 && (value as number) <= 9_999
+    ? value as number
+    : null;
 }
 
 function inspectionText(inspection: PdfTextInspection): string {
@@ -333,18 +352,29 @@ function normalizeSparseCanonical(value: unknown, inspection: PdfTextInspection)
   if (value === null) return null;
   const input = sparseRecord(value, ["materialClass", "canonicalTitle", "subtitle", "alternativeTitles", "dateStatement", "identifiers", "contributors", "publication", "series", "volume", "language", "carrierEdition", "sourceEdition"]);
   const publication = sparseRecord(supplied(input, "publication", {}), ["publisher", "place", "publicationDate", "editionNumber", "printing"]);
-  const materialClass = input.materialClass;
+  const materialClass = typeof input.materialClass === "string"
+    && INTELLIGENT_MATERIAL_CLASSES.includes(input.materialClass as (typeof INTELLIGENT_MATERIAL_CLASSES)[number])
+    ? input.materialClass as (typeof INTELLIGENT_MATERIAL_CLASSES)[number]
+    : "unknown";
   const contributors = supplied(input, "contributors", []);
   if (!Array.isArray(contributors)) throw new BibliographicIntelligenceError("invalid_result");
   const carrier = sparseRecord(supplied(input, "carrierEdition", {}), ["editionType", "editionStatement", "facsimileStatement"]);
   const source = sparseRecord(supplied(input, "sourceEdition", {}), ["dynasty", "reignTitle", "reignYear", "absoluteYear", "printer", "imprint", "bookshop", "institution", "printingPlace", "editionType", "editionStatement", "holdingInformation"]);
-  const publisherValue = optionalText(publication, "publisher");
+  const publisherValue = optionalText(publication, "publisher", 255);
   const publisherKey = publisherValue === null ? null : compactKey(publisherValue);
   const normalizedContributors = contributors.map((value) => sparseRecord(value, ["label", "role", "roleLabel"]))
     .filter((contributor) => typeof contributor.label !== "string" || (
       compactKey(contributor.label) !== publisherKey
       && !/(?:出版社|出版公司|press|publishing)$/iu.test(contributor.label.trim())
-    ));
+    ))
+    // A model-invented publisher role is not a contributor. Unknown roles are
+    // never coerced into a person role or allowed to poison supported facts.
+    .filter((contributor) => typeof contributor.role === "string"
+      && INTELLIGENT_CONTRIBUTOR_ROLES.includes(contributor.role as (typeof INTELLIGENT_CONTRIBUTOR_ROLES)[number]))
+    // In generic JSON mode an explicit empty roleLabel is only a placeholder,
+    // not positive evidence for a contributor role. Drop that unsupported fact;
+    // a missing/null roleLabel still reaches the evidence validator fail closed.
+    .filter((contributor) => contributor.roleLabel !== "");
   const identifiers = supplied(input, "identifiers", []);
   if (!Array.isArray(identifiers)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
   const normalizedIdentifiers = [...new Map(identifiers.flatMap((value) => {
@@ -371,41 +401,43 @@ function normalizeSparseCanonical(value: unknown, inspection: PdfTextInspection)
   return {
     materialClass,
     canonicalTitle: input.canonicalTitle,
-    subtitle: optionalText(input, "subtitle"),
+    subtitle: optionalText(input, "subtitle", 512),
     alternativeTitles: normalizedAlternativeTitles,
-    dateStatement: optionalText(input, "dateStatement"),
+    dateStatement: optionalText(input, "dateStatement", 64),
     identifiers: normalizedIdentifiers,
-    contributors: normalizedContributors.map((contributor) => {
-      return { label: contributor.label, role: contributor.role, roleLabel: supplied(contributor, "roleLabel", null) };
-    }),
+    contributors: normalizedContributors.map((contributor) => ({
+      label: contributor.label,
+      role: contributor.role,
+      roleLabel: optionalText(contributor, "roleLabel", 64),
+    })),
     publication: {
       publisher: publisherValue,
-      place: optionalText(publication, "place"),
-      publicationDate: optionalText(publication, "publicationDate"),
-      editionNumber: optionalText(publication, "editionNumber"),
-      printing: optionalText(publication, "printing"),
+      place: optionalText(publication, "place", 255),
+      publicationDate: optionalText(publication, "publicationDate", 64),
+      editionNumber: optionalText(publication, "editionNumber", 128),
+      printing: optionalText(publication, "printing", 128),
     },
-    series: optionalText(input, "series"),
-    volume: optionalText(input, "volume"),
-    language: optionalText(input, "language"),
+    series: optionalText(input, "series", 255),
+    volume: optionalText(input, "volume", 128),
+    language: optionalText(input, "language", 128),
     carrierEdition: {
-      editionType: supplied(carrier, "editionType", null),
-      editionStatement: optionalText(carrier, "editionStatement"),
-      facsimileStatement: optionalText(carrier, "facsimileStatement"),
+      editionType: optionalEditionType(carrier, "editionType"),
+      editionStatement: optionalText(carrier, "editionStatement", 512),
+      facsimileStatement: optionalText(carrier, "facsimileStatement", 512),
     },
     sourceEdition: {
-      dynasty: optionalText(source, "dynasty"),
-      reignTitle: optionalText(source, "reignTitle"),
-      reignYear: optionalText(source, "reignYear"),
-      absoluteYear: supplied(source, "absoluteYear", null),
-      printer: optionalText(source, "printer"),
-      imprint: optionalText(source, "imprint"),
-      bookshop: optionalText(source, "bookshop"),
-      institution: optionalText(source, "institution"),
-      printingPlace: optionalText(source, "printingPlace"),
-      editionType: supplied(source, "editionType", null),
-      editionStatement: optionalText(source, "editionStatement"),
-      holdingInformation: optionalText(source, "holdingInformation"),
+      dynasty: optionalText(source, "dynasty", 64),
+      reignTitle: optionalText(source, "reignTitle", 64),
+      reignYear: optionalText(source, "reignYear", 64),
+      absoluteYear: optionalAbsoluteYear(source, "absoluteYear"),
+      printer: optionalText(source, "printer", 255),
+      imprint: optionalText(source, "imprint", 255),
+      bookshop: optionalText(source, "bookshop", 255),
+      institution: optionalText(source, "institution", 255),
+      printingPlace: optionalText(source, "printingPlace", 255),
+      editionType: optionalEditionType(source, "editionType"),
+      editionStatement: optionalText(source, "editionStatement", 512),
+      holdingInformation: optionalText(source, "holdingInformation", 512),
     },
   };
 }
@@ -539,7 +571,12 @@ function promptFor(inspection: PdfTextInspection): string {
     });
   }
   return JSON.stringify({
-    task: "Extract only directly supported canonical bibliographic facts. Qwen proposes the intellectual-work class; the trusted runtime validates page-bound positive support and never replaces the proposal with title-keyword classification. For every proposed non-unknown class, emit only its required classSupport signals with an exact evidenceText excerpt. scholarly_analysis and historical_primary_work require narrative contents/preface/body evidence independent from a title, publisher, date, ISBN, or person line. primary_source_modern_edition requires BOTH historical_primary_work and edition_mediation support, and edition_mediation must bind a concrete retained edition/mediation fact. traditional_book requires BOTH historical_primary_work and traditional_artifact support, and traditional_artifact must bind a concrete retained source-edition fact. A modern publisher, publication date, ISBN, person, or analytical-looking title is auxiliary context only and is neither necessary nor sufficient class support. If positive support is missing, extraneous, or conflicting, propose unknown with uncertain_material_class instead of guessing. A person value or embedded metadata author field alone never proves either the work class or the contributor role. Preserve each contributor role only when canonical.roleLabel carries the exact source wording (for example by/author/editor/译者 in whatever script the source uses); otherwise omit that contributor. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy and cannot support materialClass or contributor roles. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. The pages array contains only script-neutral usable evidence. Non-class fields may cite only a page whose fieldEvidenceEligible is true, or usable embedded metadata; classSupport may cite any supplied non-embedded page subject to the positive-evidence rules above. classSupport evidenceText and every field evidenceText must be an exact bounded excerpt of the cited page or usable embedded metadata. Do not emit materialClass in fields because classSupport owns its independent provenance. Emit exactly one field evidence row for every other populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime validates the excerpt and actual fact value, derives page class/source type/digest, and strips evidenceText before persistence. Never use overallConfidence to fill missing field evidence. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous when facts or class remain unsupported or conflicting.",
+    task: "Return exactly one JSON result object matching outputContract; never repeat the task, controls, pages, evidence input, or schema itself. Extract only directly supported canonical bibliographic facts. Qwen proposes the intellectual-work class; the trusted runtime validates page-bound positive support and never replaces the proposal with title-keyword classification. For every proposed non-unknown class, emit only its required classSupport signals with an exact evidenceText excerpt. scholarly_analysis and historical_primary_work require narrative contents/preface/body evidence independent from a title, publisher, date, ISBN, or person line. primary_source_modern_edition requires BOTH historical_primary_work and edition_mediation support, and edition_mediation must bind a concrete retained edition/mediation fact. traditional_book requires BOTH historical_primary_work and traditional_artifact support, and traditional_artifact must bind a concrete retained source-edition fact. A modern publisher, publication date, ISBN, person, or analytical-looking title is auxiliary context only and is neither necessary nor sufficient class support. If positive support is missing, extraneous, or conflicting, propose unknown with uncertain_material_class instead of guessing. A person value or embedded metadata author field alone never proves either the work class or the contributor role. Preserve each contributor role only when canonical.roleLabel carries the exact source wording (for example by/author/editor/译者 in whatever script the source uses); otherwise omit that contributor. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy and cannot support materialClass or contributor roles. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. The pages array contains only script-neutral usable evidence. Non-class fields may cite only a page whose fieldEvidenceEligible is true, or usable embedded metadata; classSupport may cite any supplied non-embedded page subject to the positive-evidence rules above. classSupport evidenceText and every field evidenceText must be an exact bounded excerpt of the cited page or usable embedded metadata. Do not emit materialClass in fields because classSupport owns its independent provenance. Emit exactly one field evidence row for every other populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime validates the excerpt and actual fact value, derives page class/source type/digest, and strips evidenceText before persistence. Never use overallConfidence to fill missing field evidence. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous when facts or class remain unsupported or conflicting.",
+    // llama.cpp must use generic json_object transport because its grammar
+    // compiler rejects this nested schema. Supplying the same exact contract
+    // inside the bounded prompt preserves shape guidance without weakening the
+    // trusted runtime parser below.
+    outputContract: MODEL_OUTPUT_SCHEMA,
     classificationRules: {
       intellectualWorkBeforeManifestation: true,
       modernPublicationDoesNotImplyScholarlyWork: true,
@@ -992,6 +1029,111 @@ function validatedFieldEvidence(
   return [...fields.values()];
 }
 
+function pruneUnsupportedFieldFacts(
+  canonical: IntelligentCanonicalBibliography,
+  modelFields: unknown[],
+  inspection: PdfTextInspection,
+): { canonical: IntelligentCanonicalBibliography; fields: Array<Record<string, unknown>> } {
+  const populated = populatedFieldKeys(canonical);
+  populated.delete("materialClass:");
+  const accepted = new Map<string, Record<string, unknown>>();
+  const invalid = new Set<string>();
+  for (const value of modelFields) {
+    let field: Record<string, unknown>;
+    try {
+      field = sparseRecord(value, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"]);
+    } catch {
+      continue;
+    }
+    if (typeof field.fieldName !== "string" || typeof field.scopeKey !== "string") continue;
+    const key = `${field.fieldName}:${field.scopeKey}`;
+    if (!populated.has(key) || invalid.has(key)) continue;
+    if (accepted.has(key)) {
+      accepted.delete(key);
+      invalid.add(key);
+      continue;
+    }
+    try {
+      const validated = authoritativeEvidence(field, inspection);
+      if (!validatesCanonicalFact(canonical, field.fieldName, field.scopeKey, validated.evidenceText)) {
+        invalid.add(key);
+        continue;
+      }
+      accepted.set(key, validated.persisted);
+    } catch {
+      invalid.add(key);
+    }
+  }
+  if (!accepted.has("canonicalTitle:")) {
+    throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", ["canonicalTitle:"]);
+  }
+  const keep = (fieldName: string): boolean => accepted.has(`${fieldName}:`);
+  const contributorScope = new Map<string, string>();
+  const contributors = canonical.contributors.flatMap((contributor, index) => {
+    const oldScope = `contributor:${index}`;
+    const keys = [
+      `contributor.label:${oldScope}`,
+      `contributor.role:${oldScope}`,
+      ...(contributor.roleLabel === null ? [] : [`contributor.roleLabel:${oldScope}`]),
+    ];
+    if (!keys.every((key) => accepted.has(key))) return [];
+    const newScope = `contributor:${contributorScope.size}`;
+    contributorScope.set(oldScope, newScope);
+    return [contributor];
+  });
+  const carrierEditionStatement = keep("carrierEdition.editionStatement") ? canonical.carrierEdition.editionStatement : null;
+  const carrierFacsimileStatement = keep("carrierEdition.facsimileStatement") ? canonical.carrierEdition.facsimileStatement : null;
+  const sourceEditionStatement = keep("sourceEdition.editionStatement") ? canonical.sourceEdition.editionStatement : null;
+  const pruned = parseIntelligentCanonicalBibliography({
+    ...canonical,
+    subtitle: keep("subtitle") ? canonical.subtitle : null,
+    alternativeTitles: keep("alternativeTitles") ? canonical.alternativeTitles : [],
+    dateStatement: keep("dateStatement") ? canonical.dateStatement : null,
+    identifiers: keep("identifiers") ? canonical.identifiers : [],
+    contributors,
+    publication: Object.fromEntries(Object.entries(canonical.publication).map(([key, value]) => (
+      [key, keep(`publication.${key}`) ? value : null]
+    ))),
+    series: keep("series") ? canonical.series : null,
+    volume: keep("volume") ? canonical.volume : null,
+    language: keep("language") ? canonical.language : null,
+    carrierEdition: {
+      editionType: keep("carrierEdition.editionType") && (carrierEditionStatement !== null || carrierFacsimileStatement !== null)
+        ? canonical.carrierEdition.editionType : null,
+      editionStatement: carrierEditionStatement,
+      facsimileStatement: carrierFacsimileStatement,
+    },
+    sourceEdition: {
+      dynasty: keep("sourceEdition.dynasty") ? canonical.sourceEdition.dynasty : null,
+      reignTitle: keep("sourceEdition.reignTitle") ? canonical.sourceEdition.reignTitle : null,
+      reignYear: keep("sourceEdition.reignYear") ? canonical.sourceEdition.reignYear : null,
+      absoluteYear: keep("sourceEdition.absoluteYear") ? canonical.sourceEdition.absoluteYear : null,
+      printer: keep("sourceEdition.printer") ? canonical.sourceEdition.printer : null,
+      imprint: keep("sourceEdition.imprint") ? canonical.sourceEdition.imprint : null,
+      bookshop: keep("sourceEdition.bookshop") ? canonical.sourceEdition.bookshop : null,
+      institution: keep("sourceEdition.institution") ? canonical.sourceEdition.institution : null,
+      printingPlace: keep("sourceEdition.printingPlace") ? canonical.sourceEdition.printingPlace : null,
+      editionType: keep("sourceEdition.editionType") && sourceEditionStatement !== null
+        ? canonical.sourceEdition.editionType : null,
+      editionStatement: sourceEditionStatement,
+      holdingInformation: keep("sourceEdition.holdingInformation") ? canonical.sourceEdition.holdingInformation : null,
+    },
+  });
+  const finalKeys = populatedFieldKeys(pruned);
+  finalKeys.delete("materialClass:");
+  const fields = [...accepted.entries()].flatMap(([key, field]) => {
+    if (key.startsWith("contributor.")) {
+      const oldScope = String(field.scopeKey ?? "");
+      const newScope = contributorScope.get(oldScope);
+      if (newScope === undefined) return [];
+      const newKey = `${String(field.fieldName)}:${newScope}`;
+      return finalKeys.has(newKey) ? [{ ...field, scopeKey: newScope }] : [];
+    }
+    return finalKeys.has(key) ? [field] : [];
+  });
+  return { canonical: pruned, fields };
+}
+
 function compactKey(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
 }
@@ -1051,6 +1193,7 @@ function deriveIntelligentBibliographyFromModel(
   model: unknown,
   inspection: PdfTextInspection,
   legacyFallback = false,
+  fieldEvidenceMode: "strict" | "prune" = "strict",
 ): IntelligentBibliographyResult {
   const raw = sparseRecord(model, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"]);
   if (!Array.isArray(raw.classSupport) || !Array.isArray(raw.fields) || !Array.isArray(raw.warnings)) {
@@ -1085,12 +1228,31 @@ function deriveIntelligentBibliographyFromModel(
     if (error instanceof BibliographicIntelligenceError) throw error;
     throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
   }
-  const fields = canonical === null ? [] : validatedFieldEvidence(
-    canonical,
-    raw.fields,
-    inspection,
-    materialClassResolution!.evidence,
-  );
+  let fields: Array<Record<string, unknown>> = [];
+  if (canonical !== null) {
+    if (fieldEvidenceMode === "strict") {
+      fields = validatedFieldEvidence(canonical, raw.fields, inspection, materialClassResolution!.evidence);
+    } else {
+      const projection = pruneUnsupportedFieldFacts(canonical, raw.fields, inspection);
+      canonical = projection.canonical;
+      materialClassResolution = resolveMaterialClass(
+        normalizedCanonical!.materialClass,
+        raw.classSupport,
+        inspection,
+        canonical,
+      );
+      canonical = discardUnresolvedModelFacts(parseIntelligentCanonicalBibliography({
+        ...canonical,
+        materialClass: materialClassResolution.materialClass,
+      }), raw.warnings, inspection);
+      const finalKeys = populatedFieldKeys(canonical);
+      finalKeys.delete("materialClass:");
+      fields = [
+        materialClassResolution.evidence,
+        ...projection.fields.filter((field) => finalKeys.has(`${String(field.fieldName)}:${String(field.scopeKey)}`)),
+      ];
+    }
+  }
   const requestedStatus = raw.status;
   // Parse model output first as non-authoritative evidence. Only the final pass
   // below may promote a schema-valid, deterministic-warning-free result to
@@ -1160,13 +1322,19 @@ function deriveIntelligentBibliographyFromModel(
   }
 }
 
-function evidenceRepairPromptFor(inspection: PdfTextInspection, requiredFieldKeys: readonly string[]): string {
+function evidenceRepairPromptFor(
+  inspection: PdfTextInspection,
+  requiredFieldKeys: readonly string[],
+  originalProposal: unknown,
+): string {
   const base = JSON.parse(promptFor(inspection)) as Record<string, unknown>;
+  const original = sparseRecord(originalProposal, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"]);
   return JSON.stringify({
     ...base,
     repair: {
       reason: "previous_field_evidence_invalid",
       requiredFieldKeys: [...new Set(requiredFieldKeys)].sort(),
+      previousCanonical: original.canonical,
       instruction: "Return a complete new result object. You may only retain original proposed facts, omit unsupported optional facts/contributors, downgrade materialClass to unknown, or return no_bibliography; never add or change a fact. Every retained non-class fact needs exactly one fields row with an exact bounded evidenceText excerpt containing the actual value. materialClass uses classSupport, not fields. Never use overallConfidence or a one-page shortcut to create missing provenance.",
     },
   });
@@ -1230,11 +1398,17 @@ export async function deriveIntelligentBibliography(
     if (!(error instanceof BibliographicIntelligenceError)
       || error.diagnostic !== "field_evidence_invalid"
       || error.repairFieldKeys.length === 0) throw error;
-    const repaired = await reasoner.infer(evidenceRepairPromptFor(reasoningInspection, error.repairFieldKeys), signal);
-    return deriveIntelligentBibliographyFromModel(
-      evidenceOnlyRepair(model, repaired),
-      reasoningInspection,
-      legacyFallback,
-    );
+    const repaired = await reasoner.infer(evidenceRepairPromptFor(reasoningInspection, error.repairFieldKeys, model), signal);
+    try {
+      return deriveIntelligentBibliographyFromModel(
+        evidenceOnlyRepair(model, repaired),
+        reasoningInspection,
+        legacyFallback,
+      );
+    } catch (repairError: unknown) {
+      if (!(repairError instanceof BibliographicIntelligenceError)
+        || repairError.diagnostic !== "field_evidence_invalid") throw repairError;
+      return deriveIntelligentBibliographyFromModel(model, reasoningInspection, legacyFallback, "prune");
+    }
   }
 }

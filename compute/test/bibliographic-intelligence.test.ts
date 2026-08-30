@@ -271,12 +271,26 @@ test("Qwen v4 prompt requests positive class support independently from manifest
   assert.deepEqual((prompt?.classificationRules as Record<string, unknown>).primarySourceModernEditionRequires, [
     "historical_primary_work", "edition_mediation",
   ]);
+  const outputContract = prompt?.outputContract as Record<string, unknown>;
+  assert.equal(outputContract.type, "object");
+  assert.deepEqual(outputContract.required, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"]);
+  assert.equal(outputContract.additionalProperties, false);
+  assert.match(String(prompt?.task), /never repeat the task, controls, pages, evidence input, or schema itself/u);
 });
 
 test("unknown work classification cannot be promoted to auto-apply by model confidence", async () => {
   const source = fixture({ ...emptyCanonical("尚待分类的资料"), materialClass: "unknown", contributors: [] });
   source.inspection.pages[0]!.text = "题名：尚待分类的资料";
   const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+  assert.equal(result.status, "ambiguous");
+  assert.ok(result.warnings.includes("uncertain_material_class"));
+});
+
+test("a class-support signal emitted as materialClass downgrades to unknown", async () => {
+  const source = fixture({ ...emptyCanonical("边疆史资料"), contributors: [] });
+  (source.model.canonical as unknown as Record<string, unknown>).materialClass = "historical_primary_work";
+  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+  assert.equal(result.canonical?.materialClass, "unknown");
   assert.equal(result.status, "ambiguous");
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
@@ -309,7 +323,7 @@ test("publisher and date cannot retain a primary-source modern-edition proposal 
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
-test("one page cannot synthesize provenance for hallucinated author edition or language", async () => {
+test("one page drops hallucinated author edition and language without synthesizing provenance", async () => {
   const canonical = {
     ...emptyCanonical("A General History of Inner Asia"),
     contributors: [{ label: "Invented Author", role: "author" as const, roleLabel: null }],
@@ -364,11 +378,21 @@ test("one page cannot synthesize provenance for hallucinated author edition or l
     },
   };
 
-  await assert.rejects(
-    () => deriveIntelligentBibliography(inspection, reasoner),
-    (error: unknown) => error instanceof BibliographicIntelligenceError
-      && error.diagnostic === "field_evidence_invalid",
-  );
+  const result = await deriveIntelligentBibliography(inspection, reasoner);
+  assert.equal(result.status, "ambiguous");
+  assert.equal(result.canonical?.materialClass, "unknown");
+  assert.deepEqual(result.canonical?.contributors, []);
+  assert.equal(result.canonical?.language, null);
+  assert.deepEqual(result.canonical?.carrierEdition, {
+    editionType: null,
+    editionStatement: null,
+    facsimileStatement: null,
+  });
+  assert.equal(result.canonical?.publication.publisher, "Academic Press");
+  assert.equal(result.canonical?.publication.publicationDate, "2026");
+  assert.ok(result.fields.every((field) => ![
+    "contributor.label", "contributor.role", "language", "carrierEdition.editionType", "carrierEdition.editionStatement",
+  ].includes(field.fieldName)));
 });
 
 test("positive scholarly class support retains a Qwen proposal without title-keyword dependence", async () => {
@@ -476,8 +500,7 @@ test("gated embedded metadata requires exact value support and a null page ident
     ...canonical,
     contributors: [{ label: embeddedAuthor, role: "author" as const, roleLabel: null }],
   };
-  await assert.rejects(
-    deriveIntelligentBibliography(inspection, {
+  const personPruned = await deriveIntelligentBibliography(inspection, {
       async infer() {
         return {
           ...model,
@@ -490,10 +513,9 @@ test("gated embedded metadata requires exact value support and a null page ident
           })),
         };
       },
-    }),
-    (error: unknown) => error instanceof BibliographicIntelligenceError
-      && error.diagnostic === "field_evidence_invalid",
-  );
+    });
+  assert.deepEqual(personPruned.canonical?.contributors, []);
+  assert.ok(personPruned.fields.every((field) => !field.fieldName.startsWith("contributor.")));
 
   await assert.rejects(
     deriveIntelligentBibliography(inspection, {
@@ -593,7 +615,7 @@ test("Qwen receives usable class pages while fact evidence stays exact-field sco
   assert.equal(new Set(result.fields.map((field) => `${field.fieldName}:${field.scopeKey}`)).size, result.fields.length);
 });
 
-test("missing field provenance gets one bounded schema-key repair pass", async () => {
+test("missing field provenance gets one bounded repair pass then evidence-only pruning", async () => {
   const canonical = {
     ...emptyCanonical("近代中国史研究"),
     contributors: [{ label: "王明", role: "author" as const, roleLabel: "作者" }],
@@ -681,6 +703,7 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
   assert.equal(calls, 2);
   const repair = repairPrompts[0]?.repair as Record<string, unknown>;
   assert.equal(repair.reason, "previous_field_evidence_invalid");
+  assert.deepEqual(repair.previousCanonical, canonical);
   assert.deepEqual(repair.requiredFieldKeys, [
     "canonicalTitle:",
     "contributor.label:contributor:0",
@@ -696,11 +719,10 @@ test("missing field provenance gets one bounded schema-key repair pass", async (
       return { status: "auto_apply", overallConfidence: 95, canonical, classSupport, fields: incompleteFields, warnings: [] };
     },
   };
-  await assert.rejects(
-    deriveIntelligentBibliography(inspection, persistentlyInvalid),
-    (error: unknown) => error instanceof BibliographicIntelligenceError
-      && error.diagnostic === "field_evidence_invalid",
-  );
+  const pruned = await deriveIntelligentBibliography(inspection, persistentlyInvalid);
+  assert.equal(pruned.status, "auto_apply");
+  assert.deepEqual(pruned.canonical?.contributors, []);
+  assert.equal(pruned.canonical?.publication.editionNumber, null);
   assert.equal(calls, 2);
 });
 
@@ -857,6 +879,38 @@ test("sparse model facts are normalized locally before the strict shared contrac
   const scrubbed = await deriveIntelligentBibliography(inspection, unsafeWarningText);
   assert.equal(scrubbed.status, "ambiguous");
   assert.deepEqual(scrubbed.warnings, ["model_uncertainty"]);
+});
+
+test("empty model placeholders cannot become contributor or edition facts", async () => {
+  const source = fixture({ ...emptyCanonical("边疆史研究"), contributors: [] });
+  const model = source.model as Record<string, unknown>;
+  model.canonical = {
+    materialClass: "scholarly_monograph",
+    canonicalTitle: "边疆史研究",
+    contributors: [
+      { label: "王明", role: "author", roleLabel: "" },
+      { label: "Mongolia Society", role: "publisher", roleLabel: "publisher" },
+    ],
+    publication: { publisher: `P${"x".repeat(40)}\nP`, place: "", publicationDate: "", editionNumber: "", printing: "" },
+    carrierEdition: { editionType: "", editionStatement: "", facsimileStatement: "" },
+    sourceEdition: { absoluteYear: "", editionType: "", editionStatement: "" },
+  };
+  model.fields = (model.fields as Array<Record<string, unknown>>).filter((field) => (
+    field.fieldName === "canonicalTitle"
+  ));
+
+  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+  assert.equal(result.status, "auto_apply");
+  assert.deepEqual(result.canonical?.contributors, []);
+  assert.deepEqual(result.canonical?.carrierEdition, {
+    editionType: null,
+    editionStatement: null,
+    facsimileStatement: null,
+  });
+  assert.equal(result.canonical?.publication.publisher, null);
+  assert.equal(result.canonical?.sourceEdition.absoluteYear, null);
+  assert.equal(result.canonical?.sourceEdition.editionType, null);
+  assert.ok(result.fields.every((field) => !field.fieldName.includes("Edition")));
 });
 
 test("whole-inspection edition markers never override a positively supported Qwen work class", async () => {
