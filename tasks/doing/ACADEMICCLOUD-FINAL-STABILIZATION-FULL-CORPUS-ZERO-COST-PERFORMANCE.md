@@ -96,13 +96,14 @@ Owner-authorized on 2026-08-24 and continued by the
 not a new task: it changes only the next Compute architecture/execution
 strategy. The authoritative branch is
 `codex/project-memory-reconcile-20260817`; pushed HEAD before this correction is
-`60205d09c64e510e293a6cef4e971b7fe710030a`. Production is exact frontend/Core
+`8b1d65a96a7a139ed63e35ab9c4a53499cedd3c2`. Production is exact frontend/Core
 `58b8468eac37fb994f06994375b81a6f53a6de79`, schema v32/history 001–032 with
 `local_pull`. ADR-038 final v7/prompt-v4 and the append-only ruleset registry are
 live. The main Compute symlink still selects exact `58b8468…`; systemd remains
 disabled/inactive and the environment remains `PAUSED`. Immutable release
-`60205d…` is present and hash-verified and contains the llama structured-response
-transport repair, but is not main current and must not be enabled. Pre-existing
+`64d2136…` is present and hash-verified and contains the llama structured-response
+transport repair plus child-process lease keeper, but is not main current and
+must not be enabled. Pre-existing
 untracked `%SystemDrive%/` and `scratch/` remain untouched. No GitHub-hosted
 production Compute was used.
 
@@ -122,12 +123,12 @@ disposable outbound-only Compute executor; its absence must leave AI jobs
 queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
 and the Local Pull protocol are deployed. The same-process and worker-thread
 lease scheduling defects are repaired by exact child-process release
-`64d2136…`; its isolated A retries instead failed during intermittent network
-windows after Core had accepted repeated HTTP-200 heartbeats. A bounded
-Windows/WSL qualification reproduced comparable connect timeouts, and the
-production root filesystem is also below its hard free-space gate. No new A
-target, worker NORMAL transition, or B/C execution occurs before both readiness
-gates pass.
+`64d2136…`; its isolated A retries proved safe network and invalid-result failure
+semantics. The production disk hard gate now passes, and the Owner accepts
+transient network loss under fail-safe recovery. The bounded v8/prompt-v5
+successor plus registry-only schema33 admission passes full tests and a real
+local GPU modern-monograph qualification; production remains v7/schema32 until
+exact release, encrypted backup, and schema33 cutover.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -486,13 +487,22 @@ received two Core HTTP-200 heartbeats. Qwen result validation failed closed as
 the main worker remained PAUSED/disabled/inactive. This validates fail-safe
 semantics but not the required eventual A success.
 
+The bounded v8/prompt-v5 correction then passed Backend 381/381, Frontend
+284/284, Compute 112/112 plus two expected release-runtime skips, Compute
+contracts 3/3, OSS contracts 3/3, workspace typecheck/build, and compiled
+acceptance with migration count 33 and zero redeploy migrations. A real local
+GPU full-pipeline qualification on an Owner-supplied modern scholarly PDF
+retained positive page-bound scholarly class evidence and only value-supported
+facts, with no invented contributor or incompatible source-edition promotion.
+This is a release gate, not production A acceptance.
+
 ## Next Action
 
 Keep production Core `58b8468…`/schema32 and main Compute `58b8468…`
-PAUSED/disabled/inactive. Through the ordinary production UI select a clean
-modern-scholarly resource, create a new current-generation A job, read its exact
-identity, and run one isolated `64d2136…` iteration. A PASS unlocks B/C; all
-three unlock forced-loss, exact main-release cutover, NORMAL, browser-only
-automatic-cataloguing acceptance, concurrency-one corpus execution, and the
-final clean sweep. Do not add network or architecture hardening outside a
-direct data-integrity, authority, security, or unrecoverable failure.
+PAUSED/disabled/inactive. Freeze and push the exact v8/schema33 checkpoint,
+assemble immutable Core and Compute releases, pass a fresh encrypted schema32
+off-host backup gate, then perform the one append-only schema33 cutover. Only
+after that, use the ordinary production UI to create a fresh A job and run one
+isolated exact-release iteration. A PASS unlocks B/C; all three unlock forced-
+loss, exact main-release cutover, NORMAL, browser-only automatic-cataloguing
+acceptance, concurrency-one corpus execution, and the final clean sweep.

@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-29
+**Last reconciled:** 2026-08-30
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
@@ -36,6 +36,21 @@ The main Local Compute symlink still selects exact `58b8468…`, systemd remains
 not be enabled. Immutable release `60205d09c64e510e293a6cef4e971b7fe710030a`
 is present and hash-verified and contains the llama structured-response
 transport repair, but it is not the main selection.
+
+The first normal-UI v7 A run then exposed a bounded llama.cpp transport defect,
+not an authority or persistence escape: the deeply nested fact schema could not
+be used as a reliable grammar, and an otherwise useful result could mis-address
+the selected-page array. The pending v8/prompt-v5 correction keeps the generic
+fact transport but validates every field against exact page text, permits only
+exact-excerpt ordinal repair, and moves class selection to a shallow schema-
+bound candidate-ID pass whose evidence is resolved and positively validated by
+trusted runtime. Unsupported facts and structurally incompatible source-edition
+facts are removed. Migration 033 only registers the immutable v8 identity; it
+does not rebuild or alter historical evidence. Full repository tests,
+typecheck/build, compiled acceptance (33 migrations, 0 on redeploy), and a real
+local GPU qualification on a modern scholarly monograph pass. Production is
+still unchanged at v7/schema32 pending exact release, encrypted backup, and
+schema33 cutover.
 
 Rulesets v4–v6 are deployed historical attempts, not final acceptance. The
 Owner's FINAL ARCHITECTURE CORRECTION and ADR-038 block the v6 single-book
@@ -318,6 +333,14 @@ UI; B/C remain blocked on A. Forced-loss follows all three canaries, then the
 exact worker may enter NORMAL, enabled/active, concurrency one. Final browser
 acceptance and full-corpus execution remain as previously defined; GitHub-
 hosted production Compute remains unused.
+
+The bounded v8/prompt-v5 successor has now passed local full-pipeline GPU
+qualification on `Mongolia: politics, economics and society`: the class-only
+pass selected page-bound scholarly evidence, the fact result retained only
+value-supported bibliographic fields, invented contributors were absent, and
+modern classification removed incompatible source-edition facts. No source
+content was emitted or persisted by the qualifier. This is release
+qualification only; it is not production A acceptance.
 
 ## Historical incident evidence (superseded as current acceptance)
 

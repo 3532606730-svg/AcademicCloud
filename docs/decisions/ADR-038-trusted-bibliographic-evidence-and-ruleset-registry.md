@@ -1,7 +1,7 @@
 # ADR-038 — Trusted Bibliographic Evidence Validation and Ruleset Registry
 
 **Date:** 2026-08-28
-**Status:** Accepted by Owner; implementation and production schema v32 cutover complete; three-canary acceptance pending
+**Status:** Accepted by Owner; schema v32 registry deployed; bounded v8/prompt-v5 admission and three-canary acceptance pending
 
 ## Context
 
@@ -69,6 +69,39 @@ mode rather than the hosted-only nested JSON-Schema grammar. The trusted
 runtime still performs the complete schema, evidence, class-support, and
 authority validation before any callback can be persisted; transport mode does
 not weaken the structured-output contract.
+
+### Bounded v8 class-evidence transport correction
+
+The first v7 production A attempt proved that the deeply nested fact result can
+be validated and pruned safely, but the pinned 1.7B model can still confuse a
+class-support signal with `materialClass`, cite a pages-array position instead
+of the supplied page identity, or paraphrase rather than copy the requested
+class excerpt. Those outputs correctly became `unknown`; changing their
+interpretation under the already-persisted v7 identity would not be acceptable.
+
+Ruleset `l1-intelligent-library01-v8` with prompt
+`l1-intelligent-library01-prompt-v5` therefore retains the v7 fact pipeline and
+adds one bounded Qwen class-evidence pass only when the validated fact result is
+still `unknown`. The shallow llama.cpp JSON Schema constrains Qwen to a
+controlled class, its independent confidence, and up to four IDs selected from
+runtime-supplied evidence candidates. Candidates are script-neutral bounded
+chunks of the already selected usable pages. Qwen still makes the semantic
+proposal; the trusted runtime only resolves IDs to exact page text, applies the
+existing positive-signal requirements, rejects title/metadata-only support,
+and retains `unknown` on missing or conflicting support. It does not add a
+title-keyword classifier.
+
+For a supported modern scholarly class, the trusted projection also removes
+source-edition facts that are structurally incompatible with that class. This
+prevents a bare value coincidence from promoting a historical-source field;
+all retained facts still require their own value-bound evidence. A model-supplied
+exact fact excerpt may repair an incorrect pages-array ordinal only by resolving
+to the actual eligible selected page containing that same excerpt. The runtime
+never invents the excerpt or fact and class evidence never receives this repair.
+
+Schema v33 is an append-only registry admission for exact v8/prompt-v5. It does
+not rebuild, update, delete, or reinterpret the immutable evidence table or the
+v1–v7 registry history. Unknown identities remain foreign-key rejected.
 
 ### Human authority and first contributor enrichment
 

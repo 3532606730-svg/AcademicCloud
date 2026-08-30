@@ -10,7 +10,7 @@ import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
 const NOW = "2026-08-27T12:00:00.000Z";
 
-test("migration 032 preserves immutable v1-v6 evidence and admits exact v7 through an append-only registry", () => {
+test("migration 032 preserves immutable v1-v6 evidence and migration 033 admits exact v8 without rebuilding history", () => {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-bibliography-ruleset-v2-"));
   const v26Directory = join(temporaryDirectory, "v26");
   const v27Directory = join(temporaryDirectory, "v27");
@@ -18,12 +18,14 @@ test("migration 032 preserves immutable v1-v6 evidence and admits exact v7 throu
   const v29Directory = join(temporaryDirectory, "v29");
   const v30Directory = join(temporaryDirectory, "v30");
   const v31Directory = join(temporaryDirectory, "v31");
+  const v32Directory = join(temporaryDirectory, "v32");
   mkdirSync(v26Directory);
   mkdirSync(v27Directory);
   mkdirSync(v28Directory);
   mkdirSync(v29Directory);
   mkdirSync(v30Directory);
   mkdirSync(v31Directory);
+  mkdirSync(v32Directory);
   for (const filename of readdirSync(INITIAL_MIGRATIONS_DIRECTORY)) {
     if (Number(filename.slice(0, 3)) <= 26) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v26Directory, filename));
@@ -42,6 +44,9 @@ test("migration 032 preserves immutable v1-v6 evidence and admits exact v7 throu
     }
     if (Number(filename.slice(0, 3)) <= 31) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v31Directory, filename));
+    }
+    if (Number(filename.slice(0, 3)) <= 32) {
+      copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v32Directory, filename));
     }
   }
   const database = openSqliteDatabase(join(temporaryDirectory, "ruleset.sqlite"));
@@ -235,7 +240,7 @@ test("migration 032 preserves immutable v1-v6 evidence and admits exact v7 throu
     const historicalEvidenceBeforeV32 = database.prepare(`
       SELECT * FROM scholarly_bibliographic_ai_runs ORDER BY id
     `).all();
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+    assert.deepEqual(runMigrations(database, v32Directory), {
       appliedVersions: [32], currentVersion: 32,
     });
     assert.deepEqual(database.prepare(`
@@ -304,17 +309,26 @@ test("migration 032 preserves immutable v1-v6 evidence and admits exact v7 throu
       ) VALUES (
         'ai-v8', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v8',
         1, 'l1-intelligent-library01-v8', 'ambiguous', 70,
-        '{}', ?, 'l1-intelligent-library01-prompt-v4',
+        '{}', ?, 'l1-intelligent-library01-prompt-v5',
         'PaddleOCR/v8', 'Qwen3/v8', '[1]', 0, '[]', ?
       )
     `);
     assert.throws(() => insertV8.run("8".repeat(64), NOW), /FOREIGN KEY constraint failed/u);
-    database.prepare(`
-      INSERT INTO scholarly_bibliographic_ruleset_registry (
-        contract_version, ruleset_version, prompt_version, admitted_at
-      ) VALUES (1, 'l1-intelligent-library01-v8', 'l1-intelligent-library01-prompt-v4', ?)
-    `).run(NOW);
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+      appliedVersions: [33], currentVersion: 33,
+    });
     insertV8.run("8".repeat(64), NOW);
+    assert.equal(database.prepare<[], { count: number }>(`
+      SELECT count(*) AS count FROM scholarly_bibliographic_ruleset_registry
+    `).get()!.count, 8);
+    assert.deepEqual(database.prepare<[], { ruleset_version: string; prompt_version: string }>(`
+      SELECT ruleset_version, prompt_version
+        FROM scholarly_bibliographic_ruleset_registry
+       WHERE ruleset_version = 'l1-intelligent-library01-v8'
+    `).get(), {
+      ruleset_version: "l1-intelligent-library01-v8",
+      prompt_version: "l1-intelligent-library01-prompt-v5",
+    });
     assert.throws(
       () => database.prepare(`
         UPDATE scholarly_bibliographic_ruleset_registry

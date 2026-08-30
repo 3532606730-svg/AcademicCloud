@@ -6,6 +6,7 @@ import type { IntelligentCanonicalBibliography, IntelligentBibliographicFieldNam
 import {
   BibliographicIntelligenceError,
   deriveIntelligentBibliography,
+  LLAMA_CLASS_RESPONSE_FORMAT,
   LLAMA_RESPONSE_FORMAT,
   loadLlamaReasonerConfig,
   parseLlamaChatCompletionResponse,
@@ -17,6 +18,12 @@ import type { PdfTextInspection } from "../src/suggestion.js";
 
 test("llama transport uses the compatible generic JSON response mode", () => {
   assert.deepEqual(LLAMA_RESPONSE_FORMAT, { type: "json_object" });
+  assert.equal(LLAMA_CLASS_RESPONSE_FORMAT.type, "json_schema");
+  assert.equal(LLAMA_CLASS_RESPONSE_FORMAT.json_schema.name, "academiccloud_material_class");
+  assert.deepEqual(
+    LLAMA_CLASS_RESPONSE_FORMAT.json_schema.schema.required,
+    ["materialClass", "confidence", "evidenceCandidateIds"],
+  );
 });
 
 function emptyCanonical(title: string): IntelligentCanonicalBibliography {
@@ -242,7 +249,7 @@ test("Qwen never receives corrupt OCR or suspicious bare embedded metadata as us
   assert.equal(inspection.embeddedMetadata.author, "亦郊真", "raw bounded provenance was mutated");
 });
 
-test("Qwen v4 prompt requests positive class support independently from manifestation or person metadata", async () => {
+test("Qwen v5 prompt requests positive class support independently from manifestation or person metadata", async () => {
   const inspection: PdfTextInspection = {
     pageCount: 2,
     pageIndices: [1, 2],
@@ -276,6 +283,8 @@ test("Qwen v4 prompt requests positive class support independently from manifest
   assert.deepEqual(outputContract.required, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"]);
   assert.equal(outputContract.additionalProperties, false);
   assert.match(String(prompt?.task), /never repeat the task, controls, pages, evidence input, or schema itself/u);
+  assert.match(String(prompt?.task), /materialClass MUST be one controlledValues\.materialClasses value/u);
+  assert.match(String(prompt?.task), /sourcePageIndex is never the pages-array position/u);
 });
 
 test("unknown work classification cannot be promoted to auto-apply by model confidence", async () => {
@@ -393,6 +402,163 @@ test("one page drops hallucinated author edition and language without synthesizi
   assert.ok(result.fields.every((field) => ![
     "contributor.label", "contributor.role", "language", "carrierEdition.editionType", "carrierEdition.editionStatement",
   ].includes(field.fieldName)));
+});
+
+test("an exact fact excerpt can repair a model's pages-array ordinal without inventing provenance", async () => {
+  const canonical = { ...emptyCanonical("A General History of Inner Asia"), contributors: [] };
+  const inspection: PdfTextInspection = {
+    pageCount: 3,
+    pageIndices: [1, 3],
+    pages: [
+      {
+        pageIndex: 1,
+        text: "Studies in Inner Asian history",
+        evidenceOrigin: "native_text",
+        ocrEngine: null,
+        ocrConfidence: null,
+      },
+      {
+        pageIndex: 3,
+        text: "Title: A General History of Inner Asia",
+        evidenceOrigin: "native_text",
+        ocrEngine: null,
+        ocrConfidence: null,
+      },
+    ],
+    embeddedMetadata: {},
+    complete: true,
+    hasUsableTextLayer: true,
+  };
+  const result = await deriveIntelligentBibliography(inspection, {
+    async infer() {
+      return {
+        status: "ambiguous",
+        overallConfidence: 80,
+        canonical,
+        classSupport: [],
+        fields: [{
+          fieldName: "canonicalTitle",
+          scopeKey: "",
+          confidence: 90,
+          // The model incorrectly returned the first pages-array ordinal.
+          sourcePageIndex: 1,
+          evidenceOrigin: "native_text",
+          evidenceText: "A General History of Inner Asia",
+        }],
+        warnings: ["uncertain_material_class"],
+      };
+    },
+  });
+  assert.equal(result.canonical?.canonicalTitle, "A General History of Inner Asia");
+  assert.equal(result.fields.find((field) => field.fieldName === "canonicalTitle")?.sourcePageIndex, 3);
+  assert.equal(result.fields.find((field) => field.fieldName === "canonicalTitle")?.pageClass, "title_page");
+});
+
+test("a constrained class-only Qwen proposal can retain positive page-bound scholarly evidence", async () => {
+  const inspection: PdfTextInspection = {
+    pageCount: 2,
+    pageIndices: [1, 2],
+    pages: [
+      {
+        pageIndex: 1,
+        text: "题名：A General History of Inner Asia",
+        evidenceOrigin: "native_text",
+        ocrEngine: null,
+        ocrConfidence: null,
+      },
+      {
+        pageIndex: 2,
+        text: "This study examines political institutions and social change through comparative historical analysis. It develops a sustained scholarly argument from the evidence presented in each chapter.",
+        evidenceOrigin: "native_text",
+        ocrEngine: null,
+        ocrConfidence: null,
+      },
+    ],
+    embeddedMetadata: {},
+    complete: true,
+    hasUsableTextLayer: true,
+  };
+  let observedClassPrompt: Record<string, unknown> | undefined;
+  const reasoner: BibliographicReasoner = {
+    async infer() {
+      const canonical = {
+        ...emptyCanonical("A General History of Inner Asia"),
+        materialClass: "unknown" as const,
+        contributors: [],
+        // A bare substring is not semantic evidence that a modern study has a
+        // historical source-edition dynasty. The later supported class must
+        // remove this otherwise value-matching hallucination.
+        sourceEdition: { ...emptyCanonical("unused").sourceEdition, dynasty: "Asia" },
+      };
+      return {
+        status: "ambiguous",
+        overallConfidence: 90,
+        canonical,
+        classSupport: [],
+        fields: [
+          {
+            fieldName: "canonicalTitle",
+            scopeKey: "",
+            confidence: 90,
+            sourcePageIndex: 1,
+            evidenceOrigin: "native_text",
+            evidenceText: "A General History of Inner Asia",
+          },
+          {
+            fieldName: "sourceEdition.dynasty",
+            scopeKey: "",
+            confidence: 90,
+            sourcePageIndex: 1,
+            evidenceOrigin: "native_text",
+            evidenceText: "Asia",
+          },
+        ],
+        warnings: ["uncertain_material_class"],
+      };
+    },
+    async classifyMaterial(prompt) {
+      observedClassPrompt = JSON.parse(prompt) as Record<string, unknown>;
+      return {
+        materialClass: "scholarly_monograph",
+        confidence: 91,
+        evidenceCandidateIds: ["page-2-chunk-1"],
+      };
+    },
+  };
+
+  const result = await deriveIntelligentBibliography(inspection, reasoner);
+
+  assert.equal(result.canonical?.materialClass, "scholarly_monograph");
+  assert.equal(result.fields.find((field) => field.fieldName === "materialClass")?.sourcePageIndex, 2);
+  assert.equal(result.fields.find((field) => field.fieldName === "materialClass")?.sourceType, "class_support");
+  assert.equal(result.warnings.includes("uncertain_material_class"), false);
+  assert.equal(result.canonical?.sourceEdition.dynasty, null);
+  assert.equal(result.fields.some((field) => field.fieldName.startsWith("sourceEdition.")), false);
+  const candidates = observedClassPrompt?.evidenceCandidates as Array<Record<string, unknown>>;
+  assert.equal(candidates.some((candidate) => candidate.candidateId === "page-2-chunk-1"), true);
+});
+
+test("a class-only proposal citing only title-page evidence remains unknown", async () => {
+  const source = fixture({
+    ...emptyCanonical("A General History of Inner Asia"),
+    materialClass: "unknown",
+    contributors: [],
+  }, "ambiguous", ["uncertain_material_class"]);
+  const reasoner: BibliographicReasoner = {
+    infer: source.reasoner.infer,
+    async classifyMaterial() {
+      return {
+        materialClass: "scholarly_monograph",
+        confidence: 99,
+        evidenceCandidateIds: ["page-1-chunk-1"],
+      };
+    },
+  };
+
+  const result = await deriveIntelligentBibliography(source.inspection, reasoner);
+
+  assert.equal(result.canonical?.materialClass, "unknown");
+  assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
 test("positive scholarly class support retains a Qwen proposal without title-keyword dependence", async () => {

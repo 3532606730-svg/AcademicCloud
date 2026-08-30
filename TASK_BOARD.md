@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `58b8468…` V32 / DISK PASS / TRANSIENT-NETWORK RESILIENCE ACCEPTED / MAIN WORKER DISABLED+PAUSED | First fresh UI v7 A failed safely at Qwen result validation with no false persistence. Use another clean modern-scholarly resource through normal UI and exact isolated `64d2136…`; B/C remain blocked on A |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `58b8468…` V32 / V8+SCHEMA33 RELEASE PENDING / MAIN WORKER DISABLED+PAUSED | v8/prompt-v5 and registry-only migration 033 pass full tests plus real local GPU qualification. Freeze exact checkpoint, assemble immutable releases, pass encrypted schema32 off-host backup, cut over schema33, then create a fresh normal-UI A canary; B/C remain blocked on A |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
