@@ -413,9 +413,13 @@ The current sequence blocker is bounded B transport tolerance. Normal UI B job
 `d127fb0e…` / attempt `dabf828b…` received four Core HTTP-200 heartbeats before
 a public-network interruption exceeded the former 90-second lease. The old
 attempt failed closed without callback and Core requeued exact attempt
-`e2194dca…`. The Owner authorized the minimum robustness change to a 180-second
-lease while retaining the 30-second cadence, independent keeper, stale-attempt
-rejection, and fail-closed callback checks. Exact-release and deploy that change,
+`e2194dca…`. The initial 180-second tolerance was also exhausted after four
+further HTTP-200 heartbeats and another continuous network gap; attempt
+`e2194dca…` again sent no callback and recovered automatically. The evidence-
+calibrated correction uses a 270-second lease to cover the measured 230-second
+historical outage with margin while retaining the 30-second cadence, independent
+keeper, stale-attempt rejection, and fail-closed callback checks. Exact-release
+and deploy that change,
 then run one B retry. Do not enter C, forced-loss, NORMAL, or corpus execution
 until B passes.
 

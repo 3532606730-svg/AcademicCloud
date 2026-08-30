@@ -152,7 +152,7 @@ const JOB_DEADLINE_MILLISECONDS = 2 * 60 * 60_000;
 // while the independently scheduled keeper continues attempting heartbeats.
 // The 30-second heartbeat cadence still detects ordinary loss promptly, and
 // stale attempts remain fail-closed once this bounded tolerance is exhausted.
-const LOCAL_PULL_LEASE_MILLISECONDS = 180_000;
+const LOCAL_PULL_LEASE_MILLISECONDS = 270_000;
 const LOCAL_PULL_HEARTBEAT_MILLISECONDS = 30_000;
 const LOCAL_PULL_CAPABILITY_MILLISECONDS = 15 * 60_000;
 const LOCAL_PULL_WORKER_ID = /^[A-Za-z0-9_.-]{1,128}$/u;

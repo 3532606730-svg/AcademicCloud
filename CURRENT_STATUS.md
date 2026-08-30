@@ -353,8 +353,11 @@ Compute `b349595…` received Core HTTP-200 heartbeat renewals at 22:55:42,
 prevented renewal through the former 90-second lease; the worker failed closed
 at 22:58:47, sent no callback, and Core atomically requeued attempt
 `e2194dca-7f9d-4e1e-a8b6-66616de595ce` at 22:58:57. This proves safe recovery
-but not B completion. The Owner-authorized bounded robustness correction changes
-only the lease from 90 to 180 seconds while retaining the 30-second cadence,
+but not B completion. The initial 180-second tolerance was also exhausted after
+four further HTTP-200 heartbeats and another continuous transport gap, again
+without a callback and with atomic recovery. The evidence-calibrated correction
+changes only the lease from 90 to 270 seconds, covering the measured 230-second
+historical outage with margin while retaining the 30-second cadence,
 independent child keeper, stale-attempt rejection, and fail-closed callback
 checks. Backend 381/381, workspace typecheck/build, and compiled acceptance
 pass. Exact release/deployment of this correction precedes one B retry; C,

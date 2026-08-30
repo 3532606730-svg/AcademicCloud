@@ -4,8 +4,8 @@
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
-    "declaredRelease": "b34959527396bc15b94fec991f3ccc93a5529a23",
-    "previousRelease": "58b8468eac37fb994f06994375b81a6f53a6de79",
+    "declaredRelease": "43615c8df1e73a5c81b9493b94e95f2e90e93eab",
+    "previousRelease": "b34959527396bc15b94fec991f3ccc93a5529a23",
     "schema": 33,
     "migrationHead": 33,
     "migrationHistory": "001-033",
@@ -91,8 +91,11 @@
         "failure": "public-network renewal gap exceeded former 90-second lease",
         "callbackSent": false,
         "coreRecovery": "PASS atomically requeued a new attempt",
-        "boundedCorrection": "180-second lease; 30-second heartbeat and independent keeper unchanged",
-        "status": "pending exact correction release and one isolated retry"
+        "secondFailedAttemptId": "e2194dca-7f9d-4e1e-a8b6-66616de595ce",
+        "secondSuccessfulHeartbeatStatuses": [200, 200, 200, 200],
+        "secondFailure": "public-network renewal gap exhausted initial 180-second tolerance",
+        "boundedCorrection": "270-second lease covers measured 230-second outage with margin; 30-second heartbeat and independent keeper unchanged",
+        "status": "pending exact calibrated-correction release and one isolated retry"
       }
     },
     "aCanaryLeaseIncident": {
@@ -432,7 +435,7 @@
       "bibliographyMaterialClassificationV4V5V6": "historical attempts deployed through fd97542/schema31; not final acceptance",
       "bibliographyFinalArchitectureV7": "ADR-038 v7/prompt-v4 remains the live 58b8468/schema32 generation; its normal-UI A failure was safe but exposed llama fact-transport limits",
       "bibliographyFinalArchitectureV8": "ADR-038 bounded addendum deployed as exact b349595/schema33; fresh normal-UI A passed",
-      "backend": "bounded 180-second lease tolerance working tree: typecheck/build pass; 381/381 tests pass",
+      "backend": "evidence-calibrated 270-second lease tolerance: typecheck/build pass; 381/381 tests pass",
       "frontend": "b349595/schema33: typecheck/build pass; 284/284 tests pass",
       "compute": "b349595/prompt-v5 exact isolated A pass; B fail-closed recovery under network gap; Compute code unchanged by lease tolerance",
       "computeContracts": "3/3 pass",
