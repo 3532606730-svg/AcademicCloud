@@ -29,12 +29,12 @@ INTERNAL_BETA_STARTED=false
 
 The Local Compute Owner override continues this program and changes only the
 production Compute strategy. Live production is exact frontend/Core
-`b34959527396bc15b94fec991f3ccc93a5529a23` at schema/history 33 with
+`b3debfbeb5fd63c969229b6645cdabef779cdd9d` at schema/history 33 with
 `COMPUTE_PROVIDER=local_pull`. Schema33 and final v8/prompt-v5 are deployed.
 The main Local Compute symlink still selects exact `58b8468…`, systemd remains
 `disabled`/`inactive`, and the environment remains `PAUSED`; this old release
-must not be enabled. Immutable Compute release `b349595…` is hash-verified and
-was used only for isolated A/B canary work.
+must not be enabled. Immutable Compute release `6b68d1a…` is hash-verified and
+is reserved for the next isolated B retry.
 
 The first normal-UI v7 A run exposed a bounded llama.cpp transport defect,
 not an authority or persistence escape: the deeply nested fact schema could not
@@ -360,8 +360,20 @@ changes only the lease from 90 to 270 seconds, covering the measured 230-second
 historical outage with margin while retaining the 30-second cadence,
 independent child keeper, stale-attempt rejection, and fail-closed callback
 checks. Backend 381/381, workspace typecheck/build, and compiled acceptance
-pass. Exact release/deployment of this correction precedes one B retry; C,
-forced-loss, NORMAL, and corpus work remain blocked meanwhile.
+pass. Exact Core `b3debfb…` deployed the 270-second correction without a schema
+change. A subsequent normal-UI B target, 《元朝秘史》（校勘本）, was claimed on
+exact isolated `b3debfb…`; extraction completed and the failed callback
+persisted, but Qwen returned `content_truncated` after reaching the 8,192-token
+completion bound. No evidence or canonical metadata was promoted. A generic
+transport audit reproduced that the former 64 KiB page payload could make a
+Chinese prompt itself exceed the pinned 16K context. Exact pushed Compute
+`6b68d1a…` now distributes an 8 KiB page budget across selected pages, pins a
+32K context, and explicitly disables reasoning while preserving v8/prompt-v5,
+all evidence/authority gates, and the 8,192-token completion bound. Compute
+114/114 (plus two expected runtime skips), contracts 3/3, workspace
+typecheck/build, immutable file verification, and a real CUDA run with no
+truncation pass. One isolated B retry is next; C, forced-loss, NORMAL, and
+corpus work remain blocked meanwhile.
 
 ## Historical incident evidence (superseded as current acceptance)
 

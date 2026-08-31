@@ -95,15 +95,15 @@ Owner-authorized on 2026-08-24 and continued by the
 `ACADEMICCLOUD-FINAL-STABILIZATION-LOCAL-COMPUTE-PIVOT` Owner override. This is
 not a new task: it changes only the next Compute architecture/execution
 strategy. The authoritative branch is
-`codex/project-memory-reconcile-20260817`; pushed HEAD before this correction is
-`8b1d65a96a7a139ed63e35ab9c4a53499cedd3c2`. Production is exact frontend/Core
-`58b8468eac37fb994f06994375b81a6f53a6de79`, schema v32/history 001–032 with
-`local_pull`. ADR-038 final v7/prompt-v4 and the append-only ruleset registry are
+`codex/project-memory-reconcile-20260817`; the current exact pushed Compute
+correction is `6b68d1af2b8099feff8a0b5bcecb8070536b07a2`. Production is exact frontend/Core
+`b3debfbeb5fd63c969229b6645cdabef779cdd9d`, schema v33/history 001–033 with
+`local_pull`. ADR-038 final v8/prompt-v5 and the append-only ruleset registry are
 live. The main Compute symlink still selects exact `58b8468…`; systemd remains
 disabled/inactive and the environment remains `PAUSED`. Immutable release
-`64d2136…` is present and hash-verified and contains the llama structured-response
-transport repair plus child-process lease keeper, but is not main current and
-must not be enabled. Pre-existing
+`6b68d1a…` is present and hash-verified and contains the generic Qwen context-
+budget correction plus the prior structured-response and child-process keeper
+repairs, but is not main current and must not be enabled. Pre-existing
 untracked `%SystemDrive%/` and `scratch/` remain untouched. No GitHub-hosted
 production Compute was used.
 
@@ -121,14 +121,14 @@ qualification, and separately authorized emergency implementation, but is
 disabled for normal production AI. The local Windows machine remains a
 disposable outbound-only Compute executor; its absence must leave AI jobs
 queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
-and the Local Pull protocol are deployed. The same-process and worker-thread
-lease scheduling defects are repaired by exact child-process release
-`64d2136…`; its isolated A retries proved safe network and invalid-result failure
-semantics. The production disk hard gate now passes, and the Owner accepts
-transient network loss under fail-safe recovery. The bounded v8/prompt-v5
-successor plus registry-only schema33 admission passes full tests and a real
-local GPU modern-monograph qualification; production remains v7/schema32 until
-exact release, encrypted backup, and schema33 cutover.
+and the Local Pull protocol are deployed. The independent child keeper and
+270-second lease tolerance are live. The production disk hard gate passes, and
+transient network loss is accepted under fail-safe recovery. A is green on
+v8/schema33. B's 《元朝秘史》 run then failed closed at `content_truncated`; the
+generic cause was a 64 KiB multilingual page budget that could exceed the pinned
+16K Qwen context. Exact `6b68d1a…` distributes an 8 KiB page budget, pins a 32K
+context, and explicitly disables reasoning without changing v8/prompt-v5
+semantics or authority gates. Its isolated B retry is next.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -378,13 +378,12 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Remaining
 
-- Use a clean modern-scholarly resource through the ordinary production UI for
-  the next A target and execute only its exact job/attempt on isolated
-  `64d2136…`; main worker stays disabled/inactive/PAUSED. A must pass positive
-  class support, exact field provenance, no hallucinated fact promotion,
-  display, human authority, callback/current-attempt, API, and UI. Transient
-  network failures are acceptable only when they fail safe, requeue/recover,
-  and later complete without false metadata.
+- A is green. Use exact isolated `6b68d1a…` for one fresh normal-UI B retry on
+  《元朝秘史》（校勘本）; main worker stays disabled/inactive/PAUSED. B must pass
+  positive primary-source/edition evidence, exact field provenance, no
+  hallucinated promotion, historical display, human authority,
+  callback/current-attempt, API, and UI. Then run the OCR-needed multilingual C
+  canary under the same gates.
 - After the three canaries pass, prove forced-loss/lease recovery, then place
   the exact worker in NORMAL, enabled/active, concurrency one.
 - Pass the ordinary signed-in Owner website gate for both new-upload automatic
@@ -409,19 +408,16 @@ A is green on live v8/schema33. Normal UI job `7496e55d…` / attempt
 scholarly record with positive class evidence, exact per-field provenance, no
 invented contributor, no human-authority write, and refresh-stable UI.
 
-The current sequence blocker is bounded B transport tolerance. Normal UI B job
-`d127fb0e…` / attempt `dabf828b…` received four Core HTTP-200 heartbeats before
-a public-network interruption exceeded the former 90-second lease. The old
-attempt failed closed without callback and Core requeued exact attempt
-`e2194dca…`. The initial 180-second tolerance was also exhausted after four
-further HTTP-200 heartbeats and another continuous network gap; attempt
-`e2194dca…` again sent no callback and recovered automatically. The evidence-
-calibrated correction uses a 270-second lease to cover the measured 230-second
-historical outage with margin while retaining the 30-second cadence, independent
-keeper, stale-attempt rejection, and fail-closed callback checks. Exact-release
-and deploy that change,
-then run one B retry. Do not enter C, forced-loss, NORMAL, or corpus execution
-until B passes.
+The current sequence blocker is B completion. The 270-second lease is deployed
+and its independent keeper/fail-closed semantics are unchanged. The first
+post-deploy B candidate (`敦煌变文校注`) reached a stable invalid-evidence result
+and was not patched per book. Normal UI then created 《元朝秘史》（校勘本） job
+`857554fd…` / attempt `f451c3e9…`; exact isolated `b3debfb…` completed bounded
+extraction and sent a failed callback, but Qwen finished at length with
+`content_truncated`. No AI evidence or canonical fact was promoted. The generic
+transport cause is repaired and exact release `6b68d1a…` is hash-verified. One
+fresh normal-UI B retry on that release is next. Do not enter C, forced-loss,
+NORMAL, or corpus execution until B passes.
 
 ## Last Verification
 
@@ -513,13 +509,25 @@ refresh-persistence gates. B's first isolated attempt safely recovered from a
 network interruption but did not complete. The bounded lease-tolerance change
 passes Backend 381/381, workspace typecheck/build, and compiled acceptance.
 
+2026-08-31: exact Core `b3debfb…`/schema33 is live and healthy with the
+270-second lease. The normal-UI 《元朝秘史》（校勘本） run failed closed as
+`compute_invalid_result/content_truncated` after bounded extraction; the
+callback persisted only failure and no canonical metadata was promoted. A
+deterministic tokenizer probe reproduced that the former multilingual page
+payload could make the prompt itself exceed the 16K context. Exact pushed
+Compute `6b68d1a…` distributes an 8 KiB input budget across selected pages,
+pins 32K context, and explicitly disables reasoning while preserving the exact
+v8/prompt-v5 contract and all trusted validators. Compute 114/114 plus two
+expected skips, contracts 3/3, workspace typecheck/build, immutable inventory
+`2b5affa4…`, and a real CUDA inference without truncation pass. Main current is
+still `58b8468…`, PAUSED/disabled/inactive.
+
 ## Next Action
 
-Keep production Core `b349595…`/schema33 healthy and main Compute `58b8468…`
-PAUSED/disabled/inactive. Freeze/push the bounded lease-tolerance checkpoint,
-assemble exact immutable Core and Compute releases without rebuilding unrelated
-GPU runtimes, deploy the same-schema Core correction, and run exactly one
-isolated retry of B's current queued attempt. B PASS unlocks C; all three then
+Keep production Core `b3debfb…`/schema33 healthy and main Compute `58b8468…`
+PAUSED/disabled/inactive. Through the ordinary production UI create a fresh B
+retry, read back its exact job/attempt identity, and run exactly one hardened
+isolated iteration on immutable `6b68d1a…`. B PASS unlocks C; all three then
 unlock forced-loss, exact main-release cutover, NORMAL, browser-only automatic-
 cataloguing acceptance, concurrency-one corpus execution, and the final clean
 sweep.
