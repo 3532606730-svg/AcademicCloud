@@ -629,6 +629,67 @@ test("an invalid class-only candidate identity preserves the validated unknown r
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
+test("canonical title recovery tolerates only script-neutral layout separators", async () => {
+  const canonical = {
+    ...emptyCanonical("元朝秘史（校勘本）"),
+    materialClass: "unknown" as const,
+    contributors: [],
+  };
+  const page = {
+    pageIndex: 1,
+    text: "题名：元朝秘史 校勘本",
+    evidenceOrigin: "native_text" as const,
+    ocrEngine: null,
+    ocrConfidence: null,
+  };
+  const inspection: PdfTextInspection = {
+    pageCount: 1,
+    pageIndices: [1],
+    pages: [page],
+    embeddedMetadata: {},
+    complete: true,
+    hasUsableTextLayer: true,
+  };
+  let calls = 0;
+  const result = await deriveIntelligentBibliography(inspection, {
+    async infer() {
+      calls += 1;
+      return {
+        status: "ambiguous",
+        overallConfidence: 80,
+        canonical,
+        classSupport: [],
+        fields: [],
+        warnings: ["uncertain_material_class"],
+      };
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(result.status, "ambiguous");
+  assert.equal(result.canonical?.canonicalTitle, "元朝秘史（校勘本）");
+  const evidence = result.fields.find((field) => field.fieldName === "canonicalTitle");
+  assert.equal(evidence?.confidence, 0);
+  assert.equal(evidence?.sourcePageIndex, 1);
+
+  await assert.rejects(
+    deriveIntelligentBibliography({ ...inspection, pages: [{ ...page, text: "题名：元朝秘史" }] }, {
+      async infer() {
+        return {
+          status: "ambiguous",
+          overallConfidence: 80,
+          canonical,
+          classSupport: [],
+          fields: [],
+          warnings: ["uncertain_material_class"],
+        };
+      },
+    }),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
+});
+
 test("positive scholarly class support retains a Qwen proposal without title-keyword dependence", async () => {
   const source = fixture({
     ...emptyCanonical("A General History of Inner Asia"),

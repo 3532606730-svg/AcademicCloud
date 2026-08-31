@@ -1232,18 +1232,22 @@ function recoverLiteralCanonicalTitleEvidence(
   inspection: PdfTextInspection,
 ): Record<string, unknown> | undefined {
   const evidenceText = canonical.canonicalTitle.normalize("NFKC").replace(/\s+/gu, " ").trim();
-  if (!evidenceText) return undefined;
+  const titleKey = compactKey(evidenceText);
+  if ([...titleKey].length < 4) return undefined;
   for (const page of [...inspection.pages].sort((left, right) => left.pageIndex - right.pageIndex)) {
     if (page.evidenceOrigin === undefined || sourceTypeFor(classifySuggestionPage(page)) === undefined) continue;
     const pageText = page.text.normalize("NFKC").replace(/\s+/gu, " ").trim();
-    if (!pageText.includes(evidenceText)) continue;
+    const exact = pageText.includes(evidenceText);
+    if (!exact && !compactKey(pageText).includes(titleKey)) continue;
+    const supportingExcerpt = exact ? evidenceText : pageText;
+    if ([...supportingExcerpt].length > 2_048) continue;
     return authoritativeEvidence({
       fieldName: "canonicalTitle",
       scopeKey: "",
       confidence: 0,
       sourcePageIndex: page.pageIndex,
       evidenceOrigin: page.evidenceOrigin,
-      evidenceText,
+      evidenceText: supportingExcerpt,
     }, inspection).persisted;
   }
   return undefined;
