@@ -44,7 +44,7 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `b3debfb…` V33 / A PASS / B CONTEXT-FIX RETRY PENDING / MAIN WORKER DISABLED+PAUSED | The 270-second lease is live. 《元朝秘史》 then failed closed on a generic over-context `content_truncated`; exact hash-verified Compute `6b68d1a…` bounds multilingual input and is the sole next isolated B candidate. C remains blocked on B |
+| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `b3debfb…` V33 / A PASS / V9-SCHEMA34 RELEASE PENDING / MAIN WORKER DISABLED+PAUSED | Exact `6b68d1a…` removed input overflow, but the real B retry proved the full prompt Schema induced exhaustive null/empty output and another safe `content_truncated`. Pushed `9dbbc94…` adds compact sparse v9/prompt-v6 plus append-only schema34; exact release/backup/cutover and one fresh B retry are next. C remains blocked on B |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
 | GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
@@ -87,13 +87,15 @@ WORK_CLASSIFICATION_V4_V5_V6=HISTORICAL_ATTEMPTS_NOT_FINAL_ACCEPTANCE
 FINAL_ARCHITECTURE_CORRECTION=ADR038_DEPLOYED
 FINAL_RULESET_V8_PROMPT_V5=PRODUCTION
 PRODUCTION_SCHEMA_V33=PASS
+FINAL_RULESET_V9_PROMPT_V6=9DBBC94_PUSHED_RELEASE_PENDING
+DEVELOPMENT_SCHEMA_V34=PASS_APPEND_ONLY_ADMISSION
 OFF_HOST_SCHEMA_V27_BACKUP_GATE=PASS
 PRODUCTION_SCHEMA_V28=PASS
 OFF_HOST_SCHEMA_V30_BACKUP_GATE=PASS
 PRODUCTION_SCHEMA_V31=PASS
 OFF_HOST_SCHEMA_V31_BACKUP_GATE=PASS
 A_CANARY=PASS_FRESH_UI_JOB_7496E55D_V8
-B_CANARY=PENDING_EXACT_6B68D1A_CONTEXT_FIX_RETRY
+B_CANARY=PENDING_EXACT_V9_PROMPT_V6_SPARSE_RELEASE
 NETWORK_ACCEPTANCE=TRANSIENT_TIMEOUTS_ALLOWED_ONLY_WITH_FAIL_SAFE_REQUEUE_RECOVERY_AND_EVENTUAL_SUCCESS
 NETWORK_SHARED_LAYER=SING_TUN_TCP_CONNECT_TIMEOUT_PROVEN; DIRECT_WLAN_GREEN
 NETWORK_WSL_AMPLIFICATION=NAT_OVER_UNSTABLE_TUN; NO_SECOND_CAUSE_PROVEN

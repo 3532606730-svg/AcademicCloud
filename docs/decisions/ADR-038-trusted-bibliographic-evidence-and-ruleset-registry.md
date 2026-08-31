@@ -1,7 +1,7 @@
 # ADR-038 — Trusted Bibliographic Evidence Validation and Ruleset Registry
 
 **Date:** 2026-08-28
-**Status:** Accepted by Owner; schema v32 registry deployed; bounded v8/prompt-v5 admission and three-canary acceptance pending
+**Status:** Accepted by Owner; v8/schema33 deployed and A passed; bounded v9/prompt-v6 sparse-output admission and B/C acceptance pending
 
 ## Context
 
@@ -102,6 +102,30 @@ never invents the excerpt or fact and class evidence never receives this repair.
 Schema v33 is an append-only registry admission for exact v8/prompt-v5. It does
 not rebuild, update, delete, or reinterpret the immutable evidence table or the
 v1–v7 registry history. Unknown identities remain foreign-key rejected.
+
+### Bounded v9 sparse-output correction
+
+The real B retry on exact `6b68d1a…` proved that the v8 input/context correction
+removed the former prompt overflow but did not remove completion truncation.
+The pinned model treated the full nested fact JSON Schema embedded in the
+generic-JSON prompt as an exhaustive checklist and emitted unsupported null or
+empty canonical paths plus corresponding evidence rows until the 8,192-token
+completion limit. The worker failed closed, persisted only the failure, and
+promoted no bibliographic fact.
+
+Ruleset `l1-intelligent-library01-v9` with prompt
+`l1-intelligent-library01-prompt-v6` changes only that model-facing guidance.
+It supplies a compact sparse shape contract and explicitly defines controlled
+field names as vocabulary rather than fields to populate. Unsupported, absent,
+null, and empty facts and their evidence rows must be omitted. The complete
+trusted canonical parser, per-field value/excerpt validation, class-support
+requirements, human authority, current-attempt callback checks, and persisted
+structured-output digest remain unchanged and authoritative.
+
+Schema v34 is one append-only registry admission for exact v9/prompt-v6. It
+does not rebuild or reinterpret the evidence table or alter immutable v1–v8
+history; unregistered contract/ruleset/prompt combinations remain foreign-key
+rejected.
 
 ### Human authority and first contributor enrichment
 

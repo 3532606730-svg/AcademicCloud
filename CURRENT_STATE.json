@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-31T10:05:00+08:00",
+  "updatedAt": "2026-08-31T10:45:00+08:00",
   "authoritativeBranch": "codex/project-memory-reconcile-20260817",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
@@ -23,6 +23,7 @@
     "mainLocalWorkerMode": "DISABLED_PAUSED_SAFE_ISOLATION",
     "currentLocalComputeRelease": "58b8468eac37fb994f06994375b81a6f53a6de79",
     "qualifiedNonCurrentComputeRelease": "6b68d1af2b8099feff8a0b5bcecb8070536b07a2",
+    "pendingSparseOutputCheckpoint": "9dbbc944d499c0b867e75dc7edf9bcf4e56b16f8",
     "priorLlamaTransportFixRelease": "60205d09c64e510e293a6cef4e971b7fe710030a",
     "failedThreadedComputeRelease": "be2e26de7e77fedfcc0ceefd57ef982f45ca03e3",
     "currentLocalComputeCanary": {
@@ -47,16 +48,16 @@
     },
     "finalArchitectureCorrection": {
       "decision": "ADR-038",
-      "status": "production_v33_a_pass_b_context_fix_retry_pending",
+      "status": "production_v33_a_pass_v9_schema34_release_pending",
       "productionFrozenAt": "b3debfbeb5fd63c969229b6645cdabef779cdd9d",
       "productionSchema": 33,
-      "finalRuleset": "l1-intelligent-library01-v8",
-      "finalPrompt": "l1-intelligent-library01-prompt-v5",
-      "developmentSchema": 33,
+      "finalRuleset": "l1-intelligent-library01-v9",
+      "finalPrompt": "l1-intelligent-library01-prompt-v6",
+      "developmentSchema": 34,
       "v6CanaryAllowed": false,
       "normalAllowedBeforeThreeCanaries": false,
       "normalOwnerBrowserPathRequired": true,
-      "implementationVerification": "Backend 381/381; Frontend 284/284; Compute 114/114 plus 2 expected release-runtime skips; Compute contracts 3/3; OSS contracts 3/3; workspace typecheck/build; compiled acceptance first migration count 33 and redeploy 0; exact Compute 6b68d1a inventory verified",
+      "implementationVerification": "v9/schema34 checkpoint 9dbbc94: Backend 381/381; Frontend 284/284; Compute 114/114 plus 2 expected release-runtime skips; Compute contracts 3/3; OSS contracts 3/3; workspace typecheck/build; compiled acceptance first migration count 34 and redeploy 0; registry immutability/FK and sparse-contract regression pass",
       "productionUnchanged": false,
       "mainWorker": "PAUSED/disabled/inactive",
       "v8LocalQualification": {
@@ -105,7 +106,14 @@
         "contextFixRelease": "6b68d1af2b8099feff8a0b5bcecb8070536b07a2",
         "contextFixInventorySha256": "2b5affa48bd6e972defc9aa4ca572223767545f16495040b72ab68960a3b38c6",
         "contextFix": "8 KiB total / 1024 characters per selected page; 32768-token context; reasoning off; v8/prompt-v5 and trusted validation unchanged",
-        "status": "pending fresh normal-UI B retry on exact isolated 6b68d1a"
+        "retryAttemptId": "746bfd6f-b5bb-48d3-b86d-49104594cd54",
+        "retryRelease": "6b68d1af2b8099feff8a0b5bcecb8070536b07a2",
+        "retryFailure": "compute_invalid_result/content_truncated after input overflow was removed; full nested prompt Schema induced exhaustive null/empty facts and evidence rows",
+        "retryCallback": "HTTP 200 failed callback only; no AI evidence or canonical metadata promotion",
+        "sparseOutputCheckpoint": "9dbbc944d499c0b867e75dc7edf9bcf4e56b16f8",
+        "sparseOutputGeneration": "l1-intelligent-library01-v9/l1-intelligent-library01-prompt-v6/schema34",
+        "sparseOutputFix": "compact sparse model-facing shape; controlled fields are vocabulary not checklist; trusted canonical/evidence/class/authority/callback validation unchanged",
+        "status": "pending exact v9 release, encrypted schema33 backup, schema34 cutover, and fresh normal-UI B retry"
       }
     },
     "aCanaryLeaseIncident": {
@@ -445,11 +453,12 @@
       "bibliographyMaterialClassificationV4V5V6": "historical attempts deployed through fd97542/schema31; not final acceptance",
       "bibliographyFinalArchitectureV7": "ADR-038 v7/prompt-v4 remains the live 58b8468/schema32 generation; its normal-UI A failure was safe but exposed llama fact-transport limits",
       "bibliographyFinalArchitectureV8": "ADR-038 bounded addendum deployed as exact b349595/schema33; fresh normal-UI A passed",
-      "backend": "evidence-calibrated 270-second lease tolerance: typecheck/build pass; 381/381 tests pass",
-      "frontend": "b349595/schema33: typecheck/build pass; 284/284 tests pass",
-      "compute": "b349595/prompt-v5 exact isolated A pass; B fail-closed recovery under network gap; Compute code unchanged by lease tolerance",
+      "bibliographySparseOutputV9": "9dbbc944d499c0b867e75dc7edf9bcf4e56b16f8 pushed; compact sparse prompt-v6 plus append-only schema34; release/deploy pending",
+      "backend": "v9/schema34: typecheck/build pass; 381/381 tests pass",
+      "frontend": "v9/schema34: typecheck/build pass; 284/284 tests pass",
+      "compute": "v9/prompt-v6 sparse-output contract; 114/114 plus 2 expected release-runtime skips; trusted validation unchanged",
       "computeContracts": "3/3 pass",
-      "compiledAcceptance": "bounded lease tolerance working tree pass; first migration count 33; redeploy migration count 0",
+      "compiledAcceptance": "v9/schema34 pass; first migration count 34; redeploy migration count 0",
       "workspaceBuild": "pass",
       "diffCheck": "pass"
     },
@@ -563,10 +572,10 @@
       "sanitizedChildEnvironment": "Paddle GPU and Qwen CUDA both pass without LD_LIBRARY_PATH inheritance"
     },
     "localPullProtocol": {
-      "developmentSchema": 32,
-      "state": "production_v32_green_worker_disabled_paused_a_retry_failed",
+      "developmentSchema": 34,
+      "state": "production_v33_green_worker_disabled_paused_v9_release_pending",
       "transport": "outbound-only HTTPS long poll; no laptop inbound endpoint",
-      "leaseMilliseconds": 90000,
+      "leaseMilliseconds": 270000,
       "heartbeatMilliseconds": 30000,
       "capabilityRenewalMilliseconds": 900000,
       "sourceAuthorization": "renewable only for exact running local_pull job/attempt/worker, unexpired lease/deadline, active manager context, unchanged source fingerprint and exact object",
@@ -574,19 +583,19 @@
       "nativeText": "script-neutral Unicode quality gate; multilingual plus real Russian/Mongolistic PDF fixture pass",
       "runtimeLifecycle": "lazy concurrency-one Paddle/Qwen reuse; five-minute idle TTL; PAUSED cold; component failure invalidation; shutdown cgroup cleanup",
       "activationGate": "15-second structured systemd stability, restart-count, exact release, non-root identity and environment-permission verification with rollback",
-      "reviewCheckpoint": "Production remains safe at 58b8468/schema32; v8/prompt-v5 and registry-only schema33 passed full repository and real local GPU qualification; exact release, backup, cutover, and A/B/C remain pending",
-      "evidenceQuality": "script-neutral corruption/usability remains; v8 requires exact field-value support and positive page-bound class evidence without per-book title overrides or synthesized provenance",
-      "productionCore": "58b8468eac37fb994f06994375b81a6f53a6de79; schema 32; local_pull; active; health/ready/integrity/foreign-keys pass",
+      "reviewCheckpoint": "Production remains safe at b3debfb/schema33; A passed; real 6b68d1a B retry failed closed and proved full-Schema checklist completion truncation; v9/prompt-v6 checkpoint 9dbbc94 and schema34 admission pass repository verification; exact release/backup/cutover pending",
+      "evidenceQuality": "script-neutral corruption/usability remains; v9 retains exact field-value support and positive page-bound class evidence without per-book title overrides or synthesized provenance; sparse prompt does not weaken trusted validation",
+      "productionCore": "b3debfbeb5fd63c969229b6645cdabef779cdd9d; schema 33; local_pull; active; health/ready/integrity/foreign-keys last verified pass",
       "activeComputeRelease": "58b8468eac37fb994f06994375b81a6f53a6de79 main current; systemd disabled/inactive; environment PAUSED; must not be enabled",
       "qualifiedNonCurrentComputeRelease": "64d213684d14ecd605f41aff42a1daa4ebf5b6e6; full hashes pass; child-process keeper and llama transport fix present",
       "leaseKeeperCorrection": "worker-thread isolation failed attempt 8; successor uses a lightweight Node child process plus callback-time IPC probe; 90-second lease unchanged; no schema change",
       "delayedExpiredCallback": "fails closed before and after attempt replacement",
       "legacyClaimBypass": "local_pull attempts rejected on legacy claim endpoint",
       "recovery": "expired lease atomically queues a new attempt generation for redispatch; matching terminal success/failure retries are idempotent",
-      "tests": "v8/schema33: Backend 381/381; Frontend 284/284; Compute 112/112 plus 2 expected release-runtime skips; Compute contracts 3/3; OSS contracts 3/3; workspace typecheck/build; compiled acceptance 33/0"
+      "tests": "v9/schema34: Backend 381/381; Frontend 284/284; Compute 114/114 plus 2 expected release-runtime skips; Compute contracts 3/3; OSS contracts 3/3; workspace typecheck/build; compiled acceptance 34/0"
     },
     "ownerBoundaryAction": null,
-    "next": "preserve production 58b8468/schema32 and main worker PAUSED/disabled/inactive. Create and push the exact v8/schema33 checkpoint, assemble immutable Core/Compute releases, pass a fresh encrypted schema32 off-host backup gate, then deploy schema33. Only afterward create a fresh normal-UI A target and execute one isolated exact-release iteration. A PASS unlocks B/C; all three unlock forced-loss, exact main-release cutover, NORMAL browser-only acceptance, concurrency-one corpus execution, and the final clean sweep"
+    "next": "preserve production b3debfb/schema33 and main worker 58b8468 PAUSED/disabled/inactive. Assemble exact immutable Core/Compute from pushed 9dbbc94, pass a fresh encrypted schema33 off-host backup gate, then deploy only append-only schema34/v9. Only afterward create a fresh normal-UI B attempt and execute one isolated exact-release iteration. B PASS unlocks C; A/B/C unlock forced-loss, exact main-release cutover, NORMAL browser-only acceptance, concurrency-one corpus execution, and the final clean sweep"
   },
   "intelligentLibraryProgram": {
     "task": "L1-INTELLIGENT-LIBRARY01",

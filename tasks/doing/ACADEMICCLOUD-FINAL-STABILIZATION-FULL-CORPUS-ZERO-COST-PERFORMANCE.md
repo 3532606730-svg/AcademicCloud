@@ -95,15 +95,16 @@ Owner-authorized on 2026-08-24 and continued by the
 `ACADEMICCLOUD-FINAL-STABILIZATION-LOCAL-COMPUTE-PIVOT` Owner override. This is
 not a new task: it changes only the next Compute architecture/execution
 strategy. The authoritative branch is
-`codex/project-memory-reconcile-20260817`; the current exact pushed Compute
-correction is `6b68d1af2b8099feff8a0b5bcecb8070536b07a2`. Production is exact frontend/Core
+`codex/project-memory-reconcile-20260817`; the current exact pushed sparse-output
+correction is `9dbbc944d499c0b867e75dc7edf9bcf4e56b16f8`. Production is exact frontend/Core
 `b3debfbeb5fd63c969229b6645cdabef779cdd9d`, schema v33/history 001–033 with
-`local_pull`. ADR-038 final v8/prompt-v5 and the append-only ruleset registry are
-live. The main Compute symlink still selects exact `58b8468…`; systemd remains
-disabled/inactive and the environment remains `PAUSED`. Immutable release
-`6b68d1a…` is present and hash-verified and contains the generic Qwen context-
-budget correction plus the prior structured-response and child-process keeper
-repairs, but is not main current and must not be enabled. Pre-existing
+`local_pull`. ADR-038 v8/prompt-v5 and the append-only ruleset registry are live.
+The main Compute symlink still selects exact `58b8468…`; systemd remains
+disabled/inactive and the environment remains `PAUSED`. Historical immutable
+release `6b68d1a…` remains hash-verified but its real B retry proved that the
+full nested output Schema still induced exhaustive null/empty model output.
+Checkpoint `9dbbc94…` adds immutable v9/prompt-v6 sparse guidance and append-only
+schema34; its exact release is not yet assembled or deployed. Pre-existing
 untracked `%SystemDrive%/` and `scratch/` remain untouched. No GitHub-hosted
 production Compute was used.
 
@@ -124,11 +125,15 @@ queued/recoverable and every non-AI Core path available. WSL2/CUDA/Paddle/Qwen
 and the Local Pull protocol are deployed. The independent child keeper and
 270-second lease tolerance are live. The production disk hard gate passes, and
 transient network loss is accepted under fail-safe recovery. A is green on
-v8/schema33. B's 《元朝秘史》 run then failed closed at `content_truncated`; the
-generic cause was a 64 KiB multilingual page budget that could exceed the pinned
-16K Qwen context. Exact `6b68d1a…` distributes an 8 KiB page budget, pins a 32K
-context, and explicitly disables reasoning without changing v8/prompt-v5
-semantics or authority gates. Its isolated B retry is next.
+v8/schema33. B's first 《元朝秘史》 run failed closed at `content_truncated`
+because the former 64 KiB evidence input could exceed the pinned context. Exact
+`6b68d1a…` removed that input overflow, but the fresh normal-UI retry again
+failed closed after real CUDA output enumerated unsupported null/empty facts
+and evidence rows from the full nested prompt Schema. Checkpoint `9dbbc94…`
+replaces only that model-facing checklist with a compact sparse contract; the
+trusted parser, fact-value evidence, class support, authority, and callback
+gates are unchanged. Exact release, schema33 encrypted off-host backup, and
+append-only schema34 cutover precede the next isolated B retry.
 
 Pre-WSL/reboot recovery gates at this checkpoint:
 
@@ -378,8 +383,10 @@ Owner source inventory (all available; `OWNER_SOURCE_UNAVAILABLE=0`):
 
 ## Remaining
 
-- A is green. Use exact isolated `6b68d1a…` for one fresh normal-UI B retry on
-  《元朝秘史》（校勘本）; main worker stays disabled/inactive/PAUSED. B must pass
+- A is green. Assemble exact Core/Compute from `9dbbc94…`, pass a fresh encrypted
+  schema33 off-host backup gate, apply only append-only migration 034, and use a
+  fresh normal-UI B attempt on 《元朝秘史》（校勘本）; main worker stays
+  disabled/inactive/PAUSED. B must pass
   positive primary-source/edition evidence, exact field provenance, no
   hallucinated promotion, historical display, human authority,
   callback/current-attempt, API, and UI. Then run the OCR-needed multilingual C
@@ -414,10 +421,15 @@ post-deploy B candidate (`敦煌变文校注`) reached a stable invalid-evidence
 and was not patched per book. Normal UI then created 《元朝秘史》（校勘本） job
 `857554fd…` / attempt `f451c3e9…`; exact isolated `b3debfb…` completed bounded
 extraction and sent a failed callback, but Qwen finished at length with
-`content_truncated`. No AI evidence or canonical fact was promoted. The generic
-transport cause is repaired and exact release `6b68d1a…` is hash-verified. One
-fresh normal-UI B retry on that release is next. Do not enter C, forced-loss,
-NORMAL, or corpus execution until B passes.
+`content_truncated`. No AI evidence or canonical fact was promoted. A normal-UI
+retry produced attempt `746bfd6f-b5bb-48d3-b86d-49104594cd54`; exact isolated
+`6b68d1a…` removed the input overflow and completed bounded extraction, but the
+real CUDA output showed the model treating the embedded full JSON Schema as an
+exhaustive optional-field checklist and again reached `content_truncated`.
+Core accepted only the failed callback; no evidence or canonical fact was
+promoted. Pushed `9dbbc94…` is the generic sparse-output correction. Do not
+enter C, forced-loss, NORMAL, or corpus execution until its exact release,
+schema34 cutover, and one fresh B retry pass.
 
 ## Last Verification
 
@@ -522,12 +534,26 @@ expected skips, contracts 3/3, workspace typecheck/build, immutable inventory
 `2b5affa4…`, and a real CUDA inference without truncation pass. Main current is
 still `58b8468…`, PAUSED/disabled/inactive.
 
+The subsequent normal-UI retry retained job `857554fd…` with current attempt
+`746bfd6f…`. Exact isolated `6b68d1a…` claimed only that identity and completed
+the bounded source/extraction path, but Qwen again finished at the 8,192-token
+limit. Its process-local observed structure established the remaining generic
+cause: the full nested JSON Schema in the prompt induced evidence rows for
+unsupported null/empty optional fields. The worker sent only a failed callback,
+Core persisted `compute_invalid_result`, and no metadata/evidence was promoted.
+Checkpoint `9dbbc94…` replaces the embedded Schema with a compact sparse shape
+contract, admits immutable v9/prompt-v6 through migration 034, and keeps every
+trusted validator unchanged. Backend 381/381, Frontend 284/284, Compute 114/114
+plus two expected skips, contracts 3/3, OSS 3/3, workspace typecheck/build,
+compiled acceptance 34/0, registry immutability/FK, and `git diff --check` pass.
+
 ## Next Action
 
 Keep production Core `b3debfb…`/schema33 healthy and main Compute `58b8468…`
-PAUSED/disabled/inactive. Through the ordinary production UI create a fresh B
-retry, read back its exact job/attempt identity, and run exactly one hardened
-isolated iteration on immutable `6b68d1a…`. B PASS unlocks C; all three then
+PAUSED/disabled/inactive. Assemble and verify exact immutable Core/Compute from
+`9dbbc94…`, pass the fresh encrypted schema33 off-host backup gate, deploy only
+append-only schema34/v9, then use the ordinary production UI to create a fresh
+B attempt and run exactly one isolated exact-release iteration. B PASS unlocks C; all three then
 unlock forced-loss, exact main-release cutover, NORMAL, browser-only automatic-
 cataloguing acceptance, concurrency-one corpus execution, and the final clean
 sweep.

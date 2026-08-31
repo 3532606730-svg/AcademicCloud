@@ -30,11 +30,13 @@ INTERNAL_BETA_STARTED=false
 The Local Compute Owner override continues this program and changes only the
 production Compute strategy. Live production is exact frontend/Core
 `b3debfbeb5fd63c969229b6645cdabef779cdd9d` at schema/history 33 with
-`COMPUTE_PROVIDER=local_pull`. Schema33 and final v8/prompt-v5 are deployed.
+`COMPUTE_PROVIDER=local_pull`. Schema33 and v8/prompt-v5 are deployed.
 The main Local Compute symlink still selects exact `58b8468…`, systemd remains
 `disabled`/`inactive`, and the environment remains `PAUSED`; this old release
-must not be enabled. Immutable Compute release `6b68d1a…` is hash-verified and
-is reserved for the next isolated B retry.
+must not be enabled. Immutable Compute release `6b68d1a…` is hash-verified but
+its real B retry exposed the remaining full-Schema checklist defect. Pushed
+checkpoint `9dbbc94…` is the sole next v9/prompt-v6 sparse-output candidate;
+its exact release and schema34 admission are not yet deployed.
 
 The first normal-UI v7 A run exposed a bounded llama.cpp transport defect,
 not an authority or persistence escape: the deeply nested fact schema could not
@@ -367,13 +369,21 @@ persisted, but Qwen returned `content_truncated` after reaching the 8,192-token
 completion bound. No evidence or canonical metadata was promoted. A generic
 transport audit reproduced that the former 64 KiB page payload could make a
 Chinese prompt itself exceed the pinned 16K context. Exact pushed Compute
-`6b68d1a…` now distributes an 8 KiB page budget across selected pages, pins a
-32K context, and explicitly disables reasoning while preserving v8/prompt-v5,
-all evidence/authority gates, and the 8,192-token completion bound. Compute
-114/114 (plus two expected runtime skips), contracts 3/3, workspace
-typecheck/build, immutable file verification, and a real CUDA run with no
-truncation pass. One isolated B retry is next; C, forced-loss, NORMAL, and
-corpus work remain blocked meanwhile.
+`6b68d1a…` distributes an 8 KiB page budget across selected pages, pins a 32K
+context, and explicitly disables reasoning while preserving v8/prompt-v5 and
+all evidence/authority gates. A fresh normal-UI retry created attempt
+`746bfd6f-b5bb-48d3-b86d-49104594cd54`; exact isolated CUDA execution removed
+the input overflow but again reached the 8,192-token completion bound. The
+observed structure proved the model treated the complete nested prompt Schema
+as an exhaustive checklist and emitted unsupported null/empty fact evidence.
+The worker sent only a failed callback; Core persisted no AI evidence or
+canonical metadata. Pushed `9dbbc94…` replaces only that model-facing Schema
+with a compact sparse contract, registers immutable v9/prompt-v6 through
+append-only migration 034, and retains the full trusted validator. Backend
+381/381, Frontend 284/284, Compute 114/114 plus two expected skips, contracts
+3/3, OSS 3/3, typecheck/build, compiled acceptance 34/0, and diff check pass.
+C, forced-loss, NORMAL, and corpus work remain blocked on exact release,
+schema34 cutover, and one successful B retry.
 
 ## Historical incident evidence (superseded as current acceptance)
 
@@ -879,6 +889,9 @@ in production after deployment; no browser automation was run per Owner override
 
 ## Next action
 
-STOP for the Owner's manual product acceptance of HOTFIX-META-UX01 (fast
-naming, batch naming, sorting, regression surfaces) and the internal-beta
-decision. Do not begin internal beta or invite users.
+Keep production `b3debfb…`/schema33 healthy and main Local Compute
+`58b8468…` PAUSED/disabled/inactive. Assemble exact Core/Compute from
+`9dbbc94…`, complete the fresh encrypted schema33 off-host backup gate, and
+apply only append-only migration 034 before the next normal-UI B attempt and
+one exact isolated iteration. B then C must pass before forced-loss, NORMAL,
+browser-only product acceptance, or the concurrency-one full corpus.
