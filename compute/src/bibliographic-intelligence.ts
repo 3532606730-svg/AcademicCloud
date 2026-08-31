@@ -1227,6 +1227,28 @@ function validatesCanonicalFact(
   return values.every((value) => evidenceContainsValue(evidenceText, value));
 }
 
+function recoverLiteralCanonicalTitleEvidence(
+  canonical: IntelligentCanonicalBibliography,
+  inspection: PdfTextInspection,
+): Record<string, unknown> | undefined {
+  const evidenceText = canonical.canonicalTitle.normalize("NFKC").replace(/\s+/gu, " ").trim();
+  if (!evidenceText) return undefined;
+  for (const page of [...inspection.pages].sort((left, right) => left.pageIndex - right.pageIndex)) {
+    if (page.evidenceOrigin === undefined || sourceTypeFor(classifySuggestionPage(page)) === undefined) continue;
+    const pageText = page.text.normalize("NFKC").replace(/\s+/gu, " ").trim();
+    if (!pageText.includes(evidenceText)) continue;
+    return authoritativeEvidence({
+      fieldName: "canonicalTitle",
+      scopeKey: "",
+      confidence: 0,
+      sourcePageIndex: page.pageIndex,
+      evidenceOrigin: page.evidenceOrigin,
+      evidenceText,
+    }, inspection).persisted;
+  }
+  return undefined;
+}
+
 function validatedFieldEvidence(
   canonical: IntelligentCanonicalBibliography,
   modelFields: unknown[],
@@ -1304,6 +1326,10 @@ function pruneUnsupportedFieldFacts(
     } catch {
       invalid.add(key);
     }
+  }
+  if (!accepted.has("canonicalTitle:")) {
+    const recoveredTitleEvidence = recoverLiteralCanonicalTitleEvidence(canonical, inspection);
+    if (recoveredTitleEvidence !== undefined) accepted.set("canonicalTitle:", recoveredTitleEvidence);
   }
   if (!accepted.has("canonicalTitle:")) {
     throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", ["canonicalTitle:"]);

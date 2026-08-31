@@ -934,6 +934,37 @@ test("missing field provenance gets one bounded repair pass then evidence-only p
   assert.deepEqual(pruned.canonical?.contributors, []);
   assert.equal(pruned.canonical?.publication.editionNumber, null);
   assert.equal(calls, 2);
+
+  calls = 0;
+  const withoutTitleEvidence: BibliographicReasoner = {
+    async infer() {
+      calls += 1;
+      return {
+        status: "auto_apply",
+        overallConfidence: 95,
+        canonical,
+        classSupport,
+        fields: incompleteFields.filter((field) => field.fieldName !== "canonicalTitle"),
+        warnings: [],
+      };
+    },
+  };
+  const titleRecovered = await deriveIntelligentBibliography(inspection, withoutTitleEvidence);
+  assert.equal(titleRecovered.status, "ambiguous");
+  assert.equal(titleRecovered.canonical?.canonicalTitle, canonical.canonicalTitle);
+  assert.equal(calls, 2);
+  const titleEvidence = titleRecovered.fields.find((field) => field.fieldName === "canonicalTitle");
+  assert.deepEqual({ ...titleEvidence, evidenceSha256: undefined }, {
+    fieldName: "canonicalTitle",
+    scopeKey: "",
+    confidence: 0,
+    sourcePageIndex: 1,
+    evidenceOrigin: "native_text",
+    sourceType: "title_page",
+    pageClass: "title_page",
+    evidenceSha256: undefined,
+  });
+  assert.match(String(titleEvidence?.evidenceSha256), /^[a-f0-9]{64}$/u);
 });
 
 test("seven bounded representative bibliographic cases remain inside the strict domain", async () => {
@@ -1050,11 +1081,14 @@ test("sparse model facts are normalized locally before the strict shared contrac
       return { ...model, fields: [] };
     },
   };
-  await assert.rejects(
-    deriveIntelligentBibliography(inspection, singlePageFallback),
-    (error: unknown) => error instanceof BibliographicIntelligenceError
-      && error.diagnostic === "field_evidence_invalid",
+  const literalTitleOnly = await deriveIntelligentBibliography(inspection, singlePageFallback);
+  assert.equal(literalTitleOnly.status, "ambiguous");
+  assert.deepEqual(literalTitleOnly.canonical?.contributors, []);
+  assert.deepEqual(
+    literalTitleOnly.fields.map((field) => `${field.fieldName}:${field.scopeKey}`).sort(),
+    ["canonicalTitle:", "materialClass:"],
   );
+  assert.equal(literalTitleOnly.fields.find((field) => field.fieldName === "canonicalTitle")?.confidence, 0);
 
   const nonAuthoritativeClassification: BibliographicReasoner = {
     async infer() {
@@ -1065,10 +1099,14 @@ test("sparse model facts are normalized locally before the strict shared contrac
       };
     },
   };
-  await assert.rejects(
-    deriveIntelligentBibliography(inspection, nonAuthoritativeClassification),
-    /invalid_result/u,
+  const ignoredPageClassification = await deriveIntelligentBibliography(inspection, nonAuthoritativeClassification);
+  assert.equal(ignoredPageClassification.status, "ambiguous");
+  assert.deepEqual(ignoredPageClassification.canonical?.contributors, []);
+  assert.deepEqual(
+    ignoredPageClassification.fields.map((field) => `${field.fieldName}:${field.scopeKey}`).sort(),
+    ["canonicalTitle:", "materialClass:"],
   );
+  assert.equal(ignoredPageClassification.fields.find((field) => field.fieldName === "canonicalTitle")?.pageClass, "title_page");
 
   const contradictoryStatus: BibliographicReasoner = {
     async infer() {
