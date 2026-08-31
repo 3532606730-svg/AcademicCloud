@@ -12,6 +12,9 @@ import {
   parseLlamaChatCompletionResponse,
   QWEN_CONTEXT_TOKENS,
   QWEN_MAX_COMPLETION_TOKENS,
+  QWEN_REASONING_INPUT_CHARACTERS,
+  QWEN_REASONING_MODE,
+  QWEN_REASONING_PAGE_CHARACTERS,
   type BibliographicReasoner,
 } from "../src/bibliographic-intelligence.js";
 import type { PdfTextInspection } from "../src/suggestion.js";
@@ -199,10 +202,46 @@ test("llama GPU offload is explicit, bounded, and CPU-safe by default", () => {
   assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "all" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
 });
 
-test("Qwen completion budget fits the pinned context and truncated JSON fails explicitly", () => {
-  assert.equal(QWEN_CONTEXT_TOKENS, 16_384);
+test("Qwen completion and multilingual evidence budgets fit the pinned context", () => {
+  assert.equal(QWEN_CONTEXT_TOKENS, 32_768);
   assert.equal(QWEN_MAX_COMPLETION_TOKENS, 8_192);
+  assert.equal(QWEN_REASONING_INPUT_CHARACTERS, 8_192);
+  assert.equal(QWEN_REASONING_PAGE_CHARACTERS, 1_024);
+  assert.equal(QWEN_REASONING_MODE, "off");
   assert.ok(QWEN_MAX_COMPLETION_TOKENS < QWEN_CONTEXT_TOKENS);
+  assert.ok(QWEN_REASONING_INPUT_CHARACTERS + QWEN_MAX_COMPLETION_TOKENS < QWEN_CONTEXT_TOKENS);
+});
+
+test("Qwen reasoning input preserves a bounded slice from every selected page", async () => {
+  const paragraph = "书名：历史史料现代整理本。校勘者：测试编辑。出版社：测试书局。二〇二六年。本篇序言说明该历史文献的形成、传抄系统、现代校勘过程、整理原则、版本依据与学术用途。";
+  const pages = Array.from({ length: 8 }, (_, index) => ({
+    pageIndex: index + 1,
+    text: `${paragraph}${index} `.repeat(24),
+    evidenceOrigin: "native_text" as const,
+    ocrEngine: null,
+    ocrConfidence: null,
+  }));
+  let prompt: Record<string, unknown> | undefined;
+  await deriveIntelligentBibliography({
+    pageCount: pages.length,
+    pageIndices: pages.map((page) => page.pageIndex),
+    pages,
+    embeddedMetadata: {},
+    complete: true,
+    hasUsableTextLayer: true,
+  }, {
+    async infer(value) {
+      prompt = JSON.parse(value) as Record<string, unknown>;
+      return { status: "no_bibliography", overallConfidence: 0, canonical: null, classSupport: [], fields: [], warnings: [] };
+    },
+  });
+  const suppliedPages = prompt?.pages as Array<{ pageIndex: number; text: string }>;
+  assert.deepEqual(suppliedPages.map((page) => page.pageIndex), pages.map((page) => page.pageIndex));
+  assert.ok(suppliedPages.every((page) => page.text.length <= QWEN_REASONING_PAGE_CHARACTERS));
+  assert.ok(suppliedPages.reduce((total, page) => total + page.text.length, 0) <= QWEN_REASONING_INPUT_CHARACTERS);
+});
+
+test("truncated Qwen JSON fails explicitly", () => {
   const truncated = new TextEncoder().encode(JSON.stringify({
     choices: [{ finish_reason: "length", message: { content: "{\"status\":\"ambiguous\"" } }],
   }));

@@ -84,12 +84,20 @@ const MATERIAL_CLASS_SUPPORT_SIGNALS = [
 ] as const;
 type MaterialClassSupportSignal = (typeof MATERIAL_CLASS_SUPPORT_SIGNALS)[number];
 const AUTO_APPLY_CONFIDENCE = 85;
-const MAX_REASONING_INPUT_CHARACTERS = 64 * 1024;
+// Keep the evidence payload well below the pinned context even for scripts
+// that tokenize close to one token per character. The previous 64 KiB budget
+// could consume (or exceed) the complete 16K context before generation and
+// make llama.cpp context-shift away the system/contract prefix. Spread the
+// bounded payload across the selected pages so title/edition/class evidence
+// is not monopolized by one long page.
+export const QWEN_REASONING_INPUT_CHARACTERS = 8 * 1024;
+export const QWEN_REASONING_PAGE_CHARACTERS = 1_024;
 const MAX_CLASS_REASONING_INPUT_CHARACTERS = 32 * 1024;
 const MAX_CLASS_EVIDENCE_CHUNK_CHARACTERS = 320;
 const MAX_REASONING_OUTPUT_BYTES = 384 * 1024;
-export const QWEN_CONTEXT_TOKENS = 16_384;
+export const QWEN_CONTEXT_TOKENS = 32_768;
 export const QWEN_MAX_COMPLETION_TOKENS = 8_192;
+export const QWEN_REASONING_MODE = "off" as const;
 const QWEN_CLASS_MAX_COMPLETION_TOKENS = 2_048;
 // llama.cpp's grammar compiler rejects the deeply nested JSON Schema form used
 // by the hosted API. Keep the transport-level constraint to generic JSON and
@@ -594,6 +602,7 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
       "--threads", "2",
       "--parallel", "1",
       "--gpu-layers", String(this.#config.gpuLayers),
+      "--reasoning", QWEN_REASONING_MODE,
       "--no-webui",
       "--log-disable",
     ], { shell: false, stdio: ["ignore", "ignore", "pipe"], windowsHide: true, env: { PATH: process.env.PATH, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" } });
@@ -678,11 +687,11 @@ function reasoningInspectionFor(inspection: PdfTextInspection): PdfTextInspectio
     ...usablePages.filter((page) => sourceTypeFor(classifySuggestionPage(page)) !== undefined),
     ...usablePages.filter((page) => sourceTypeFor(classifySuggestionPage(page)) === undefined),
   ];
-  let remaining = MAX_REASONING_INPUT_CHARACTERS;
+  let remaining = QWEN_REASONING_INPUT_CHARACTERS;
   const pages: PdfTextInspection["pages"] = [];
   for (const page of priorityPages) {
     if (remaining <= 0) break;
-    const text = page.text.normalize("NFC").slice(0, Math.min(8_192, remaining));
+    const text = page.text.normalize("NFC").slice(0, Math.min(QWEN_REASONING_PAGE_CHARACTERS, remaining));
     remaining -= text.length;
     if (text.length > 0) pages.push({ ...page, text });
   }
