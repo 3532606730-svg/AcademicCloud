@@ -11,6 +11,9 @@ import { SqlitePersistence } from "../../src/persistence/sqlite/persistence.js";
 export const INITIAL_MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL("../../../database/migrations/", import.meta.url),
 );
+export const RULESET_ADMISSIONS_DIRECTORY = fileURLToPath(
+  new URL("../../../database/ruleset-admissions/", import.meta.url),
+);
 
 export interface TestPersistence {
   database: SqliteDatabase;

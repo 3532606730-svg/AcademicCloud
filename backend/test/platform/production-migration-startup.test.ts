@@ -7,8 +7,10 @@ import { test, type TestContext } from "node:test";
 import { createApplication } from "../../src/platform/application.js";
 import { openSqliteDatabase } from "../../src/persistence/sqlite/database.js";
 import { runMigrations } from "../../src/persistence/sqlite/migrations.js";
+import { runRulesetAdmissions } from "../../src/persistence/sqlite/ruleset-admissions.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { INITIAL_MIGRATIONS_DIRECTORY } from "../persistence/helpers.js";
+import { RULESET_ADMISSIONS_DIRECTORY } from "../persistence/helpers.js";
 
 // A pinned v4-only directory plus the REAL repository migrations directory
 // (which includes migration 005 through the current append-only head): deterministic pending-migration scenarios
@@ -64,7 +66,7 @@ test("development startup initializes and migrates a disposable database", async
   const databasePath = join(mkdtempSync(join(tmpdir(), "academiccloud-devstart-")), "dev.sqlite");
   const app = await createApplication(
     { ...productionConfig(), environment: "test", appOrigin: "http://127.0.0.1:5173" },
-    { databasePath, migrationsDirectory: latest },
+    { databasePath, migrationsDirectory: latest, rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY },
     new InMemoryStorageAdapter(),
   );
   try {
@@ -82,14 +84,35 @@ test("production startup with a current schema succeeds without mutating it", as
   const databasePath = join(directory, "prod.sqlite");
   const database = openSqliteDatabase(databasePath);
   runMigrations(database, latest);
+  runRulesetAdmissions(database, RULESET_ADMISSIONS_DIRECTORY);
   database.close();
 
-  const app = await createApplication(productionConfig(), { databasePath, migrationsDirectory: latest }, new InMemoryStorageAdapter());
+  const app = await createApplication(productionConfig(), { databasePath, migrationsDirectory: latest, rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY }, new InMemoryStorageAdapter());
   try {
     assert.equal((await app.inject({ method: "GET", url: "/api/health" })).statusCode, 200);
   } finally {
     await app.close();
   }
+  assert.equal(readSchemaVersion(databasePath), 34);
+  rmSync(directory, { recursive: true, force: true });
+});
+
+test("production startup with a current schema but missing ruleset admission fails closed", async (context) => {
+  const { latest } = migrationFixtures(context);
+  const directory = mkdtempSync(join(tmpdir(), "academiccloud-prodrulesetfail-"));
+  const databasePath = join(directory, "prod.sqlite");
+  const database = openSqliteDatabase(databasePath);
+  runMigrations(database, latest);
+  database.close();
+
+  await assert.rejects(
+    () => createApplication(productionConfig(), {
+      databasePath,
+      migrationsDirectory: latest,
+      rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY,
+    }, new InMemoryStorageAdapter()),
+    /ruleset admission is not current/u,
+  );
   assert.equal(readSchemaVersion(databasePath), 34);
   rmSync(directory, { recursive: true, force: true });
 });
@@ -103,7 +126,7 @@ test("production startup with a pending migration fails closed", async (context)
   database.close();
 
   await assert.rejects(
-    () => createApplication(productionConfig(), { databasePath, migrationsDirectory: latest }, new InMemoryStorageAdapter()),
+    () => createApplication(productionConfig(), { databasePath, migrationsDirectory: latest, rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY }, new InMemoryStorageAdapter()),
     /schema is not current/,
   );
 
@@ -136,7 +159,7 @@ test("production startup refuses an uninitialized database", async (context) => 
   const databasePath = join(directory, "prod.sqlite");
 
   await assert.rejects(
-    () => createApplication(productionConfig(), { databasePath, migrationsDirectory: latest }, new InMemoryStorageAdapter()),
+    () => createApplication(productionConfig(), { databasePath, migrationsDirectory: latest, rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY }, new InMemoryStorageAdapter()),
     /schema is not initialized/,
   );
   rmSync(directory, { recursive: true, force: true });

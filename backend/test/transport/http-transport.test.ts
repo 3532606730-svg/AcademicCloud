@@ -23,6 +23,7 @@ import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adap
 import { createApplication } from "../../src/platform/application.js";
 
 const MIGRATIONS_DIRECTORY = fileURLToPath(new URL("../../../database/migrations", import.meta.url));
+const RULESET_ADMISSIONS_DIRECTORY = fileURLToPath(new URL("../../../database/ruleset-admissions", import.meta.url));
 const ORIGIN = "http://127.0.0.1";
 
 test("bodyless actions reach the handler over real HTTP; JSON-header-empty-body is rejected with 400", async () => {
@@ -35,7 +36,7 @@ test("bodyless actions reach the handler over real HTTP; JSON-header-empty-body 
 
   const app = await createApplication(
     { host: "127.0.0.1", port: 0, logLevel: "silent", environment: "test", appOrigin: ORIGIN },
-    { databasePath: dbPath, migrationsDirectory: MIGRATIONS_DIRECTORY },
+    { databasePath: dbPath, migrationsDirectory: MIGRATIONS_DIRECTORY, rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY },
     new InMemoryStorageAdapter(),
   );
 

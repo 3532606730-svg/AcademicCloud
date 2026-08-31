@@ -17,6 +17,7 @@ const backendDirectory = resolve(scriptDirectory, "..");
 const repositoryDirectory = resolve(backendDirectory, "..");
 const distDirectory = join(backendDirectory, "dist");
 const migrationsDirectory = join(repositoryDirectory, "database", "migrations");
+const rulesetAdmissionsDirectory = join(repositoryDirectory, "database", "ruleset-admissions");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-e08-"));
 const databasePath = join(temporaryDirectory, "academiccloud.sqlite");
 const backupPath = join(temporaryDirectory, "academiccloud.backup.sqlite");
@@ -34,6 +35,7 @@ const environment = {
   APP_ORIGIN: "https://cloud.example.edu",
   DATABASE_PATH: databasePath,
   MIGRATIONS_DIRECTORY: migrationsDirectory,
+  RULESET_ADMISSIONS_DIRECTORY: rulesetAdmissionsDirectory,
   STORAGE_PROVIDER: "aliyun-oss",
   OSS_ENDPOINT: "https://academiccloud-private.oss-ap-southeast-3.aliyuncs.com",
   OSS_REGION: "oss-ap-southeast-3",
@@ -50,6 +52,7 @@ const applicationDiagnostics = new WeakMap();
 
 try {
   const firstMigration = runJson(join(distDirectory, "persistence", "sqlite", "migrate.js"));
+  const firstRulesetAdmission = runJson(join(distDirectory, "persistence", "sqlite", "admit-rulesets.js"));
   const account = runJson(
     join(distDirectory, "operations", "account-main.js"),
     ["--login=CompiledAcceptance", "--password-stdin"],
@@ -284,11 +287,14 @@ try {
   await stopApplication(application);
   application = undefined;
   const redeployMigration = runJson(join(distDirectory, "persistence", "sqlite", "migrate.js"));
+  const redeployRulesetAdmission = runJson(join(distDirectory, "persistence", "sqlite", "admit-rulesets.js"));
 
   const result = {
     status: "ok",
     compiledBuild: true,
     firstMigrationCount: firstMigration.appliedVersions.length,
+    firstRulesetAdmissionCount: firstRulesetAdmission.admitted.length,
+    currentRulesetVersion: firstRulesetAdmission.current.rulesetVersion,
     provisionedLogin: account.account.loginName,
     health: health.status,
     readiness: readiness.status,
@@ -352,8 +358,11 @@ try {
       && restoredMetadata.originalFilename === "compiled-acquisition.pdf"
       && restoredMetadata.metadata?.identifiers?.[0]?.value === "compiled-1",
     redeployMigrationCount: redeployMigration.appliedVersions.length,
+    redeployRulesetAdmissionCount: redeployRulesetAdmission.admitted.length,
   };
   assert.equal(result.firstMigrationCount, 34);
+  assert.equal(result.firstRulesetAdmissionCount, 2);
+  assert.equal(result.currentRulesetVersion, "l1-intelligent-library01-v11");
   assert.equal(result.provisionedLogin, "CompiledAcceptance");
   assert.equal(result.health, "ok");
   assert.equal(result.readiness, "ready");
@@ -378,6 +387,7 @@ try {
   assert.equal(result.restoredScholarlyRecordValid, true);
   assert.equal(result.restoredScholarlyIdentityValid, true);
   assert.equal(result.restoredCanonicalMetadataValid, true);
+  assert.equal(result.redeployRulesetAdmissionCount, 0);
   assert.equal(result.redeployMigrationCount, 0);
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } finally {

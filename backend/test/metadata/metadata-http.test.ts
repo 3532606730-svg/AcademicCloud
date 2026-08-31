@@ -10,7 +10,7 @@ import { runMigrations } from "../../src/persistence/sqlite/migrations.js";
 import { SqlitePersistence } from "../../src/persistence/sqlite/persistence.js";
 import { createApplication } from "../../src/platform/application.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
-import { INITIAL_MIGRATIONS_DIRECTORY } from "../persistence/helpers.js";
+import { INITIAL_MIGRATIONS_DIRECTORY, RULESET_ADMISSIONS_DIRECTORY } from "../persistence/helpers.js";
 
 const ORIGIN = "http://127.0.0.1";
 const PASSWORD = "metadata-http-password-123";
@@ -65,7 +65,7 @@ test("metadata HTTP is exact-holding scoped, manager-only for writes, CAS guarde
 
   const app = await createApplication(
     { host: "127.0.0.1", port: 0, logLevel: "silent", environment: "test", appOrigin: ORIGIN },
-    { databasePath, migrationsDirectory: INITIAL_MIGRATIONS_DIRECTORY },
+    { databasePath, migrationsDirectory: INITIAL_MIGRATIONS_DIRECTORY, rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY },
     new InMemoryStorageAdapter(),
   );
 

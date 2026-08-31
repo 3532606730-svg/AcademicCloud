@@ -520,6 +520,32 @@ export async function runLiveRemoteChecks({
     ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
   }));
 
+  const expectedRuleset = manifest?.bibliographyRulesetAdmission?.current ?? null;
+  const admittedRulesets = Array.isArray(db?.rulesetAdmissions) ? db.rulesetAdmissions : null;
+  const exactRulesetAdmitted = expectedRuleset !== null && admittedRulesets !== null
+    ? admittedRulesets.some((entry) =>
+        entry?.contractVersion === expectedRuleset.contractVersion
+          && entry?.rulesetVersion === expectedRuleset.rulesetVersion
+          && entry?.promptVersion === expectedRuleset.promptVersion)
+    : null;
+  checks.push(createCheck({
+    id: "DB_BIBLIOGRAPHY_RULESET", category: "database", requirement: "required",
+    status: exactRulesetAdmitted === null ? "UNKNOWN" : exactRulesetAdmitted ? "PASS" : "FAIL",
+    summary: exactRulesetAdmitted === null
+      ? "bibliographic ruleset admission comparison unavailable"
+      : exactRulesetAdmitted
+        ? `required bibliographic ruleset ${expectedRuleset.rulesetVersion} is admitted`
+        : `required bibliographic ruleset ${expectedRuleset.rulesetVersion} is not admitted`,
+    evidence: {
+      expected: expectedRuleset,
+      admittedCount: admittedRulesets?.length ?? null,
+      exactMatch: exactRulesetAdmitted,
+    },
+    provenance: "REMOTE_SQLITE_READONLY", observedAt: at,
+    detail: !heavyChecksAllowed ? "skipped by resource guard" : null,
+    ...(!sshUp ? { dependency: "SSH_CONNECTION" } : {}),
+  }));
+
   // ---- backups
   const [backupFiles, backupAge, backupManifests, ageKey] = sshUp
     ? await mapLimit([remote.backupFileCount[0], remote.backupAgeCount[0], remote.backupManifestCount[0], remote.ageKeyStat[0]], MAX_SSH_CONCURRENCY, (args) => runRemoteCheck(sshAlias, args))

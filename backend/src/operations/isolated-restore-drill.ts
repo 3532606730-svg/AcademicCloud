@@ -44,6 +44,7 @@ export async function runIsolatedRestoreDrill(options: {
   backupPath: string;
   receiptPath: string;
   migrationsDirectory: string;
+  rulesetAdmissionsDirectory: string;
   liveDatabasePath: string;
   now?: Date;
   createApplicationForDrill?: typeof createApplication;
@@ -84,7 +85,11 @@ export async function runIsolatedRestoreDrill(options: {
         environment: "production",
         appOrigin: "https://restore-drill.invalid",
       },
-      { databasePath: restoredPath, migrationsDirectory: resolve(options.migrationsDirectory) },
+      {
+        databasePath: restoredPath,
+        migrationsDirectory: resolve(options.migrationsDirectory),
+        rulesetAdmissionsDirectory: resolve(options.rulesetAdmissionsDirectory),
+      },
       new InMemoryStorageAdapter(),
     );
 

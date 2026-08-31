@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 export interface SqliteConfig {
   databasePath: string;
   migrationsDirectory: string;
+  rulesetAdmissionsDirectory: string;
 }
 
 function readPath(name: string, value: string | undefined, fallback: string, workingDirectory: string): string {
@@ -30,6 +31,12 @@ export function loadSqliteConfig(
       "MIGRATIONS_DIRECTORY",
       environment.MIGRATIONS_DIRECTORY,
       "../database/migrations",
+      workingDirectory,
+    ),
+    rulesetAdmissionsDirectory: readPath(
+      "RULESET_ADMISSIONS_DIRECTORY",
+      environment.RULESET_ADMISSIONS_DIRECTORY,
+      "../database/ruleset-admissions",
       workingDirectory,
     ),
   };

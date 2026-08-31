@@ -61,6 +61,7 @@ async function main(): Promise<void> {
         backupPath: command.backup,
         receiptPath: command.receipt,
         migrationsDirectory: sqliteConfig.migrationsDirectory,
+        rulesetAdmissionsDirectory: sqliteConfig.rulesetAdmissionsDirectory,
         liveDatabasePath: sqliteConfig.databasePath,
       }),
     };

@@ -13,6 +13,7 @@ import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adap
 import { fileURLToPath } from "node:url";
 
 const MIGRATIONS_DIRECTORY = fileURLToPath(new URL("../../../database/migrations", import.meta.url));
+const RULESET_ADMISSIONS_DIRECTORY = fileURLToPath(new URL("../../../database/ruleset-admissions", import.meta.url));
 const ORIGIN = "http://127.0.0.1";
 const PASSWORD = "library-http-password-123";
 
@@ -78,7 +79,7 @@ test("Shared Library HTTP routes enforce server-derived membership and non-discl
   storage.putObject({ objectKey, sizeBytes: 12, etag: "etag", checksumAlgorithm: "md5", checksum: "1B2M2Y8AsgTpgAmY7PhCfg==", mediaType: "application/pdf", modifiedAt: new Date("2026-08-18T12:00:00.000Z") });
   const app = await createApplication(
     { host: "127.0.0.1", port: 0, logLevel: "silent", environment: "test", appOrigin: ORIGIN },
-    { databasePath: dbPath, migrationsDirectory: MIGRATIONS_DIRECTORY },
+    { databasePath: dbPath, migrationsDirectory: MIGRATIONS_DIRECTORY, rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY },
     storage,
   );
 

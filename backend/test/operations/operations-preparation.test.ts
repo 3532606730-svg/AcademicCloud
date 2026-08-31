@@ -28,7 +28,8 @@ import { runIsolatedRestoreDrill } from "../../src/operations/isolated-restore-d
 import { parseArguments } from "../../src/operations/recovery-main.js";
 import { openSqliteDatabase } from "../../src/persistence/sqlite/database.js";
 import { runMigrations } from "../../src/persistence/sqlite/migrations.js";
-import { INITIAL_MIGRATIONS_DIRECTORY } from "../persistence/helpers.js";
+import { runRulesetAdmissions } from "../../src/persistence/sqlite/ruleset-admissions.js";
+import { INITIAL_MIGRATIONS_DIRECTORY, RULESET_ADMISSIONS_DIRECTORY } from "../persistence/helpers.js";
 
 const NOW = new Date("2026-08-17T12:00:00.000Z");
 const SOURCE_COMMIT = "a".repeat(40);
@@ -39,6 +40,7 @@ async function createFixture(directory: string) {
   const receiptPath = join(directory, "backup.receipt.json");
   const database = openSqliteDatabase(sourcePath);
   runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY);
+  runRulesetAdmissions(database, RULESET_ADMISSIONS_DIRECTORY);
   database.close();
   const generated = await createVerifiedBackupGeneration(
     sourcePath,
@@ -269,6 +271,7 @@ test("isolated restore drill uses only a verified copy, memory storage, and clea
       backupPath: fixture.backupPath,
       receiptPath: fixture.receiptPath,
       migrationsDirectory: INITIAL_MIGRATIONS_DIRECTORY,
+      rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY,
       liveDatabasePath: join(directory, "live-production.sqlite"),
       now: NOW,
     });
@@ -298,6 +301,7 @@ test("restore drill rejects live source and cleans a task-owned stage on injecte
         backupPath: fixture.backupPath,
         receiptPath: fixture.receiptPath,
         migrationsDirectory: INITIAL_MIGRATIONS_DIRECTORY,
+        rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY,
         liveDatabasePath: fixture.backupPath,
         now: NOW,
       }),
@@ -311,6 +315,7 @@ test("restore drill rejects live source and cleans a task-owned stage on injecte
         backupPath: fixture.backupPath,
         receiptPath: fixture.receiptPath,
         migrationsDirectory: INITIAL_MIGRATIONS_DIRECTORY,
+        rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY,
         liveDatabasePath: join(directory, "live.sqlite"),
         now: NOW,
         createApplicationForDrill: async () => {
@@ -329,6 +334,7 @@ test("restore drill rejects live source and cleans a task-owned stage on injecte
         backupPath: fixture.backupPath,
         receiptPath: fixture.receiptPath,
         migrationsDirectory: INITIAL_MIGRATIONS_DIRECTORY,
+        rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY,
         liveDatabasePath: join(directory, "live.sqlite"),
         now: NOW,
         createApplicationForDrill: async () => {

@@ -14,6 +14,8 @@
     "start": "node dist/main.js",
     "db:migrate": "tsx --env-file-if-exists=.env src/persistence/sqlite/migrate.ts",
     "db:migrate:prod": "node dist/persistence/sqlite/migrate.js",
+    "db:admit-rulesets": "tsx --env-file-if-exists=.env src/persistence/sqlite/admit-rulesets.ts",
+    "db:admit-rulesets:prod": "node dist/persistence/sqlite/admit-rulesets.js",
     "maintenance": "tsx --env-file-if-exists=.env src/maintenance/main.ts",
     "maintenance:prod": "node dist/maintenance/main.js",
     "backup": "tsx --env-file-if-exists=.env src/operations/backup-main.ts",

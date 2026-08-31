@@ -13,6 +13,7 @@ import { SuggestionService } from "../suggestions/suggestion-service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
 import { openSqliteDatabase } from "../persistence/sqlite/database.js";
 import { assertMigrationsCurrent, runMigrations } from "../persistence/sqlite/migrations.js";
+import { assertRulesetAdmissionsCurrent, runRulesetAdmissions } from "../persistence/sqlite/ruleset-admissions.js";
 import { SqlitePersistence } from "../persistence/sqlite/persistence.js";
 import type { StorageAdapter } from "../storage/storage-adapter.js";
 import { createApp } from "./app.js";
@@ -42,8 +43,10 @@ export async function createApplication(
     // Development/test keep the convenient automatic migration path.
     if (config.environment === "production") {
       assertMigrationsCurrent(database, sqliteConfig.migrationsDirectory);
+      assertRulesetAdmissionsCurrent(database, sqliteConfig.rulesetAdmissionsDirectory);
     } else {
       runMigrations(database, sqliteConfig.migrationsDirectory);
+      runRulesetAdmissions(database, sqliteConfig.rulesetAdmissionsDirectory);
     }
     const persistence = new SqlitePersistence(database);
     const passwordHasher = new Argon2idPasswordHasher();

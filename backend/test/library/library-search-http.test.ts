@@ -12,6 +12,7 @@ import { createApplication } from "../../src/platform/application.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 
 const MIGRATIONS_DIRECTORY = fileURLToPath(new URL("../../../database/migrations", import.meta.url));
+const RULESET_ADMISSIONS_DIRECTORY = fileURLToPath(new URL("../../../database/ruleset-admissions", import.meta.url));
 const ORIGIN = "http://127.0.0.1";
 const PASSWORD = "search-http-password-123";
 
@@ -84,7 +85,7 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
 
   const app = await createApplication(
     { host: "127.0.0.1", port: 0, logLevel: "silent", environment: "test", appOrigin: ORIGIN },
-    { databasePath: dbPath, migrationsDirectory: MIGRATIONS_DIRECTORY },
+    { databasePath: dbPath, migrationsDirectory: MIGRATIONS_DIRECTORY, rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY },
     new InMemoryStorageAdapter(),
   );
 

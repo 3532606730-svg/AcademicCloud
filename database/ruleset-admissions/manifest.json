@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "current": {
+    "contractVersion": 1,
+    "rulesetVersion": "l1-intelligent-library01-v11",
+    "promptVersion": "l1-intelligent-library01-prompt-v7"
+  },
+  "admissions": [
+    {
+      "filename": "001_l1_intelligent_library01_v10.sql",
+      "sha256": "e8f323ce08b4ec505139ffec4243167bc0c0acb498315aaec131f45bff18492a",
+      "contractVersion": 1,
+      "rulesetVersion": "l1-intelligent-library01-v10",
+      "promptVersion": "l1-intelligent-library01-prompt-v7"
+    },
+    {
+      "filename": "002_l1_intelligent_library01_v11.sql",
+      "sha256": "b55be365c539dbc2b7194badf4555c627dae39bcf3eea367156b751b7c65ddcc",
+      "contractVersion": 1,
+      "rulesetVersion": "l1-intelligent-library01-v11",
+      "promptVersion": "l1-intelligent-library01-prompt-v7"
+    }
+  ]
+}

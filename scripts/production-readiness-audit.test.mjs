@@ -371,11 +371,28 @@ function fakeExecutorFor(outputs) {
     }
     if (key.includes("sudo -n node -e")) {
       if (key.includes("ARTIFACT-MANIFEST")) {
-        return { ok: true, kind: "OK", stdout: JSON.stringify({ sourceCommit: "e5217e8c73bab4941a56599b8be97a34ebf1e06b", platform: "linux", architecture: "x64", nodeVersion: "v24.19.0" }), stderr: "", exitCode: 0, durationMs: 1, limited: false };
+        return { ok: true, kind: "OK", stdout: JSON.stringify({
+          sourceCommit: "e5217e8c73bab4941a56599b8be97a34ebf1e06b",
+          platform: "linux",
+          architecture: "x64",
+          nodeVersion: "v24.19.0",
+          bibliographyRulesetAdmission: {
+            current: {
+              contractVersion: 1,
+              rulesetVersion: "l1-intelligent-library01-v11",
+              promptVersion: "l1-intelligent-library01-prompt-v7",
+            },
+          },
+        }), stderr: "", exitCode: 0, durationMs: 1, limited: false };
       }
       return {
         ok: true, kind: "OK", stdout: JSON.stringify({
           integrity: "ok", fkRows: 0, schemaVersion: 4,
+          rulesetAdmissions: [{
+            contractVersion: 1,
+            rulesetVersion: "l1-intelligent-library01-v11",
+            promptVersion: "l1-intelligent-library01-prompt-v7",
+          }],
           counts: { accounts: 1, sessions: 7, folders: 4, files: 6 },
           states: { pending_upload: 1, active: 5, deleted: 0, purging: 0, purged: 0 },
         }), stderr: "", exitCode: 0, durationMs: 1, limited: false,
@@ -418,6 +435,7 @@ test("live checks preserve healthy host evidence but refuse backup-inventory fal
   assert.equal(byId.get("DB_INTEGRITY").status, "PASS");
   assert.equal(byId.get("DB_FOREIGN_KEYS").status, "PASS");
   assert.equal(byId.get("DB_SCHEMA").status, "PASS");
+  assert.equal(byId.get("DB_BIBLIOGRAPHY_RULESET").status, "PASS");
   assert.equal(byId.get("RELEASE_SERVICE_WRITE_DENIED").status, "PASS");
   assert.equal(byId.get("BACKUP_PRESENT").status, "UNKNOWN");
   assert.equal(byId.get("BACKUP_OFFHOST_VERIFIED").status, "UNKNOWN");
@@ -432,6 +450,38 @@ test("live checks preserve healthy host evidence but refuse backup-inventory fal
   assert.equal(report.summary.overall, "INDETERMINATE");
   assert.ok(report.summary.warn >= 3);
   assert.ok(report.summary.unknown >= 2);
+});
+
+test("release-required bibliographic ruleset admission fails closed when the live registry lacks the exact identity", async () => {
+  const base = fakeExecutorFor(FIXTURE_OUTPUTS);
+  const withoutCurrentAdmission = async (alias, args) => {
+    const key = args.join(" ").replace(/\s+/g, " ").trim();
+    if (key.includes("sudo -n node -e") && key.includes("scholarly_bibliographic_ruleset_registry")) {
+      return {
+        ok: true,
+        kind: "OK",
+        stdout: JSON.stringify({
+          integrity: "ok",
+          fkRows: 0,
+          schemaVersion: 4,
+          rulesetAdmissions: [],
+          counts: {},
+          states: {},
+        }),
+        stderr: "",
+        exitCode: 0,
+        durationMs: 1,
+        limited: false,
+      };
+    }
+    return base(alias, args);
+  };
+  const checks = await runLiveRemoteChecks({
+    runRemoteCheck: withoutCurrentAdmission,
+    sshAlias: "academiccloud-prod",
+    repoChecks: [{ id: "GIT_MIGRATION_FILES", category: "repo", evidence: { maxVersion: 4 } }],
+  });
+  assert.equal(checks.find((check) => check.id === "DB_BIBLIOGRAPHY_RULESET").status, "FAIL");
 });
 
 test("ux01-ready profile flips the undeployed files domain into required failures", async () => {

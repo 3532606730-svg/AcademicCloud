@@ -108,10 +108,13 @@ test("Local Pull systemd runs only the immutable D-drive WSL release with outbou
   assert.match(assembler, /--include-workspace-root=true/u);
   assert.match(assembler, /npm ci --omit=dev --workspace @academiccloud\/compute-contracts --workspace @academiccloud\/compute/u);
   assert.match(assembler, /--include-workspace-root=false/u);
-  assert.match(assembler, /QWEN_SHA256="061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"/u);
+  assert.match(assembler, /NUEXTRACT_REVISION="28a1aae6288c5d50bdf999ca2e572240966d669b"/u);
+  assert.match(assembler, /NUEXTRACT_SHA256="1e6792f3402347785eb54e965255329e96204233b4bbf717c67a99f267736383"/u);
+  assert.match(assembler, /NUEXTRACT_BYTE_SIZE="3161424864"/u);
+  assert.match(assembler, /reasoningModel:[\s\S]*family: "NuExtract3"[\s\S]*shared: true/u);
   assert.match(assembler, /LLAMA_SOURCE_REVISION="de699957b92f490efebad149665b0dccf127eaff"/u);
   assert.match(assembler, /find \. -type f ! -name release-files\.sha256/u);
-  assert.match(activation, /sha256sum --check --strict release-files\.sha256/u);
+  assert.match(activation, /verify-local-compute-release\.sh" "\$RELEASE_ROOT"/u);
   assert.match(activation, /ln -sfn "\$RELEASE_ROOT"/u);
   assert.match(activation, /mv -Tf/u);
   assert.match(activation, /systemctl enable academiccloud-local-compute\.service/u);
@@ -157,7 +160,10 @@ test("Core production artifact excludes OCR/PDF-render runtime and retains only 
 
   assert.match(artifact, /"compute-contracts\/dist\/index\.js"/u);
   assert.match(artifact, /"compute-contracts\/dist\/bibliography\.js"/u);
-  assert.match(artifact, /schemaVersion: 3/u);
+  assert.match(artifact, /schemaVersion: 4/u);
+  assert.match(artifact, /"backend\/dist\/persistence\/sqlite\/admit-rulesets\.js"/u);
+  assert.match(artifact, /"database\/ruleset-admissions"/u);
+  assert.match(artifact, /bibliographyRulesetAdmission/u);
   assert.match(artifact, /coreOcrRuntime: false/u);
   assert.match(artifact, /corePdfRenderRuntime: false/u);
   assert.match(artifact, /\["--same-permissions", "-xzf", archivePath, "-C", temporaryDirectory\]/u);

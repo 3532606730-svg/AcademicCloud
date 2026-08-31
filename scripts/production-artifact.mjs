@@ -31,6 +31,7 @@ const requiredRuntimePaths = [
   "backend/package.json",
   "backend/dist/main.js",
   "backend/dist/persistence/sqlite/migrate.js",
+  "backend/dist/persistence/sqlite/admit-rulesets.js",
   "backend/dist/operations/account-main.js",
   "backend/dist/operations/backup-main.js",
   "backend/dist/operations/recovery-main.js",
@@ -41,6 +42,7 @@ const requiredRuntimePaths = [
   "compute-contracts/dist/bibliography.js",
   "frontend/dist/index.html",
   "database/migrations",
+  "database/ruleset-admissions",
   "deployment/env/academiccloud.env.example",
   "deployment/nginx/academiccloud.conf",
   "deployment/nginx/academiccloud-security-headers.conf",
@@ -140,6 +142,7 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
     "compute-contracts/dist",
     "frontend/dist",
     "database/migrations",
+    "database/ruleset-admissions",
     "deployment/env/academiccloud.env.example",
     "deployment/nginx",
     "deployment/systemd",
@@ -168,9 +171,10 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
   pruneNonRuntimePackageFiles(releaseDirectory);
   pruneNonTargetNativeModules(releaseDirectory);
   validateReleasePolicy(releaseDirectory);
+  const bibliographyRulesetAdmission = readBibliographyRulesetAdmission(releaseDirectory);
   const files = collectManifestEntries(releaseDirectory);
   const manifest = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     product: "AcademicCloud",
     sourceCommit: commit,
     platform: process.platform,
@@ -183,6 +187,7 @@ function finalizeRelease(releaseOption, manifestOption, commit) {
       corePdfRenderRuntime: false,
       providerNeutralContract: "@academiccloud/compute-contracts",
     },
+    bibliographyRulesetAdmission,
     files,
   };
   const manifestText = `${JSON.stringify(manifest, null, 2)}\n`;
@@ -417,7 +422,7 @@ function collectNativeModulePaths(releaseDirectory) {
 }
 
 function verifyManifest(releaseDirectory, manifest) {
-  assert.equal(manifest.schemaVersion, 3);
+  assert.equal(manifest.schemaVersion, 4);
   assert.equal(manifest.product, "AcademicCloud");
   assert.equal(manifest.platform, "linux");
   assert.equal(manifest.architecture, "x64");
@@ -429,8 +434,48 @@ function verifyManifest(releaseDirectory, manifest) {
     corePdfRenderRuntime: false,
     providerNeutralContract: "@academiccloud/compute-contracts",
   });
+  assert.deepEqual(
+    manifest.bibliographyRulesetAdmission,
+    readBibliographyRulesetAdmission(releaseDirectory),
+    "bibliographic ruleset admission declaration does not match packaged assets",
+  );
   const actualEntries = collectManifestEntries(releaseDirectory);
   assert.deepEqual(actualEntries, manifest.files, "artifact contents do not match manifest");
+}
+
+function readBibliographyRulesetAdmission(releaseDirectory) {
+  const directory = join(releaseDirectory, "database", "ruleset-admissions");
+  const value = JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8"));
+  assert.equal(value.schemaVersion, 1, "ruleset admission manifest schema must be 1");
+  assert.equal(value.current?.contractVersion, 1, "current ruleset contract must be 1");
+  assert.match(value.current?.rulesetVersion ?? "", /^l1-intelligent-library01-v\d+$/u);
+  assert.match(value.current?.promptVersion ?? "", /^l1-intelligent-library01-prompt-v\d+$/u);
+  assert.ok(Array.isArray(value.admissions) && value.admissions.length > 0, "ruleset admissions are missing");
+  const declared = [];
+  for (const admission of value.admissions) {
+    assert.match(admission.filename ?? "", /^\d{3,}_[a-z0-9][a-z0-9_-]*\.sql$/u);
+    assert.match(admission.sha256 ?? "", /^[0-9a-f]{64}$/u);
+    assert.equal(admission.contractVersion, 1);
+    assert.match(admission.rulesetVersion ?? "", /^l1-intelligent-library01-v\d+$/u);
+    assert.match(admission.promptVersion ?? "", /^l1-intelligent-library01-prompt-v\d+$/u);
+    assert.equal(
+      sha256File(join(directory, admission.filename)),
+      admission.sha256,
+      `ruleset admission checksum mismatch: ${admission.filename}`,
+    );
+    declared.push(admission.filename);
+  }
+  assert.deepEqual(
+    readdirSync(directory).filter((name) => name.endsWith(".sql")).sort(),
+    declared.sort(),
+    "packaged ruleset admission SQL assets must exactly match their manifest",
+  );
+  assert.ok(value.admissions.some((entry) =>
+    entry.contractVersion === value.current.contractVersion
+      && entry.rulesetVersion === value.current.rulesetVersion
+      && entry.promptVersion === value.current.promptVersion),
+  "current ruleset identity must be declared by a packaged admission");
+  return value;
 }
 
 function collectManifestEntries(rootDirectory) {

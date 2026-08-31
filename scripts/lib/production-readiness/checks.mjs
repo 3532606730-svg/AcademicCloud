@@ -50,7 +50,7 @@ export const LIMITS = Object.freeze({
 
 export const ALLOWED_ENV_KEYS = Object.freeze([
   "NODE_ENV", "HOST", "PORT", "LOG_LEVEL", "APP_ORIGIN", "DATABASE_PATH",
-  "MIGRATIONS_DIRECTORY", "STORAGE_PROVIDER", "OSS_ENDPOINT", "OSS_REGION",
+  "MIGRATIONS_DIRECTORY", "RULESET_ADMISSIONS_DIRECTORY", "STORAGE_PROVIDER", "OSS_ENDPOINT", "OSS_REGION",
   "OSS_BUCKET", "OSS_BROWSER_ENDPOINT", "OSS_UPLOAD_AUTHORIZATION_SECONDS",
   "OSS_DOWNLOAD_AUTHORIZATION_SECONDS", "OSS_REQUEST_TIMEOUT_MILLISECONDS",
 ]);
@@ -169,6 +169,13 @@ export function parseReleaseManifest(text) {
       platform: typeof manifest.platform === "string" ? manifest.platform : null,
       architecture: typeof manifest.architecture === "string" ? manifest.architecture : null,
       nodeVersion: typeof manifest.nodeVersion === "string" ? manifest.nodeVersion : null,
+      bibliographyRulesetAdmission:
+        manifest.bibliographyRulesetAdmission?.current
+        && Number.isSafeInteger(manifest.bibliographyRulesetAdmission.current.contractVersion)
+        && typeof manifest.bibliographyRulesetAdmission.current.rulesetVersion === "string"
+        && typeof manifest.bibliographyRulesetAdmission.current.promptVersion === "string"
+          ? { current: { ...manifest.bibliographyRulesetAdmission.current } }
+          : null,
     };
   } catch {
     return null;
@@ -246,7 +253,7 @@ const FIXED_REMOTE = {
   releaseTarget: [["readlink", "-f", "/opt/academiccloud/current"]],
   releaseList: [["ls", "-1", "/opt/academiccloud/releases"]],
   releaseWritable: [["sudo", "-n", "-u", "academiccloud", "test", "-w", "/opt/academiccloud/current"]],
-  releaseManifest: [["sudo", "-n", "node", "-e", "const fs=require('fs');const m=JSON.parse(fs.readFileSync('/opt/academiccloud/current/ARTIFACT-MANIFEST.json','utf8'));console.log(JSON.stringify({sourceCommit:m.sourceCommit,platform:m.platform,architecture:m.architecture,nodeVersion:m.nodeVersion}));"]],
+  releaseManifest: [["sudo", "-n", "node", "-e", "const fs=require('fs');const m=JSON.parse(fs.readFileSync('/opt/academiccloud/current/ARTIFACT-MANIFEST.json','utf8'));console.log(JSON.stringify({sourceCommit:m.sourceCommit,platform:m.platform,architecture:m.architecture,nodeVersion:m.nodeVersion,bibliographyRulesetAdmission:m.bibliographyRulesetAdmission}));"]],
   nginxSiteExists: [["readlink", "-f", "/etc/nginx/sites-enabled/academiccloud"]],
   nginxSiteHash: [["sha256sum", "/etc/nginx/sites-enabled/academiccloud"]],
   nginxSnippetHash: [["sha256sum", "/etc/nginx/snippets/academiccloud-security-headers.conf"]],
@@ -264,6 +271,9 @@ const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").a
 const integrity = db.prepare('PRAGMA integrity_check').all().map(r => Object.values(r)[0]).join('|');
 const fkRows = db.prepare('PRAGMA foreign_key_check').all().length;
 const schemaVersion = db.prepare('SELECT COALESCE(MAX(version), 0) AS v FROM schema_migrations').get().v;
+const rulesetAdmissions = tables.includes('scholarly_bibliographic_ruleset_registry')
+  ? db.prepare('SELECT contract_version AS contractVersion, ruleset_version AS rulesetVersion, prompt_version AS promptVersion FROM scholarly_bibliographic_ruleset_registry ORDER BY contract_version, ruleset_version').all()
+  : [];
 const counts = {};
 for (const t of ['accounts','sessions','folders','files']) {
   if (tables.includes(t)) counts[t] = db.prepare('SELECT COUNT(*) AS c FROM ' + t).get().c;
@@ -274,7 +284,7 @@ if (tables.includes('files')) {
     states[s] = db.prepare('SELECT COUNT(*) AS c FROM files WHERE state = ?').get(s).c;
   }
 }
-console.log(JSON.stringify({ integrity, fkRows, schemaVersion, counts, states }));
+console.log(JSON.stringify({ integrity, fkRows, schemaVersion, rulesetAdmissions, counts, states }));
 db.close();
 `.replace(/\s+/g, " ").trim()]],
   backupFileCount: [["find", "/var/lib/academiccloud/backups", "-maxdepth", "1", "-type", "f", "-printf", "%T@\\n"]],
