@@ -33,13 +33,18 @@ export const PADDLE_RECOGNITION_MODEL = Object.freeze({
   revision: "bd619643acac4b9650c040234da8d944476ee3f1",
   sha256: "406e1e689c9a7fbb04178007a3fe10cf852afe7bf8bb3bc6dbb9d532b13bd907",
 });
-export const QWEN_REASONING_MODEL = Object.freeze({
-  family: "Qwen3" as const,
-  name: "Qwen3-1.7B-GGUF" as const,
-  revision: "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
-  sha256: "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
-  quantization: "Q8_0" as const,
+export const NUEXTRACT_REASONING_MODEL = Object.freeze({
+  family: "NuExtract3" as const,
+  name: "NuExtract3-4B-GGUF" as const,
+  repository: "numind/NuExtract3-GGUF" as const,
+  revision: "28a1aae6288c5d50bdf999ca2e572240966d669b",
+  filename: "NuExtract3-Q5_K_M.gguf" as const,
+  sha256: "1e6792f3402347785eb54e965255329e96204233b4bbf717c67a99f267736383",
+  byteSize: 3_161_424_864,
+  quantization: "Q5_K_M" as const,
+  architecture: "qwen35" as const,
 });
+export const NUEXTRACT_SHARED_MODEL_PATH = "/srv/academiccloud-compute/models/numind/NuExtract3-GGUF/28a1aae6288c5d50bdf999ca2e572240966d669b/NuExtract3-Q5_K_M.gguf" as const;
 export const LLAMA_RUNTIME = Object.freeze({
   family: "llama.cpp" as const,
   version: "b10218",
@@ -90,20 +95,21 @@ const AUTO_APPLY_CONFIDENCE = 85;
 // make llama.cpp context-shift away the system/contract prefix. Spread the
 // bounded payload across the selected pages so title/edition/class evidence
 // is not monopolized by one long page.
-export const QWEN_REASONING_INPUT_CHARACTERS = 8 * 1024;
-export const QWEN_REASONING_PAGE_CHARACTERS = 1_024;
+export const NUEXTRACT_REASONING_INPUT_CHARACTERS = 8 * 1024;
+export const NUEXTRACT_REASONING_PAGE_CHARACTERS = 1_024;
 const MAX_CLASS_REASONING_INPUT_CHARACTERS = 32 * 1024;
 const MAX_CLASS_EVIDENCE_CHUNK_CHARACTERS = 320;
 const MAX_REASONING_OUTPUT_BYTES = 384 * 1024;
-export const QWEN_CONTEXT_TOKENS = 32_768;
-export const QWEN_MAX_COMPLETION_TOKENS = 8_192;
-export const QWEN_REASONING_MODE = "off" as const;
-const QWEN_CLASS_MAX_COMPLETION_TOKENS = 2_048;
+export const NUEXTRACT_CONTEXT_TOKENS = 32_768;
+export const NUEXTRACT_MAX_COMPLETION_TOKENS = 8_192;
+export const NUEXTRACT_REASONING_MODE = "off" as const;
+export const NUEXTRACT_TEMPERATURE = 0.2 as const;
+const NUEXTRACT_CLASS_MAX_COMPLETION_TOKENS = 2_048;
 // llama.cpp's grammar compiler rejects the deeply nested JSON Schema form used
 // by the hosted API. Keep the transport-level constraint to generic JSON and
 // retain the exact schema/authority validation in deriveIntelligentBibliography.
 export const LLAMA_RESPONSE_FORMAT = Object.freeze({ type: "json_object" as const });
-const QWEN_SYSTEM_INSTRUCTION = [
+const NUEXTRACT_SYSTEM_INSTRUCTION = [
   "You extract bibliographic facts from bounded front/back matter.",
   "Return exactly one schema-valid JSON result object; never return instructions, markdown, or schema text.",
   `canonical.materialClass must be exactly one of: ${INTELLIGENT_MATERIAL_CLASSES.join(", ")}.`,
@@ -112,7 +118,7 @@ const QWEN_SYSTEM_INSTRUCTION = [
   "Omit an unsupported optional fact instead of inventing a value or page identity.",
   "Never guess, never promote filenames, and keep physical carrier edition separate from historical source edition. /no_think",
 ].join(" ");
-const QWEN_CLASS_SYSTEM_INSTRUCTION = [
+const NUEXTRACT_CLASS_SYSTEM_INSTRUCTION = [
   "Classify the intellectual work, not its PDF carrier.",
   "Return exactly one schema-valid JSON object.",
   "Select only exact supplied evidenceCandidateIds that positively support the proposed class.",
@@ -202,13 +208,16 @@ function boundedGpuLayers(value: string | undefined): number {
 export function loadLlamaReasonerConfig(environment: NodeJS.ProcessEnv = process.env): LlamaReasonerConfig {
   const production = environment.NODE_ENV === "production";
   const releaseExecutable = fileURLToPath(new URL("../../runtime/llama/bin/llama-server", import.meta.url));
-  const releaseModel = fileURLToPath(new URL("../../runtime/qwen/Qwen3-1.7B-Q8_0.gguf", import.meta.url));
-  if (production && (environment.BIBLIOGRAPHY_LLAMA_SERVER_PATH !== undefined || environment.BIBLIOGRAPHY_QWEN_MODEL_PATH !== undefined)) {
-    throw new Error("production reasoning runtime paths are release-local and cannot be overridden");
+  if (production && (
+    environment.BIBLIOGRAPHY_LLAMA_SERVER_PATH !== undefined
+    || environment.BIBLIOGRAPHY_NUEXTRACT_MODEL_PATH !== undefined
+    || environment.BIBLIOGRAPHY_QWEN_MODEL_PATH !== undefined
+  )) {
+    throw new Error("production reasoning runtime and shared model paths cannot be overridden");
   }
   return {
     executablePath: boundedPath("BIBLIOGRAPHY_LLAMA_SERVER_PATH", production ? releaseExecutable : environment.BIBLIOGRAPHY_LLAMA_SERVER_PATH, "llama-server"),
-    modelPath: boundedPath("BIBLIOGRAPHY_QWEN_MODEL_PATH", production ? releaseModel : environment.BIBLIOGRAPHY_QWEN_MODEL_PATH, "Qwen3-1.7B-Q8_0.gguf"),
+    modelPath: boundedPath("BIBLIOGRAPHY_NUEXTRACT_MODEL_PATH", production ? NUEXTRACT_SHARED_MODEL_PATH : environment.BIBLIOGRAPHY_NUEXTRACT_MODEL_PATH, NUEXTRACT_REASONING_MODEL.filename),
     gpuLayers: boundedGpuLayers(environment.BIBLIOGRAPHY_LLAMA_GPU_LAYERS),
   };
 }
@@ -268,29 +277,398 @@ const MODEL_OUTPUT_CONTRACT = Object.freeze({
   warnings: "sparse array using only controlledWarnings",
 });
 
-const CLASS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["materialClass", "confidence", "evidenceCandidateIds"],
-  properties: {
-    materialClass: { type: "string", enum: INTELLIGENT_MATERIAL_CLASSES },
-    confidence: { type: "integer", minimum: 0, maximum: 100 },
-    evidenceCandidateIds: {
-      type: "array",
-      maxItems: 4,
-      items: { type: "string", minLength: 1, maxLength: 64 },
+// NuExtract's native structured-extraction template is a model adapter only.
+// The authoritative v11 parser and value-bound evidence validator below stay
+// unchanged and still fail closed on malformed known fields or evidence rows.
+export const NUEXTRACT_BIBLIOGRAPHY_TEMPLATE = Object.freeze({
+  canonical: {
+    canonicalTitle: "verbatim-string",
+    subtitle: "verbatim-string",
+    alternativeTitles: ["verbatim-string"],
+    dateStatement: "verbatim-string",
+    identifiers: [{ scheme: "string", value: "verbatim-string" }],
+    contributors: [{
+      label: "verbatim-string",
+      role: INTELLIGENT_CONTRIBUTOR_ROLES,
+      roleLabel: "verbatim-string",
+    }],
+    publication: {
+      publisher: "verbatim-string",
+      place: "verbatim-string",
+      publicationDate: "verbatim-string",
+      editionNumber: "verbatim-string",
+      printing: "verbatim-string",
+    },
+    series: "verbatim-string",
+    volume: "verbatim-string",
+    language: "verbatim-string",
+    carrierEdition: {
+      editionType: INTELLIGENT_EDITION_TYPES,
+      editionStatement: "verbatim-string",
+      facsimileStatement: "verbatim-string",
+    },
+    sourceEdition: {
+      dynasty: "verbatim-string",
+      reignTitle: "verbatim-string",
+      reignYear: "verbatim-string",
+      absoluteYear: "integer",
+      printer: "verbatim-string",
+      imprint: "verbatim-string",
+      bookshop: "verbatim-string",
+      institution: "verbatim-string",
+      printingPlace: "verbatim-string",
+      editionType: INTELLIGENT_EDITION_TYPES,
+      editionStatement: "verbatim-string",
+      holdingInformation: "verbatim-string",
     },
   },
-} as const;
-
-export const LLAMA_CLASS_RESPONSE_FORMAT = Object.freeze({
-  type: "json_schema" as const,
-  json_schema: {
-    name: "academiccloud_material_class",
-    strict: true,
-    schema: CLASS_OUTPUT_SCHEMA,
-  },
 });
+
+export const NUEXTRACT_CLASS_TEMPLATE = Object.freeze({
+  materialClass: INTELLIGENT_MATERIAL_CLASSES,
+  evidenceCandidateIds: ["verbatim-string"],
+});
+
+export interface NuExtractChatCompletionRequest {
+  model: string;
+  temperature: number;
+  seed: number;
+  max_tokens: number;
+  messages: Array<{ role: "user"; content: string }>;
+  response_format: typeof LLAMA_RESPONSE_FORMAT;
+  chat_template_kwargs: {
+    template: string;
+    instructions: string;
+    enable_thinking: false;
+  };
+}
+
+function nuExtractNativeInput(prompt: string, task: "bibliography" | "class"): { content: string; instructions: string } {
+  let parsed: Record<string, unknown> | undefined;
+  try {
+    const candidate = JSON.parse(prompt) as unknown;
+    if (typeof candidate === "object" && candidate !== null && !Array.isArray(candidate)) {
+      parsed = candidate as Record<string, unknown>;
+    }
+  } catch {
+    // A direct adapter caller still receives bounded literal content. Production
+    // prompts are generated internally as JSON by the functions below.
+  }
+  if (!parsed) {
+    return {
+      content: prompt,
+      instructions: task === "bibliography" ? NUEXTRACT_SYSTEM_INSTRUCTION : NUEXTRACT_CLASS_SYSTEM_INSTRUCTION,
+    };
+  }
+  if (task === "class") {
+    return {
+      content: JSON.stringify({ evidenceCandidates: parsed.evidenceCandidates ?? [] }),
+      instructions: [
+        NUEXTRACT_CLASS_SYSTEM_INSTRUCTION,
+        typeof parsed.task === "string" ? parsed.task : "",
+        `materialClassDefinitions=${JSON.stringify(parsed.materialClassDefinitions ?? {})}`,
+        `requiredSignals=${JSON.stringify(parsed.requiredSignals ?? {})}`,
+        typeof parsed.confidenceRule === "string" ? parsed.confidenceRule : "",
+        "materialClass and evidenceCandidateIds are required. Copy only supplied candidateId values. Use unknown with [] when positive class evidence is absent or conflicting.",
+      ].filter(Boolean).join(" "),
+    };
+  }
+  return {
+    content: JSON.stringify({
+      embeddedMetadata: parsed.embeddedMetadata ?? {},
+      pages: parsed.pages ?? [],
+    }),
+    instructions: [
+      NUEXTRACT_SYSTEM_INSTRUCTION,
+      typeof parsed.task === "string" ? parsed.task : "",
+      parsed.repair && typeof parsed.repair === "object"
+        ? String((parsed.repair as Record<string, unknown>).instruction ?? "") : "",
+      `controlledValues=${JSON.stringify(parsed.controlledValues ?? {})}`,
+      `classificationRules=${JSON.stringify(parsed.classificationRules ?? {})}`,
+      `controlledFields=${JSON.stringify(parsed.controlledFields ?? [])}`,
+      `controlledWarnings=${JSON.stringify(parsed.controlledWarnings ?? [])}`,
+      "Extract only the canonical template from the supplied bounded evidence. Every string must be verbatim source text. Null/empty template leaves mean absent information. A contributor requires exact label, controlled role, and literal roleLabel from the same source wording; omit it otherwise. Do not infer language, dates, roles, editions, identifiers, or any other value that is not verbatim in the evidence. Do not guess confidence, status, materialClass, warnings, or provenance in this extraction call; the trusted adapter verifies every extracted value against the actual supplied page or usable embedded metadata, and material classification runs separately against positive evidence.",
+    ].filter(Boolean).join(" "),
+  };
+}
+
+export function buildNuExtractChatCompletionRequest(
+  prompt: string,
+  task: "bibliography" | "class",
+  maxTokens: number,
+): NuExtractChatCompletionRequest {
+  const native = nuExtractNativeInput(prompt, task);
+  return {
+    model: NUEXTRACT_REASONING_MODEL.name,
+    temperature: NUEXTRACT_TEMPERATURE,
+    seed: 0,
+    max_tokens: maxTokens,
+    messages: [{ role: "user", content: native.content }],
+    response_format: LLAMA_RESPONSE_FORMAT,
+    chat_template_kwargs: {
+      template: JSON.stringify(task === "bibliography" ? NUEXTRACT_BIBLIOGRAPHY_TEMPLATE : NUEXTRACT_CLASS_TEMPLATE),
+      instructions: native.instructions,
+      enable_thinking: false,
+    },
+  };
+}
+
+function nativeExactRecord(
+  value: unknown,
+  allowed: readonly string[],
+  diagnostic: "result_schema_invalid" | "canonical_schema_invalid" | "field_evidence_invalid",
+): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new BibliographicIntelligenceError("invalid_result", diagnostic);
+  }
+  const result = value as Record<string, unknown>;
+  if (Object.keys(result).some((key) => !allowed.includes(key))) {
+    throw new BibliographicIntelligenceError("invalid_result", diagnostic);
+  }
+  return result;
+}
+
+function nativeFactEvidence(
+  evidence: { sourcePageIndex: number | null; evidenceOrigin: string; evidenceText: string },
+  fieldName: string,
+  scopeKey: string,
+): Record<string, unknown> {
+  return {
+    fieldName,
+    scopeKey,
+    // NuExtract native extraction does not provide a calibrated confidence.
+    // Zero is the fail-closed value: exact evidence may remain reviewable but
+    // can never pass the automatic-application confidence gate.
+    confidence: 0,
+    ...evidence,
+  };
+}
+
+function nativeOptionalText(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") {
+    throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  }
+  return value;
+}
+
+function assignNativeCanonicalFact(canonical: Record<string, unknown>, fieldName: string, value: unknown): void {
+  const separator = fieldName.indexOf(".");
+  if (separator < 0) {
+    canonical[fieldName] = value;
+    return;
+  }
+  const group = fieldName.slice(0, separator);
+  const key = fieldName.slice(separator + 1);
+  const current = canonical[group];
+  if (current !== undefined && (typeof current !== "object" || current === null || Array.isArray(current))) {
+    throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  }
+  const nested = (current ?? {}) as Record<string, unknown>;
+  nested[key] = value;
+  canonical[group] = nested;
+}
+
+interface NuExtractEvidenceSource {
+  pageIndex: number | null;
+  evidenceOrigin: "native_text" | "ocr" | "embedded_pdf_metadata";
+  text: string;
+}
+
+function normalizedNativeEvidence(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/gu, " ").trim();
+}
+
+function nuExtractEvidenceSources(prompt: string): NuExtractEvidenceSource[] {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(prompt) as Record<string, unknown>;
+  } catch {
+    throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+  }
+  if (!Array.isArray(parsed.pages)) throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+  const sources: NuExtractEvidenceSource[] = parsed.pages.map((value) => {
+    const page = nativeExactRecord(
+      value,
+      ["pageIndex", "pageClass", "evidenceOrigin", "fieldEvidenceEligible", "text"],
+      "field_evidence_invalid",
+    );
+    if (!Number.isSafeInteger(page.pageIndex)
+      || !["native_text", "ocr"].includes(String(page.evidenceOrigin))
+      || typeof page.text !== "string") {
+      throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+    }
+    return {
+      pageIndex: page.pageIndex as number,
+      evidenceOrigin: page.evidenceOrigin as "native_text" | "ocr",
+      text: page.text,
+    };
+  });
+  if (parsed.embeddedMetadata !== undefined) {
+    const metadata = nativeExactRecord(parsed.embeddedMetadata, ["title", "author", "subject", "keywords"], "field_evidence_invalid");
+    Object.values(metadata).forEach((entry) => {
+      if (entry === null || entry === undefined) return;
+      if (typeof entry !== "string") throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+      sources.push({ pageIndex: null, evidenceOrigin: "embedded_pdf_metadata", text: entry });
+    });
+  }
+  return sources;
+}
+
+function exactNativeEvidence(
+  sources: readonly NuExtractEvidenceSource[],
+  values: readonly (string | number)[],
+): { sourcePageIndex: number | null; evidenceOrigin: string; evidenceText: string } | null {
+  const expected = values.map((entry) => normalizedNativeEvidence(String(entry))).filter(Boolean);
+  if (expected.length === 0) return null;
+  for (const source of sources) {
+    const normalized = normalizedNativeEvidence(source.text);
+    if (!expected.every((entry) => normalized.includes(entry))) continue;
+    const lines = source.text.split(/\r?\n/u).map(normalizedNativeEvidence).filter(Boolean);
+    const supportingLine = lines.find((line) => expected.every((entry) => line.includes(entry)));
+    const evidenceText = supportingLine ?? (expected.length === 1 ? expected[0]! : normalized);
+    if ([...evidenceText].length > 2_048) continue;
+    return {
+      sourcePageIndex: source.pageIndex,
+      evidenceOrigin: source.evidenceOrigin,
+      evidenceText,
+    };
+  }
+  return null;
+}
+
+export function adaptNuExtractBibliographyResponse(value: unknown, prompt: string): Record<string, unknown> {
+  const input = nativeExactRecord(value, ["canonical"], "result_schema_invalid");
+  if (input.canonical === null) {
+    return { status: "no_bibliography", overallConfidence: 0, canonical: null, classSupport: [], fields: [], warnings: [] };
+  }
+  const source = nativeExactRecord(input.canonical, [
+    "canonicalTitle", "subtitle", "alternativeTitles", "dateStatement", "identifiers", "contributors",
+    "publication", "series", "volume", "language", "carrierEdition", "sourceEdition",
+  ], "canonical_schema_invalid");
+  const sources = nuExtractEvidenceSources(prompt);
+  const canonical: Record<string, unknown> = { materialClass: "unknown" };
+  const fields: Array<Record<string, unknown>> = [];
+  const add = (fieldName: string, valueToStore: unknown, valuesToProve: readonly (string | number)[]): boolean => {
+    const evidence = exactNativeEvidence(sources, valuesToProve);
+    if (!evidence) return false;
+    assignNativeCanonicalFact(canonical, fieldName, valueToStore);
+    fields.push(nativeFactEvidence(evidence, fieldName, ""));
+    return true;
+  };
+  const canonicalTitle = nativeOptionalText(source.canonicalTitle);
+  if (canonicalTitle === null || !add("canonicalTitle", canonicalTitle, [canonicalTitle])) {
+    return { status: "no_bibliography", overallConfidence: 0, canonical: null, classSupport: [], fields: [], warnings: [] };
+  }
+  for (const key of ["subtitle", "dateStatement", "series", "volume", "language"] as const) {
+    const text = nativeOptionalText(source[key]);
+    if (text !== null) add(key, text, [text]);
+  }
+  if (!Array.isArray(source.alternativeTitles)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  if (source.alternativeTitles.some((entry) => typeof entry !== "string" || entry.length === 0)) {
+    throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  }
+  if (source.alternativeTitles.length > 0) add("alternativeTitles", source.alternativeTitles, source.alternativeTitles as string[]);
+  if (!Array.isArray(source.identifiers)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  const identifiers = source.identifiers.map((entry) => {
+    const identifier = nativeExactRecord(entry, ["scheme", "value"], "canonical_schema_invalid");
+    if (typeof identifier.scheme !== "string" || typeof identifier.value !== "string"
+      || identifier.scheme.length === 0 || identifier.value.length === 0) {
+      throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+    }
+    return { scheme: identifier.scheme, value: identifier.value };
+  });
+  if (identifiers.length > 0) add("identifiers", identifiers, identifiers.map((entry) => entry.value));
+  if (!Array.isArray(source.contributors)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  const contributors: Array<Record<string, unknown>> = [];
+  source.contributors.forEach((entry) => {
+    const contributor = nativeExactRecord(entry, ["label", "role", "roleLabel"], "canonical_schema_invalid");
+    if (contributor.label === null && contributor.role === null && contributor.roleLabel === null) return;
+    const label = nativeOptionalText(contributor.label);
+    const role = nativeOptionalText(contributor.role);
+    const roleLabel = nativeOptionalText(contributor.roleLabel);
+    if (label === null || role === null || roleLabel === null
+      || !INTELLIGENT_CONTRIBUTOR_ROLES.includes(role as (typeof INTELLIGENT_CONTRIBUTOR_ROLES)[number])) {
+      throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+    }
+    const evidence = exactNativeEvidence(sources, [label, roleLabel]);
+    if (!evidence) return;
+    const scopeKey = `contributor:${contributors.length}`;
+    contributors.push({ label, role, roleLabel });
+    fields.push(
+      nativeFactEvidence(evidence, "contributor.label", scopeKey),
+      nativeFactEvidence(evidence, "contributor.role", scopeKey),
+      nativeFactEvidence(evidence, "contributor.roleLabel", scopeKey),
+    );
+  });
+  canonical.contributors = contributors;
+  const publication = inputNested(source.publication, ["publisher", "place", "publicationDate", "editionNumber", "printing"]);
+  Object.entries(publication).forEach(([key, raw]) => {
+    const text = nativeOptionalText(raw);
+    if (text !== null) add(`publication.${key}`, text, [text]);
+  });
+  const carrier = inputNested(source.carrierEdition, ["editionType", "editionStatement", "facsimileStatement"]);
+  const carrierStatement = nativeOptionalText(carrier.editionStatement);
+  const carrierFacsimile = nativeOptionalText(carrier.facsimileStatement);
+  if (carrierStatement !== null) add("carrierEdition.editionStatement", carrierStatement, [carrierStatement]);
+  if (carrierFacsimile !== null) add("carrierEdition.facsimileStatement", carrierFacsimile, [carrierFacsimile]);
+  const carrierType = nativeOptionalText(carrier.editionType);
+  if (carrierType !== null) {
+    if (!INTELLIGENT_EDITION_TYPES.includes(carrierType as (typeof INTELLIGENT_EDITION_TYPES)[number])) {
+      throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+    }
+    const proof = carrierStatement ?? carrierFacsimile;
+    if (proof !== null) add("carrierEdition.editionType", carrierType, [proof]);
+  }
+  const sourceEdition = inputNested(source.sourceEdition, [
+    "dynasty", "reignTitle", "reignYear", "absoluteYear", "printer", "imprint", "bookshop",
+    "institution", "printingPlace", "editionType", "editionStatement", "holdingInformation",
+  ]);
+  for (const key of ["dynasty", "reignTitle", "reignYear", "printer", "imprint", "bookshop", "institution", "printingPlace", "editionStatement", "holdingInformation"] as const) {
+    const text = nativeOptionalText(sourceEdition[key]);
+    if (text !== null) add(`sourceEdition.${key}`, text, [text]);
+  }
+  if (sourceEdition.absoluteYear !== null && sourceEdition.absoluteYear !== undefined) {
+    if (!Number.isSafeInteger(sourceEdition.absoluteYear)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+    add("sourceEdition.absoluteYear", sourceEdition.absoluteYear, [sourceEdition.absoluteYear as number]);
+  }
+  const sourceEditionType = nativeOptionalText(sourceEdition.editionType);
+  if (sourceEditionType !== null) {
+    if (!INTELLIGENT_EDITION_TYPES.includes(sourceEditionType as (typeof INTELLIGENT_EDITION_TYPES)[number])) {
+      throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+    }
+    const statement = nativeOptionalText(sourceEdition.editionStatement);
+    if (statement !== null) add("sourceEdition.editionType", sourceEditionType, [statement]);
+  }
+  return {
+    status: "ambiguous",
+    overallConfidence: 0,
+    canonical,
+    classSupport: [],
+    fields,
+    warnings: ["uncertain_material_class"],
+  };
+}
+
+function inputNested(value: unknown, keys: readonly string[]): Record<string, unknown> {
+  if (value === null || value === undefined) return {};
+  return nativeExactRecord(value, keys, "canonical_schema_invalid");
+}
+
+export function adaptNuExtractClassResponse(value: unknown): Record<string, unknown> {
+  const input = nativeExactRecord(value, ["materialClass", "evidenceCandidateIds"], "canonical_schema_invalid");
+  if (typeof input.materialClass !== "string"
+    || !INTELLIGENT_MATERIAL_CLASSES.includes(input.materialClass as IntelligentCanonicalBibliography["materialClass"])
+    || !Array.isArray(input.evidenceCandidateIds)
+    || input.evidenceCandidateIds.some((entry) => typeof entry !== "string")) {
+    throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  }
+  return {
+    materialClass: input.materialClass,
+    confidence: 0,
+    evidenceCandidateIds: input.evidenceCandidateIds,
+  };
+}
 
 function sparseRecord(value: unknown, allowed: readonly string[]): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) throw new BibliographicIntelligenceError("invalid_result");
@@ -429,9 +807,8 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
   async infer(prompt: string, signal?: AbortSignal): Promise<unknown> {
     return this.#complete(
       prompt,
-      QWEN_SYSTEM_INSTRUCTION,
-      LLAMA_RESPONSE_FORMAT,
-      QWEN_MAX_COMPLETION_TOKENS,
+      "bibliography",
+      NUEXTRACT_MAX_COMPLETION_TOKENS,
       signal,
     );
   }
@@ -439,17 +816,15 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
   async classifyMaterial(prompt: string, signal?: AbortSignal): Promise<unknown> {
     return this.#complete(
       prompt,
-      QWEN_CLASS_SYSTEM_INSTRUCTION,
-      LLAMA_CLASS_RESPONSE_FORMAT,
-      QWEN_CLASS_MAX_COMPLETION_TOKENS,
+      "class",
+      NUEXTRACT_CLASS_MAX_COMPLETION_TOKENS,
       signal,
     );
   }
 
   async #complete(
     prompt: string,
-    systemInstruction: string,
-    responseFormat: unknown,
+    task: "bibliography" | "class",
     maxTokens: number,
     signal?: AbortSignal,
   ): Promise<unknown> {
@@ -463,18 +838,7 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
             method: "POST",
             headers: { "content-type": "application/json" },
             signal: inference.signal,
-            body: JSON.stringify({
-              model: QWEN_REASONING_MODEL.name,
-              temperature: 0,
-              seed: 0,
-              max_tokens: maxTokens,
-              messages: [
-                { role: "system", content: systemInstruction },
-                { role: "user", content: prompt },
-              ],
-              response_format: responseFormat,
-              chat_template_kwargs: { enable_thinking: false },
-            }),
+            body: JSON.stringify(buildNuExtractChatCompletionRequest(prompt, task, maxTokens)),
           }),
           server.exited.then(() => null),
         ]);
@@ -495,7 +859,10 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
         this.#invalidateServer(server);
         throw new BibliographicIntelligenceError("reasoner_unavailable", "http_non_ok");
       }
-      return parseLlamaChatCompletionResponse(new Uint8Array(await response.arrayBuffer()));
+      const native = parseLlamaChatCompletionResponse(new Uint8Array(await response.arrayBuffer()));
+      return task === "bibliography"
+        ? adaptNuExtractBibliographyResponse(native, prompt)
+        : adaptNuExtractClassResponse(native);
     } catch (error: unknown) {
       if (error instanceof BibliographicIntelligenceError) throw error;
       throw new BibliographicIntelligenceError("reasoner_unavailable");
@@ -523,11 +890,11 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
       "--model", this.#config.modelPath,
       "--host", "127.0.0.1",
       "--port", String(port),
-      "--ctx-size", String(QWEN_CONTEXT_TOKENS),
+      "--ctx-size", String(NUEXTRACT_CONTEXT_TOKENS),
       "--threads", "2",
       "--parallel", "1",
       "--gpu-layers", String(this.#config.gpuLayers),
-      "--reasoning", QWEN_REASONING_MODE,
+      "--reasoning", NUEXTRACT_REASONING_MODE,
       "--no-webui",
       "--log-disable",
     ], { shell: false, stdio: ["ignore", "ignore", "pipe"], windowsHide: true, env: { PATH: process.env.PATH, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" } });
@@ -615,11 +982,11 @@ function reasoningInspectionFor(inspection: PdfTextInspection): PdfTextInspectio
     ...usablePages.filter((page) => sourceTypeFor(classifySuggestionPage(page)) !== undefined),
     ...usablePages.filter((page) => sourceTypeFor(classifySuggestionPage(page)) === undefined),
   ];
-  let remaining = QWEN_REASONING_INPUT_CHARACTERS;
+  let remaining = NUEXTRACT_REASONING_INPUT_CHARACTERS;
   const pages: PdfTextInspection["pages"] = [];
   for (const page of priorityPages) {
     if (remaining <= 0) break;
-    const text = page.text.normalize("NFC").slice(0, Math.min(QWEN_REASONING_PAGE_CHARACTERS, remaining));
+    const text = page.text.normalize("NFC").slice(0, Math.min(NUEXTRACT_REASONING_PAGE_CHARACTERS, remaining));
     remaining -= text.length;
     if (text.length > 0) pages.push({ ...page, text });
   }
@@ -1543,11 +1910,11 @@ function deriveIntelligentBibliographyFromModel(
         legacyFallback,
       },
       reasoning: {
-        family: QWEN_REASONING_MODEL.family,
-        name: QWEN_REASONING_MODEL.name,
-        revision: QWEN_REASONING_MODEL.revision,
-        sha256: QWEN_REASONING_MODEL.sha256,
-        quantization: QWEN_REASONING_MODEL.quantization,
+        family: NUEXTRACT_REASONING_MODEL.family,
+        name: NUEXTRACT_REASONING_MODEL.name,
+        revision: NUEXTRACT_REASONING_MODEL.revision,
+        sha256: NUEXTRACT_REASONING_MODEL.sha256,
+        quantization: NUEXTRACT_REASONING_MODEL.quantization,
         runtimeFamily: LLAMA_RUNTIME.family,
         runtimeVersion: LLAMA_RUNTIME.version,
         runtimeRevision: LLAMA_RUNTIME.revision,

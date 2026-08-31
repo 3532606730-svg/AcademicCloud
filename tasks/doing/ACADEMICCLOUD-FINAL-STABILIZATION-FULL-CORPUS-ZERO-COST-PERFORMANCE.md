@@ -547,13 +547,35 @@ trusted validator unchanged. Backend 381/381, Frontend 284/284, Compute 114/114
 plus two expected skips, contracts 3/3, OSS 3/3, workspace typecheck/build,
 compiled acceptance 34/0, registry immutability/FK, and `git diff --check` pass.
 
+Production later advanced to exact `2a3ba75…`/schema34 with v11/prompt-v7.
+The final authorized known-key projection passed its scoped tests and exact
+release verifier, but a normal-UI B retry on 《真腊风土记》 again failed closed
+at a new `result_schema_invalid` shape. No AI evidence or canonical value was
+promoted, so the v11 parser/evidence/class/authority contract is frozen and no
+further Qwen-specific normalization is allowed. The Owner selected
+`numind/NuExtract3-GGUF` revision `28a1aae…`, Q5_K_M, as the replacement local
+reasoner without a new academic ruleset or schema migration.
+
+NuExtract3 Phase 0 retained Compute current `58b8468…`, known-good A-pass
+rollback `b349595…`, candidate `2a3ba75…`, and all shared state/runtime/model
+assets. Thirty-three pushed/reproducible superseded releases plus completed
+build/staging/one-shot diagnostics were removed, reclaiming
+292,363,350,016 Linux filesystem bytes. The only NuExtract3 GGUF is the shared
+release-external asset at revision `28a1aae…`, 3,161,424,864 bytes, SHA-256
+`1e6792f3…6383`, root-owned/read-only; Qwen is retained for rollback. Existing
+llama.cpp `b10218/de69995` loaded the qwen35 model on CUDA and passed exact
+native-template text extraction in 635 ms with 3,443,096 KiB peak RSS, so no
+runtime upgrade is required or allowed.
+
 ## Next Action
 
-Keep production Core `b3debfb…`/schema33 healthy and main Compute `58b8468…`
-PAUSED/disabled/inactive. Assemble and verify exact immutable Core/Compute from
-`9dbbc94…`, pass the fresh encrypted schema33 off-host backup gate, deploy only
-append-only schema34/v9, then use the ordinary production UI to create a fresh
-B attempt and run exactly one isolated exact-release iteration. B PASS unlocks C; all three then
-unlock forced-loss, exact main-release cutover, NORMAL, browser-only automatic-
-cataloguing acceptance, concurrency-one corpus execution, and the final clean
-sweep.
+Keep production Core `2a3ba75…`/schema34 healthy and main Compute `58b8468…`
+PAUSED/disabled/inactive. Implement only the NuExtract3 native structured-
+extraction adapter and shared-model release reference while freezing the v11
+parser, evidence validation, material classification, authority, display,
+queue, and lease semantics. Run offline modern A, two evidence-clear historical
+B samples, and one evidence-insufficient unknown sample with inference/RAM/VRAM
+evidence. If green, create one exact Compute checkpoint/release/verifier (no
+backup or migration), rerun production B then C, then forced-loss, exact main
+cutover, NORMAL browser acceptance, concurrency-one corpus, final cleanup, and
+close the task.

@@ -4,29 +4,128 @@ import test from "node:test";
 import type { IntelligentCanonicalBibliography, IntelligentBibliographicFieldName } from "@academiccloud/compute-contracts";
 
 import {
+  adaptNuExtractBibliographyResponse,
+  adaptNuExtractClassResponse,
   BibliographicIntelligenceError,
+  buildNuExtractChatCompletionRequest,
   deriveIntelligentBibliography,
-  LLAMA_CLASS_RESPONSE_FORMAT,
   LLAMA_RESPONSE_FORMAT,
   loadLlamaReasonerConfig,
+  NUEXTRACT_BIBLIOGRAPHY_TEMPLATE,
+  NUEXTRACT_CLASS_TEMPLATE,
+  NUEXTRACT_CONTEXT_TOKENS,
+  NUEXTRACT_MAX_COMPLETION_TOKENS,
+  NUEXTRACT_REASONING_INPUT_CHARACTERS,
+  NUEXTRACT_REASONING_MODEL,
+  NUEXTRACT_REASONING_MODE,
+  NUEXTRACT_REASONING_PAGE_CHARACTERS,
+  NUEXTRACT_SHARED_MODEL_PATH,
+  NUEXTRACT_TEMPERATURE,
   parseLlamaChatCompletionResponse,
-  QWEN_CONTEXT_TOKENS,
-  QWEN_MAX_COMPLETION_TOKENS,
-  QWEN_REASONING_INPUT_CHARACTERS,
-  QWEN_REASONING_MODE,
-  QWEN_REASONING_PAGE_CHARACTERS,
   type BibliographicReasoner,
 } from "../src/bibliographic-intelligence.js";
 import type { PdfTextInspection } from "../src/suggestion.js";
 
-test("llama transport uses the compatible generic JSON response mode", () => {
+test("NuExtract adapter uses native templates over generic JSON transport", () => {
   assert.deepEqual(LLAMA_RESPONSE_FORMAT, { type: "json_object" });
-  assert.equal(LLAMA_CLASS_RESPONSE_FORMAT.type, "json_schema");
-  assert.equal(LLAMA_CLASS_RESPONSE_FORMAT.json_schema.name, "academiccloud_material_class");
-  assert.deepEqual(
-    LLAMA_CLASS_RESPONSE_FORMAT.json_schema.schema.required,
-    ["materialClass", "confidence", "evidenceCandidateIds"],
+  const bibliography = buildNuExtractChatCompletionRequest("bounded evidence", "bibliography", 1024);
+  assert.equal(bibliography.model, "NuExtract3-4B-GGUF");
+  assert.equal(bibliography.temperature, NUEXTRACT_TEMPERATURE);
+  assert.deepEqual(bibliography.messages, [{ role: "user", content: "bounded evidence" }]);
+  assert.deepEqual(bibliography.response_format, LLAMA_RESPONSE_FORMAT);
+  assert.equal(bibliography.chat_template_kwargs.enable_thinking, false);
+  assert.match(bibliography.chat_template_kwargs.instructions, /bibliographic facts/u);
+  assert.deepEqual(JSON.parse(bibliography.chat_template_kwargs.template), NUEXTRACT_BIBLIOGRAPHY_TEMPLATE);
+  assert.equal(bibliography.messages.some((message) => message.role !== "user"), false);
+
+  const materialClass = buildNuExtractChatCompletionRequest("class evidence", "class", 512);
+  assert.deepEqual(JSON.parse(materialClass.chat_template_kwargs.template), NUEXTRACT_CLASS_TEMPLATE);
+  assert.match(materialClass.chat_template_kwargs.instructions, /Classify the intellectual work/u);
+  assert.deepEqual(materialClass.response_format, { type: "json_object" });
+});
+
+test("NuExtract native facts project exactly into the frozen v11 model shape", () => {
+  const native = {
+    canonical: {
+      canonicalTitle: "北方民族史研究",
+      subtitle: null,
+      alternativeTitles: [],
+      dateStatement: null,
+      identifiers: [],
+      contributors: [{ label: "王明", role: "author", roleLabel: "作者" }],
+      publication: {},
+      series: null,
+      volume: null,
+      language: null,
+      carrierEdition: {},
+      sourceEdition: {},
+    },
+  };
+  const prompt = JSON.stringify({
+    pages: [{
+      pageIndex: 1,
+      pageClass: "title_page",
+      evidenceOrigin: "native_text",
+      fieldEvidenceEligible: true,
+      text: "书名：北方民族史研究\n作者：王明",
+    }],
+    embeddedMetadata: {},
+  });
+  const projected = adaptNuExtractBibliographyResponse(native, prompt);
+  assert.deepEqual(projected.canonical, {
+    materialClass: "unknown",
+    canonicalTitle: "北方民族史研究",
+    contributors: [{ label: "王明", role: "author", roleLabel: "作者" }],
+  });
+  assert.deepEqual((projected.fields as Array<Record<string, unknown>>).map((field) => [field.fieldName, field.scopeKey]), [
+    ["canonicalTitle", ""],
+    ["contributor.label", "contributor:0"],
+    ["contributor.role", "contributor:0"],
+    ["contributor.roleLabel", "contributor:0"],
+  ]);
+  assert.equal(projected.status, "ambiguous");
+  assert.equal(projected.overallConfidence, 0);
+  assert.deepEqual(projected.classSupport, []);
+  assert.ok((projected.fields as Array<Record<string, unknown>>).every((field) => field.confidence === 0));
+  assert.deepEqual(adaptNuExtractClassResponse({
+    materialClass: "scholarly_monograph",
+    evidenceCandidateIds: ["p2-c0"],
+  }), {
+    materialClass: "scholarly_monograph",
+    confidence: 0,
+    evidenceCandidateIds: ["p2-c0"],
+  });
+});
+
+test("NuExtract adapter rejects malformed or contradictory native facts without coercion", () => {
+  const prompt = JSON.stringify({
+    pages: [{ pageIndex: 1, pageClass: "title_page", evidenceOrigin: "native_text", fieldEvidenceEligible: true, text: "题名：受控题名" }],
+    embeddedMetadata: {},
+  });
+  const canonical = {
+    canonicalTitle: "受控题名", alternativeTitles: [], identifiers: [], contributors: [],
+    publication: {}, carrierEdition: {}, sourceEdition: {},
+  };
+  assert.throws(
+    () => adaptNuExtractBibliographyResponse({ canonical: { ...canonical, publication: { publisher: 42 } } }, prompt),
+    (error: unknown) => error instanceof BibliographicIntelligenceError && error.diagnostic === "canonical_schema_invalid",
   );
+  assert.throws(
+    () => adaptNuExtractBibliographyResponse({ canonical }, "not-json"),
+    (error: unknown) => error instanceof BibliographicIntelligenceError && error.diagnostic === "field_evidence_invalid",
+  );
+  assert.throws(
+    () => adaptNuExtractBibliographyResponse({ canonical: {
+      ...canonical,
+      contributors: [{ label: "王明", role: null, roleLabel: "作者" }],
+    } }, prompt),
+    (error: unknown) => error instanceof BibliographicIntelligenceError && error.diagnostic === "canonical_schema_invalid",
+  );
+  const unsupported = adaptNuExtractBibliographyResponse({ canonical: {
+    ...canonical,
+    publication: { publisher: "无证据出版社" },
+  } }, prompt);
+  assert.equal((unsupported.canonical as { publication?: unknown }).publication, undefined);
 });
 
 function emptyCanonical(title: string): IntelligentCanonicalBibliography {
@@ -196,20 +295,43 @@ function fixture(canonical: IntelligentCanonicalBibliography, status: "auto_appl
 
 test("llama GPU offload is explicit, bounded, and CPU-safe by default", () => {
   assert.equal(loadLlamaReasonerConfig({}).gpuLayers, 0);
-  assert.equal(loadLlamaReasonerConfig({ NODE_ENV: "production", BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "999" }).gpuLayers, 999);
+  const production = loadLlamaReasonerConfig({ NODE_ENV: "production", BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "999" });
+  assert.equal(production.gpuLayers, 999);
+  assert.equal(production.modelPath, NUEXTRACT_SHARED_MODEL_PATH);
+  assert.equal(loadLlamaReasonerConfig({ BIBLIOGRAPHY_NUEXTRACT_MODEL_PATH: "/tmp/model.gguf" }).modelPath, "/tmp/model.gguf");
+  assert.throws(
+    () => loadLlamaReasonerConfig({ NODE_ENV: "production", BIBLIOGRAPHY_NUEXTRACT_MODEL_PATH: "/tmp/model.gguf" }),
+    /cannot be overridden/u,
+  );
+  assert.throws(
+    () => loadLlamaReasonerConfig({ NODE_ENV: "production", BIBLIOGRAPHY_QWEN_MODEL_PATH: "/tmp/stale.gguf" }),
+    /cannot be overridden/u,
+  );
   assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "-1" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
   assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "1000" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
   assert.throws(() => loadLlamaReasonerConfig({ BIBLIOGRAPHY_LLAMA_GPU_LAYERS: "all" }), /BIBLIOGRAPHY_LLAMA_GPU_LAYERS/u);
 });
 
-test("Qwen completion and multilingual evidence budgets fit the pinned context", () => {
-  assert.equal(QWEN_CONTEXT_TOKENS, 32_768);
-  assert.equal(QWEN_MAX_COMPLETION_TOKENS, 8_192);
-  assert.equal(QWEN_REASONING_INPUT_CHARACTERS, 8_192);
-  assert.equal(QWEN_REASONING_PAGE_CHARACTERS, 1_024);
-  assert.equal(QWEN_REASONING_MODE, "off");
-  assert.ok(QWEN_MAX_COMPLETION_TOKENS < QWEN_CONTEXT_TOKENS);
-  assert.ok(QWEN_REASONING_INPUT_CHARACTERS + QWEN_MAX_COMPLETION_TOKENS < QWEN_CONTEXT_TOKENS);
+test("NuExtract completion and multilingual evidence budgets fit the pinned context", () => {
+  assert.deepEqual(NUEXTRACT_REASONING_MODEL, {
+    family: "NuExtract3",
+    name: "NuExtract3-4B-GGUF",
+    repository: "numind/NuExtract3-GGUF",
+    revision: "28a1aae6288c5d50bdf999ca2e572240966d669b",
+    filename: "NuExtract3-Q5_K_M.gguf",
+    sha256: "1e6792f3402347785eb54e965255329e96204233b4bbf717c67a99f267736383",
+    byteSize: 3_161_424_864,
+    quantization: "Q5_K_M",
+    architecture: "qwen35",
+  });
+  assert.equal(NUEXTRACT_CONTEXT_TOKENS, 32_768);
+  assert.equal(NUEXTRACT_MAX_COMPLETION_TOKENS, 8_192);
+  assert.equal(NUEXTRACT_REASONING_INPUT_CHARACTERS, 8_192);
+  assert.equal(NUEXTRACT_REASONING_PAGE_CHARACTERS, 1_024);
+  assert.equal(NUEXTRACT_REASONING_MODE, "off");
+  assert.equal(NUEXTRACT_TEMPERATURE, 0.2);
+  assert.ok(NUEXTRACT_MAX_COMPLETION_TOKENS < NUEXTRACT_CONTEXT_TOKENS);
+  assert.ok(NUEXTRACT_REASONING_INPUT_CHARACTERS + NUEXTRACT_MAX_COMPLETION_TOKENS < NUEXTRACT_CONTEXT_TOKENS);
 });
 
 test("Qwen reasoning input preserves a bounded slice from every selected page", async () => {
@@ -237,8 +359,8 @@ test("Qwen reasoning input preserves a bounded slice from every selected page", 
   });
   const suppliedPages = prompt?.pages as Array<{ pageIndex: number; text: string }>;
   assert.deepEqual(suppliedPages.map((page) => page.pageIndex), pages.map((page) => page.pageIndex));
-  assert.ok(suppliedPages.every((page) => page.text.length <= QWEN_REASONING_PAGE_CHARACTERS));
-  assert.ok(suppliedPages.reduce((total, page) => total + page.text.length, 0) <= QWEN_REASONING_INPUT_CHARACTERS);
+  assert.ok(suppliedPages.every((page) => page.text.length <= NUEXTRACT_REASONING_PAGE_CHARACTERS));
+  assert.ok(suppliedPages.reduce((total, page) => total + page.text.length, 0) <= NUEXTRACT_REASONING_INPUT_CHARACTERS);
 });
 
 test("truncated Qwen JSON fails explicitly", () => {

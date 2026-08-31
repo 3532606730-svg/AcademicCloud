@@ -117,6 +117,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
   publisher?: string | null;
   sourceEditionStatement?: string | null;
   status?: "auto_apply" | "ambiguous";
+  reasoningFamily?: "qwen" | "nuextract";
 } = {}): DerivedComputeResult {
   const title = options.title ?? "近代中国史研究";
   const materialClass = options.materialClass ?? "scholarly_monograph";
@@ -124,10 +125,11 @@ function intelligentResult(jobId: string, attemptId: string, options: {
   const contributorRole = options.contributorRole ?? "author";
   const publisher = options.publisher ?? null;
   const sourceEditionStatement = options.sourceEditionStatement ?? null;
+  const confidence = options.reasoningFamily === "nuextract" ? 0 : 96;
   const evidence = (fieldName: IntelligentBibliographyResult["fields"][number]["fieldName"], scopeKey = "") => ({
     fieldName,
     scopeKey,
-    confidence: 96,
+    confidence,
     sourceType: fieldName === "materialClass" ? "class_support" as const : "title_page" as const,
     sourcePageIndex: fieldName === "materialClass" ? 2 : 1,
     pageClass: fieldName === "materialClass" ? "ordinary_body" as const : "title_page" as const,
@@ -138,7 +140,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
     contractVersion: 1,
     rulesetVersion: INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION,
     status: options.status ?? "auto_apply",
-    overallConfidence: 96,
+    overallConfidence: confidence,
     canonical: {
       materialClass,
       canonicalTitle: title,
@@ -173,8 +175,21 @@ function intelligentResult(jobId: string, attemptId: string, options: {
         legacyFallback: false,
       },
       reasoning: {
-        family: "Qwen3", name: "Qwen3-1.7B-GGUF", revision: "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
-        sha256: "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a", quantization: "Q8_0",
+        ...(options.reasoningFamily === "nuextract"
+          ? {
+              family: "NuExtract3" as const,
+              name: "NuExtract3-4B-GGUF" as const,
+              revision: "28a1aae6288c5d50bdf999ca2e572240966d669b" as const,
+              sha256: "1e6792f3402347785eb54e965255329e96204233b4bbf717c67a99f267736383" as const,
+              quantization: "Q5_K_M" as const,
+            }
+          : {
+              family: "Qwen3" as const,
+              name: "Qwen3-1.7B-GGUF" as const,
+              revision: "90862c4b9d2787eaed51d12237eafdfe7c5f6077" as const,
+              sha256: "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a" as const,
+              quantization: "Q8_0" as const,
+            }),
         runtimeFamily: "llama.cpp", runtimeVersion: "b10218", runtimeRevision: "de69995",
         runtimeSha256: "78ec7a1964710918030e85c132a0995b10b07e4f43001bdf54fe0fd48d1eb85b",
       },
@@ -555,6 +570,30 @@ test("validated structured Qwen callback creates reviewable candidates without c
     } as DerivedComputeResult, claim.capability.token),
     (error: unknown) => error instanceof SuggestionError && error.code === "concurrent_change",
   );
+});
+
+test("frozen v11 accepts exact NuExtract provenance without auto-applying uncalibrated facts", async (context) => {
+  const { persistence, library, fileId, suggestions, metadata } = fixture(context);
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+  const result = intelligentResult(job.id, "attempt-1", {
+    reasoningFamily: "nuextract",
+    status: "ambiguous",
+  });
+
+  const completed = await suggestions.applyComputeResult(result, claim.capability.token);
+  assert.equal(completed.state, "succeeded");
+  assert.equal(metadata.getDetails(OWNER, library.id, fileId).metadata, null);
+  assert.equal(suggestions.getLatestCataloguingStates(OWNER, library.id, [fileId])[0]?.state, "ai_succeeded_reviewable");
+
+  const evidence = persistence.repositories.bibliography.findAiRunEvidence(
+    library.ownerDomainId,
+    `bibliography-${job.id}`,
+  )!;
+  assert.equal(evidence.autoApplied, false);
+  assert.equal(evidence.overallConfidence, 0);
+  assert.match(evidence.reasoningEngineId, /^NuExtract3\/NuExtract3-4B-GGUF@28a1aae/u);
+  assert.equal(evidence.structuredOutputJson.includes('"family":"NuExtract3"'), true);
 });
 
 test("AI bibliography projection applies historical title-plus-version identity without person-prefix guessing", async (context) => {

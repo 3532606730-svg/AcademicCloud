@@ -15,25 +15,10 @@ readonly CURRENT_LINK="${COMPUTE_ROOT}/current"
 readonly STABILITY_SECONDS=15
 
 [[ "$RELEASE_ROOT" =~ ^${COMPUTE_ROOT}/releases/[a-f0-9]{40}$ ]]
-test -d "$RELEASE_ROOT"
-test -f "$RELEASE_ROOT/release-manifest.json"
-test -f "$RELEASE_ROOT/release-files.sha256"
-test -f "$RELEASE_ROOT/release-files.sha256.sha256"
-test -x "$RELEASE_ROOT/runtime/node/bin/node"
-test -x "$RELEASE_ROOT/runtime/llama/bin/llama-server"
-test -x "$RELEASE_ROOT/runtime/paddle/venv/bin/python"
-test "$(stat -c '%U:%G|%a' "$RELEASE_ROOT")" = "root:root|555"
-test -z "$(find "$RELEASE_ROOT" -xdev \( -type f -o -type d \) -perm /022 -print -quit)"
+test -x "$RELEASE_ROOT/deployment/verify-local-compute-release.sh"
 test -f "$ENVIRONMENT_FILE"
 test "$(stat -c '%U:%G|%a' "$ENVIRONMENT_FILE")" = "academiccloud:academiccloud|600"
-test "$(jq -r '.provider' "$RELEASE_ROOT/release-manifest.json")" = "local_pull"
-test "$(jq -r '.source.commit' "$RELEASE_ROOT/release-manifest.json")" = "$(basename "$RELEASE_ROOT")"
-printf '%s  %s\n' "$(cat "$RELEASE_ROOT/release-files.sha256.sha256")" "$RELEASE_ROOT/release-files.sha256" \
-  | sha256sum --check --strict
-(
-  cd "$RELEASE_ROOT"
-  sha256sum --check --strict release-files.sha256 >/dev/null
-)
+"$RELEASE_ROOT/deployment/verify-local-compute-release.sh" "$RELEASE_ROOT"
 
 PREVIOUS_RELEASE=""
 if [[ -e "$CURRENT_LINK" || -L "$CURRENT_LINK" ]]; then

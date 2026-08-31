@@ -127,12 +127,19 @@ export interface IntelligentBibliographyProvenance {
     recognitionModel: { name: "PP-OCRv6_small_rec"; revision: string; sha256: string };
     legacyFallback: boolean;
   };
-  reasoning: {
+  reasoning: ({
     family: "Qwen3";
     name: "Qwen3-1.7B-GGUF";
-    revision: string;
-    sha256: string;
+    revision: "90862c4b9d2787eaed51d12237eafdfe7c5f6077";
+    sha256: "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a";
     quantization: "Q8_0";
+  } | {
+    family: "NuExtract3";
+    name: "NuExtract3-4B-GGUF";
+    revision: "28a1aae6288c5d50bdf999ca2e572240966d669b";
+    sha256: "1e6792f3402347785eb54e965255329e96204233b4bbf717c67a99f267736383";
+    quantization: "Q5_K_M";
+  }) & {
     runtimeFamily: "llama.cpp";
     runtimeVersion: string;
     runtimeRevision: string;
@@ -349,6 +356,29 @@ function parseProvenance(value: unknown): IntelligentBibliographyProvenance {
   if (new Set(selectedPages).size !== selectedPages.length || selectedPages.some((entry, index) => index > 0 && entry <= selectedPages[index - 1]!)) {
     throw new TypeError("bibliography selected pages must be ordered and unique");
   }
+  const runtime = {
+    runtimeFamily: oneOf(reasoning.runtimeFamily, ["llama.cpp"] as const, "reasoning.runtimeFamily"),
+    runtimeVersion: oneOf(reasoning.runtimeVersion, ["b10218"] as const, "reasoning.runtimeVersion"),
+    runtimeRevision: oneOf(reasoning.runtimeRevision, ["de69995"] as const, "reasoning.runtimeRevision"),
+    runtimeSha256: oneOf(reasoning.runtimeSha256, ["78ec7a1964710918030e85c132a0995b10b07e4f43001bdf54fe0fd48d1eb85b"] as const, "reasoning.runtimeSha256"),
+  };
+  const reasoningIdentity: IntelligentBibliographyProvenance["reasoning"] = reasoning.family === "NuExtract3"
+    ? {
+        family: "NuExtract3",
+        name: oneOf(reasoning.name, ["NuExtract3-4B-GGUF"] as const, "reasoning.name"),
+        revision: oneOf(reasoning.revision, ["28a1aae6288c5d50bdf999ca2e572240966d669b"] as const, "reasoning.revision"),
+        sha256: oneOf(reasoning.sha256, ["1e6792f3402347785eb54e965255329e96204233b4bbf717c67a99f267736383"] as const, "reasoning.sha256"),
+        quantization: oneOf(reasoning.quantization, ["Q5_K_M"] as const, "reasoning.quantization"),
+        ...runtime,
+      }
+    : {
+        family: oneOf(reasoning.family, ["Qwen3"] as const, "reasoning.family"),
+        name: oneOf(reasoning.name, ["Qwen3-1.7B-GGUF"] as const, "reasoning.name"),
+        revision: oneOf(reasoning.revision, ["90862c4b9d2787eaed51d12237eafdfe7c5f6077"] as const, "reasoning.revision"),
+        sha256: oneOf(reasoning.sha256, ["061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"] as const, "reasoning.sha256"),
+        quantization: oneOf(reasoning.quantization, ["Q8_0"] as const, "reasoning.quantization"),
+        ...runtime,
+      };
   return {
     ocr: {
       used: ocr.used,
@@ -368,17 +398,7 @@ function parseProvenance(value: unknown): IntelligentBibliographyProvenance {
       },
       legacyFallback: ocr.legacyFallback,
     },
-    reasoning: {
-      family: oneOf(reasoning.family, ["Qwen3"] as const, "reasoning.family"),
-      name: oneOf(reasoning.name, ["Qwen3-1.7B-GGUF"] as const, "reasoning.name"),
-      revision: oneOf(reasoning.revision, ["90862c4b9d2787eaed51d12237eafdfe7c5f6077"] as const, "reasoning.revision"),
-      sha256: oneOf(reasoning.sha256, ["061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"] as const, "reasoning.sha256"),
-      quantization: oneOf(reasoning.quantization, ["Q8_0"] as const, "reasoning.quantization"),
-      runtimeFamily: oneOf(reasoning.runtimeFamily, ["llama.cpp"] as const, "reasoning.runtimeFamily"),
-      runtimeVersion: oneOf(reasoning.runtimeVersion, ["b10218"] as const, "reasoning.runtimeVersion"),
-      runtimeRevision: oneOf(reasoning.runtimeRevision, ["de69995"] as const, "reasoning.runtimeRevision"),
-      runtimeSha256: oneOf(reasoning.runtimeSha256, ["78ec7a1964710918030e85c132a0995b10b07e4f43001bdf54fe0fd48d1eb85b"] as const, "reasoning.runtimeSha256"),
-    },
+    reasoning: reasoningIdentity,
     selectedPages,
     promptVersion: oneOf(provenance.promptVersion, [
       "l1-intelligent-library01-prompt-v1",
@@ -433,6 +453,9 @@ export function parseIntelligentBibliographyResult(value: unknown): IntelligentB
         : "l1-intelligent-library01-prompt-v3";
   if (provenance.promptVersion !== expectedPromptVersion) {
     throw new TypeError("bibliography ruleset and prompt identities are inconsistent");
+  }
+  if (provenance.reasoning.family === "NuExtract3" && rulesetVersion !== "l1-intelligent-library01-v11") {
+    throw new TypeError("NuExtract3 reasoning is admitted only for the frozen v11 bibliography contract");
   }
   const materialClassField = fields.find((field) => field.fieldName === "materialClass");
   if (["l1-intelligent-library01-v7", "l1-intelligent-library01-v8", "l1-intelligent-library01-v9", "l1-intelligent-library01-v10", "l1-intelligent-library01-v11"].includes(rulesetVersion)) {

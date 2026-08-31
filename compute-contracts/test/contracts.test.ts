@@ -190,6 +190,39 @@ test("intelligent bibliography contract is closed, provenance-rich, and rejects 
     rulesetVersion: "l1-intelligent-library01-v11",
   };
   assert.deepEqual(parseIntelligentBibliographyResult(v11), v11);
+  const nuExtractV11 = {
+    ...v11,
+    provenance: {
+      ...v11.provenance,
+      reasoning: {
+        ...v11.provenance.reasoning,
+        family: "NuExtract3",
+        name: "NuExtract3-4B-GGUF",
+        revision: "28a1aae6288c5d50bdf999ca2e572240966d669b",
+        sha256: "1e6792f3402347785eb54e965255329e96204233b4bbf717c67a99f267736383",
+        quantization: "Q5_K_M",
+      },
+    },
+  };
+  assert.deepEqual(parseIntelligentBibliographyResult(nuExtractV11), nuExtractV11);
+  assert.throws(() => parseIntelligentBibliographyResult({
+    ...nuExtractV11,
+    rulesetVersion: "l1-intelligent-library01-v10",
+  }), /admitted only.*v11/u);
+  assert.throws(() => parseIntelligentBibliographyResult({
+    ...nuExtractV11,
+    provenance: {
+      ...nuExtractV11.provenance,
+      reasoning: { ...nuExtractV11.provenance.reasoning, sha256: "0".repeat(64) },
+    },
+  }), /reasoning\.sha256/u);
+  assert.throws(() => parseIntelligentBibliographyResult({
+    ...nuExtractV11,
+    provenance: {
+      ...nuExtractV11.provenance,
+      reasoning: { ...nuExtractV11.provenance.reasoning, name: "Qwen3-1.7B-GGUF" },
+    },
+  }), /reasoning\.name/u);
   assert.throws(() => parseIntelligentBibliographyResult({
     ...v11,
     provenance: { ...v11.provenance, promptVersion: "l1-intelligent-library01-prompt-v6" },
