@@ -299,32 +299,35 @@ function sparseRecord(value: unknown, allowed: readonly string[]): Record<string
   return input;
 }
 
+function projectModelRecord(
+  value: unknown,
+  allowed: readonly string[],
+  diagnostic: "result_schema_invalid" | "canonical_schema_invalid" | "field_evidence_invalid",
+): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new BibliographicIntelligenceError("invalid_result", diagnostic);
+  }
+  const input = value as Record<string, unknown>;
+  return Object.fromEntries(allowed.flatMap((key) => (
+    Object.prototype.hasOwnProperty.call(input, key) ? [[key, input[key]]] : []
+  )));
+}
+
 function supplied(input: Record<string, unknown>, key: string, fallback: unknown): unknown {
   return Object.prototype.hasOwnProperty.call(input, key) ? input[key] : fallback;
 }
 
-function optionalText(input: Record<string, unknown>, key: string, maximumLength = 512): string | null {
+function projectedOptionalText(input: Record<string, unknown>, key: string): unknown {
   const value = supplied(input, key, null);
-  if (typeof value !== "string") return null;
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") return value;
   const normalized = value.normalize("NFC").trim();
-  return normalized.length > 0
-    && [...normalized].length <= maximumLength
-    && !/[\u0000-\u001f\u007f-\u009f]/u.test(normalized)
-    ? normalized : null;
+  return normalized.length === 0 ? null : normalized;
 }
 
-function optionalEditionType(input: Record<string, unknown>, key: string): (typeof INTELLIGENT_EDITION_TYPES)[number] | null {
-  const value = optionalText(input, key);
-  return value !== null && INTELLIGENT_EDITION_TYPES.includes(value as (typeof INTELLIGENT_EDITION_TYPES)[number])
-    ? value as (typeof INTELLIGENT_EDITION_TYPES)[number]
-    : null;
-}
-
-function optionalAbsoluteYear(input: Record<string, unknown>, key: string): number | null {
-  const value = supplied(input, key, null);
-  return Number.isSafeInteger(value) && (value as number) >= -9_999 && (value as number) <= 9_999
-    ? value as number
-    : null;
+function projectedNestedRecord(value: unknown, allowed: readonly string[]): Record<string, unknown> {
+  if (value === undefined || value === null) return {};
+  return projectModelRecord(value, allowed, "canonical_schema_invalid");
 }
 
 function inspectionText(inspection: PdfTextInspection): string {
@@ -335,96 +338,82 @@ function compactInspectionText(inspection: PdfTextInspection): string {
   return inspectionText(inspection).replace(/[\s\p{P}\p{S}]+/gu, "");
 }
 
-function normalizeSparseCanonical(value: unknown, inspection: PdfTextInspection): unknown {
+function normalizeSparseCanonical(value: unknown): unknown {
   if (value === null) return null;
-  const input = sparseRecord(value, ["materialClass", "canonicalTitle", "subtitle", "alternativeTitles", "dateStatement", "identifiers", "contributors", "publication", "series", "volume", "language", "carrierEdition", "sourceEdition"]);
-  const publication = sparseRecord(supplied(input, "publication", {}), ["publisher", "place", "publicationDate", "editionNumber", "printing"]);
-  const materialClass = typeof input.materialClass === "string"
-    && INTELLIGENT_MATERIAL_CLASSES.includes(input.materialClass as (typeof INTELLIGENT_MATERIAL_CLASSES)[number])
-    ? input.materialClass as (typeof INTELLIGENT_MATERIAL_CLASSES)[number]
-    : "unknown";
-  const contributors = supplied(input, "contributors", []);
-  if (!Array.isArray(contributors)) throw new BibliographicIntelligenceError("invalid_result");
-  const carrier = sparseRecord(supplied(input, "carrierEdition", {}), ["editionType", "editionStatement", "facsimileStatement"]);
-  const source = sparseRecord(supplied(input, "sourceEdition", {}), ["dynasty", "reignTitle", "reignYear", "absoluteYear", "printer", "imprint", "bookshop", "institution", "printingPlace", "editionType", "editionStatement", "holdingInformation"]);
-  const publisherValue = optionalText(publication, "publisher", 255);
-  const publisherKey = publisherValue === null ? null : compactKey(publisherValue);
-  const normalizedContributors = contributors.map((value) => sparseRecord(value, ["label", "role", "roleLabel"]))
+  const input = projectModelRecord(value, ["materialClass", "canonicalTitle", "subtitle", "alternativeTitles", "dateStatement", "identifiers", "contributors", "publication", "series", "volume", "language", "carrierEdition", "sourceEdition"], "canonical_schema_invalid");
+  const publication = projectedNestedRecord(input.publication, ["publisher", "place", "publicationDate", "editionNumber", "printing"]);
+  const contributorsValue = supplied(input, "contributors", []);
+  if (!Array.isArray(contributorsValue)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  const carrier = projectedNestedRecord(input.carrierEdition, ["editionType", "editionStatement", "facsimileStatement"]);
+  const source = projectedNestedRecord(input.sourceEdition, ["dynasty", "reignTitle", "reignYear", "absoluteYear", "printer", "imprint", "bookshop", "institution", "printingPlace", "editionType", "editionStatement", "holdingInformation"]);
+  const publisherValue = projectedOptionalText(publication, "publisher");
+  const publisherKey = typeof publisherValue === "string" ? compactKey(publisherValue) : null;
+  const normalizedContributors = contributorsValue.map((entry) => projectModelRecord(entry, ["label", "role", "roleLabel"], "canonical_schema_invalid"))
     .filter((contributor) => typeof contributor.label !== "string" || (
       compactKey(contributor.label) !== publisherKey
       && !/(?:出版社|出版公司|press|publishing)$/iu.test(contributor.label.trim())
-    ))
-    // A model-invented publisher role is not a contributor. Unknown roles are
-    // never coerced into a person role or allowed to poison supported facts.
-    .filter((contributor) => typeof contributor.role === "string"
-      && INTELLIGENT_CONTRIBUTOR_ROLES.includes(contributor.role as (typeof INTELLIGENT_CONTRIBUTOR_ROLES)[number]))
-    // In generic JSON mode an explicit empty roleLabel is only a placeholder,
-    // not positive evidence for a contributor role. Drop that unsupported fact;
-    // a missing/null roleLabel still reaches the evidence validator fail closed.
-    .filter((contributor) => contributor.roleLabel !== "");
-  const identifiers = supplied(input, "identifiers", []);
-  if (!Array.isArray(identifiers)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
-  const normalizedIdentifiers = [...new Map(identifiers.flatMap((value) => {
-    let identifier: Record<string, unknown>;
-    try {
-      identifier = sparseRecord(value, ["scheme", "value"]);
-    } catch {
-      return [];
+    ));
+  const identifiersValue = supplied(input, "identifiers", []);
+  if (!Array.isArray(identifiersValue)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  const normalizedIdentifiers = [...new Map(identifiersValue.flatMap((entry) => {
+    const identifier = projectModelRecord(entry, ["scheme", "value"], "canonical_schema_invalid");
+    if (typeof identifier.scheme !== "string" || typeof identifier.value !== "string") {
+      throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
     }
-    const scheme = typeof identifier.scheme === "string" ? identifier.scheme.normalize("NFC").trim().toLocaleLowerCase() : "";
-    const identifierValue = typeof identifier.value === "string" ? identifier.value.normalize("NFC").trim() : "";
+    const scheme = identifier.scheme.normalize("NFC").trim().toLocaleLowerCase();
+    const identifierValue = identifier.value.normalize("NFC").trim();
     if (!scheme || scheme.length > 32 || !identifierValue || identifierValue.length > 128
       || (scheme === "isbn" && !validIsbn(identifierValue))) return [];
     return [[`${scheme}\u0000${identifierValue}`, { scheme, value: identifierValue }] as const];
   })).values()];
-  const alternativeTitles = supplied(input, "alternativeTitles", []);
-  if (!Array.isArray(alternativeTitles)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
-  const normalizedAlternativeTitles = [...new Map(alternativeTitles.flatMap((value) => {
-    if (typeof value !== "string") return [];
+  const alternativeTitlesValue = supplied(input, "alternativeTitles", []);
+  if (!Array.isArray(alternativeTitlesValue)) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
+  const normalizedAlternativeTitles = alternativeTitlesValue.flatMap((value) => {
+    if (typeof value !== "string") throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
     const title = value.normalize("NFC").trim();
-    const key = compactKey(title);
-    return !title || !key || [...title].length > 512 ? [] : [[key, title] as const];
-  })).values()].slice(0, 32);
+    return title.length === 0 ? [] : [title];
+  });
+  const absoluteYear = supplied(source, "absoluteYear", null);
   return {
-    materialClass,
+    materialClass: input.materialClass,
     canonicalTitle: input.canonicalTitle,
-    subtitle: optionalText(input, "subtitle", 512),
+    subtitle: projectedOptionalText(input, "subtitle"),
     alternativeTitles: normalizedAlternativeTitles,
-    dateStatement: optionalText(input, "dateStatement", 64),
+    dateStatement: projectedOptionalText(input, "dateStatement"),
     identifiers: normalizedIdentifiers,
     contributors: normalizedContributors.map((contributor) => ({
       label: contributor.label,
       role: contributor.role,
-      roleLabel: optionalText(contributor, "roleLabel", 64),
+      roleLabel: projectedOptionalText(contributor, "roleLabel"),
     })),
     publication: {
       publisher: publisherValue,
-      place: optionalText(publication, "place", 255),
-      publicationDate: optionalText(publication, "publicationDate", 64),
-      editionNumber: optionalText(publication, "editionNumber", 128),
-      printing: optionalText(publication, "printing", 128),
+      place: projectedOptionalText(publication, "place"),
+      publicationDate: projectedOptionalText(publication, "publicationDate"),
+      editionNumber: projectedOptionalText(publication, "editionNumber"),
+      printing: projectedOptionalText(publication, "printing"),
     },
-    series: optionalText(input, "series", 255),
-    volume: optionalText(input, "volume", 128),
-    language: optionalText(input, "language", 128),
+    series: projectedOptionalText(input, "series"),
+    volume: projectedOptionalText(input, "volume"),
+    language: projectedOptionalText(input, "language"),
     carrierEdition: {
-      editionType: optionalEditionType(carrier, "editionType"),
-      editionStatement: optionalText(carrier, "editionStatement", 512),
-      facsimileStatement: optionalText(carrier, "facsimileStatement", 512),
+      editionType: projectedOptionalText(carrier, "editionType"),
+      editionStatement: projectedOptionalText(carrier, "editionStatement"),
+      facsimileStatement: projectedOptionalText(carrier, "facsimileStatement"),
     },
     sourceEdition: {
-      dynasty: optionalText(source, "dynasty", 64),
-      reignTitle: optionalText(source, "reignTitle", 64),
-      reignYear: optionalText(source, "reignYear", 64),
-      absoluteYear: optionalAbsoluteYear(source, "absoluteYear"),
-      printer: optionalText(source, "printer", 255),
-      imprint: optionalText(source, "imprint", 255),
-      bookshop: optionalText(source, "bookshop", 255),
-      institution: optionalText(source, "institution", 255),
-      printingPlace: optionalText(source, "printingPlace", 255),
-      editionType: optionalEditionType(source, "editionType"),
-      editionStatement: optionalText(source, "editionStatement", 512),
-      holdingInformation: optionalText(source, "holdingInformation", 512),
+      dynasty: projectedOptionalText(source, "dynasty"),
+      reignTitle: projectedOptionalText(source, "reignTitle"),
+      reignYear: projectedOptionalText(source, "reignYear"),
+      absoluteYear: absoluteYear === undefined || absoluteYear === null || absoluteYear === "" ? null : absoluteYear,
+      printer: projectedOptionalText(source, "printer"),
+      imprint: projectedOptionalText(source, "imprint"),
+      bookshop: projectedOptionalText(source, "bookshop"),
+      institution: projectedOptionalText(source, "institution"),
+      printingPlace: projectedOptionalText(source, "printingPlace"),
+      editionType: projectedOptionalText(source, "editionType"),
+      editionStatement: projectedOptionalText(source, "editionStatement"),
+      holdingInformation: projectedOptionalText(source, "holdingInformation"),
     },
   };
 }
@@ -882,6 +871,28 @@ function normalizedEvidenceText(value: unknown): string {
   return normalized;
 }
 
+const MODEL_EVIDENCE_KEYS = [
+  "fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText",
+] as const;
+
+function projectedModelFieldEvidence(value: unknown): Record<string, unknown> {
+  const field = projectModelRecord(value, MODEL_EVIDENCE_KEYS, "field_evidence_invalid");
+  if (MODEL_EVIDENCE_KEYS.some((key) => !Object.prototype.hasOwnProperty.call(field, key))
+    || typeof field.fieldName !== "string"
+    || field.fieldName === "materialClass"
+    || !INTELLIGENT_BIBLIOGRAPHIC_FIELD_NAMES.includes(field.fieldName as (typeof INTELLIGENT_BIBLIOGRAPHIC_FIELD_NAMES)[number])
+    || typeof field.scopeKey !== "string"
+    || !Number.isSafeInteger(field.confidence)
+    || (field.confidence as number) < 0
+    || (field.confidence as number) > 100
+    || (!Number.isSafeInteger(field.sourcePageIndex) && field.sourcePageIndex !== null)
+    || !["native_text", "ocr", "embedded_pdf_metadata"].includes(String(field.evidenceOrigin))
+    || typeof field.evidenceText !== "string") {
+    throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+  }
+  return field;
+}
+
 function authoritativeEvidence(
   field: unknown,
   inspection: PdfTextInspection,
@@ -1065,7 +1076,7 @@ function resolveMaterialClass(
   const positiveSupport = new Map<MaterialClassSupportSignal, ValidatedEvidenceExcerpt>();
   for (const value of rawSupport) {
     try {
-      const input = sparseRecord(value, ["signal", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"]);
+      const input = projectModelRecord(value, ["signal", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"], "canonical_schema_invalid");
       if (typeof input.signal !== "string"
         || !MATERIAL_CLASS_SUPPORT_SIGNALS.includes(input.signal as MaterialClassSupportSignal)
         || !Number.isSafeInteger(input.confidence)
@@ -1230,32 +1241,6 @@ function validatesCanonicalFact(
   return values.every((value) => evidenceContainsValue(evidenceText, value));
 }
 
-function recoverLiteralCanonicalTitleEvidence(
-  canonical: IntelligentCanonicalBibliography,
-  inspection: PdfTextInspection,
-): Record<string, unknown> | undefined {
-  const evidenceText = canonical.canonicalTitle.normalize("NFKC").replace(/\s+/gu, " ").trim();
-  const titleKey = compactKey(evidenceText);
-  if ([...titleKey].length < 4) return undefined;
-  for (const page of [...inspection.pages].sort((left, right) => left.pageIndex - right.pageIndex)) {
-    if (page.evidenceOrigin === undefined || sourceTypeFor(classifySuggestionPage(page)) === undefined) continue;
-    const pageText = page.text.normalize("NFKC").replace(/\s+/gu, " ").trim();
-    const exact = pageText.includes(evidenceText);
-    if (!exact && !compactKey(pageText).includes(titleKey)) continue;
-    const supportingExcerpt = exact ? evidenceText : pageText;
-    if ([...supportingExcerpt].length > 2_048) continue;
-    return authoritativeEvidence({
-      fieldName: "canonicalTitle",
-      scopeKey: "",
-      confidence: 0,
-      sourcePageIndex: page.pageIndex,
-      evidenceOrigin: page.evidenceOrigin,
-      evidenceText: supportingExcerpt,
-    }, inspection).persisted;
-  }
-  return undefined;
-}
-
 function validatedFieldEvidence(
   canonical: IntelligentCanonicalBibliography,
   modelFields: unknown[],
@@ -1266,14 +1251,10 @@ function validatedFieldEvidence(
   required.delete("materialClass:");
   const fields = new Map<string, Record<string, unknown>>([["materialClass:", materialClassEvidence]]);
   for (const value of modelFields) {
-    let field: Record<string, unknown>;
-    try {
-      field = sparseRecord(value, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"]);
-    } catch {
-      continue;
-    }
-    if (typeof field.fieldName !== "string" || typeof field.scopeKey !== "string") continue;
-    const key = `${field.fieldName}:${field.scopeKey}`;
+    const field = projectedModelFieldEvidence(value);
+    const fieldName = field.fieldName as string;
+    const scopeKey = field.scopeKey as string;
+    const key = `${fieldName}:${scopeKey}`;
     // Facts removed by normalization do not acquire evidence or poison a valid
     // sparse result.
     if (!required.has(key)) continue;
@@ -1282,7 +1263,7 @@ function validatedFieldEvidence(
     }
     try {
       const validated = authoritativeEvidence(field, inspection);
-      if (!validatesCanonicalFact(canonical, field.fieldName, field.scopeKey, validated.evidenceText)) {
+      if (!validatesCanonicalFact(canonical, fieldName, scopeKey, validated.evidenceText)) {
         throw new BibliographicIntelligenceError("invalid_result");
       }
       fields.set(key, validated.persisted);
@@ -1309,14 +1290,10 @@ function pruneUnsupportedFieldFacts(
   const accepted = new Map<string, Record<string, unknown>>();
   const invalid = new Set<string>();
   for (const value of modelFields) {
-    let field: Record<string, unknown>;
-    try {
-      field = sparseRecord(value, ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"]);
-    } catch {
-      continue;
-    }
-    if (typeof field.fieldName !== "string" || typeof field.scopeKey !== "string") continue;
-    const key = `${field.fieldName}:${field.scopeKey}`;
+    const field = projectedModelFieldEvidence(value);
+    const fieldName = field.fieldName as string;
+    const scopeKey = field.scopeKey as string;
+    const key = `${fieldName}:${scopeKey}`;
     if (!populated.has(key) || invalid.has(key)) continue;
     if (accepted.has(key)) {
       accepted.delete(key);
@@ -1325,7 +1302,7 @@ function pruneUnsupportedFieldFacts(
     }
     try {
       const validated = authoritativeEvidence(field, inspection);
-      if (!validatesCanonicalFact(canonical, field.fieldName, field.scopeKey, validated.evidenceText)) {
+      if (!validatesCanonicalFact(canonical, fieldName, scopeKey, validated.evidenceText)) {
         invalid.add(key);
         continue;
       }
@@ -1333,10 +1310,6 @@ function pruneUnsupportedFieldFacts(
     } catch {
       invalid.add(key);
     }
-  }
-  if (!accepted.has("canonicalTitle:")) {
-    const recoveredTitleEvidence = recoverLiteralCanonicalTitleEvidence(canonical, inspection);
-    if (recoveredTitleEvidence !== undefined) accepted.set("canonicalTitle:", recoveredTitleEvidence);
   }
   if (!accepted.has("canonicalTitle:")) {
     throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid", ["canonicalTitle:"]);
@@ -1469,22 +1442,30 @@ function deriveIntelligentBibliographyFromModel(
   legacyFallback = false,
   fieldEvidenceMode: "strict" | "prune" = "strict",
 ): IntelligentBibliographyResult {
-  const raw = sparseRecord(model, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"]);
+  const raw = projectModelRecord(model, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"], "result_schema_invalid");
   if (!Array.isArray(raw.classSupport) || !Array.isArray(raw.fields) || !Array.isArray(raw.warnings)) {
-    throw new BibliographicIntelligenceError("invalid_result");
+    throw new BibliographicIntelligenceError("invalid_result", "result_schema_invalid");
+  }
+  if (!["auto_apply", "ambiguous", "no_bibliography"].includes(String(raw.status))
+    || !Number.isSafeInteger(raw.overallConfidence)
+    || (raw.overallConfidence as number) < 0
+    || (raw.overallConfidence as number) > 100
+    || raw.warnings.some((warning) => typeof warning !== "string"
+      || !MODEL_WARNING_CODES.includes(warning as (typeof MODEL_WARNING_CODES)[number]))) {
+    throw new BibliographicIntelligenceError("invalid_result", "result_schema_invalid");
   }
   let normalizedCanonical: IntelligentCanonicalBibliography | null;
   try {
-    normalizedCanonical = raw.canonical === null ? null : parseIntelligentCanonicalBibliography(normalizeSparseCanonical(raw.canonical, inspection));
+    normalizedCanonical = raw.canonical === null ? null : parseIntelligentCanonicalBibliography(normalizeSparseCanonical(raw.canonical));
   } catch (error: unknown) {
-    if (error instanceof BibliographicIntelligenceError) throw error;
+    if (error instanceof BibliographicIntelligenceError && error.diagnostic !== "unspecified") throw error;
     throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
   }
   let canonical: IntelligentCanonicalBibliography | null;
   let materialClassResolution: MaterialClassResolution | null = null;
   try {
     if (normalizedCanonical === null) {
-      if (raw.classSupport.length > 0) throw new BibliographicIntelligenceError("invalid_result");
+      if (raw.classSupport.length > 0) throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
       canonical = null;
     } else {
       materialClassResolution = resolveMaterialClass(
@@ -1602,7 +1583,11 @@ function evidenceRepairPromptFor(
   originalProposal: unknown,
 ): string {
   const base = JSON.parse(promptFor(inspection)) as Record<string, unknown>;
-  const original = sparseRecord(originalProposal, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"]);
+  const original = projectModelRecord(
+    originalProposal,
+    ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"],
+    "result_schema_invalid",
+  );
   return JSON.stringify({
     ...base,
     repair: {
@@ -1640,17 +1625,23 @@ function proposalSubset(original: unknown, candidate: unknown, path = ""): boole
 
 function evidenceOnlyRepair(original: unknown, repaired: unknown): Record<string, unknown> {
   const keys = ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"] as const;
-  const originalResult = sparseRecord(original, keys);
-  const repairedResult = sparseRecord(repaired, keys);
+  const originalResult = projectModelRecord(original, keys, "result_schema_invalid");
+  const repairedResult = projectModelRecord(repaired, keys, "result_schema_invalid");
   if (!Array.isArray(repairedResult.classSupport) || !Array.isArray(repairedResult.fields)
     || !Array.isArray(repairedResult.warnings)
     || !proposalSubset(originalResult.canonical, repairedResult.canonical, "canonical")) {
     throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
   }
-  const originalConfidence = Number.isSafeInteger(originalResult.overallConfidence)
-    ? originalResult.overallConfidence as number : 0;
-  const repairedConfidence = Number.isSafeInteger(repairedResult.overallConfidence)
-    ? repairedResult.overallConfidence as number : 0;
+  if (!Number.isSafeInteger(originalResult.overallConfidence)
+    || (originalResult.overallConfidence as number) < 0
+    || (originalResult.overallConfidence as number) > 100
+    || !Number.isSafeInteger(repairedResult.overallConfidence)
+    || (repairedResult.overallConfidence as number) < 0
+    || (repairedResult.overallConfidence as number) > 100) {
+    throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
+  }
+  const originalConfidence = originalResult.overallConfidence as number;
+  const repairedConfidence = repairedResult.overallConfidence as number;
   return {
     ...repairedResult,
     overallConfidence: Math.min(originalConfidence, repairedConfidence),

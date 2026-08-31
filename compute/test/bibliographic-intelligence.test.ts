@@ -342,13 +342,14 @@ test("unknown work classification cannot be promoted to auto-apply by model conf
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
-test("a class-support signal emitted as materialClass downgrades to unknown", async () => {
+test("a class-support signal emitted as the known materialClass field fails strict enum validation", async () => {
   const source = fixture({ ...emptyCanonical("边疆史资料"), contributors: [] });
   (source.model.canonical as unknown as Record<string, unknown>).materialClass = "historical_primary_work";
-  const result = await deriveIntelligentBibliography(source.inspection, source.reasoner);
-  assert.equal(result.canonical?.materialClass, "unknown");
-  assert.equal(result.status, "ambiguous");
-  assert.ok(result.warnings.includes("uncertain_material_class"));
+  await assert.rejects(
+    deriveIntelligentBibliography(source.inspection, source.reasoner),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "canonical_schema_invalid",
+  );
 });
 
 test("publisher and date cannot retain a primary-source modern-edition proposal without positive edition evidence", async () => {
@@ -632,7 +633,7 @@ test("an invalid class-only candidate identity preserves the validated unknown r
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
-test("canonical title recovery tolerates only script-neutral layout separators", async () => {
+test("canonical title evidence is never recovered from page resemblance", async () => {
   const canonical = {
     ...emptyCanonical("元朝秘史（校勘本）"),
     materialClass: "unknown" as const,
@@ -654,30 +655,10 @@ test("canonical title recovery tolerates only script-neutral layout separators",
     hasUsableTextLayer: true,
   };
   let calls = 0;
-  const result = await deriveIntelligentBibliography(inspection, {
-    async infer() {
-      calls += 1;
-      return {
-        status: "ambiguous",
-        overallConfidence: 80,
-        canonical,
-        classSupport: [],
-        fields: [],
-        warnings: ["uncertain_material_class"],
-      };
-    },
-  });
-
-  assert.equal(calls, 2);
-  assert.equal(result.status, "ambiguous");
-  assert.equal(result.canonical?.canonicalTitle, "元朝秘史（校勘本）");
-  const evidence = result.fields.find((field) => field.fieldName === "canonicalTitle");
-  assert.equal(evidence?.confidence, 0);
-  assert.equal(evidence?.sourcePageIndex, 1);
-
   await assert.rejects(
-    deriveIntelligentBibliography({ ...inspection, pages: [{ ...page, text: "题名：元朝秘史" }] }, {
+    deriveIntelligentBibliography(inspection, {
       async infer() {
+        calls += 1;
         return {
           status: "ambiguous",
           overallConfidence: 80,
@@ -691,6 +672,7 @@ test("canonical title recovery tolerates only script-neutral layout separators",
     (error: unknown) => error instanceof BibliographicIntelligenceError
       && error.diagnostic === "field_evidence_invalid",
   );
+  assert.equal(calls, 2, "one bounded repair pass may run, but it cannot synthesize title provenance");
 });
 
 test("positive scholarly class support retains a Qwen proposal without title-keyword dependence", async () => {
@@ -1037,22 +1019,12 @@ test("missing field provenance gets one bounded repair pass then evidence-only p
       };
     },
   };
-  const titleRecovered = await deriveIntelligentBibliography(inspection, withoutTitleEvidence);
-  assert.equal(titleRecovered.status, "ambiguous");
-  assert.equal(titleRecovered.canonical?.canonicalTitle, canonical.canonicalTitle);
+  await assert.rejects(
+    deriveIntelligentBibliography(inspection, withoutTitleEvidence),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
   assert.equal(calls, 2);
-  const titleEvidence = titleRecovered.fields.find((field) => field.fieldName === "canonicalTitle");
-  assert.deepEqual({ ...titleEvidence, evidenceSha256: undefined }, {
-    fieldName: "canonicalTitle",
-    scopeKey: "",
-    confidence: 0,
-    sourcePageIndex: 1,
-    evidenceOrigin: "native_text",
-    sourceType: "title_page",
-    pageClass: "title_page",
-    evidenceSha256: undefined,
-  });
-  assert.match(String(titleEvidence?.evidenceSha256), /^[a-f0-9]{64}$/u);
 });
 
 test("seven bounded representative bibliographic cases remain inside the strict domain", async () => {
@@ -1169,14 +1141,11 @@ test("sparse model facts are normalized locally before the strict shared contrac
       return { ...model, fields: [] };
     },
   };
-  const literalTitleOnly = await deriveIntelligentBibliography(inspection, singlePageFallback);
-  assert.equal(literalTitleOnly.status, "ambiguous");
-  assert.deepEqual(literalTitleOnly.canonical?.contributors, []);
-  assert.deepEqual(
-    literalTitleOnly.fields.map((field) => `${field.fieldName}:${field.scopeKey}`).sort(),
-    ["canonicalTitle:", "materialClass:"],
+  await assert.rejects(
+    deriveIntelligentBibliography(inspection, singlePageFallback),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
   );
-  assert.equal(literalTitleOnly.fields.find((field) => field.fieldName === "canonicalTitle")?.confidence, 0);
 
   const nonAuthoritativeClassification: BibliographicReasoner = {
     async infer() {
@@ -1188,13 +1157,9 @@ test("sparse model facts are normalized locally before the strict shared contrac
     },
   };
   const ignoredPageClassification = await deriveIntelligentBibliography(inspection, nonAuthoritativeClassification);
-  assert.equal(ignoredPageClassification.status, "ambiguous");
-  assert.deepEqual(ignoredPageClassification.canonical?.contributors, []);
-  assert.deepEqual(
-    ignoredPageClassification.fields.map((field) => `${field.fieldName}:${field.scopeKey}`).sort(),
-    ["canonicalTitle:", "materialClass:"],
-  );
-  assert.equal(ignoredPageClassification.fields.find((field) => field.fieldName === "canonicalTitle")?.pageClass, "title_page");
+  assert.equal(ignoredPageClassification.status, "auto_apply");
+  assert.equal(ignoredPageClassification.canonical?.contributors[0]?.label, "王明");
+  assert.ok(ignoredPageClassification.fields.every((field) => field.pageClass !== "cover"));
 
   const contradictoryStatus: BibliographicReasoner = {
     async infer() {
@@ -1212,9 +1177,106 @@ test("sparse model facts are normalized locally before the strict shared contrac
       return { ...model, warnings: ["title: source text must not persist"] };
     },
   };
-  const scrubbed = await deriveIntelligentBibliography(inspection, unsafeWarningText);
-  assert.equal(scrubbed.status, "ambiguous");
-  assert.deepEqual(scrubbed.warnings, ["model_uncertainty"]);
+  await assert.rejects(
+    deriveIntelligentBibliography(inspection, unsafeWarningText),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "result_schema_invalid",
+  );
+});
+
+test("final model projection drops only unknown keys and keeps known malformed data fail closed", async () => {
+  const source = fixture({ ...emptyCanonical("受控题名"), contributors: [] });
+  const base = await source.reasoner.infer("") as Record<string, unknown>;
+  const reasonerFor = (model: Record<string, unknown>): BibliographicReasoner => ({
+    async infer() { return structuredClone(model); },
+  });
+  const clone = (): Record<string, unknown> => structuredClone(base);
+
+  const withUnknownKeys = clone();
+  withUnknownKeys.filename = "不得成为事实的文件名";
+  withUnknownKeys.debug = { ignored: true };
+  const unknownCanonical = withUnknownKeys.canonical as Record<string, unknown>;
+  unknownCanonical.unrecognizedOptionalFact = "discard me";
+  (unknownCanonical.publication as Record<string, unknown>).unrecognizedPublisherAlias = "discard me";
+  (withUnknownKeys.fields as Array<Record<string, unknown>>)[0]!.pageClass = "model supplied but untrusted";
+  (withUnknownKeys.classSupport as Array<Record<string, unknown>>)[0]!.rationale = "untrusted extra";
+  const projected = await deriveIntelligentBibliography(source.inspection, reasonerFor(withUnknownKeys));
+  assert.equal(projected.status, "auto_apply");
+  assert.equal(projected.canonical?.canonicalTitle, "受控题名");
+  assert.equal(Object.hasOwn(projected, "filename"), false);
+  assert.equal(Object.hasOwn(projected.canonical as object, "unrecognizedOptionalFact"), false);
+  assert.equal(Object.hasOwn(projected.canonical!.publication, "unrecognizedPublisherAlias"), false);
+  assert.ok(projected.fields.every((field) => String(field.pageClass) !== "model supplied but untrusted"));
+
+  const wrongKnownType = clone();
+  ((wrongKnownType.canonical as Record<string, unknown>).publication as Record<string, unknown>).publisher = 42;
+  await assert.rejects(
+    deriveIntelligentBibliography(source.inspection, reasonerFor(wrongKnownType)),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "canonical_schema_invalid",
+  );
+
+  const wrongTopLevelType = clone();
+  wrongTopLevelType.status = 42;
+  await assert.rejects(
+    deriveIntelligentBibliography(source.inspection, reasonerFor(wrongTopLevelType)),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "result_schema_invalid",
+  );
+
+  const invalidKnownEnum = clone();
+  ((invalidKnownEnum.canonical as Record<string, unknown>).carrierEdition as Record<string, unknown>).editionType = "校注本";
+  await assert.rejects(
+    deriveIntelligentBibliography(source.inspection, reasonerFor(invalidKnownEnum)),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "canonical_schema_invalid",
+  );
+
+  const missingTitle = clone();
+  delete (missingTitle.canonical as Record<string, unknown>).canonicalTitle;
+  await assert.rejects(
+    deriveIntelligentBibliography(source.inspection, reasonerFor(missingTitle)),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "canonical_schema_invalid",
+  );
+
+  const invalidTitleEvidence = clone();
+  invalidTitleEvidence.overallConfidence = 100;
+  const titleEvidence = (invalidTitleEvidence.fields as Array<Record<string, unknown>>)
+    .find((field) => field.fieldName === "canonicalTitle")!;
+  titleEvidence.evidenceText = "embedded-or-filename replacement title";
+  const inspectionWithReplacementMetadata = {
+    ...source.inspection,
+    embeddedMetadata: { title: "embedded-or-filename replacement title" },
+  };
+  await assert.rejects(
+    deriveIntelligentBibliography(inspectionWithReplacementMetadata, reasonerFor(invalidTitleEvidence)),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
+
+  const malformedEvidence = clone();
+  const malformedTitle = (malformedEvidence.fields as Array<Record<string, unknown>>)
+    .find((field) => field.fieldName === "canonicalTitle")!;
+  malformedTitle.confidence = "95";
+  await assert.rejects(
+    deriveIntelligentBibliography(source.inspection, reasonerFor(malformedEvidence)),
+    (error: unknown) => error instanceof BibliographicIntelligenceError
+      && error.diagnostic === "field_evidence_invalid",
+  );
+
+  const unsupportedOptionalFact = clone();
+  ((unsupportedOptionalFact.canonical as Record<string, unknown>).publication as Record<string, unknown>).publisher = "无证据出版社";
+  const pruned = await deriveIntelligentBibliography(source.inspection, reasonerFor(unsupportedOptionalFact));
+  assert.equal(pruned.canonical?.publication.publisher, null);
+  assert.ok(pruned.fields.every((field) => field.fieldName !== "publication.publisher"));
+
+  const malformedClassSupport = clone();
+  (malformedClassSupport.classSupport as Array<Record<string, unknown>>)[0]!.signal = 42;
+  const unpromoted = await deriveIntelligentBibliography(source.inspection, reasonerFor(malformedClassSupport));
+  assert.equal(unpromoted.canonical?.materialClass, "unknown");
+  assert.equal(unpromoted.status, "ambiguous");
+  assert.ok(unpromoted.warnings.includes("uncertain_material_class"));
 });
 
 test("empty model placeholders cannot become contributor or edition facts", async () => {
@@ -1225,9 +1287,8 @@ test("empty model placeholders cannot become contributor or edition facts", asyn
     canonicalTitle: "边疆史研究",
     contributors: [
       { label: "王明", role: "author", roleLabel: "" },
-      { label: "Mongolia Society", role: "publisher", roleLabel: "publisher" },
     ],
-    publication: { publisher: `P${"x".repeat(40)}\nP`, place: "", publicationDate: "", editionNumber: "", printing: "" },
+    publication: { publisher: "", place: "", publicationDate: "", editionNumber: "", printing: "" },
     carrierEdition: { editionType: "", editionStatement: "", facsimileStatement: "" },
     sourceEdition: { absoluteYear: "", editionType: "", editionStatement: "" },
   };

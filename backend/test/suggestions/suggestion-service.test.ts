@@ -190,6 +190,7 @@ function intelligentResult(jobId: string, attemptId: string, options: {
 function fixture(context: TestContext, options: { now?: () => Date; dispatcher?: DerivedComputeDispatcher } = {}) {
   const { database, persistence } = createTestPersistence(context);
   database.exec(readFileSync(new URL("../../../database/ruleset-admissions/001_l1_intelligent_library01_v10.sql", import.meta.url), "utf8"));
+  database.exec(readFileSync(new URL("../../../database/ruleset-admissions/002_l1_intelligent_library01_v11.sql", import.meta.url), "utf8"));
   persistence.repositories.accounts.create({
     id: OWNER.id,
     loginName: OWNER.loginName,
@@ -317,7 +318,7 @@ test("request returns a durable queued identity promptly and is idempotent", asy
   assert.notEqual(v6Key, historicalV1Key, "a v1 success must not suppress the current quality-gate run");
 });
 
-test("a same-source succeeded job from v9 cannot suppress v10 inference", async (context) => {
+test("a same-source succeeded job from v10 cannot suppress v11 inference", async (context) => {
   const { database, library, fileId, suggestions, dispatcher } = fixture(context);
   const previous = await suggestions.requestGeneration(OWNER, library.id, fileId);
   const claim = await suggestions.claimJob(previous.id, "attempt-1");
@@ -326,7 +327,7 @@ test("a same-source succeeded job from v9 cannot suppress v10 inference", async 
   const row = database.prepare("SELECT input_version FROM derived_compute_jobs WHERE id = ?")
     .get(previous.id) as { input_version: string };
   const previousPipelineKey = createHash("sha256").update(JSON.stringify([
-    "metadata_suggestion", SUGGESTION_RULESET_VERSION, "l1-intelligent-library01-v9",
+    "metadata_suggestion", SUGGESTION_RULESET_VERSION, "l1-intelligent-library01-v10",
     library.id, fileId, row.input_version,
   ])).digest("hex");
   database.prepare("UPDATE derived_compute_jobs SET idempotency_key = ? WHERE id = ?")

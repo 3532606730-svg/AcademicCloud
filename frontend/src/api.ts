@@ -602,7 +602,7 @@ export interface AiSuggestedBibliographicFieldEvidence {
 export interface AiSuggestedBibliography {
   id: string;
   contractVersion: 1;
-  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2" | "l1-intelligent-library01-v3" | "l1-intelligent-library01-v4" | "l1-intelligent-library01-v5" | "l1-intelligent-library01-v6" | "l1-intelligent-library01-v7" | "l1-intelligent-library01-v8" | "l1-intelligent-library01-v9" | "l1-intelligent-library01-v10";
+  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2" | "l1-intelligent-library01-v3" | "l1-intelligent-library01-v4" | "l1-intelligent-library01-v5" | "l1-intelligent-library01-v6" | "l1-intelligent-library01-v7" | "l1-intelligent-library01-v8" | "l1-intelligent-library01-v9" | "l1-intelligent-library01-v10" | "l1-intelligent-library01-v11";
   status: "auto_apply" | "ambiguous" | "no_bibliography";
   overallConfidence: number;
   displayTitle: string | null;

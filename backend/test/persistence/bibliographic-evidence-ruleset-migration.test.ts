@@ -403,6 +403,41 @@ test("migration 032 preserves immutable history and migrations 033-034 admit exa
       ruleset_version: "l1-intelligent-library01-v10",
       prompt_version: "l1-intelligent-library01-prompt-v7",
     });
+    insertSuggestionRun.run("suggestion-v11", "rf-frontmatterocr-v2", "v11-source", NOW);
+    const insertV11 = database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        'ai-v11', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v11',
+        1, 'l1-intelligent-library01-v11', 'ambiguous', 70,
+        '{}', ?, 'l1-intelligent-library01-prompt-v7',
+        'PaddleOCR/v11', 'Qwen3/v11', '[1]', 0, '[]', ?
+      )
+    `);
+    assert.throws(() => insertV11.run("b".repeat(64), NOW), /FOREIGN KEY constraint failed/u);
+    database.exec(readFileSync(
+      new URL("../../../database/ruleset-admissions/002_l1_intelligent_library01_v11.sql", import.meta.url),
+      "utf8",
+    ));
+    assert.equal(database.prepare<[], { count: number }>(
+      "SELECT count(*) AS count FROM schema_migrations",
+    ).get()!.count, schemaHistoryBeforeAdmission);
+    assert.equal(database.prepare<[], { version: number }>(
+      "SELECT max(version) AS version FROM schema_migrations",
+    ).get()!.version, 34);
+    insertV11.run("b".repeat(64), NOW);
+    assert.deepEqual(database.prepare<[], { ruleset_version: string; prompt_version: string }>(`
+      SELECT ruleset_version, prompt_version
+        FROM scholarly_bibliographic_ruleset_registry
+       WHERE ruleset_version = 'l1-intelligent-library01-v11'
+    `).get(), {
+      ruleset_version: "l1-intelligent-library01-v11",
+      prompt_version: "l1-intelligent-library01-prompt-v7",
+    });
     assert.throws(
       () => database.prepare(`
         UPDATE scholarly_bibliographic_ruleset_registry
