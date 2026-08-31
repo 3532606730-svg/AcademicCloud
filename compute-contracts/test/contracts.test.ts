@@ -179,9 +179,15 @@ test("intelligent bibliography contract is closed, provenance-rich, and rejects 
     provenance: { ...v8.provenance, promptVersion: "l1-intelligent-library01-prompt-v6" },
   };
   assert.deepEqual(parseIntelligentBibliographyResult(v9), v9);
-  assert.throws(() => parseIntelligentBibliographyResult({
+  const v10 = {
     ...v9,
-    provenance: { ...v9.provenance, promptVersion: "l1-intelligent-library01-prompt-v5" },
+    rulesetVersion: "l1-intelligent-library01-v10",
+    provenance: { ...v9.provenance, promptVersion: "l1-intelligent-library01-prompt-v7" },
+  };
+  assert.deepEqual(parseIntelligentBibliographyResult(v10), v10);
+  assert.throws(() => parseIntelligentBibliographyResult({
+    ...v10,
+    provenance: { ...v10.provenance, promptVersion: "l1-intelligent-library01-prompt-v6" },
   }), /ruleset and prompt identities/u);
   assert.throws(() => parseIntelligentBibliographyResult({
     ...v7,

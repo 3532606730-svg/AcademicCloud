@@ -3,7 +3,7 @@
  * reasoning generation. A prompt/ruleset change must not reuse an older
  * succeeded job for unchanged source bytes.
  */
-export const INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION = "l1-intelligent-library01-v9" as const;
+export const INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION = "l1-intelligent-library01-v10" as const;
 
 export const INTELLIGENT_MATERIAL_CLASSES = [
   "scholarly_monograph",
@@ -145,7 +145,8 @@ export interface IntelligentBibliographyProvenance {
     | "l1-intelligent-library01-prompt-v3"
     | "l1-intelligent-library01-prompt-v4"
     | "l1-intelligent-library01-prompt-v5"
-    | "l1-intelligent-library01-prompt-v6";
+    | "l1-intelligent-library01-prompt-v6"
+    | "l1-intelligent-library01-prompt-v7";
 }
 
 export interface IntelligentBibliographyResult {
@@ -159,7 +160,8 @@ export interface IntelligentBibliographyResult {
     | "l1-intelligent-library01-v6"
     | "l1-intelligent-library01-v7"
     | "l1-intelligent-library01-v8"
-    | "l1-intelligent-library01-v9";
+    | "l1-intelligent-library01-v9"
+    | "l1-intelligent-library01-v10";
   status: IntelligentBibliographyStatus;
   overallConfidence: number;
   canonical: IntelligentCanonicalBibliography | null;
@@ -384,6 +386,7 @@ function parseProvenance(value: unknown): IntelligentBibliographyProvenance {
       "l1-intelligent-library01-prompt-v4",
       "l1-intelligent-library01-prompt-v5",
       "l1-intelligent-library01-prompt-v6",
+      "l1-intelligent-library01-prompt-v7",
     ] as const, "promptVersion"),
   };
 }
@@ -402,6 +405,7 @@ export function parseIntelligentBibliographyResult(value: unknown): IntelligentB
     "l1-intelligent-library01-v7",
     "l1-intelligent-library01-v8",
     "l1-intelligent-library01-v9",
+    "l1-intelligent-library01-v10",
   ] as const, "bibliography.rulesetVersion");
   const status = oneOf(input.status, INTELLIGENT_BIBLIOGRAPHY_STATUSES, "bibliography.status");
   const canonical = input.canonical === null ? null : parseIntelligentCanonicalBibliography(input.canonical);
@@ -420,12 +424,14 @@ export function parseIntelligentBibliographyResult(value: unknown): IntelligentB
           ? "l1-intelligent-library01-prompt-v5"
           : rulesetVersion === "l1-intelligent-library01-v9"
             ? "l1-intelligent-library01-prompt-v6"
+            : rulesetVersion === "l1-intelligent-library01-v10"
+              ? "l1-intelligent-library01-prompt-v7"
         : "l1-intelligent-library01-prompt-v3";
   if (provenance.promptVersion !== expectedPromptVersion) {
     throw new TypeError("bibliography ruleset and prompt identities are inconsistent");
   }
   const materialClassField = fields.find((field) => field.fieldName === "materialClass");
-  if (["l1-intelligent-library01-v7", "l1-intelligent-library01-v8", "l1-intelligent-library01-v9"].includes(rulesetVersion)) {
+  if (["l1-intelligent-library01-v7", "l1-intelligent-library01-v8", "l1-intelligent-library01-v9", "l1-intelligent-library01-v10"].includes(rulesetVersion)) {
     if (canonical !== null && canonical.materialClass !== "unknown" && materialClassField?.sourceType !== "class_support") {
       throw new TypeError("current-generation materialClass requires class-support evidence");
     }

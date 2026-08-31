@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -364,6 +364,44 @@ test("migration 032 preserves immutable history and migrations 033-034 admit exa
     `).get(), {
       ruleset_version: "l1-intelligent-library01-v9",
       prompt_version: "l1-intelligent-library01-prompt-v6",
+    });
+    insertSuggestionRun.run("suggestion-v10", "rf-frontmatterocr-v2", "v10-source", NOW);
+    const insertV10 = database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        'ai-v10', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v10',
+        1, 'l1-intelligent-library01-v10', 'ambiguous', 70,
+        '{}', ?, 'l1-intelligent-library01-prompt-v7',
+        'PaddleOCR/v10', 'Qwen3/v10', '[1]', 0, '[]', ?
+      )
+    `);
+    assert.throws(() => insertV10.run("a".repeat(64), NOW), /FOREIGN KEY constraint failed/u);
+    const schemaHistoryBeforeAdmission = database.prepare<[], { count: number }>(
+      "SELECT count(*) AS count FROM schema_migrations",
+    ).get()!.count;
+    database.exec(readFileSync(
+      new URL("../../../database/ruleset-admissions/001_l1_intelligent_library01_v10.sql", import.meta.url),
+      "utf8",
+    ));
+    assert.equal(database.prepare<[], { count: number }>(
+      "SELECT count(*) AS count FROM schema_migrations",
+    ).get()!.count, schemaHistoryBeforeAdmission);
+    assert.equal(database.prepare<[], { version: number }>(
+      "SELECT max(version) AS version FROM schema_migrations",
+    ).get()!.version, 34);
+    insertV10.run("a".repeat(64), NOW);
+    assert.deepEqual(database.prepare<[], { ruleset_version: string; prompt_version: string }>(`
+      SELECT ruleset_version, prompt_version
+        FROM scholarly_bibliographic_ruleset_registry
+       WHERE ruleset_version = 'l1-intelligent-library01-v10'
+    `).get(), {
+      ruleset_version: "l1-intelligent-library01-v10",
+      prompt_version: "l1-intelligent-library01-prompt-v7",
     });
     assert.throws(
       () => database.prepare(`

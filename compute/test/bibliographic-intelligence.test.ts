@@ -288,7 +288,7 @@ test("Qwen never receives corrupt OCR or suspicious bare embedded metadata as us
   assert.equal(inspection.embeddedMetadata.author, "亦郊真", "raw bounded provenance was mutated");
 });
 
-test("Qwen v6 sparse prompt requests positive class support without turning optional facts into a checklist", async () => {
+test("Qwen v7 sparse prompt prioritizes primary content without turning optional facts into a checklist", async () => {
   const inspection: PdfTextInspection = {
     pageCount: 2,
     pageIndices: [1, 2],
@@ -312,7 +312,10 @@ test("Qwen v6 sparse prompt requests positive class support without turning opti
   });
   assert.equal(prompt?.classificationRules && (prompt.classificationRules as Record<string, unknown>).intellectualWorkBeforeManifestation, true);
   assert.equal((prompt?.classificationRules as Record<string, unknown>).historicalModernManifestation, "primary_source_modern_edition");
+  assert.equal((prompt?.classificationRules as Record<string, unknown>).historicalSourceWithModernMediationOutranksScholarlyParatext, true);
+  assert.equal((prompt?.classificationRules as Record<string, unknown>).scholarlyMonographRequiresPrimaryPurposeOfModernAnalysis, true);
   assert.match(String(prompt?.task), /modern publisher.*neither necessary nor sufficient class support/u);
+  assert.match(String(prompt?.task), /historical source text.*remains primary_source_modern_edition.*introduction contains scholarly analysis/u);
   assert.match(String(prompt?.task), /person value or embedded metadata author field alone never proves/u);
   assert.deepEqual((prompt?.classificationRules as Record<string, unknown>).primarySourceModernEditionRequires, [
     "historical_primary_work", "edition_mediation",
