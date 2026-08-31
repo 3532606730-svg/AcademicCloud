@@ -605,6 +605,30 @@ test("a class-only proposal citing only title-page evidence remains unknown", as
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
+test("an invalid class-only candidate identity preserves the validated unknown result", async () => {
+  const source = fixture({
+    ...emptyCanonical("A General History of Inner Asia"),
+    materialClass: "unknown",
+    contributors: [],
+  }, "ambiguous", ["uncertain_material_class"]);
+  const reasoner: BibliographicReasoner = {
+    infer: source.reasoner.infer,
+    async classifyMaterial() {
+      return {
+        materialClass: "scholarly_monograph",
+        confidence: 99,
+        evidenceCandidateIds: ["not-a-supplied-candidate"],
+      };
+    },
+  };
+
+  const result = await deriveIntelligentBibliography(source.inspection, reasoner);
+
+  assert.equal(result.status, "ambiguous");
+  assert.equal(result.canonical?.materialClass, "unknown");
+  assert.ok(result.warnings.includes("uncertain_material_class"));
+});
+
 test("positive scholarly class support retains a Qwen proposal without title-keyword dependence", async () => {
   const source = fixture({
     ...emptyCanonical("A General History of Inner Asia"),

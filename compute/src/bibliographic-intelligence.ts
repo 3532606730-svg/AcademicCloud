@@ -1683,5 +1683,13 @@ export async function deriveIntelligentBibliography(
   const candidates = classEvidenceCandidatesFor(reasoningInspection);
   if (candidates.length === 0) return result;
   const classProposal = await reasoner.classifyMaterial(classificationPromptFor(candidates), signal);
-  return applyClassOnlyProposal(result, classProposal, candidates, reasoningInspection);
+  try {
+    return applyClassOnlyProposal(result, classProposal, candidates, reasoningInspection);
+  } catch (error: unknown) {
+    // Classification is an optional, bounded refinement. A malformed or stale
+    // candidate citation cannot promote the class and must not discard the
+    // already validated unknown/ambiguous bibliography.
+    if (error instanceof BibliographicIntelligenceError && error.code === "invalid_result") return result;
+    throw error;
+  }
 }
