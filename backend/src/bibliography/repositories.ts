@@ -34,8 +34,8 @@ export interface BibliographicAiRunEvidence {
   overallConfidence: number;
   structuredOutputJson: string;
   structuredOutputSha256: string;
-  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2" | "l1-intelligent-library01-v3" | "l1-intelligent-library01-v4" | "l1-intelligent-library01-v5" | "l1-intelligent-library01-v6" | "l1-intelligent-library01-v7" | "l1-intelligent-library01-v8";
-  promptVersion: "l1-intelligent-library01-prompt-v1" | "l1-intelligent-library01-prompt-v2" | "l1-intelligent-library01-prompt-v3" | "l1-intelligent-library01-prompt-v4" | "l1-intelligent-library01-prompt-v5";
+  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2" | "l1-intelligent-library01-v3" | "l1-intelligent-library01-v4" | "l1-intelligent-library01-v5" | "l1-intelligent-library01-v6" | "l1-intelligent-library01-v7" | "l1-intelligent-library01-v8" | "l1-intelligent-library01-v9";
+  promptVersion: "l1-intelligent-library01-prompt-v1" | "l1-intelligent-library01-prompt-v2" | "l1-intelligent-library01-prompt-v3" | "l1-intelligent-library01-prompt-v4" | "l1-intelligent-library01-prompt-v5" | "l1-intelligent-library01-prompt-v6";
   ocrEngineId: string;
   reasoningEngineId: string;
   selectedPages: number[];

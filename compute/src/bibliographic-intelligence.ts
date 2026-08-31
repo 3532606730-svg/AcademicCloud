@@ -20,7 +20,7 @@ import { isUsableBibliographicEvidence, usableEmbeddedMetadata } from "./evidenc
 import type { PdfTextInspection } from "./suggestion.js";
 
 export const INTELLIGENT_RULESET_VERSION = INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION;
-export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v5" as const;
+export const INTELLIGENT_PROMPT_VERSION = "l1-intelligent-library01-prompt-v6" as const;
 export const PADDLE_OCR_PACKAGE_VERSION = "3.7.0" as const;
 export const PADDLE_RUNTIME_VERSION = "3.3.1" as const;
 export const PADDLE_DETECTION_MODEL = Object.freeze({
@@ -253,84 +253,20 @@ async function waitForServer(origin: string, signal: AbortSignal): Promise<void>
   throw new BibliographicIntelligenceError("reasoner_timeout");
 }
 
-const MODEL_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"],
-  properties: {
-    status: { type: "string", enum: ["auto_apply", "ambiguous", "no_bibliography"] },
-    overallConfidence: { type: "integer", minimum: 0, maximum: 100 },
-    canonical: {
-      anyOf: [{ type: "null" }, {
-        type: "object", additionalProperties: false,
-        required: ["materialClass", "canonicalTitle"],
-        properties: {
-          materialClass: { type: "string", enum: INTELLIGENT_MATERIAL_CLASSES },
-          canonicalTitle: { type: "string" }, subtitle: { type: "string" },
-          alternativeTitles: { type: "array", items: { type: "string" }, maxItems: 32 },
-          dateStatement: { type: "string" },
-          identifiers: { type: "array", maxItems: 32, items: { type: "object", additionalProperties: false, required: ["scheme", "value"], properties: { scheme: { type: "string" }, value: { type: "string" } } } },
-          contributors: { type: "array", maxItems: 64, items: { type: "object", additionalProperties: false, required: ["label", "role"], properties: { label: { type: "string" }, role: { type: "string", enum: INTELLIGENT_CONTRIBUTOR_ROLES }, roleLabel: { type: "string" } } } },
-          publication: { type: "object", additionalProperties: false, properties: { publisher: { type: "string" }, place: { type: "string" }, publicationDate: { type: "string" }, editionNumber: { type: "string" }, printing: { type: "string" } } },
-          series: { type: "string" }, volume: { type: "string" }, language: { type: "string" },
-          carrierEdition: { type: "object", additionalProperties: false, properties: { editionType: { type: "string", enum: INTELLIGENT_EDITION_TYPES }, editionStatement: { type: "string" }, facsimileStatement: { type: "string" } } },
-          sourceEdition: { type: "object", additionalProperties: false, properties: { dynasty: { type: "string" }, reignTitle: { type: "string" }, reignYear: { type: "string" }, absoluteYear: { type: "integer" }, printer: { type: "string" }, imprint: { type: "string" }, bookshop: { type: "string" }, institution: { type: "string" }, printingPlace: { type: "string" }, editionType: { type: "string", enum: INTELLIGENT_EDITION_TYPES }, editionStatement: { type: "string" }, holdingInformation: { type: "string" } } },
-        },
-      }],
-    },
-    classSupport: {
-      type: "array",
-      maxItems: 16,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["signal", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"],
-        properties: {
-          signal: { type: "string", enum: MATERIAL_CLASS_SUPPORT_SIGNALS },
-          confidence: { type: "integer", minimum: 0, maximum: 100 },
-          sourcePageIndex: { type: "integer", minimum: 1 },
-          evidenceOrigin: { type: "string", enum: ["native_text", "ocr"] },
-          evidenceText: { type: "string", minLength: 1, maxLength: 2048 },
-        },
-      },
-    },
-    fields: {
-      type: "array",
-      maxItems: 128,
-      items: {
-        anyOf: [
-          {
-            type: "object",
-            additionalProperties: false,
-            required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"],
-            properties: {
-              fieldName: { type: "string", enum: MODEL_FACT_FIELD_NAMES },
-              scopeKey: { type: "string", const: "" },
-              confidence: { type: "integer", minimum: 0, maximum: 100 },
-              sourcePageIndex: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
-              evidenceOrigin: { type: "string", enum: ["native_text", "ocr", "embedded_pdf_metadata"] },
-              evidenceText: { type: "string", minLength: 1, maxLength: 2048 },
-            },
-          },
-          {
-            type: "object",
-            additionalProperties: false,
-            required: ["fieldName", "scopeKey", "confidence", "sourcePageIndex", "evidenceOrigin", "evidenceText"],
-            properties: {
-              fieldName: { type: "string", enum: CONTRIBUTOR_FIELD_NAMES },
-              scopeKey: { type: "string", pattern: "^contributor:(?:0|[1-9][0-9]*)$" },
-              confidence: { type: "integer", minimum: 0, maximum: 100 },
-              sourcePageIndex: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
-              evidenceOrigin: { type: "string", enum: ["native_text", "ocr", "embedded_pdf_metadata"] },
-              evidenceText: { type: "string", minLength: 1, maxLength: 2048 },
-            },
-          },
-        ],
-      },
-    },
-    warnings: { type: "array", maxItems: 32, items: { type: "string", enum: MODEL_WARNING_CODES } },
-  },
-} as const;
+// Keep model guidance intentionally compact and sparse. The full nested JSON
+// Schema remains enforced by normalizeSparseCanonical and the trusted contract
+// parser below, but presenting it to the small model made every optional path
+// look like a checklist and caused placeholder facts/evidence to exhaust the
+// completion budget. These strings describe shape, not values to populate.
+const MODEL_OUTPUT_CONTRACT = Object.freeze({
+  topLevel: "exactly status, overallConfidence, canonical, classSupport, fields, warnings",
+  status: "auto_apply | ambiguous | no_bibliography",
+  overallConfidence: "integer 0..100",
+  canonical: "null for no_bibliography; otherwise a SPARSE object requiring only materialClass and canonicalTitle. Optional keys, only when directly supported: subtitle, alternativeTitles, dateStatement, identifiers[{scheme,value}], contributors[{label,role,roleLabel}], publication{publisher,place,publicationDate,editionNumber,printing}, series, volume, language, carrierEdition{editionType,editionStatement,facsimileStatement}, sourceEdition{dynasty,reignTitle,reignYear,absoluteYear,printer,imprint,bookshop,institution,printingPlace,editionType,editionStatement,holdingInformation}. Omit unsupported keys, empty nested objects, empty arrays, null placeholders, and invented values.",
+  classSupport: "SPARSE array; only positive support needed by the proposed non-unknown class. Each row has exactly signal, confidence, sourcePageIndex, evidenceOrigin, evidenceText. Emit [] for unknown. Never emit placeholders.",
+  fields: "SPARSE array; exactly one row only for each actually populated non-materialClass fact. Each row has exactly fieldName, scopeKey, confidence, sourcePageIndex, evidenceOrigin, evidenceText. Allowed field names are vocabulary, not a checklist. Never emit rows for absent, empty, null, unsupported, or merely possible facts.",
+  warnings: "sparse array using only controlledWarnings",
+});
 
 const CLASS_OUTPUT_SCHEMA = {
   type: "object",
@@ -649,12 +585,11 @@ function promptFor(inspection: PdfTextInspection): string {
     });
   }
   return JSON.stringify({
-    task: "Return exactly one JSON result object matching outputContract; never repeat the task, controls, pages, evidence input, or schema itself. canonical.materialClass MUST be one controlledValues.materialClasses value and MUST NEVER be a classSupport signal. For every evidence object, copy sourcePageIndex from the pageIndex property of the exact page whose text contains evidenceText; sourcePageIndex is never the pages-array position. Extract only directly supported canonical bibliographic facts. Qwen proposes the intellectual-work class; the trusted runtime validates page-bound positive support and never replaces the proposal with title-keyword classification. For every proposed non-unknown class, emit only its required classSupport signals with an exact evidenceText excerpt. scholarly_analysis and historical_primary_work require narrative contents/preface/body evidence independent from a title, publisher, date, ISBN, or person line. primary_source_modern_edition requires BOTH historical_primary_work and edition_mediation support, and edition_mediation must bind a concrete retained edition/mediation fact. traditional_book requires BOTH historical_primary_work and traditional_artifact support, and traditional_artifact must bind a concrete retained source-edition fact. A modern publisher, publication date, ISBN, person, or analytical-looking title is auxiliary context only and is neither necessary nor sufficient class support. If positive support is missing, extraneous, or conflicting, propose unknown with uncertain_material_class instead of guessing. A person value or embedded metadata author field alone never proves either the work class or the contributor role. Preserve each contributor role only when canonical.roleLabel carries the exact source wording (for example by/author/editor/译者 in whatever script the source uses); otherwise omit that contributor. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy and cannot support materialClass or contributor roles. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. The pages array contains only script-neutral usable evidence. Non-class fields may cite only a page whose fieldEvidenceEligible is true, or usable embedded metadata; classSupport may cite any supplied non-embedded page subject to the positive-evidence rules above. classSupport evidenceText and every field evidenceText must be an exact bounded excerpt of the cited page or usable embedded metadata. Do not emit materialClass in fields because classSupport owns its independent provenance. Emit exactly one field evidence row for every other populated canonical fact and never duplicate a fieldName/scopeKey pair. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime validates the excerpt and actual fact value, derives page class/source type/digest, and strips evidenceText before persistence. Never use overallConfidence to fill missing field evidence. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous when facts or class remain unsupported or conflicting.",
-    // llama.cpp must use generic json_object transport because its grammar
-    // compiler rejects this nested schema. Supplying the same exact contract
-    // inside the bounded prompt preserves shape guidance without weakening the
-    // trusted runtime parser below.
-    outputContract: MODEL_OUTPUT_SCHEMA,
+    task: "Return exactly one JSON result object matching outputContract; never repeat the task, controls, pages, evidence input, or contract itself. outputContract and controlledFields are vocabularies, NEVER checklists: populate only facts directly proved by supplied evidence. canonical.materialClass MUST be one controlledValues.materialClasses value and MUST NEVER be a classSupport signal. For every evidence object, copy sourcePageIndex from the pageIndex property of the exact page whose text contains evidenceText; sourcePageIndex is never the pages-array position. Extract only directly supported canonical bibliographic facts. Qwen proposes the intellectual-work class; the trusted runtime validates page-bound positive support and never replaces the proposal with title-keyword classification. For every proposed non-unknown class, emit only its required classSupport signals with an exact evidenceText excerpt. scholarly_analysis and historical_primary_work require narrative contents/preface/body evidence independent from a title, publisher, date, ISBN, or person line. primary_source_modern_edition requires BOTH historical_primary_work and edition_mediation support, and edition_mediation must bind a concrete retained edition/mediation fact. traditional_book requires BOTH historical_primary_work and traditional_artifact support, and traditional_artifact must bind a concrete retained source-edition fact. A modern publisher, publication date, ISBN, person, or analytical-looking title is auxiliary context only and is neither necessary nor sufficient class support. If positive support is missing, extraneous, or conflicting, propose unknown with uncertain_material_class instead of guessing. A person value or embedded metadata author field alone never proves either the work class or the contributor role. Preserve each contributor role only when canonical.roleLabel carries the exact source wording (for example by/author/editor/译者 in whatever script the source uses); otherwise omit that contributor. OCR confidence measures recognition only and MUST NOT be treated as bibliographic confidence. Embedded PDF metadata presence alone does not make a value trustworthy and cannot support materialClass or contributor roles. Canonical output is sparse: omit unsupported optional keys instead of emitting null placeholders. Never emit empty optional arrays or nested objects. Never emit a publisher as a contributor. Omit sourceEdition for modern scholarly works; preserve it only for supported primary-source/traditional evidence. The pages array contains only script-neutral usable evidence. Non-class fields may cite only a page whose fieldEvidenceEligible is true, or usable embedded metadata; classSupport may cite any supplied non-embedded page subject to the positive-evidence rules above. classSupport evidenceText and every field evidenceText must be the shortest exact excerpt that supports the actual value. Do not emit materialClass in fields because classSupport owns its independent provenance. Emit exactly one field evidence row for every other populated canonical fact and never duplicate a fieldName/scopeKey pair. Never emit evidence for a null, empty, absent, or unsupported fact. scopeKey MUST be the empty string for every non-contributor field; contributor fields MUST use contributor:N where N is the zero-based canonical contributor index. Every evidence row must point only to the supplied pageIndex/evidenceOrigin; the trusted runtime validates the excerpt and actual fact value, derives page class/source type/digest, and strips evidenceText before persistence. Never use overallConfidence to fill missing field evidence. warnings may use only the supplied controlled warning codes and must never quote source text. Return no_bibliography when usable evidence is insufficient; return ambiguous when facts or class remain unsupported or conflicting.",
+    // llama.cpp uses generic json_object transport. The compact sparse prompt
+    // avoids inducing exhaustive placeholders; the complete trusted parser and
+    // value-bound evidence validator below remain authoritative.
+    outputContract: MODEL_OUTPUT_CONTRACT,
     classificationRules: {
       intellectualWorkBeforeManifestation: true,
       modernPublicationDoesNotImplyScholarlyWork: true,
@@ -669,6 +604,7 @@ function promptFor(inspection: PdfTextInspection): string {
       modernPublisherDatePersonAndTitleShapeAreAuxiliaryOnly: true,
     },
     controlledValues: { materialClasses: INTELLIGENT_MATERIAL_CLASSES, contributorRoles: INTELLIGENT_CONTRIBUTOR_ROLES, editionTypes: INTELLIGENT_EDITION_TYPES },
+    controlledFields: MODEL_FACT_FIELD_NAMES,
     controlledWarnings: MODEL_WARNING_CODES,
     embeddedMetadata: inspection.embeddedMetadata,
     pages,

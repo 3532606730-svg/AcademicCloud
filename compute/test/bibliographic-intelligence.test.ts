@@ -288,7 +288,7 @@ test("Qwen never receives corrupt OCR or suspicious bare embedded metadata as us
   assert.equal(inspection.embeddedMetadata.author, "亦郊真", "raw bounded provenance was mutated");
 });
 
-test("Qwen v5 prompt requests positive class support independently from manifestation or person metadata", async () => {
+test("Qwen v6 sparse prompt requests positive class support without turning optional facts into a checklist", async () => {
   const inspection: PdfTextInspection = {
     pageCount: 2,
     pageIndices: [1, 2],
@@ -318,10 +318,15 @@ test("Qwen v5 prompt requests positive class support independently from manifest
     "historical_primary_work", "edition_mediation",
   ]);
   const outputContract = prompt?.outputContract as Record<string, unknown>;
-  assert.equal(outputContract.type, "object");
-  assert.deepEqual(outputContract.required, ["status", "overallConfidence", "canonical", "classSupport", "fields", "warnings"]);
-  assert.equal(outputContract.additionalProperties, false);
-  assert.match(String(prompt?.task), /never repeat the task, controls, pages, evidence input, or schema itself/u);
+  assert.equal(outputContract.topLevel, "exactly status, overallConfidence, canonical, classSupport, fields, warnings");
+  assert.match(String(outputContract.canonical), /SPARSE object/u);
+  assert.match(String(outputContract.canonical), /Omit unsupported keys, empty nested objects, empty arrays, null placeholders/u);
+  assert.match(String(outputContract.fields), /Allowed field names are vocabulary, not a checklist/u);
+  assert.equal(Object.hasOwn(outputContract, "properties"), false);
+  assert.ok(JSON.stringify(outputContract).length < 2_500, "model output guidance regressed to an exhaustive schema");
+  assert.ok(Array.isArray(prompt?.controlledFields));
+  assert.match(String(prompt?.task), /vocabularies, NEVER checklists/u);
+  assert.match(String(prompt?.task), /Never emit evidence for a null, empty, absent, or unsupported fact/u);
   assert.match(String(prompt?.task), /materialClass MUST be one controlledValues\.materialClasses value/u);
   assert.match(String(prompt?.task), /sourcePageIndex is never the pages-array position/u);
 });

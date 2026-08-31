@@ -602,7 +602,7 @@ export interface AiSuggestedBibliographicFieldEvidence {
 export interface AiSuggestedBibliography {
   id: string;
   contractVersion: 1;
-  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2" | "l1-intelligent-library01-v3" | "l1-intelligent-library01-v4" | "l1-intelligent-library01-v5" | "l1-intelligent-library01-v6" | "l1-intelligent-library01-v7" | "l1-intelligent-library01-v8";
+  rulesetVersion: "l1-intelligent-library01-v1" | "l1-intelligent-library01-v2" | "l1-intelligent-library01-v3" | "l1-intelligent-library01-v4" | "l1-intelligent-library01-v5" | "l1-intelligent-library01-v6" | "l1-intelligent-library01-v7" | "l1-intelligent-library01-v8" | "l1-intelligent-library01-v9";
   status: "auto_apply" | "ambiguous" | "no_bibliography";
   overallConfidence: number;
   displayTitle: string | null;
@@ -614,7 +614,7 @@ export interface AiSuggestedBibliography {
     ocr: { used: boolean; family: "PaddleOCR"; packageVersion: string; runtimeFamily: string; runtimeVersion: string; legacyFallback: boolean; detectionModel: { name: string; revision: string; sha256: string }; recognitionModel: { name: string; revision: string; sha256: string } };
     reasoning: { family: "Qwen3"; name: string; revision: string; sha256: string; quantization: string; runtimeFamily: string; runtimeVersion: string; runtimeRevision: string; runtimeSha256: string };
     selectedPages: number[];
-    promptVersion: "l1-intelligent-library01-prompt-v1" | "l1-intelligent-library01-prompt-v2" | "l1-intelligent-library01-prompt-v3" | "l1-intelligent-library01-prompt-v4" | "l1-intelligent-library01-prompt-v5";
+    promptVersion: "l1-intelligent-library01-prompt-v1" | "l1-intelligent-library01-prompt-v2" | "l1-intelligent-library01-prompt-v3" | "l1-intelligent-library01-prompt-v4" | "l1-intelligent-library01-prompt-v5" | "l1-intelligent-library01-prompt-v6";
   };
   autoApplied: boolean;
   appliedFields: Array<{ fieldName: BibliographicFieldName; scopeKey: string }>;

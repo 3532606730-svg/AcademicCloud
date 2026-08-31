@@ -10,7 +10,7 @@ import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
 const NOW = "2026-08-27T12:00:00.000Z";
 
-test("migration 032 preserves immutable v1-v6 evidence and migration 033 admits exact v8 without rebuilding history", () => {
+test("migration 032 preserves immutable history and migrations 033-034 admit exact v8-v9 without rebuilding evidence", () => {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "academiccloud-bibliography-ruleset-v2-"));
   const v26Directory = join(temporaryDirectory, "v26");
   const v27Directory = join(temporaryDirectory, "v27");
@@ -19,6 +19,7 @@ test("migration 032 preserves immutable v1-v6 evidence and migration 033 admits 
   const v30Directory = join(temporaryDirectory, "v30");
   const v31Directory = join(temporaryDirectory, "v31");
   const v32Directory = join(temporaryDirectory, "v32");
+  const v33Directory = join(temporaryDirectory, "v33");
   mkdirSync(v26Directory);
   mkdirSync(v27Directory);
   mkdirSync(v28Directory);
@@ -26,6 +27,7 @@ test("migration 032 preserves immutable v1-v6 evidence and migration 033 admits 
   mkdirSync(v30Directory);
   mkdirSync(v31Directory);
   mkdirSync(v32Directory);
+  mkdirSync(v33Directory);
   for (const filename of readdirSync(INITIAL_MIGRATIONS_DIRECTORY)) {
     if (Number(filename.slice(0, 3)) <= 26) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v26Directory, filename));
@@ -47,6 +49,9 @@ test("migration 032 preserves immutable v1-v6 evidence and migration 033 admits 
     }
     if (Number(filename.slice(0, 3)) <= 32) {
       copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v32Directory, filename));
+    }
+    if (Number(filename.slice(0, 3)) <= 33) {
+      copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, filename), join(v33Directory, filename));
     }
   }
   const database = openSqliteDatabase(join(temporaryDirectory, "ruleset.sqlite"));
@@ -314,7 +319,7 @@ test("migration 032 preserves immutable v1-v6 evidence and migration 033 admits 
       )
     `);
     assert.throws(() => insertV8.run("8".repeat(64), NOW), /FOREIGN KEY constraint failed/u);
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+    assert.deepEqual(runMigrations(database, v33Directory), {
       appliedVersions: [33], currentVersion: 33,
     });
     insertV8.run("8".repeat(64), NOW);
@@ -328,6 +333,37 @@ test("migration 032 preserves immutable v1-v6 evidence and migration 033 admits 
     `).get(), {
       ruleset_version: "l1-intelligent-library01-v8",
       prompt_version: "l1-intelligent-library01-prompt-v5",
+    });
+    insertSuggestionRun.run("suggestion-v9", "rf-frontmatterocr-v2", "v9-source", NOW);
+    const insertV9 = database.prepare(`
+      INSERT INTO scholarly_bibliographic_ai_runs (
+        id, owner_domain_id, record_id, file_id, suggestion_run_id,
+        contract_version, ruleset_version, status, overall_confidence,
+        structured_output_json, structured_output_sha256, prompt_version,
+        ocr_engine_id, reasoning_engine_id, selected_pages_json, auto_applied,
+        applied_fields_json, created_at
+      ) VALUES (
+        'ai-v9', 'library:canonical-library', 'record-1', 'file-1', 'suggestion-v9',
+        1, 'l1-intelligent-library01-v9', 'ambiguous', 70,
+        '{}', ?, 'l1-intelligent-library01-prompt-v6',
+        'PaddleOCR/v9', 'Qwen3/v9', '[1]', 0, '[]', ?
+      )
+    `);
+    assert.throws(() => insertV9.run("9".repeat(64), NOW), /FOREIGN KEY constraint failed/u);
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
+      appliedVersions: [34], currentVersion: 34,
+    });
+    insertV9.run("9".repeat(64), NOW);
+    assert.equal(database.prepare<[], { count: number }>(`
+      SELECT count(*) AS count FROM scholarly_bibliographic_ruleset_registry
+    `).get()!.count, 9);
+    assert.deepEqual(database.prepare<[], { ruleset_version: string; prompt_version: string }>(`
+      SELECT ruleset_version, prompt_version
+        FROM scholarly_bibliographic_ruleset_registry
+       WHERE ruleset_version = 'l1-intelligent-library01-v9'
+    `).get(), {
+      ruleset_version: "l1-intelligent-library01-v9",
+      prompt_version: "l1-intelligent-library01-prompt-v6",
     });
     assert.throws(
       () => database.prepare(`
