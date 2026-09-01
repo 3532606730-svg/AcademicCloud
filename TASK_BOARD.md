@@ -44,7 +44,8 @@ available through incident closure; its card is archived under `tasks/done/`.
 
 | Task | State | Next authority |
 |---|---|---|
-| ACADEMICCLOUD-BATCH-CATALOG-ROUNDTRIP-V1 | IMPLEMENTED / VERIFIED ON ISOLATED `feature/batch-catalog-roundtrip-v1`; ADR-039; NO PRODUCTION OR SCHEMA CHANGE | Owner local acceptance and first real catalog export; deployment remains separately gated |
+| ACADEMICCLOUD-FULL-LIBRARY-BATCH-CATALOG | ACTIVE / OWNER-AUTHORIZED EXPORT ONLY / 105 TOTAL / 6 PROCESSED / 88 ELIGIBLE / ONE BATCH | Deploy exact schema-free V1, export and verify `academiccloud-catalog-batch-001.zip`, then STOP for external results; no import/apply |
+| ACADEMICCLOUD-BATCH-CATALOG-ROUNDTRIP-V1 | IMPLEMENTED / VERIFIED / FIRST REAL LOCAL ROUNDTRIP PASS on exact `31a1366…`; ADR-039 | Continued by the export-only full-Library task; no result import/apply authority |
 | ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `b3debfb…` V33 / A PASS / V9-SCHEMA34 RELEASE PENDING / MAIN WORKER DISABLED+PAUSED | Exact `6b68d1a…` removed input overflow, but the real B retry proved the full prompt Schema induced exhaustive null/empty output and another safe `content_truncated`. Pushed `9dbbc94…` adds compact sparse v9/prompt-v6 plus append-only schema34; exact release/backup/cutover and one fresh B retry are next. C remains blocked on B |
 | L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
 | UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |

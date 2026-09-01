@@ -27,11 +27,11 @@ INTERNAL_BETA_READY=false
 INTERNAL_BETA_STARTED=false
 ```
 
-## Isolated feature checkpoint: human-mediated Batch Cataloguing V1
+## Active export-only continuation: human-mediated Batch Cataloguing V1
 
 `ACADEMICCLOUD-BATCH-CATALOG-ROUNDTRIP-V1` is implemented and fully verified on
-isolated branch `feature/batch-catalog-roundtrip-v1`, based on pushed clean
-source `cbe3d33c39abe031984a428bd8cfb3d71dfef61c`. ADR-039 adds a bounded
+isolated branch `feature/batch-catalog-roundtrip-v1` at pushed exact source
+`31a136619d4c74be92c3350414e632a63b6e4540`. ADR-039 adds a bounded
 JSON-only native-text/selective-PaddleOCR evidence ZIP, strict stateless
 resource/content-identity result import, mutation-free preview, explicit
 Owner-selected canonical metadata/display-filename apply, and deterministic
@@ -40,10 +40,21 @@ runtime, schema migration, production job, or main-worker dependency.
 
 Backend 393/393, Frontend 287/287, Compute 123/123 plus two expected
 release-runtime skips, Compute contracts 3/3, typecheck, build, CORS contract,
-and diff checks pass. Production and production data remain untouched. The next
-step for this feature is Owner local acceptance and the first real catalog
-export; this checkpoint does not alter the separate active production incident
-or authorize deployment.
+and diff checks pass. The first real local Owner roundtrip also passed: one
+88-page PDF produced a complete bounded 20-page JSON-only package (18 native,
+2 PaddleOCR), preserved source identity, and imported as a mutation-disabled
+UNKNOWN preview.
+
+The Owner now separately authorizes `ACADEMICCLOUD-FULL-LIBRARY-BATCH-CATALOG`
+for production export only. Live read-only inventory is 105 attached resources:
+103 active, 2 deleted; active types are 94 PDF, 7 DOCX, and 2 DOC. Six PDFs are
+already applied or current AI-succeeded/reviewable under the existing semantic
+contract; 88 stable PDFs remain eligible. Batch size is 88 and estimated batch
+count is one. The exact schema-free V1 Core/frontend may be deployed only to
+create and verify `academiccloud-catalog-batch-001.zip`; no result import,
+apply, rename, metadata/object-key/source-byte mutation, schema change, backup,
+main worker, or production AI job is authorized. Stop after the export for
+external review.
 
 Authoritative supersession (2026-09-01): production Core/frontend is exact
 `3a23a7b5679bf64d01332fc761bae0dcf1a1d572`, schema/history remains 34/001–034,

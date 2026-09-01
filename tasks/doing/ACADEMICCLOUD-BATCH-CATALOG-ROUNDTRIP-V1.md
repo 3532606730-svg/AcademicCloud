@@ -1,8 +1,8 @@
 # ACADEMICCLOUD-BATCH-CATALOG-ROUNDTRIP-V1
 
-- Status: Implemented and verified in isolated feature branch; Owner local acceptance pending
+- Status: Implemented, verified, and passed first real local Owner roundtrip; production export-only continuation separately authorized
 - Branch: `feature/batch-catalog-roundtrip-v1`
-- Source: pushed clean checkpoint `cbe3d33c39abe031984a428bd8cfb3d71dfef61c`
+- Source: pushed exact feature checkpoint `31a136619d4c74be92c3350414e632a63b6e4540`
 - Production touched: no
 - Schema migration: none
 
@@ -23,7 +23,8 @@ Implement the ADR-039 human-mediated Library cataloguing roundtrip: bounded loca
 - [x] Eight-class deterministic local roundtrip fixture.
 - [x] Full Backend 393/393, Frontend 287/287, Compute 123/123 plus two expected runtime skips, contracts 3/3, typecheck, build, CORS contract, and diff review.
 - [x] Exact feature checkpoint prepared for normal non-force publication on the isolated feature branch.
+- [x] First real local Owner UI roundtrip passed on `Mongolia Between China and the USSR .pdf`: 88 pages, bounded 20-page evidence, 18 native-text pages, 2 PaddleOCR pages, JSON-only/privacy/identity gates green, and UNKNOWN import preview mutation-disabled.
 
 ## Explicit exclusions
 
-No OpenAI/DeepSeek/local reasoning integration, production deployment, production job, main worker activation, production data mutation, database migration, or deletion of existing NuExtract/Qwen work.
+No OpenAI/DeepSeek/local reasoning integration, production job, main worker activation, production data mutation, database migration, or deletion of existing NuExtract/Qwen work. The later Owner-authorized `ACADEMICCLOUD-FULL-LIBRARY-BATCH-CATALOG` task may deploy the exact schema-free V1 Core/frontend only to create bounded evidence exports; it does not authorize results import or apply.
