@@ -567,15 +567,44 @@ llama.cpp `b10218/de69995` loaded the qwen35 model on CUDA and passed exact
 native-template text extraction in 635 ms with 3,443,096 KiB peak RSS, so no
 runtime upgrade is required or allowed.
 
+2026-09-01: the source/runtime recovery checkpoint `d5580ed…` is pushed and
+reproducible. The original D-only WSL distro suffered verified VHDX block loss;
+its original, pre-repair, and repaired evidence copies remain preserved. Clean
+D-only `AcademicCloudComputeV2` was qualified with systemd, RTX 4060 visibility,
+CUDA 12.8/sm_89, recovered exact Paddle/llama assets, and the shared NuExtract3
+Q5_K_M GGUF. Offline NuExtract3 qualification passed all four modern A,
+historical B1/B2, and insufficient-unknown samples with exact field provenance,
+no raw evidence persistence, peak 3,443,188 KiB RSS and 5,840 MiB VRAM. Exact
+immutable Compute `d5580ed…` passes the complete release/shared-model verifier.
+Production Core/frontend advanced to the same source at unchanged schema34;
+health/readiness, registry count 11, integrity, and FK all pass with no backup,
+migration, or configuration change.
+
+The normal website created 《真腊风土记》 job `cd7bcbad…` / attempt `49a07d71…`.
+Exact isolated NuExtract3 completed and persisted a reviewable v11 result, but
+positive evidence was insufficient for the requested historical class and OCR
+left plausible corrupt fragments; it remained unknown, did not auto-apply, and
+is retained only as safe-degradation evidence, not a B PASS. A second normal-UI
+resource with explicit source/edition evidence created job `75f14c31…` /
+attempt `7f474c6e…`. Exact isolated `d5580ed…` completed in about 126 seconds,
+persisted `primary_source_modern_edition`, title `元朝秘史`, editor `烏蘭`,
+publisher `中華書局`, and collated-edition `校勘本`, with ten exact evidence rows,
+current-attempt callback binding, zero auto-applied fields, and unchanged
+object identity. Refresh-stable UI renders `元朝秘史 中華書局校勘本`; B's
+bibliographic/model/authority/display gates pass.
+
+The remaining B inconsistency is frontend-only: Activity Center received a
+terminal job without the authoritative Core state and therefore displayed
+extraction-only while Resource Details correctly displayed reviewable success.
+The minimal correction forwards the already-fetched authoritative state; its
+new regression plus full Frontend 285/285, typecheck, build, and diff check pass.
+No backend, Compute, schema, model, parser, authority, or source-data behavior
+changed.
+
 ## Next Action
 
-Keep production Core `2a3ba75…`/schema34 healthy and main Compute `58b8468…`
-PAUSED/disabled/inactive. Implement only the NuExtract3 native structured-
-extraction adapter and shared-model release reference while freezing the v11
-parser, evidence validation, material classification, authority, display,
-queue, and lease semantics. Run offline modern A, two evidence-clear historical
-B samples, and one evidence-insufficient unknown sample with inference/RAM/VRAM
-evidence. If green, create one exact Compute checkpoint/release/verifier (no
-backup or migration), rerun production B then C, then forced-loss, exact main
-cutover, NORMAL browser acceptance, concurrency-one corpus, final cleanup, and
-close the task.
+Checkpoint and deploy only the schema-unchanged frontend Activity Center fix,
+then re-verify B consistency through the normal browser. Keep exact Compute
+`d5580ed…` isolated with main service PAUSED/inactive while running C. If C
+passes, continue forced-loss recovery, exact main cutover, NORMAL browser
+acceptance, concurrency-one corpus, final cleanup, and close the task.

@@ -459,7 +459,7 @@ export function ResourceDetailsDialog({
   onPreview: () => void;
   onDownload: () => void;
   onCitation?: () => void;
-  onSuggestionJobChange?: (job: DerivedMetadataJob) => void;
+  onSuggestionJobChange?: (job: DerivedMetadataJob, authoritativeState?: MetadataCataloguingState) => void;
 }) {
   const { language, t } = useLanguage();
   const [detail, setDetail] = useState<LibraryHoldingDetails | null>(null);
@@ -563,7 +563,7 @@ export function ResourceDetailsDialog({
           const summary = states[0];
           setSuggestionJob(summary?.job ?? null);
           setCataloguingState(summary?.state ?? "not_run");
-          if (summary?.job) onSuggestionJobChange?.(summary.job);
+          if (summary?.job) onSuggestionJobChange?.(summary.job, summary.state);
         })
         .catch((caught: unknown) => {
           if (!(caught instanceof DOMException && caught.name === "AbortError")) setSuggestionsError(safeSuggestionError(caught));
@@ -603,7 +603,6 @@ export function ResourceDetailsDialog({
         if (stopped) return;
         setSuggestionJob(next);
         setCataloguingState(next.state === "succeeded" ? "extraction_only" : next.state);
-        onSuggestionJobChange?.(next);
         if (next.state === "succeeded") {
           const [run, states] = await Promise.all([
             api.getLibraryMetadataSuggestions?.(library.id, holding.file.id, controller.signal),
@@ -613,9 +612,14 @@ export function ResourceDetailsDialog({
             setSuggestionRun(run);
             setSelectedSuggestionIds(new Set());
           }
-          if (!stopped && states?.[0]) setCataloguingState(states[0].state);
+          if (!stopped) {
+            const authoritativeState = states?.[0]?.state;
+            if (authoritativeState) setCataloguingState(authoritativeState);
+            onSuggestionJobChange?.(next, authoritativeState);
+          }
           return;
         }
+        onSuggestionJobChange?.(next);
         if (next.state === "failed") return;
         timer = setTimeout(() => void poll(next), 2_000);
       } catch (caught) {

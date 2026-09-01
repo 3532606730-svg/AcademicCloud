@@ -799,15 +799,24 @@ function DriveView({
     library: LibrarySummary,
     holding: LibraryHolding,
     job: DerivedMetadataJob,
+    authoritativeState?: MetadataCataloguingState,
   ) => {
     setMetadataActivities((current) => [
-      { library, holding, job, state: job.state === "succeeded" ? "extraction_only" : job.state },
+      {
+        library,
+        holding,
+        job,
+        state: authoritativeState ?? (job.state === "succeeded" ? "extraction_only" : job.state),
+      },
       ...current.filter((activity) => activity.library.id !== library.id || activity.holding.file.id !== holding.file.id),
     ]);
   }, []);
-  const handleResourceSuggestionJobChange = useCallback((job: DerivedMetadataJob) => {
+  const handleResourceSuggestionJobChange = useCallback((
+    job: DerivedMetadataJob,
+    authoritativeState?: MetadataCataloguingState,
+  ) => {
     if (!resourceDetailsRequest) return;
-    recordMetadataActivity(resourceDetailsRequest.library, resourceDetailsRequest.holding, job);
+    recordMetadataActivity(resourceDetailsRequest.library, resourceDetailsRequest.holding, job, authoritativeState);
   }, [recordMetadataActivity, resourceDetailsRequest]);
 
   // Reload-safe Job Core discovery. One authorization-scoped batch projection

@@ -10,6 +10,7 @@ import {
   type LibraryHolding,
   type LibraryHoldingDetails,
   type LibrarySummary,
+  type MetadataCataloguingState,
   type MetadataSuggestionRun,
   type MaterialType,
   type MetadataTypeFields,
@@ -179,6 +180,7 @@ function renderDetails(options: {
   initial?: LibraryHoldingDetails;
   api?: Partial<AcademicCloudApi>;
   client?: AcademicCloudApi;
+  onSuggestionJobChange?: (job: DerivedMetadataJob, authoritativeState?: MetadataCataloguingState) => void;
 } = {}) {
   const initial = options.initial ?? detail();
   const api = options.client ?? {
@@ -201,6 +203,9 @@ function renderDetails(options: {
         onPreview={vi.fn()}
         onDownload={vi.fn()}
         onCitation={onCitation}
+        {...(options.onSuggestionJobChange === undefined
+          ? {}
+          : { onSuggestionJobChange: options.onSuggestionJobChange })}
       />
     </LanguageProvider>,
   );
@@ -424,6 +429,38 @@ describe("Resource details", () => {
     const review = screen.getByText("Field evidence and conflict review (2)").closest("details");
     expect(review).not.toHaveAttribute("open");
     expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
+  });
+
+  it("forwards the server-authoritative terminal AI state to the activity center owner", async () => {
+    const queuedJob: DerivedMetadataJob = {
+      ...SUCCEEDED_JOB,
+      state: "queued",
+      progress: 0,
+      resultRef: null,
+      startedAt: null,
+      finishedAt: null,
+    };
+    const onSuggestionJobChange = vi.fn();
+    const getLatestStates = vi.fn()
+      .mockResolvedValueOnce([{ fileId: HOLDING.file.id, state: "queued", job: queuedJob }])
+      .mockResolvedValueOnce([{
+        fileId: HOLDING.file.id,
+        state: "ai_succeeded_reviewable",
+        job: SUCCEEDED_JOB,
+      }]);
+    renderDetails({
+      onSuggestionJobChange,
+      api: {
+        getLibraryMetadataSuggestions: vi.fn().mockResolvedValue(AI_SUGGESTION_RUN),
+        getLatestLibraryMetadataSuggestionStates: getLatestStates,
+        getLibraryMetadataSuggestionJob: vi.fn().mockResolvedValue(SUCCEEDED_JOB),
+      },
+    });
+
+    await waitFor(() => expect(onSuggestionJobChange).toHaveBeenCalledWith(
+      SUCCEEDED_JOB,
+      "ai_succeeded_reviewable",
+    ), { timeout: 4_000 });
   });
 
   it.each([

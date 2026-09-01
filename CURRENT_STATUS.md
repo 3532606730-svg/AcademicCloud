@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-08-30
+**Last reconciled:** 2026-09-01
 
 `CURRENT_STATE.json` is the compact machine-readable pointer. ADRs and task
 cards preserve the complete implementation, incident, release, and rollback
@@ -26,6 +26,31 @@ WHOLE_PRODUCT_PERFORMANCE_ACCEPTANCE=PENDING
 INTERNAL_BETA_READY=false
 INTERNAL_BETA_STARTED=false
 ```
+
+Authoritative supersession (2026-09-01): production Core/frontend is exact
+`d5580ed97b44baba3348d2613059435cd0ba4152`, schema/history remains 34/001–034,
+registry admission remains v1–v11/prompt-v7, health/readiness/integrity/FK are
+green, and no backup or migration accompanied the schema-unchanged cutover.
+Clean D-only `AcademicCloudComputeV2` contains exact immutable Compute
+`d5580ed…`, verified shared CUDA/Paddle/llama assets, and the one shared
+NuExtract3 Q5_K_M model; its main service is absent/inactive and its environment
+is `PAUSED`. The original corrupt distro VHDX and two evidence copies remain
+preserved.
+
+NuExtract3 offline qualification passed all four A/B/B/unknown cases. Normal
+production UI-created B job `75f14c31-885a-4d9e-821f-13a9aa23705d`, attempt
+`7f474c6e-0020-44c3-be98-399da77633fd`, then succeeded on exact isolated
+Compute `d5580ed…`. Core retained exact v11/prompt-v7 and model provenance,
+positive historical/edition class evidence, value-supported field provenance,
+no automatic application, and unchanged object identity. After refresh the
+normal detail UI displays `元朝秘史 中華書局校勘本` as a modern primary-source
+edition. A separate scan that safely remained unknown is not counted as B.
+
+The remaining B gate is only the contradictory Activity Center label. Its root
+cause is a lost authoritative state parameter between Resource Details and the
+activity owner; the minimal frontend-only correction and regression pass
+Frontend 285/285, typecheck, and production build. It now requires one exact
+same-schema Core/frontend checkpoint and cutover, then browser re-verification.
 
 The Local Compute Owner override continues this program and changes only the
 production Compute strategy. Live production is exact frontend/Core
@@ -889,9 +914,9 @@ in production after deployment; no browser automation was run per Owner override
 
 ## Next action
 
-Keep production `b3debfb…`/schema33 healthy and main Local Compute
-`58b8468…` PAUSED/disabled/inactive. Assemble exact Core/Compute from
-`9dbbc94…`, complete the fresh encrypted schema33 off-host backup gate, and
-apply only append-only migration 034 before the next normal-UI B attempt and
-one exact isolated iteration. B then C must pass before forced-loss, NORMAL,
-browser-only product acceptance, or the concurrency-one full corpus.
+Create and push the exact frontend consistency checkpoint, build/deploy one
+schema-unchanged Core/frontend artifact without backup or migration, and prove
+the same B result is reviewable in both Activity Center and Resource Details.
+Keep exact Compute `d5580ed…` isolated and main service PAUSED/inactive while
+running C. Then perform forced-loss recovery, exact main cutover, NORMAL browser
+acceptance, concurrency-one corpus, final cleanup, and close the task.
