@@ -463,3 +463,24 @@ the exact worker is deliberately placed in NORMAL, enabled, active, and
 concurrency one. One-shot jobs, SSH, database writes, and internal endpoints do
 not satisfy this gate. Offline Local Compute is represented as safely queued,
 not immediate cloud execution.
+
+## ADR-039 — Human-mediated Batch Cataloguing Roundtrip
+
+**Date:** 2026-09-01
+**Status:** Accepted; implemented and verified on isolated feature branch; production unchanged
+**Full record:** `docs/decisions/ADR-039-human-mediated-batch-catalog-roundtrip.md`
+
+AcademicCloud may export an Owner-selected, bounded JSON-only evidence package
+through Local Compute, accept a strict external results document, preview it
+without mutation, and apply only explicit Owner selections. The external
+reviewer is neither an AcademicCloud runtime dependency nor an authority.
+Resource ID plus the existing source/content identity, canonical manifest
+digest, live-state revalidation, and per-item preview versions replace any
+filename/title/order matching.
+
+The server alone implements `academiccloud.filename.v1`; it never trusts an
+external target filename, invents missing responsibility/date placeholders,
+adds semantic numeric suffixes, overwrites collisions, or changes object keys.
+Owner confirmation transitions changed fields to human authority using the
+existing canonical and audit vocabulary. The stateless V1 needs no schema
+migration, external AI API, main-worker activation, or production mutation.

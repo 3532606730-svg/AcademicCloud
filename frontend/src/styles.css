@@ -1248,3 +1248,54 @@ input:hover { border-color: #a7b2a8; }
 .language-switch button:hover { opacity: 1; text-decoration: underline; }
 .language-switch button.is-active { opacity: 1; font-weight: 700; }
 .upload-metrics { color: var(--muted); font-size: 0.82rem; }
+.batch-catalog-modal {
+  width: min(980px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+}
+
+.batch-catalog-modal section {
+  border-top: 1px solid var(--border, #d8dde5);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.batch-catalog-selection-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+
+.batch-catalog-resource-list {
+  border: 1px solid var(--border, #d8dde5);
+  display: grid;
+  gap: .35rem;
+  margin-bottom: .75rem;
+  max-height: 14rem;
+  overflow: auto;
+  padding: .65rem;
+}
+
+.batch-catalog-resource-list label {
+  align-items: center;
+  display: flex;
+  gap: .5rem;
+}
+
+.batch-catalog-counts {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.batch-catalog-detail {
+  display: grid;
+  gap: .2rem .65rem;
+  grid-template-columns: max-content 1fr;
+  margin: .5rem 0 0 1.75rem;
+}
+
+.batch-catalog-detail dd,
+.batch-catalog-detail dt {
+  margin: 0;
+}

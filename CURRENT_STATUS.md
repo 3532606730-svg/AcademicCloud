@@ -27,6 +27,24 @@ INTERNAL_BETA_READY=false
 INTERNAL_BETA_STARTED=false
 ```
 
+## Isolated feature checkpoint: human-mediated Batch Cataloguing V1
+
+`ACADEMICCLOUD-BATCH-CATALOG-ROUNDTRIP-V1` is implemented and fully verified on
+isolated branch `feature/batch-catalog-roundtrip-v1`, based on pushed clean
+source `cbe3d33c39abe031984a428bd8cfb3d71dfef61c`. ADR-039 adds a bounded
+JSON-only native-text/selective-PaddleOCR evidence ZIP, strict stateless
+resource/content-identity result import, mutation-free preview, explicit
+Owner-selected canonical metadata/display-filename apply, and deterministic
+`academiccloud.filename.v1` collision-safe naming. It adds no external AI
+runtime, schema migration, production job, or main-worker dependency.
+
+Backend 393/393, Frontend 287/287, Compute 123/123 plus two expected
+release-runtime skips, Compute contracts 3/3, typecheck, build, CORS contract,
+and diff checks pass. Production and production data remain untouched. The next
+step for this feature is Owner local acceptance and the first real catalog
+export; this checkpoint does not alter the separate active production incident
+or authorize deployment.
+
 Authoritative supersession (2026-09-01): production Core/frontend is exact
 `3a23a7b5679bf64d01332fc761bae0dcf1a1d572`, schema/history remains 34/001–034,
 registry admission remains v1–v11/prompt-v7, health/readiness/integrity/FK are

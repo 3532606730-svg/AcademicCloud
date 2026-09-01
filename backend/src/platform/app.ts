@@ -30,6 +30,8 @@ import type { SuggestionService } from "../suggestions/suggestion-service.js";
 import { registerSuggestionHttp } from "../suggestions/http.js";
 import type { CitationService } from "../citation/citation-service.js";
 import { registerCitationHttp } from "../citation/http.js";
+import type { CatalogBatchService } from "../catalog-batch/catalog-batch-service.js";
+import { registerCatalogBatchHttp } from "../catalog-batch/http.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -80,6 +82,8 @@ export const LOGGER_REDACT_PATHS = [
   "authorization.headers",
   "capability.token",
   "*.capability.token",
+  "capabilityToken",
+  "*.capabilityToken",
   "source.url",
   "*.source.url",
   "fields.policy",
@@ -145,6 +149,7 @@ export interface CreateAppOptions {
   metadata?: { service: CanonicalMetadataService };
   suggestions?: { service: SuggestionService; bootstrapSecret?: string | null };
   citations?: { service: CitationService };
+  catalogBatch?: { service: CatalogBatchService };
   readinessCheck?: () => boolean;
 }
 
@@ -318,6 +323,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   if (options.citations) {
     if (!options.auth) throw new Error("citation routes require authentication composition");
     await registerCitationHttp(app, options.citations.service);
+  }
+
+  if (options.catalogBatch) {
+    if (!options.auth) throw new Error("catalog batch routes require authentication composition");
+    await registerCatalogBatchHttp(app, options.catalogBatch.service);
   }
 
   return app;

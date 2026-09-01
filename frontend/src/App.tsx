@@ -49,6 +49,7 @@ import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
 import { ResourceDetailsDialog } from "./resource-details.tsx";
 import { BatchNamingDialog } from "./batch-naming.tsx";
+import { BatchCatalogDialog } from "./batch-catalog.tsx";
 import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
 import { CitationDialog } from "./citation.tsx";
@@ -710,6 +711,7 @@ function DriveView({
   const [resourceDetailsRequest, setResourceDetailsRequest] = useState<ResourceDetailsRequest | null>(null);
   const [citationRequest, setCitationRequest] = useState<CitationRequest | null>(null);
   const [batchNamingRequest, setBatchNamingRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
+  const [batchCatalogRequest, setBatchCatalogRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
   const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
@@ -2121,7 +2123,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || citationRequest !== null || batchNamingRequest !== null || moveRequest !== null || accountAdministrationOpen}>
+    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || citationRequest !== null || batchNamingRequest !== null || batchCatalogRequest !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -2286,6 +2288,15 @@ function DriveView({
                   && library.role === "manager"
                   && api.previewLibraryBatchNaming !== undefined
                   && api.applyLibraryBatchNaming !== undefined;
+                const batchCatalogAvailable = allSelectedAreHoldings
+                  && account.role === "owner"
+                  && library !== null
+                  && library.role === "manager"
+                  && selectedEntries.every((entry) => entry.scope === "library_holding"
+                    && entry.item.file.mediaType?.toLowerCase() === "application/pdf")
+                  && api.createCatalogBatchExportRequest !== undefined
+                  && api.previewCatalogBatchResults !== undefined
+                  && api.applyCatalogBatchResults !== undefined;
                 return (
                   <section aria-labelledby="contents-title">
                     <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
@@ -2316,6 +2327,10 @@ function DriveView({
                         {...(selectionCapabilities.favoriteAdd ? { onFavoriteAdd: () => void runFavoriteSelection(true) } : {})}
                         {...(selectionCapabilities.favoriteRemove ? { onFavoriteRemove: () => void runFavoriteSelection(false) } : {})}
                         {...(batchNamingAvailable ? { onBatchName: () => setBatchNamingRequest({
+                          library: library!,
+                          holdings: selectedEntries.map((entry) => (entry.scope === "library_holding" ? entry.item : entry.item)),
+                        }) } : {})}
+                        {...(batchCatalogAvailable ? { onBatchCatalog: () => setBatchCatalogRequest({
                           library: library!,
                           holdings: selectedEntries.map((entry) => (entry.scope === "library_holding" ? entry.item : entry.item)),
                         }) } : {})}
@@ -2827,6 +2842,18 @@ function DriveView({
           onApplied={() => {
             // Keep the modal open so the per-item result list stays visible;
             // the manager closes it explicitly after review.
+            setSelectedKeys(new Set());
+            refresh();
+          }}
+        />
+      )}
+      {batchCatalogRequest && (
+        <BatchCatalogDialog
+          api={api}
+          library={batchCatalogRequest.library}
+          initialHoldings={batchCatalogRequest.holdings}
+          onClose={() => setBatchCatalogRequest(null)}
+          onApplied={() => {
             setSelectedKeys(new Set());
             refresh();
           }}
@@ -3697,6 +3724,7 @@ function BulkToolbar({
   onFavoriteAdd,
   onFavoriteRemove,
   onBatchName,
+  onBatchCatalog,
 }: {
   mode: "library" | "favorites" | "recycle";
   selectedCount: number;
@@ -3709,6 +3737,7 @@ function BulkToolbar({
   onFavoriteAdd?: () => void;
   onFavoriteRemove?: () => void;
   onBatchName?: () => void;
+  onBatchCatalog?: () => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -3721,6 +3750,7 @@ function BulkToolbar({
           </button>
         )}
         {onBatchName && <button className="button button--small" type="button" disabled={busy} onClick={onBatchName}>{t("bulk.batchName")}</button>}
+        {onBatchCatalog && <button className="button button--small" type="button" disabled={busy} onClick={onBatchCatalog}>{t("bulk.batchCatalog")}</button>}
         {onFavoriteAdd && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteAdd}>{t("bulk.favoriteAdd")}</button>}
         {onFavoriteRemove && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteRemove}>{t("bulk.favoriteRemove")}</button>}
         {onRestore && <button className="button button--small" type="button" disabled={busy} onClick={onRestore}>{t("bulk.restore")}</button>}

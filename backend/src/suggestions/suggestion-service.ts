@@ -12,6 +12,7 @@ import {
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import type { Persistence, RepositorySet } from "../persistence/contracts.js";
 import type { StoredFile } from "../drive/file.js";
+import { catalogSourceIdentity } from "../drive/source-identity.js";
 import type { Library, LibraryHolding, LibraryMembership } from "../library/library.js";
 import { composeCatalogueDisplay } from "../library/catalogue-display.js";
 import {
@@ -195,20 +196,12 @@ function sourceFingerprint(file: StoredFile): {
   checksumAlgorithm: string | null;
   checksum: string | null;
 } {
-  const value = createHash("sha256")
-    .update(JSON.stringify([
-      "rf-metasuggest-source-v1",
-      file.id,
-      file.revision,
-      file.checksumAlgorithm,
-      file.checksum,
-    ]))
-    .digest("base64url");
+  const identity = catalogSourceIdentity(file);
   return {
-    value,
-    fileRevision: file.revision,
-    checksumAlgorithm: file.checksumAlgorithm,
-    checksum: file.checksum,
+    value: identity.sourceFingerprint,
+    fileRevision: identity.fileRevision,
+    checksumAlgorithm: identity.checksumAlgorithm,
+    checksum: identity.checksum,
   };
 }
 

@@ -479,6 +479,46 @@ export interface BatchNamingResultItem {
   status: BatchNamingResultStatus;
 }
 
+export interface CatalogExportRequest {
+  schemaVersion: "academiccloud.catalog-export-request.v1";
+  manifest: { batchId: string; resources: Array<{ resourceId: string; currentFilename: string }> };
+  sourceManifestSha256: string;
+  sourceAccess: { coreBaseUrl: string; capabilityToken: string; expiresAt: string };
+}
+
+export type CatalogPreviewCategory = "auto" | "review" | "unknown" | "stale" | "collision" | "unchanged";
+export interface CatalogPreviewItem {
+  resourceId: string;
+  currentFilename: string;
+  proposedFilename: string | null;
+  canonicalTitle: string | null;
+  responsibility: string | null;
+  year: string | null;
+  materialClass: MaterialClass | null;
+  disposition: "auto" | "review" | "unknown";
+  confidence: number;
+  notes: string | null;
+  identityMatch: boolean;
+  collisionStatus: "none" | "exact_duplicate" | "name_collision";
+  renameStatus: "proposed" | "no_rename" | "unchanged" | "exact_duplicate" | "name_collision";
+  metadataChanges: string[];
+  category: CatalogPreviewCategory;
+  previewVersion: string;
+}
+
+export interface CatalogPreview {
+  batchId: string;
+  documentDigest: string;
+  counts: Record<"AUTO" | "REVIEW" | "UNKNOWN" | "STALE" | "COLLISION" | "UNCHANGED", number>;
+  items: CatalogPreviewItem[];
+}
+
+export interface CatalogApplyResult {
+  resourceId: string;
+  status: "applied" | "unchanged" | "stale" | "collision" | "not_found" | "invalid_input" | "conflict";
+  displayName: string | null;
+}
+
 /**
  * Bounded, deterministic bibliographic suggestion evidence.  These values
  * intentionally mirror the server contract but do not expose object keys,
@@ -848,6 +888,14 @@ export interface AcademicCloudApi {
   listLibraryHoldingsSorted?(libraryId: string, sort: LibraryHoldingSort, cursor: string | null, signal?: AbortSignal): Promise<LibraryHoldingsPage>;
   previewLibraryBatchNaming?(libraryId: string, fileIds: string[], signal?: AbortSignal): Promise<BatchNamingPreview>;
   applyLibraryBatchNaming?(libraryId: string, items: BatchNamingItemInput[]): Promise<{ results: BatchNamingResultItem[] }>;
+  createCatalogBatchExportRequest?(libraryId: string, fileIds: string[]): Promise<CatalogExportRequest>;
+  previewCatalogBatchResults?(libraryId: string, document: unknown): Promise<CatalogPreview>;
+  applyCatalogBatchResults?(
+    libraryId: string,
+    document: unknown,
+    documentDigest: string,
+    selections: Array<{ resourceId: string; previewVersion: string }>,
+  ): Promise<{ results: CatalogApplyResult[] }>;
   searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number, filters?: LibrarySearchFilters, sort?: LibrarySearchSort): Promise<LibrarySearchPage>;
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
   updateLibraryHoldingMetadata(libraryId: string, fileId: string, input: LibraryMetadataInput): Promise<LibraryHoldingDetails>;
@@ -1259,6 +1307,35 @@ export class ApiClient implements AcademicCloudApi {
       `/api/libraries/${encodeURIComponent(libraryId)}/holdings/batch-naming`,
       "POST",
       { items },
+    );
+  }
+
+  createCatalogBatchExportRequest(libraryId: string, fileIds: string[]): Promise<CatalogExportRequest> {
+    return this.#jsonBody<CatalogExportRequest>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/catalog-batches/export-request`,
+      "POST",
+      { fileIds },
+    );
+  }
+
+  previewCatalogBatchResults(libraryId: string, document: unknown): Promise<CatalogPreview> {
+    return this.#jsonBody<CatalogPreview>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/catalog-batches/preview`,
+      "POST",
+      document,
+    );
+  }
+
+  applyCatalogBatchResults(
+    libraryId: string,
+    document: unknown,
+    documentDigest: string,
+    selections: Array<{ resourceId: string; previewVersion: string }>,
+  ): Promise<{ results: CatalogApplyResult[] }> {
+    return this.#jsonBody<{ results: CatalogApplyResult[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/catalog-batches/apply`,
+      "POST",
+      { document, documentDigest, selections },
     );
   }
 

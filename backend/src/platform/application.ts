@@ -23,6 +23,7 @@ import {
   type DerivedComputeRuntime,
 } from "../compute/github-actions-dispatcher.js";
 import { CitationService } from "../citation/citation-service.js";
+import { CatalogBatchService } from "../catalog-batch/catalog-batch-service.js";
 
 export async function createApplication(
   config: AppConfig,
@@ -64,6 +65,11 @@ export async function createApplication(
     const scholarlyRecordService = new ScholarlyRecordService(persistence);
     const canonicalMetadataService = new CanonicalMetadataService(persistence);
     const citationService = new CitationService(canonicalMetadataService);
+    const catalogBatchService = new CatalogBatchService({
+      persistence,
+      storage,
+      coreBaseUrl: config.appOrigin,
+    });
     const suggestionService = new SuggestionService({
       persistence,
       storage,
@@ -98,6 +104,7 @@ export async function createApplication(
       metadata: { service: canonicalMetadataService },
       suggestions: { service: suggestionService, bootstrapSecret: computeRuntime.bootstrapSecret },
       citations: { service: citationService },
+      catalogBatch: { service: catalogBatchService },
       libraries: { service: libraryService },
       readinessCheck: () => persistence.isReady(),
     });

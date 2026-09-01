@@ -360,3 +360,4 @@ import {
 } from "./bibliography.js";
 
 export * from "./bibliography.js";
+export * from "./catalog-batch.js";

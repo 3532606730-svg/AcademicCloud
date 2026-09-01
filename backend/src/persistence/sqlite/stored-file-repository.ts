@@ -71,6 +71,7 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
   readonly #insert;
   readonly #findById;
   readonly #findByDomainId;
+  readonly #findAvailableByDomainName;
   readonly #listRootByState;
   readonly #listFolderByState;
   readonly #listDeleted;
@@ -115,6 +116,22 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
       FROM files
       JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
       WHERE files.owner_domain_id = ? AND files.id = ?
+    `);
+    this.#findAvailableByDomainName = database.prepare<[string, string | null, string], StoredFileRow>(`
+      SELECT
+        files.id, COALESCE(ownership_domains.account_id, ownership_domains.id) AS owner_id, files.folder_id,
+        files.display_name, files.storage_provider, files.object_key,
+        files.media_type, files.size_bytes, files.checksum_algorithm, files.checksum,
+        files.state, files.revision, files.created_at, files.updated_at,
+        files.activated_at, files.deleted_at, files.purged_at
+      FROM files
+      JOIN ownership_domains ON ownership_domains.id = files.owner_domain_id
+      WHERE files.owner_domain_id = ?
+        AND files.folder_id IS ?
+        AND files.display_name = ? COLLATE NOCASE
+        AND files.state IN ('pending_upload', 'active')
+      ORDER BY files.id
+      LIMIT 1
     `);
     const columns = `
       files.id, ownership_domains.account_id AS owner_id, files.folder_id,
@@ -217,6 +234,11 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
     });
 
     return this.findById(file.ownerId, file.id)!;
+  }
+
+  findAvailableByDomainName(ownerDomainId: string, folderId: string | null, displayName: string): StoredFile | null {
+    const row = this.#findAvailableByDomainName.get(ownerDomainId, folderId, displayName);
+    return row ? toStoredFile(row) : null;
   }
 
   findById(ownerId: string, id: string): StoredFile | null {
