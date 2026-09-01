@@ -593,18 +593,36 @@ current-attempt callback binding, zero auto-applied fields, and unchanged
 object identity. Refresh-stable UI renders `元朝秘史 中華書局校勘本`; B's
 bibliographic/model/authority/display gates pass.
 
-The remaining B inconsistency is frontend-only: Activity Center received a
-terminal job without the authoritative Core state and therefore displayed
-extraction-only while Resource Details correctly displayed reviewable success.
-The minimal correction forwards the already-fetched authoritative state; its
-new regression plus full Frontend 285/285, typecheck, build, and diff check pass.
-No backend, Compute, schema, model, parser, authority, or source-data behavior
-changed.
+Exact frontend-only checkpoint `3a23a7b…` was pushed and deployed without a
+backup, migration, registry change, or Compute rebuild. Production health,
+readiness, schema34/history 001–034, registry count 11, integrity, FK, exact
+process identity, and the public frontend bundle passed. The normal signed-in
+browser then showed the same B result as reviewable in both Activity Center and
+Resource Details, so B is fully green.
+
+Production C now records a real hard stop. Normal-UI multilingual job
+`a3a4bfc9-c9c3-4391-81b4-21e62d50a07f` / attempt
+`cd34321e-7622-40fc-84e9-f848922548fa` ran exact isolated `d5580ed…`, completed
+four bounded ranges, received callback HTTP 200, and failed closed at
+`bibliographic_reasoning/canonical_schema_invalid`. A second normal-UI
+multi-script job `7aedd762-f375-4944-a09d-bbf80ee6175a` / attempt
+`3755d3cf-5682-4bad-a7b8-6323c9449da6` completed seven bounded ranges and failed
+closed at the same contract boundary. Both normal UI paths remain failed and
+retryable with no AI success, structured record, auto-apply, authority mutation,
+or canonical promotion. Between them, `道布 回鹘式蒙古文文献汇编` job
+`d88ca094…` safely succeeded as `no_bibliography` using native/embedded text,
+preserved human metadata and object identity, and did not qualify as OCR C.
+Repeated real C contract failure reaches the Owner-defined systematic
+model-contract stop line. Queue is empty; production `3a23a7b…`/schema34 is
+healthy; main Compute remains service-absent/inactive/PAUSED.
 
 ## Next Action
 
-Checkpoint and deploy only the schema-unchanged frontend Activity Center fix,
-then re-verify B consistency through the normal browser. Keep exact Compute
-`d5580ed…` isolated with main service PAUSED/inactive while running C. If C
-passes, continue forced-loss recovery, exact main cutover, NORMAL browser
-acceptance, concurrency-one corpus, final cleanup, and close the task.
+HARD STOP pending Owner model-capability direction. Do not add parser
+normalization, retry more books, enable main Compute, or enter forced-loss,
+NORMAL, browser acceptance, or full corpus. The bounded decision is whether to
+reduce the model's required C output responsibility while retaining the frozen
+v11 validator/evidence/authority contract, or replace NuExtract3 with a stronger
+local reasoner. After the selected path passes a real OCR multilingual C,
+continue forced-loss recovery, exact main cutover, NORMAL browser acceptance,
+concurrency-one corpus, final cleanup, and close the task.

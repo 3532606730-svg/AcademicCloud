@@ -28,7 +28,7 @@ INTERNAL_BETA_STARTED=false
 ```
 
 Authoritative supersession (2026-09-01): production Core/frontend is exact
-`d5580ed97b44baba3348d2613059435cd0ba4152`, schema/history remains 34/001–034,
+`3a23a7b5679bf64d01332fc761bae0dcf1a1d572`, schema/history remains 34/001–034,
 registry admission remains v1–v11/prompt-v7, health/readiness/integrity/FK are
 green, and no backup or migration accompanied the schema-unchanged cutover.
 Clean D-only `AcademicCloudComputeV2` contains exact immutable Compute
@@ -46,11 +46,23 @@ no automatic application, and unchanged object identity. After refresh the
 normal detail UI displays `元朝秘史 中華書局校勘本` as a modern primary-source
 edition. A separate scan that safely remained unknown is not counted as B.
 
-The remaining B gate is only the contradictory Activity Center label. Its root
-cause is a lost authoritative state parameter between Resource Details and the
-activity owner; the minimal frontend-only correction and regression pass
-Frontend 285/285, typecheck, and production build. It now requires one exact
-same-schema Core/frontend checkpoint and cutover, then browser re-verification.
+Exact frontend-only checkpoint `3a23a7b…` restored the authoritative Activity
+Center state without schema, registry, backend-persistence, or Compute changes.
+After the schema-unchanged cutover, the same normal signed-in browser session
+showed the B result as reviewable in both Activity Center and Resource Details;
+B is fully green.
+
+Production C reached the Owner-defined systematic model-contract stop line.
+Normal UI-created multilingual job `a3a4bfc9…` / attempt `cd34321e…` and a
+second independent multi-script job `7aedd762…` / attempt `3755d3cf…` both ran
+exact isolated `d5580ed…`, completed bounded source access, and received HTTP
+200 callbacks, but failed closed at
+`bibliographic_reasoning/canonical_schema_invalid`. Both remained failed and
+retryable in the normal UI; neither produced AI success, a structured record,
+auto-application, authority mutation, or canonical promotion. An intervening
+`道布` run safely returned `no_bibliography` using native/embedded text and is
+not counted as OCR C. Queue is empty, production is healthy, and the main
+worker remains absent/inactive with `PAUSED` mode.
 
 The Local Compute Owner override continues this program and changes only the
 production Compute strategy. Live production is exact frontend/Core
@@ -914,9 +926,10 @@ in production after deployment; no browser automation was run per Owner override
 
 ## Next action
 
-Create and push the exact frontend consistency checkpoint, build/deploy one
-schema-unchanged Core/frontend artifact without backup or migration, and prove
-the same B result is reviewable in both Activity Center and Resource Details.
-Keep exact Compute `d5580ed…` isolated and main service PAUSED/inactive while
-running C. Then perform forced-loss recovery, exact main cutover, NORMAL browser
-acceptance, concurrency-one corpus, final cleanup, and close the task.
+HARD STOP: do not normalize the parser, select more books, enable main Compute,
+or enter forced-loss/NORMAL/full corpus. The Owner must choose whether to reduce
+the model's required C output responsibility while preserving v11 evidence and
+authority guarantees, or replace NuExtract3 with a stronger local reasoner.
+After an explicitly selected path passes C, resume forced-loss recovery, exact
+main cutover, normal-browser acceptance, concurrency-one corpus, final cleanup,
+and task closure.

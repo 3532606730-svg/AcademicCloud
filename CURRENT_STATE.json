@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-01T12:24:00+08:00",
-  "authoritativeBranch": "codex/project-memory-reconcile-20260817",
+  "updatedAt": "2026-09-01T14:52:00+08:00",
+  "authoritativeBranch": "recovery/rebuild-nuextract3",
   "planningBaselineCommit": "4e6c58609cfc71a7bc87b970c4667c012616cf39",
   "production": {
-    "declaredRelease": "d5580ed97b44baba3348d2613059435cd0ba4152",
-    "previousRelease": "2a3ba75e9bf823cd75859b0a7c76c2c169337fea",
+    "declaredRelease": "3a23a7b5679bf64d01332fc761bae0dcf1a1d572",
+    "previousRelease": "d5580ed97b44baba3348d2613059435cd0ba4152",
     "schema": 34,
     "migrationHead": 34,
     "migrationHistory": "001-034",
@@ -48,8 +48,8 @@
     },
     "finalArchitectureCorrection": {
       "decision": "ADR-038",
-      "status": "production_schema34_nuextract3_b_pass_frontend_consistency_cutover_pending",
-      "productionFrozenAt": "d5580ed97b44baba3348d2613059435cd0ba4152",
+      "status": "production_schema34_nuextract3_b_pass_c_systematic_model_contract_hard_stop",
+      "productionFrozenAt": "3a23a7b5679bf64d01332fc761bae0dcf1a1d572",
       "productionSchema": 34,
       "finalRuleset": "l1-intelligent-library01-v11",
       "finalPrompt": "l1-intelligent-library01-prompt-v7",
@@ -57,7 +57,7 @@
       "v6CanaryAllowed": false,
       "normalAllowedBeforeThreeCanaries": false,
       "normalOwnerBrowserPathRequired": true,
-      "implementationVerification": "NuExtract3 d5580ed: offline A/B/B/unknown 4/4; Compute 121/121 plus 2 expected skips; contracts 3/3; immutable release/shared GGUF verifier pass; production schema34 integrity/FK/health pass; B current-attempt/class/field-provenance/display pass; frontend consistency regression and full Frontend 285/285/typecheck/build pass",
+      "implementationVerification": "NuExtract3 d5580ed: offline A/B/B/unknown 4/4; Compute 121/121 plus 2 expected skips; contracts 3/3; immutable release/shared GGUF verifier pass; production 3a23a7b/schema34 integrity/FK/health pass; B current-attempt/class/field-provenance/display and browser Activity Center/Resource Details consistency pass; two distinct real multilingual C jobs failed closed at canonical_schema_invalid with no false promotion",
       "productionUnchanged": false,
       "mainWorker": "PAUSED/service-absent/inactive",
       "nuExtract3": {
@@ -68,8 +68,20 @@
         "productionBJobId": "75f14c31-885a-4d9e-821f-13a9aa23705d",
         "productionBAttemptId": "7f474c6e-0020-44c3-be98-399da77633fd",
         "productionBResult": "PASS primary_source_modern_edition; 元朝秘史 中華書局校勘本; exact provenance; no auto-apply",
+        "productionBUIResult": "PASS on frontend/Core 3a23a7b: Activity Center and Resource Details both show reviewable success after fresh signed-in browser load",
+        "productionC": {
+          "status": "HARD_STOP_SYSTEMATIC_MODEL_CONTRACT_FAILURE",
+          "firstFailedJobId": "a3a4bfc9-c9c3-4391-81b4-21e62d50a07f",
+          "firstFailedAttemptId": "cd34321e-7622-40fc-84e9-f848922548fa",
+          "secondFailedJobId": "7aedd762-f375-4944-a09d-bbf80ee6175a",
+          "secondFailedAttemptId": "3755d3cf-5682-4bad-a7b8-6323c9449da6",
+          "sharedFailure": "compute_invalid_result / bibliographic_reasoning / canonical_schema_invalid",
+          "safeFailure": "callbacks HTTP 200; UI failed/retryable; no AI success, structured record, auto-apply, authority mutation, or canonical promotion",
+          "nonQualifyingNoBibliographyJobId": "d88ca094-8d3b-4e37-8fd5-c9020a309761",
+          "eligibleQueueCountAfterStop": 0
+        },
         "mainWorker": "service absent/inactive; environment PAUSED",
-        "next": "schema-unchanged frontend consistency cutover, browser B recheck, then C"
+        "next": "Owner chooses bounded model-capability path: reduce C model output responsibility without weakening v11 validation/evidence/authority, or select a stronger local reasoner; parser normalization and further book retries prohibited"
       },
       "v8LocalQualification": {
         "source": "Owner-supplied modern scholarly PDF; bounded structural output only",
