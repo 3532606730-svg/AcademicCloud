@@ -30,6 +30,45 @@ function boundedPdfHoldings(holdings: readonly LibraryHolding[]): LibraryHolding
   return holdings.filter(isPdfHolding).slice(0, MAX_BATCH_RESOURCES);
 }
 
+async function loadUncataloguedPdfHoldings(
+  api: AcademicCloudApi,
+  libraryId: string,
+): Promise<{ holdings: LibraryHolding[]; truncated: boolean }> {
+  if (!api.listLibraryHoldingsSorted) {
+    const eligible = (await api.listLibraryHoldings(libraryId)).filter(isUncataloguedPdfHolding);
+    return {
+      holdings: eligible.slice(0, MAX_BATCH_RESOURCES),
+      truncated: eligible.length > MAX_BATCH_RESOURCES,
+    };
+  }
+
+  const selected: LibraryHolding[] = [];
+  const selectedIds = new Set<string>();
+  const seenCursors = new Set<string>();
+  let cursor: string | null = null;
+  let truncated = false;
+
+  for (;;) {
+    const page = await api.listLibraryHoldingsSorted(libraryId, "newest", cursor);
+    for (const holding of page.holdings) {
+      if (!isUncataloguedPdfHolding(holding) || selectedIds.has(holding.file.id)) continue;
+      if (selected.length >= MAX_BATCH_RESOURCES) {
+        truncated = true;
+        break;
+      }
+      selected.push(holding);
+      selectedIds.add(holding.file.id);
+    }
+
+    if (truncated || page.nextCursor === null) break;
+    if (page.nextCursor === cursor || seenCursors.has(page.nextCursor)) throw new Error("invalid_input");
+    seenCursors.add(page.nextCursor);
+    cursor = page.nextCursor;
+  }
+
+  return { holdings: selected, truncated };
+}
+
 function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -60,6 +99,7 @@ export function BatchCatalogDialog({
   const [resourceIds, setResourceIds] = useState<ReadonlySet<string>>(
     () => new Set(boundedPdfHoldings(initialHoldings).map((entry) => entry.file.id)),
   );
+  const [uncataloguedTruncated, setUncataloguedTruncated] = useState(false);
   const [document, setDocument] = useState<unknown>(null);
   const [preview, setPreview] = useState<CatalogPreview | null>(null);
   const [selectedPreviewIds, setSelectedPreviewIds] = useState<ReadonlySet<string>>(new Set());
@@ -94,14 +134,13 @@ export function BatchCatalogDialog({
   }
 
   async function selectUncatalogued(): Promise<void> {
-    setBusy(true); setError(null); setExportStatus(""); setLocalExportError("");
+    setBusy(true); setError(null); setExportStatus(""); setLocalExportError(""); setUncataloguedTruncated(false);
     try {
-      const uncatalogued = (await api.listLibraryHoldings(library.id))
-        .filter(isUncataloguedPdfHolding)
-        .slice(0, MAX_BATCH_RESOURCES);
+      const selection = await loadUncataloguedPdfHoldings(api, library.id);
       if (closedRef.current) return;
-      setHoldings(uncatalogued);
-      setResourceIds(new Set(uncatalogued.map((entry) => entry.file.id)));
+      setHoldings(selection.holdings);
+      setResourceIds(new Set(selection.holdings.map((entry) => entry.file.id)));
+      setUncataloguedTruncated(selection.truncated);
     } catch (caught: unknown) {
       if (!closedRef.current) setError(caught);
     } finally {
@@ -200,6 +239,13 @@ export function BatchCatalogDialog({
           <button className="button button--quiet" type="button" disabled={busy} onClick={() => setResourceIds(new Set())}>{t("batchCatalog.clear")}</button>
           <strong>{t("batchCatalog.selected", { count: resourceIds.size })}</strong>
         </div>
+        {uncataloguedTruncated && (
+          <div className="alert alert--warning" role="status">
+            {language === "zh-CN"
+              ? "已选择前 500 个未编目 PDF；仍有更多未编目 PDF，请分批处理。"
+              : "Selected the first 500 uncatalogued PDFs; more remain and require another batch."}
+          </div>
+        )}
         <div className="batch-catalog-resource-list">
           {holdings.map((holding) => (
             <label key={holding.file.id}>
