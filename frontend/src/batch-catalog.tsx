@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   AcademicCloudApi,
@@ -41,7 +41,7 @@ export function BatchCatalogDialog({
 }) {
   const { language, t } = useLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [holdings, setHoldings] = useState<LibraryHolding[]>(() => initialHoldings.filter(isPdfHolding));
+  const [holdings] = useState<LibraryHolding[]>(() => initialHoldings.filter(isPdfHolding));
   const [resourceIds, setResourceIds] = useState<ReadonlySet<string>>(
     () => new Set(initialHoldings.filter(isPdfHolding).map((entry) => entry.file.id)),
   );
@@ -54,24 +54,6 @@ export function BatchCatalogDialog({
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => { dialogRef.current?.showModal(); }, []);
-
-  useEffect(() => {
-    if (!api.listLibraryHoldingsSorted) return;
-    let cancelled = false;
-    void (async () => {
-      const loaded: LibraryHolding[] = [];
-      let cursor: string | null = null;
-      do {
-        const page = await api.listLibraryHoldingsSorted!(library.id, "newest", cursor);
-        loaded.push(...page.holdings.filter(isPdfHolding));
-        cursor = page.nextCursor;
-      } while (cursor && loaded.length < 500);
-      if (!cancelled) setHoldings(loaded.slice(0, 500));
-    })().catch((caught: unknown) => { if (!cancelled) setError(caught); });
-    return () => { cancelled = true; };
-  }, [api, library.id]);
-
-  const holdingById = useMemo(() => new Map(holdings.map((entry) => [entry.file.id, entry])), [holdings]);
 
   function toggleResource(resourceId: string): void {
     setResourceIds((current) => {
@@ -146,7 +128,6 @@ export function BatchCatalogDialog({
         <button className="button button--quiet" type="button" onClick={onClose}>{t("batchCatalog.close")}</button>
       </div>
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
-      <p className="muted">{t("batchCatalog.description")}</p>
       <section aria-labelledby="batch-catalog-export-title">
         <h3 id="batch-catalog-export-title">{t("batchCatalog.exportTitle")}</h3>
         <div className="batch-catalog-selection-actions">
@@ -164,7 +145,6 @@ export function BatchCatalogDialog({
         </div>
         <button className="button button--primary" type="button" disabled={busy || resourceIds.size < 1} onClick={() => void exportRequest()}>{t("batchCatalog.export")}</button>
         {exportStatus && <div className="alert alert--success" role="status">{exportStatus}</div>}
-        <p className="muted">{t("batchCatalog.localExportHint")}</p>
       </section>
       <section aria-labelledby="batch-catalog-import-title">
         <h3 id="batch-catalog-import-title">{t("batchCatalog.importTitle")}</h3>
@@ -214,7 +194,6 @@ export function BatchCatalogDialog({
       )}
       {applyResults && <div className="alert alert--success" role="status">{t("batchCatalog.applyResult", { applied: applyResults.filter((entry) => entry.status === "applied").length, total: applyResults.length })}</div>}
       <footer className="batch-naming-actions"><button className="button button--quiet" type="button" disabled={busy} onClick={onClose}>{t("batchCatalog.close")}</button></footer>
-      {resourceIds.size > 0 && [...resourceIds].some((id) => !holdingById.has(id)) && <p className="muted">{t("batchCatalog.staleSelection")}</p>}
     </dialog>
   );
 }
