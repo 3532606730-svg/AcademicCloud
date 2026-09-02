@@ -14,6 +14,8 @@ Environment=NODE_ENV=production
 Environment=PADDLE_OCR_DEVICE=gpu
 Environment=ACADEMICCLOUD_CATALOG_BRIDGE_PORT=43117
 Environment=ACADEMICCLOUD_CATALOG_BRIDGE_ORIGINS=https://cloud.ajtlab.top
+Environment=ACADEMICCLOUD_CATALOG_CORE_ORIGIN=https://cloud.ajtlab.top
+Environment=ACADEMICCLOUD_CATALOG_SOURCE_ORIGINS=https://academiccloud-private.oss-ap-southeast-3.aliyuncs.com,https://files.ajtlab.top
 ExecStart=/srv/academiccloud-compute/catalog-current/runtime/node/bin/node /srv/academiccloud-compute/catalog-current/compute/dist/catalog-bridge.js
 Restart=on-failure
 RestartSec=5s
