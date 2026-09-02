@@ -1,6 +1,6 @@
 # ADR-039: Human-mediated batch cataloguing roundtrip
 
-- Status: Accepted
+- Status: Accepted; loopback transport amended by ADR-040
 - Date: 2026-09-01
 
 ## Context
@@ -35,7 +35,7 @@ No PDF or rendered image bytes enter the final package. Whole-document OCR remai
 
 ## Consequences
 
-AcademicCloud gains a zero-added-cost, model-independent cataloguing path while preserving server authority and human review. Export has one deliberate local step: the website prepares the private request and the existing Owner Local Compute machine produces the shareable ZIP. This maintains the Core/Compute boundary without adding a resident service or database queue type.
+AcademicCloud gains a zero-added-cost, model-independent cataloguing path while preserving server authority and human review. Core continues to prepare the private capability and the Owner Local Compute machine continues to produce the shareable ZIP. ADR-040 supersedes only the original manual request-file/CLI handoff: the normal browser path now sends the private request in memory to a dedicated loopback bridge and receives the ZIP directly. The Core/Compute boundary, evidence limits, external-review boundary, and explicit preview/apply authority are unchanged.
 
 The private request must never be shared with the external reviewer. Core restart or capability expiry requires preparing a new request, not weakening identity checks. A results file can be previewed later because it carries the immutable manifest; live source or metadata changes fail closed.
 
@@ -43,4 +43,4 @@ No production deployment, database migration, external AI API, main worker activ
 
 ## Rollback
 
-Remove the Library UI entry and catalog-batch routes/Local Compute CLI. No database rows or schema objects need reversal. Existing resource bytes, object keys, canonical metadata, authority history, and AI evidence remain unchanged.
+Remove the Library UI entry and catalog-batch routes/Local Compute exporter/bridge. No database rows or schema objects need reversal. Existing resource bytes, object keys, canonical metadata, authority history, and AI evidence remain unchanged.
