@@ -3,9 +3,10 @@ import type { Language } from "./i18n.ts";
 
 export const LOCAL_CATALOG_BRIDGE_URL = "http://127.0.0.1:43117/v1/catalog/export";
 const MAX_PACKAGE_BYTES = 128 * 1024 * 1024;
+const MAX_ERROR_BYTES = 4 * 1024;
 const SAFE_FILENAME = /^academiccloud-catalog-batch-[A-Za-z0-9_-]{1,128}\.zip$/u;
 
-export type LocalCatalogBridgeErrorCode = "unavailable" | "busy" | "rejected" | "invalid_response";
+export type LocalCatalogBridgeErrorCode = "unavailable" | "busy" | "rejected" | "invalid_response" | "cancelled";
 
 export class LocalCatalogBridgeError extends Error {
   constructor(readonly code: LocalCatalogBridgeErrorCode) {
@@ -30,10 +31,58 @@ function bridgeFailureCode(value: unknown): string | null {
   return body.status === "failed" && typeof body.code === "string" ? body.code : null;
 }
 
+async function readBoundedBody(response: Response, maximumBytes: number, signal?: AbortSignal): Promise<Uint8Array> {
+  if (!response.body) throw new LocalCatalogBridgeError("invalid_response");
+  if (signal?.aborted) throw new LocalCatalogBridgeError("cancelled");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      let result: ReadableStreamReadResult<Uint8Array>;
+      try {
+        result = await reader.read();
+      } catch {
+        if (signal?.aborted) throw new LocalCatalogBridgeError("cancelled");
+        throw new LocalCatalogBridgeError("invalid_response");
+      }
+      if (result.done) break;
+      total += result.value.byteLength;
+      if (total > maximumBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new LocalCatalogBridgeError("invalid_response");
+      }
+      chunks.push(result.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (total < 1) throw new LocalCatalogBridgeError("invalid_response");
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+async function failureCode(response: Response, signal?: AbortSignal): Promise<string | null> {
+  try {
+    const bytes = await readBoundedBody(response, MAX_ERROR_BYTES, signal);
+    return bridgeFailureCode(JSON.parse(new TextDecoder().decode(bytes)) as unknown);
+  } catch (error: unknown) {
+    if (error instanceof LocalCatalogBridgeError && error.code === "cancelled") throw error;
+    return null;
+  }
+}
+
 export async function exportCatalogEvidenceLocally(
   request: CatalogExportRequest,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<LocalCatalogPackage> {
+  if (signal?.aborted) throw new LocalCatalogBridgeError("cancelled");
   let response: Response;
   try {
     response = await fetchImpl(LOCAL_CATALOG_BRIDGE_URL, {
@@ -47,14 +96,15 @@ export async function exportCatalogEvidenceLocally(
         "X-AcademicCloud-Catalog-Bridge": "1",
       },
       body: JSON.stringify(request),
+      ...(signal === undefined ? {} : { signal }),
     });
   } catch {
+    if (signal?.aborted) throw new LocalCatalogBridgeError("cancelled");
     throw new LocalCatalogBridgeError("unavailable");
   }
 
   if (!response.ok) {
-    let code: string | null = null;
-    try { code = bridgeFailureCode(await response.json()); } catch { /* bounded generic error below */ }
+    const code = await failureCode(response, signal);
     if (response.status === 409 && code === "busy") throw new LocalCatalogBridgeError("busy");
     throw new LocalCatalogBridgeError("rejected");
   }
@@ -65,12 +115,13 @@ export async function exportCatalogEvidenceLocally(
   const declaredLength = contentLength === null ? null : Number(contentLength);
   if (!contentType.startsWith("application/zip") || !SAFE_FILENAME.test(filename)
     || (declaredLength !== null && (!Number.isFinite(declaredLength) || declaredLength < 1 || declaredLength > MAX_PACKAGE_BYTES))) {
+    response.body?.cancel().catch(() => undefined);
     throw new LocalCatalogBridgeError("invalid_response");
   }
 
-  const blob = await response.blob();
-  if (blob.size < 1 || blob.size > MAX_PACKAGE_BYTES) throw new LocalCatalogBridgeError("invalid_response");
-  return { filename, blob };
+  const bytes = await readBoundedBody(response, MAX_PACKAGE_BYTES, signal);
+  if (declaredLength !== null && bytes.byteLength !== declaredLength) throw new LocalCatalogBridgeError("invalid_response");
+  return { filename, blob: new Blob([bytes], { type: "application/zip" }) };
 }
 
 const TEXT = {
