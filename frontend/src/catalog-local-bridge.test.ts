@@ -48,7 +48,7 @@ describe("local catalog bridge client", () => {
     } satisfies Partial<LocalCatalogBridgeError>);
   });
 
-  it("classifies bridge concurrency as busy", async () => {
+  it("classifies bridge concurrency as busy from a bounded error body", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "failed", code: "busy" }), {
       status: 409,
       headers: { "Content-Type": "application/json" },
@@ -66,5 +66,45 @@ describe("local catalog bridge client", () => {
       },
     }));
     await expect(exportCatalogEvidenceLocally(REQUEST, fetchImpl as typeof fetch)).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("rejects an oversized declared ZIP before consuming its body", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({ cancel });
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(body, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Length": String(128 * 1024 * 1024 + 1),
+        "X-AcademicCloud-Filename": "academiccloud-catalog-batch-batch-1.zip",
+      },
+    }));
+    await expect(exportCatalogEvidenceLocally(REQUEST, fetchImpl as typeof fetch)).rejects.toMatchObject({ code: "invalid_response" });
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalled());
+  });
+
+  it("rejects a declared ZIP length that does not match the bounded body", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Length": "4",
+        "X-AcademicCloud-Filename": "academiccloud-catalog-batch-batch-1.zip",
+      },
+    }));
+    await expect(exportCatalogEvidenceLocally(REQUEST, fetchImpl as typeof fetch)).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("passes cancellation to fetch and reports an aborted local handoff as cancelled", async () => {
+    const controller = new AbortController();
+    const fetchImpl = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal;
+      expect(signal).toBe(controller.signal);
+      signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    }));
+    const pending = exportCatalogEvidenceLocally(REQUEST, fetchImpl as typeof fetch, controller.signal);
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1));
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ code: "cancelled" });
   });
 });
