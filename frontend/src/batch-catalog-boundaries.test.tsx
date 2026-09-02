@@ -85,10 +85,15 @@ describe("BatchCatalogDialog hard boundaries", () => {
       },
     };
     const createCatalogBatchExportRequest = vi.fn().mockResolvedValue(request);
-    let observedSignal: AbortSignal | null = null;
+    const observedSignals: AbortSignal[] = [];
     const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
-      observedSignal = init?.signal as AbortSignal | null;
-      observedSignal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      const signal = init?.signal;
+      if (!(signal instanceof AbortSignal)) {
+        reject(new TypeError("missing AbortSignal"));
+        return;
+      }
+      observedSignals.push(signal);
+      signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
     }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -96,8 +101,9 @@ describe("BatchCatalogDialog hard boundaries", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Generate evidence package" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(observedSignal?.aborted).toBe(false);
+    expect(observedSignals).toHaveLength(1);
+    expect(observedSignals[0]!.aborted).toBe(false);
     view.unmount();
-    expect(observedSignal?.aborted).toBe(true);
+    expect(observedSignals[0]!.aborted).toBe(true);
   });
 });
