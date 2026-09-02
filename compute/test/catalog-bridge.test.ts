@@ -160,6 +160,41 @@ test("loopback bridge requires the dedicated non-simple browser header", async (
   }
 });
 
+test("loopback bridge accepts application/json parameters but rejects lookalike media types", async () => {
+  let called = 0;
+  const { server, url } = await listen(async () => {
+    called += 1;
+    return { filename: "academiccloud-catalog-batch-batch-test.zip", bytes: new Uint8Array([1]) };
+  });
+  try {
+    const accepted = await fetch(`${url}/v1/catalog/export`, {
+      method: "POST",
+      headers: {
+        origin: ORIGIN,
+        "content-type": "application/json; charset=utf-8",
+        "x-academiccloud-catalog-bridge": "1",
+      },
+      body: JSON.stringify(requestDocument()),
+    });
+    assert.equal(accepted.status, 200);
+    assert.equal(called, 1);
+
+    const rejected = await fetch(`${url}/v1/catalog/export`, {
+      method: "POST",
+      headers: {
+        origin: ORIGIN,
+        "content-type": "application/jsonp",
+        "x-academiccloud-catalog-bridge": "1",
+      },
+      body: JSON.stringify(requestDocument()),
+    });
+    assert.equal(rejected.status, 400);
+    assert.equal(called, 1);
+  } finally {
+    await close(server);
+  }
+});
+
 test("loopback bridge permits only one export at a time", async () => {
   let release!: () => void;
   let markEntered!: () => void;
@@ -190,6 +225,38 @@ test("loopback bridge permits only one export at a time", async () => {
     assert.equal((await first).status, 200);
   } finally {
     release();
+    await close(server);
+  }
+});
+
+test("loopback bridge aborts the exporter when the browser disconnects after submission", async () => {
+  let markEntered!: () => void;
+  let markAborted!: () => void;
+  const entered = new Promise<void>((resolve) => { markEntered = resolve; });
+  const aborted = new Promise<void>((resolve) => { markAborted = resolve; });
+  const { server, url } = await listen(async (_request, signal) => {
+    markEntered();
+    if (!signal.aborted) await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+    markAborted();
+    throw new Error("client_disconnected");
+  });
+  try {
+    const controller = new AbortController();
+    const pending = fetch(`${url}/v1/catalog/export`, {
+      method: "POST",
+      headers: {
+        origin: ORIGIN,
+        "content-type": "application/json",
+        "x-academiccloud-catalog-bridge": "1",
+      },
+      body: JSON.stringify(requestDocument()),
+      signal: controller.signal,
+    });
+    await entered;
+    controller.abort();
+    await assert.rejects(pending);
+    await aborted;
+  } finally {
     await close(server);
   }
 });
