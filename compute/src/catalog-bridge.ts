@@ -1,5 +1,6 @@
+import { realpathSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import type { CatalogExportRequest } from "@academiccloud/compute-contracts";
 
@@ -249,6 +250,15 @@ export async function startCatalogBridge(options: CatalogBridgeOptions & { port?
   return server;
 }
 
+export function isCatalogBridgeEntrypoint(moduleUrl: string, argvEntry: string | undefined): boolean {
+  if (!argvEntry) return false;
+  try {
+    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argvEntry);
+  } catch {
+    return false;
+  }
+}
+
 async function main(): Promise<void> {
   const server = await startCatalogBridge();
   const address = server.address();
@@ -264,7 +274,7 @@ async function main(): Promise<void> {
   process.once("SIGINT", stop);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+if (isCatalogBridgeEntrypoint(import.meta.url, process.argv[1])) {
   main().catch(() => {
     process.stderr.write(`${JSON.stringify({ status: "failed", code: "inspection_failed" })}\n`);
     process.exitCode = 1;
