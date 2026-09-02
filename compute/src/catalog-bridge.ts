@@ -6,8 +6,10 @@ import type { CatalogExportRequest } from "@academiccloud/compute-contracts";
 
 import {
   CatalogExportError,
+  catalogEndpointPolicyFromEnvironment,
   createCatalogEvidencePackage,
   parseCatalogExportRequest,
+  type CatalogEndpointPolicy,
 } from "./catalog-batch-export.js";
 import { PaddleOcrSidecarAdapter } from "./paddle-ocr.js";
 import { PdfJsFrontMatterInspector } from "./pdf-text.js";
@@ -41,6 +43,7 @@ export type CatalogBridgePackageFactory = (
 
 export interface CatalogBridgeOptions {
   allowedOrigins?: readonly string[];
+  endpointPolicy?: CatalogEndpointPolicy;
   packageFactory?: CatalogBridgePackageFactory;
 }
 
@@ -123,10 +126,14 @@ async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   }
 }
 
-async function defaultPackageFactory(request: CatalogExportRequest, signal: AbortSignal): Promise<CatalogBridgePackage> {
+async function defaultPackageFactory(
+  request: CatalogExportRequest,
+  signal: AbortSignal,
+  endpointPolicy: CatalogEndpointPolicy,
+): Promise<CatalogBridgePackage> {
   const inspector = new PdfJsFrontMatterInspector(new PaddleOcrSidecarAdapter());
   try {
-    const result = await createCatalogEvidencePackage({ request, inspector, signal });
+    const result = await createCatalogEvidencePackage({ request, inspector, endpointPolicy, signal });
     return { filename: result.filename, bytes: result.bytes };
   } finally {
     await inspector.close();
@@ -148,7 +155,9 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
   const allowedOrigins = new Set(origins);
   if (allowedOrigins.size !== origins.length || origins.length < 1) throw new TypeError("catalog bridge origins are invalid");
   for (const origin of origins) configuredOrigins(origin);
-  const packageFactory = options.packageFactory ?? defaultPackageFactory;
+  const endpointPolicy = options.endpointPolicy ?? catalogEndpointPolicyFromEnvironment();
+  const packageFactory = options.packageFactory
+    ?? ((request: CatalogExportRequest, signal: AbortSignal) => defaultPackageFactory(request, signal, endpointPolicy));
   let exportActive = false;
 
   return createServer((request, response) => {
@@ -202,7 +211,7 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
       request.once("aborted", abort);
       response.once("close", abortOnResponseClose);
       try {
-        const parsed = parseCatalogExportRequest(await readJsonBody(request));
+        const parsed = parseCatalogExportRequest(await readJsonBody(request), endpointPolicy);
         const result = await packageFactory(parsed, abortController.signal);
         if (!SAFE_FILENAME.test(result.filename) || result.bytes.byteLength < 1 || result.bytes.byteLength > MAX_RESPONSE_BYTES) {
           throw new CatalogExportError("limit_exceeded");
