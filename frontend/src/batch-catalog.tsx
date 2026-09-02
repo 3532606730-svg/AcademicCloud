@@ -22,6 +22,10 @@ function isPdfHolding(holding: LibraryHolding): boolean {
   return holding.file.mediaType?.toLowerCase() === "application/pdf";
 }
 
+function isUncataloguedPdfHolding(holding: LibraryHolding): boolean {
+  return isPdfHolding(holding) && holding.materialClass == null;
+}
+
 function boundedPdfHoldings(holdings: readonly LibraryHolding[]): LibraryHolding[] {
   return holdings.filter(isPdfHolding).slice(0, MAX_BATCH_RESOURCES);
 }
@@ -52,7 +56,7 @@ export function BatchCatalogDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
   const closedRef = useRef(false);
-  const [holdings] = useState<LibraryHolding[]>(() => boundedPdfHoldings(initialHoldings));
+  const [holdings, setHoldings] = useState<LibraryHolding[]>(() => boundedPdfHoldings(initialHoldings));
   const [resourceIds, setResourceIds] = useState<ReadonlySet<string>>(
     () => new Set(boundedPdfHoldings(initialHoldings).map((entry) => entry.file.id)),
   );
@@ -87,6 +91,22 @@ export function BatchCatalogDialog({
       if (next.has(resourceId)) next.delete(resourceId); else if (next.size < MAX_BATCH_RESOURCES) next.add(resourceId);
       return next;
     });
+  }
+
+  async function selectUncatalogued(): Promise<void> {
+    setBusy(true); setError(null); setExportStatus(""); setLocalExportError("");
+    try {
+      const uncatalogued = (await api.listLibraryHoldings(library.id))
+        .filter(isUncataloguedPdfHolding)
+        .slice(0, MAX_BATCH_RESOURCES);
+      if (closedRef.current) return;
+      setHoldings(uncatalogued);
+      setResourceIds(new Set(uncatalogued.map((entry) => entry.file.id)));
+    } catch (caught: unknown) {
+      if (!closedRef.current) setError(caught);
+    } finally {
+      if (!closedRef.current) setBusy(false);
+    }
   }
 
   async function exportRequest(): Promise<void> {
@@ -175,6 +195,7 @@ export function BatchCatalogDialog({
       <section aria-labelledby="batch-catalog-export-title">
         <h3 id="batch-catalog-export-title">{t("batchCatalog.exportTitle")}</h3>
         <div className="batch-catalog-selection-actions">
+          <button className="button button--quiet" type="button" disabled={busy} onClick={() => void selectUncatalogued()}>{language === "zh-CN" ? "选择未编目 PDF" : "Select uncatalogued PDFs"}</button>
           <button className="button button--quiet" type="button" disabled={busy} onClick={() => setResourceIds(new Set(holdings.map((entry) => entry.file.id)))}>{t("batchCatalog.selectAll", { count: holdings.length })}</button>
           <button className="button button--quiet" type="button" disabled={busy} onClick={() => setResourceIds(new Set())}>{t("batchCatalog.clear")}</button>
           <strong>{t("batchCatalog.selected", { count: resourceIds.size })}</strong>
