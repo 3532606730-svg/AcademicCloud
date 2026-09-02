@@ -9,12 +9,12 @@ StartLimitBurst=5
 Type=simple
 User=academiccloud
 Group=academiccloud
-WorkingDirectory=/srv/academiccloud-compute/current/compute
+WorkingDirectory=/srv/academiccloud-compute/catalog-current/compute
 Environment=NODE_ENV=production
 Environment=PADDLE_OCR_DEVICE=gpu
 Environment=ACADEMICCLOUD_CATALOG_BRIDGE_PORT=43117
 Environment=ACADEMICCLOUD_CATALOG_BRIDGE_ORIGINS=https://cloud.ajtlab.top
-ExecStart=/srv/academiccloud-compute/current/runtime/node/bin/node /srv/academiccloud-compute/current/compute/dist/catalog-bridge.js
+ExecStart=/srv/academiccloud-compute/catalog-current/runtime/node/bin/node /srv/academiccloud-compute/catalog-current/compute/dist/catalog-bridge.js
 Restart=on-failure
 RestartSec=5s
 TimeoutStartSec=30s
