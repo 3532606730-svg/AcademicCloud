@@ -36,12 +36,52 @@ const STAGED_FALLBACK_TAIL_BYTES = 64 * 1024;
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 const FALLBACK_TIMEOUT_STAGES = new Set(["document_load", "page_load", "page_text", "metadata", "ocr_page_load"]);
 const SUPPORTED_CONTENT_DIGESTS = new Set(["md5", "sha1", "sha256", "sha512"]);
+const DEFAULT_CATALOG_CORE_ORIGIN = "https://cloud.ajtlab.top";
+const DEFAULT_CATALOG_SOURCE_ORIGINS = [
+  "https://academiccloud-private.oss-ap-southeast-3.aliyuncs.com",
+  "https://files.ajtlab.top",
+] as const;
+
+export interface CatalogEndpointPolicy {
+  coreOrigin: string;
+  sourceOrigins: ReadonlySet<string>;
+}
 
 export class CatalogExportError extends Error {
   constructor(readonly code: "invalid_request" | "source_unavailable" | "identity_mismatch" | "limit_exceeded" | "inspection_failed") {
     super(code);
     this.name = "CatalogExportError";
   }
+}
+
+function configuredOrigin(value: string, name: string): string {
+  let parsed: URL;
+  try { parsed = new URL(value); } catch { throw new TypeError(`${name} is invalid`); }
+  const localDevelopment = parsed.protocol === "http:" && ["127.0.0.1", "localhost"].includes(parsed.hostname);
+  if ((parsed.protocol !== "https:" && !localDevelopment) || parsed.origin !== value || parsed.username || parsed.password) {
+    throw new TypeError(`${name} is invalid`);
+  }
+  return parsed.origin;
+}
+
+export function createCatalogEndpointPolicy(coreOrigin: string, sourceOrigins: readonly string[]): CatalogEndpointPolicy {
+  const core = configuredOrigin(coreOrigin, "catalog core origin");
+  if (sourceOrigins.length < 1 || sourceOrigins.length > 16) throw new TypeError("catalog source origins are invalid");
+  const sources = sourceOrigins.map((value) => configuredOrigin(value, "catalog source origin"));
+  const sourceSet = new Set(sources);
+  if (sourceSet.size !== sources.length) throw new TypeError("catalog source origins are invalid");
+  return { coreOrigin: core, sourceOrigins: sourceSet };
+}
+
+export function catalogEndpointPolicyFromEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+): CatalogEndpointPolicy {
+  const coreOrigin = environment.ACADEMICCLOUD_CATALOG_CORE_ORIGIN?.trim() || DEFAULT_CATALOG_CORE_ORIGIN;
+  const rawSourceOrigins = environment.ACADEMICCLOUD_CATALOG_SOURCE_ORIGINS?.trim();
+  const sourceOrigins = rawSourceOrigins
+    ? rawSourceOrigins.split(",").map((entry) => entry.trim()).filter(Boolean)
+    : [...DEFAULT_CATALOG_SOURCE_ORIGINS];
+  return createCatalogEndpointPolicy(coreOrigin, sourceOrigins);
 }
 
 function sha256(value: string): string {
@@ -58,17 +98,20 @@ function exactKeys(value: Record<string, unknown>, keys: readonly string[]): voi
     || Object.keys(value).some((key) => !keys.includes(key))) throw new CatalogExportError("invalid_request");
 }
 
-function safeUrl(value: unknown): string {
+function allowedCoreBaseUrl(value: unknown, endpointPolicy: CatalogEndpointPolicy): string {
   if (typeof value !== "string" || value.length > 2_048 || /[\u0000\r\n]/u.test(value)) throw new CatalogExportError("invalid_request");
   let parsed: URL;
   try { parsed = new URL(value); } catch { throw new CatalogExportError("invalid_request"); }
-  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && ["127.0.0.1", "localhost"].includes(parsed.hostname))) {
+  if (parsed.origin !== value || parsed.username || parsed.password || parsed.origin !== endpointPolicy.coreOrigin) {
     throw new CatalogExportError("invalid_request");
   }
   return parsed.origin;
 }
 
-export function parseCatalogExportRequest(value: unknown): CatalogExportRequest {
+export function parseCatalogExportRequest(
+  value: unknown,
+  endpointPolicy: CatalogEndpointPolicy = catalogEndpointPolicyFromEnvironment(),
+): CatalogExportRequest {
   const input = object(value);
   exactKeys(input, ["schemaVersion", "manifest", "sourceManifestSha256", "sourceAccess"]);
   if (input.schemaVersion !== CATALOG_EXPORT_REQUEST_SCHEMA_VERSION) throw new CatalogExportError("invalid_request");
@@ -111,7 +154,7 @@ export function parseCatalogExportRequest(value: unknown): CatalogExportRequest 
     || sha256(canonicalCatalogJson(manifest)) !== input.sourceManifestSha256) throw new CatalogExportError("identity_mismatch");
   const access = object(input.sourceAccess);
   exactKeys(access, ["coreBaseUrl", "capabilityToken", "expiresAt"]);
-  const coreBaseUrl = safeUrl(access.coreBaseUrl);
+  const coreBaseUrl = allowedCoreBaseUrl(access.coreBaseUrl, endpointPolicy);
   if (typeof access.capabilityToken !== "string" || access.capabilityToken.length < 32 || access.capabilityToken.length > 512
     || typeof access.expiresAt !== "string" || !Number.isFinite(Date.parse(access.expiresAt)) || Date.parse(access.expiresAt) <= Date.now()) {
     throw new CatalogExportError("invalid_request");
@@ -132,14 +175,20 @@ interface SourceAuthorization {
   mediaType: "application/pdf";
 }
 
-function parseSourceAuthorization(value: unknown, expectedSize: number): SourceAuthorization {
+function parseSourceAuthorization(
+  value: unknown,
+  expectedSize: number,
+  endpointPolicy: CatalogEndpointPolicy,
+): SourceAuthorization {
   const input = object(value);
   exactKeys(input, ["method", "url", "expiresAt", "sizeBytes", "mediaType"]);
   if (input.method !== "GET" || input.mediaType !== "application/pdf" || input.sizeBytes !== expectedSize
     || typeof input.url !== "string" || input.url.length > 8_192 || /[\u0000\r\n]/u.test(input.url)
-    || typeof input.expiresAt !== "string" || !Number.isFinite(Date.parse(input.expiresAt))) throw new CatalogExportError("source_unavailable");
-  const url = new URL(input.url);
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname))) {
+    || typeof input.expiresAt !== "string" || !Number.isFinite(Date.parse(input.expiresAt))
+    || Date.parse(input.expiresAt) <= Date.now()) throw new CatalogExportError("source_unavailable");
+  let url: URL;
+  try { url = new URL(input.url); } catch { throw new CatalogExportError("source_unavailable"); }
+  if (url.username || url.password || url.hash || !endpointPolicy.sourceOrigins.has(url.origin)) {
     throw new CatalogExportError("source_unavailable");
   }
   return input as unknown as SourceAuthorization;
@@ -149,11 +198,13 @@ class CatalogHttpRangeSource implements PdfRangeSource {
   readonly length: number;
   readonly #request: CatalogExportRequest;
   readonly #resourceId: string;
+  readonly #endpointPolicy: CatalogEndpointPolicy;
   #authorization: SourceAuthorization | undefined;
 
-  constructor(request: CatalogExportRequest, resourceId: string, length: number) {
+  constructor(request: CatalogExportRequest, resourceId: string, length: number, endpointPolicy: CatalogEndpointPolicy) {
     this.#request = request;
     this.#resourceId = resourceId;
+    this.#endpointPolicy = endpointPolicy;
     this.length = length;
   }
 
@@ -166,6 +217,7 @@ class CatalogHttpRangeSource implements PdfRangeSource {
       try {
         response = await fetch(authorization.url, {
           headers: { range: `bytes=${begin}-${end - 1}` },
+          redirect: "error",
           signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(RANGE_TIMEOUT_MILLISECONDS)]) : AbortSignal.timeout(RANGE_TIMEOUT_MILLISECONDS),
         });
       } catch {
@@ -197,6 +249,7 @@ class CatalogHttpRangeSource implements PdfRangeSource {
     try {
       response = await fetch(endpoint, {
         headers: { authorization: `Bearer ${this.#request.sourceAccess.capabilityToken}` },
+        redirect: "error",
         signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
       });
     } catch {
@@ -205,7 +258,7 @@ class CatalogHttpRangeSource implements PdfRangeSource {
     if (!response.ok) throw new CatalogExportError("source_unavailable");
     const body = object(await response.json());
     exactKeys(body, ["source"]);
-    this.#authorization = parseSourceAuthorization(body.source, this.length);
+    this.#authorization = parseSourceAuthorization(body.source, this.length, this.#endpointPolicy);
     return this.#authorization;
   }
 }
@@ -363,6 +416,7 @@ function zipEntries(entries: ReadonlyArray<{ path: string; bytes: Uint8Array }>)
 export async function createCatalogEvidencePackage(options: {
   request: CatalogExportRequest;
   inspector: BoundedPdfTextSource;
+  endpointPolicy?: CatalogEndpointPolicy;
   signal?: AbortSignal;
 }): Promise<{
   filename: string;
@@ -371,12 +425,14 @@ export async function createCatalogEvidencePackage(options: {
   evidence: CatalogResourceEvidence[];
   fallbackResourceIds: string[];
 }> {
+  const endpointPolicy = options.endpointPolicy ?? catalogEndpointPolicyFromEnvironment();
+  allowedCoreBaseUrl(options.request.sourceAccess.coreBaseUrl, endpointPolicy);
   const evidence: CatalogResourceEvidence[] = [];
   const fallbackResourceIds: string[] = [];
   try {
     for (const resource of options.request.manifest.resources) {
       if (!options.inspector.inspectRange) throw new CatalogExportError("inspection_failed");
-      const source = new CatalogHttpRangeSource(options.request, resource.resourceId, resource.sizeBytes);
+      const source = new CatalogHttpRangeSource(options.request, resource.resourceId, resource.sizeBytes, endpointPolicy);
       let inspection: PdfTextInspection;
       try {
         inspection = await options.inspector.inspectRange(source, SUGGESTION_LIMITS, options.signal);
@@ -452,10 +508,11 @@ async function main(): Promise<void> {
   }
   const requestBytes = await readFile(resolve(process.argv[requestIndex + 1]!));
   if (requestBytes.byteLength > MAX_REQUEST_BYTES) throw new CatalogExportError("limit_exceeded");
-  const request = parseCatalogExportRequest(JSON.parse(requestBytes.toString("utf8")) as unknown);
+  const endpointPolicy = catalogEndpointPolicyFromEnvironment();
+  const request = parseCatalogExportRequest(JSON.parse(requestBytes.toString("utf8")) as unknown, endpointPolicy);
   const inspector = new PdfJsFrontMatterInspector(new PaddleOcrSidecarAdapter());
   try {
-    const result = await createCatalogEvidencePackage({ request, inspector });
+    const result = await createCatalogEvidencePackage({ request, inspector, endpointPolicy });
     const output = resolve(process.argv[outputIndex + 1]!);
     if (!output.toLowerCase().endsWith(".zip")) throw new CatalogExportError("invalid_request");
     await writeFile(output, result.bytes, { flag: "wx", mode: 0o600 });
