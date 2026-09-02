@@ -1,46 +1,48 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { once } from "node:events";
 import test from "node:test";
 
-import type { CatalogExportRequest } from "@academiccloud/compute-contracts";
+import { canonicalCatalogJson, type CatalogExportRequest } from "@academiccloud/compute-contracts";
 
 import { createCatalogBridgeServer, type CatalogBridgePackageFactory } from "../src/catalog-bridge.js";
 
 const ORIGIN = "https://cloud.ajtlab.top";
 
 function requestDocument(): CatalogExportRequest {
+  const manifest: CatalogExportRequest["manifest"] = {
+    schemaVersion: "academiccloud.catalog-batch.v1",
+    batchId: "batch-test",
+    createdAt: new Date(Date.now() + 60_000).toISOString(),
+    namingPolicyVersion: "academiccloud.filename.v1",
+    evidencePolicy: {
+      firstPages: 15,
+      lastPages: 5,
+      maxPages: 20,
+      maxCharactersPerPage: 16_384,
+      maxCharactersPerResource: 262_144,
+      selectiveOcr: true,
+      includesSourceBytes: false,
+    },
+    resources: [{
+      resourceId: "resource-test",
+      sourceIdentity: {
+        sourceFingerprint: "a".repeat(43),
+        fileRevision: 1,
+        checksumAlgorithm: "md5",
+        checksum: "YWJjZA==",
+      },
+      currentFilename: "test.pdf",
+      mediaType: "application/pdf",
+      sizeBytes: 10,
+      pageCount: null,
+      evidenceFile: "resources/resource-test.json",
+    }],
+  };
   return {
     schemaVersion: "academiccloud.catalog-export-request.v1",
-    manifest: {
-      schemaVersion: "academiccloud.catalog-batch.v1",
-      batchId: "batch-test",
-      createdAt: new Date(Date.now() + 60_000).toISOString(),
-      namingPolicyVersion: "academiccloud.filename.v1",
-      evidencePolicy: {
-        firstPages: 15,
-        lastPages: 5,
-        maxPages: 20,
-        maxCharactersPerPage: 16_384,
-        maxCharactersPerResource: 262_144,
-        selectiveOcr: true,
-        includesSourceBytes: false,
-      },
-      resources: [{
-        resourceId: "resource-test",
-        sourceIdentity: {
-          sourceFingerprint: "a".repeat(43),
-          fileRevision: 1,
-          checksumAlgorithm: "md5",
-          checksum: "YWJjZA==",
-        },
-        currentFilename: "test.pdf",
-        mediaType: "application/pdf",
-        sizeBytes: 10,
-        pageCount: null,
-        evidenceFile: "resources/resource-test.json",
-      }],
-    },
-    sourceManifestSha256: "0".repeat(64),
+    manifest,
+    sourceManifestSha256: createHash("sha256").update(canonicalCatalogJson(manifest), "utf8").digest("hex"),
     sourceAccess: {
       coreBaseUrl: "https://cloud.ajtlab.top",
       capabilityToken: "x".repeat(43),
@@ -71,11 +73,6 @@ test("loopback bridge accepts only the allowed browser origin and returns the ge
   };
   const { server, url } = await listen(packageFactory);
   try {
-    const request = requestDocument();
-    const canonical = JSON.stringify(request.manifest);
-    const { createHash } = await import("node:crypto");
-    request.sourceManifestSha256 = createHash("sha256").update(canonical, "utf8").digest("hex");
-
     const response = await fetch(`${url}/v1/catalog/export`, {
       method: "POST",
       headers: {
@@ -83,7 +80,7 @@ test("loopback bridge accepts only the allowed browser origin and returns the ge
         "content-type": "application/json",
         "x-academiccloud-catalog-bridge": "1",
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(requestDocument()),
     });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("access-control-allow-origin"), ORIGIN);
@@ -148,10 +145,6 @@ test("loopback bridge permits only one export at a time", async () => {
   };
   const { server, url } = await listen(packageFactory);
   try {
-    const request = requestDocument();
-    const { canonicalCatalogJson } = await import("@academiccloud/compute-contracts");
-    const { createHash } = await import("node:crypto");
-    request.sourceManifestSha256 = createHash("sha256").update(canonicalCatalogJson(request.manifest), "utf8").digest("hex");
     const init = {
       method: "POST",
       headers: {
@@ -159,7 +152,7 @@ test("loopback bridge permits only one export at a time", async () => {
         "content-type": "application/json",
         "x-academiccloud-catalog-bridge": "1",
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(requestDocument()),
     } as const;
     const first = fetch(`${url}/v1/catalog/export`, init);
     await new Promise((resolve) => setTimeout(resolve, 20));
