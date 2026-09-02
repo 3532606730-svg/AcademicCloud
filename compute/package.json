@@ -14,6 +14,8 @@
     "worker:prod": "node dist/main.js",
     "worker:local:prod": "node dist/local-pull-main.js",
     "catalog:export": "tsx src/catalog-batch-export.ts",
+    "catalog:bridge": "tsx src/catalog-bridge.ts",
+    "catalog:bridge:prod": "node dist/catalog-bridge.js",
     "memory:probe": "node --expose-gc --import tsx scripts/memory-probe.ts"
   },
   "dependencies": {
