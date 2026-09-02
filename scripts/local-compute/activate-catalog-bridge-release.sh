@@ -44,6 +44,12 @@ readonly BRIDGE_ENABLED_BEFORE="$(service_state is-enabled "$BRIDGE_UNIT")"
 readonly CATALOG_CURRENT_BEFORE="$(link_state "$CATALOG_CURRENT_LINK")"
 readonly UNIT_EXISTED_BEFORE="$([[ -f "$UNIT_TARGET" ]] && printf true || printf false)"
 
+if [[ "$CATALOG_CURRENT_BEFORE" != "__absent__" \
+  && ! "$CATALOG_CURRENT_BEFORE" =~ ^${CATALOG_RELEASE_PARENT}/[a-f0-9]{40}$ ]]; then
+  echo "unexpected catalog-current target; refusing activation before mutation" >&2
+  exit 3
+fi
+
 install -d -o academiccloud -g academiccloud -m 0750 "${COMPUTE_ROOT}/tmp"
 if [[ "$UNIT_EXISTED_BEFORE" == "true" ]]; then
   cp -a -- "$UNIT_TARGET" "$UNIT_BACKUP"
@@ -54,7 +60,7 @@ restore_bridge_state() {
 
   if [[ "$CATALOG_CURRENT_BEFORE" == "__absent__" ]]; then
     rm -f -- "$CATALOG_CURRENT_LINK"
-  elif [[ "$CATALOG_CURRENT_BEFORE" =~ ^${CATALOG_RELEASE_PARENT}/[a-f0-9]{40}$ ]]; then
+  else
     ln -sfn "$CATALOG_CURRENT_BEFORE" "${COMPUTE_ROOT}/.catalog-current.rollback.$$" || true
     mv -Tf "${COMPUTE_ROOT}/.catalog-current.rollback.$$" "$CATALOG_CURRENT_LINK" || true
   fi
