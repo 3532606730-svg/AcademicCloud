@@ -6,7 +6,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-if ([string]::IsNullOrWhiteSpace($DistributionName) -or $DistributionName -match '["\r\n]') {
+if ([string]::IsNullOrWhiteSpace($DistributionName) -or
+    $DistributionName.Length -gt 128 -or
+    $DistributionName -notmatch '^[A-Za-z0-9._-]+$') {
     throw "DistributionName is invalid."
 }
 
