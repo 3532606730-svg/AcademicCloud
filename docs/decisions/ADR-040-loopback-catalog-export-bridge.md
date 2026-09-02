@@ -29,6 +29,7 @@ External review and results import remain human-mediated. This ADR does not add 
 ## Loopback security boundary
 
 - Listen on literal `127.0.0.1` only; never bind `0.0.0.0`, a LAN address, or IPv6 wildcard.
+- The production Content Security Policy admits only exact `http://127.0.0.1:43117` for this browser connection; no wildcard localhost/LAN target is added.
 - Accept browser export requests only from an exact configured Origin allowlist. Production allows `https://cloud.ajtlab.top`; development origins may be explicitly configured.
 - Require `Content-Type: application/json` plus the dedicated `X-AcademicCloud-Catalog-Bridge: 1` header. Normal CORS preflight must succeed before the browser can send the private request.
 - Never use wildcard CORS and never allow credentials on the loopback request.
@@ -38,11 +39,13 @@ External review and results import remain human-mediated. This ADR does not add 
 - Return only bounded status/error codes or the ZIP payload. Do not include request contents in errors.
 - Set `Cache-Control: no-store` on bridge responses.
 
-Modern browsers may require a one-time user permission for a public HTTPS site to access a loopback/local-network endpoint. That browser permission is accepted as the local-device consent boundary; the application should surface only a concise actionable error when access is unavailable rather than permanent explanatory prose.
+Modern Chromium gates public-HTTPS-to-loopback requests behind Local Network Access permission and exempts a known loopback/local literal from mixed-content blocking after that permission path. The top-level AcademicCloud page is the requesting secure context. The application should surface only a concise actionable error when local access is unavailable rather than permanent explanatory prose.
 
-## Lifecycle
+## Local Compute / WSL lifecycle
 
-The bridge has its own Local Compute service entry and release artifact. It is independent from `academiccloud-local-compute.service` (the outbound AI Local Pull worker). A Windows user-login launcher may start the WSL distribution so the enabled bridge is available without a manual command. Installing/enabling that service and launcher on the Owner machine is a deployment action and remains separately gated from repository implementation.
+The bridge has its own Local Compute service entry and release artifact. It is independent from `academiccloud-local-compute.service` (the outbound AI Local Pull worker). WSL2 localhost forwarding makes ports bound to Linux localhost available to the Windows host's localhost under the supported default configuration, so the Windows browser can use the fixed loopback endpoint without exposing the bridge to the LAN.
+
+A Windows user-login launcher starts the configured WSL distribution; an enabled bridge unit then starts with systemd. Installing/enabling that service and launcher on the Owner machine is a deployment action and remains separately gated from repository implementation.
 
 ## Preserved ADR-039 invariants
 
