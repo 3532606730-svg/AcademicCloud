@@ -1,9 +1,9 @@
 # ACADEMICCLOUD-BATCH-CATALOG-ROUNDTRIP-V1
 
-- Status: Implemented, verified, and passed first real local Owner roundtrip; production export-only continuation separately authorized
+- Status: Implemented, verified, and passed first real local Owner roundtrip; production export-only continuation separately authorized; bounded selection UX correction in review
 - Branch: `feature/batch-catalog-roundtrip-v1`
-- Source: pushed exact feature checkpoint `31a136619d4c74be92c3350414e632a63b6e4540`
-- Production touched: no
+- Source: pushed exact feature checkpoint `4f37c54eaed913771c20dc00995884c1cc8264e9`
+- Production touched: no by this UX correction
 - Schema migration: none
 
 ## Objective
@@ -24,7 +24,13 @@ Implement the ADR-039 human-mediated Library cataloguing roundtrip: bounded loca
 - [x] Full Backend 393/393, Frontend 287/287, Compute 123/123 plus two expected runtime skips, contracts 3/3, typecheck, build, CORS contract, and diff review.
 - [x] Exact feature checkpoint prepared for normal non-force publication on the isolated feature branch.
 - [x] First real local Owner UI roundtrip passed on `Mongolia Between China and the USSR .pdf`: 88 pages, bounded 20-page evidence, 18 native-text pages, 2 PaddleOCR pages, JSON-only/privacy/identity gates green, and UNKNOWN import preview mutation-disabled.
+- [ ] Batch Catalog dialog remains bounded to the PDFs explicitly selected before opening; background Library hydration must not expand the visible/export candidate list.
+- [ ] Redundant operator-facing export/privacy prose is removed from the dialog while the explicit apply confirmation remains intact.
+
+## Current State
+
+Owner browser evidence on 2026-09-02 exposed a UI regression: opening Batch Catalog with two selected PDFs initially showed those two, then the dialog asynchronously loaded the wider Library PDF set (94 in the observed production state). The export ID set was separate, but the UI expansion was misleading and had already contributed to an incorrect large-batch workflow. The correction removes that background Library hydration and keeps the dialog list/export scope fixed to the initial explicit selection. The two long explanatory paragraphs above/below export are also removed as redundant UI copy. No backend, schema, catalog authority, source identity, apply semantics, or production data behavior changes.
 
 ## Explicit exclusions
 
-No OpenAI/DeepSeek/local reasoning integration, production job, main worker activation, production data mutation, database migration, or deletion of existing NuExtract/Qwen work. The later Owner-authorized `ACADEMICCLOUD-FULL-LIBRARY-BATCH-CATALOG` task may deploy the exact schema-free V1 Core/frontend only to create bounded evidence exports; it does not authorize results import or apply.
+No OpenAI/DeepSeek/local reasoning integration, production job, main worker activation, production data mutation, database migration, or deletion of existing NuExtract/Qwen work. Production deployment of this UX correction remains a separate Owner gate.
