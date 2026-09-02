@@ -15,6 +15,8 @@ readonly BRIDGE_UNIT="academiccloud-catalog-bridge.service"
 readonly MAIN_UNIT="academiccloud-local-compute.service"
 readonly UNIT_SOURCE="${RELEASE_ROOT}/deployment/${BRIDGE_UNIT}"
 readonly UNIT_TARGET="/etc/systemd/system/${BRIDGE_UNIT}"
+readonly HEALTH_ATTEMPTS=30
+readonly HEALTH_RETRY_SECONDS=0.5
 readonly STABILITY_SECONDS=10
 readonly UNIT_BACKUP="${COMPUTE_ROOT}/tmp/.catalog-bridge-unit.$$.bak"
 
@@ -34,6 +36,37 @@ link_state() {
   else
     printf '__absent__\n'
   fi
+}
+
+bridge_diagnostics() {
+  systemctl status --no-pager "$BRIDGE_UNIT" >&2 || true
+  journalctl --no-pager -u "$BRIDGE_UNIT" -n 50 >&2 || true
+}
+
+wait_for_bridge_health() {
+  local attempt health
+  for (( attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt += 1 )); do
+    if ! systemctl is-active --quiet "$BRIDGE_UNIT"; then
+      echo "catalog bridge left active state during startup" >&2
+      bridge_diagnostics
+      return 1
+    fi
+
+    if health="$(curl --fail --silent --max-time 1 http://127.0.0.1:43117/health 2>/dev/null)"; then
+      if [[ "$(jq -r '.status // empty' <<<"$health")" == "ok" \
+        && "$(jq -r '.service // empty' <<<"$health")" == "academiccloud-catalog-bridge" \
+        && "$(jq -r '.version // empty' <<<"$health")" == "1" ]]; then
+        printf '%s\n' "$health"
+        return 0
+      fi
+    fi
+
+    sleep "$HEALTH_RETRY_SECONDS"
+  done
+
+  echo "catalog bridge did not become healthy within the bounded startup window" >&2
+  bridge_diagnostics
+  return 1
 }
 
 readonly MAIN_ACTIVE_BEFORE="$(service_state is-active "$MAIN_UNIT")"
@@ -107,10 +140,7 @@ BEFORE_RESTARTS="$(systemctl show "$BRIDGE_UNIT" --property=NRestarts --value 2>
 systemctl restart "$BRIDGE_UNIT"
 systemctl is-active --quiet "$BRIDGE_UNIT"
 
-HEALTH="$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:43117/health)"
-test "$(jq -r '.status' <<<"$HEALTH")" = "ok"
-test "$(jq -r '.service' <<<"$HEALTH")" = "academiccloud-catalog-bridge"
-test "$(jq -r '.version' <<<"$HEALTH")" = "1"
+HEALTH="$(wait_for_bridge_health)"
 
 LISTENERS="$(ss -H -ltn 'sport = :43117' | awk '{print $4}')"
 test "$LISTENERS" = "127.0.0.1:43117"
@@ -144,6 +174,7 @@ printf 'CATALOG_BRIDGE_RELEASE_ACTIVATION=PASS\n'
 printf 'ACTIVE_SOURCE_COMMIT=%s\n' "$(jq -r '.source.commit' "$RELEASE_ROOT/release-manifest.json")"
 printf 'CATALOG_CURRENT=%s\n' "$(readlink -f "$CATALOG_CURRENT_LINK")"
 printf 'LISTENER=%s\n' "$LISTENERS"
+printf 'HEALTH=%s\n' "$HEALTH"
 printf 'STABILITY_SECONDS=%s\n' "$STABILITY_SECONDS"
 printf 'BRIDGE_RESTARTS=%s\n' "$AFTER_RESTARTS"
 printf 'MAIN_WORKER_ACTIVE_UNCHANGED=%s\n' "$MAIN_ACTIVE_BEFORE"
