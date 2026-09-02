@@ -7,6 +7,11 @@ import type {
   LibraryHolding,
   LibrarySummary,
 } from "./api.ts";
+import {
+  exportCatalogEvidenceLocally,
+  LocalCatalogBridgeError,
+  localCatalogText,
+} from "./catalog-local-bridge.ts";
 import { describeError } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
 
@@ -16,8 +21,7 @@ function isPdfHolding(holding: LibraryHolding): boolean {
   return holding.file.mediaType?.toLowerCase() === "application/pdf";
 }
 
-function downloadJson(filename: string, value: unknown): void {
-  const blob = new Blob([`${JSON.stringify(value, null, 2)}\n`], { type: "application/json" });
+function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -50,6 +54,7 @@ export function BatchCatalogDialog({
   const [selectedPreviewIds, setSelectedPreviewIds] = useState<ReadonlySet<string>>(new Set());
   const [applyResults, setApplyResults] = useState<CatalogApplyResult[] | null>(null);
   const [exportStatus, setExportStatus] = useState<string>("");
+  const [localExportError, setLocalExportError] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -65,13 +70,18 @@ export function BatchCatalogDialog({
 
   async function exportRequest(): Promise<void> {
     if (!api.createCatalogBatchExportRequest || resourceIds.size < 1) return;
-    setBusy(true); setError(null); setExportStatus("");
+    setBusy(true); setError(null); setExportStatus(""); setLocalExportError("");
     try {
       const request = await api.createCatalogBatchExportRequest(library.id, [...resourceIds]);
-      downloadJson(`academiccloud-catalog-export-request-${request.manifest.batchId}.json`, request);
-      setExportStatus(t("batchCatalog.exportPrepared", { count: request.manifest.resources.length }));
+      const localPackage = await exportCatalogEvidenceLocally(request);
+      downloadBlob(localPackage.filename, localPackage.blob);
+      setExportStatus(localCatalogText(language, "ready", request.manifest.resources.length));
     } catch (caught: unknown) {
-      setError(caught);
+      if (caught instanceof LocalCatalogBridgeError) {
+        setLocalExportError(localCatalogText(language, caught.code === "unavailable" ? "unavailable" : caught.code === "busy" ? "busy" : "failed"));
+      } else {
+        setError(caught);
+      }
     } finally { setBusy(false); }
   }
 
@@ -128,6 +138,7 @@ export function BatchCatalogDialog({
         <button className="button button--quiet" type="button" onClick={onClose}>{t("batchCatalog.close")}</button>
       </div>
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+      {localExportError && <div className="alert alert--error" role="alert">{localExportError}</div>}
       <section aria-labelledby="batch-catalog-export-title">
         <h3 id="batch-catalog-export-title">{t("batchCatalog.exportTitle")}</h3>
         <div className="batch-catalog-selection-actions">
@@ -143,7 +154,7 @@ export function BatchCatalogDialog({
             </label>
           ))}
         </div>
-        <button className="button button--primary" type="button" disabled={busy || resourceIds.size < 1} onClick={() => void exportRequest()}>{t("batchCatalog.export")}</button>
+        <button className="button button--primary" type="button" disabled={busy || resourceIds.size < 1} onClick={() => void exportRequest()}>{localCatalogText(language, "generate")}</button>
         {exportStatus && <div className="alert alert--success" role="status">{exportStatus}</div>}
       </section>
       <section aria-labelledby="batch-catalog-import-title">
