@@ -10,12 +10,18 @@ import { canonicalCatalogJson, type CatalogExportRequest } from "@academiccloud/
 
 import {
   CatalogExportError,
+  createCatalogEndpointPolicy,
   createCatalogEvidencePackage,
   parseCatalogExportRequest,
   stagedPdfFallbackPolicy,
 } from "../src/catalog-batch-export.js";
 import { PdfTextInspectionError } from "../src/pdf-text.js";
 import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfRangeSource, type SuggestionLimits } from "../src/suggestion.js";
+
+const TEST_ENDPOINT_POLICY = createCatalogEndpointPolicy(
+  "https://cloud.ajtlab.top",
+  ["https://files.ajtlab.top", "https://academiccloud-private.oss-ap-southeast-3.aliyuncs.com"],
+);
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -39,7 +45,7 @@ function request(): CatalogExportRequest {
     schemaVersion: "academiccloud.catalog-export-request.v1",
     manifest,
     sourceManifestSha256: sha256(canonicalCatalogJson(manifest)),
-    sourceAccess: { coreBaseUrl: "https://academiccloud.example", capabilityToken: "x".repeat(43), expiresAt: "2099-01-01T00:00:00.000Z" },
+    sourceAccess: { coreBaseUrl: "https://cloud.ajtlab.top", capabilityToken: "x".repeat(43), expiresAt: "2099-01-01T00:00:00.000Z" },
   };
 }
 
@@ -93,6 +99,14 @@ class FixtureInspector implements BoundedPdfTextSource {
   }
 }
 
+class ReadingFixtureInspector implements BoundedPdfTextSource {
+  inspect(_bytes: Uint8Array, _limits: Readonly<SuggestionLimits>): Promise<never> { throw new Error("whole object path forbidden"); }
+  async inspectRange(source: PdfRangeSource) {
+    await source.read(0, Math.min(5, source.length));
+    return inspectionFixture();
+  }
+}
+
 class StagedFallbackInspector implements BoundedPdfTextSource {
   readonly failure: PdfTextInspectionError;
   rangeCalls = 0;
@@ -129,17 +143,19 @@ async function withMockedCatalogSource<T>(
   const rangeSizes: number[] = [];
   globalThis.fetch = async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
+    assert.equal(init?.redirect, "error");
     if (url.includes("/api/catalog-batches/")) {
       return Response.json({
         source: {
           method: "GET",
-          url: "https://objects.example/catalog-fixture.pdf",
+          url: "https://files.ajtlab.top/catalog-fixture.pdf?X-Oss-Signature=test",
           expiresAt: "2099-01-01T00:00:00.000Z",
           sizeBytes: bytes.byteLength,
           mediaType: "application/pdf",
         },
       });
     }
+    assert.ok(url.startsWith("https://files.ajtlab.top/"));
     const range = new Headers(init?.headers).get("range")?.match(/^bytes=(\d+)-(\d+)$/u);
     assert.ok(range);
     const begin = Number(range[1]);
@@ -159,8 +175,8 @@ async function withMockedCatalogSource<T>(
 }
 
 test("bounded exporter creates manifest plus native/OCR evidence only, without PDF or image bytes", async () => {
-  const parsed = parseCatalogExportRequest(request());
-  const output = await createCatalogEvidencePackage({ request: parsed, inspector: new FixtureInspector() });
+  const parsed = parseCatalogExportRequest(request(), TEST_ENDPOINT_POLICY);
+  const output = await createCatalogEvidencePackage({ request: parsed, inspector: new FixtureInspector(), endpointPolicy: TEST_ENDPOINT_POLICY });
   assert.equal(output.filename, "academiccloud-catalog-batch-batch-fixture.zip");
   assert.equal(output.manifest.resources[0]?.pageCount, 120);
   assert.deepEqual(output.evidence[0]?.pages.map((entry) => entry.evidenceOrigin), ["native_text", "ocr"]);
@@ -188,7 +204,7 @@ test("eligible range timeout uses an identity-verified bounded temporary file an
   const bytes = new TextEncoder().encode(`%PDF-1.7\n${"bounded".repeat(200_000)}\n%%EOF`);
   const inspector = new StagedFallbackInspector();
   const output = await withMockedCatalogSource(bytes, async (rangeSizes) => {
-    const result = await createCatalogEvidencePackage({ request: requestForSource(bytes), inspector });
+    const result = await createCatalogEvidencePackage({ request: requestForSource(bytes), inspector, endpointPolicy: TEST_ENDPOINT_POLICY });
     assert.ok(rangeSizes.every((size) => size <= 1024 * 1024));
     return result;
   });
@@ -208,6 +224,7 @@ test("staged fallback is unavailable to corrupt content and identity mismatches"
     () => withMockedCatalogSource(corrupt, () => createCatalogEvidencePackage({
       request: requestForSource(corrupt),
       inspector: corruptInspector,
+      endpointPolicy: TEST_ENDPOINT_POLICY,
     })),
     (error: unknown) => error instanceof CatalogExportError && error.code === "inspection_failed",
   );
@@ -219,6 +236,7 @@ test("staged fallback is unavailable to corrupt content and identity mismatches"
     () => withMockedCatalogSource(valid, () => createCatalogEvidencePackage({
       request: requestForSource(valid, createHash("md5").update("different").digest("base64")),
       inspector: mismatchInspector,
+      endpointPolicy: TEST_ENDPOINT_POLICY,
     })),
     (error: unknown) => error instanceof CatalogExportError && error.code === "identity_mismatch",
   );
@@ -230,7 +248,7 @@ test("non-range parser and OCR failures never activate staged fallback", async (
   const inspector = new StagedFallbackInspector(new PdfTextInspectionError("render_failure", "render"));
   await assert.rejects(
     () => withMockedCatalogSource(bytes, async (rangeSizes) => {
-      await createCatalogEvidencePackage({ request: requestForSource(bytes), inspector });
+      await createCatalogEvidencePackage({ request: requestForSource(bytes), inspector, endpointPolicy: TEST_ENDPOINT_POLICY });
       assert.fail("expected the render failure to stay terminal");
       return rangeSizes;
     }),
@@ -243,20 +261,145 @@ test("export request parser rejects traversal, oversized batches and changed man
   const traversal = request() as unknown as Record<string, any>;
   traversal.manifest.resources[0].evidenceFile = "../fixture.json";
   traversal.sourceManifestSha256 = sha256(canonicalCatalogJson(traversal.manifest));
-  assert.throws(() => parseCatalogExportRequest(traversal));
+  assert.throws(() => parseCatalogExportRequest(traversal, TEST_ENDPOINT_POLICY));
 
   const changed = request() as unknown as Record<string, any>;
   changed.manifest.resources[0].currentFilename = "changed.pdf";
-  assert.throws(() => parseCatalogExportRequest(changed));
+  assert.throws(() => parseCatalogExportRequest(changed, TEST_ENDPOINT_POLICY));
 
   const tooMany = request() as unknown as Record<string, any>;
   tooMany.manifest.resources = Array.from({ length: 501 }, (_, index) => ({ ...tooMany.manifest.resources[0], resourceId: `resource-${index}`, evidenceFile: `resources/resource-${index}.json` }));
   tooMany.sourceManifestSha256 = sha256(canonicalCatalogJson(tooMany.manifest));
-  assert.throws(() => parseCatalogExportRequest(tooMany));
+  assert.throws(() => parseCatalogExportRequest(tooMany, TEST_ENDPOINT_POLICY));
 
   const malformedIdentity = request() as unknown as Record<string, any>;
   malformedIdentity.manifest.resources[0].sourceIdentity.checksumAlgorithm = { value: "md5" };
   malformedIdentity.manifest.resources[0].sourceIdentity.checksum = { value: "checksum" };
   malformedIdentity.sourceManifestSha256 = sha256(canonicalCatalogJson(malformedIdentity.manifest));
-  assert.throws(() => parseCatalogExportRequest(malformedIdentity));
+  assert.throws(() => parseCatalogExportRequest(malformedIdentity, TEST_ENDPOINT_POLICY));
+});
+
+test("export request parser rejects arbitrary Core origins, credentials and fragments", () => {
+  for (const coreBaseUrl of [
+    "https://example.invalid",
+    "http://127.0.0.1:3000",
+    "https://user:password@cloud.ajtlab.top",
+    "https://cloud.ajtlab.top/#fragment",
+  ]) {
+    const value = request();
+    value.sourceAccess.coreBaseUrl = coreBaseUrl;
+    assert.throws(
+      () => parseCatalogExportRequest(value, TEST_ENDPOINT_POLICY),
+      (error: unknown) => error instanceof CatalogExportError && error.code === "invalid_request",
+    );
+  }
+});
+
+test("source authorization rejects arbitrary and loopback origins before any source request", async () => {
+  for (const sourceUrl of [
+    "https://example.invalid/private.pdf?sig=x",
+    "http://127.0.0.1:8080/private.pdf",
+    "https://user:password@files.ajtlab.top/private.pdf",
+    "https://files.ajtlab.top/private.pdf?sig=x#fragment",
+  ]) {
+    const previous = globalThis.fetch;
+    let sourceRequestCount = 0;
+    globalThis.fetch = async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      assert.equal(init?.redirect, "error");
+      if (url.includes("/api/catalog-batches/")) {
+        return Response.json({
+          source: {
+            method: "GET",
+            url: sourceUrl,
+            expiresAt: "2099-01-01T00:00:00.000Z",
+            sizeBytes: 100,
+            mediaType: "application/pdf",
+          },
+        });
+      }
+      sourceRequestCount += 1;
+      return new Response(null, { status: 500 });
+    };
+    try {
+      const parsed = parseCatalogExportRequest(request(), TEST_ENDPOINT_POLICY);
+      await assert.rejects(
+        () => createCatalogEvidencePackage({ request: parsed, inspector: new ReadingFixtureInspector(), endpointPolicy: TEST_ENDPOINT_POLICY }),
+        (error: unknown) => error instanceof CatalogExportError && error.code === "source_unavailable",
+      );
+      assert.equal(sourceRequestCount, 0);
+    } finally {
+      globalThis.fetch = previous;
+    }
+  }
+});
+
+test("Core and source requests disable redirects while signed source query strings remain usable", async () => {
+  const previous = globalThis.fetch;
+  const requested: string[] = [];
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    requested.push(url);
+    assert.equal(init?.redirect, "error");
+    if (url.includes("/api/catalog-batches/")) {
+      return Response.json({
+        source: {
+          method: "GET",
+          url: "https://files.ajtlab.top/private.pdf?X-Oss-Access-Key-Id=test&X-Oss-Signature=signed",
+          expiresAt: "2099-01-01T00:00:00.000Z",
+          sizeBytes: 100,
+          mediaType: "application/pdf",
+        },
+      });
+    }
+    assert.ok(url.startsWith("https://files.ajtlab.top/private.pdf?"));
+    return new Response(new Uint8Array([1, 2, 3, 4, 5]), {
+      status: 206,
+      headers: { "content-range": "bytes 0-4/100" },
+    });
+  };
+  try {
+    const parsed = parseCatalogExportRequest(request(), TEST_ENDPOINT_POLICY);
+    await createCatalogEvidencePackage({ request: parsed, inspector: new ReadingFixtureInspector(), endpointPolicy: TEST_ENDPOINT_POLICY });
+    assert.equal(requested.length, 2);
+    assert.ok(requested[0]!.startsWith("https://cloud.ajtlab.top/api/catalog-batches/"));
+    assert.ok(requested[1]!.startsWith("https://files.ajtlab.top/private.pdf?"));
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+
+test("redirect responses are terminal and never reach their redirect target", async () => {
+  const previous = globalThis.fetch;
+  const requested: string[] = [];
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    requested.push(url);
+    assert.equal(init?.redirect, "error");
+    if (url.includes("/api/catalog-batches/")) {
+      return Response.json({
+        source: {
+          method: "GET",
+          url: "https://files.ajtlab.top/private.pdf?sig=x",
+          expiresAt: "2099-01-01T00:00:00.000Z",
+          sizeBytes: 100,
+          mediaType: "application/pdf",
+        },
+      });
+    }
+    return new Response(null, {
+      status: 302,
+      headers: { location: "http://127.0.0.1:8080/private" },
+    });
+  };
+  try {
+    const parsed = parseCatalogExportRequest(request(), TEST_ENDPOINT_POLICY);
+    await assert.rejects(
+      () => createCatalogEvidencePackage({ request: parsed, inspector: new ReadingFixtureInspector(), endpointPolicy: TEST_ENDPOINT_POLICY }),
+      (error: unknown) => error instanceof CatalogExportError && error.code === "source_unavailable",
+    );
+    assert.equal(requested.some((url) => url.startsWith("http://127.0.0.1:8080")), false);
+  } finally {
+    globalThis.fetch = previous;
+  }
 });
