@@ -1,0 +1,54 @@
+[Unit]
+Description=AcademicCloud loopback catalog export bridge
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300s
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=academiccloud
+Group=academiccloud
+WorkingDirectory=/srv/academiccloud-compute/current/compute
+Environment=NODE_ENV=production
+Environment=PADDLE_OCR_DEVICE=gpu
+Environment=ACADEMICCLOUD_CATALOG_BRIDGE_PORT=43117
+Environment=ACADEMICCLOUD_CATALOG_BRIDGE_ORIGINS=https://cloud.ajtlab.top
+ExecStart=/srv/academiccloud-compute/current/runtime/node/bin/node /srv/academiccloud-compute/current/compute/dist/catalog-bridge.js
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=30s
+TimeoutStopSec=30s
+KillSignal=SIGTERM
+KillMode=control-group
+SendSIGKILL=yes
+UMask=0077
+Nice=5
+OOMScoreAdjust=200
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+ReadWritePaths=/srv/academiccloud-compute/logs /srv/academiccloud-compute/tmp
+LimitCORE=0
+TasksMax=512
+MemoryHigh=6G
+MemoryMax=7G
+
+[Install]
+WantedBy=multi-user.target
