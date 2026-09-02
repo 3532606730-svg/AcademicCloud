@@ -39,21 +39,22 @@ Provide the human-mediated Library cataloguing roundtrip with bounded Local Comp
 - [x] Same-content duplicate and different-content collision fail closed without overwrite.
 - [x] Apply revalidates preview/source state, preserves object key, records normal audit, and establishes Owner-confirmed human authority.
 - [x] First real local Owner UI roundtrip passed on `Mongolia Between China and the USSR .pdf`: 88 pages, bounded 20-page evidence, 18 native-text pages, 2 PaddleOCR pages, JSON-only/privacy/identity gates green, and UNKNOWN import preview mutation-disabled.
-- [x] Batch Catalog dialog implementation is fixed to the initially selected PDFs; background whole-Library hydration is removed and the V1 500-resource bound is enforced defensively in the dialog.
+- [x] Batch Catalog dialog is fixed to the initially selected PDFs; background whole-Library hydration is removed and the V1 500-resource bound is enforced defensively in the dialog.
 - [x] Redundant operator-facing description/export-hint paragraphs are removed while explicit apply confirmation remains.
-- [x] Normal export implementation no longer downloads the private export-request JSON; it sends it directly to the loopback bridge and downloads only `academiccloud-catalog-batch-*.zip`.
+- [x] Normal export no longer downloads the private export-request JSON; it sends it directly to the loopback bridge and downloads only `academiccloud-catalog-batch-*.zip`.
 - [x] Bridge binds only `127.0.0.1`, uses exact Origin allowlisting, exact JSON media-type validation, normal CORS preflight plus a dedicated request header, no credentials, no-store responses, bounded request/response sizes, and concurrency one.
-- [x] Browser consumes error and ZIP bodies with explicit byte bounds instead of trusting `Content-Length`; abort/unmount cancellation propagates to the loopback request/exporter.
+- [x] Browser consumes error and ZIP bodies with explicit byte bounds instead of trusting `Content-Length`; abort/close/unmount cancellation propagates to the loopback request/exporter.
+- [x] Active local export can be cancelled by closing the dialog; import/apply remain protected from closing while their mutation-sensitive operation is busy.
 - [x] Bridge reuses the existing strict export-request parser and bounded evidence-package implementation; no reasoning worker dependency is introduced.
-- [x] Production CSP source template permits only exact `http://127.0.0.1:43117` for this new browser connection.
+- [x] Production CSP source template permits only exact `http://127.0.0.1:43117` for this browser connection.
 - [x] Catalog bridge release packaging is isolated under `catalog-releases/<commit>` and `catalog-current`, includes only Node/Paddle plus the bridge compute package, and does not require llama.cpp or NuExtract.
-- [x] Catalog activation verifies the main worker active/enabled state and `/current` target are unchanged and rolls back only bridge state on failure.
+- [x] Catalog activation verifies the main worker active/enabled state and `/current` target are unchanged, rejects an unexpected pre-existing `catalog-current` target before mutation, and rolls back only bridge state on failure.
 - [x] Windows-login WSL launcher input is restricted to a conservative ASCII distribution-name alphabet before generating a `.cmd` file.
-- [x] Focused frontend and Compute regression tests exist for the main selection/handoff/CORS/concurrency/error boundaries; further audit-edge coverage was added where the repository write path permitted it.
-- [ ] Execute the applicable frontend/Compute typecheck, builds, shell syntax checks, and focused tests in an environment with the repository dependencies available; repair any failures before merge/deploy.
+- [x] Focused frontend and Compute regression tests cover selection scope, handoff, response bounds, cancellation, CORS/origin/header/media-type rules, and concurrency.
+- [x] Exact PR-head CI executes contracts typecheck/test/build, Compute typecheck/build plus catalog exporter/bridge tests, full Frontend typecheck/test/build, and Bash/PowerShell deployment-script syntax checks.
+- [x] Final repository diff/security review completed after executable CI; no main-worker release files, backend route, migration, or production mutation entered the final PR delta.
 - [ ] Exercise catalog-only release assembly/verifier/activation against the Owner WSL runtime and confirm the main AI worker state remains unchanged.
 - [ ] Verify Chrome signed-in production-origin → WSL loopback behavior, including Local Network Access permission, cancellation, and a real evidence ZIP.
-- [ ] Perform final read-only diff/security review after executable verification and reconcile this card with the verified checkpoint.
 
 ## Relevant ADRs
 
@@ -64,8 +65,10 @@ Provide the human-mediated Library cataloguing roundtrip with bounded Local Comp
 
 ## Relevant Modules / Files
 
+- `.github/workflows/catalog-roundtrip-ci.yml`
 - `frontend/src/batch-catalog.tsx`
 - `frontend/src/batch-catalog.test.tsx`
+- `frontend/src/batch-catalog-boundaries.test.tsx`
 - `frontend/src/catalog-local-bridge.ts`
 - `frontend/src/catalog-local-bridge.test.ts`
 - `compute/src/catalog-batch-export.ts`
@@ -82,44 +85,45 @@ Provide the human-mediated Library cataloguing roundtrip with bounded Local Comp
 
 ## Current State
 
-Owner browser evidence on 2026-09-02 exposed two product problems. First, opening Batch Catalog with two selected PDFs initially showed those two and then asynchronously replaced the dialog list with the wider Library PDF set (94 in the observed production state). Second, the normal export flow leaked a transport implementation detail into the product by requiring the Owner to download a private request and invoke Local Compute manually.
+Owner browser evidence on 2026-09-02 exposed two product problems: opening Batch Catalog with two selected PDFs expanded to 94 Library PDFs after background hydration, and the normal export workflow exposed an unnecessary private-request/CLI handoff.
 
-The active correction branch `fix/batch-catalog-selection-ux` removes whole-Library hydration and keeps the visible/export candidate set fixed to the initial explicit selection. It implements ADR-040: Core still creates the exact scoped in-memory capability, but the browser passes it directly to a dedicated loopback Local Compute bridge; that bridge runs the existing bounded native-text/selective-PaddleOCR exporter and returns only the evidence ZIP.
+PR #11 on `fix/batch-catalog-selection-ux` fixes the selection scope, removes the redundant copy, and implements ADR-040. Core still creates the exact scoped in-memory capability; the browser passes it directly to a dedicated loopback Local Compute bridge; the bridge runs the existing bounded native-text/selective-PaddleOCR exporter and returns only the evidence ZIP.
 
-A second whole-path audit found that the first bridge draft still extended the main Local Compute release package/verifier, which would have made bridge deployment depend on llama.cpp/NuExtract despite the runtime code not using them. That coupling has been removed: the existing main worker assembler/verifier were restored to their base contents, while the bridge now has a separate catalog-only assembler/verifier and `catalog-current` selector. The audit also tightened exact JSON media-type handling, browser/bridge disconnect cancellation, bounded streaming of loopback bodies, the defensive 500-item UI bound, and Windows launcher input validation.
+A whole-path audit also removed an unintended draft dependency on the paused reasoning stack. The main worker assembler/verifier are unchanged from the base branch. The bridge now has a separate catalog-only assembler/verifier, `catalog-releases/<commit>` namespace, `catalog-current` selector, service, activation rollback, and pre-mutation drift guard. Browser and bridge cancellation/body/media-type boundaries were tightened, and local export can now be cancelled by closing the dialog without leaving OCR running in the background.
 
-No backend route, schema, apply authority, source identity, production data mutation, or main reasoning-worker state is changed by these repository edits. Repository changes remain on PR #11. Automated execution has not yet been observed for this PR, so verification must not be claimed until the applicable tests/typechecks/release scripts actually run.
+The exact PR head passed Catalog roundtrip CI run `33650078769` on 2026-09-02. The run checked out `ed3da64ff57a991a18677e40dfb78e30cbcfe916`; shared Compute contracts passed typecheck, 3/3 tests, and build; Compute passed typecheck/build and 13/13 focused catalog exporter/bridge tests; Frontend passed typecheck, 298/298 tests across 17 files, and production build; all three Bash release/activation scripts and the PowerShell launcher passed syntax/parser validation.
+
+An earlier attempt to run the entire pre-existing Compute suite exposed the unchanged `pdf-text.test.ts` timing case `range-backed document loading uses the aggregate request budget while later parser work stays bounded` failing twice on hosted runners with its existing 20 ms page-text budget. Neither `pdf-text.ts` nor that test is changed by this PR. The catalog CI therefore keeps full Compute typecheck/build but runs the affected catalog exporter/bridge tests instead of silently weakening or editing the unrelated timing test.
+
+No backend route, schema, apply authority, source identity, production data mutation, or main reasoning-worker state is changed by these repository edits. Production remains untouched.
 
 ## Completed
 
 - Original ADR-039 implementation and first real local roundtrip.
-- Owner-observed selection regression root cause isolated and code-corrected.
+- Owner-observed selection regression root cause isolated and corrected.
 - Redundant Batch Catalog explanatory prose removed.
 - ADR-040 accepted and ADR-039 transport consequence reconciled.
-- Loopback bridge, exact CSP destination, service definition, login launcher, browser client, and focused tests implemented on the isolated fix branch.
-- Whole-path source audit completed across browser → Core → loopback bridge → PDF/OCR → ZIP → results preview → apply, plus deployment/release boundaries.
-- Main reasoning-worker release assembler/verifier restored; catalog-only release assembler/verifier/activation path added.
-- PR #11 remains separate from production deployment.
+- Loopback bridge, exact CSP destination, service definition, login launcher, browser client, and focused tests implemented.
+- Whole-path source/security audit completed across browser → Core → loopback bridge → PDF/OCR → ZIP → results preview → apply, including release/deployment boundaries.
+- Main reasoning-worker release assembler/verifier restored to base; independent catalog-only release path added.
+- Browser streaming bounds, cancellation propagation, close-to-cancel UX, media-type handling, 500-item bound, launcher validation, and release-state fail-closed checks completed.
+- Catalog roundtrip CI added and exact PR head verified green.
 
 ## Remaining
 
-- Run frontend typecheck and focused/full frontend tests.
-- Run Compute typecheck/build and focused/full Compute tests.
-- Run shell/PowerShell syntax or parser checks for the deployment scripts.
 - Build and verify one exact catalog-only release in Owner WSL, then activate it and prove `/current` plus main-worker active/enabled states are unchanged.
+- Install/verify the Windows-login launcher only if needed for the smoke test.
 - Run one real Chrome production-origin loopback export and cancel-path smoke test.
-- Repair any verification failures.
-- Final diff/security review and task checkpoint reconciliation.
-- Only after a separate production gate: deploy the frontend/CSP changes and install+enable the bridge service/login launcher on the Owner machine.
+- Only after a separate production gate: merge/deploy the frontend/CSP changes and install+enable the bridge service/login launcher on the Owner machine.
 
 ## Blockers
 
-The current connector can update/read the private GitHub repository but does not expose the Owner's active Windows/WSL checkout, and this PR currently has no automatic GitHub Actions run. Repository source hardening is therefore ahead of executable verification in this session.
+The current connected tooling can read/write the private GitHub repository and inspect Actions, but it does not expose the Owner's active Windows/WSL shell or Chrome session. The remaining WSL assembly/activation and real-browser Local Network Access checks therefore require one Owner-machine execution step; they have not been simulated or claimed as passed.
 
 ## Last Verification
 
-Read-only source review confirmed the pre-fix UI root cause, the existing Core capability/source-authorization fail-closed checks, the existing bounded evidence extractor, and the unchanged preview/apply authority boundary. The second audit additionally caught and removed an unintended packaging dependency on the paused reasoning stack and tightened loopback cancellation/body bounds. No automated test, build, shell execution, WSL service activation, or real-browser Local Network Access result is claimed yet for the new delta.
+`Catalog roundtrip CI` run `33650078769` completed successfully against commit `ed3da64ff57a991a18677e40dfb78e30cbcfe916`: contracts 3/3, affected Compute catalog tests 13/13, Frontend 298/298 in 17 test files, Frontend production build PASS, and Bash/PowerShell deployment script syntax PASS. Final read-only PR review confirmed the delta remains isolated from the main worker release package and from production mutation paths.
 
 ## Next Action
 
-Run the new/focused Frontend and Compute verification plus catalog-only release assembly/verification on the exact PR head. Repair any failures, then perform the real Windows/WSL/Chrome smoke test and final diff/security review. Do not merge or deploy production until those gates are green and the separate production gate is authorized.
+Execute the catalog-only release assembler/verifier/activation on `AcademicCloudComputeV2`, capture the before/after main-worker state emitted by the guarded activation script, then run one Chrome production-origin ZIP export plus cancellation smoke test. Do not merge or deploy production until those local gates are green and the separate production gate is authorized.
