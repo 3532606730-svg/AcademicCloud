@@ -64,6 +64,30 @@ async function close(server: ReturnType<typeof createCatalogBridgeServer>): Prom
   await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 }
 
+test("loopback bridge answers the exact-origin CORS preflight without running an export", async () => {
+  let called = false;
+  const { server, url } = await listen(async () => {
+    called = true;
+    return { filename: "academiccloud-catalog-batch-batch-test.zip", bytes: new Uint8Array([1]) };
+  });
+  try {
+    const response = await fetch(`${url}/v1/catalog/export`, {
+      method: "OPTIONS",
+      headers: {
+        origin: ORIGIN,
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type,x-academiccloud-catalog-bridge",
+      },
+    });
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get("access-control-allow-origin"), ORIGIN);
+    assert.match(response.headers.get("access-control-allow-headers") ?? "", /X-AcademicCloud-Catalog-Bridge/u);
+    assert.equal(called, false);
+  } finally {
+    await close(server);
+  }
+});
+
 test("loopback bridge accepts only the allowed browser origin and returns the generated ZIP", async () => {
   let received: CatalogExportRequest | null = null;
   const expectedBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
@@ -138,8 +162,11 @@ test("loopback bridge requires the dedicated non-simple browser header", async (
 
 test("loopback bridge permits only one export at a time", async () => {
   let release!: () => void;
+  let markEntered!: () => void;
   const gate = new Promise<void>((resolve) => { release = resolve; });
+  const entered = new Promise<void>((resolve) => { markEntered = resolve; });
   const packageFactory: CatalogBridgePackageFactory = async () => {
+    markEntered();
     await gate;
     return { filename: "academiccloud-catalog-batch-batch-test.zip", bytes: new Uint8Array([1]) };
   };
@@ -155,7 +182,7 @@ test("loopback bridge permits only one export at a time", async () => {
       body: JSON.stringify(requestDocument()),
     } as const;
     const first = fetch(`${url}/v1/catalog/export`, init);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await entered;
     const second = await fetch(`${url}/v1/catalog/export`, init);
     assert.equal(second.status, 409);
     assert.deepEqual(await second.json(), { status: "failed", code: "busy" });
