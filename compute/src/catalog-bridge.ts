@@ -100,6 +100,11 @@ function allowedOrigin(request: IncomingMessage, allowedOrigins: ReadonlySet<str
   return origin;
 }
 
+function isJsonContentType(value: string | string[] | undefined): boolean {
+  if (typeof value !== "string") return false;
+  return value.split(";", 1)[0]?.trim().toLowerCase() === "application/json";
+}
+
 async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
   let bytes = 0;
@@ -178,8 +183,7 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
         sendFailure(response, 403, "invalid_request");
         return;
       }
-      if (request.headers[BRIDGE_HEADER] !== BRIDGE_HEADER_VALUE
-        || !request.headers["content-type"]?.toLowerCase().startsWith("application/json")) {
+      if (request.headers[BRIDGE_HEADER] !== BRIDGE_HEADER_VALUE || !isJsonContentType(request.headers["content-type"])) {
         sendFailure(response, 400, "invalid_request", origin);
         return;
       }
@@ -191,7 +195,11 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
       exportActive = true;
       const abortController = new AbortController();
       const abort = (): void => abortController.abort();
+      const abortOnResponseClose = (): void => {
+        if (!response.writableEnded) abort();
+      };
       request.once("aborted", abort);
+      response.once("close", abortOnResponseClose);
       try {
         const parsed = parseCatalogExportRequest(await readJsonBody(request));
         const result = await packageFactory(parsed, abortController.signal);
@@ -208,6 +216,9 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
         response.setHeader("X-AcademicCloud-Filename", result.filename);
         response.end(bytes);
       } catch (error: unknown) {
+        if (response.destroyed) {
+          return;
+        }
         if (response.headersSent) {
           response.destroy();
         } else if (error instanceof CatalogExportError) {
@@ -217,6 +228,7 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
         }
       } finally {
         request.removeListener("aborted", abort);
+        response.removeListener("close", abortOnResponseClose);
         exportActive = false;
       }
     })();
