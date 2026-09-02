@@ -36,9 +36,15 @@ if ($knownNames -notcontains $DistributionName) {
     throw "WSL distribution '$DistributionName' is not installed."
 }
 
+# An enabled systemd service does not itself keep a WSL distribution alive.
+# Keep one inert Linux process running for the Windows login session so the
+# loopback-only catalog bridge remains reachable from the browser. The bridge
+# itself remains owned and restarted by its dedicated systemd unit.
+$wslPath = Join-Path $env:SystemRoot "System32\wsl.exe"
+$keepaliveCommand = "Start-Process -WindowStyle Hidden -FilePath '$wslPath' -ArgumentList '-d','$DistributionName','--exec','/usr/bin/sleep','infinity'"
 $content = @(
     "@echo off",
-    "wsl.exe -d `"$DistributionName`" --exec /bin/true >nul 2>&1"
+    "powershell.exe -NoProfile -WindowStyle Hidden -Command `"$keepaliveCommand`" >nul 2>&1"
 ) -join "`r`n"
 
 [System.IO.File]::WriteAllText($launcher, "$content`r`n", [System.Text.Encoding]::ASCII)
