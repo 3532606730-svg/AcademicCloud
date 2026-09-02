@@ -61,7 +61,7 @@ grep -Fqx 'WorkingDirectory=/srv/academiccloud-compute/catalog-current/compute' 
 grep -Fqx 'Environment=ACADEMICCLOUD_CATALOG_BRIDGE_PORT=43117' "$UNIT"
 grep -Fqx 'Environment=ACADEMICCLOUD_CATALOG_BRIDGE_ORIGINS=https://cloud.ajtlab.top' "$UNIT"
 grep -Fqx 'Environment=ACADEMICCLOUD_CATALOG_CORE_ORIGIN=https://cloud.ajtlab.top' "$UNIT"
-grep -Fqx 'Environment=ACADEMICCLOUD_CATALOG_SOURCE_ORIGINS=https://academiccloud-private.oss-ap-southeast-3.aliyuncs.com,https://files.ajtlab.top' "$UNIT"
+grep -Fqx 'Environment=ACADEMICCLOUD_CATALOG_SOURCE_ORIGINS=https://ajt-academiccloud-kl-8f3c.oss-ap-southeast-3.aliyuncs.com,https://files.ajtlab.top' "$UNIT"
 grep -Fqx 'ExecStart=/srv/academiccloud-compute/catalog-current/runtime/node/bin/node /srv/academiccloud-compute/catalog-current/compute/dist/catalog-bridge.js' "$UNIT"
 if grep -Fq '/srv/academiccloud-compute/current/' "$UNIT"; then
   echo "catalog bridge unit must not use the main worker release selector" >&2
