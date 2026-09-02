@@ -53,18 +53,17 @@ restore_bridge_state() {
 
   if [[ "$CATALOG_CURRENT_BEFORE" == "__absent__" ]]; then
     rm -f -- "$CATALOG_CURRENT_LINK"
-  else
-    [[ "$CATALOG_CURRENT_BEFORE" =~ ^${COMPUTE_ROOT}/releases/[a-f0-9]{40}$ ]]
-    ln -sfn "$CATALOG_CURRENT_BEFORE" "${COMPUTE_ROOT}/.catalog-current.rollback.$$"
-    mv -Tf "${COMPUTE_ROOT}/.catalog-current.rollback.$$" "$CATALOG_CURRENT_LINK"
+  elif [[ "$CATALOG_CURRENT_BEFORE" =~ ^${COMPUTE_ROOT}/releases/[a-f0-9]{40}$ ]]; then
+    ln -sfn "$CATALOG_CURRENT_BEFORE" "${COMPUTE_ROOT}/.catalog-current.rollback.$$" || true
+    mv -Tf "${COMPUTE_ROOT}/.catalog-current.rollback.$$" "$CATALOG_CURRENT_LINK" || true
   fi
 
-  if [[ "$UNIT_EXISTED_BEFORE" == "true" ]]; then
-    install -o root -g root -m 0644 "$UNIT_BACKUP" "$UNIT_TARGET"
+  if [[ "$UNIT_EXISTED_BEFORE" == "true" && -f "$UNIT_BACKUP" ]]; then
+    install -o root -g root -m 0644 "$UNIT_BACKUP" "$UNIT_TARGET" || true
   else
     rm -f -- "$UNIT_TARGET"
   fi
-  systemctl daemon-reload
+  systemctl daemon-reload >/dev/null 2>&1 || true
 
   case "$BRIDGE_ENABLED_BEFORE" in
     enabled|enabled-runtime|linked|linked-runtime|alias)
@@ -81,6 +80,8 @@ restore_bridge_state() {
 }
 
 fail_activation() {
+  trap - ERR
+  set +e
   restore_bridge_state
   echo "Catalog bridge activation failed; prior bridge state restored. Main Local Compute worker was not modified." >&2
   exit 4
