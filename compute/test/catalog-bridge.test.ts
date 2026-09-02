@@ -89,10 +89,10 @@ test("loopback bridge answers the exact-origin CORS preflight without running an
 });
 
 test("loopback bridge accepts only the allowed browser origin and returns the generated ZIP", async () => {
-  let received: CatalogExportRequest | null = null;
+  let receivedBatchId: string | null = null;
   const expectedBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
   const packageFactory: CatalogBridgePackageFactory = async (request) => {
-    received = request;
+    receivedBatchId = request.manifest.batchId;
     return { filename: "academiccloud-catalog-batch-batch-test.zip", bytes: expectedBytes };
   };
   const { server, url } = await listen(packageFactory);
@@ -112,7 +112,7 @@ test("loopback bridge accepts only the allowed browser origin and returns the ge
     assert.equal(response.headers.get("content-type"), "application/zip");
     assert.equal(response.headers.get("x-academiccloud-filename"), "academiccloud-catalog-batch-batch-test.zip");
     assert.deepEqual(new Uint8Array(await response.arrayBuffer()), expectedBytes);
-    assert.equal(received?.manifest.batchId, "batch-test");
+    assert.equal(receivedBatchId, "batch-test");
   } finally {
     await close(server);
   }
