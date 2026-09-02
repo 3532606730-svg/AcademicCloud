@@ -50,10 +50,10 @@ Provide the human-mediated Library cataloguing roundtrip with bounded Local Comp
 - [x] Catalog bridge release packaging is isolated under `catalog-releases/<commit>` and `catalog-current`, includes only Node/Paddle plus the bridge compute package, and does not require llama.cpp or NuExtract.
 - [x] Catalog activation verifies the main worker active/enabled state and `/current` target are unchanged, rejects an unexpected pre-existing `catalog-current` target before mutation, and rolls back only bridge state on failure.
 - [x] Windows-login WSL launcher input is restricted to a conservative ASCII distribution-name alphabet before generating a `.cmd` file.
-- [x] Focused frontend and Compute regression tests cover selection scope, handoff, response bounds, cancellation, CORS/origin/header/media-type rules, and concurrency.
+- [x] Focused frontend and Compute regression tests cover selection scope, handoff, response bounds, cancellation, CORS/origin/header/media-type rules, concurrency, and symlinked release-selector entrypoint behavior.
 - [x] Exact PR-head CI executes contracts typecheck/test/build, Compute typecheck/build plus catalog exporter/bridge tests, full Frontend typecheck/test/build, and Bash/PowerShell deployment-script syntax checks.
 - [x] Final repository diff/security review completed after executable CI; no main-worker release files, backend route, migration, or production mutation entered the final PR delta.
-- [ ] Exercise catalog-only release assembly/verifier/activation against the Owner WSL runtime and confirm the main AI worker state remains unchanged.
+- [x] Catalog-only release assembly/verifier/activation passed in Owner WSL `AcademicCloudComputeV2`; bridge remained stable with zero restarts, Windows localhost forwarding reached it, and the main AI worker state remained unchanged.
 - [ ] Verify Chrome signed-in production-origin → WSL loopback behavior, including Local Network Access permission, cancellation, and a real evidence ZIP.
 
 ## Relevant ADRs
@@ -73,6 +73,7 @@ Provide the human-mediated Library cataloguing roundtrip with bounded Local Comp
 - `frontend/src/catalog-local-bridge.test.ts`
 - `compute/src/catalog-batch-export.ts`
 - `compute/src/catalog-bridge.ts`
+- `compute/src/catalog-bridge-entrypoint.ts`
 - `compute/test/catalog-bridge.test.ts`
 - `deployment/nginx/academiccloud-security-headers.conf`
 - `deployment/systemd/academiccloud-catalog-bridge.service`
@@ -89,9 +90,11 @@ Owner browser evidence on 2026-09-02 exposed two product problems: opening Batch
 
 PR #11 on `fix/batch-catalog-selection-ux` fixes the selection scope, removes the redundant copy, and implements ADR-040. Core still creates the exact scoped in-memory capability; the browser passes it directly to a dedicated loopback Local Compute bridge; the bridge runs the existing bounded native-text/selective-PaddleOCR exporter and returns only the evidence ZIP.
 
-A whole-path audit also removed an unintended draft dependency on the paused reasoning stack. The main worker assembler/verifier are unchanged from the base branch. The bridge now has a separate catalog-only assembler/verifier, `catalog-releases/<commit>` namespace, `catalog-current` selector, service, activation rollback, and pre-mutation drift guard. Browser and bridge cancellation/body/media-type boundaries were tightened, and local export can now be cancelled by closing the dialog without leaving OCR running in the background.
+A whole-path audit removed an unintended draft dependency on the paused reasoning stack. The main worker assembler/verifier are unchanged from the base branch. The bridge has a separate catalog-only assembler/verifier, `catalog-releases/<commit>` namespace, `catalog-current` selector, service, activation rollback, and pre-mutation drift guard. Browser and bridge cancellation/body/media-type boundaries were tightened, and local export can now be cancelled by closing the dialog without leaving OCR running in the background.
 
-The exact PR head passed Catalog roundtrip CI run `33650078769` on 2026-09-02. The run checked out `ed3da64ff57a991a18677e40dfb78e30cbcfe916`; shared Compute contracts passed typecheck, 3/3 tests, and build; Compute passed typecheck/build and 13/13 focused catalog exporter/bridge tests; Frontend passed typecheck, 298/298 tests across 17 files, and production build; all three Bash release/activation scripts and the PowerShell launcher passed syntax/parser validation.
+Owner WSL validation exposed and then closed two deployment-specific defects before production: activation originally probed health too early after `Type=simple` startup, and the bridge direct-entrypoint check failed when systemd invoked it through the `catalog-current` symlink. The activation now waits for bounded health readiness and emits service/journal diagnostics on real exit; the bridge entrypoint resolves symlinks before deciding whether to execute `main()`, with a dedicated CI regression test.
+
+Catalog roundtrip CI run `33652399464` passed against implementation head `b5fd7e3ef85f54d88ea9d5feeaa50c3f6ee13fbd`, including the symlink entrypoint regression. The Owner then assembled and verified the exact catalog-only release for that commit in `AcademicCloudComputeV2`. Activation passed with `LISTENER=127.0.0.1:43117`, health `{"status":"ok","service":"academiccloud-catalog-bridge","version":1}`, `BRIDGE_RESTARTS=0`, and `catalog-current` pointing to the immutable release. The main Local Pull worker remained `inactive`/`not-found`, and its `/current` selector remained absent according to the guarded activation snapshot. Windows itself reached the WSL bridge at `127.0.0.1:43117` with HTTP 200, and the exact production-origin CORS preflight returned HTTP 204 with `Access-Control-Allow-Origin: https://cloud.ajtlab.top`.
 
 An earlier attempt to run the entire pre-existing Compute suite exposed the unchanged `pdf-text.test.ts` timing case `range-backed document loading uses the aggregate request budget while later parser work stays bounded` failing twice on hosted runners with its existing 20 ms page-text budget. Neither `pdf-text.ts` nor that test is changed by this PR. The catalog CI therefore keeps full Compute typecheck/build but runs the affected catalog exporter/bridge tests instead of silently weakening or editing the unrelated timing test.
 
@@ -107,23 +110,23 @@ No backend route, schema, apply authority, source identity, production data muta
 - Whole-path source/security audit completed across browser → Core → loopback bridge → PDF/OCR → ZIP → results preview → apply, including release/deployment boundaries.
 - Main reasoning-worker release assembler/verifier restored to base; independent catalog-only release path added.
 - Browser streaming bounds, cancellation propagation, close-to-cancel UX, media-type handling, 500-item bound, launcher validation, and release-state fail-closed checks completed.
-- Catalog roundtrip CI added and exact PR head verified green.
+- Catalog roundtrip CI added and latest implementation head verified green.
+- Owner WSL release assembly/verifier/activation, WSL health, Windows localhost forwarding, and exact-origin CORS preflight passed on the immutable `b5fd7e3ef85f54d88ea9d5feeaa50c3f6ee13fbd` release.
 
 ## Remaining
 
-- Build and verify one exact catalog-only release in Owner WSL, then activate it and prove `/current` plus main-worker active/enabled states are unchanged.
-- Install/verify the Windows-login launcher only if needed for the smoke test.
+- Install/verify the Windows-login launcher so the bridge is restored automatically after Windows/WSL restart.
 - Run one real Chrome production-origin loopback export and cancel-path smoke test.
-- Only after a separate production gate: merge/deploy the frontend/CSP changes and install+enable the bridge service/login launcher on the Owner machine.
+- Only after a separate production gate: merge/deploy the frontend/CSP changes and enable the production-facing workflow; no production Apply is part of this gate.
 
 ## Blockers
 
-The current connected tooling can read/write the private GitHub repository and inspect Actions, but it does not expose the Owner's active Windows/WSL shell or Chrome session. The remaining WSL assembly/activation and real-browser Local Network Access checks therefore require one Owner-machine execution step; they have not been simulated or claimed as passed.
+The remaining validation requires the signed-in Owner Chrome session and the production frontend/CSP update; the connected tooling does not expose the Owner's Chrome session. No repository, WSL runtime, or network blocker remains for the catalog bridge itself.
 
 ## Last Verification
 
-`Catalog roundtrip CI` run `33650078769` completed successfully against commit `ed3da64ff57a991a18677e40dfb78e30cbcfe916`: contracts 3/3, affected Compute catalog tests 13/13, Frontend 298/298 in 17 test files, Frontend production build PASS, and Bash/PowerShell deployment script syntax PASS. Final read-only PR review confirmed the delta remains isolated from the main worker release package and from production mutation paths.
+`Catalog roundtrip CI` run `33652399464` completed successfully against `b5fd7e3ef85f54d88ea9d5feeaa50c3f6ee13fbd`. Owner-machine validation then completed successfully: catalog-only assembly PASS, verifier PASS, guarded activation PASS, stable listener `127.0.0.1:43117`, health PASS, zero bridge restarts, main worker state unchanged, Windows localhost forwarding HTTP 200, and exact production-origin CORS preflight HTTP 204.
 
 ## Next Action
 
-Execute the catalog-only release assembler/verifier/activation on `AcademicCloudComputeV2`, capture the before/after main-worker state emitted by the guarded activation script, then run one Chrome production-origin ZIP export plus cancellation smoke test. Do not merge or deploy production until those local gates are green and the separate production gate is authorized.
+Install the idempotent Windows-login launcher for `AcademicCloudComputeV2`. After a separate production deployment authorization, deploy the verified frontend/CSP delta to `cloud.ajtlab.top`, then run one signed-in Chrome evidence-ZIP export plus cancellation smoke test. Do not Apply real catalog results during this smoke test.
