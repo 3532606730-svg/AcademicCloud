@@ -16,9 +16,14 @@ import { describeError } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
 
 const MAX_RESULTS_BYTES = 8 * 1024 * 1024;
+const MAX_BATCH_RESOURCES = 500;
 
 function isPdfHolding(holding: LibraryHolding): boolean {
   return holding.file.mediaType?.toLowerCase() === "application/pdf";
+}
+
+function boundedPdfHoldings(holdings: readonly LibraryHolding[]): LibraryHolding[] {
+  return holdings.filter(isPdfHolding).slice(0, MAX_BATCH_RESOURCES);
 }
 
 function downloadBlob(filename: string, blob: Blob): void {
@@ -45,9 +50,11 @@ export function BatchCatalogDialog({
 }) {
   const { language, t } = useLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [holdings] = useState<LibraryHolding[]>(() => initialHoldings.filter(isPdfHolding));
+  const exportAbortRef = useRef<AbortController | null>(null);
+  const closedRef = useRef(false);
+  const [holdings] = useState<LibraryHolding[]>(() => boundedPdfHoldings(initialHoldings));
   const [resourceIds, setResourceIds] = useState<ReadonlySet<string>>(
-    () => new Set(initialHoldings.filter(isPdfHolding).map((entry) => entry.file.id)),
+    () => new Set(boundedPdfHoldings(initialHoldings).map((entry) => entry.file.id)),
   );
   const [document, setDocument] = useState<unknown>(null);
   const [preview, setPreview] = useState<CatalogPreview | null>(null);
@@ -58,31 +65,49 @@ export function BatchCatalogDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  useEffect(() => { dialogRef.current?.showModal(); }, []);
+  useEffect(() => {
+    dialogRef.current?.showModal();
+    return () => exportAbortRef.current?.abort();
+  }, []);
+
+  function closeDialog(): void {
+    closedRef.current = true;
+    exportAbortRef.current?.abort();
+    onClose();
+  }
 
   function toggleResource(resourceId: string): void {
     setResourceIds((current) => {
       const next = new Set(current);
-      if (next.has(resourceId)) next.delete(resourceId); else if (next.size < 500) next.add(resourceId);
+      if (next.has(resourceId)) next.delete(resourceId); else if (next.size < MAX_BATCH_RESOURCES) next.add(resourceId);
       return next;
     });
   }
 
   async function exportRequest(): Promise<void> {
-    if (!api.createCatalogBatchExportRequest || resourceIds.size < 1) return;
+    if (!api.createCatalogBatchExportRequest || resourceIds.size < 1 || resourceIds.size > MAX_BATCH_RESOURCES) return;
+    const controller = new AbortController();
+    exportAbortRef.current?.abort();
+    exportAbortRef.current = controller;
     setBusy(true); setError(null); setExportStatus(""); setLocalExportError("");
     try {
       const request = await api.createCatalogBatchExportRequest(library.id, [...resourceIds]);
-      const localPackage = await exportCatalogEvidenceLocally(request);
+      if (controller.signal.aborted) return;
+      const localPackage = await exportCatalogEvidenceLocally(request, fetch, controller.signal);
+      if (controller.signal.aborted || closedRef.current) return;
       downloadBlob(localPackage.filename, localPackage.blob);
       setExportStatus(localCatalogText(language, "ready", request.manifest.resources.length));
     } catch (caught: unknown) {
       if (caught instanceof LocalCatalogBridgeError) {
+        if (caught.code === "cancelled" || closedRef.current) return;
         setLocalExportError(localCatalogText(language, caught.code === "unavailable" ? "unavailable" : caught.code === "busy" ? "busy" : "failed"));
-      } else {
+      } else if (!closedRef.current) {
         setError(caught);
       }
-    } finally { setBusy(false); }
+    } finally {
+      if (exportAbortRef.current === controller) exportAbortRef.current = null;
+      if (!closedRef.current) setBusy(false);
+    }
   }
 
   async function importResults(file: File): Promise<void> {
@@ -132,10 +157,13 @@ export function BatchCatalogDialog({
   }
 
   return (
-    <dialog ref={dialogRef} className="batch-naming-modal batch-catalog-modal" aria-labelledby="batch-catalog-title" onCancel={(event) => { event.preventDefault(); onClose(); }}>
+    <dialog ref={dialogRef} className="batch-naming-modal batch-catalog-modal" aria-labelledby="batch-catalog-title" onCancel={(event) => {
+      event.preventDefault();
+      if (!busy) closeDialog();
+    }}>
       <div className="batch-naming-heading">
         <h2 id="batch-catalog-title">{t("batchCatalog.title")}</h2>
-        <button className="button button--quiet" type="button" onClick={onClose}>{t("batchCatalog.close")}</button>
+        <button className="button button--quiet" type="button" disabled={busy} onClick={closeDialog}>{t("batchCatalog.close")}</button>
       </div>
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
       {localExportError && <div className="alert alert--error" role="alert">{localExportError}</div>}
@@ -204,7 +232,7 @@ export function BatchCatalogDialog({
         </section>
       )}
       {applyResults && <div className="alert alert--success" role="status">{t("batchCatalog.applyResult", { applied: applyResults.filter((entry) => entry.status === "applied").length, total: applyResults.length })}</div>}
-      <footer className="batch-naming-actions"><button className="button button--quiet" type="button" disabled={busy} onClick={onClose}>{t("batchCatalog.close")}</button></footer>
+      <footer className="batch-naming-actions"><button className="button button--quiet" type="button" disabled={busy} onClick={closeDialog}>{t("batchCatalog.close")}</button></footer>
     </dialog>
   );
 }
