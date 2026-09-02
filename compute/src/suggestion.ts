@@ -89,6 +89,8 @@ export interface PdfTextPage {
   evidenceOrigin?: "native_text" | "ocr";
   ocrEngine?: string | null;
   ocrConfidence?: number | null;
+  /** Effective PDF.js viewport scale used for this OCR page. */
+  ocrRenderScale?: number;
 }
 
 export interface PdfEmbeddedMetadata {
@@ -113,6 +115,7 @@ export interface PdfTextInspection {
 export interface BoundedPdfTextSource {
   inspect(bytes: Uint8Array, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection>;
   inspectRange?(source: PdfRangeSource, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection>;
+  inspectFile?(path: string, length: number, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection>;
   close?(): Promise<void> | void;
 }
 

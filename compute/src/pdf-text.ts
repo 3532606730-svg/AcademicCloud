@@ -1,5 +1,7 @@
 import type { PDFPageProxy } from "pdfjs-dist";
 import { getDocument, PDFDataRangeTransport } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { stat } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 
 import { isUsableBibliographicEvidence } from "./evidence-usability.js";
 import { OcrError, TesseractCliOcrAdapter, type OcrAdapter } from "./ocr.js";
@@ -26,7 +28,8 @@ export type PdfTextInspectionErrorCode =
   | "ocr_engine_failure"
   | "ocr_language_unavailable"
   | "ocr_timeout"
-  | "ocr_capacity";
+  | "ocr_capacity"
+  | "source_unavailable";
 
 export type PdfTextInspectionDiagnosticStage =
   | "unspecified"
@@ -129,7 +132,10 @@ class PdfRangeTransport extends PDFDataRangeTransport {
   private fetchedBytes: number;
   private reservedBytes = 0;
   private closed = false;
+  private sourceFailed = false;
   private readonly maximumRequests: number;
+  private readonly sourceController = new AbortController();
+  private readonly abortFromParent = (): void => this.sourceController.abort();
 
   constructor(
     private readonly source: PdfRangeSource,
@@ -146,10 +152,16 @@ class PdfRangeTransport extends PDFDataRangeTransport {
     this.requests = initialData === undefined ? 0 : 1;
     this.fetchedBytes = initialData?.byteLength ?? 0;
     if (initialData) this.reservedBytes = initialData.byteLength;
+    if (signal?.aborted) this.sourceController.abort();
+    else signal?.addEventListener("abort", this.abortFromParent, { once: true });
   }
 
   get metrics(): { requests: number; fetchedBytes: number } {
     return { requests: this.requests, fetchedBytes: this.fetchedBytes };
+  }
+
+  get hasSourceFailure(): boolean {
+    return this.sourceFailed;
   }
 
   override requestDataRange(begin: number, end: number): void {
@@ -169,12 +181,18 @@ class PdfRangeTransport extends PDFDataRangeTransport {
     }
     this.requests += 1;
     this.reservedBytes += size;
-    void this.source.read(begin, boundedEnd, this.signal).then((bytes) => {
+    void this.source.read(begin, boundedEnd, this.sourceController.signal).then((bytes) => {
       if (this.closed) return;
+      if (bytes.byteLength !== size) {
+        this.sourceFailed = true;
+        this.onDataRange(begin, new Uint8Array());
+        return;
+      }
       this.fetchedBytes += bytes.byteLength;
       this.onDataRange(begin, bytes);
     }).catch(() => {
       if (this.closed) return;
+      this.sourceFailed = true;
       this.onDataRange(begin, new Uint8Array());
     });
   }
@@ -199,11 +217,31 @@ class PdfRangeTransport extends PDFDataRangeTransport {
   }
 
   dispose(): void {
+    if (this.closed) return;
     this.closed = true;
+    this.signal?.removeEventListener("abort", this.abortFromParent);
+    this.sourceController.abort();
   }
 
   override abort(): void {
     this.dispose();
+  }
+}
+
+const LOADING_TASK_DESTROY_TIMEOUT_MILLISECONDS = 1_000;
+
+async function destroyLoadingTask(task: ReturnType<typeof getDocument>): Promise<void> {
+  if (task.destroyed) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      task.destroy().catch(() => undefined),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, LOADING_TASK_DESTROY_TIMEOUT_MILLISECONDS);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 
@@ -377,8 +415,25 @@ async function recognizeWithDeadline(options: {
 function renderedDimensions(
   page: { getViewport(options: { scale: number }): { width: number; height: number } },
   limits: Readonly<SuggestionLimits>,
-): { viewport: ReturnType<typeof page.getViewport>; width: number; height: number } {
-  const viewport = page.getViewport({ scale: limits.renderScale });
+): { viewport: ReturnType<typeof page.getViewport>; width: number; height: number; scale: number } {
+  const baseViewport = page.getViewport({ scale: 1 });
+  if (!Number.isFinite(baseViewport.width) || !Number.isFinite(baseViewport.height)
+    || baseViewport.width <= 0 || baseViewport.height <= 0) {
+    throw new PdfTextInspectionError("limit_exceeded");
+  }
+  const basePixels = baseViewport.width * baseViewport.height;
+  const maximumPixels = Math.min(limits.maxRenderedPagePixels, Math.floor(limits.maxRenderedBitmapBytes / 4));
+  let scale = Math.min(
+    limits.renderScale,
+    limits.maxRenderedPageWidthPixels / baseViewport.width,
+    limits.maxRenderedPageHeightPixels / baseViewport.height,
+    Math.sqrt(maximumPixels / basePixels),
+  );
+  // Below 0.1 PDF viewport units per source unit the raster is not meaningful
+  // OCR evidence. Fail closed instead of accepting a technically bounded blur.
+  if (!Number.isFinite(scale) || scale < 0.1) throw new PdfTextInspectionError("limit_exceeded");
+  if (scale < limits.renderScale) scale *= 0.999_999;
+  const viewport = page.getViewport({ scale });
   const width = Math.ceil(viewport.width);
   const height = Math.ceil(viewport.height);
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1) {
@@ -393,25 +448,29 @@ function renderedDimensions(
     || bitmapBytes > limits.maxRenderedBitmapBytes) {
     throw new PdfTextInspectionError("limit_exceeded");
   }
-  return { viewport, width, height };
+  return { viewport, width, height, scale };
 }
 
 async function inspectPdf(options: {
   bytes?: Uint8Array;
   source?: PdfRangeSource;
+  file?: { path: string; length: number };
   limits: Readonly<SuggestionLimits>;
   signal?: AbortSignal;
   ocr?: OcrAdapter;
   gate?: OcrRequestGate;
 }): Promise<PdfTextInspection> {
-  const { bytes, source, limits, signal, ocr } = options;
+  const { bytes, source, file, limits, signal, ocr } = options;
   throwIfAborted(signal);
-  if (!bytes && !source) throw new PdfTextInspectionError("invalid_pdf");
+  if ([bytes, source, file].filter((value) => value !== undefined).length !== 1) {
+    throw new PdfTextInspectionError("invalid_pdf");
+  }
   if (bytes && bytes.byteLength > limits.maxObjectBytes) throw new PdfTextInspectionError("too_large");
   if (source && (!Number.isSafeInteger(source.length) || source.length < 5 || source.length > limits.maxObjectSizeBytes)) {
     throw new PdfTextInspectionError("too_large");
   }
   if (source) pdfRangeAccessPolicy(source.length, limits);
+  if (file) pdfRangeAccessPolicy(file.length, limits);
   if (bytes && (bytes.byteLength < 5 || new TextDecoder("ascii").decode(bytes.subarray(0, 5)) !== "%PDF-")) {
     throw new PdfTextInspectionError("invalid_pdf");
   }
@@ -423,17 +482,31 @@ async function inspectPdf(options: {
   let releaseOcrRequest: (() => void) | undefined;
   try {
     const initialData = source
-      ? await atInspectionStage("initial_range", () => withTimeout(
-        source.read(0, Math.min(source.length, limits.rangeChunkBytes), signal),
-        operationBudget(requestDeadline, limits.timeoutMilliseconds),
-        signal,
-      ))
+      ? await atInspectionStage("initial_range", async () => {
+        const expectedBytes = Math.min(source.length, limits.rangeChunkBytes);
+        try {
+          const data = await withTimeout(
+            source.read(0, expectedBytes, signal),
+            operationBudget(requestDeadline, limits.timeoutMilliseconds),
+            signal,
+          );
+          if (data.byteLength !== expectedBytes) throw new PdfTextInspectionError("source_unavailable");
+          return data;
+        } catch (error: unknown) {
+          if (error instanceof PdfTextInspectionError && error.code === "aborted") throw error;
+          throw new PdfTextInspectionError("source_unavailable");
+        }
+      })
       : undefined;
     rangeTransport = source ? new PdfRangeTransport(source, limits, signal, initialData) : undefined;
     loadingTask = getDocument({
-      ...(bytes ? { data: new Uint8Array(bytes) } : { range: rangeTransport!, length: source!.length, rangeChunkSize: limits.rangeChunkBytes }),
+      ...(bytes
+        ? { data: new Uint8Array(bytes) }
+        : source
+          ? { range: rangeTransport!, length: source.length, rangeChunkSize: limits.rangeChunkBytes }
+          : { url: pathToFileURL(file!.path).href, rangeChunkSize: limits.rangeChunkBytes }),
       disableAutoFetch: true,
-      disableRange: source ? false : true,
+      disableRange: bytes ? true : false,
       disableStream: true,
       enableXfa: false,
       isImageDecoderSupported: false,
@@ -606,6 +679,7 @@ async function inspectPdf(options: {
             evidenceOrigin: "ocr",
             ocrEngine: recognized.engine,
             ocrConfidence: recognized.confidence,
+            ocrRenderScale: dimensions.scale,
           });
         } finally {
           // @napi-rs/canvas has no explicit dispose method. Resizing drops the
@@ -635,8 +709,6 @@ async function inspectPdf(options: {
         }
       }
     }
-    rangeTransport?.dispose();
-    await loadingTask.destroy();
     return {
       pageCount,
       pageIndices,
@@ -655,8 +727,11 @@ async function inspectPdf(options: {
   } catch (error: unknown) {
     if (error instanceof PdfTextInspectionError) {
       const metrics = rangeTransport?.metrics;
+      const code = error.code !== "aborted" && rangeTransport?.hasSourceFailure
+        ? "source_unavailable"
+        : error.code;
       throw new PdfTextInspectionError(
-        error.code,
+        code,
         error.diagnosticStage,
         metrics?.requests,
         metrics?.fetchedBytes,
@@ -669,11 +744,7 @@ async function inspectPdf(options: {
     releaseOcrRequest?.();
     rangeTransport?.dispose();
     if (loadingTask && !loadingTask.destroyed) {
-      try {
-        await loadingTask.destroy();
-      } catch {
-        // Cleanup is best effort; parser internals are never exposed.
-      }
+      await destroyLoadingTask(loadingTask);
     }
   }
 }
@@ -706,6 +777,23 @@ export function inspectPdfFrontMatterRange(
   return inspectPdf({ source, limits, ocr, ...(signal === undefined ? {} : { signal }) });
 }
 
+/**
+ * Exceptional catalog-export fallback using PDF.js' own local-file transport.
+ * The caller is responsible for streaming and identity-verifying the temporary
+ * file before this method is entered.
+ */
+export async function inspectPdfFrontMatterFile(
+  path: string,
+  length: number,
+  ocr: OcrAdapter,
+  limits: Readonly<SuggestionLimits> = SUGGESTION_LIMITS,
+  signal?: AbortSignal,
+): Promise<PdfTextInspection> {
+  const details = await stat(path);
+  if (!details.isFile() || details.size !== length) throw new PdfTextInspectionError("source_unavailable");
+  return inspectPdf({ file: { path, length }, limits, ocr, ...(signal === undefined ? {} : { signal }) });
+}
+
 export class PdfJsTextInspector implements BoundedPdfTextSource {
   inspect(bytes: Uint8Array, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
     return inspectPdfText(bytes, limits, signal);
@@ -725,6 +813,10 @@ export class PdfJsFrontMatterInspector implements BoundedPdfTextSource {
 
   inspectRange(source: PdfRangeSource, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
     return inspectPdfFrontMatterRange(source, this.#ocr, limits, signal);
+  }
+
+  inspectFile(path: string, length: number, limits: Readonly<SuggestionLimits>, signal?: AbortSignal): Promise<PdfTextInspection> {
+    return inspectPdfFrontMatterFile(path, length, this.#ocr, limits, signal);
   }
 
   close(): Promise<void> | void {

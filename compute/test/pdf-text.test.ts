@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rmdir, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import {
   inspectPdfFrontMatter,
+  inspectPdfFrontMatterFile,
   inspectPdfFrontMatterRange,
   inspectPdfText,
   isUsableNativeText,
@@ -70,14 +74,32 @@ test("range policy rejects before PDF.js allocates beyond its qualified buffer e
   assert.equal(reads, 0);
 });
 
+test("initial range must contain the exact requested bytes", async () => {
+  await assert.rejects(
+    () => inspectPdfFrontMatterRange({
+      length: 1_024,
+      async read(begin: number, end: number) { return new Uint8Array(Math.max(0, end - begin - 1)); },
+    }, new RecordingOcrAdapter(async () => recognized("unused"))),
+    (error: unknown) => error instanceof PdfTextInspectionError
+      && error.code === "source_unavailable"
+      && error.diagnosticStage === "initial_range",
+  );
+});
+
 class RecordingOcrAdapter implements OcrAdapter {
-  readonly calls: Array<{ pageIndex: number; imageBytes: number }> = [];
+  readonly calls: Array<{ pageIndex: number; imageBytes: number; width: number; height: number }> = [];
 
   constructor(readonly recognize: (pageIndex: number, signal?: AbortSignal) => Promise<OcrRecognition>) {}
 
   async recognizePage(input: { imageBytes: Uint8Array; pageIndex: number }, signal?: AbortSignal): Promise<OcrRecognition> {
-    this.calls.push({ pageIndex: input.pageIndex, imageBytes: input.imageBytes.byteLength });
     assert.deepEqual([...input.imageBytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+    const image = Buffer.from(input.imageBytes.buffer, input.imageBytes.byteOffset, input.imageBytes.byteLength);
+    this.calls.push({
+      pageIndex: input.pageIndex,
+      imageBytes: input.imageBytes.byteLength,
+      width: image.readUInt32BE(16),
+      height: image.readUInt32BE(20),
+    });
     return this.recognize(input.pageIndex, signal);
   }
 }
@@ -203,6 +225,11 @@ test("native text bypasses OCR while image-only and mixed bounded pages use fall
   assert.equal(imageInspection.pages[0]?.evidenceOrigin, "ocr");
   assert.equal(imageInspection.pages[0]?.ocrEngine, "test-local-ocr");
   assert.equal(imageInspection.pages[0]?.ocrConfidence, 86);
+  assert.equal(imageInspection.pages[0]?.ocrRenderScale, SUGGESTION_LIMITS.renderScale);
+  assert.deepEqual(
+    imageOnly.calls.map(({ pageIndex, width, height }) => ({ pageIndex, width, height })),
+    [{ pageIndex: 1, width: 918, height: 1188 }],
+  );
 
   const mixed = new RecordingOcrAdapter(async (pageIndex) => recognized(`OCR page ${pageIndex}`));
   const mixedInspection = await inspectPdfFrontMatter(makePdf(["Native page", "", "Native ending"]), mixed);
@@ -228,6 +255,24 @@ test("render dimensions are rejected before allocation or OCR", async () => {
     (error: unknown) => error instanceof PdfTextInspectionError && error.code === "limit_exceeded",
   );
   assert.equal(adapter.calls.length, 0);
+});
+
+test("oversized OCR pages scale down deterministically without cropping, distortion, or guard expansion", async () => {
+  for (const mediaBox of ["0 0 2327 3891", "0 0 4000 2000"]) {
+    const adapter = new RecordingOcrAdapter(async () => recognized("Bounded OCR evidence", 91));
+    const inspection = await inspectPdfFrontMatter(makePdf([""], mediaBox), adapter);
+    const call = adapter.calls[0]!;
+    const [,, sourceWidth, sourceHeight] = mediaBox.split(" ").map(Number);
+    assert.ok(call.width <= SUGGESTION_LIMITS.maxRenderedPageWidthPixels);
+    assert.ok(call.height <= SUGGESTION_LIMITS.maxRenderedPageHeightPixels);
+    assert.ok(call.width * call.height <= SUGGESTION_LIMITS.maxRenderedPagePixels);
+    assert.ok(call.width * call.height * 4 <= SUGGESTION_LIMITS.maxRenderedBitmapBytes);
+    assert.ok(Math.abs(call.width / call.height - sourceWidth! / sourceHeight!) < 0.002);
+    assert.ok((inspection.pages[0]?.ocrRenderScale ?? 0) >= 0.1);
+    assert.ok((inspection.pages[0]?.ocrRenderScale ?? Infinity) < SUGGESTION_LIMITS.renderScale);
+    assert.equal(inspection.pages[0]?.text, "Bounded OCR evidence");
+    assert.equal(inspection.pages[0]?.evidenceOrigin, "ocr");
+  }
 });
 
 test("OCR timeout and engine failure fail closed without returning partial evidence", async () => {
@@ -382,4 +427,85 @@ test("range-backed inspector ignores a stale response after PDF.js settles its r
   );
   assert.equal(inspection.pageCount, 1);
   assert.ok(reads >= 2);
+});
+
+test("local-file fallback uses the same strict PDF.js front-matter inspector", async () => {
+  const bytes = makePdf(["Local file title evidence"]);
+  const directory = await mkdtemp(join(tmpdir(), "academiccloud-pdf-file-test-"));
+  const path = join(directory, "fixture.pdf");
+  try {
+    await writeFile(path, bytes, { flag: "wx", mode: 0o600 });
+    const inspection = await inspectPdfFrontMatterFile(
+      path,
+      bytes.byteLength,
+      new RecordingOcrAdapter(async () => recognized("unused")),
+    );
+    assert.equal(inspection.pageCount, 1);
+    assert.equal(inspection.pages[0]?.text.includes("Local file title evidence"), true);
+  } finally {
+    await unlink(path);
+    await rmdir(directory);
+  }
+});
+
+test("range-backed timeout aborts pending source reads and settles without hanging in PDF.js destroy", async () => {
+  const bytes = makeOversizedRealisticPdf(["Range lifecycle evidence"], {}, 3 * 1024 * 1024);
+  let reads = 0;
+  let pendingReadAborted = false;
+  const startedAt = Date.now();
+  await assert.rejects(
+    () => inspectPdfFrontMatterRange({
+      length: bytes.byteLength,
+      read(begin: number, end: number, signal?: AbortSignal): Promise<Uint8Array> {
+        reads += 1;
+        if (reads === 1) return Promise.resolve(bytes.slice(begin, end));
+        return new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () => {
+            pendingReadAborted = true;
+            reject(new Error("aborted"));
+          }, { once: true });
+        });
+      },
+    }, new RecordingOcrAdapter(async () => recognized("unused")), limits({
+      timeoutMilliseconds: 30,
+      totalRequestTimeoutMilliseconds: 30,
+    })),
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code === "timeout",
+  );
+  assert.ok(reads >= 2);
+  assert.equal(pendingReadAborted, true);
+  assert.ok(Date.now() - startedAt < 2_000);
+});
+
+test("caller abort propagates to an active range source and remains an aborted inspection", async () => {
+  const bytes = makeOversizedRealisticPdf(["Range abort evidence"], {}, 3 * 1024 * 1024);
+  const controller = new AbortController();
+  let reads = 0;
+  let pendingReadAborted = false;
+  let markPending!: () => void;
+  const pending = new Promise<void>((resolve) => { markPending = resolve; });
+  const operation = inspectPdfFrontMatterRange({
+    length: bytes.byteLength,
+    read(begin: number, end: number, signal?: AbortSignal): Promise<Uint8Array> {
+      reads += 1;
+      if (reads === 1) return Promise.resolve(bytes.slice(begin, end));
+      markPending();
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener("abort", () => {
+          pendingReadAborted = true;
+          reject(new Error("aborted"));
+        }, { once: true });
+      });
+    },
+  }, new RecordingOcrAdapter(async () => recognized("unused")), limits({
+    timeoutMilliseconds: 5_000,
+    totalRequestTimeoutMilliseconds: 5_000,
+  }), controller.signal);
+  await pending;
+  controller.abort();
+  await assert.rejects(
+    () => operation,
+    (error: unknown) => error instanceof PdfTextInspectionError && error.code === "aborted",
+  );
+  assert.equal(pendingReadAborted, true);
 });

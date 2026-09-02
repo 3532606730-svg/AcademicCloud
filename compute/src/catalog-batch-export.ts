@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { chmod, mkdtemp, open, readFile, rmdir, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { deflateRawSync } from "node:zlib";
 
@@ -16,15 +17,25 @@ import {
 
 import { classifySuggestionPage } from "./extractor.js";
 import { PaddleOcrSidecarAdapter } from "./paddle-ocr.js";
-import { PdfJsFrontMatterInspector } from "./pdf-text.js";
-import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfRangeSource } from "./suggestion.js";
+import { PdfJsFrontMatterInspector, PdfTextInspectionError } from "./pdf-text.js";
+import {
+  SUGGESTION_LIMITS,
+  type BoundedPdfTextSource,
+  type PdfRangeSource,
+  type PdfTextInspection,
+  type SuggestionLimits,
+} from "./suggestion.js";
 
 const MAX_REQUEST_BYTES = 2 * 1024 * 1024;
 const MAX_ZIP_UNCOMPRESSED_BYTES = 160 * 1024 * 1024;
 const MAX_ZIP_BYTES = 128 * 1024 * 1024;
 const RANGE_TIMEOUT_MILLISECONDS = 45_000;
 const SOURCE_RENEWAL_MARGIN_MILLISECONDS = 60_000;
+const STAGED_FALLBACK_CHUNK_BYTES = 1024 * 1024;
+const STAGED_FALLBACK_TAIL_BYTES = 64 * 1024;
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/u;
+const FALLBACK_TIMEOUT_STAGES = new Set(["document_load", "page_load", "page_text", "metadata", "ocr_page_load"]);
+const SUPPORTED_CONTENT_DIGESTS = new Set(["md5", "sha1", "sha256", "sha512"]);
 
 export class CatalogExportError extends Error {
   constructor(readonly code: "invalid_request" | "source_unavailable" | "identity_mismatch" | "limit_exceeded" | "inspection_failed") {
@@ -199,6 +210,107 @@ class CatalogHttpRangeSource implements PdfRangeSource {
   }
 }
 
+export interface StagedPdfFallbackPolicy {
+  chunkBytes: number;
+  maximumBytes: number;
+}
+
+export function stagedPdfFallbackPolicy(
+  length: number,
+  limits: Readonly<SuggestionLimits> = SUGGESTION_LIMITS,
+): StagedPdfFallbackPolicy {
+  if (!Number.isSafeInteger(length) || length < 5
+    || length > limits.maxObjectSizeBytes || length > limits.maxPdfJsBufferBytes) {
+    throw new CatalogExportError("limit_exceeded");
+  }
+  return { chunkBytes: Math.min(STAGED_FALLBACK_CHUNK_BYTES, limits.rangeChunkBytes), maximumBytes: limits.maxPdfJsBufferBytes };
+}
+
+function normalizedBase64(value: string): string {
+  return value.replace(/-/gu, "+").replace(/_/gu, "/").replace(/=+$/gu, "");
+}
+
+function isEligibleRangeFailure(error: unknown): error is PdfTextInspectionError {
+  return error instanceof PdfTextInspectionError
+    && error.code === "timeout"
+    && FALLBACK_TIMEOUT_STAGES.has(error.diagnosticStage);
+}
+
+async function inspectWithVerifiedStagedFile(options: {
+  source: PdfRangeSource;
+  resourceId: string;
+  checksumAlgorithm: string | null;
+  checksum: string | null;
+  inspector: BoundedPdfTextSource;
+  limits: Readonly<SuggestionLimits>;
+  signal?: AbortSignal;
+}): Promise<PdfTextInspection> {
+  if (!options.inspector.inspectFile) throw new CatalogExportError("inspection_failed");
+  const policy = stagedPdfFallbackPolicy(options.source.length, options.limits);
+  if (!options.checksumAlgorithm || !options.checksum || !SUPPORTED_CONTENT_DIGESTS.has(options.checksumAlgorithm)) {
+    throw new CatalogExportError("identity_mismatch");
+  }
+  const temporaryRoot = resolve(tmpdir());
+  const directory = await mkdtemp(join(temporaryRoot, "academiccloud-catalog-fallback-"));
+  const resolvedDirectory = resolve(directory);
+  if (!resolvedDirectory.startsWith(`${temporaryRoot}${sep}`)
+    || !basename(resolvedDirectory).startsWith("academiccloud-catalog-fallback-")) {
+    try { await rmdir(resolvedDirectory); } catch { /* The path failed the ownership proof, so never broaden cleanup. */ }
+    throw new CatalogExportError("inspection_failed");
+  }
+  const path = join(resolvedDirectory, `${options.resourceId}.pdf`);
+  let fileCreated = false;
+  try {
+    await chmod(resolvedDirectory, 0o700);
+    const handle = await open(path, "wx", 0o600);
+    fileCreated = true;
+    const digest = createHash(options.checksumAlgorithm);
+    let header = Buffer.alloc(0);
+    let tail = Buffer.alloc(0);
+    try {
+      for (let begin = 0; begin < options.source.length; begin += policy.chunkBytes) {
+        if (options.signal?.aborted) throw new CatalogExportError("source_unavailable");
+        const end = Math.min(options.source.length, begin + policy.chunkBytes);
+        const bytes = await options.source.read(begin, end, options.signal);
+        if (bytes.byteLength !== end - begin) throw new CatalogExportError("source_unavailable");
+        if (begin === 0) header = Buffer.from(bytes.subarray(0, Math.min(5, bytes.byteLength)));
+        const buffer = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        digest.update(buffer);
+        if (buffer.byteLength >= STAGED_FALLBACK_TAIL_BYTES) {
+          tail = Buffer.from(buffer.subarray(buffer.byteLength - STAGED_FALLBACK_TAIL_BYTES));
+        } else {
+          const combined = Buffer.concat([tail, buffer]);
+          tail = combined.subarray(Math.max(0, combined.byteLength - STAGED_FALLBACK_TAIL_BYTES));
+        }
+        let written = 0;
+        while (written < bytes.byteLength) {
+          const result = await handle.write(bytes, written, bytes.byteLength - written, begin + written);
+          if (result.bytesWritten < 1) throw new CatalogExportError("source_unavailable");
+          written += result.bytesWritten;
+        }
+      }
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    if (header.toString("ascii") !== "%PDF-" || !tail.includes(Buffer.from("%%EOF", "ascii"))) {
+      throw new CatalogExportError("inspection_failed");
+    }
+    const actualChecksum = digest.digest("base64");
+    if (normalizedBase64(actualChecksum) !== normalizedBase64(options.checksum)) {
+      throw new CatalogExportError("identity_mismatch");
+    }
+    return await options.inspector.inspectFile(path, options.source.length, options.limits, options.signal);
+  } finally {
+    let cleanupFailed = false;
+    if (fileCreated) {
+      try { await unlink(path); } catch { cleanupFailed = true; }
+    }
+    try { await rmdir(resolvedDirectory); } catch { cleanupFailed = true; }
+    if (cleanupFailed) throw new CatalogExportError("inspection_failed");
+  }
+}
+
 let crcTable: Uint32Array | undefined;
 function crc32(bytes: Uint8Array): number {
   if (!crcTable) {
@@ -252,16 +364,35 @@ export async function createCatalogEvidencePackage(options: {
   request: CatalogExportRequest;
   inspector: BoundedPdfTextSource;
   signal?: AbortSignal;
-}): Promise<{ filename: string; bytes: Uint8Array; manifest: CatalogBatchManifest; evidence: CatalogResourceEvidence[] }> {
+}): Promise<{
+  filename: string;
+  bytes: Uint8Array;
+  manifest: CatalogBatchManifest;
+  evidence: CatalogResourceEvidence[];
+  fallbackResourceIds: string[];
+}> {
   const evidence: CatalogResourceEvidence[] = [];
+  const fallbackResourceIds: string[] = [];
   try {
     for (const resource of options.request.manifest.resources) {
       if (!options.inspector.inspectRange) throw new CatalogExportError("inspection_failed");
-      const inspection = await options.inspector.inspectRange(
-        new CatalogHttpRangeSource(options.request, resource.resourceId, resource.sizeBytes),
-        SUGGESTION_LIMITS,
-        options.signal,
-      );
+      const source = new CatalogHttpRangeSource(options.request, resource.resourceId, resource.sizeBytes);
+      let inspection: PdfTextInspection;
+      try {
+        inspection = await options.inspector.inspectRange(source, SUGGESTION_LIMITS, options.signal);
+      } catch (error: unknown) {
+        if (!isEligibleRangeFailure(error)) throw error;
+        inspection = await inspectWithVerifiedStagedFile({
+          source,
+          resourceId: resource.resourceId,
+          checksumAlgorithm: resource.sourceIdentity.checksumAlgorithm,
+          checksum: resource.sourceIdentity.checksum,
+          inspector: options.inspector,
+          limits: SUGGESTION_LIMITS,
+          ...(options.signal === undefined ? {} : { signal: options.signal }),
+        });
+        fallbackResourceIds.push(resource.resourceId);
+      }
       evidence.push({
         schemaVersion: "academiccloud.catalog-evidence.v1",
         resourceId: resource.resourceId,
@@ -309,6 +440,7 @@ export async function createCatalogEvidencePackage(options: {
     bytes: zipEntries(entries),
     manifest,
     evidence,
+    fallbackResourceIds,
   };
 }
 
@@ -327,7 +459,7 @@ async function main(): Promise<void> {
     const output = resolve(process.argv[outputIndex + 1]!);
     if (!output.toLowerCase().endsWith(".zip")) throw new CatalogExportError("invalid_request");
     await writeFile(output, result.bytes, { flag: "wx", mode: 0o600 });
-    process.stdout.write(`${JSON.stringify({ status: "created", filename: result.filename, output, resources: result.evidence.length, sourceManifestSha256: sha256(canonicalCatalogJson(result.manifest)) })}\n`);
+    process.stdout.write(`${JSON.stringify({ status: "created", filename: result.filename, output, resources: result.evidence.length, fallbackResourceIds: result.fallbackResourceIds, sourceManifestSha256: sha256(canonicalCatalogJson(result.manifest)) })}\n`);
   } finally {
     await inspector.close();
   }

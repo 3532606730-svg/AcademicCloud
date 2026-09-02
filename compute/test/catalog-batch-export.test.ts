@@ -1,12 +1,21 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { test } from "node:test";
 import { inflateRawSync } from "node:zlib";
 
 import { canonicalCatalogJson, type CatalogExportRequest } from "@academiccloud/compute-contracts";
 
-import { createCatalogEvidencePackage, parseCatalogExportRequest } from "../src/catalog-batch-export.js";
-import type { BoundedPdfTextSource, PdfRangeSource, SuggestionLimits } from "../src/suggestion.js";
+import {
+  CatalogExportError,
+  createCatalogEvidencePackage,
+  parseCatalogExportRequest,
+  stagedPdfFallbackPolicy,
+} from "../src/catalog-batch-export.js";
+import { PdfTextInspectionError } from "../src/pdf-text.js";
+import { SUGGESTION_LIMITS, type BoundedPdfTextSource, type PdfRangeSource, type SuggestionLimits } from "../src/suggestion.js";
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -34,6 +43,29 @@ function request(): CatalogExportRequest {
   };
 }
 
+function requestForSource(bytes: Uint8Array, checksum?: string): CatalogExportRequest {
+  const value = request();
+  value.manifest.resources[0]!.sizeBytes = bytes.byteLength;
+  value.manifest.resources[0]!.sourceIdentity.checksumAlgorithm = "md5";
+  value.manifest.resources[0]!.sourceIdentity.checksum = checksum ?? createHash("md5").update(bytes).digest("base64");
+  value.sourceManifestSha256 = sha256(canonicalCatalogJson(value.manifest));
+  return value;
+}
+
+function inspectionFixture() {
+  return {
+    pageCount: 120,
+    pageIndices: [1, 2],
+    pages: [
+      { pageIndex: 1, text: "学术书名\n作者", evidenceOrigin: "native_text" as const, ocrEngine: null, ocrConfidence: null },
+      { pageIndex: 2, text: "出版者 2026", evidenceOrigin: "ocr" as const, ocrEngine: "PaddleOCR", ocrConfidence: 92 },
+    ],
+    embeddedMetadata: { title: "学术书名" },
+    complete: true,
+    hasUsableTextLayer: true,
+  };
+}
+
 function unzip(bytes: Uint8Array): Map<string, string> {
   const buffer = Buffer.from(bytes);
   const result = new Map<string, string>();
@@ -57,17 +89,72 @@ class FixtureInspector implements BoundedPdfTextSource {
   inspect(_bytes: Uint8Array, _limits: Readonly<SuggestionLimits>): Promise<never> { throw new Error("whole object path forbidden"); }
   async inspectRange(source: PdfRangeSource) {
     assert.equal(source.length, 100);
-    return {
-      pageCount: 120,
-      pageIndices: [1, 2],
-      pages: [
-        { pageIndex: 1, text: "学术书名\n作者", evidenceOrigin: "native_text" as const, ocrEngine: null, ocrConfidence: null },
-        { pageIndex: 2, text: "出版者 2026", evidenceOrigin: "ocr" as const, ocrEngine: "PaddleOCR", ocrConfidence: 92 },
-      ],
-      embeddedMetadata: { title: "学术书名" },
-      complete: true,
-      hasUsableTextLayer: true,
-    };
+    return inspectionFixture();
+  }
+}
+
+class StagedFallbackInspector implements BoundedPdfTextSource {
+  readonly failure: PdfTextInspectionError;
+  rangeCalls = 0;
+  fileCalls = 0;
+  stagedPath: string | undefined;
+  stagedBytes: Uint8Array | undefined;
+
+  constructor(failure = new PdfTextInspectionError("timeout", "document_load")) {
+    this.failure = failure;
+  }
+
+  inspect(): Promise<never> { throw new Error("whole object path forbidden"); }
+
+  async inspectRange(source: PdfRangeSource): Promise<never> {
+    this.rangeCalls += 1;
+    await source.read(0, Math.min(5, source.length));
+    throw this.failure;
+  }
+
+  async inspectFile(path: string, length: number) {
+    this.fileCalls += 1;
+    this.stagedPath = path;
+    this.stagedBytes = await readFile(path);
+    assert.equal(this.stagedBytes.byteLength, length);
+    return inspectionFixture();
+  }
+}
+
+async function withMockedCatalogSource<T>(
+  bytes: Uint8Array,
+  operation: (rangeSizes: number[]) => Promise<T>,
+): Promise<T> {
+  const previous = globalThis.fetch;
+  const rangeSizes: number[] = [];
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.includes("/api/catalog-batches/")) {
+      return Response.json({
+        source: {
+          method: "GET",
+          url: "https://objects.example/catalog-fixture.pdf",
+          expiresAt: "2099-01-01T00:00:00.000Z",
+          sizeBytes: bytes.byteLength,
+          mediaType: "application/pdf",
+        },
+      });
+    }
+    const range = new Headers(init?.headers).get("range")?.match(/^bytes=(\d+)-(\d+)$/u);
+    assert.ok(range);
+    const begin = Number(range[1]);
+    const inclusiveEnd = Number(range[2]);
+    const chunk = bytes.slice(begin, inclusiveEnd + 1);
+    rangeSizes.push(chunk.byteLength);
+    return new Response(chunk, {
+      status: 206,
+      headers: { "content-range": `bytes ${begin}-${inclusiveEnd}/${bytes.byteLength}` },
+    });
+  };
+  try {
+    return await operation(rangeSizes);
+  } finally {
+    globalThis.fetch = previous;
   }
 }
 
@@ -84,6 +171,72 @@ test("bounded exporter creates manifest plus native/OCR evidence only, without P
   assert.equal(JSON.parse(files.get("review-contract.json")!).sourceManifestSha256, sha256(canonicalCatalogJson(output.manifest)));
   assert.equal(Buffer.from(output.bytes).includes(Buffer.from("%PDF")), false);
   assert.equal([...files.keys()].some((path) => /\.(?:pdf|png|jpe?g)$/iu.test(path)), false);
+  assert.deepEqual(output.fallbackResourceIds, []);
+});
+
+test("staged fallback keeps the diagnosed 922 MB resource inside the unchanged one-GiB envelope", () => {
+  const policy = stagedPdfFallbackPolicy(922_469_003);
+  assert.equal(policy.maximumBytes, 1024 * 1024 * 1024);
+  assert.equal(policy.chunkBytes, 1024 * 1024);
+  assert.throws(
+    () => stagedPdfFallbackPolicy(SUGGESTION_LIMITS.maxPdfJsBufferBytes + 1),
+    (error: unknown) => error instanceof CatalogExportError && error.code === "limit_exceeded",
+  );
+});
+
+test("eligible range timeout uses an identity-verified bounded temporary file and removes it", async () => {
+  const bytes = new TextEncoder().encode(`%PDF-1.7\n${"bounded".repeat(200_000)}\n%%EOF`);
+  const inspector = new StagedFallbackInspector();
+  const output = await withMockedCatalogSource(bytes, async (rangeSizes) => {
+    const result = await createCatalogEvidencePackage({ request: requestForSource(bytes), inspector });
+    assert.ok(rangeSizes.every((size) => size <= 1024 * 1024));
+    return result;
+  });
+  assert.deepEqual(output.fallbackResourceIds, ["resource-fixture"]);
+  assert.equal(inspector.rangeCalls, 1);
+  assert.equal(inspector.fileCalls, 1);
+  assert.equal(Buffer.compare(Buffer.from(inspector.stagedBytes!), Buffer.from(bytes)), 0);
+  assert.ok(inspector.stagedPath);
+  assert.equal(existsSync(inspector.stagedPath!), false);
+  assert.equal(existsSync(dirname(inspector.stagedPath!)), false);
+});
+
+test("staged fallback is unavailable to corrupt content and identity mismatches", async () => {
+  const corrupt = new TextEncoder().encode("not a PDF despite a range timeout");
+  const corruptInspector = new StagedFallbackInspector();
+  await assert.rejects(
+    () => withMockedCatalogSource(corrupt, () => createCatalogEvidencePackage({
+      request: requestForSource(corrupt),
+      inspector: corruptInspector,
+    })),
+    (error: unknown) => error instanceof CatalogExportError && error.code === "inspection_failed",
+  );
+  assert.equal(corruptInspector.fileCalls, 0);
+
+  const valid = new TextEncoder().encode("%PDF-1.7\nvalid bounded identity fixture\n%%EOF");
+  const mismatchInspector = new StagedFallbackInspector();
+  await assert.rejects(
+    () => withMockedCatalogSource(valid, () => createCatalogEvidencePackage({
+      request: requestForSource(valid, createHash("md5").update("different").digest("base64")),
+      inspector: mismatchInspector,
+    })),
+    (error: unknown) => error instanceof CatalogExportError && error.code === "identity_mismatch",
+  );
+  assert.equal(mismatchInspector.fileCalls, 0);
+});
+
+test("non-range parser and OCR failures never activate staged fallback", async () => {
+  const bytes = new TextEncoder().encode("%PDF-1.7\nvalid fixture\n%%EOF");
+  const inspector = new StagedFallbackInspector(new PdfTextInspectionError("render_failure", "render"));
+  await assert.rejects(
+    () => withMockedCatalogSource(bytes, async (rangeSizes) => {
+      await createCatalogEvidencePackage({ request: requestForSource(bytes), inspector });
+      assert.fail("expected the render failure to stay terminal");
+      return rangeSizes;
+    }),
+    (error: unknown) => error instanceof CatalogExportError && error.code === "inspection_failed",
+  );
+  assert.equal(inspector.fileCalls, 0);
 });
 
 test("export request parser rejects traversal, oversized batches and changed manifest identity", () => {
