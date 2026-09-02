@@ -21,11 +21,21 @@ test -f "$RELEASE_ROOT/release-files.sha256.sha256"
 test -x "$RELEASE_ROOT/runtime/node/bin/node"
 test -x "$RELEASE_ROOT/runtime/llama/bin/llama-server"
 test -x "$RELEASE_ROOT/runtime/paddle/venv/bin/python"
+test -f "$RELEASE_ROOT/compute/dist/local-pull-main.js"
+test -f "$RELEASE_ROOT/compute/dist/catalog-bridge.js"
+test -f "$RELEASE_ROOT/deployment/academiccloud-local-compute.service"
+test -f "$RELEASE_ROOT/deployment/academiccloud-catalog-bridge.service"
 test "$(stat -c '%U:%G|%a' "$RELEASE_ROOT")" = "root:root|555"
 test -z "$(find "$RELEASE_ROOT" -xdev \( -type f -o -type d \) -perm /022 -print -quit)"
 test "$(jq -r '.contractVersion' "$RELEASE_ROOT/release-manifest.json")" = "2"
 test "$(jq -r '.provider' "$RELEASE_ROOT/release-manifest.json")" = "local_pull"
 test "$(jq -r '.source.commit' "$RELEASE_ROOT/release-manifest.json")" = "$(basename "$RELEASE_ROOT")"
+test "$(jq -r '.worker.entrypoint' "$RELEASE_ROOT/release-manifest.json")" = "compute/dist/local-pull-main.js"
+test "$(jq -r '.worker.concurrency' "$RELEASE_ROOT/release-manifest.json")" = "1"
+test "$(jq -r '.catalogBridge.entrypoint' "$RELEASE_ROOT/release-manifest.json")" = "compute/dist/catalog-bridge.js"
+test "$(jq -r '.catalogBridge.host' "$RELEASE_ROOT/release-manifest.json")" = "127.0.0.1"
+test "$(jq -r '.catalogBridge.port' "$RELEASE_ROOT/release-manifest.json")" = "43117"
+test "$(jq -r '.catalogBridge.concurrency' "$RELEASE_ROOT/release-manifest.json")" = "1"
 test "$(jq -r '.reasoningModel.family' "$RELEASE_ROOT/release-manifest.json")" = "NuExtract3"
 test "$(jq -r '.reasoningModel.identity' "$RELEASE_ROOT/release-manifest.json")" = "NuExtract3-4B"
 test "$(jq -r '.reasoningModel.architecture' "$RELEASE_ROOT/release-manifest.json")" = "qwen35"
@@ -43,6 +53,22 @@ printf '%s  %s\n' "$(cat "$RELEASE_ROOT/release-files.sha256.sha256")" "$RELEASE
   cd "$RELEASE_ROOT"
   sha256sum --check --strict release-files.sha256 >/dev/null
 )
+
+"$RELEASE_ROOT/runtime/node/bin/node" --check "$RELEASE_ROOT/compute/dist/local-pull-main.js" >/dev/null
+"$RELEASE_ROOT/runtime/node/bin/node" --check "$RELEASE_ROOT/compute/dist/catalog-bridge.js" >/dev/null
+
+grep -Fqx 'WorkingDirectory=/srv/academiccloud-compute/catalog-current/compute' \
+  "$RELEASE_ROOT/deployment/academiccloud-catalog-bridge.service"
+grep -Fqx 'Environment=ACADEMICCLOUD_CATALOG_BRIDGE_PORT=43117' \
+  "$RELEASE_ROOT/deployment/academiccloud-catalog-bridge.service"
+grep -Fqx 'Environment=ACADEMICCLOUD_CATALOG_BRIDGE_ORIGINS=https://cloud.ajtlab.top' \
+  "$RELEASE_ROOT/deployment/academiccloud-catalog-bridge.service"
+grep -Fqx 'ExecStart=/srv/academiccloud-compute/catalog-current/runtime/node/bin/node /srv/academiccloud-compute/catalog-current/compute/dist/catalog-bridge.js' \
+  "$RELEASE_ROOT/deployment/academiccloud-catalog-bridge.service"
+if grep -Fq '/srv/academiccloud-compute/current/' "$RELEASE_ROOT/deployment/academiccloud-catalog-bridge.service"; then
+  echo "catalog bridge unit must not use the main worker release selector" >&2
+  exit 3
+fi
 
 test -f "$MODEL_PATH"
 test -f "$MODEL_MANIFEST"
