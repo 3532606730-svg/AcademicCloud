@@ -96,7 +96,6 @@ cp -a "$SOURCE_STAGE/compute-contracts/dist" "$OUTPUT/compute-contracts/dist"
 cp -a "$SOURCE_STAGE/compute-contracts/package.json" "$OUTPUT/compute-contracts/package.json"
 cp -a "$SOURCE_STAGE/node_modules" "$OUTPUT/node_modules"
 cp -a "$SOURCE_STAGE/deployment/systemd/academiccloud-local-compute.service" "$OUTPUT/deployment/academiccloud-local-compute.service"
-cp -a "$SOURCE_STAGE/deployment/systemd/academiccloud-catalog-bridge.service" "$OUTPUT/deployment/academiccloud-catalog-bridge.service"
 cp -a "$SOURCE_STAGE/deployment/env/academiccloud-local-compute.env.example" "$OUTPUT/deployment/academiccloud-local-compute.env.example"
 install -o academiccloud -g academiccloud -m 0750 \
   "$SOURCE_STAGE/scripts/local-compute/verify-local-compute-release.sh" \
@@ -115,7 +114,6 @@ test "$(readlink "$OUTPUT/node_modules/@academiccloud/compute-contracts")" = "..
 test -L "$OUTPUT/node_modules/@academiccloud/compute"
 test "$(readlink "$OUTPUT/node_modules/@academiccloud/compute")" = "../../compute"
 $OUTPUT/runtime/node/bin/node --check "$OUTPUT/compute/dist/local-pull-main.js"
-$OUTPUT/runtime/node/bin/node --check "$OUTPUT/compute/dist/catalog-bridge.js"
 
 readonly SOURCE_ARCHIVE_SHA256="$(sha256sum "$SOURCE_ARCHIVE" | awk '{print $1}')"
 readonly PACKAGE_LOCK_SHA256="$(sha256sum "$SOURCE_STAGE/package-lock.json" | awk '{print $1}')"
@@ -156,8 +154,7 @@ jq -n \
       shared: true,
       path: $modelPath
     },
-    worker: {entrypoint: "compute/dist/local-pull-main.js", concurrency: 1},
-    catalogBridge: {entrypoint: "compute/dist/catalog-bridge.js", host: "127.0.0.1", port: 43117, concurrency: 1}
+    worker: {entrypoint: "compute/dist/local-pull-main.js", concurrency: 1}
   }' > "$OUTPUT/release-manifest.json"
 
 (
