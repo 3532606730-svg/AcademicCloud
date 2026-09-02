@@ -12,6 +12,11 @@ const HOLDINGS: LibraryHolding[] = ["auto", "review", "unknown"].map((id) => ({
   versionId: `version-${id}`, version: "v".repeat(43),
   file: { id, displayName: `${id}.pdf`, mediaType: "application/pdf", sizeBytes: 10, updatedAt: "2026-09-01T00:00:00.000Z" },
 }));
+const EXTRA_HOLDING: LibraryHolding = {
+  recordId: "record-extra", recordLabel: "extra.pdf", canonicalTitle: null, authorLabels: [], artifactId: "artifact-extra",
+  versionId: "version-extra", version: "v".repeat(43),
+  file: { id: "extra", displayName: "extra.pdf", mediaType: "application/pdf", sizeBytes: 10, updatedAt: "2026-09-01T00:00:00.000Z" },
+};
 const PREVIEW: CatalogPreview = {
   batchId: "batch-1", documentDigest: "a".repeat(64),
   counts: { AUTO: 1, REVIEW: 1, UNKNOWN: 1, EXCLUDED: 0, STALE: 0, COLLISION: 0, UNCHANGED: 0 },
@@ -34,8 +39,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderDialog(api: Partial<AcademicCloudApi>) {
-  render(<LanguageProvider><BatchCatalogDialog api={api as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+function renderDialog(api: Partial<AcademicCloudApi>, initialHoldings: LibraryHolding[] = HOLDINGS) {
+  render(<LanguageProvider><BatchCatalogDialog api={api as AcademicCloudApi} library={LIBRARY} initialHoldings={initialHoldings} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
 }
 
 describe("BatchCatalogDialog", () => {
@@ -76,6 +81,33 @@ describe("BatchCatalogDialog", () => {
         { resourceId: "review", previewVersion: "b".repeat(43) },
       ],
     ));
+  });
+
+  it("keeps the export list and request bounded to the PDFs selected before opening the dialog", async () => {
+    const initialHoldings = HOLDINGS.slice(0, 2);
+    const listLibraryHoldingsSorted = vi.fn().mockResolvedValue({ holdings: [...HOLDINGS, EXTRA_HOLDING], nextCursor: null });
+    const createCatalogBatchExportRequest = vi.fn().mockResolvedValue({
+      schemaVersion: "academiccloud.catalog-export-request.v1",
+      manifest: { batchId: "batch-2", resources: initialHoldings.map((entry) => ({ resourceId: entry.file.id, currentFilename: entry.file.displayName })) },
+      sourceManifestSha256: "a".repeat(64),
+      sourceAccess: { coreBaseUrl: "https://academiccloud.example", capabilityToken: "secret", expiresAt: "2026-09-02T00:00:00.000Z" },
+    });
+    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:test"), revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    renderDialog({ listLibraryHoldingsSorted, createCatalogBatchExportRequest }, initialHoldings);
+    const user = userEvent.setup();
+
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+    expect(screen.queryByText("unknown.pdf")).not.toBeInTheDocument();
+    expect(screen.queryByText("extra.pdf")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Export bounded local text\/OCR evidence/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Run the documented Local Compute catalog exporter/)).not.toBeInTheDocument();
+    expect(listLibraryHoldingsSorted).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Prepare local evidence export" }));
+    await waitFor(() => expect(createCatalogBatchExportRequest).toHaveBeenCalledWith(LIBRARY.id, ["auto", "review"]));
   });
 
   it("downloads only the private local-export request prepared by Core", async () => {
