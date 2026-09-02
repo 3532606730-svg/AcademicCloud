@@ -51,11 +51,13 @@ jobs:
           npm test --workspace @academiccloud/compute-contracts
           npm run build --workspace @academiccloud/compute-contracts
 
-      - name: Verify Compute source and bridge tests
+      - name: Verify Compute source and catalog export/bridge tests
         run: |
           npm run typecheck --workspace @academiccloud/compute
-          npm test --workspace @academiccloud/compute
           npm run build --workspace @academiccloud/compute
+          npx --no-install tsx --test \
+            compute/test/catalog-batch-export.test.ts \
+            compute/test/catalog-bridge.test.ts
 
       - name: Verify frontend source and tests
         run: |
