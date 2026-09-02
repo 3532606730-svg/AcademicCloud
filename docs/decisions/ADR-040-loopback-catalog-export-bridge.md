@@ -31,10 +31,12 @@ External review and results import remain human-mediated. This ADR does not add 
 - Listen on literal `127.0.0.1` only; never bind `0.0.0.0`, a LAN address, or IPv6 wildcard.
 - The production Content Security Policy admits only exact `http://127.0.0.1:43117` for this browser connection; no wildcard localhost/LAN target is added.
 - Accept browser export requests only from an exact configured Origin allowlist. Production allows `https://cloud.ajtlab.top`; development origins may be explicitly configured.
-- Require `Content-Type: application/json` plus the dedicated `X-AcademicCloud-Catalog-Bridge: 1` header. Normal CORS preflight must succeed before the browser can send the private request.
+- Require the exact `application/json` media type, allowing normal parameters such as `charset`, plus the dedicated `X-AcademicCloud-Catalog-Bridge: 1` header. Normal CORS preflight must succeed before the browser can send the private request.
 - Never use wildcard CORS and never allow credentials on the loopback request.
 - Process at most one export at a time.
 - Cap the request body at the existing 2 MiB export-request limit and retain all existing evidence/ZIP limits from ADR-039.
+- The browser also consumes both error bodies and ZIP responses through bounded streaming reads rather than trusting `Content-Length`; a body crossing its bound is cancelled immediately.
+- Browser disconnect/unmount propagates cancellation through the loopback request to the active exporter so abandoned OCR/extraction work is not intentionally left running.
 - Do not log, echo, cache, or persist the private request or its capability token.
 - Return only bounded status/error codes or the ZIP payload. Do not include request contents in errors.
 - Set `Cache-Control: no-store` on bridge responses.
@@ -43,9 +45,11 @@ Modern Chromium gates public-HTTPS-to-loopback requests behind Local Network Acc
 
 ## Local Compute / WSL lifecycle
 
-The bridge has its own Local Compute service entry and release artifact. It is independent from `academiccloud-local-compute.service` (the outbound AI Local Pull worker). WSL2 localhost forwarding makes ports bound to Linux localhost available to the Windows host's localhost under the supported default configuration, so the Windows browser can use the fixed loopback endpoint without exposing the bridge to the LAN.
+The bridge has its own Local Compute service, package, verifier, release namespace, and release selector. Catalog-only releases live under `/srv/academiccloud-compute/catalog-releases/<commit>` and activation moves only `/srv/academiccloud-compute/catalog-current`. They contain the pinned Node and PaddleOCR runtimes needed for evidence extraction but do not package or require llama.cpp, NuExtract, a reasoning model, or the main Local Pull worker release.
 
-A Windows user-login launcher starts the configured WSL distribution; an enabled bridge unit then starts with systemd. Installing/enabling that service and launcher on the Owner machine is a deployment action and remains separately gated from repository implementation.
+`academiccloud-catalog-bridge.service` is independent from `academiccloud-local-compute.service`. Bridge activation records and rechecks the main worker's active/enabled state and `/srv/academiccloud-compute/current` target so a catalog deployment fails closed rather than silently starting, stopping, or repointing the paused AI worker.
+
+WSL2 localhost forwarding makes ports bound to Linux localhost available to the Windows host's localhost under the supported default configuration, so the Windows browser can use the fixed loopback endpoint without exposing the bridge to the LAN. A Windows user-login launcher starts only an explicitly installed, conservatively named WSL distribution; an enabled bridge unit then starts with systemd. Installing/enabling that service and launcher on the Owner machine is a deployment action and remains separately gated from repository implementation.
 
 ## Preserved ADR-039 invariants
 
@@ -65,7 +69,7 @@ Everything not explicitly superseded above remains authoritative, including:
 
 The normal user workflow becomes: select PDFs → Batch Catalog → generate evidence package → external review → import results → preview → explicitly apply selected records. The user no longer handles the private request file or invokes a Local Compute command.
 
-Core remains small and Local Compute retains heavy extraction/OCR. The idle bridge adds a local loopback service but no cloud resident service, database queue, schema migration, or recurring infrastructure cost.
+Core remains small and Local Compute retains heavy extraction/OCR. The idle bridge adds a local loopback service but no cloud resident service, database queue, schema migration, reasoning-model dependency, or recurring infrastructure cost.
 
 ## Rollback
 
