@@ -121,7 +121,9 @@ export async function exportCatalogEvidenceLocally(
 
   const bytes = await readBoundedBody(response, MAX_PACKAGE_BYTES, signal);
   if (declaredLength !== null && bytes.byteLength !== declaredLength) throw new LocalCatalogBridgeError("invalid_response");
-  return { filename, blob: new Blob([bytes], { type: "application/zip" }) };
+  const payload = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(payload).set(bytes);
+  return { filename, blob: new Blob([payload], { type: "application/zip" }) };
 }
 
 const TEXT = {
