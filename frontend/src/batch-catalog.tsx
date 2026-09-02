@@ -67,8 +67,13 @@ export function BatchCatalogDialog({
 
   useEffect(() => {
     dialogRef.current?.showModal();
-    return () => exportAbortRef.current?.abort();
+    return () => {
+      closedRef.current = true;
+      exportAbortRef.current?.abort();
+    };
   }, []);
+
+  const exportActive = busy && exportAbortRef.current !== null;
 
   function closeDialog(): void {
     closedRef.current = true;
@@ -159,11 +164,11 @@ export function BatchCatalogDialog({
   return (
     <dialog ref={dialogRef} className="batch-naming-modal batch-catalog-modal" aria-labelledby="batch-catalog-title" onCancel={(event) => {
       event.preventDefault();
-      if (!busy) closeDialog();
+      if (!busy || exportActive) closeDialog();
     }}>
       <div className="batch-naming-heading">
         <h2 id="batch-catalog-title">{t("batchCatalog.title")}</h2>
-        <button className="button button--quiet" type="button" disabled={busy} onClick={closeDialog}>{t("batchCatalog.close")}</button>
+        <button className="button button--quiet" type="button" disabled={busy && !exportActive} onClick={closeDialog}>{t("batchCatalog.close")}</button>
       </div>
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
       {localExportError && <div className="alert alert--error" role="alert">{localExportError}</div>}
@@ -232,7 +237,7 @@ export function BatchCatalogDialog({
         </section>
       )}
       {applyResults && <div className="alert alert--success" role="status">{t("batchCatalog.applyResult", { applied: applyResults.filter((entry) => entry.status === "applied").length, total: applyResults.length })}</div>}
-      <footer className="batch-naming-actions"><button className="button button--quiet" type="button" disabled={busy} onClick={closeDialog}>{t("batchCatalog.close")}</button></footer>
+      <footer className="batch-naming-actions"><button className="button button--quiet" type="button" disabled={busy && !exportActive} onClick={closeDialog}>{t("batchCatalog.close")}</button></footer>
     </dialog>
   );
 }
