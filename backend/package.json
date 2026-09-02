@@ -25,7 +25,8 @@
     "account:provision": "tsx --env-file-if-exists=.env src/operations/account-main.ts",
     "account:provision:prod": "node dist/operations/account-main.js",
     "acceptance:compiled": "node scripts/compiled-acceptance.mjs",
-    "auth:benchmark": "tsx scripts/password-benchmark.ts"
+    "auth:benchmark": "tsx scripts/password-benchmark.ts",
+    "catalog:correct-results": "tsx scripts/correct-catalog-results.ts"
   },
   "dependencies": {
     "@academiccloud/compute-contracts": "0.1.0",

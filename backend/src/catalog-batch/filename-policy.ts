@@ -1,6 +1,6 @@
 import type { CatalogFilenameStyle } from "@academiccloud/compute-contracts";
 
-import type { BibliographicContributorInput, MaterialClass } from "../bibliography/bibliography.js";
+import type { BibliographicContributorInput, EditionType, MaterialClass } from "../bibliography/bibliography.js";
 
 export const MAX_CATALOG_FILENAME_CHARACTERS = 240;
 
@@ -8,6 +8,7 @@ export interface CatalogFilenameInput {
   canonicalTitle: string;
   materialClass: MaterialClass;
   contributors: BibliographicContributorInput[];
+  editionType?: EditionType | undefined;
   dateStatement?: string | undefined;
   publicationDate?: string | undefined;
   responsibilityStatement?: string | undefined;
@@ -50,11 +51,20 @@ function roleResponsibility(contributors: BibliographicContributorInput[]): stri
   return relevant.map((entry) => `${entry.label}${entry.roleLabel}`).join("、");
 }
 
-export function deriveCatalogResponsibility(input: Pick<CatalogFilenameInput, "materialClass" | "contributors" | "filenameStyle">): string | null {
+function translatedResponsibility(contributors: BibliographicContributorInput[]): string | null {
+  const translators = contributors.filter((entry) => entry.role === "translator");
+  if (translators.length === 0 || translators.some((entry) => !entry.roleLabel)) return null;
+  const roleLabels = new Set(translators.map((entry) => entry.roleLabel));
+  if (roleLabels.size !== 1) return null;
+  return `${translators.map((entry) => entry.label).join("、")}${translators[0]!.roleLabel}`;
+}
+
+export function deriveCatalogResponsibility(input: Pick<CatalogFilenameInput, "materialClass" | "contributors" | "editionType" | "filenameStyle">): string | null {
   if (input.filenameStyle === "cjk_article" || input.filenameStyle === "foreign_book") {
     const authors = authorLabels(input.contributors);
     return authors.length > 0 ? authors.join(input.filenameStyle === "cjk_article" ? "、" : ", ") : null;
   }
+  if (input.editionType === "translated_edition") return translatedResponsibility(input.contributors);
   if (["primary_source_modern_edition", "traditional_book", "collected_documents", "manuscript"].includes(input.materialClass)) {
     return roleResponsibility(input.contributors);
   }

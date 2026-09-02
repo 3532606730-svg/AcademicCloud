@@ -176,7 +176,7 @@ export function BatchCatalogDialog({
         <section aria-labelledby="batch-catalog-preview-title">
           <h3 id="batch-catalog-preview-title">{t("batchCatalog.previewTitle")}</h3>
           <p className="batch-catalog-counts">
-            AUTO {preview.counts.AUTO} · REVIEW {preview.counts.REVIEW} · UNKNOWN {preview.counts.UNKNOWN} · STALE {preview.counts.STALE} · COLLISION {preview.counts.COLLISION} · UNCHANGED {preview.counts.UNCHANGED}
+            AUTO {preview.counts.AUTO} · REVIEW {preview.counts.REVIEW} · UNKNOWN {preview.counts.UNKNOWN} · EXCLUDED {preview.counts.EXCLUDED} · STALE {preview.counts.STALE} · COLLISION {preview.counts.COLLISION} · UNCHANGED {preview.counts.UNCHANGED}
           </p>
           <div className="batch-naming-list">
             {preview.items.map((item) => {
@@ -200,6 +200,9 @@ export function BatchCatalogDialog({
                     <dt>{t("batchCatalog.identity")}</dt><dd>{t(item.identityMatch ? "batchCatalog.identityMatch" : "batchCatalog.identityMismatch")}</dd>
                     <dt>{t("batchCatalog.collision")}</dt><dd>{item.collisionStatus}</dd>
                     <dt>{t("batchCatalog.changes")}</dt><dd>{item.metadataChanges.length > 0 ? item.metadataChanges.join(", ") : t("batchCatalog.none")}</dd>
+                    <dt>{t("batchCatalog.warnings")}</dt><dd>{item.warnings.length > 0
+                      ? item.warnings.map((warning) => t(`batchCatalog.warning.${warning}`)).join(", ")
+                      : t("batchCatalog.none")}</dd>
                     <dt>{t("batchCatalog.status")}</dt><dd>{item.category}</dd>
                   </dl>
                 </article>

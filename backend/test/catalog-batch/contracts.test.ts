@@ -34,6 +34,37 @@ test("strict results contract accepts the existing canonical bibliography shape"
   assert.equal(parseCatalogResultsDocument(validDocument()).results[0]?.bibliographic?.canonicalTitle, "书名");
 });
 
+test("catalog import preserves valid ISBNs, drops bad checksums with a warning, and leaves other schemes untouched", () => {
+  const cases = [
+    { value: "0-306-40615-2", valid: true },
+    { value: "0-674-12337-8", valid: false },
+    { value: "978-0-306-40615-7", valid: true },
+    { value: "978-0-306-40615-8", valid: false },
+  ] as const;
+  for (const entry of cases) {
+    const document = validDocument();
+    (document.results[0]!.bibliographic as typeof document.results[0]["bibliographic"] & { identifiers: Array<{ scheme: string; value: string }> }).identifiers = [
+      { scheme: "isbn", value: entry.value },
+    ];
+    const parsed = parseCatalogResultsDocument(document).results[0]!.bibliographic!;
+    assert.deepEqual(parsed.identifiers, entry.valid ? [{ scheme: "isbn", value: entry.value }] : []);
+    assert.deepEqual(parsed.importWarnings, entry.valid ? [] : [{ code: "invalid_isbn_removed", count: 1 }]);
+  }
+
+  const mixed = validDocument();
+  (mixed.results[0]!.bibliographic as typeof mixed.results[0]["bibliographic"] & { identifiers: Array<{ scheme: string; value: string }> }).identifiers = [
+    { scheme: "isbn", value: "0-674-12337-8" },
+    { scheme: "isbn", value: "978-0-306-40615-7" },
+    { scheme: "doi", value: "10.1000/academiccloud" },
+  ];
+  const parsed = parseCatalogResultsDocument(mixed).results[0]!.bibliographic!;
+  assert.deepEqual(parsed.identifiers, [
+    { scheme: "isbn", value: "978-0-306-40615-7" },
+    { scheme: "doi", value: "10.1000/academiccloud" },
+  ]);
+  assert.deepEqual(parsed.importWarnings, [{ code: "invalid_isbn_removed", count: 1 }]);
+});
+
 test("strict results contract rejects duplicate IDs, path traversal, unknown dispositions, oversized text and identity mismatch shapes", () => {
   const duplicate = validDocument();
   duplicate.sourceManifest.resources.push({ ...duplicate.sourceManifest.resources[0]! });

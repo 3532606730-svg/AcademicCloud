@@ -486,7 +486,7 @@ export interface CatalogExportRequest {
   sourceAccess: { coreBaseUrl: string; capabilityToken: string; expiresAt: string };
 }
 
-export type CatalogPreviewCategory = "auto" | "review" | "unknown" | "stale" | "collision" | "unchanged";
+export type CatalogPreviewCategory = "auto" | "review" | "unknown" | "excluded" | "stale" | "collision" | "unchanged";
 export interface CatalogPreviewItem {
   resourceId: string;
   currentFilename: string;
@@ -502,6 +502,7 @@ export interface CatalogPreviewItem {
   collisionStatus: "none" | "exact_duplicate" | "name_collision";
   renameStatus: "proposed" | "no_rename" | "unchanged" | "exact_duplicate" | "name_collision";
   metadataChanges: string[];
+  warnings: Array<"internal_test_resource_excluded" | "invalid_isbn_removed">;
   category: CatalogPreviewCategory;
   previewVersion: string;
 }
@@ -509,7 +510,7 @@ export interface CatalogPreviewItem {
 export interface CatalogPreview {
   batchId: string;
   documentDigest: string;
-  counts: Record<"AUTO" | "REVIEW" | "UNKNOWN" | "STALE" | "COLLISION" | "UNCHANGED", number>;
+  counts: Record<"AUTO" | "REVIEW" | "UNKNOWN" | "EXCLUDED" | "STALE" | "COLLISION" | "UNCHANGED", number>;
   items: CatalogPreviewItem[];
 }
 

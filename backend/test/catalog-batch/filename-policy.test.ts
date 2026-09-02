@@ -15,6 +15,20 @@ test("academiccloud.filename.v1 emits the exact Owner-approved bibliographic for
     contributors: [{ label: "刘晓", role: "author" }], publicationDate: "2009", filenameStyle: "cjk_book",
   }), { status: "proposed", filename: "《蒙元史研究》（刘晓，2009）.pdf", responsibility: "刘晓", year: "2009" });
   assert.equal(filename({
+    canonicalTitle: "蒙古与教廷", materialClass: "scholarly_monograph", editionType: "translated_edition",
+    contributors: [{ label: "伯希和", role: "author" }, { label: "冯承钧", role: "translator", roleLabel: "译" }],
+    publicationDate: "1994", filenameStyle: "cjk_book",
+  }), "《蒙古与教廷》（冯承钧译，1994）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "译本", materialClass: "scholarly_monograph", editionType: "translated_edition",
+    contributors: [
+      { label: "原作者", role: "author" },
+      { label: "甲", role: "translator", roleLabel: "译" },
+      { label: "乙", role: "translator", roleLabel: "译" },
+    ],
+    publicationDate: "2025", filenameStyle: "cjk_book",
+  }), "《译本》（甲、乙译，2025）.pdf");
+  assert.equal(filename({
     canonicalTitle: "蒙古秘史", materialClass: "primary_source_modern_edition",
     contributors: [{ label: "余大钧", role: "annotator", roleLabel: "译注" }], publicationDate: "2005", filenameStyle: "cjk_book",
   }), "《蒙古秘史》（余大钧译注，2005）.pdf");
@@ -52,6 +66,19 @@ test("filename policy preserves Unicode, conservatively maps invalid characters,
   assert.deepEqual(formatCatalogFilename({
     canonicalTitle: "史料", materialClass: "primary_source_modern_edition",
     contributors: [{ label: "某人", role: "translator" }], publicationDate: "2001", filenameStyle: "cjk_book",
+  }), { status: "no_rename", reason: "missing_responsibility" });
+  assert.deepEqual(formatCatalogFilename({
+    canonicalTitle: "译本", materialClass: "scholarly_monograph", editionType: "translated_edition",
+    contributors: [{ label: "原作者", role: "author" }, { label: "译者", role: "translator" }],
+    publicationDate: "2001", filenameStyle: "cjk_book",
+  }), { status: "no_rename", reason: "missing_responsibility" });
+  assert.deepEqual(formatCatalogFilename({
+    canonicalTitle: "译本", materialClass: "scholarly_monograph", editionType: "translated_edition",
+    contributors: [
+      { label: "甲", role: "translator", roleLabel: "译" },
+      { label: "乙", role: "translator", roleLabel: "编译" },
+    ],
+    publicationDate: "2001", filenameStyle: "cjk_book",
   }), { status: "no_rename", reason: "missing_responsibility" });
   assert.deepEqual(formatCatalogFilename({
     canonicalTitle: "史料", materialClass: "primary_source_modern_edition",

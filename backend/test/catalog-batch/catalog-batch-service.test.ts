@@ -93,13 +93,14 @@ function bibliography(options: {
   date: string;
   filenameStyle: "cjk_book" | "cjk_article" | "foreign_book";
   responsibilityStatement?: string;
+  editionType?: "translated_edition";
 }) {
   return {
     canonicalTitle: options.title,
     materialClass: options.materialClass,
     contributors: options.contributors,
     publication: { publicationDate: options.date },
-    carrierEdition: {},
+    carrierEdition: options.editionType ? { editionType: options.editionType } : {},
     sourceEdition: {},
     filenameStyle: options.filenameStyle,
     ...(options.responsibilityStatement ? { responsibilityStatement: options.responsibilityStatement } : {}),
@@ -110,7 +111,11 @@ async function resultsFixture(state: ReturnType<typeof fixture>) {
   const cases = [
     { id: "modern", name: "modern-old.pdf", bibliographic: bibliography({ title: "蒙元史研究", materialClass: "scholarly_monograph", contributors: [{ label: "刘晓", role: "author" }], date: "2009", filenameStyle: "cjk_book" }) },
     { id: "historical", name: "historical-old.pdf", bibliographic: bibliography({ title: "蒙古秘史", materialClass: "primary_source_modern_edition", contributors: [{ label: "余大钧", role: "annotator", roleLabel: "译注" }], date: "2005", filenameStyle: "cjk_book", responsibilityStatement: "余大钧译注" }) },
-    { id: "translated", name: "translated-old.pdf", bibliographic: bibliography({ title: "世界征服者史", materialClass: "primary_source_modern_edition", contributors: [{ label: "何高济", role: "translator", roleLabel: "译" }], date: "2004", filenameStyle: "cjk_book" }) },
+    { id: "translated", name: "translated-old.pdf", bibliographic: bibliography({
+      title: "蒙古与教廷", materialClass: "scholarly_monograph",
+      contributors: [{ label: "伯希和", role: "author" }, { label: "冯承钧", role: "translator", roleLabel: "译" }],
+      date: "1994", filenameStyle: "cjk_book", editionType: "translated_edition",
+    }) },
     { id: "multiple", name: "multiple-old.pdf", bibliographic: bibliography({ title: "某书", materialClass: "primary_source_modern_edition", contributors: [{ label: "甲", role: "collator", roleLabel: "校注" }, { label: "乙", role: "collator", roleLabel: "校注" }], date: "年份", filenameStyle: "cjk_book" }) },
     { id: "article", name: "article-old.pdf", bibliographic: bibliography({ title: "论文名", materialClass: "journal_article", contributors: [{ label: "作者", role: "author" }], date: "年份", filenameStyle: "cjk_article" }) },
     { id: "foreign", name: "foreign-old.pdf", bibliographic: bibliography({ title: "The Mongols", materialClass: "scholarly_monograph", contributors: [{ label: "David Morgan", role: "author" }], date: "2007", filenameStyle: "foreign_book" }) },
@@ -154,10 +159,10 @@ test("eight-class local roundtrip previews without mutation and applies only exp
   }));
   const auditBefore = state.database.prepare<[], { count: number }>("SELECT count(*) AS count FROM governance_audit_events").get()!.count;
   const preview = state.service.preview(OWNER, state.library.id, document);
-  assert.deepEqual(preview.counts, { AUTO: 6, REVIEW: 0, UNKNOWN: 1, STALE: 0, COLLISION: 1, UNCHANGED: 0 });
+  assert.deepEqual(preview.counts, { AUTO: 6, REVIEW: 0, UNKNOWN: 1, EXCLUDED: 0, STALE: 0, COLLISION: 1, UNCHANGED: 0 });
   assert.equal(preview.items.find((entry) => entry.resourceId === "modern")?.proposedFilename, "《蒙元史研究》（刘晓，2009）.pdf");
   assert.equal(preview.items.find((entry) => entry.resourceId === "historical")?.proposedFilename, "《蒙古秘史》（余大钧译注，2005）.pdf");
-  assert.equal(preview.items.find((entry) => entry.resourceId === "translated")?.proposedFilename, "《世界征服者史》（何高济译，2004）.pdf");
+  assert.equal(preview.items.find((entry) => entry.resourceId === "translated")?.proposedFilename, "《蒙古与教廷》（冯承钧译，1994）.pdf");
   assert.equal(preview.items.find((entry) => entry.resourceId === "multiple")?.proposedFilename, "《某书》（甲、乙校注，年份）.pdf");
   assert.equal(preview.items.find((entry) => entry.resourceId === "article")?.proposedFilename, "作者：《论文名》（年份）.pdf");
   assert.equal(preview.items.find((entry) => entry.resourceId === "foreign")?.proposedFilename, "The Mongols (David Morgan, 2007).pdf");
@@ -304,4 +309,113 @@ test("batch apply preserves existing type-specific canonical fields across an in
   assert.equal(saved.materialType, "manuscript");
   assert.deepEqual(saved.typeFields, { shelfmark: "MS 42" });
   assert.equal(saved.canonicalTitle, "新题");
+});
+
+test("exact source-bound internal fixtures are excluded while a similarly named user document remains eligible", async (context) => {
+  const state = fixture(context);
+  const internal = addHolding(state, "internal-resource", "academiccloud-ai-e2e-new-20260823.pdf");
+  const legitimate = addHolding(state, "legitimate-resource", "academiccloud-ai-e2e-new-20260823-user-copy.pdf", "%PDF-1.4\nlegitimate-user-content\n");
+  const originalRequest = await state.service.prepareExport(OWNER, state.library.id, [internal.resourceId, legitimate.resourceId]);
+  const protectedService = new CatalogBatchService({
+    persistence: state.persistence,
+    storage: state.storage,
+    coreBaseUrl: "https://academiccloud.example",
+    now: () => NOW,
+    createId: () => "protected-batch",
+    createToken: () => "catalog-export-capability-token-protected",
+    excludedCatalogSources: [{
+      resourceId: internal.resourceId,
+      sourceFingerprint: internal.identity.sourceFingerprint,
+      reason: "internal_test_fixture",
+    }],
+  });
+  const filteredRequest = await protectedService.prepareExport(OWNER, state.library.id, [internal.resourceId, legitimate.resourceId]);
+  assert.deepEqual(filteredRequest.manifest.resources.map((entry) => entry.resourceId), [legitimate.resourceId]);
+
+  const manifest: CatalogBatchManifest = {
+    ...originalRequest.manifest,
+    resources: originalRequest.manifest.resources.map((entry) => ({ ...entry, pageCount: 1 })),
+  };
+  const document = {
+    schemaVersion: CATALOG_RESULTS_SCHEMA_VERSION,
+    batchId: manifest.batchId,
+    sourceManifestSha256: sha256(canonicalCatalogJson(manifest)),
+    sourceManifest: manifest,
+    results: manifest.resources.map((source) => ({
+      resourceId: source.resourceId,
+      sourceIdentity: source.sourceIdentity,
+      disposition: "auto" as const,
+      bibliographic: bibliography({
+        title: source.resourceId === internal.resourceId ? "Internal result" : "Legitimate result",
+        materialClass: "scholarly_monograph",
+        contributors: [{ label: "Author", role: "author" }],
+        date: "2026",
+        filenameStyle: "foreign_book",
+      }),
+      confidence: 99,
+      notes: null,
+    })),
+  };
+  const preview = protectedService.preview(OWNER, state.library.id, document);
+  const excluded = preview.items.find((entry) => entry.resourceId === internal.resourceId)!;
+  const allowed = preview.items.find((entry) => entry.resourceId === legitimate.resourceId)!;
+  assert.equal(excluded.category, "excluded");
+  assert.deepEqual(excluded.warnings, ["internal_test_resource_excluded"]);
+  assert.deepEqual(excluded.metadataChanges, []);
+  assert.equal(excluded.proposedFilename, null);
+  assert.equal(allowed.category, "auto");
+  assert.deepEqual(preview.counts, { AUTO: 1, REVIEW: 0, UNKNOWN: 0, EXCLUDED: 1, STALE: 0, COLLISION: 0, UNCHANGED: 0 });
+  assert.deepEqual(protectedService.apply(OWNER, state.library.id, document, preview.documentDigest, [{
+    resourceId: excluded.resourceId,
+    previewVersion: excluded.previewVersion,
+  }]), [{ resourceId: internal.resourceId, status: "invalid_input", displayName: null }]);
+  assert.equal(state.persistence.repositories.metadata.findMetadata(state.library.ownerDomainId, `record-${internal.resourceId}`), null);
+});
+
+test("preview warns on an invalid ISBN while valid and non-ISBN identifiers remain independently applicable", async (context) => {
+  const state = fixture(context);
+  const source = addHolding(state, "identifier-source", "identifier-old.pdf");
+  const request = await state.service.prepareExport(OWNER, state.library.id, [source.resourceId]);
+  const manifest: CatalogBatchManifest = {
+    ...request.manifest,
+    resources: request.manifest.resources.map((entry) => ({ ...entry, pageCount: 1 })),
+  };
+  const imported = bibliography({
+    title: "Identifier Study", materialClass: "scholarly_monograph",
+    contributors: [{ label: "Researcher", role: "author" }], date: "2026", filenameStyle: "foreign_book",
+  });
+  const document = {
+    schemaVersion: CATALOG_RESULTS_SCHEMA_VERSION,
+    batchId: manifest.batchId,
+    sourceManifestSha256: sha256(canonicalCatalogJson(manifest)),
+    sourceManifest: manifest,
+    results: [{
+      resourceId: source.resourceId,
+      sourceIdentity: source.identity,
+      disposition: "auto" as const,
+      bibliographic: {
+        ...imported,
+        identifiers: [
+          { scheme: "isbn", value: "0-674-12337-8" },
+          { scheme: "isbn", value: "978-0-306-40615-7" },
+          { scheme: "doi", value: "10.1000/academiccloud" },
+        ],
+      },
+      confidence: 96,
+      notes: null,
+    }],
+  };
+  const preview = state.service.preview(OWNER, state.library.id, document);
+  const item = preview.items[0]!;
+  assert.equal(item.category, "auto");
+  assert.deepEqual(item.warnings, ["invalid_isbn_removed"]);
+  assert.deepEqual(state.service.apply(OWNER, state.library.id, document, preview.documentDigest, [{
+    resourceId: item.resourceId,
+    previewVersion: item.previewVersion,
+  }]).map((entry) => entry.status), ["applied"]);
+  const holding = state.persistence.repositories.libraries.findHoldingByFile(state.library.id, source.resourceId)!;
+  assert.deepEqual(state.persistence.repositories.metadata.findMetadata(state.library.ownerDomainId, holding.recordId)!.identifiers, [
+    { scheme: "isbn", value: "978-0-306-40615-7" },
+    { scheme: "doi", value: "10.1000/academiccloud" },
+  ]);
 });

@@ -35,6 +35,11 @@ import {
   type ImportedCatalogResult,
 } from "./contracts.js";
 import { formatCatalogFilename } from "./filename-policy.js";
+import {
+  CATALOG_INTERNAL_SOURCE_EXCLUSIONS,
+  findCatalogInternalSourceExclusion,
+  type CatalogInternalSourceExclusion,
+} from "./internal-resource-exclusions.js";
 
 const PDF_MEDIA_TYPE = "application/pdf";
 const EXPORT_CAPABILITY_BYTES = 32;
@@ -60,9 +65,10 @@ interface ExportCapability {
   resources: ReadonlyMap<string, CatalogSourceIdentity>;
 }
 
-export type CatalogPreviewCategory = "auto" | "review" | "unknown" | "stale" | "collision" | "unchanged";
+export type CatalogPreviewCategory = "auto" | "review" | "unknown" | "excluded" | "stale" | "collision" | "unchanged";
 export type CatalogCollisionStatus = "none" | "exact_duplicate" | "name_collision";
 export type CatalogRenameStatus = "proposed" | "no_rename" | "unchanged" | "exact_duplicate" | "name_collision";
+export type CatalogPreviewWarning = "internal_test_resource_excluded" | "invalid_isbn_removed";
 
 export interface CatalogPreviewItem {
   resourceId: string;
@@ -79,6 +85,7 @@ export interface CatalogPreviewItem {
   collisionStatus: CatalogCollisionStatus;
   renameStatus: CatalogRenameStatus;
   metadataChanges: string[];
+  warnings: CatalogPreviewWarning[];
   category: CatalogPreviewCategory;
   previewVersion: string;
 }
@@ -86,7 +93,7 @@ export interface CatalogPreviewItem {
 export interface CatalogPreview {
   batchId: string;
   documentDigest: string;
-  counts: Record<"AUTO" | "REVIEW" | "UNKNOWN" | "STALE" | "COLLISION" | "UNCHANGED", number>;
+  counts: Record<"AUTO" | "REVIEW" | "UNKNOWN" | "EXCLUDED" | "STALE" | "COLLISION" | "UNCHANGED", number>;
   items: CatalogPreviewItem[];
 }
 
@@ -196,7 +203,7 @@ function changedBibliographyLabels(left: BibliographicProfile | null, right: Bib
 }
 
 function publicCounts(items: CatalogPreviewItem[]): CatalogPreview["counts"] {
-  const counts = { AUTO: 0, REVIEW: 0, UNKNOWN: 0, STALE: 0, COLLISION: 0, UNCHANGED: 0 };
+  const counts = { AUTO: 0, REVIEW: 0, UNKNOWN: 0, EXCLUDED: 0, STALE: 0, COLLISION: 0, UNCHANGED: 0 };
   for (const item of items) counts[item.category.toUpperCase() as keyof typeof counts] += 1;
   return counts;
 }
@@ -208,6 +215,7 @@ export class CatalogBatchService {
   readonly #now: () => Date;
   readonly #createId: () => string;
   readonly #createToken: () => string;
+  readonly #excludedCatalogSources: readonly CatalogInternalSourceExclusion[];
   readonly #capabilities = new Map<string, ExportCapability>();
 
   constructor(options: {
@@ -217,6 +225,7 @@ export class CatalogBatchService {
     now?: () => Date;
     createId?: () => string;
     createToken?: () => string;
+    excludedCatalogSources?: readonly CatalogInternalSourceExclusion[];
   }) {
     this.#persistence = options.persistence;
     this.#storage = options.storage;
@@ -224,6 +233,7 @@ export class CatalogBatchService {
     this.#now = options.now ?? (() => new Date());
     this.#createId = options.createId ?? randomUUID;
     this.#createToken = options.createToken ?? (() => randomBytes(EXPORT_CAPABILITY_BYTES).toString("base64url"));
+    this.#excludedCatalogSources = options.excludedCatalogSources ?? CATALOG_INTERNAL_SOURCE_EXCLUSIONS;
   }
 
   async prepareExport(actor: AuthenticatedAccount, libraryId: string, fileIds: unknown): Promise<CatalogExportRequest> {
@@ -239,7 +249,13 @@ export class CatalogBatchService {
         return { holding, file, identity: catalogSourceIdentity(file) };
       });
     });
-    for (const item of snapshot) {
+    const eligibleSnapshot = snapshot.filter((item) => !findCatalogInternalSourceExclusion(
+      item.file.id,
+      item.identity,
+      this.#excludedCatalogSources,
+    ));
+    if (eligibleSnapshot.length < 1) throw new CatalogBatchError("invalid_input");
+    for (const item of eligibleSnapshot) {
       let metadata: StorageObjectMetadata | null;
       try {
         metadata = await this.#storage.statObject(item.file.objectKey);
@@ -250,7 +266,7 @@ export class CatalogBatchService {
     }
     const createdAt = this.#now();
     const batchId = this.#createId();
-    const resources = snapshot
+    const resources = eligibleSnapshot
       .map(({ file, identity }) => ({
         resourceId: file.id,
         sourceIdentity: identity,
@@ -372,7 +388,7 @@ export class CatalogBatchService {
           if (!item || item.previewVersion !== selection.previewVersion) throw new CatalogBatchError("stale");
           if (item.category === "stale") throw new CatalogBatchError("stale");
           if (item.category === "collision") return { resourceId: item.resourceId, status: "collision" as const, displayName: item.currentFilename };
-          if (item.category === "unknown") throw new CatalogBatchError("invalid_input");
+          if (item.category === "unknown" || item.category === "excluded") throw new CatalogBatchError("invalid_input");
           if (item.category === "unchanged") return { resourceId: item.resourceId, status: "unchanged" as const, displayName: item.currentFilename };
           const imported = document.results.find((entry) => entry.resourceId === item.resourceId)!;
           const planned = this.#planItem(actor, libraryId, document, imported, repositories);
@@ -473,13 +489,36 @@ export class CatalogBatchService {
           canonicalTitle: result.bibliographic?.canonicalTitle ?? null, responsibility: null, year: null,
           materialClass: result.bibliographic?.profile.materialClass ?? null, disposition: result.disposition,
           confidence: result.confidence, notes: result.notes, identityMatch: false, collisionStatus: "none",
-          renameStatus: "no_rename", metadataChanges: [], category: "stale", previewVersion,
+          renameStatus: "no_rename", metadataChanges: [], warnings: [], category: "stale", previewVersion,
         },
         library, holding, file, currentMetadata: null, currentBibliography: null, nextMetadata: null, nextBibliography: null,
       };
     }
     const currentMetadata = repositories.metadata.findMetadata(library.ownerDomainId, holding.recordId);
     const currentBibliography = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
+    const internalExclusion = findCatalogInternalSourceExclusion(
+      result.resourceId,
+      catalogSourceIdentity(file),
+      this.#excludedCatalogSources,
+    );
+    if (internalExclusion) {
+      const previewVersion = createHash("sha256").update(canonicalCatalogJson([
+        document.batchId,
+        result.resourceId,
+        internalExclusion.reason,
+        catalogSourceIdentity(file),
+      ])).digest("base64url");
+      return {
+        public: {
+          resourceId: result.resourceId, currentFilename, proposedFilename: null, canonicalTitle: null,
+          responsibility: null, year: null, materialClass: null, disposition: result.disposition,
+          confidence: result.confidence, notes: result.notes, identityMatch: true, collisionStatus: "none",
+          renameStatus: "no_rename", metadataChanges: [], warnings: ["internal_test_resource_excluded"],
+          category: "excluded", previewVersion,
+        },
+        library, holding, file, currentMetadata, currentBibliography, nextMetadata: null, nextBibliography: null,
+      };
+    }
     if (result.disposition === "unknown" || !result.bibliographic) {
       const previewVersion = this.#previewVersion(document, result, file, currentMetadata, currentBibliography, null, "none");
       return {
@@ -487,7 +526,7 @@ export class CatalogBatchService {
           resourceId: result.resourceId, currentFilename, proposedFilename: null, canonicalTitle: null,
           responsibility: null, year: null, materialClass: null, disposition: result.disposition,
           confidence: result.confidence, notes: result.notes, identityMatch: true, collisionStatus: "none",
-          renameStatus: "no_rename", metadataChanges: [], category: "unknown", previewVersion,
+          renameStatus: "no_rename", metadataChanges: [], warnings: [], category: "unknown", previewVersion,
         },
         library, holding, file, currentMetadata, currentBibliography, nextMetadata: null, nextBibliography: null,
       };
@@ -499,6 +538,7 @@ export class CatalogBatchService {
       canonicalTitle: imported.canonicalTitle,
       materialClass: imported.profile.materialClass,
       contributors: imported.profile.contributors,
+      ...(imported.profile.carrierEdition.editionType ? { editionType: imported.profile.carrierEdition.editionType } : {}),
       ...(imported.dateStatement ? { dateStatement: imported.dateStatement } : {}),
       ...(imported.profile.publication.publicationDate ? { publicationDate: imported.profile.publication.publicationDate } : {}),
       ...(imported.responsibilityStatement ? { responsibilityStatement: imported.responsibilityStatement } : {}),
@@ -542,6 +582,7 @@ export class CatalogBatchService {
         collisionStatus,
         renameStatus,
         metadataChanges,
+        warnings: imported.importWarnings.map((entry) => entry.code),
         category,
         previewVersion,
       },

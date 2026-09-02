@@ -14,11 +14,11 @@ const HOLDINGS: LibraryHolding[] = ["auto", "review", "unknown"].map((id) => ({
 }));
 const PREVIEW: CatalogPreview = {
   batchId: "batch-1", documentDigest: "a".repeat(64),
-  counts: { AUTO: 1, REVIEW: 1, UNKNOWN: 1, STALE: 0, COLLISION: 0, UNCHANGED: 0 },
+  counts: { AUTO: 1, REVIEW: 1, UNKNOWN: 1, EXCLUDED: 0, STALE: 0, COLLISION: 0, UNCHANGED: 0 },
   items: [
-    { resourceId: "auto", currentFilename: "auto.pdf", proposedFilename: "《书》（作者，2026）.pdf", canonicalTitle: "书", responsibility: "作者", year: "2026", materialClass: "scholarly_monograph", disposition: "auto", confidence: 96, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "proposed", metadataChanges: ["canonicalTitle", "displayName"], category: "auto", previewVersion: "a".repeat(43) },
-    { resourceId: "review", currentFilename: "review.pdf", proposedFilename: null, canonicalTitle: "待审", responsibility: null, year: "2026", materialClass: "scholarly_monograph", disposition: "review", confidence: 70, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: ["canonicalTitle"], category: "review", previewVersion: "b".repeat(43) },
-    { resourceId: "unknown", currentFilename: "unknown.pdf", proposedFilename: null, canonicalTitle: null, responsibility: null, year: null, materialClass: null, disposition: "unknown", confidence: 0, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: [], category: "unknown", previewVersion: "c".repeat(43) },
+    { resourceId: "auto", currentFilename: "auto.pdf", proposedFilename: "《书》（作者，2026）.pdf", canonicalTitle: "书", responsibility: "作者", year: "2026", materialClass: "scholarly_monograph", disposition: "auto", confidence: 96, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "proposed", metadataChanges: ["canonicalTitle", "displayName"], warnings: ["invalid_isbn_removed"], category: "auto", previewVersion: "a".repeat(43) },
+    { resourceId: "review", currentFilename: "review.pdf", proposedFilename: null, canonicalTitle: "待审", responsibility: null, year: "2026", materialClass: "scholarly_monograph", disposition: "review", confidence: 70, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: ["canonicalTitle"], warnings: [], category: "review", previewVersion: "b".repeat(43) },
+    { resourceId: "unknown", currentFilename: "unknown.pdf", proposedFilename: null, canonicalTitle: null, responsibility: null, year: null, materialClass: null, disposition: "unknown", confidence: 0, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: [], warnings: [], category: "unknown", previewVersion: "c".repeat(43) },
   ],
 };
 
@@ -62,6 +62,7 @@ describe("BatchCatalogDialog", () => {
     expect(screen.getAllByText("Content identity")).toHaveLength(3);
     expect(screen.getAllByText("Collision")).toHaveLength(3);
     expect(screen.getAllByText("Metadata changes")).toHaveLength(3);
+    expect(screen.getByText("Invalid ISBN checksum removed; other supported bibliography is retained")).toBeInTheDocument();
     expect(screen.getByText("canonicalTitle, displayName")).toBeInTheDocument();
     await user.click(checkboxes[4]!);
     vi.spyOn(window, "confirm").mockReturnValue(true);

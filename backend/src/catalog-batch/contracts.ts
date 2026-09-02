@@ -12,6 +12,7 @@ import {
 
 import {
   BibliographyValidationError,
+  isValidIsbn,
   normalizeBibliographicProfileInput,
   type BibliographicProfileInput,
 } from "../bibliography/bibliography.js";
@@ -38,6 +39,12 @@ export interface ImportedCatalogBibliography {
   profile: BibliographicProfileInput;
   responsibilityStatement?: string | undefined;
   filenameStyle: CatalogFilenameStyle;
+  importWarnings: CatalogImportWarning[];
+}
+
+export interface CatalogImportWarning {
+  code: "invalid_isbn_removed";
+  count: number;
 }
 
 export interface ImportedCatalogResult {
@@ -176,12 +183,21 @@ function bibliography(value: unknown): ImportedCatalogBibliography {
     if (!Array.isArray(input.alternativeTitles) || input.alternativeTitles.length > 16) throw new CatalogContractError("invalid_input");
     return input.alternativeTitles.map((entry) => text(entry, 512));
   })();
+  let invalidIsbnCount = 0;
   const identifiers = input.identifiers === undefined ? undefined : (() => {
     if (!Array.isArray(input.identifiers) || input.identifiers.length > 16) throw new CatalogContractError("invalid_input");
-    return input.identifiers.map((entry) => {
+    return input.identifiers.flatMap((entry) => {
       const item = object(entry);
       exactKeys(item, ["scheme", "value"]);
-      return { scheme: text(item.scheme, 32, /^[a-z][a-z0-9._-]*$/u).toLowerCase(), value: text(item.value, 128) };
+      const identifier = {
+        scheme: text(item.scheme, 32, /^[a-z][a-z0-9._-]*$/u).toLowerCase(),
+        value: text(item.value, 128),
+      };
+      if (identifier.scheme === "isbn" && !isValidIsbn(identifier.value)) {
+        invalidIsbnCount += 1;
+        return [];
+      }
+      return [identifier];
     });
   })();
   let profile: BibliographicProfileInput;
@@ -216,6 +232,7 @@ function bibliography(value: unknown): ImportedCatalogBibliography {
     ...(input.responsibilityStatement === undefined || input.responsibilityStatement === null
       ? {} : { responsibilityStatement: text(input.responsibilityStatement, 512) }),
     filenameStyle: enumValue(input.filenameStyle, CATALOG_FILENAME_STYLES),
+    importWarnings: invalidIsbnCount > 0 ? [{ code: "invalid_isbn_removed", count: invalidIsbnCount }] : [],
   };
 }
 
