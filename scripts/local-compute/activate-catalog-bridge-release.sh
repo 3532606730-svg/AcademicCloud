@@ -8,6 +8,7 @@ fi
 
 readonly RELEASE_ROOT="$1"
 readonly COMPUTE_ROOT="/srv/academiccloud-compute"
+readonly CATALOG_RELEASE_PARENT="${COMPUTE_ROOT}/catalog-releases"
 readonly CATALOG_CURRENT_LINK="${COMPUTE_ROOT}/catalog-current"
 readonly MAIN_CURRENT_LINK="${COMPUTE_ROOT}/current"
 readonly BRIDGE_UNIT="academiccloud-catalog-bridge.service"
@@ -17,10 +18,10 @@ readonly UNIT_TARGET="/etc/systemd/system/${BRIDGE_UNIT}"
 readonly STABILITY_SECONDS=10
 readonly UNIT_BACKUP="${COMPUTE_ROOT}/tmp/.catalog-bridge-unit.$$.bak"
 
-[[ "$RELEASE_ROOT" =~ ^${COMPUTE_ROOT}/releases/[a-f0-9]{40}$ ]]
+[[ "$RELEASE_ROOT" =~ ^${CATALOG_RELEASE_PARENT}/[a-f0-9]{40}$ ]]
 test -f "$UNIT_SOURCE"
-test -x "$RELEASE_ROOT/deployment/verify-local-compute-release.sh"
-"$RELEASE_ROOT/deployment/verify-local-compute-release.sh" "$RELEASE_ROOT"
+test -x "$RELEASE_ROOT/deployment/verify-catalog-bridge-release.sh"
+"$RELEASE_ROOT/deployment/verify-catalog-bridge-release.sh" "$RELEASE_ROOT"
 
 service_state() {
   systemctl "$1" "$2" 2>/dev/null || true
@@ -53,7 +54,7 @@ restore_bridge_state() {
 
   if [[ "$CATALOG_CURRENT_BEFORE" == "__absent__" ]]; then
     rm -f -- "$CATALOG_CURRENT_LINK"
-  elif [[ "$CATALOG_CURRENT_BEFORE" =~ ^${COMPUTE_ROOT}/releases/[a-f0-9]{40}$ ]]; then
+  elif [[ "$CATALOG_CURRENT_BEFORE" =~ ^${CATALOG_RELEASE_PARENT}/[a-f0-9]{40}$ ]]; then
     ln -sfn "$CATALOG_CURRENT_BEFORE" "${COMPUTE_ROOT}/.catalog-current.rollback.$$" || true
     mv -Tf "${COMPUTE_ROOT}/.catalog-current.rollback.$$" "$CATALOG_CURRENT_LINK" || true
   fi
@@ -125,8 +126,8 @@ grep -Eq '^MainPID=[1-9][0-9]*$' <<<"$SERVICE_PROPERTIES"
 test "$AFTER_RESTARTS" = "$BEFORE_RESTARTS"
 test "$(readlink -f "$CATALOG_CURRENT_LINK")" = "$RELEASE_ROOT"
 
-# The bridge has a separate release selector and service. Its activation must
-# not silently start/stop/repoint the main AI Local Pull worker.
+# Catalog export has a separate package, release selector, and service. Its
+# activation must not silently start/stop/repoint the main AI Local Pull worker.
 test "$(service_state is-active "$MAIN_UNIT")" = "$MAIN_ACTIVE_BEFORE"
 test "$(service_state is-enabled "$MAIN_UNIT")" = "$MAIN_ENABLED_BEFORE"
 test "$(link_state "$MAIN_CURRENT_LINK")" = "$MAIN_CURRENT_BEFORE"
