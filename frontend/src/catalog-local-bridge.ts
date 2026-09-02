@@ -61,9 +61,10 @@ export async function exportCatalogEvidenceLocally(
 
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   const filename = response.headers.get("x-academiccloud-filename") ?? "";
-  const declaredLength = Number(response.headers.get("content-length"));
+  const contentLength = response.headers.get("content-length");
+  const declaredLength = contentLength === null ? null : Number(contentLength);
   if (!contentType.startsWith("application/zip") || !SAFE_FILENAME.test(filename)
-    || (Number.isFinite(declaredLength) && (declaredLength < 1 || declaredLength > MAX_PACKAGE_BYTES))) {
+    || (declaredLength !== null && (!Number.isFinite(declaredLength) || declaredLength < 1 || declaredLength > MAX_PACKAGE_BYTES))) {
     throw new LocalCatalogBridgeError("invalid_response");
   }
 
