@@ -85,6 +85,45 @@ test("source/version and preserve-original strategies match the Owner-approved l
   }), "未出版点校稿.docx");
 });
 
+test("source filenames prefer publisher and never surface verbose reproduction provenance", () => {
+  assert.equal(filename({
+    canonicalTitle: "王国维遗书·第十三册", materialClass: "primary_source_modern_edition",
+    contributors: [{ label: "王国维", role: "author" }], editionType: "facsimile",
+    editionStatement: "据商务印书馆1940年版影印", publisher: "上海书店",
+    publicationDate: "1983", filenameStyle: "cjk_book",
+  }), "《王国维遗书·第十三册》（上海书店，1983）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "心史·上卷", materialClass: "traditional_book",
+    contributors: [{ label: "郑思肖", role: "author" }],
+    editionStatement: "明崇祯本", publicationDate: "1639", filenameStyle: "cjk_book",
+  }), "《心史·上卷》（明崇祯本，1639）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "某古籍", materialClass: "traditional_book",
+    contributors: [{ label: "古人", role: "author" }], editionType: "engraved",
+    publicationDate: "1600", filenameStyle: "cjk_book",
+  }), "《某古籍》（刻本，1600）.pdf");
+
+  assert.deepEqual(formatCatalogFilename({
+    canonicalTitle: "王国维遗书·第十三册", materialClass: "primary_source_modern_edition",
+    contributors: [{ label: "王国维", role: "author" }], editionType: "facsimile",
+    editionStatement: "据商务印书馆1940年版影印", publicationDate: "1983", filenameStyle: "cjk_book",
+  }), { status: "no_rename", reason: "missing_responsibility" });
+  assert.deepEqual(formatCatalogFilename({
+    canonicalTitle: "许鲁斋集", materialClass: "traditional_book",
+    contributors: [{ label: "许衡", role: "author" }],
+    editionStatement: "北京新一版", publicationDate: "1985", filenameStyle: "cjk_book",
+  }), { status: "no_rename", reason: "missing_responsibility" });
+  assert.deepEqual(formatCatalogFilename({
+    canonicalTitle: "影印史料", materialClass: "traditional_book",
+    contributors: [{ label: "古人", role: "author" }], editionType: "facsimile",
+    publicationDate: "1987", filenameStyle: "cjk_book",
+  }), { status: "no_rename", reason: "missing_responsibility" });
+  assert.deepEqual(formatCatalogFilename({
+    canonicalTitle: "无版本来源史料", materialClass: "traditional_book",
+    contributors: [{ label: "古人", role: "author" }], publicationDate: "1639", filenameStyle: "cjk_book",
+  }), { status: "no_rename", reason: "missing_responsibility" });
+});
+
 test("filename policy preserves Unicode, conservatively maps invalid characters, and never invents missing fields", () => {
   const sanitized = formatCatalogFilename({
     canonicalTitle: "书名:卷一/卷二?", materialClass: "scholarly_monograph",
