@@ -7,7 +7,7 @@ export const CATALOG_EVIDENCE_SCHEMA_VERSION = "academiccloud.catalog-evidence.v
 export const CATALOG_DISPOSITIONS = ["auto", "review", "unknown"] as const;
 export type CatalogDisposition = (typeof CATALOG_DISPOSITIONS)[number];
 
-export const CATALOG_FILENAME_STYLES = ["cjk_book", "cjk_article", "foreign_book"] as const;
+export const CATALOG_FILENAME_STYLES = ["cjk_book", "cjk_source", "cjk_article", "foreign_book", "preserve_original"] as const;
 export type CatalogFilenameStyle = (typeof CATALOG_FILENAME_STYLES)[number];
 
 export const CATALOG_EVIDENCE_FAILURE_CODES = [
