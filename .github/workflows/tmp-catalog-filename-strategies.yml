@@ -2,14 +2,15 @@ name: Temporary catalog filename strategy fix
 
 on:
   push:
-    branches: [fix/catalog-filename-strategies]
+    branches:
+      - fix/catalog-filename-strategies
 
 permissions:
   contents: write
 
 jobs:
   patch-test-commit:
-    if: github.actor != 'github-actions[bot]'
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,249 +21,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Apply exact scoped patch
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          contract = Path('compute-contracts/src/catalog-batch.ts')
-          text = contract.read_text()
-          old = 'export const CATALOG_FILENAME_STYLES = ["cjk_book", "cjk_article", "foreign_book"] as const;'
-          new = 'export const CATALOG_FILENAME_STYLES = ["cjk_book", "cjk_source", "cjk_article", "foreign_book", "preserve_original"] as const;'
-          assert old in text
-          contract.write_text(text.replace(old, new, 1))
-
-          policy = Path('backend/src/catalog-batch/filename-policy.ts')
-          policy.write_text(r'''import type { CatalogFilenameStyle } from "@academiccloud/compute-contracts";
-
-import type { BibliographicContributorInput, EditionType, MaterialClass } from "../bibliography/bibliography.js";
-
-export const MAX_CATALOG_FILENAME_CHARACTERS = 240;
-
-export interface CatalogFilenameInput {
-  canonicalTitle: string;
-  materialClass: MaterialClass;
-  contributors: BibliographicContributorInput[];
-  editionType?: EditionType | undefined;
-  editionStatement?: string | undefined;
-  publisher?: string | undefined;
-  currentFilename?: string | undefined;
-  dateStatement?: string | undefined;
-  publicationDate?: string | undefined;
-  responsibilityStatement?: string | undefined;
-  filenameStyle: CatalogFilenameStyle;
-}
-
-export type CatalogFilenameOutcome =
-  | { status: "proposed"; filename: string; responsibility: string | null; year: string | null }
-  | { status: "no_rename"; reason: "missing_title" | "missing_responsibility" | "missing_year" | "missing_original_filename" | "unsafe_filename" };
-
-const INVALID_FILENAME_CHARACTER = /[<>:"/\\|?*]/gu;
-const CONTROL_CHARACTER = /[\u0000-\u001f\u007f-\u009f]/gu;
-const HAS_CONTROL_CHARACTER = /[\u0000-\u001f\u007f-\u009f]/u;
-const INVALID_REPLACEMENTS: Readonly<Record<string, string>> = {
-  "<": "＜", ">": "＞", ":": "：", "\"": "＂", "/": "／",
-  "\\": "＼", "|": "｜", "?": "？", "*": "＊",
-};
-const SOURCE_MATERIAL_CLASSES = new Set<MaterialClass>([
-  "primary_source_modern_edition", "traditional_book", "collected_documents", "manuscript",
-]);
-const EDITION_TYPE_LABELS: Partial<Record<EditionType, string>> = {
-  critical_edition: "校勘本",
-  annotated_edition: "校注本",
-  collated_edition: "校勘本",
-  punctuated_edition: "点校本",
-  facsimile: "影印本",
-  reprint: "重印本",
-  engraved: "刻本",
-  recut: "重刻本",
-  facsimile_engraved: "影刻本",
-  movable_type: "活字本",
-  multicolor_print: "套印本",
-  manuscript_copy: "抄本",
-  hand_copy: "手抄本",
-  facsimile_hand_copy: "影抄本",
-  lithograph: "石印本",
-  letterpress: "铅印本",
-};
-
-function cleanComponent(value: string): string | null {
-  const normalized = value.normalize("NFC")
-    .replace(CONTROL_CHARACTER, " ")
-    .replace(INVALID_FILENAME_CHARACTER, (character) => INVALID_REPLACEMENTS[character] ?? "")
-    .replace(/\s+/gu, " ")
-    .trim()
-    .replace(/[ .]+$/gu, "");
-  return normalized ? normalized : null;
-}
-
-function authorLabels(contributors: BibliographicContributorInput[]): string[] {
-  return contributors.filter((entry) => entry.role === "author").map((entry) => entry.label);
-}
-
-function roleResponsibility(contributors: BibliographicContributorInput[]): string | null {
-  const relevant = contributors.filter((entry) => entry.role !== "author" && entry.roleLabel);
-  if (relevant.length === 0) return null;
-  const roleLabels = new Set(relevant.map((entry) => entry.roleLabel));
-  if (roleLabels.size === 1) {
-    return `${relevant.map((entry) => entry.label).join("、")}${relevant[0]!.roleLabel}`;
-  }
-  return relevant.map((entry) => `${entry.label}${entry.roleLabel}`).join("、");
-}
-
-function translatedResponsibility(contributors: BibliographicContributorInput[]): string | null {
-  const authors = authorLabels(contributors);
-  const translators = contributors.filter((entry) => entry.role === "translator");
-  if (authors.length === 0 || translators.length === 0 || translators.some((entry) => !entry.roleLabel)) return null;
-  const roleLabels = new Set(translators.map((entry) => entry.roleLabel));
-  if (roleLabels.size !== 1) return null;
-  return `${authors.join("、")}著、${translators.map((entry) => entry.label).join("、")}${translators[0]!.roleLabel}`;
-}
-
-function sourceVersionLabel(input: Pick<CatalogFilenameInput, "editionStatement" | "publisher" | "editionType">): string | null {
-  return cleanComponent(input.editionStatement ?? input.publisher ?? (input.editionType ? EDITION_TYPE_LABELS[input.editionType] ?? "" : ""));
-}
-
-function safeFilename(filename: string): boolean {
-  return [...filename].length <= MAX_CATALOG_FILENAME_CHARACTERS
-    && !HAS_CONTROL_CHARACTER.test(filename)
-    && !/[<>:"/\\|?*]/u.test(filename)
-    && !/[ .]\.pdf$/u.test(filename);
-}
-
-export function deriveCatalogResponsibility(input: Pick<CatalogFilenameInput, "materialClass" | "contributors" | "editionType" | "filenameStyle">): string | null {
-  if (input.filenameStyle === "preserve_original" || input.filenameStyle === "cjk_source") return null;
-  if (input.filenameStyle === "cjk_article" || input.filenameStyle === "foreign_book") {
-    const authors = authorLabels(input.contributors);
-    return authors.length > 0 ? authors.join(input.filenameStyle === "cjk_article" ? "、" : ", ") : null;
-  }
-  if (input.editionType === "translated_edition") return translatedResponsibility(input.contributors);
-  if (SOURCE_MATERIAL_CLASSES.has(input.materialClass)) return roleResponsibility(input.contributors);
-  const authors = authorLabels(input.contributors);
-  return authors.length > 0 ? authors.join("、") : roleResponsibility(input.contributors);
-}
-
-export function formatCatalogFilename(input: CatalogFilenameInput): CatalogFilenameOutcome {
-  if (input.filenameStyle === "preserve_original") {
-    const current = input.currentFilename?.normalize("NFC").trim();
-    if (!current) return { status: "no_rename", reason: "missing_original_filename" };
-    return { status: "proposed", filename: current, responsibility: null, year: null };
-  }
-
-  const title = cleanComponent(input.canonicalTitle);
-  if (!title) return { status: "no_rename", reason: "missing_title" };
-
-  // Small guides, unpublished working documents and similar un-authored
-  // `other` resources keep their existing filename unless a reviewer asks for
-  // an explicit normalization style.
-  if (input.filenameStyle === "cjk_book" && input.materialClass === "other" && input.contributors.length === 0 && input.currentFilename) {
-    const current = input.currentFilename.normalize("NFC").trim();
-    if (current) return { status: "proposed", filename: current, responsibility: null, year: null };
-  }
-
-  const year = cleanComponent(input.dateStatement ?? input.publicationDate ?? "");
-  const responsibility = deriveCatalogResponsibility(input);
-  const suppliedResponsibility = input.responsibilityStatement?.normalize("NFC").trim();
-
-  const useSourceVersion = input.filenameStyle === "cjk_source"
-    || input.filenameStyle === "cjk_book" && SOURCE_MATERIAL_CLASSES.has(input.materialClass) && responsibility === null;
-  if (useSourceVersion) {
-    const version = sourceVersionLabel(input);
-    if (!version && !year) return { status: "no_rename", reason: "missing_year" };
-    const detail = version && year ? `${version}，${year}` : version ?? year!;
-    const filename = `《${title}》（${detail}）.pdf`;
-    if (!safeFilename(filename)) return { status: "no_rename", reason: "unsafe_filename" };
-    return { status: "proposed", filename, responsibility: null, year };
-  }
-
-  if (!responsibility) return { status: "no_rename", reason: "missing_responsibility" };
-  if (suppliedResponsibility !== undefined && suppliedResponsibility !== responsibility) {
-    return { status: "no_rename", reason: "missing_responsibility" };
-  }
-  if (!year) return { status: "no_rename", reason: "missing_year" };
-  const safeResponsibility = cleanComponent(responsibility);
-  if (!safeResponsibility) return { status: "no_rename", reason: "missing_responsibility" };
-
-  const filename = input.filenameStyle === "cjk_article"
-    ? `${safeResponsibility}：《${title}》（${year}）.pdf`
-    : input.filenameStyle === "foreign_book"
-      ? `${title} (${safeResponsibility}, ${year}).pdf`
-      : `《${title}》（${safeResponsibility}，${year}）.pdf`;
-  if (!safeFilename(filename)) return { status: "no_rename", reason: "unsafe_filename" };
-  return { status: "proposed", filename, responsibility: safeResponsibility, year };
-}
-''')
-
-          service = Path('backend/src/catalog-batch/catalog-batch-service.ts')
-          text = service.read_text()
-          old = '''    const filename = formatCatalogFilename({
-      canonicalTitle: imported.canonicalTitle,
-      materialClass: imported.profile.materialClass,
-      contributors: imported.profile.contributors,
-      ...(imported.profile.carrierEdition.editionType ? { editionType: imported.profile.carrierEdition.editionType } : {}),
-      ...(imported.dateStatement ? { dateStatement: imported.dateStatement } : {}),
-      ...(imported.profile.publication.publicationDate ? { publicationDate: imported.profile.publication.publicationDate } : {}),
-      ...(imported.responsibilityStatement ? { responsibilityStatement: imported.responsibilityStatement } : {}),
-      filenameStyle: imported.filenameStyle,
-    });'''
-          new = '''    const filename = formatCatalogFilename({
-      canonicalTitle: imported.canonicalTitle,
-      materialClass: imported.profile.materialClass,
-      contributors: imported.profile.contributors,
-      currentFilename,
-      ...(imported.profile.carrierEdition.editionType ? { editionType: imported.profile.carrierEdition.editionType } : {}),
-      ...(imported.profile.carrierEdition.editionStatement ? { editionStatement: imported.profile.carrierEdition.editionStatement } : {}),
-      ...(imported.profile.publication.publisher ? { publisher: imported.profile.publication.publisher } : {}),
-      ...(imported.dateStatement ? { dateStatement: imported.dateStatement } : {}),
-      ...(imported.profile.publication.publicationDate ? { publicationDate: imported.profile.publication.publicationDate } : {}),
-      ...(imported.responsibilityStatement ? { responsibilityStatement: imported.responsibilityStatement } : {}),
-      filenameStyle: imported.filenameStyle,
-    });'''
-          assert old in text
-          service.write_text(text.replace(old, new, 1))
-
-          tests = Path('backend/test/catalog-batch/filename-policy.test.ts')
-          t = tests.read_text()
-          t = t.replace('"《蒙古与教廷》（冯承钧译，1994）.pdf"', '"《蒙古与教廷》（伯希和著、冯承钧译，1994）.pdf"')
-          t = t.replace('"《译本》（甲、乙译，2025）.pdf"', '"《译本》（原作者著、甲、乙译，2025）.pdf"')
-          insert = r'''
-
-test("source/version and preserve-original strategies match the Owner-approved library conventions", () => {
-  assert.equal(filename({
-    canonicalTitle: "元史（全十五册）", materialClass: "primary_source_modern_edition",
-    contributors: [{ label: "宋濂", role: "author" }], editionType: "punctuated_edition",
-    publisher: "中华书局", publicationDate: "1976", filenameStyle: "cjk_book",
-  }), "《元史（全十五册）》（中华书局，1976）.pdf");
-  assert.equal(filename({
-    canonicalTitle: "三朝北盟会编（上册）", materialClass: "traditional_book",
-    contributors: [{ label: "徐梦莘", role: "author" }], editionType: "facsimile",
-    publisher: "上海古籍出版社", publicationDate: "1987", filenameStyle: "cjk_book",
-  }), "《三朝北盟会编（上册）》（上海古籍出版社，1987）.pdf");
-  assert.equal(filename({
-    canonicalTitle: "真腊风土记", materialClass: "primary_source_modern_edition",
-    contributors: [{ label: "夏鼐", role: "annotator", roleLabel: "校注" }],
-    publisher: "中华书局", publicationDate: "1981", filenameStyle: "cjk_book",
-  }), "《真腊风土记》（夏鼐校注，1981）.pdf");
-  assert.equal(filename({
-    canonicalTitle: "基础史料", materialClass: "primary_source_modern_edition",
-    contributors: [{ label: "某人", role: "collator", roleLabel: "点校" }],
-    publisher: "某出版社", publicationDate: "2000", filenameStyle: "cjk_source",
-  }), "《基础史料》（某出版社，2000）.pdf");
-  assert.equal(filename({
-    canonicalTitle: "关于《历史研究》文献引证标注方式的规定", materialClass: "other", contributors: [],
-    currentFilename: "关于《历史研究》文献引证标注方式的规定.pdf", publicationDate: "2005", filenameStyle: "cjk_book",
-  }), "关于《历史研究》文献引证标注方式的规定.pdf");
-  assert.equal(filename({
-    canonicalTitle: "任意元数据题名", materialClass: "other", contributors: [],
-    currentFilename: "未出版点校稿.docx", filenameStyle: "preserve_original",
-  }), "未出版点校稿.docx");
-});
-'''
-          assert 'test("filename policy preserves Unicode' in t
-          t = t.replace('\ntest("filename policy preserves Unicode', insert + '\ntest("filename policy preserves Unicode', 1)
-          tests.write_text(t)
-          PY
+      - name: Apply scoped patch
+        run: python3 scripts/tmp_catalog_filename_patch.py
       - name: Install
         run: npm ci
       - name: Typecheck
@@ -276,7 +36,7 @@ test("source/version and preserve-original strategies match the Owner-approved l
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add compute-contracts/src/catalog-batch.ts backend/src/catalog-batch/filename-policy.ts backend/src/catalog-batch/catalog-batch-service.ts backend/test/catalog-batch/filename-policy.test.ts
+          git add backend/src/catalog-batch/catalog-batch-service.ts backend/test/catalog-batch/filename-policy.test.ts
           git diff --cached --check
-          git commit -m 'fix: align catalog filename strategies'
+          git commit -m 'fix: wire catalog filename strategies'
           git push origin HEAD:fix/catalog-filename-strategies
