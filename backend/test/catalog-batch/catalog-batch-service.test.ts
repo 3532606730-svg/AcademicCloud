@@ -162,7 +162,7 @@ test("eight-class local roundtrip previews without mutation and applies only exp
   assert.deepEqual(preview.counts, { AUTO: 6, REVIEW: 0, UNKNOWN: 1, EXCLUDED: 0, STALE: 0, COLLISION: 1, UNCHANGED: 0 });
   assert.equal(preview.items.find((entry) => entry.resourceId === "modern")?.proposedFilename, "《蒙元史研究》（刘晓，2009）.pdf");
   assert.equal(preview.items.find((entry) => entry.resourceId === "historical")?.proposedFilename, "《蒙古秘史》（余大钧译注，2005）.pdf");
-  assert.equal(preview.items.find((entry) => entry.resourceId === "translated")?.proposedFilename, "《蒙古与教廷》（冯承钧译，1994）.pdf");
+  assert.equal(preview.items.find((entry) => entry.resourceId === "translated")?.proposedFilename, "《蒙古与教廷》（伯希和著、冯承钧译，1994）.pdf");
   assert.equal(preview.items.find((entry) => entry.resourceId === "multiple")?.proposedFilename, "《某书》（甲、乙校注，年份）.pdf");
   assert.equal(preview.items.find((entry) => entry.resourceId === "article")?.proposedFilename, "作者：《论文名》（年份）.pdf");
   assert.equal(preview.items.find((entry) => entry.resourceId === "foreign")?.proposedFilename, "The Mongols (David Morgan, 2007).pdf");

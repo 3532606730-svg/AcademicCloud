@@ -18,7 +18,7 @@ test("academiccloud.filename.v1 emits the exact Owner-approved bibliographic for
     canonicalTitle: "蒙古与教廷", materialClass: "scholarly_monograph", editionType: "translated_edition",
     contributors: [{ label: "伯希和", role: "author" }, { label: "冯承钧", role: "translator", roleLabel: "译" }],
     publicationDate: "1994", filenameStyle: "cjk_book",
-  }), "《蒙古与教廷》（冯承钧译，1994）.pdf");
+  }), "《蒙古与教廷》（伯希和著、冯承钧译，1994）.pdf");
   assert.equal(filename({
     canonicalTitle: "译本", materialClass: "scholarly_monograph", editionType: "translated_edition",
     contributors: [
@@ -27,7 +27,7 @@ test("academiccloud.filename.v1 emits the exact Owner-approved bibliographic for
       { label: "乙", role: "translator", roleLabel: "译" },
     ],
     publicationDate: "2025", filenameStyle: "cjk_book",
-  }), "《译本》（甲、乙译，2025）.pdf");
+  }), "《译本》（原作者著、甲、乙译，2025）.pdf");
   assert.equal(filename({
     canonicalTitle: "蒙古秘史", materialClass: "primary_source_modern_edition",
     contributors: [{ label: "余大钧", role: "annotator", roleLabel: "译注" }], publicationDate: "2005", filenameStyle: "cjk_book",
@@ -51,6 +51,38 @@ test("academiccloud.filename.v1 emits the exact Owner-approved bibliographic for
     canonicalTitle: "The Mongols", materialClass: "scholarly_monograph",
     contributors: [{ label: "David Morgan", role: "author" }], publicationDate: "2007", filenameStyle: "foreign_book",
   }), "The Mongols (David Morgan, 2007).pdf");
+});
+
+
+test("source/version and preserve-original strategies match the Owner-approved library conventions", () => {
+  assert.equal(filename({
+    canonicalTitle: "元史（全十五册）", materialClass: "primary_source_modern_edition",
+    contributors: [{ label: "宋濂", role: "author" }], editionType: "punctuated_edition",
+    publisher: "中华书局", publicationDate: "1976", filenameStyle: "cjk_book",
+  }), "《元史（全十五册）》（中华书局，1976）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "三朝北盟会编（上册）", materialClass: "traditional_book",
+    contributors: [{ label: "徐梦莘", role: "author" }], editionType: "facsimile",
+    publisher: "上海古籍出版社", publicationDate: "1987", filenameStyle: "cjk_book",
+  }), "《三朝北盟会编（上册）》（上海古籍出版社，1987）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "真腊风土记", materialClass: "primary_source_modern_edition",
+    contributors: [{ label: "夏鼐", role: "annotator", roleLabel: "校注" }],
+    publisher: "中华书局", publicationDate: "1981", filenameStyle: "cjk_book",
+  }), "《真腊风土记》（夏鼐校注，1981）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "基础史料", materialClass: "primary_source_modern_edition",
+    contributors: [{ label: "某人", role: "collator", roleLabel: "点校" }],
+    publisher: "某出版社", publicationDate: "2000", filenameStyle: "cjk_source",
+  }), "《基础史料》（某出版社，2000）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "关于《历史研究》文献引证标注方式的规定", materialClass: "other", contributors: [],
+    currentFilename: "关于《历史研究》文献引证标注方式的规定.pdf", publicationDate: "2005", filenameStyle: "cjk_book",
+  }), "关于《历史研究》文献引证标注方式的规定.pdf");
+  assert.equal(filename({
+    canonicalTitle: "任意元数据题名", materialClass: "other", contributors: [],
+    currentFilename: "未出版点校稿.docx", filenameStyle: "preserve_original",
+  }), "未出版点校稿.docx");
 });
 
 test("filename policy preserves Unicode, conservatively maps invalid characters, and never invents missing fields", () => {
