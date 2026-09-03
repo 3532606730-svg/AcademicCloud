@@ -1,0 +1,196 @@
+name: Temporary library primary preview and AI opt-in fix
+
+on:
+  push:
+    branches:
+      - fix/library-primary-preview-ai-opt-in
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply scoped frontend fix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly 1 match, found {count}")
+              return text.replace(old, new, 1)
+
+          # App: primary title click previews the item; Resource details remains an explicit row-menu action.
+          app_path = Path("frontend/src/App.tsx")
+          app = app_path.read_text(encoding="utf-8")
+          app = replace_once(
+              app,
+              '''              {onOpenHoldingDetails ? (\n                <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onOpenHoldingDetails(library, holding, event.currentTarget)}>{displayTitle}</button>\n              ) : <strong className="entry-filename" title={displayTitle}>{displayTitle}</strong>}''',
+              '''              {isPreviewable(holding.file) && onPreviewHolding ? (\n                <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onPreviewHolding(library, holding, event.currentTarget)}>{displayTitle}</button>\n              ) : onOpenHoldingDetails ? (\n                <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onOpenHoldingDetails(library, holding, event.currentTarget)}>{displayTitle}</button>\n              ) : <strong className="entry-filename" title={displayTitle}>{displayTitle}</strong>}''',
+              "primary holding click",
+          )
+          menu_anchor = '''                  ...(isPreviewable(holding.file) && onPreviewHolding ? [{\n                    key: "preview",\n                    label: t("menu.preview"),\n                    disabled: busyId === `preview-${holding.file.id}`,\n                    onSelect: (trigger: HTMLElement) => onPreviewHolding(library, holding, trigger),\n                  }] : []),\n                  {\n                    key: "download",'''
+          menu_replacement = '''                  ...(isPreviewable(holding.file) && onPreviewHolding ? [{\n                    key: "preview",\n                    label: t("menu.preview"),\n                    disabled: busyId === `preview-${holding.file.id}`,\n                    onSelect: (trigger: HTMLElement) => onPreviewHolding(library, holding, trigger),\n                  }] : []),\n                  ...(onOpenHoldingDetails ? [{\n                    key: "details",\n                    label: t("metadata.details"),\n                    onSelect: (trigger: HTMLElement) => onOpenHoldingDetails(library, holding, trigger),\n                  }] : []),\n                  {\n                    key: "download",'''
+          app = replace_once(app, menu_anchor, menu_replacement, "holding details menu action")
+          app = replace_once(
+              app,
+              '''        <ResourceDetailsDialog\n          api={api}\n          library={resourceDetailsRequest.library}''',
+              '''        <ResourceDetailsDialog\n          key={`${resourceDetailsRequest.library.id}:${resourceDetailsRequest.holding.file.id}`}\n          api={api}\n          autoLoadSuggestions={false}\n          library={resourceDetailsRequest.library}''',
+              "production details AI opt-in",
+          )
+          app_path.write_text(app, encoding="utf-8")
+
+          # Resource details: AI history/status is opt-in. Existing callers retain eager behavior unless they opt out.
+          details_path = Path("frontend/src/resource-details.tsx")
+          details = details_path.read_text(encoding="utf-8")
+          details = replace_once(
+              details,
+              '''  holding,\n  returnFocus,\n  onClose,''',
+              '''  holding,\n  returnFocus,\n  autoLoadSuggestions = true,\n  onClose,''',
+              "details destructuring",
+          )
+          details = replace_once(
+              details,
+              '''  holding: LibraryHolding;\n  returnFocus?: HTMLElement | null;\n  onClose: () => void;''',
+              '''  holding: LibraryHolding;\n  returnFocus?: HTMLElement | null;\n  autoLoadSuggestions?: boolean;\n  onClose: () => void;''',
+              "details prop type",
+          )
+          details = replace_once(
+              details,
+              '''  const [pendingAuthorityCandidateId, setPendingAuthorityCandidateId] = useState<string | null>(null);\n  const [suggestionRun, setSuggestionRun] = useState<MetadataSuggestionRun | null>(null);''',
+              '''  const [pendingAuthorityCandidateId, setPendingAuthorityCandidateId] = useState<string | null>(null);\n  const [suggestionsEnabled, setSuggestionsEnabled] = useState(autoLoadSuggestions);\n  const [suggestionRun, setSuggestionRun] = useState<MetadataSuggestionRun | null>(null);''',
+              "suggestion enabled state",
+          )
+          details = replace_once(
+              details,
+              '''  useEffect(() => {\n    if (!api.getLibraryMetadataSuggestions) {\n      setSuggestionRun(null);''',
+              '''  useEffect(() => {\n    if (!suggestionsEnabled) {\n      setSuggestionRun(null);\n      setSuggestionJob(null);\n      setCataloguingState(null);\n      setSuggestionsLoading(false);\n      setSuggestionsError(null);\n      setSelectedSuggestionIds(new Set());\n      return;\n    }\n    if (!api.getLibraryMetadataSuggestions) {\n      setSuggestionRun(null);''',
+              "gate suggestion history",
+          )
+          details = replace_once(
+              details,
+              '''  }, [api, library.id, holding.file.id]);\n\n  useEffect(() => {\n    if (api.getLatestLibraryMetadataSuggestionStates) {''',
+              '''  }, [api, library.id, holding.file.id, suggestionsEnabled]);\n\n  useEffect(() => {\n    if (!suggestionsEnabled) return;\n    if (api.getLatestLibraryMetadataSuggestionStates) {''',
+              "gate suggestion state",
+          )
+          details = replace_once(
+              details,
+              '''  }, [api, library.id, holding.file.id, onSuggestionJobChange]);\n\n  useEffect(() => {\n    if (!suggestionJob || !api.getLibraryMetadataSuggestionJob) return;''',
+              '''  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionsEnabled]);\n\n  useEffect(() => {\n    if (!suggestionsEnabled || !suggestionJob || !api.getLibraryMetadataSuggestionJob) return;''',
+              "gate suggestion polling",
+          )
+          details = replace_once(
+              details,
+              '''  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionJob?.id]);''',
+              '''  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionJob?.id, suggestionsEnabled]);''',
+              "poll dependencies",
+          )
+
+          helper = '''  function renderSuggestionTools() {\n    if (!api.getLibraryMetadataSuggestions && !api.generateLibraryMetadataSuggestions) return null;\n    if (!suggestionsEnabled) {\n      return (\n        <div className="resource-details-actions">\n          <button className="button button--quiet" type="button" onClick={() => setSuggestionsEnabled(true)}>\n            {t("metadata.suggestions.open")}\n          </button>\n        </div>\n      );\n    }\n    return (\n      <MetadataSuggestionsPanel\n        run={suggestionRun}\n        job={suggestionJob}\n        authoritativeState={cataloguingState}\n        fieldAuthorities={detail?.fieldAuthorities ?? []}\n        loading={suggestionsLoading}\n        generating={suggestionsGenerating}\n        accepting={suggestionsAccepting}\n        error={suggestionsError}\n        manager={library.role === "manager" && Boolean(detail?.canEditMetadata)}\n        requiresEditor={!detail?.metadata && !editing}\n        selectedIds={selectedSuggestionIds}\n        onGenerate={() => void generateSuggestions()}\n        onToggle={(candidateId) => setSelectedSuggestionIds((current) => {\n          const next = new Set(current);\n          if (next.has(candidateId)) next.delete(candidateId);\n          else next.add(candidateId);\n          return next;\n        })}\n        onUseInEditor={useSuggestionInEditor}\n        onAccept={() => void acceptSuggestions()}\n        t={t}\n        language={language}\n      />\n    );\n  }\n\n'''
+          details = replace_once(
+              details,
+              '''  const metadata = detail?.metadata;''',
+              helper + '''  const metadata = detail?.metadata;''',
+              "suggestion tools helper",
+          )
+
+          panel_pattern = re.compile(
+              r'''\{\(api\.getLibraryMetadataSuggestions \|\| api\.generateLibraryMetadataSuggestions\) && \(\n\s*<MetadataSuggestionsPanel\n.*?\n\s*language=\{language\}\n\s*/>\n\s*\)\}''',
+              re.S,
+          )
+          details, panel_count = panel_pattern.subn('{renderSuggestionTools()}', details)
+          if panel_count != 2:
+              raise SystemExit(f"suggestion panel replacement: expected 2 matches, found {panel_count}")
+          details_path.write_text(details, encoding="utf-8")
+
+          # Localize the opt-in action in both supported languages.
+          i18n_path = Path("frontend/src/i18n.ts")
+          i18n = i18n_path.read_text(encoding="utf-8")
+          generate_pattern = re.compile(r'(?m)^(\s*)"metadata\.suggestions\.generate":\s*"[^"]+",$')
+          labels = iter(["AI-assisted cataloguing", "AI 辅助编目"])
+          count = 0
+          def add_open(match):
+              global count
+              count += 1
+              label = next(labels)
+              return f'{match.group(1)}"metadata.suggestions.open": "{label}",\\n{match.group(0)}'
+          i18n = generate_pattern.sub(add_open, i18n)
+          if count != 2:
+              raise SystemExit(f"i18n opt-in label: expected 2 matches, found {count}")
+          # Convert the deliberate escaped newline inserted by the callback to a real newline.
+          i18n = i18n.replace('\\n  "metadata.suggestions.generate"', '\n  "metadata.suggestions.generate"')
+          i18n_path.write_text(i18n, encoding="utf-8")
+
+          # Resource-details focused regression: opening normal details performs no AI history/status I/O.
+          rtest_path = Path("frontend/src/resource-details.test.tsx")
+          rtest = rtest_path.read_text(encoding="utf-8")
+          rtest = replace_once(
+              rtest,
+              '''  onSuggestionJobChange?: (job: DerivedMetadataJob, authoritativeState?: MetadataCataloguingState) => void;\n} = {}) {''',
+              '''  onSuggestionJobChange?: (job: DerivedMetadataJob, authoritativeState?: MetadataCataloguingState) => void;\n  autoLoadSuggestions?: boolean;\n} = {}) {''',
+              "test helper option",
+          )
+          rtest = replace_once(
+              rtest,
+              '''        onCitation={onCitation}\n        {...(options.onSuggestionJobChange === undefined''',
+              '''        onCitation={onCitation}\n        {...(options.autoLoadSuggestions === undefined ? {} : { autoLoadSuggestions: options.autoLoadSuggestions })}\n        {...(options.onSuggestionJobChange === undefined''',
+              "test helper prop",
+          )
+          new_test = '''  it("keeps AI history opt-in when automatic suggestion loading is disabled", async () => {\n    const getSuggestions = vi.fn().mockResolvedValue(null);\n    const getStates = vi.fn().mockResolvedValue([]);\n    const generate = vi.fn();\n    renderDetails({\n      autoLoadSuggestions: false,\n      api: {\n        getLibraryMetadataSuggestions: getSuggestions,\n        getLatestLibraryMetadataSuggestionStates: getStates,\n        generateLibraryMetadataSuggestions: generate,\n      },\n    });\n    const user = userEvent.setup();\n    await screen.findByRole("dialog", { name: "元西域人华化考" });\n    expect(getSuggestions).not.toHaveBeenCalled();\n    expect(getStates).not.toHaveBeenCalled();\n    expect(generate).not.toHaveBeenCalled();\n\n    await user.click(screen.getByRole("button", { name: "AI-assisted cataloguing" }));\n    await waitFor(() => expect(getSuggestions).toHaveBeenCalledTimes(1));\n    await waitFor(() => expect(getStates).toHaveBeenCalledTimes(1));\n    expect(generate).not.toHaveBeenCalled();\n  });\n\n'''
+          rtest = replace_once(
+              rtest,
+              '''describe("Resource details", () => {\n''',
+              '''describe("Resource details", () => {\n''' + new_test,
+              "insert opt-in regression",
+          )
+          rtest_path.write_text(rtest, encoding="utf-8")
+
+          # App regression: title click is preview; details remains explicitly available in row actions.
+          atest_path = Path("frontend/src/App.test.tsx")
+          atest = atest_path.read_text(encoding="utf-8")
+          atest = replace_once(
+              atest,
+              '''    await user.click(within(holdingRow as HTMLElement).getByRole("button", { name: "Add book.pdf to favorites" }));\n    await waitFor(() => expect(api.setFileFavorite).toHaveBeenCalledWith("library-file-0", true));\n\n    const menu = await openRowMenu("book.pdf");''',
+              '''    await user.click(within(holdingRow as HTMLElement).getByRole("button", { name: "Add book.pdf to favorites" }));\n    await waitFor(() => expect(api.setFileFavorite).toHaveBeenCalledWith("library-file-0", true));\n\n    await user.click(within(holdingRow as HTMLElement).getByRole("button", { name: "book.pdf" }));\n    await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(canonical.id, "library-file-0", "inline"));\n    await user.click(screen.getByRole("button", { name: "Close preview" }));\n\n    const menu = await openRowMenu("book.pdf");\n    expect(within(menu).getByRole("menuitem", { name: "Resource details" })).toBeInTheDocument();''',
+              "app primary preview regression",
+          )
+          atest_path.write_text(atest, encoding="utf-8")
+          PY
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Run focused frontend tests
+        run: npm run test --workspace @academiccloud/frontend -- resource-details.test.tsx App.test.tsx
+
+      - name: Build frontend
+        run: npm run build --workspace @academiccloud/frontend
+
+      - name: Commit verified scoped fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/tmp-library-primary-preview-ai-opt-in.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/App.tsx frontend/src/App.test.tsx frontend/src/resource-details.tsx frontend/src/resource-details.test.tsx frontend/src/i18n.ts .github/workflows/tmp-library-primary-preview-ai-opt-in.yml
+          git diff --cached --check
+          git commit -m 'fix(frontend): make AI cataloguing opt-in'
+          git push origin HEAD:fix/library-primary-preview-ai-opt-in
