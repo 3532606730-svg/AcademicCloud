@@ -10,6 +10,9 @@ import type {
 import {
   exportCatalogEvidenceLocally,
   LocalCatalogBridgeError,
+  localCatalogErrorText,
+  localCatalogProgressText,
+  localCatalogReadyText,
   localCatalogText,
 } from "./catalog-local-bridge.ts";
 import { describeError } from "./i18n.ts";
@@ -105,6 +108,7 @@ export function BatchCatalogDialog({
   const [selectedPreviewIds, setSelectedPreviewIds] = useState<ReadonlySet<string>>(new Set());
   const [applyResults, setApplyResults] = useState<CatalogApplyResult[] | null>(null);
   const [exportStatus, setExportStatus] = useState<string>("");
+  const [exportStatusKind, setExportStatusKind] = useState<"progress" | "success" | "warning">("progress");
   const [localExportError, setLocalExportError] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -153,18 +157,24 @@ export function BatchCatalogDialog({
     const controller = new AbortController();
     exportAbortRef.current?.abort();
     exportAbortRef.current = controller;
-    setBusy(true); setError(null); setExportStatus(""); setLocalExportError("");
+    setBusy(true); setError(null); setExportStatus(""); setExportStatusKind("progress"); setLocalExportError("");
     try {
       const request = await api.createCatalogBatchExportRequest(library.id, [...resourceIds]);
       if (controller.signal.aborted) return;
-      const localPackage = await exportCatalogEvidenceLocally(request, fetch, controller.signal);
+      const localPackage = await exportCatalogEvidenceLocally(request, fetch, controller.signal, (progress) => {
+        if (controller.signal.aborted || closedRef.current) return;
+        setExportStatusKind("progress");
+        setExportStatus(localCatalogProgressText(language, progress));
+      });
       if (controller.signal.aborted || closedRef.current) return;
       downloadBlob(localPackage.filename, localPackage.blob);
-      setExportStatus(localCatalogText(language, "ready", request.manifest.resources.length));
+      setExportStatusKind(localPackage.failedResources > 0 ? "warning" : "success");
+      setExportStatus(localCatalogReadyText(language, request.manifest.resources.length, localPackage.failedResources));
     } catch (caught: unknown) {
       if (caught instanceof LocalCatalogBridgeError) {
         if (caught.code === "cancelled" || closedRef.current) return;
-        setLocalExportError(localCatalogText(language, caught.code === "unavailable" ? "unavailable" : caught.code === "busy" ? "busy" : "failed"));
+        setExportStatus("");
+        setLocalExportError(localCatalogErrorText(language, caught.code));
       } else if (!closedRef.current) {
         setError(caught);
       }
@@ -255,7 +265,11 @@ export function BatchCatalogDialog({
           ))}
         </div>
         <button className="button button--primary" type="button" disabled={busy || resourceIds.size < 1} onClick={() => void exportRequest()}>{localCatalogText(language, "generate")}</button>
-        {exportStatus && <div className="alert alert--success" role="status">{exportStatus}</div>}
+        {exportStatus && (
+          <div className={`alert ${exportStatusKind === "success" ? "alert--success" : "alert--warning"}`} role="status">
+            {exportStatus}
+          </div>
+        )}
       </section>
       <section aria-labelledby="batch-catalog-import-title">
         <h3 id="batch-catalog-import-title">{t("batchCatalog.importTitle")}</h3>
