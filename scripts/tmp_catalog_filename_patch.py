@@ -72,3 +72,8 @@ if 'source/version and preserve-original strategies' not in t:
         raise SystemExit('test marker not found')
     t = t.replace(marker, insert + marker, 1)
 tests.write_text(t, encoding='utf-8')
+
+service_tests = Path('backend/test/catalog-batch/catalog-batch-service.test.ts')
+s = service_tests.read_text(encoding='utf-8')
+s = s.replace('《蒙古与教廷》（冯承钧译，1994）.pdf', '《蒙古与教廷》（伯希和著、冯承钧译，1994）.pdf')
+service_tests.write_text(s, encoding='utf-8')
