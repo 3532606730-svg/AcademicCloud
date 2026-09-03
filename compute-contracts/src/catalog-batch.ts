@@ -2,12 +2,22 @@ export const CATALOG_BATCH_SCHEMA_VERSION = "academiccloud.catalog-batch.v1" as 
 export const CATALOG_EXPORT_REQUEST_SCHEMA_VERSION = "academiccloud.catalog-export-request.v1" as const;
 export const CATALOG_RESULTS_SCHEMA_VERSION = "academiccloud.catalog-results.v1" as const;
 export const CATALOG_FILENAME_POLICY_VERSION = "academiccloud.filename.v1" as const;
+export const CATALOG_EVIDENCE_SCHEMA_VERSION = "academiccloud.catalog-evidence.v2" as const;
 
 export const CATALOG_DISPOSITIONS = ["auto", "review", "unknown"] as const;
 export type CatalogDisposition = (typeof CATALOG_DISPOSITIONS)[number];
 
 export const CATALOG_FILENAME_STYLES = ["cjk_book", "cjk_article", "foreign_book"] as const;
 export type CatalogFilenameStyle = (typeof CATALOG_FILENAME_STYLES)[number];
+
+export const CATALOG_EVIDENCE_FAILURE_CODES = [
+  "source_unavailable",
+  "identity_mismatch",
+  "limit_exceeded",
+  "inspection_failed",
+  "timeout",
+] as const;
+export type CatalogEvidenceFailureCode = (typeof CATALOG_EVIDENCE_FAILURE_CODES)[number];
 
 export interface CatalogSourceIdentity {
   sourceFingerprint: string;
@@ -62,6 +72,7 @@ export interface CatalogEvidencePage {
   text: string;
 }
 
+/** Historical evidence shape retained for compatibility with direct V1 exporters. */
 export interface CatalogResourceEvidence {
   schemaVersion: "academiccloud.catalog-evidence.v1";
   resourceId: string;
@@ -71,6 +82,27 @@ export interface CatalogResourceEvidence {
   embeddedMetadata: Record<string, string>;
   pages: CatalogEvidencePage[];
   complete: boolean;
+}
+
+export type CatalogEvidenceInspection =
+  | { status: "ready"; failureCode: null }
+  | { status: "failed"; failureCode: CatalogEvidenceFailureCode };
+
+/**
+ * Batch-resilient evidence shape. Failed resources retain immutable source
+ * identity but contain no inferred bibliographic evidence. Reviewers must emit
+ * UNKNOWN for them rather than infer facts from a filename or neighboring item.
+ */
+export interface CatalogResourceEvidenceV2 {
+  schemaVersion: typeof CATALOG_EVIDENCE_SCHEMA_VERSION;
+  resourceId: string;
+  sourceIdentity: CatalogSourceIdentity;
+  currentFilename: string;
+  pageCount: number | null;
+  embeddedMetadata: Record<string, string>;
+  pages: CatalogEvidencePage[];
+  complete: boolean;
+  inspection: CatalogEvidenceInspection;
 }
 
 /**
