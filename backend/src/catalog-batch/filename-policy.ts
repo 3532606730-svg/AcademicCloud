@@ -125,9 +125,13 @@ export function formatCatalogFilename(input: CatalogFilenameInput): CatalogFilen
   const year = cleanComponent(input.dateStatement ?? input.publicationDate ?? "");
   const responsibility = deriveCatalogResponsibility(input);
   const suppliedResponsibility = input.responsibilityStatement?.normalize("NFC").trim();
+  const hasModernResponsibilityCandidate = input.contributors.some((entry) => entry.role !== "author");
 
   const useSourceVersion = input.filenameStyle === "cjk_source"
-    || input.filenameStyle === "cjk_book" && SOURCE_MATERIAL_CLASSES.has(input.materialClass) && responsibility === null;
+    || input.filenameStyle === "cjk_book"
+      && SOURCE_MATERIAL_CLASSES.has(input.materialClass)
+      && responsibility === null
+      && !hasModernResponsibilityCandidate;
   if (useSourceVersion) {
     const version = sourceVersionLabel(input);
     if (!version && !year) return { status: "no_rename", reason: "missing_year" };
