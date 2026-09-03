@@ -89,14 +89,27 @@ test("source filenames prefer publisher and never surface verbose reproduction p
   assert.equal(filename({
     canonicalTitle: "王国维遗书·第十三册", materialClass: "primary_source_modern_edition",
     contributors: [{ label: "王国维", role: "author" }], editionType: "facsimile",
-    editionStatement: "据商务印书馆1940年版影印", publisher: "上海书店",
+    editionStatement: "据商务印书馆1940年版影印", publisher: "上海古籍书店",
     publicationDate: "1983", filenameStyle: "cjk_book",
-  }), "《王国维遗书·第十三册》（上海书店，1983）.pdf");
+  }), "《王国维遗书·第十三册》（上海古籍书店，1983）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "许鲁斋集", materialClass: "traditional_book",
+    contributors: [{ label: "许衡", role: "author" }], editionType: "reprint",
+    editionStatement: "北京新一版", publisher: "中华书局",
+    publicationDate: "1985", filenameStyle: "cjk_book",
+  }), "《许鲁斋集》（中华书局，1985）.pdf");
   assert.equal(filename({
     canonicalTitle: "心史·上卷", materialClass: "traditional_book",
     contributors: [{ label: "郑思肖", role: "author" }],
-    editionStatement: "明崇祯本", publicationDate: "1639", filenameStyle: "cjk_book",
+    currentFilename: "心史·上 [宋]郑思肖撰 （明崇祯本）.pdf",
+    publicationDate: "1639", filenameStyle: "cjk_book",
   }), "《心史·上卷》（明崇祯本，1639）.pdf");
+  assert.equal(filename({
+    canonicalTitle: "心史·下卷", materialClass: "traditional_book",
+    contributors: [{ label: "郑思肖", role: "author" }],
+    sourceDynasty: "明", sourceReignTitle: "崇祯", sourceEditionType: "engraved",
+    sourceEditionStatement: "崇祯十二年刊本", publicationDate: "1639", filenameStyle: "cjk_book",
+  }), "《心史·下卷》（明崇祯本，1639）.pdf");
   assert.equal(filename({
     canonicalTitle: "某古籍", materialClass: "traditional_book",
     contributors: [{ label: "古人", role: "author" }], editionType: "engraved",
