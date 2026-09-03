@@ -80,7 +80,7 @@ class IsolatingInspector implements BoundedPdfTextSource {
 
 class TypedFailureInspector implements BoundedPdfTextSource {
   inspect(): Promise<never> { throw new Error("whole object path forbidden"); }
-  async inspectRange(source: PdfRangeSource) {
+  async inspectRange(source: PdfRangeSource): Promise<never> {
     if (source.length === 100) throw new CatalogExportError("source_unavailable");
     if (source.length === 101) throw new CatalogExportError("identity_mismatch");
     throw new CatalogExportError("limit_exceeded");
