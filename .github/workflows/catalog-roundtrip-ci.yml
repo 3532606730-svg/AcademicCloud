@@ -57,7 +57,9 @@ jobs:
           npm run build --workspace @academiccloud/compute
           npx --no-install tsx --test \
             compute/test/catalog-batch-export.test.ts \
+            compute/test/catalog-batch-resilience.test.ts \
             compute/test/catalog-bridge.test.ts \
+            compute/test/catalog-bridge-resilience.test.ts \
             compute/test/catalog-bridge-entrypoint.test.ts
 
       - name: Verify frontend source and tests
