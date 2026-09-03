@@ -10,6 +10,10 @@ export interface CatalogFilenameInput {
   contributors: BibliographicContributorInput[];
   editionType?: EditionType | undefined;
   editionStatement?: string | undefined;
+  sourceEditionType?: EditionType | undefined;
+  sourceEditionStatement?: string | undefined;
+  sourceDynasty?: string | undefined;
+  sourceReignTitle?: string | undefined;
   publisher?: string | undefined;
   currentFilename?: string | undefined;
   dateStatement?: string | undefined;
@@ -31,6 +35,9 @@ const INVALID_REPLACEMENTS: Readonly<Record<string, string>> = {
 };
 const SOURCE_MATERIAL_CLASSES = new Set<MaterialClass>([
   "primary_source_modern_edition", "traditional_book", "collected_documents", "manuscript",
+]);
+const HISTORICAL_SOURCE_MATERIAL_CLASSES = new Set<MaterialClass>([
+  "traditional_book", "manuscript",
 ]);
 const HISTORICAL_EDITION_TYPE_LABELS: Partial<Record<EditionType, string>> = {
   engraved: "刻本",
@@ -89,15 +96,30 @@ function conciseHistoricalEditionStatement(value: string | undefined): string | 
   return CONCISE_HISTORICAL_EDITION.test(normalized) ? normalized : null;
 }
 
-function sourceVersionLabel(input: Pick<CatalogFilenameInput, "editionStatement" | "publisher" | "editionType">): string | null {
+function structuredHistoricalSourceLabel(input: Pick<CatalogFilenameInput,
+  "editionType" | "editionStatement" | "sourceEditionType" | "sourceEditionStatement" | "sourceDynasty" | "sourceReignTitle">): string | null {
+  const dynasty = cleanComponent(input.sourceDynasty ?? "");
+  const reignTitle = cleanComponent(input.sourceReignTitle ?? "");
+  if (dynasty && reignTitle) return cleanComponent(`${dynasty}${reignTitle}本`);
+  if (reignTitle) return cleanComponent(`${reignTitle}本`);
+
+  const sourceStatement = conciseHistoricalEditionStatement(input.sourceEditionStatement);
+  if (sourceStatement) return sourceStatement;
+  const carrierStatement = conciseHistoricalEditionStatement(input.editionStatement);
+  if (carrierStatement) return carrierStatement;
+
+  const editionType = input.sourceEditionType ?? input.editionType;
+  if (!editionType) return null;
+  return cleanComponent(HISTORICAL_EDITION_TYPE_LABELS[editionType] ?? "");
+}
+
+function sourceVersionLabel(input: Pick<CatalogFilenameInput,
+  "materialClass" | "editionType" | "editionStatement" | "sourceEditionType" | "sourceEditionStatement" |
+  "sourceDynasty" | "sourceReignTitle" | "publisher">): string | null {
   const publisher = cleanComponent(input.publisher ?? "");
   if (publisher) return publisher;
-
-  const historicalStatement = conciseHistoricalEditionStatement(input.editionStatement);
-  if (historicalStatement) return historicalStatement;
-
-  if (!input.editionType) return null;
-  return cleanComponent(HISTORICAL_EDITION_TYPE_LABELS[input.editionType] ?? "");
+  if (!HISTORICAL_SOURCE_MATERIAL_CLASSES.has(input.materialClass)) return null;
+  return structuredHistoricalSourceLabel(input);
 }
 
 function safeFilename(filename: string): boolean {
