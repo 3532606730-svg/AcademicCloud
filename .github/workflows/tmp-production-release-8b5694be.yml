@@ -1,0 +1,107 @@
+name: Temporary exact production release 8b5694be
+
+on:
+  push:
+    branches:
+      - deploy/release-8b5694be-build2
+
+permissions:
+  contents: read
+
+jobs:
+  build-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SOURCE_COMMIT: 8b5694beea5c5c3a0f470599351c05d55d387bd7
+      ARCHIVE_BASENAME: academiccloud-linux-x64-node24-8b5694beea5c5c3a0f470599351c05d55d387bd7
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+      - name: Verify source and platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          node --version | grep -E '^v24\.'
+      - name: Install
+        run: npm ci
+      - name: Test
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test --workspace @academiccloud/compute-contracts
+          npm test --workspace @academiccloud/backend
+          npm test --workspace @academiccloud/frontend
+          node --test scripts/oss-cors-contract.test.mjs
+      - name: Typecheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck --workspace @academiccloud/compute-contracts
+          npm run typecheck --workspace @academiccloud/backend
+          npm run typecheck --workspace @academiccloud/frontend
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build --workspace @academiccloud/compute-contracts
+          npm run build --workspace @academiccloud/backend
+          npm run build --workspace @academiccloud/frontend
+      - name: Compiled acceptance
+        run: npm run acceptance:compiled
+      - name: Audit dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --audit-level=high
+          npm audit --omit=dev --audit-level=high
+      - name: Benchmark Argon2id
+        run: npm run auth:benchmark
+      - name: Prepare release
+        run: node scripts/production-artifact.mjs prepare --release=output/release
+      - name: Install production dependencies
+        working-directory: output/release
+        run: npm ci --omit=dev --workspace @academiccloud/backend --workspace @academiccloud/compute-contracts --include-workspace-root=false
+      - name: Finalize release
+        run: node scripts/production-artifact.mjs finalize --release=output/release --manifest=output/${ARCHIVE_BASENAME}.manifest.json --commit=${SOURCE_COMMIT}
+      - name: Pack release
+        run: node scripts/production-artifact.mjs pack --release=output/release --archive=output/${ARCHIVE_BASENAME}.tar.gz --checksum=output/${ARCHIVE_BASENAME}.tar.gz.sha256
+      - name: Verify release
+        run: node scripts/production-artifact.mjs verify --archive=output/${ARCHIVE_BASENAME}.tar.gz --manifest=output/${ARCHIVE_BASENAME}.manifest.json --checksum=output/${ARCHIVE_BASENAME}.tar.gz.sha256 --evidence=output/${ARCHIVE_BASENAME}.runtime-verification.json
+      - name: Rebuild and prove determinism
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "output/${ARCHIVE_BASENAME}.tar.gz" /tmp/first.tar.gz
+          cp "output/${ARCHIVE_BASENAME}.manifest.json" /tmp/first.manifest.json
+          node scripts/production-artifact.mjs prepare --release=output/release
+          (cd output/release && npm ci --omit=dev --workspace @academiccloud/backend --workspace @academiccloud/compute-contracts --include-workspace-root=false)
+          node scripts/production-artifact.mjs finalize --release=output/release --manifest=output/${ARCHIVE_BASENAME}.repro.manifest.json --commit=${SOURCE_COMMIT}
+          node scripts/production-artifact.mjs pack --release=output/release --archive=output/${ARCHIVE_BASENAME}.repro.tar.gz --checksum=output/${ARCHIVE_BASENAME}.repro.tar.gz.sha256
+          cmp --silent /tmp/first.tar.gz "output/${ARCHIVE_BASENAME}.repro.tar.gz"
+          diff --unified=3 /tmp/first.manifest.json "output/${ARCHIVE_BASENAME}.repro.manifest.json"
+      - name: Upload release bundle
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ${{ env.ARCHIVE_BASENAME }}
+          path: |
+            output/${{ env.ARCHIVE_BASENAME }}.tar.gz
+            output/${{ env.ARCHIVE_BASENAME }}.tar.gz.sha256
+            output/${{ env.ARCHIVE_BASENAME }}.manifest.json
+            output/${{ env.ARCHIVE_BASENAME }}.runtime-verification.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
