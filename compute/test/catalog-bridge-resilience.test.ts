@@ -123,6 +123,27 @@ test("status endpoint reports bounded progress while an export is active and ret
   }
 });
 
+test("progress endpoint accepts the same exact-origin CORS preflight as export", async () => {
+  const { server, url } = await listen(async () => ({
+    filename: "academiccloud-catalog-batch-batch-progress.zip",
+    bytes: new Uint8Array([1]),
+  }));
+  try {
+    const response = await fetch(`${url}/v1/catalog/status`, {
+      method: "OPTIONS",
+      headers: {
+        origin: ORIGIN,
+        "access-control-request-method": "GET",
+      },
+    });
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get("access-control-allow-origin"), ORIGIN);
+    assert.match(response.headers.get("access-control-allow-methods") ?? "", /GET/u);
+  } finally {
+    await close(server);
+  }
+});
+
 test("status endpoint never exposes progress to an untrusted web origin", async () => {
   const { server, url } = await listen(async () => ({
     filename: "academiccloud-catalog-batch-batch-progress.zip",
