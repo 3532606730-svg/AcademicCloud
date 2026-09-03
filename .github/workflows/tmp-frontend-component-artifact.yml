@@ -1,0 +1,96 @@
+name: Temporary frontend component artifact
+
+on:
+  push:
+    branches:
+      - deploy/frontend-2b991502
+
+permissions:
+  contents: read
+
+jobs:
+  build-frontend-component:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_COMMIT: 2b991502cc138830e46e9a4cf9a211d5eb806c31
+      ARCHIVE: academiccloud-frontend-2b991502cc138830e46e9a4cf9a211d5eb806c31.tar.gz
+    steps:
+      - name: Check out exact frontend source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Verify exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          node --version | grep -E '^v24\.'
+
+      - name: Install exact dependency tree
+        run: npm ci
+
+      - name: Run focused frontend regression
+        run: npm run test --workspace @academiccloud/frontend -- resource-details.test.tsx App.test.tsx
+
+      - name: Build frontend
+        run: npm run build --workspace @academiccloud/frontend
+
+      - name: Create deterministic frontend component archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          tar \
+            --sort=name \
+            --mtime='UTC 1970-01-01' \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -C frontend/dist \
+            -czf "output/$ARCHIVE" .
+          sha256sum "output/$ARCHIVE" > "output/$ARCHIVE.sha256"
+          INDEX_SHA="$(sha256sum frontend/dist/index.html | awk '{print $1}')"
+          ARCHIVE_SHA="$(awk '{print $1}' "output/$ARCHIVE.sha256")"
+          JS_ASSET="$(find frontend/dist/assets -maxdepth 1 -type f -name 'index-*.js' -printf '%f\n' | sort | head -n1)"
+          CSS_ASSET="$(find frontend/dist/assets -maxdepth 1 -type f -name 'index-*.css' -printf '%f\n' | sort | head -n1)"
+          test -n "$JS_ASSET"
+          test -n "$CSS_ASSET"
+          python3 - "$SOURCE_COMMIT" "$ARCHIVE" "$ARCHIVE_SHA" "$INDEX_SHA" "$JS_ASSET" "$CSS_ASSET" > output/frontend-component-manifest.json <<'PY'
+          import json, sys
+          source, archive, archive_sha, index_sha, js_asset, css_asset = sys.argv[1:]
+          print(json.dumps({
+              "schemaVersion": "academiccloud.frontend-component.v1",
+              "sourceCommit": source,
+              "archive": archive,
+              "archiveSha256": archive_sha,
+              "indexSha256": index_sha,
+              "jsAsset": js_asset,
+              "cssAsset": css_asset,
+          }, ensure_ascii=False, indent=2))
+          PY
+          cat output/frontend-component-manifest.json
+
+      - name: Upload immutable frontend component bundle
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: academiccloud-frontend-2b991502
+          path: |
+            output/academiccloud-frontend-2b991502cc138830e46e9a4cf9a211d5eb806c31.tar.gz
+            output/academiccloud-frontend-2b991502cc138830e46e9a4cf9a211d5eb806c31.tar.gz.sha256
+            output/frontend-component-manifest.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
