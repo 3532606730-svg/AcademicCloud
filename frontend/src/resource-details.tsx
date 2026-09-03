@@ -443,6 +443,7 @@ export function ResourceDetailsDialog({
   library,
   holding,
   returnFocus,
+  autoLoadSuggestions = true,
   onClose,
   onSaved,
   onPreview,
@@ -454,6 +455,7 @@ export function ResourceDetailsDialog({
   library: LibrarySummary;
   holding: LibraryHolding;
   returnFocus?: HTMLElement | null;
+  autoLoadSuggestions?: boolean;
   onClose: () => void;
   onSaved: (detail: LibraryHoldingDetails) => void;
   onPreview: () => void;
@@ -499,6 +501,7 @@ export function ResourceDetailsDialog({
   const [authorityLabel, setAuthorityLabel] = useState("");
   const [pendingAuthorityRole, setPendingAuthorityRole] = useState<AuthorityRole | null>(null);
   const [pendingAuthorityCandidateId, setPendingAuthorityCandidateId] = useState<string | null>(null);
+  const [suggestionsEnabled, setSuggestionsEnabled] = useState(autoLoadSuggestions);
   const [suggestionRun, setSuggestionRun] = useState<MetadataSuggestionRun | null>(null);
   const [suggestionJob, setSuggestionJob] = useState<DerivedMetadataJob | null>(null);
   const [cataloguingState, setCataloguingState] = useState<MetadataCataloguingState | null>(null);
@@ -534,6 +537,15 @@ export function ResourceDetailsDialog({
   useEffect(() => { void loadDetails(); }, [api, library.id, holding.file.id]);
 
   useEffect(() => {
+    if (!suggestionsEnabled) {
+      setSuggestionRun(null);
+      setSuggestionJob(null);
+      setCataloguingState(null);
+      setSuggestionsLoading(false);
+      setSuggestionsError(null);
+      setSelectedSuggestionIds(new Set());
+      return;
+    }
     if (!api.getLibraryMetadataSuggestions) {
       setSuggestionRun(null);
       setSuggestionsError(null);
@@ -553,9 +565,10 @@ export function ResourceDetailsDialog({
       })
       .finally(() => setSuggestionsLoading(false));
     return () => controller.abort();
-  }, [api, library.id, holding.file.id]);
+  }, [api, library.id, holding.file.id, suggestionsEnabled]);
 
   useEffect(() => {
+    if (!suggestionsEnabled) return;
     if (api.getLatestLibraryMetadataSuggestionStates) {
       const controller = new AbortController();
       api.getLatestLibraryMetadataSuggestionStates(library.id, [holding.file.id], controller.signal)
@@ -587,10 +600,10 @@ export function ResourceDetailsDialog({
         if (!(caught instanceof DOMException && caught.name === "AbortError")) setSuggestionsError(safeSuggestionError(caught));
       });
     return () => controller.abort();
-  }, [api, library.id, holding.file.id, onSuggestionJobChange]);
+  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionsEnabled]);
 
   useEffect(() => {
-    if (!suggestionJob || !api.getLibraryMetadataSuggestionJob) return;
+    if (!suggestionsEnabled || !suggestionJob || !api.getLibraryMetadataSuggestionJob) return;
     const controller = new AbortController();
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -634,7 +647,7 @@ export function ResourceDetailsDialog({
       controller.abort();
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionJob?.id]);
+  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionJob?.id, suggestionsEnabled]);
 
   useEffect(() => {
     if (!editing || library.role !== "manager") return;
@@ -945,6 +958,45 @@ export function ResourceDetailsDialog({
     }
   }
 
+  function renderSuggestionTools() {
+    if (!api.getLibraryMetadataSuggestions && !api.generateLibraryMetadataSuggestions) return null;
+    if (!suggestionsEnabled) {
+      return (
+        <div className="resource-details-actions">
+          <button className="button button--quiet" type="button" onClick={() => setSuggestionsEnabled(true)}>
+            {t("metadata.suggestions.open")}
+          </button>
+        </div>
+      );
+    }
+    return (
+      <MetadataSuggestionsPanel
+        run={suggestionRun}
+        job={suggestionJob}
+        authoritativeState={cataloguingState}
+        fieldAuthorities={detail?.fieldAuthorities ?? []}
+        loading={suggestionsLoading}
+        generating={suggestionsGenerating}
+        accepting={suggestionsAccepting}
+        error={suggestionsError}
+        manager={library.role === "manager" && Boolean(detail?.canEditMetadata)}
+        requiresEditor={!detail?.metadata && !editing}
+        selectedIds={selectedSuggestionIds}
+        onGenerate={() => void generateSuggestions()}
+        onToggle={(candidateId) => setSelectedSuggestionIds((current) => {
+          const next = new Set(current);
+          if (next.has(candidateId)) next.delete(candidateId);
+          else next.add(candidateId);
+          return next;
+        })}
+        onUseInEditor={useSuggestionInEditor}
+        onAccept={() => void acceptSuggestions()}
+        t={t}
+        language={language}
+      />
+    );
+  }
+
   const metadata = detail?.metadata;
   const bibliography = detail?.bibliography;
   const displayTitle = detail?.displayTitle ?? holding.canonicalTitle ?? holding.file.displayName;
@@ -976,32 +1028,7 @@ export function ResourceDetailsDialog({
                   <ReactFact label={t("metadata.fileSize")} value={`${holding.file.sizeBytes} bytes`} />
                 </dl>
               </fieldset>
-              {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
-                <MetadataSuggestionsPanel
-                  run={suggestionRun}
-                  job={suggestionJob}
-                  authoritativeState={cataloguingState}
-                  fieldAuthorities={detail.fieldAuthorities}
-                  loading={suggestionsLoading}
-                  generating={suggestionsGenerating}
-                  accepting={suggestionsAccepting}
-                  error={suggestionsError}
-                  manager={library.role === "manager" && detail.canEditMetadata}
-                  requiresEditor={!detail.metadata && !editing}
-                  selectedIds={selectedSuggestionIds}
-                  onGenerate={() => void generateSuggestions()}
-                  onToggle={(candidateId) => setSelectedSuggestionIds((current) => {
-                    const next = new Set(current);
-                    if (next.has(candidateId)) next.delete(candidateId);
-                    else next.add(candidateId);
-                    return next;
-                  })}
-                  onUseInEditor={useSuggestionInEditor}
-                  onAccept={() => void acceptSuggestions()}
-                  t={t}
-                  language={language}
-                />
-              )}
+              {renderSuggestionTools()}
               {detail.canEditMetadata && api.restoreLibraryHoldingBibliographyAi && detail.fieldAuthorities.some((authority) => authority.source === "human") && (
                 <FieldAuthorityControl
                   authorities={detail.fieldAuthorities}
@@ -1030,32 +1057,7 @@ export function ResourceDetailsDialog({
                 <h3>{t("metadata.bibliographyTitle")}</h3>
                 {api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" onClick={() => { setEditing(false); setEditingBibliography(true); }}>{t("metadata.editBibliography")}</button>}
               </header>
-              {(api.getLibraryMetadataSuggestions || api.generateLibraryMetadataSuggestions) && (
-                <MetadataSuggestionsPanel
-                  run={suggestionRun}
-                  job={suggestionJob}
-                  authoritativeState={cataloguingState}
-                  fieldAuthorities={detail.fieldAuthorities}
-                  loading={suggestionsLoading}
-                  generating={suggestionsGenerating}
-                  accepting={suggestionsAccepting}
-                  error={suggestionsError}
-                  manager={library.role === "manager" && detail.canEditMetadata}
-                  requiresEditor={!detail.metadata && !editing}
-                  selectedIds={selectedSuggestionIds}
-                  onGenerate={() => void generateSuggestions()}
-                  onToggle={(candidateId) => setSelectedSuggestionIds((current) => {
-                    const next = new Set(current);
-                    if (next.has(candidateId)) next.delete(candidateId);
-                    else next.add(candidateId);
-                    return next;
-                  })}
-                  onUseInEditor={useSuggestionInEditor}
-                  onAccept={() => void acceptSuggestions()}
-                  t={t}
-                  language={language}
-                />
-              )}
+              {renderSuggestionTools()}
               <MetadataEditor
                 draft={draft}
                 setDraft={setDraft}

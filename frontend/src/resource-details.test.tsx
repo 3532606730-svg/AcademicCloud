@@ -181,6 +181,7 @@ function renderDetails(options: {
   api?: Partial<AcademicCloudApi>;
   client?: AcademicCloudApi;
   onSuggestionJobChange?: (job: DerivedMetadataJob, authoritativeState?: MetadataCataloguingState) => void;
+  autoLoadSuggestions?: boolean;
 } = {}) {
   const initial = options.initial ?? detail();
   const api = options.client ?? {
@@ -203,6 +204,7 @@ function renderDetails(options: {
         onPreview={vi.fn()}
         onDownload={vi.fn()}
         onCitation={onCitation}
+        {...(options.autoLoadSuggestions === undefined ? {} : { autoLoadSuggestions: options.autoLoadSuggestions })}
         {...(options.onSuggestionJobChange === undefined
           ? {}
           : { onSuggestionJobChange: options.onSuggestionJobChange })}
@@ -217,6 +219,30 @@ beforeEach(() => {
 });
 
 describe("Resource details", () => {
+  it("keeps AI history opt-in when automatic suggestion loading is disabled", async () => {
+    const getSuggestions = vi.fn().mockResolvedValue(null);
+    const getStates = vi.fn().mockResolvedValue([]);
+    const generate = vi.fn();
+    renderDetails({
+      autoLoadSuggestions: false,
+      api: {
+        getLibraryMetadataSuggestions: getSuggestions,
+        getLatestLibraryMetadataSuggestionStates: getStates,
+        generateLibraryMetadataSuggestions: generate,
+      },
+    });
+    const user = userEvent.setup();
+    await screen.findByRole("dialog", { name: "元西域人华化考" });
+    expect(getSuggestions).not.toHaveBeenCalled();
+    expect(getStates).not.toHaveBeenCalled();
+    expect(generate).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "AI-assisted cataloguing" }));
+    await waitFor(() => expect(getSuggestions).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getStates).toHaveBeenCalledTimes(1));
+    expect(generate).not.toHaveBeenCalled();
+  });
+
   it("renders canonical facts as plain text and keeps the original filename separate", async () => {
     renderDetails();
     const dialog = await screen.findByRole("dialog", { name: "元西域人华化考" });

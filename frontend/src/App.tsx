@@ -2804,7 +2804,9 @@ function DriveView({
       )}
       {resourceDetailsRequest && (
         <ResourceDetailsDialog
+          key={`${resourceDetailsRequest.library.id}:${resourceDetailsRequest.holding.file.id}`}
           api={api}
+          autoLoadSuggestions={false}
           library={resourceDetailsRequest.library}
           holding={resourceDetailsRequest.holding}
           returnFocus={resourceDetailsRequest.returnFocus}
@@ -3884,7 +3886,9 @@ function EntryTable({
             </label>
             <FileBadge file={holding.file} />
             <div className="entry-name-body">
-              {onOpenHoldingDetails ? (
+              {isPreviewable(holding.file) && onPreviewHolding ? (
+                <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onPreviewHolding(library, holding, event.currentTarget)}>{displayTitle}</button>
+              ) : onOpenHoldingDetails ? (
                 <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onOpenHoldingDetails(library, holding, event.currentTarget)}>{displayTitle}</button>
               ) : <strong className="entry-filename" title={displayTitle}>{displayTitle}</strong>}
               <span className="entry-mobile-meta">{fileKindLabel(holding.file, t)} · {formatBytes(holding.file.sizeBytes)}</span>
@@ -3910,6 +3914,11 @@ function EntryTable({
                     label: t("menu.preview"),
                     disabled: busyId === `preview-${holding.file.id}`,
                     onSelect: (trigger: HTMLElement) => onPreviewHolding(library, holding, trigger),
+                  }] : []),
+                  ...(onOpenHoldingDetails ? [{
+                    key: "details",
+                    label: t("metadata.details"),
+                    onSelect: (trigger: HTMLElement) => onOpenHoldingDetails(library, holding, trigger),
                   }] : []),
                   {
                     key: "download",

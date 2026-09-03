@@ -3456,7 +3456,12 @@ describe("Shared Library contribution UI", () => {
     await user.click(within(holdingRow as HTMLElement).getByRole("button", { name: "Add book.pdf to favorites" }));
     await waitFor(() => expect(api.setFileFavorite).toHaveBeenCalledWith("library-file-0", true));
 
+    await user.click(within(holdingRow as HTMLElement).getByRole("button", { name: "book.pdf" }));
+    await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(canonical.id, "library-file-0", "inline"));
+    await user.click(screen.getByRole("button", { name: "Close preview" }));
+
     const menu = await openRowMenu("book.pdf");
+    expect(within(menu).getByRole("menuitem", { name: "Resource details" })).toBeInTheDocument();
     await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
     await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(canonical.id, "library-file-0", "inline"));
     await user.click(screen.getByRole("button", { name: "Close preview" }));
