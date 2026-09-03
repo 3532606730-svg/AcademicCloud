@@ -32,13 +32,7 @@ const INVALID_REPLACEMENTS: Readonly<Record<string, string>> = {
 const SOURCE_MATERIAL_CLASSES = new Set<MaterialClass>([
   "primary_source_modern_edition", "traditional_book", "collected_documents", "manuscript",
 ]);
-const EDITION_TYPE_LABELS: Partial<Record<EditionType, string>> = {
-  critical_edition: "校勘本",
-  annotated_edition: "校注本",
-  collated_edition: "校勘本",
-  punctuated_edition: "点校本",
-  facsimile: "影印本",
-  reprint: "重印本",
+const HISTORICAL_EDITION_TYPE_LABELS: Partial<Record<EditionType, string>> = {
   engraved: "刻本",
   recut: "重刻本",
   facsimile_engraved: "影刻本",
@@ -50,6 +44,9 @@ const EDITION_TYPE_LABELS: Partial<Record<EditionType, string>> = {
   lithograph: "石印本",
   letterpress: "铅印本",
 };
+const MAX_CONCISE_SOURCE_VERSION_CHARACTERS = 32;
+const VERBOSE_SOURCE_VERSION = /(?:据|影印(?:自|据)?|重印|翻印|复印|底本|原版|新一版|新版|复制)/u;
+const CONCISE_HISTORICAL_EDITION = /(?:刻本|刊本|抄本|写本|稿本|活字本|套印本|石印本|影刻本|影抄本|本)$/u;
 
 function cleanComponent(value: string): string | null {
   const normalized = value.normalize("NFC")
@@ -84,8 +81,23 @@ function translatedResponsibility(contributors: BibliographicContributorInput[])
   return `${authors.join("、")}著、${translators.map((entry) => entry.label).join("、")}${translators[0]!.roleLabel}`;
 }
 
+function conciseHistoricalEditionStatement(value: string | undefined): string | null {
+  const normalized = cleanComponent(value ?? "");
+  if (!normalized) return null;
+  if ([...normalized].length > MAX_CONCISE_SOURCE_VERSION_CHARACTERS) return null;
+  if (VERBOSE_SOURCE_VERSION.test(normalized)) return null;
+  return CONCISE_HISTORICAL_EDITION.test(normalized) ? normalized : null;
+}
+
 function sourceVersionLabel(input: Pick<CatalogFilenameInput, "editionStatement" | "publisher" | "editionType">): string | null {
-  return cleanComponent(input.editionStatement ?? input.publisher ?? (input.editionType ? EDITION_TYPE_LABELS[input.editionType] ?? "" : ""));
+  const publisher = cleanComponent(input.publisher ?? "");
+  if (publisher) return publisher;
+
+  const historicalStatement = conciseHistoricalEditionStatement(input.editionStatement);
+  if (historicalStatement) return historicalStatement;
+
+  if (!input.editionType) return null;
+  return cleanComponent(HISTORICAL_EDITION_TYPE_LABELS[input.editionType] ?? "");
 }
 
 function safeFilename(filename: string): boolean {
@@ -134,9 +146,9 @@ export function formatCatalogFilename(input: CatalogFilenameInput): CatalogFilen
       && !hasModernResponsibilityCandidate;
   if (useSourceVersion) {
     const version = sourceVersionLabel(input);
-    if (!version && !year) return { status: "no_rename", reason: "missing_year" };
-    const detail = version && year ? `${version}，${year}` : version ?? year!;
-    const filename = `《${title}》（${detail}）.pdf`;
+    if (!version) return { status: "no_rename", reason: "missing_responsibility" };
+    if (!year) return { status: "no_rename", reason: "missing_year" };
+    const filename = `《${title}》（${version}，${year}）.pdf`;
     if (!safeFilename(filename)) return { status: "no_rename", reason: "unsafe_filename" };
     return { status: "proposed", filename, responsibility: null, year };
   }
