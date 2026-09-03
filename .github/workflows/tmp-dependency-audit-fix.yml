@@ -27,20 +27,38 @@ jobs:
         run: npm audit fix --package-lock-only
       - name: Clean install
         run: npm ci
-      - name: Security gates
+      - name: Production security gates
         shell: bash
         run: |
           set -euo pipefail
           npm audit --audit-level=high
           npm audit --omit=dev --audit-level=high
-      - name: Full tests
-        run: npm test
-      - name: Full typecheck
-        run: npm run typecheck
-      - name: Full build
-        run: npm run build
+      - name: Production test gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test --workspace @academiccloud/compute-contracts
+          npm test --workspace @academiccloud/backend
+          npm test --workspace @academiccloud/frontend
+          node --test scripts/oss-cors-contract.test.mjs
+      - name: Production typecheck gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck --workspace @academiccloud/compute-contracts
+          npm run typecheck --workspace @academiccloud/backend
+          npm run typecheck --workspace @academiccloud/frontend
+      - name: Production build gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build --workspace @academiccloud/compute-contracts
+          npm run build --workspace @academiccloud/backend
+          npm run build --workspace @academiccloud/frontend
       - name: Compiled acceptance
         run: npm run acceptance:compiled
+      - name: Argon2id benchmark
+        run: npm run auth:benchmark
       - name: Commit lockfile repair
         shell: bash
         run: |
