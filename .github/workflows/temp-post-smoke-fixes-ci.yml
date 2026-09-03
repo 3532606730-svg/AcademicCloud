@@ -1,0 +1,53 @@
+name: Temporary post-smoke fixes CI
+
+on:
+  push:
+    branches:
+      - feature/batch-catalog-roundtrip-v1
+    paths:
+      - ".github/workflows/temp-post-smoke-fixes-ci.yml"
+      - "backend/src/catalog-batch/filename-policy.ts"
+      - "backend/test/catalog-batch/filename-policy.test.ts"
+      - "backend/test/deployment/nginx-catalog-body-limit.test.ts"
+      - "deployment/nginx/academiccloud.conf"
+      - "backend/package.json"
+      - "compute-contracts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Install clean dependency tree
+        run: npm ci
+
+      - name: Verify targeted post-smoke tests
+        run: |
+          npm run build --workspace @academiccloud/compute-contracts
+          npm run typecheck --workspace @academiccloud/backend
+          npx --no-install tsx --test \
+            backend/test/catalog-batch/filename-policy.test.ts \
+            backend/test/deployment/nginx-catalog-body-limit.test.ts
+          npm run build --workspace @academiccloud/backend
+
+      - name: Verify full backend tests
+        run: npm test --workspace @academiccloud/backend
