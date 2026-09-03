@@ -24,6 +24,10 @@ const MAX_RESPONSE_BYTES = 128 * 1024 * 1024;
 const BRIDGE_HEADER = "x-academiccloud-catalog-bridge";
 const BRIDGE_HEADER_VALUE = "1";
 const DEFAULT_ALLOWED_ORIGINS = ["https://cloud.ajtlab.top"] as const;
+const DEFAULT_CATALOG_SOURCE_ORIGINS = [
+  "https://ajt-academiccloud-kl-8f3c.oss-ap-southeast-3.aliyuncs.com",
+  "https://files.ajtlab.top",
+] as const;
 const SAFE_FILENAME = /^academiccloud-catalog-batch-[A-Za-z0-9_-]{1,128}\.zip$/u;
 
 export type CatalogBridgeFailureCode =
@@ -166,7 +170,11 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
   const allowedOrigins = new Set(origins);
   if (allowedOrigins.size !== origins.length || origins.length < 1) throw new TypeError("catalog bridge origins are invalid");
   for (const origin of origins) configuredOrigins(origin);
-  const endpointPolicy = options.endpointPolicy ?? catalogEndpointPolicyFromEnvironment();
+  const configuredSourceOrigins = process.env.ACADEMICCLOUD_CATALOG_SOURCE_ORIGINS?.trim();
+  const endpointPolicy = options.endpointPolicy ?? catalogEndpointPolicyFromEnvironment({
+    ...process.env,
+    ACADEMICCLOUD_CATALOG_SOURCE_ORIGINS: configuredSourceOrigins || DEFAULT_CATALOG_SOURCE_ORIGINS.join(","),
+  });
   const packageFactory = options.packageFactory
     ?? ((request: CatalogExportRequest, signal: AbortSignal, onProgress: (progress: CatalogResilientProgress) => void) =>
       defaultPackageFactory(request, signal, endpointPolicy, onProgress));
@@ -200,7 +208,8 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
         return;
       }
 
-      if (request.method === "OPTIONS" && request.url === "/v1/catalog/export") {
+      if (request.method === "OPTIONS"
+        && (request.url === "/v1/catalog/export" || request.url === "/v1/catalog/status")) {
         if (!origin) {
           sendFailure(response, 403, "invalid_request");
           return;
