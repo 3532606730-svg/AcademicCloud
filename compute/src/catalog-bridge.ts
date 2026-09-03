@@ -7,10 +7,13 @@ import type { CatalogExportRequest } from "@academiccloud/compute-contracts";
 import {
   CatalogExportError,
   catalogEndpointPolicyFromEnvironment,
-  createCatalogEvidencePackage,
   parseCatalogExportRequest,
   type CatalogEndpointPolicy,
 } from "./catalog-batch-export.js";
+import {
+  createResilientCatalogEvidencePackage,
+  type CatalogResilientProgress,
+} from "./catalog-batch-resilient-export.js";
 import { PaddleOcrSidecarAdapter } from "./paddle-ocr.js";
 import { PdfJsFrontMatterInspector } from "./pdf-text.js";
 
@@ -34,17 +37,23 @@ export type CatalogBridgeFailureCode =
 export interface CatalogBridgePackage {
   filename: string;
   bytes: Uint8Array;
+  failedResources?: number;
 }
 
 export type CatalogBridgePackageFactory = (
   request: CatalogExportRequest,
   signal: AbortSignal,
+  onProgress: (progress: CatalogResilientProgress) => void,
 ) => Promise<CatalogBridgePackage>;
 
 export interface CatalogBridgeOptions {
   allowedOrigins?: readonly string[];
   endpointPolicy?: CatalogEndpointPolicy;
   packageFactory?: CatalogBridgePackageFactory;
+}
+
+interface CatalogBridgeStatus extends CatalogResilientProgress {
+  status: "idle" | "exporting";
 }
 
 function configuredOrigins(value: string | undefined): string[] {
@@ -80,7 +89,7 @@ function setCors(response: ServerResponse, origin: string): void {
   response.setHeader("Access-Control-Allow-Origin", origin);
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-AcademicCloud-Catalog-Bridge");
-  response.setHeader("Access-Control-Expose-Headers", "X-AcademicCloud-Filename");
+  response.setHeader("Access-Control-Expose-Headers", "X-AcademicCloud-Filename, X-AcademicCloud-Failed-Resources");
   response.setHeader("Vary", "Origin");
 }
 
@@ -130,14 +139,16 @@ async function defaultPackageFactory(
   request: CatalogExportRequest,
   signal: AbortSignal,
   endpointPolicy: CatalogEndpointPolicy,
+  onProgress: (progress: CatalogResilientProgress) => void,
 ): Promise<CatalogBridgePackage> {
-  const inspector = new PdfJsFrontMatterInspector(new PaddleOcrSidecarAdapter());
-  try {
-    const result = await createCatalogEvidencePackage({ request, inspector, endpointPolicy, signal });
-    return { filename: result.filename, bytes: result.bytes };
-  } finally {
-    await inspector.close();
-  }
+  const result = await createResilientCatalogEvidencePackage({
+    request,
+    createInspector: () => new PdfJsFrontMatterInspector(new PaddleOcrSidecarAdapter()),
+    endpointPolicy,
+    signal,
+    onProgress,
+  });
+  return { filename: result.filename, bytes: result.bytes, failedResources: result.failedResources.length };
 }
 
 function statusForError(error: CatalogExportError): number {
@@ -157,8 +168,15 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
   for (const origin of origins) configuredOrigins(origin);
   const endpointPolicy = options.endpointPolicy ?? catalogEndpointPolicyFromEnvironment();
   const packageFactory = options.packageFactory
-    ?? ((request: CatalogExportRequest, signal: AbortSignal) => defaultPackageFactory(request, signal, endpointPolicy));
+    ?? ((request: CatalogExportRequest, signal: AbortSignal, onProgress: (progress: CatalogResilientProgress) => void) =>
+      defaultPackageFactory(request, signal, endpointPolicy, onProgress));
   let exportActive = false;
+  let progress: CatalogBridgeStatus = {
+    status: "idle",
+    completedResources: 0,
+    totalResources: 0,
+    failedResources: 0,
+  };
 
   return createServer((request, response) => {
     void (async () => {
@@ -170,6 +188,15 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
           return;
         }
         sendJson(response, 200, { status: "ok", service: "academiccloud-catalog-bridge", version: 1 }, origin ?? undefined);
+        return;
+      }
+
+      if (request.method === "GET" && request.url === "/v1/catalog/status") {
+        if (!origin) {
+          sendFailure(response, 403, "invalid_request");
+          return;
+        }
+        sendJson(response, 200, progress, origin);
         return;
       }
 
@@ -212,9 +239,24 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
       response.once("close", abortOnResponseClose);
       try {
         const parsed = parseCatalogExportRequest(await readJsonBody(request), endpointPolicy);
-        const result = await packageFactory(parsed, abortController.signal);
+        progress = {
+          status: "exporting",
+          completedResources: 0,
+          totalResources: parsed.manifest.resources.length,
+          failedResources: 0,
+        };
+        const result = await packageFactory(parsed, abortController.signal, (next) => {
+          if (next.completedResources < 0 || next.completedResources > next.totalResources
+            || next.failedResources < 0 || next.failedResources > next.completedResources
+            || next.totalResources !== parsed.manifest.resources.length) return;
+          progress = { status: "exporting", ...next };
+        });
         if (!SAFE_FILENAME.test(result.filename) || result.bytes.byteLength < 1 || result.bytes.byteLength > MAX_RESPONSE_BYTES) {
           throw new CatalogExportError("limit_exceeded");
+        }
+        const failedResources = result.failedResources ?? 0;
+        if (!Number.isSafeInteger(failedResources) || failedResources < 0 || failedResources > parsed.manifest.resources.length) {
+          throw new CatalogExportError("inspection_failed");
         }
         const bytes = Buffer.from(result.bytes.buffer, result.bytes.byteOffset, result.bytes.byteLength);
         setCors(response, origin);
@@ -224,6 +266,7 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
         response.setHeader("Content-Length", String(bytes.byteLength));
         response.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
         response.setHeader("X-AcademicCloud-Filename", result.filename);
+        response.setHeader("X-AcademicCloud-Failed-Resources", String(failedResources));
         response.end(bytes);
       } catch (error: unknown) {
         if (response.destroyed) {
@@ -240,6 +283,7 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
         request.removeListener("aborted", abort);
         response.removeListener("close", abortOnResponseClose);
         exportActive = false;
+        progress = { status: "idle", completedResources: 0, totalResources: 0, failedResources: 0 };
       }
     })();
   });
