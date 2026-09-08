@@ -36,7 +36,7 @@ Backend catalog/library/metadata/suggestions/persistence; frontend Library/detai
 
 ## Current State
 
-ACTIVE, reconciled 2026-09-07. Integration branch codex/vnext-remediation-20260906 at D:/Projects/AcademicCloud-vnext, based on exact remote B eb03dbd2fff86d4925193e7f7de69e30336e9993. Local remediation is implemented with verification below. No task commit, push, main merge or deployment has occurred.
+ACTIVE, reconciled 2026-09-07. Integration branch codex/vnext-remediation-20260906 at D:/Projects/AcademicCloud-vnext, based on exact remote B eb03dbd2fff86d4925193e7f7de69e30336e9993. Local remediation is implemented with verification below. Implementation checkpoint 09b6587198da947408f63fc41a929eba22766ab0 is committed locally; push, main merge and deployment are pending.
 
 Work is explicitly separated:
 - **PREEXISTING_DIRTY_FILES:** original W retains ten tracked dirty files and 630 untracked files; review/staging trees are preserved. W NuExtract work already in B was not replaced by stale code.

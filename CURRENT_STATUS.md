@@ -12,7 +12,7 @@ The objective is a coherent, trustworthy existing product on zero-added-cost inf
 
 Integration source is codex/vnext-remediation-20260906 at D:/Projects/AcademicCloud-vnext, based on exact Batch Catalog commit eb03dbd2fff86d4925193e7f7de69e30336e9993. Batch Catalog is a first-class remediation target. Relevant prior review fixes and meaningful existing branch work are integrated locally.
 
-The original codex/project-memory-reconcile-20260817 checkout retains its ten tracked dirty files and 630 untracked files; review and staging trees remain preserved. Integration changes and ignored output/vnext verification artifacts are separate. No task commit, push, main integration or deployment has occurred at this checkpoint. Local/remote synchronization is not yet claimed.
+The original codex/project-memory-reconcile-20260817 checkout retains its ten tracked dirty files and 630 untracked files; review and staging trees remain preserved. Integration changes and ignored output/vnext verification artifacts are separate. Implementation checkpoint 09b6587198da947408f63fc41a929eba22766ab0 is committed locally; push, main integration and deployment are pending. Local/remote synchronization is not yet claimed.
 
 ## Implementation and verification
 
