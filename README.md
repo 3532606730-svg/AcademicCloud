@@ -183,33 +183,47 @@ Long Agent runs consume only the explicitly approved queue. They do not invent w
 
 ## Local Development
 
-Prerequisites: Node.js 24 and npm.
+Prerequisites: Node.js 24; dependency installation uses npm 11.19.1 and the
+versioned lifecycle permissions in `package.json`.
 
 ```powershell
-npm.cmd install
+npm.cmd exec --yes --package=npm@11.19.1 -- npm ci --strict-allow-scripts
+npm.cmd run build --workspace @academiccloud/compute-contracts
+npm.cmd run db:initialize
 npm.cmd run dev
 ```
 
 Frontend: `http://127.0.0.1:5173`  
 Backend: `http://127.0.0.1:3000`
 
-Initialize/upgrade local SQLite:
+Initialize/upgrade local SQLite, immutable ruleset admissions and the derived
+Library search projection together:
 
 ```powershell
-npm.cmd run db:migrate
+npm.cmd run db:initialize
 ```
+
+After compilation, the corresponding operator entry is `db:initialize:prod`.
+Production startup checks migration/admission readiness and does not perform
+initialization automatically. Use the protected environment and exact release
+paths in the [production runbook](docs/deployment/production-runbook.md).
 
 Repository checks:
 
 ```powershell
-npm.cmd test
+npm.cmd run test:ci
 npm.cmd run typecheck
 npm.cmd run build
-npm.cmd run test:acceptance-tools
 npm.cmd run acceptance:compiled
+npm.cmd audit --omit=dev --audit-level=low
 ```
 
-Use the actual scripts in `package.json` if they change.
+`test:ci` includes backend, frontend, contracts, pure Compute and operations
+tests. Actual release-local OCR/model qualification is separate; the pure
+Compute suite still runs PDF.js, native canvas and injected OCR/bridge tests.
+SQLite uses its bundled native prebuild; required Argon2/esbuild install
+scripts remain allowed. Do not replace the supported installer policy with
+global `--ignore-scripts` or `--dangerously-allow-all-scripts`.
 
 ## Security / Data Flow Summary
 

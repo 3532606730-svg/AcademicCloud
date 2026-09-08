@@ -157,9 +157,12 @@ export async function exportCatalogEvidenceLocally(
   onProgress?.({ completedResources: 0, totalResources: request.manifest.resources.length, failedResources: 0 });
 
   let polling = onProgress !== undefined;
-  const pollingPromise = onProgress
-    ? pollProgress(fetchImpl, signal, () => polling, onProgress)
-    : Promise.resolve();
+  const progressController = new AbortController();
+  const stopProgress = () => progressController.abort();
+  signal?.addEventListener("abort", stopProgress, { once: true });
+  if (onProgress) {
+    void pollProgress(fetchImpl, progressController.signal, () => polling, onProgress);
+  }
 
   let response: Response;
   try {
@@ -181,7 +184,8 @@ export async function exportCatalogEvidenceLocally(
     throw new LocalCatalogBridgeError("unavailable");
   } finally {
     polling = false;
-    await pollingPromise;
+    signal?.removeEventListener("abort", stopProgress);
+    progressController.abort();
   }
 
   if (!response.ok) {

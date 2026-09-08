@@ -1,306 +1,51 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-08-30
+**Last reconciled:** 2026-09-07. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
-The board is the executable priority view. `CURRENT_STATE.json` holds compact
-current pointers; task cards and ADRs preserve complete contracts and evidence.
+## Active task
 
-## Current Owner authorization / continuous objective
-
-`ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE` is
-**ACTIVE / OWNER-AUTHORIZED CONTINUOUS EXECUTION**. It reopens
-`INCIDENT-L1-AI-PRODUCTION01`, revokes whole-product production acceptance and
-Internal Beta readiness, and supersedes the stale `UPLOAD-PERF01` next-task
-pointer. It covers correctness, stability, AI-state semantics, all available
-Owner sources, all AI-eligible production Library resources, and material
-zero-cost performance work on existing paths including upload/multipart.
-
-```text
-INCIDENT_L1_AI_PRODUCTION01=OPEN
-PRODUCTION_USER_ACCEPTANCE=FAIL
-AUTONOMOUS_FULL_CORPUS_ACCEPTANCE=PENDING
-WHOLE_PRODUCT_PERFORMANCE_ACCEPTANCE=PENDING
-INTERNAL_BETA_READY=false
-INTERNAL_BETA_STARTED=false
-```
-
-There is no fixed 30-second AI SLA. Cost, data authority, privacy, security,
-stability, exact release identity, normal product-path execution, and a final
-frozen full-corpus clean sweep are mandatory. Do not start Internal Beta,
-invitations, unrelated features, whole-document OCR/indexing, embeddings/RAG,
-paid infrastructure, or forbidden artifact `9405764771`.
-
-The 2026-08-24 Local Compute Owner override continues this task and supersedes
-only the normal production Compute provider. Target state is Core durable queue
-plus an outbound-only Local Pull worker on the existing Owner machine;
-GitHub-hosted production document processing is frozen. GitHub remains a
-provider-neutral CI/qualification and separately authorized emergency adapter.
-No WSL/Windows feature/reboot work begins until current code is pushed and
-remote-verified and all 12 Owner PDFs are preserved and re-hashed on D.
-
-`ACADEMICCLOUD-EXECUTION-ACCESS-RECOVERY01` is complete: SSH read-only evidence,
-Git write/push, authenticated GitHub Actions read, and browser evidence remained
-available through incident closure; its card is archived under `tasks/done/`.
-
-| Task | State | Next authority |
-|---|---|---|
-| ACADEMICCLOUD-FULL-LIBRARY-BATCH-CATALOG | EXPORT PASS / EXACT `171970b…` / 74 REUSED + 8 RECOVERED = 82 / 6 SOURCE REPLACEMENT REQUIRED | Upload independently verified `academiccloud-catalog-batch-001.zip` (SHA-256 `cf39b612…406fa`) for external review; STOP before import/apply |
-| ACADEMICCLOUD-BATCH-CATALOG-ROUNDTRIP-V1 | IMPLEMENTED / VERIFIED / FIRST REAL LOCAL ROUNDTRIP PASS on exact `31a1366…`; ADR-039 | Continued by the export-only full-Library task; no result import/apply authority |
-| ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE | ACTIVE / PRODUCTION `b3debfb…` V33 / A PASS / V9-SCHEMA34 RELEASE PENDING / MAIN WORKER DISABLED+PAUSED | Exact `6b68d1a…` removed input overflow, but the real B retry proved the full prompt Schema induced exhaustive null/empty output and another safe `content_truncated`. Pushed `9dbbc94…` adds compact sparse v9/prompt-v6 plus append-only schema34; exact release/backup/cutover and one fresh B retry are next. C remains blocked on B |
-| L1-INTELLIGENT-LIBRARY01 | COMPLETE / DEPLOYED — A–F green; exact `017a47d…`, schema v24/history 001–024 | STOP — durable release evidence is in `tasks/done/L1-INTELLIGENT-LIBRARY01.md` |
-| UPLOAD-PERF01 | SUPERSEDED AS NEXT POINTER | Existing upload-path performance is absorbed into the active integrated program; no separate task starts |
-| GOAL-BETA-PREP01 | HISTORICAL COMPLETE | Its former Internal Beta readiness was revoked by the active acceptance contract; no invitations sent |
-| HOTFIX-META-UX01 | HISTORICAL RELEASE `53317bb…`, now the immediate app+v22 backup rollback pair for `017a47d…` | Owner manual acceptance remains pending; no action started here |
-| COMPUTE-GHA02 | HOSTED VERIFICATION COMPLETE / HISTORICAL FINDINGS PRESERVED | Superseded by COMPUTE-PRECUTOVER01, which resolved its memory/staging findings on exact hosted run `32407660640` |
-| ARCH-COMPUTE01 (`JOB-CORE01 + COMPUTE-GHA01 + OCR-METADATA-GHA01`) | PRODUCTION CUTOVER COMPLETE | Exact artifact `9421010643`, stopped-service backup, migration 022, minimum credentials/environment, deployment, invariants, and canary passed |
-| OPS-METADATA-MEMORY01 | CLOSED BY COMPUTE CUTOVER | Real production canary proved heavy work outside Core and Core responsiveness throughout |
-
-Current Local Compute transition gates:
-
-```text
-PRODUCTION_COMPUTE_CONTROL_PLANE=CORE_PULL_WORKER
-LOCAL_PULL_PROVIDER=PRIMARY
-GITHUB_HOSTED_PRODUCTION_COMPUTE=false
-CURRENT_WORK_CHECKPOINTED=true
-CURRENT_WORK_PUSHED=true
-REMOTE_HEAD_CONFIRMED=true
-DURABLE_NEXT_STEP_RECORDED=true
-CURRENT_CANONICAL_UI_WORK_CHECKPOINTED=true
-CURRENT_CANONICAL_UI_WORK_PUSHED=true
-OWNER_SOURCES_STAGED_ON_D=true
-OWNER_SOURCE_COPY_SHA256_VERIFIED=true
-LOCAL_CUDA_EXECUTION=PASS
-LOCAL_PADDLE_CPU_GPU=PASS
-LOCAL_QWEN_CPU_CUDA=PASS
-LOCAL_BIBLIOGRAPHIC_QUALIFICATION=7/7_PASS
-LOCAL_PULL_PROTOCOL_DEVELOPMENT=PASS
-LOCAL_PRE_CORPUS_CODE_REVIEW=d1bddb6_PASS
-PRODUCTION_CORE=58b8468_SCHEMA_V32_LOCAL_PULL_PASS
-LOCAL_COMPUTE_MAIN_CURRENT=58b8468_DISABLED_INACTIVE_PAUSED_DO_NOT_ENABLE
-LOCAL_COMPUTE_60205D=HASH_VERIFIED_LLAMA_TRANSPORT_FIX_PRESENT_NOT_MAIN_CURRENT
-PRODUCTION_LOCAL_PULL_CUTOVER=PASS
-MAIN_LOCAL_WORKER=DISABLED_PAUSED_SAFE_ISOLATION
-REAL_QWEN_STRUCTURED_CANARY=PASS
-EVIDENCE_QUALITY_V2=6c71ac9_DEPLOYED_CANARY_PASS
-CANONICAL_BIBLIOGRAPHY_UI=58b8468_DEPLOYED
-WORK_CLASSIFICATION_V3=ACTUAL_QWEN_CANARY_PASS_BUT_MODERN_SCHOLARLY_DISPLAY_FAIL
-BIBLIOGRAPHY_PIPELINE_IDEMPOTENCY=58b8468_DEPLOYED_PASS
-WORK_CLASSIFICATION_V4_V5_V6=HISTORICAL_ATTEMPTS_NOT_FINAL_ACCEPTANCE
-FINAL_ARCHITECTURE_CORRECTION=ADR038_DEPLOYED
-FINAL_RULESET_V8_PROMPT_V5=PRODUCTION
-PRODUCTION_SCHEMA_V33=PASS
-FINAL_RULESET_V9_PROMPT_V6=9DBBC94_PUSHED_RELEASE_PENDING
-DEVELOPMENT_SCHEMA_V34=PASS_APPEND_ONLY_ADMISSION
-OFF_HOST_SCHEMA_V27_BACKUP_GATE=PASS
-PRODUCTION_SCHEMA_V28=PASS
-OFF_HOST_SCHEMA_V30_BACKUP_GATE=PASS
-PRODUCTION_SCHEMA_V31=PASS
-OFF_HOST_SCHEMA_V31_BACKUP_GATE=PASS
-A_CANARY=PASS_FRESH_UI_JOB_7496E55D_V8
-B_CANARY=PENDING_EXACT_V9_PROMPT_V6_SPARSE_RELEASE
-NETWORK_ACCEPTANCE=TRANSIENT_TIMEOUTS_ALLOWED_ONLY_WITH_FAIL_SAFE_REQUEUE_RECOVERY_AND_EVENTUAL_SUCCESS
-NETWORK_SHARED_LAYER=SING_TUN_TCP_CONNECT_TIMEOUT_PROVEN; DIRECT_WLAN_GREEN
-NETWORK_WSL_AMPLIFICATION=NAT_OVER_UNSTABLE_TUN; NO_SECOND_CAUSE_PROVEN
-NETWORK_BOUNDED_ROUTE_TEST=90_PROBES_89_COMPLETE_SUCCESS_1_WINDOWS_READY_TIMEOUT_ROUTE_REMOVED
-PRODUCTION_DISK_HARD_GATE=PASS_12568662016_AVAILABLE
-PRODUCTION_CLEANUP=34_RELEASES_PLUS_APT_PLUS_10_HASHED_STAGING_DIRS_REMOVED
-WSL_DISK_INVENTORY=4479467520_AVAILABLE; 64D2136_PROTECTED; NO_DELETE_AUTHORITY
-PRODUCTION_CONNECTIVITY=INTERMITTENT_BUT_FAIL_SAFE_RECOVERY_IS_PRODUCT_CONTRACT
-PRODUCTION_OOM_FINDING=THREE_HISTORICAL_HOST_WIDE_EVENTS; CURRENT_CORE_AND_LOCAL_COMPUTE_ZERO
-PRODUCTION_CSP_FINDING=FILES_DOMAIN_PRESENT; BROWSER_PROFILE_DISCREPANCY_ONLY
-B_C_CANARIES=BLOCKED_ON_A
-FINAL_NORMAL_OWNER_BROWSER_PATH=PENDING
-```
-
-Current corpus facts remain `OWNER_SUPPLIED_TOTAL=12`,
-`PRODUCTION_ELIGIBLE_TOTAL=93`, and `UNIQUE_ACCEPTANCE_TOTAL=105`; recompute
-before final execution. No 105-resource wave starts before Local Pull cutover.
-The 12 D-drive staging copies retain their exact filenames, contain 199,835,281
-bytes, and passed all manifest length/SHA-256 checks.
-
-Historical pre-install host preflight passed the hardware/storage prerequisites and confirmed a true
-UAC boundary: Windows 11 build 26200, virtualization enabled, Hypervisor
-present, RTX 4060 8,188 MiB, 113.55 GB free on D, and WSL absent. No Windows
-feature changed. The single required Owner action is an elevated
-`wsl.exe --install --no-distribution` followed by the requested restart; no
-default distribution may be installed on C.
-
-The Owner completed that boundary. Post-reboot source/repository checks passed,
-and the only registered distro is Ubuntu 24.04.4 `AcademicCloudCompute` on
-WSL2 with `BasePath`/80 GB sparse VHDX under D and zero C-drive distros. The
-Normal envelope is 8 CPUs, about 8 GB RAM, and 4 GB D-drive swap; systemd and
-the non-root worker user are ready. `/dev/dxg`, WSL `libcuda.so.1`, and the RTX
-4060 8,188 MiB / compute capability 8.9 are visible. Actual CUDA `sm_89`, exact
-Paddle CPU/GPU, exact Qwen CPU/CUDA, the 7/7 bibliographic gate, and sanitized
-production-child runtime repeats now pass. The immutable exact-source release,
-production cutover, forced-loss recovery, and canaries remain pending.
-
-Historical independent incident gates (not current final acceptance):
-
-```text
-PDFJS_REPAIRED_RELEASE_E2E=PASS
-PDFJS_REPAIRED_RELEASE_LEGACY_E2E=PASS
-RESOURCE_ALREADY_EXISTED=true
-PRE_FIX_FAILURE_BOUNDARY=PDFJS_RANGE_READER
-NEW_JOB_CREATED=true
-DISPATCH=PASS
-WORKER_CLAIM=PASS
-PDF_RANGE_ACCESS=PASS
-PDFJS_STALE_READER_ERROR_ABSENT=true
-OCR_OR_DOWNSTREAM_EXTRACTION_REACHED=true
-CALLBACK=PASS
-TERMINAL_STATE=succeeded
-DUPLICATE_DURABLE_JOBS=0
-DUPLICATE_PROVIDER_EXECUTIONS=0
-CURRENT_62_99MB_OWNER_PATH=PASS
-LARGE_PDF_OVER_64MB_PATH=PASS
-OWNER_REAL_BROWSER_PATH=PASS
-REAL_BROWSER_E2E=PASS
-INCIDENT_CLOSED=true
-AMBIGUOUS_DISPATCH_RECOVERY=PASS
-```
-
-The completed A–F contract, credential/privacy boundaries, production evidence,
-and rollback record are authoritative in
-`tasks/done/L1-INTELLIGENT-LIBRARY01.md`. Historical beta-prep and hotfix
-contracts remain preserved in their existing cards.
-
-## Completed Intelligent Library sequence
-
-| Order | Checkpoint | State |
+| Order | Task | State / next gate |
 |---:|---|---|
-| A | Domain + persistence architecture | COMPLETE / PUSHED / SYNCED — `fff33c7…`; additive migration 023 and ADR-032; production unchanged |
-| B | AI bibliographic Compute | COMPLETE / PUSHED / SYNCED — `9d8a3a0…`; run `32574319098`, 3/3 + 7/7, sub-6-GiB, zero artifacts |
-| C | Search + filters + display | COMPLETE / PUSHED / SYNCED — ADR-034; backend 357/357, frontend 262/262, typecheck/build green; production unchanged |
-| D | Citation engine | COMPLETE / PUSHED / SYNCED — `015738c…`; ADR-035; four exact-hashed styles including 《历史研究》; backend 364/364, focused 8/8, build/typecheck green; production unchanged |
-| E | Library UX + Activity Center | COMPLETE / PUSHED / SYNCED — `017a47d…`; quiet responsive Search/type/sort/filter row, collapsed local-preference Activity Center, direct bibliography/field-authority editing, four-style citation dialog; frontend 270/270, typecheck/build green |
-| F | Integration + migration + exact production deployment | COMPLETE / DEPLOYED / VERIFIED — artifact `9477785607`; stopped-service encrypted/off-host rollback generation; migrations 023–024; exact `017a47d…`; health/schema/integrity/FK/journal/memory/no-wave green |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | ACTIVE — local R01–R16 remediation and additional defects implemented/verified; remaining benchmark/browser coverage, checkpoint/CI/main integration, exact release/migrations and real production verification |
 
-## Active Goal Mode sequence
+The Owner's 2026-09-06 instruction authorizes remediation of the accepted review and real newly found defects, including necessary production/data/service changes and main integration. Use existing authority without repeated approval requests. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 
-| Order | Task / phase | Task card | State |
-|---:|---|---|---|
-| 1 | COMPUTE-PRECUTOVER01 | `tasks/done/COMPUTE-PRECUTOVER01.md` | COMPLETE — exact source `1c3bb10…`, run `32407660640`; real OCR, provider-specific memory/drift, staging, privacy/output, and zero-artifact gates passed; production unchanged |
-| 2 | ARCH-COMPUTE01 production cutover | `tasks/doing/GOAL-BETA-PREP01.md` Phase 2 | COMPLETE — production `1c3bb10…`, schema v22/history 001–022, rollback `08657727…` + verified pre-migration DB, final canary run `32415058752` green |
-| 3 | RF-SEARCH01 production closure | `tasks/done/RF-SEARCH01.md` + Goal Phase 3 | COMPLETE — source `b19f9dc5…`, artifact `9424397852`, browser/build/independent/local/host/deploy gates green; historical artifact never used |
-| 4 | L1-UX08 beta-minimum unified Activity Center | `tasks/done/L1-UX08.md` + Goal Phase 4 | COMPLETE — production `c741455…`; Activity Center v0.1 + Source Recovery live; 46/46 real-browser journey green including multipart resume, real GitHub Compute suggestion, wrong-file fail-closed, mobile, stub-picker path, and zero residue |
-| 5 | QA-GOLDEN01 | `tasks/done/QA-GOLDEN01.md` + Goal Phase 5 | COMPLETE — 32/32 exact-release golden journey on production `c741455…` with zero residue |
-| 6 | INTERNAL_BETA_READY | `tasks/doing/GOAL-BETA-PREP01.md` | READY — STOP; the Owner decides whether/when to start or invite users into internal beta |
+Integration work continues in D:/Projects/AcademicCloud-vnext on codex/vnext-remediation-20260906. Preserved dirty original/review/staging trees are not replacement targets.
 
-Goal Mode should move between these checkpoints autonomously when the changed-risk evidence is green. Routine implementation choices do not require another Owner round-trip. Early STOP conditions remain exactly those in GOAL-BETA-PREP01.
+## Incorporated work and historical cards
 
-## RF-SEARCH01 preserved implementation state
+These cards retain scope history and evidence. Old next-task, export-only or model-decision STOP text does not override active vNext remediation.
 
-RF-SEARCH01 remains behavior-frozen at exact candidate `7bba7b869fd1234c1e7c67002cb93368c299209b`. Ancestry verification corrected the earlier absence claim: Phase 2 source `1c3bb10…` already descended the candidate, so Search was visible even though the historical artifact was never reused. Phase 3 closed the sequence on exact source `b19f9dc5…` / new artifact `9424397852`; focused authority/ranking/pagination and pre/post-deploy production-browser gates are green.
+| Card | Current relationship |
+|---|---|
+| [Final stabilization / full corpus / zero-cost performance](tasks/doing/ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE.md) | Prior program incorporated into existing-product remediation; unresolved acceptance remains evidence |
+| [Batch Catalog roundtrip V1](tasks/doing/ACADEMICCLOUD-BATCH-CATALOG-ROUNDTRIP-V1.md) | Integrated first-class implementation; ADR-041 evolves review/import/Apply |
+| [Full-Library Batch Catalog](tasks/doing/ACADEMICCLOUD-FULL-LIBRARY-BATCH-CATALOG.md) | Historical 82-resource export and six source-replacement cases; recompute current data facts when needed |
+| [Catalog corrections / D-drive cleanup](tasks/doing/ACADEMICCLOUD-CATALOG-BATCH-001-FIXES-AND-D-DRIVE-CLEANUP.md) | Prior fixes/evidence preserved; no broad cleanup implied |
+| [GOAL-BETA-PREP01](tasks/doing/GOAL-BETA-PREP01.md) | Historical acceptance sequence; Internal Beta unstarted |
 
-## Completed operational and Compute work
+Completed substrate includes [L1-INTELLIGENT-LIBRARY01](tasks/done/L1-INTELLIGENT-LIBRARY01.md), [OPS-STORAGE-INCIDENT01](tasks/done/OPS-STORAGE-INCIDENT01.md), [COMPUTE-PRECUTOVER01](tasks/done/COMPUTE-PRECUTOVER01.md), [RF-SEARCH01](tasks/done/RF-SEARCH01.md), [L1-UX08](tasks/done/L1-UX08.md), and [QA-GOLDEN01](tasks/done/QA-GOLDEN01.md). Historical release success does not close current vNext acceptance.
 
-| Task | Card | Result |
-|---|---|---|
-| OPS-STORAGE-INCIDENT01 | `tasks/done/OPS-STORAGE-INCIDENT01.md` | CLOSED after exact least-privilege/R3 repair and Owner-reported browser storage acceptance |
-| OPS-STORAGE-APP-REPAIR01 | `tasks/done/OPS-STORAGE-APP-REPAIR01.md` | Historical runtime-contract repair and failed-closed artifact/rollback evidence preserved |
-| OPS-STORAGE-HOTFIX01 | `tasks/done/OPS-STORAGE-HOTFIX01.md` | Historical production-baseline prerequisite; superseded live by R3 |
-| OPS-METADATA-MEMORY01-DIAGNOSIS | `tasks/done/OPS-METADATA-MEMORY01-DIAGNOSIS.md` | Core stall classified as cgroup reclaim from in-process PDF/render/OCR working set |
-| JOB-CORE01 | `tasks/done/JOB-CORE01.md` | Development migration 022 and durable job authority complete |
-| COMPUTE-GHA01 | `tasks/done/COMPUTE-GHA01.md` | Provider-neutral boundary plus GitHub Actions adapter complete in development |
-| OCR-METADATA-GHA01 | `tasks/done/OCR-METADATA-GHA01.md` | Existing bounded OCR/Metadata Suggestion migrated to asynchronous Compute in development |
-| COMPUTE-GHA02 | `tasks/done/COMPUTE-GHA02.md` | Exact final Ubuntu run passed contracts, Compute, pinned Tesseract, real OCR, memory, leak, quoting, and zero-artifact gates; its two pre-cutover findings are preserved historically and resolved by COMPUTE-PRECUTOVER01 |
+## Parked reliability cards
 
-ADR-031 remains the authoritative combined architecture/security/cutover record. COMPUTE-PRECUTOVER01 reconciled the explicit GitHub-hosted `<768 MiB` peak contract while retaining local `<512 MiB`, `<64 MiB` drift, concurrency one, and clean-process isolation. GOAL-BETA-PREP01 Phase 2 consumed its bounded production authority successfully; one logical canary passed with zero workflow artifacts, unchanged canonical metadata, and no OSS/RAM/CORS/memory-limit/cost change.
+| Task | Future purpose |
+|---|---|
+| [OPS-DEPENDENCY01](tasks/ready/OPS-DEPENDENCY01.md) | Dependency health and safe diagnostics |
+| [ERR-BOUNDARY01](tasks/ready/ERR-BOUNDARY01.md) | Stable user errors and correlation |
+| [DOC-TRUTH01](tasks/ready/DOC-TRUTH01.md) | Ongoing authoritative-state drift prevention |
+| [RF-INTEGRITY01](tasks/ready/RF-INTEGRITY01.md) | Bounded integrity/reconciliation |
+| [OPS-OBJECTBACKUP01](tasks/ready/OPS-OBJECTBACKUP01.md) | Object-byte recovery; separate cost/provider decision |
+| [FE-DECOMP01](tasks/ready/FE-DECOMP01.md) | Behavior-preserving decomposition where justified |
+| [CONTRACT-CORE01](tasks/ready/CONTRACT-CORE01.md) | Shared contracts where justified |
 
-## Reliability / usability queue — outside the beta-prep critical path unless explicitly used by Goal Mode
+Concrete current defects in these areas can be repaired inside vNext. These cards do not authorize broad unrelated refactors or paid infrastructure.
 
-| Order | Task | Task card | Objective |
-|---:|---|---|---|
-| 1 | OPS-DEPENDENCY01 | `tasks/ready/OPS-DEPENDENCY01.md` | Owner-visible OSS/Core dependency health and safe diagnostics |
-| 2 | ERR-BOUNDARY01 | `tasks/ready/ERR-BOUNDARY01.md` | Stable user errors + request correlation; no raw browser/provider exceptions |
-| 3 | DOC-TRUTH01 | `tasks/ready/DOC-TRUTH01.md` | Prevent authoritative-state drift |
-| 4 | RF-INTEGRITY01 | `tasks/ready/RF-INTEGRITY01.md` | DB↔storage inventory reconciliation and rolling fixity evidence |
-| 5 | OPS-OBJECTBACKUP01 | `tasks/ready/OPS-OBJECTBACKUP01.md` | Independent second copy of authoritative object bytes; cost/provider gate |
-| 6 | FE-DECOMP01 | `tasks/ready/FE-DECOMP01.md` | Behavior-preserving frontend orchestration decomposition |
-| 7 | CONTRACT-CORE01 | `tasks/ready/CONTRACT-CORE01.md` | Shared API/error contract source without framework churn |
+## Parked scholarly sequence
 
-These cards are not implicitly authorized by GOAL-BETA-PREP01. In particular, paid/cost-bearing object backup, broad frontend decomposition, contract refactors, and unrelated reliability cleanup must not be pulled into the beta-prep program.
+RF-PROV01 → RF-LINEAGE01 → RF-STATS01 → RF-OVERLAY01 → RF-ORGANIZE01 → RF-VIEWS01 → RF-INTAKE01 → RF-ANNOTATE01 → RF-CITE01 → RF-EVIDENCE01 → RF-EXPORT01 → RF-LIBRARY03 → RF-LIBRARY04 → RF-RECOVERY01 → RF-AUTHMATRIX01 → RF-DERIVED01.
 
-## Preserved personal research / pre-intelligence queue
+Detailed cards remain under tasks/ready; [ROADMAP.md](ROADMAP.md) defines durable sequencing. Do not start Internal Beta/invitations, this feature queue, whole-document OCR, full-text indexing, embeddings or RAG from remediation.
 
-```text
-RF-PROV01
-→ RF-LINEAGE01
-→ RF-STATS01
-→ RF-OVERLAY01
-→ RF-ORGANIZE01
-→ RF-VIEWS01
-→ RF-INTAKE01
-→ RF-ANNOTATE01
-→ RF-CITE01
-→ RF-EVIDENCE01
-→ RF-EXPORT01
-→ RF-LIBRARY03
-→ RF-LIBRARY04
-→ RF-RECOVERY01
-→ RF-AUTHMATRIX01
-→ RF-DERIVED01
-→ STOP BEFORE broader OCR/full-text/retrieval/RAG
-```
+## Completion rule
 
-None of this queue is authorized by GOAL-BETA-PREP01.
-
-## Current release boundary
-
-```text
-DECLARED_PRODUCTION=5d4fddd542d352b2570d01feebda14c871be1d04
-PREVIOUS_PRODUCTION=6c71ac94c60d49e65e7eca59305b59ba6e461167
-PRODUCTION_SCHEMA=v28 / 001-028
-MIGRATION_025_PRODUCTION_APPLIED=true
-AUTOMATIC_ADMISSION_RELEASE_PENDING=false
-DEVELOPMENT_SCHEMA=v28 / 001-028
-MIGRATION_026_PRODUCTION_APPLIED=true
-MIGRATION_027_PRODUCTION_APPLIED=true
-MIGRATION_028_PRODUCTION_APPLIED=true
-MIGRATION_022_PRODUCTION_APPLIED=true
-MIGRATION_023_PRODUCTION_APPLIED=true
-MIGRATION_024_PRODUCTION_APPLIED=true
-
-ARCH_COMPUTE01_PRODUCTION_CHANGED=true
-ARCH_COMPUTE01_PRODUCTION_CREDENTIALS_CHANGED=true_least_scoped
-ARCH_COMPUTE01_OSS_CHANGED=false
-ARCH_COMPUTE01_SEARCH_INCLUDED_BY_ANCESTRY=true
-
-SEARCH_HISTORICAL_SOURCE=7bba7b869fd1234c1e7c67002cb93368c299209b
-SEARCH_PRODUCTION_SOURCE=b19f9dc5b48e1976127704712e08a8655b1fadd5
-SEARCH_PRODUCTION=PASS
-ACTIVITY_CENTER_V0_1=PASS
-QA_GOLDEN01=PASS
-INTERNAL_BETA_READY=false
-INTERNAL_BETA_STARTED=false
-LAYER1_COMPLETE=true
-INCIDENT_L1_AI_PRODUCTION01=OPEN
-AUTONOMOUS_FULL_CORPUS_ACCEPTANCE=PENDING
-WHOLE_PRODUCT_PERFORMANCE_ACCEPTANCE=PENDING
-NEXT_ACTION=EXECUTE_FINAL_STABILIZATION_FULL_CORPUS_ZERO_COST_PERFORMANCE
-
-HOTFIX_META_UX01_STATE=SUPERSEDED_BY_017a47d_RETAINED_AS_ROLLBACK
-HOTFIX_META_UX01_MIGRATION_CHANGE=none
-HOTFIX_META_UX01_OSS_RAM_CORS_CREDENTIAL_COST_CHANGE=none
-HOTFIX_META_UX01_OWNER_MANUAL_ACCEPTANCE=PENDING
-```
-
-The full storage hotfix/R3 artifact identities and hashes remain in `CURRENT_STATE.json` and the completed storage task cards.
-
-## Goal Mode hard boundaries / early-stop rules
-
-- Preserve historical COMPUTE-GHA02 evidence. Do not merely hide the 512 MiB variability; make any new GitHub-hosted memory contract provider-specific and evidence-backed.
-- Preserve the builder's repository-`output/` safety boundary while repairing the protected job staging path.
-- Production migration/deploy/canary is authorized only after Phase 1 green and only within the exact GOAL-BETA-PREP01 cutover contract.
-- Do not repurpose a broad personal GitHub token for production. If a compliant least-scoped dispatch credential cannot be provisioned without Owner interaction, STOP at that exact credential gate.
-- No paid infrastructure, no second server, and no cost-bearing object-backup work.
-- Do not change `MemoryHigh`/`MemoryMax` merely to mask a Compute defect.
-- Do not mutate OSS RAM/CORS/bucket policy unless a newly proven regression makes it strictly necessary; if so STOP for Owner review.
-- Do not destructively/manual-edit existing pending uploads or object/part state.
-- The worker returns candidates only; Core remains sole authority for result identity, persistence, Library scope, and canonical metadata application.
-- Search must be recomposed on the latest baseline; do not deploy the historical Search artifact directly.
-- Activity Center scope is beta-minimum only; do not turn it into a broad notification/task-history platform.
-- Do not begin whole-document OCR product expansion, full-text indexing/search, embeddings, retrieval, RAG, Personal Research Workspace, or unrelated roadmap work.
-- If production becomes unhealthy, stop new work and use the already-defined rollback path when rollback is clearly required for service/data safety.
-- When all beta-prep gates are green, set `INTERNAL_BETA_READY=true`, reconcile durable state, checkpoint/push/synchronize where actually possible, then STOP before starting internal beta.
+Finish actual product and engineering acceptance, reconcile exact source/runtime/data facts, and deliver the Owner-required final result. Missing authenticated browser access blocks only dependent live workflows; continue independent work. Synthetic fixtures, SSH or direct database writes do not substitute for normal signed-in acceptance.

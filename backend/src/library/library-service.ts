@@ -20,10 +20,9 @@ import type {
 import { libraryHoldingView, type LibraryHoldingView } from "./holding-view.js";
 import { composeCatalogueDisplay, composeCatalogueFilename } from "./catalogue-display.js";
 import {
-  collectAllHoldings,
-  searchHoldings,
-  SEARCH_MAX_SCAN_PAGES,
-  SEARCH_SCAN_PAGE_SIZE,
+  prepareSearch,
+  encodeSearchCursor,
+  toSearchResult,
   type LibrarySearchFilters,
   type LibrarySearchPage,
   type SearchableAuthority,
@@ -590,16 +589,16 @@ export class LibraryService {
     // matching, counting, ranking, or pagination can observe the corpus.
     return this.#persistence.runInTransaction((repositories) => {
       const library = this.#requireMember(accountId, libraryId, repositories);
-      // Enumerate the ENTIRE accessible corpus by keyset pagination so search
-      // never silently truncates; a defensive guard fails closed instead.
-      const holdings = collectAllHoldings(
-        (after, pageLimit) => repositories.libraries.listHoldingsPage(library.id, after, pageLimit),
-        SEARCH_SCAN_PAGE_SIZE,
-        SEARCH_MAX_SCAN_PAGES,
-      );
-      if (holdings === null) throw new LibraryError("invalid_state");
-      const searchable = this.#searchableHoldings(library.ownerDomainId, holdings, repositories);
-      return searchHoldings(searchable, rawQuery, limit, cursor, filters, sort);
+      const search = prepareSearch(rawQuery, limit, cursor, filters, sort);
+      repositories.libraries.refreshSearchProjection(library.ownerDomainId);
+      const candidates = repositories.libraries.searchHoldingsPage(library.id, search);
+      const visible = candidates.slice(0, limit);
+      const searchable = this.#searchableHoldings(library.ownerDomainId, visible.map((item) => item.holding), repositories);
+      return {
+        results: searchable.map(toSearchResult),
+        nextCursor: candidates.length > limit && visible.length > 0
+          ? encodeSearchCursor(search.identity, visible[visible.length - 1]!.key) : null,
+      };
     });
   }
 
@@ -637,6 +636,7 @@ export class LibraryService {
         fileId: holding.file.id,
         displayName: holding.file.displayName,
         sizeBytes: holding.file.sizeBytes,
+        mediaType: holding.file.mediaType,
         artifactId: holding.artifactId,
         artifactCreatedAt: holding.artifactCreatedAt,
         canonicalTitle: holding.canonicalTitle,

@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { CatalogBatchError, type CatalogBatchService } from "./catalog-batch-service.js";
-import { MAX_CATALOG_BATCH_RESOURCES, MAX_CATALOG_RESULTS_BYTES } from "./contracts.js";
+import { MAX_CATALOG_BATCH_RESOURCES, MAX_CATALOG_RESULTS_BYTES, MAX_CATALOG_APPLY_BYTES } from "./contracts.js";
 
 const ID_PATTERN = "^[A-Za-z0-9_-]{1,128}$";
 const idSchema = { type: "string", pattern: ID_PATTERN, minLength: 1, maxLength: 128 } as const;
@@ -11,7 +11,7 @@ const emptyQuerySchema = { type: "object", additionalProperties: false, properti
 interface LibraryParams { libraryId: string; }
 interface SourceParams { batchId: string; resourceId: string; }
 interface ExportBody { fileIds: string[]; }
-interface ApplyBody { document: unknown; documentDigest: unknown; selections: unknown; }
+interface ApplyBody { planId: unknown; selections: unknown; }
 
 function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccount {
   if (!account) throw new CatalogBatchError("not_found");
@@ -21,7 +21,8 @@ function requireActor(account: AuthenticatedAccount | null): AuthenticatedAccoun
 function sendError(reply: FastifyReply, error: unknown) {
   if (!(error instanceof CatalogBatchError)) throw error;
   const status = error.code === "invalid_input" ? 400
-    : error.code === "stale" || error.code === "conflict" ? 409
+    : error.code === "plan_too_large" ? 413
+    : error.code === "stale" || error.code === "conflict" || error.code === "plan_expired" ? 409
       : error.code === "storage_unavailable" ? 503 : 404;
   return reply.code(status).send({ error: error.code });
 }
@@ -106,15 +107,14 @@ export async function registerCatalogBatchHttp(app: FastifyInstance, service: Ca
     {
       preHandler: app.authenticate,
       preValidation: requireJson,
-      bodyLimit: MAX_CATALOG_RESULTS_BYTES,
+      bodyLimit: MAX_CATALOG_APPLY_BYTES,
       schema: {
         params: { type: "object", additionalProperties: false, required: ["libraryId"], properties: { libraryId: idSchema } },
         querystring: emptyQuerySchema,
         body: {
-          type: "object", additionalProperties: false, required: ["document", "documentDigest", "selections"],
+          type: "object", additionalProperties: false, required: ["planId", "selections"],
           properties: {
-            document: { type: "object" },
-            documentDigest: { type: "string", pattern: "^[a-f0-9]{64}$", minLength: 64, maxLength: 64 },
+            planId: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$", minLength: 43, maxLength: 43 },
             selections: {
               type: "array", minItems: 1, maxItems: MAX_CATALOG_BATCH_RESOURCES,
               items: {
@@ -122,6 +122,9 @@ export async function registerCatalogBatchHttp(app: FastifyInstance, service: Ca
                 properties: {
                   resourceId: idSchema,
                   previewVersion: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$", minLength: 43, maxLength: 43 },
+                  acknowledgeHumanConflict: { const: true },
+                  acknowledgeClear: { const: true },
+                  acknowledgeEvidence: { const: true },
                 },
               },
             },
@@ -134,7 +137,7 @@ export async function registerCatalogBatchHttp(app: FastifyInstance, service: Ca
         return {
           results: service.apply(
             requireActor(request.authAccount), request.params.libraryId,
-            request.body.document, request.body.documentDigest, request.body.selections,
+            request.body.planId, request.body.selections,
           ),
         };
       } catch (error: unknown) {

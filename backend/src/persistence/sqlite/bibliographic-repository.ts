@@ -131,7 +131,9 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
   readonly #insertSourceEdition;
   readonly #listFieldAuthorities;
   readonly #upsertFieldAuthority;
+  readonly #upsertCollectionAuthority;
   readonly #deleteFieldAuthority;
+  readonly #deleteCollectionAuthority;
   readonly #findExactAuthorities;
   readonly #listAuthorityAliases;
   readonly #insertAiRunEvidence;
@@ -211,10 +213,15 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
         @editionStatement, @holdingInformation
       )
     `);
-    this.#listFieldAuthorities = database.prepare<[string, string], FieldAuthorityRow>(`
+    this.#listFieldAuthorities = database.prepare<[string, string, string, string], FieldAuthorityRow>(`
       SELECT record_id, owner_domain_id, field_name, scope_key, authority_source,
         source_run_id, actor_account_id, established_at
       FROM scholarly_bibliographic_field_authority
+      WHERE owner_domain_id = ? AND record_id = ?
+      UNION ALL
+      SELECT record_id, owner_domain_id, field_name, scope_key, authority_source,
+        source_run_id, actor_account_id, established_at
+      FROM scholarly_bibliographic_collection_authority
       WHERE owner_domain_id = ? AND record_id = ?
       ORDER BY field_name, scope_key
     `);
@@ -234,6 +241,24 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
     `);
     this.#deleteFieldAuthority = database.prepare(`
       DELETE FROM scholarly_bibliographic_field_authority
+      WHERE owner_domain_id = ? AND record_id = ? AND field_name = ? AND scope_key = ?
+    `);
+    this.#upsertCollectionAuthority = database.prepare(`
+      INSERT INTO scholarly_bibliographic_collection_authority (
+        record_id, owner_domain_id, field_name, scope_key, authority_source,
+        source_run_id, actor_account_id, established_at
+      ) VALUES (
+        @recordId, @ownerDomainId, @fieldName, @scopeKey, @source,
+        @sourceRunId, @actorAccountId, @now
+      )
+      ON CONFLICT(record_id, field_name, scope_key) DO UPDATE SET
+        authority_source = excluded.authority_source,
+        source_run_id = excluded.source_run_id,
+        actor_account_id = excluded.actor_account_id,
+        established_at = excluded.established_at
+    `);
+    this.#deleteCollectionAuthority = database.prepare(`
+      DELETE FROM scholarly_bibliographic_collection_authority
       WHERE owner_domain_id = ? AND record_id = ? AND field_name = ? AND scope_key = ?
     `);
     this.#findExactAuthorities = database.prepare<[string, string, string], ExactAuthorityRow>(`
@@ -484,7 +509,7 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
   }
 
   listFieldAuthorities(ownerDomainId: string, recordId: string): BibliographicFieldAuthority[] {
-    return this.#listFieldAuthorities.all(ownerDomainId, recordId).map((row) => ({
+    return this.#listFieldAuthorities.all(ownerDomainId, recordId, ownerDomainId, recordId).map((row) => ({
       recordId: row.record_id,
       ownerDomainId: row.owner_domain_id,
       fieldName: row.field_name,
@@ -497,7 +522,8 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
   }
 
   setFieldAuthority(input: SetFieldAuthorityInput): void {
-    this.#upsertFieldAuthority.run({
+    const statement = input.fieldName === "contributors" ? this.#upsertCollectionAuthority : this.#upsertFieldAuthority;
+    statement.run({
       recordId: input.recordId,
       ownerDomainId: input.ownerDomainId,
       fieldName: input.fieldName,
@@ -510,7 +536,10 @@ export class SqliteBibliographicRepository implements BibliographicRepository {
   }
 
   clearFieldAuthorities(ownerDomainId: string, recordId: string, fields: Array<{ fieldName: BibliographicFieldName; scopeKey: string }>): void {
-    for (const field of fields) this.#deleteFieldAuthority.run(ownerDomainId, recordId, field.fieldName, field.scopeKey);
+    for (const field of fields) {
+      const statement = field.fieldName === "contributors" ? this.#deleteCollectionAuthority : this.#deleteFieldAuthority;
+      statement.run(ownerDomainId, recordId, field.fieldName, field.scopeKey);
+    }
   }
 
   findExactPersonAuthorities(ownerDomainId: string, label: string): ScholarlyAuthority[] {

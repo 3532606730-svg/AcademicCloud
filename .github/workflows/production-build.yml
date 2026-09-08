@@ -10,6 +10,7 @@ on:
       - "compute-contracts/**"
       - "frontend/**"
       - "database/migrations/**"
+      - "database/ruleset-admissions/**"
       - "deployment/**"
       - "package.json"
       - "package-lock.json"
@@ -51,6 +52,9 @@ jobs:
           check-latest: true
           package-manager-cache: false
 
+      - name: Select the supported npm installer
+        run: npm install --global npm@11.19.1
+
       - name: Verify Linux x86_64 and tool versions
         shell: bash
         run: |
@@ -64,7 +68,7 @@ jobs:
           test -n "$ImageVersion"
 
       - name: Install the clean development dependency tree
-        run: npm ci
+        run: npm ci --strict-allow-scripts
 
       - name: Run Core and shared-contract tests
         run: |
@@ -104,7 +108,7 @@ jobs:
 
       - name: Install Core production dependencies into the artifact
         working-directory: output/release
-        run: npm ci --omit=dev --workspace @academiccloud/backend --workspace @academiccloud/compute-contracts --include-workspace-root=false
+        run: npm ci --strict-allow-scripts --omit=dev --workspace @academiccloud/backend --workspace @academiccloud/compute-contracts --include-workspace-root=false
 
       - name: Finalize the release tree and manifest
         run: >-
@@ -128,7 +132,7 @@ jobs:
             --release=output/release
           (
             cd output/release
-            npm ci --omit=dev --workspace @academiccloud/backend --workspace @academiccloud/compute-contracts --include-workspace-root=false
+            npm ci --strict-allow-scripts --omit=dev --workspace @academiccloud/backend --workspace @academiccloud/compute-contracts --include-workspace-root=false
           )
           node scripts/production-artifact.mjs finalize \
             --release=output/release \

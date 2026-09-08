@@ -484,3 +484,19 @@ adds semantic numeric suffixes, overwrites collisions, or changes object keys.
 Owner confirmation transitions changed fields to human authority using the
 existing canonical and audit vocabulary. The stateless V1 needs no schema
 migration, external AI API, main-worker activation, or production mutation.
+
+## ADR-041 — vNext review plans and SQLite search projection
+
+**Date:** 2026-09-06; reconciled 2026-09-08
+**Status:** Accepted; local implementation verified, production acceptance pending
+**Full record:** [ADR-041](docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md)
+
+Owner-authorized vNext integrates the accepted 360 findings into one source
+line. Catalog uses explicit set/clear/preserve changes, complete field and
+human-authority Preview, bounded actor/Library plans, and per-item CAS Apply.
+External evidence and confidence never confer canonical authority. Migration
+036 preserves human contributor-collection decisions after removals or clears;
+035 makes Library search a rebuildable SQL projection governed by live access.
+One initializer reconciles migrations, append-only admissions and projection;
+readiness rejects an incompatible runtime. Core remains modular and small.
+Deployment and live data acceptance are separate from local verification.

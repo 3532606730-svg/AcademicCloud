@@ -3720,7 +3720,7 @@ describe("library search", () => {
     expect(input).toHaveValue("");
   });
 
-  it("opens the existing resource details dialog from a search result", async () => {
+  it("opens search result reading directly without eager details or AI requests", async () => {
     const user = userEvent.setup();
     const getLibraryHoldingDetails = vi.fn().mockResolvedValue({
       displayTitle: "Searchable title",
@@ -3730,12 +3730,14 @@ describe("library search", () => {
       canEditMetadata: true,
       file: { id: "library-file-0", mediaType: "application/pdf", sizeBytes: 12, updatedAt: "2026-08-18T00:00:00.000Z" },
     });
+    const createLibraryDownload = vi.fn().mockResolvedValue({ url: "https://files.example.test/read.pdf" });
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listLibraries: vi.fn().mockResolvedValue([DEFAULT_LIBRARY]),
       listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
       searchLibraryHoldings: vi.fn().mockResolvedValue({ results: [searchResult], nextCursor: null }),
       getLibraryHoldingDetails,
+      createLibraryDownload,
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
@@ -3744,7 +3746,8 @@ describe("library search", () => {
     await user.type(input, "search");
     await user.click(await screen.findByRole("button", { name: "Searchable title" }));
 
-    await waitFor(() => expect(getLibraryHoldingDetails).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, "library-file-0"));
+    await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, "library-file-0", "inline"));
+    expect(getLibraryHoldingDetails).not.toHaveBeenCalled();
     expect(await screen.findByRole("dialog", { name: "Searchable title" })).toBeInTheDocument();
   });
 });

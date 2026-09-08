@@ -15,6 +15,7 @@ import type {
 import { composeLibraryDisplayTitle } from "./library-display-title.ts";
 import { describeError, type Language, type MessageKey } from "./i18n.ts";
 import type { Translator } from "./i18n-react.tsx";
+import { readViewPreference, writeViewPreference } from "./view-context.ts";
 
 const SEARCH_DEBOUNCE_MS = 280;
 
@@ -81,8 +82,8 @@ export function librarySearchResultToHolding(result: LibrarySearchResult): Libra
     file: {
       id: result.fileId,
       displayName: result.displayName,
-      mediaType: null,
-      sizeBytes: 0,
+      mediaType: result.mediaType ?? null,
+      sizeBytes: result.sizeBytes ?? 0,
       updatedAt: "",
     },
   };
@@ -103,6 +104,7 @@ function textFilter(value: string): string | undefined {
 
 export function LibrarySearchField({
   api,
+  accountId,
   library,
   language,
   t,
@@ -112,6 +114,7 @@ export function LibrarySearchField({
   onSortChange,
 }: {
   api: AcademicCloudApi;
+  accountId?: string;
   library: LibrarySummary | null;
   language: Language;
   t: Translator;
@@ -120,18 +123,30 @@ export function LibrarySearchField({
   sort?: LibraryHoldingSort;
   onSortChange?: (sort: LibraryHoldingSort) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const [materialClass, setMaterialClass] = useState<MaterialClass | "">("");
-  const [contributor, setContributor] = useState("");
-  const [filterLanguage, setFilterLanguage] = useState("");
-  const [publisher, setPublisher] = useState("");
-  const [year, setYear] = useState("");
-  const [editionType, setEditionType] = useState<EditionType | "">("");
-  const [dynasty, setDynasty] = useState("");
-  const [reignTitle, setReignTitle] = useState("");
-  const [editorialRole, setEditorialRole] = useState<ContributorRole | "">("");
-  const [series, setSeries] = useState("");
-  const [volume, setVolume] = useState("");
+  const [saved] = useState(() => {
+    const input = readViewPreference<unknown>(accountId, `search:${library?.id}`, {});
+    const values: Record<string, string> = {};
+    if (input && typeof input === "object") for (const [key, value] of Object.entries(input)) {
+      if (typeof value === "string" && value.length <= (key === "query" ? 100 : 128)) values[key] = value;
+    }
+    return values;
+  });
+  const [query, setQuery] = useState(saved.query ?? "");
+  const [materialClass, setMaterialClass] = useState<MaterialClass | "">(MATERIAL_CLASSES.includes(saved.materialClass as MaterialClass) ? saved.materialClass as MaterialClass : "");
+  const [contributor, setContributor] = useState(saved.contributor ?? "");
+  const [filterLanguage, setFilterLanguage] = useState(saved.filterLanguage ?? "");
+  const [publisher, setPublisher] = useState(saved.publisher ?? "");
+  const [year, setYear] = useState(saved.year ?? "");
+  const [editionType, setEditionType] = useState<EditionType | "">(EDITION_OPTIONS.includes(saved.editionType as EditionType) ? saved.editionType as EditionType : "");
+  const [dynasty, setDynasty] = useState(saved.dynasty ?? "");
+  const [reignTitle, setReignTitle] = useState(saved.reignTitle ?? "");
+  const [editorialRole, setEditorialRole] = useState<ContributorRole | "">(EDITORIAL_ROLE_OPTIONS.includes(saved.editorialRole as ContributorRole) ? saved.editorialRole as ContributorRole : "");
+  const [series, setSeries] = useState(saved.series ?? "");
+  const [volume, setVolume] = useState(saved.volume ?? "");
+  useEffect(() => {
+    writeViewPreference(accountId, `search:${library?.id}`, { query, materialClass, contributor, filterLanguage,
+      publisher, year, editionType, dynasty, reignTitle, editorialRole, series, volume });
+  }, [accountId, library?.id, query, materialClass, contributor, filterLanguage, publisher, year, editionType, dynasty, reignTitle, editorialRole, series, volume]);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [results, setResults] = useState<LibrarySearchResult[]>([]);
   const [error, setError] = useState<unknown>(null);

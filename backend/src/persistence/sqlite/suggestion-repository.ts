@@ -308,13 +308,18 @@ export class SqliteSuggestionRepository implements SuggestionRepository {
             AND ai_run.suggestion_run_id = ranked_runs.id
             AND ai_run.status IN ('auto_apply', 'ambiguous')
         ) AS ai_reviewable,
-        EXISTS (
+        (EXISTS (
           SELECT 1
           FROM scholarly_bibliographic_field_authority AS authority
           WHERE authority.owner_domain_id = ranked_runs.owner_domain_id
             AND authority.authority_source = 'ai'
             AND authority.source_run_id = ranked_runs.id
-        ) AS applied
+        ) OR EXISTS (
+          SELECT 1 FROM scholarly_bibliographic_collection_authority AS authority
+          WHERE authority.owner_domain_id = ranked_runs.owner_domain_id
+            AND authority.authority_source = 'ai'
+            AND authority.source_run_id = ranked_runs.id
+        )) AS applied
       FROM ranked_runs
       LEFT JOIN scholarly_metadata_suggestion_candidates AS candidates
         ON candidates.owner_domain_id = ranked_runs.owner_domain_id

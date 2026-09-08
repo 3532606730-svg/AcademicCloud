@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { AcademicCloudApi, LibraryContribution, LibraryHolding, LibraryHoldingSort, LibrarySummary } from "./api.ts";
 import { describeError } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
+import { readViewPreference, writeViewPreference } from "./view-context.ts";
 
 function preferredLibrary(libraries: LibrarySummary[]): LibrarySummary | null {
   return libraries.find((library) => library.isDefault) ?? libraries[0] ?? null;
@@ -17,11 +18,13 @@ function preferredLibrary(libraries: LibrarySummary[]): LibrarySummary | null {
  */
 export function SharedLibraryPanel({
   api,
+  accountId,
   revision = 0,
   renderCatalogue,
   onCatalogueChange,
 }: {
   api: AcademicCloudApi;
+  accountId?: string;
   revision?: number;
   renderCatalogue: (state: {
     library: LibrarySummary | null;
@@ -38,13 +41,19 @@ export function SharedLibraryPanel({
   const { language, t } = useLanguage();
   const [library, setLibrary] = useState<LibrarySummary | null>(null);
   const [holdings, setHoldings] = useState<LibraryHolding[]>([]);
-  const [sort, setSort] = useState<LibraryHoldingSort>("newest");
+  const [sort, setSort] = useState<LibraryHoldingSort>(() => {
+    const saved = readViewPreference(accountId, "sort", "newest");
+    return ["newest", "oldest", "title_asc", "title_desc", "size_asc", "size_desc"].includes(saved)
+      ? saved as LibraryHoldingSort : "newest";
+  });
+  useEffect(() => { writeViewPreference(accountId, "sort", sort); }, [accountId, sort]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [contributions, setContributions] = useState<LibraryContribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  const catalogueRequestVersion = useRef(0);
 
   useEffect(() => {
     onCatalogueChange?.({ library, holdings });
@@ -65,6 +74,8 @@ export function SharedLibraryPanel({
   }, [api]);
 
   useEffect(() => {
+    catalogueRequestVersion.current += 1;
+    setLoadingMore(false);
     if (!library) {
       setHoldings([]);
       setContributions([]);
@@ -89,23 +100,29 @@ export function SharedLibraryPanel({
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      catalogueRequestVersion.current += 1;
+    };
   }, [api, library, revision, sort]);
 
   function loadMore() {
-    if (!library || !nextCursor || loadingMore) return;
+    if (!library || !nextCursor || loading || loadingMore) return;
+    const requestVersion = catalogueRequestVersion.current;
     setLoadingMore(true);
     setError(null);
     const load = api.listLibraryHoldingsSorted
       ? api.listLibraryHoldingsSorted(library.id, sort, nextCursor)
       : Promise.resolve({ holdings: [], nextCursor: null });
     load.then((page) => {
+      if (requestVersion !== catalogueRequestVersion.current) return;
       setHoldings((current) => [...current, ...page.holdings]);
       setNextCursor(page.nextCursor);
     }, (caught) => {
+      if (requestVersion !== catalogueRequestVersion.current) return;
       setError(caught);
     }).finally(() => {
-      setLoadingMore(false);
+      if (requestVersion === catalogueRequestVersion.current) setLoadingMore(false);
     });
   }
 

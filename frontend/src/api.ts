@@ -224,6 +224,8 @@ export interface LibraryHolding {
 }
 
 export interface LibrarySearchResult {
+  mediaType?: string | null;
+  sizeBytes?: number;
   fileId: string;
   canonicalTitle: string | null;
   authorLabels: string[];
@@ -357,7 +359,7 @@ export type BibliographicFieldName =
   | "sourceEdition.dynasty" | "sourceEdition.reignTitle" | "sourceEdition.reignYear" | "sourceEdition.absoluteYear"
   | "sourceEdition.printer" | "sourceEdition.imprint" | "sourceEdition.bookshop" | "sourceEdition.institution"
   | "sourceEdition.printingPlace" | "sourceEdition.editionType" | "sourceEdition.editionStatement" | "sourceEdition.holdingInformation"
-  | "contributor.label" | "contributor.role" | "contributor.roleLabel" | "contributor.authorityId";
+  | "contributors" | "contributor.label" | "contributor.role" | "contributor.roleLabel" | "contributor.authorityId";
 export interface BibliographicFieldAuthority {
   fieldName: BibliographicFieldName;
   scopeKey: string;
@@ -487,6 +489,23 @@ export interface CatalogExportRequest {
 }
 
 export type CatalogPreviewCategory = "auto" | "review" | "unknown" | "excluded" | "stale" | "collision" | "unchanged";
+export interface CatalogFieldDiff {
+  field: string;
+  currentValue: unknown;
+  proposedValue: unknown;
+  operation: "unchanged" | "set" | "clear" | "preserve" | "conflict" | "unsupported";
+  currentAuthority: "human" | "ai" | "unattributed" | "none";
+  proposedAuthority: "human" | "unchanged";
+  evidenceState: "unverified" | "insufficient" | "failed";
+  notes: string | null;
+}
+export interface CatalogApplySelection {
+  resourceId: string;
+  previewVersion: string;
+  acknowledgeHumanConflict?: true;
+  acknowledgeClear?: true;
+  acknowledgeEvidence?: true;
+}
 export interface CatalogPreviewItem {
   resourceId: string;
   currentFilename: string;
@@ -502,13 +521,18 @@ export interface CatalogPreviewItem {
   collisionStatus: "none" | "exact_duplicate" | "name_collision";
   renameStatus: "proposed" | "no_rename" | "unchanged" | "exact_duplicate" | "name_collision";
   metadataChanges: string[];
-  warnings: Array<"internal_test_resource_excluded" | "invalid_isbn_removed">;
+  warnings: Array<"internal_test_resource_excluded" | "invalid_isbn_removed" | "legacy_preserve_semantics" | "unverified_evidence" | "missing_required_title">;
   category: CatalogPreviewCategory;
   previewVersion: string;
+  fields: CatalogFieldDiff[];
+  evidence: { executionState: "ready" | "failed" | "unknown"; state: "unverified" | "insufficient" | "failed"; pages: number[]; notes: string | null };
+  requiresAcknowledgement: { humanConflict: boolean; clear: boolean; evidence: boolean };
 }
 
 export interface CatalogPreview {
   batchId: string;
+  planId: string;
+  expiresAt: string;
   documentDigest: string;
   counts: Record<"AUTO" | "REVIEW" | "UNKNOWN" | "EXCLUDED" | "STALE" | "COLLISION" | "UNCHANGED", number>;
   items: CatalogPreviewItem[];
@@ -516,8 +540,9 @@ export interface CatalogPreview {
 
 export interface CatalogApplyResult {
   resourceId: string;
-  status: "applied" | "unchanged" | "stale" | "collision" | "not_found" | "invalid_input" | "conflict";
+  status: "applied" | "unchanged" | "stale" | "collision" | "not_found" | "invalid_input" | "conflict" | "acknowledgement_required";
   displayName: string | null;
+  replayed?: true;
 }
 
 /**
@@ -893,9 +918,8 @@ export interface AcademicCloudApi {
   previewCatalogBatchResults?(libraryId: string, document: unknown): Promise<CatalogPreview>;
   applyCatalogBatchResults?(
     libraryId: string,
-    document: unknown,
-    documentDigest: string,
-    selections: Array<{ resourceId: string; previewVersion: string }>,
+    planId: string,
+    selections: CatalogApplySelection[],
   ): Promise<{ results: CatalogApplyResult[] }>;
   searchLibraryHoldings(libraryId: string, query: string, signal?: AbortSignal, cursor?: string, limit?: number, filters?: LibrarySearchFilters, sort?: LibrarySearchSort): Promise<LibrarySearchPage>;
   getLibraryHoldingDetails(libraryId: string, fileId: string, signal?: AbortSignal): Promise<LibraryHoldingDetails>;
@@ -1329,14 +1353,13 @@ export class ApiClient implements AcademicCloudApi {
 
   applyCatalogBatchResults(
     libraryId: string,
-    document: unknown,
-    documentDigest: string,
-    selections: Array<{ resourceId: string; previewVersion: string }>,
+    planId: string,
+    selections: CatalogApplySelection[],
   ): Promise<{ results: CatalogApplyResult[] }> {
     return this.#jsonBody<{ results: CatalogApplyResult[] }>(
       `/api/libraries/${encodeURIComponent(libraryId)}/catalog-batches/apply`,
       "POST",
-      { document, documentDigest, selections },
+      { planId, selections },
     );
   }
 

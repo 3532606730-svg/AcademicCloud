@@ -518,23 +518,29 @@ export function ResourceDetailsDialog({
     return map;
   }, [authorities]);
 
+  const detailsGeneration = useRef(0);
   async function loadDetails() {
+    const generation = ++detailsGeneration.current;
     setLoading(true);
     setError(null);
     try {
       const next = await api.getLibraryHoldingDetails(library.id, holding.file.id);
+      if (generation !== detailsGeneration.current) return;
       setDetail(next);
       setDraft(draftFromDetail(next));
       setBibliographyDraft(bibliographyDraftFromDetail(next));
       setSelectedRestoreFields(new Set());
     } catch (caught) {
-      setError(caught);
+      if (generation === detailsGeneration.current) setError(caught);
     } finally {
-      setLoading(false);
+      if (generation === detailsGeneration.current) setLoading(false);
     }
   }
 
-  useEffect(() => { void loadDetails(); }, [api, library.id, holding.file.id]);
+  useEffect(() => {
+    void loadDetails();
+    return () => { detailsGeneration.current++; };
+  }, [api, library.id, holding.file.id]);
 
   useEffect(() => {
     if (!suggestionsEnabled) {
@@ -1018,16 +1024,21 @@ export function ResourceDetailsDialog({
           {notice && <div className="alert alert--success" role="status">{notice}</div>}
           {!editing && !editingBibliography ? (
             <>
+              <section className="resource-identity" aria-label={language === "zh-CN" ? "书目身份" : "Bibliographic identity"}>
               {metadata ? <MetadataReadOnly metadata={metadata} t={t} /> : <p className="muted">{t("metadata.noMetadata")}</p>}
               {bibliography ? <BibliographyReadOnly bibliography={bibliography} t={t} /> : <p className="muted">{t("metadata.noBibliography")}</p>}
+              </section>
               <fieldset className="resource-details-original">
                 <legend>{t("metadata.fileInformation")}</legend>
                 <dl>
                   <ReactFact label={t("metadata.originalFilename")} value={detail.originalFilename} />
                   <ReactFact label={t("metadata.materialType")} value={holding.file.mediaType ?? "-"} />
-                  <ReactFact label={t("metadata.fileSize")} value={`${holding.file.sizeBytes} bytes`} />
+                  <ReactFact label={t("metadata.fileSize")} value={holding.file.sizeBytes >= 1024 * 1024
+                    ? `${new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(holding.file.sizeBytes / (1024 * 1024))} MiB`
+                    : `${new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(holding.file.sizeBytes / 1024)} KiB`} />
                 </dl>
               </fieldset>
+              <section className="resource-evidence" aria-label={language === "zh-CN" ? "证据与建议" : "Evidence and suggestions"}>
               {renderSuggestionTools()}
               {detail.canEditMetadata && api.restoreLibraryHoldingBibliographyAi && detail.fieldAuthorities.some((authority) => authority.source === "human") && (
                 <FieldAuthorityControl
@@ -1044,11 +1055,13 @@ export function ResourceDetailsDialog({
                   t={t}
                 />
               )}
+              </section>
               <footer className="resource-details-actions">
                 <button className="button button--quiet" type="button" onClick={onPreview} disabled={!holding.file.mediaType || (!holding.file.mediaType.startsWith("image/") && holding.file.mediaType !== "application/pdf")}>{t("menu.preview")}</button>
                 <button className="button" type="button" onClick={onDownload}>{t("menu.download")}</button>
                 {api.generateLibraryCitation && onCitation && <button className="button" type="button" onClick={onCitation}>{t("citation.action")}</button>}
                 {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--primary" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.edit")}</button>}
+                {detail.canEditMetadata && api.updateLibraryHoldingBibliography && <button className="button button--quiet" type="button" onClick={() => { setEditingBibliography(true); setNotice(""); }}>{t("metadata.editBibliography")}</button>}
               </footer>
             </>
           ) : editing ? (
@@ -1155,7 +1168,7 @@ function bibliographyFieldLabel(
     "sourceEdition.editionType": t("metadata.editionType"), "sourceEdition.editionStatement": t("metadata.editionStatement"),
     "sourceEdition.holdingInformation": t("metadata.holdingInformation"), "contributor.label": t("metadata.contributorName"),
     "contributor.role": t("metadata.contributorRole"), "contributor.roleLabel": t("metadata.contributorRoleLabel"),
-    "contributor.authorityId": t("metadata.authorities"),
+    "contributor.authorityId": t("metadata.authorities"), contributors: t("metadata.contributors"),
   };
   return labels[fieldName] ?? fieldName;
 }
@@ -1237,7 +1250,7 @@ function BibliographyEditor({
         }) }))} />
         <select aria-label={t("metadata.contributorRole")} value={contributor.role} onChange={(event) => setDraft((current) => ({ ...current, contributors: current.contributors.map((item, itemIndex) => itemIndex === index ? { ...item, role: event.target.value as ContributorRole } : item) }))}>{CONTRIBUTOR_ROLES.map((role) => <option key={role} value={role}>{contributorRoleLabel(role, t)}</option>)}</select>
         <input aria-label={t("metadata.contributorRoleLabel")} maxLength={64} value={contributor.roleLabel} onChange={(event) => setDraft((current) => ({ ...current, contributors: current.contributors.map((item, itemIndex) => itemIndex === index ? { ...item, roleLabel: event.target.value } : item) }))} />
-        <button className="button button--small button--quiet" type="button" onClick={() => setDraft((current) => ({ ...current, contributors: current.contributors.filter((_, itemIndex) => itemIndex !== index) }))}>{t("alert.dismiss")}</button>
+        <button className="button button--small button--quiet" type="button" onClick={() => setDraft((current) => ({ ...current, contributors: current.contributors.filter((_, itemIndex) => itemIndex !== index) }))}>{t("metadata.removeContributor")}</button>
       </div>)}
       {draft.contributors.length < 64 && <button className="button button--small" type="button" onClick={() => setDraft((current) => ({ ...current, contributors: [...current.contributors, { label: "", role: "author", roleLabel: "" }] }))}>{t("metadata.addContributor")}</button>}
     </fieldset>
@@ -1591,7 +1604,7 @@ function MetadataEditor({
         })}
         {draft.authorityLinks.length < 32 && <div className="metadata-authority-add">
           <select aria-label={t("metadata.authorityType")} value={authorityType} onChange={(event) => setAuthorityType(event.target.value as AuthorityType)}>
-            {AUTHORITY_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            {AUTHORITY_TYPES.map((type) => <option key={type} value={type}>{t(`metadata.authorityType.${type}`)}</option>)}
           </select>
           <select aria-label={t("metadata.linkAuthority")} value="" onChange={(event) => {
             const authority = authoritiesById.get(event.target.value);

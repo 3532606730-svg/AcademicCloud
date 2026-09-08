@@ -1,6 +1,7 @@
 export const CATALOG_BATCH_SCHEMA_VERSION = "academiccloud.catalog-batch.v1" as const;
 export const CATALOG_EXPORT_REQUEST_SCHEMA_VERSION = "academiccloud.catalog-export-request.v1" as const;
 export const CATALOG_RESULTS_SCHEMA_VERSION = "academiccloud.catalog-results.v1" as const;
+export const CATALOG_RESULTS_PATCH_SCHEMA_VERSION = "academiccloud.catalog-results.v2" as const;
 export const CATALOG_FILENAME_POLICY_VERSION = "academiccloud.filename.v1" as const;
 export const CATALOG_EVIDENCE_SCHEMA_VERSION = "academiccloud.catalog-evidence.v2" as const;
 

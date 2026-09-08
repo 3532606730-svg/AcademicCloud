@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,12 +19,12 @@ const EXTRA_HOLDING: LibraryHolding = {
   file: { id: "extra", displayName: "extra.pdf", mediaType: "application/pdf", sizeBytes: 10, updatedAt: "2026-09-01T00:00:00.000Z" },
 };
 const PREVIEW: CatalogPreview = {
-  batchId: "batch-1", documentDigest: "a".repeat(64),
-  counts: { AUTO: 1, REVIEW: 1, UNKNOWN: 1, EXCLUDED: 0, STALE: 0, COLLISION: 0, UNCHANGED: 0 },
+  batchId: "batch-1", documentDigest: "a".repeat(64), planId: "p".repeat(43), expiresAt: "2100-01-01T00:00:00Z",
+  counts: { AUTO: 0, REVIEW: 2, UNKNOWN: 1, EXCLUDED: 0, STALE: 0, COLLISION: 0, UNCHANGED: 0 },
   items: [
-    { resourceId: "auto", currentFilename: "auto.pdf", proposedFilename: "《书》（作者，2026）.pdf", canonicalTitle: "书", responsibility: "作者", year: "2026", materialClass: "scholarly_monograph", disposition: "auto", confidence: 96, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "proposed", metadataChanges: ["canonicalTitle", "displayName"], warnings: ["invalid_isbn_removed"], category: "auto", previewVersion: "a".repeat(43) },
-    { resourceId: "review", currentFilename: "review.pdf", proposedFilename: null, canonicalTitle: "待审", responsibility: null, year: "2026", materialClass: "scholarly_monograph", disposition: "review", confidence: 70, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: ["canonicalTitle"], warnings: [], category: "review", previewVersion: "b".repeat(43) },
-    { resourceId: "unknown", currentFilename: "unknown.pdf", proposedFilename: null, canonicalTitle: null, responsibility: null, year: null, materialClass: null, disposition: "unknown", confidence: 0, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: [], warnings: [], category: "unknown", previewVersion: "c".repeat(43) },
+    { resourceId: "auto", currentFilename: "auto.pdf", proposedFilename: "《书》（作者，2026）.pdf", canonicalTitle: "书", responsibility: "作者", year: "2026", materialClass: "scholarly_monograph", disposition: "auto", confidence: 96, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "proposed", metadataChanges: ["canonicalTitle", "displayName"], warnings: ["invalid_isbn_removed"], category: "review", previewVersion: "a".repeat(43), fields: [{ field: "canonicalTitle", currentValue: "Original title", proposedValue: "Corrected title", operation: "set", currentAuthority: "unattributed", proposedAuthority: "human", evidenceState: "unverified", notes: null }], evidence: { executionState: "ready", state: "unverified", pages: [0], notes: null }, requiresAcknowledgement: { humanConflict: false, clear: false, evidence: true } },
+    { resourceId: "review", currentFilename: "review.pdf", proposedFilename: null, canonicalTitle: "待审", responsibility: null, year: "2026", materialClass: "scholarly_monograph", disposition: "review", confidence: 70, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: ["canonicalTitle"], warnings: [], category: "review", previewVersion: "b".repeat(43), fields: [{ field: "canonicalTitle", currentValue: "Original title", proposedValue: "Corrected title", operation: "set", currentAuthority: "unattributed", proposedAuthority: "human", evidenceState: "unverified", notes: null }], evidence: { executionState: "ready", state: "unverified", pages: [0], notes: null }, requiresAcknowledgement: { humanConflict: false, clear: false, evidence: true } },
+    { resourceId: "unknown", currentFilename: "unknown.pdf", proposedFilename: null, canonicalTitle: null, responsibility: null, year: null, materialClass: null, disposition: "unknown", confidence: 0, notes: null, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: [], warnings: [], category: "unknown", previewVersion: "c".repeat(43), fields: [{ field: "canonicalTitle", currentValue: "Original title", proposedValue: "Corrected title", operation: "set", currentAuthority: "unattributed", proposedAuthority: "human", evidenceState: "unverified", notes: null }], evidence: { executionState: "ready", state: "unverified", pages: [0], notes: null }, requiresAcknowledgement: { humanConflict: false, clear: false, evidence: true } },
   ],
 };
 
@@ -61,6 +61,26 @@ function mockZipBridge(filename = "academiccloud-catalog-batch-batch-1.zip") {
 }
 
 describe("BatchCatalogDialog", () => {
+  it("retains completed results across partial retries and excludes completed rows from selection", async () => {
+    const applyCatalogBatchResults = vi.fn()
+      .mockResolvedValueOnce({ results: [{ resourceId: "auto", status: "applied" }, { resourceId: "review", status: "conflict" }] })
+      .mockResolvedValueOnce({ results: [{ resourceId: "review", status: "applied" }] });
+    renderDialog({ previewCatalogBatchResults: vi.fn().mockResolvedValue(PREVIEW), applyCatalogBatchResults });
+    const user = userEvent.setup();
+    await user.upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File(["{}"], "results.json", { type: "application/json" }));
+    await user.click(await screen.findByRole("button", { name: "Select reviewable filtered items" }));
+    await user.click(screen.getByRole("checkbox", { name: /I checked the selected suggestions/u }));
+    await user.click(screen.getByRole("button", { name: "Apply selected (2)" }));
+    await waitFor(() => expect(within(screen.getAllByRole("article")[0]!).getByRole("checkbox")).toBeDisabled());
+    expect(screen.getByRole("button", { name: "Apply selected (1)" })).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: /I checked the selected suggestions/u }));
+    await user.click(screen.getByRole("button", { name: "Apply selected (1)" }));
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Per-item apply results" })).getAllByText("Applied")).toHaveLength(2));
+    expect(applyCatalogBatchResults.mock.calls[1]![2]).toEqual([{ resourceId: "review", previewVersion: "b".repeat(43), acknowledgeEvidence: true }]);
+    await user.click(screen.getByRole("button", { name: "Select reviewable filtered items" }));
+    expect(screen.getByRole("button", { name: "Apply selected (0)" })).toBeDisabled();
+  });
+
   it("imports to a side-effect-free preview and applies only explicitly selected eligible rows", async () => {
     const previewCatalogBatchResults = vi.fn().mockResolvedValue(PREVIEW);
     const applyCatalogBatchResults = vi.fn().mockResolvedValue({ results: [
@@ -72,28 +92,30 @@ describe("BatchCatalogDialog", () => {
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await user.upload(input, new File([JSON.stringify({ schemaVersion: "academiccloud.catalog-results.v1" })], "results.json", { type: "application/json" }));
     await waitFor(() => expect(previewCatalogBatchResults).toHaveBeenCalledTimes(1));
-    const checkboxes = screen.getAllByRole("checkbox");
-    // First three are export-resource choices; preview choices follow.
-    expect(checkboxes[3]).toBeChecked();
-    expect(checkboxes[4]).not.toBeChecked();
-    expect(checkboxes[5]).toBeDisabled();
-    expect(screen.getAllByText("Content identity")).toHaveLength(3);
-    expect(screen.getAllByText("Collision")).toHaveLength(3);
-    expect(screen.getAllByText("Metadata changes")).toHaveLength(3);
+    const first = within(screen.getAllByRole("article")[0]!).getByRole("checkbox");
+    const second = within(screen.getAllByRole("article")[1]!).getByRole("checkbox");
+    expect(first).not.toBeChecked();
+    expect(second).not.toBeChecked();
+    expect(within(screen.getAllByRole("article")[2]!).getByRole("checkbox")).toBeDisabled();
     expect(screen.getByText("Invalid ISBN checksum removed; other supported bibliography is retained")).toBeInTheDocument();
-    expect(screen.getByText("canonicalTitle, displayName")).toBeInTheDocument();
-    await user.click(checkboxes[4]!);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getAllByRole("button", { name: "Review fields and evidence" })[0]!);
+    expect(screen.getByRole("table", { name: "Field changes to apply" })).toBeInTheDocument();
+    expect(screen.getByText("Original title")).toBeInTheDocument();
+    expect(screen.getByText("Corrected title")).toBeInTheDocument();
+    await user.click(first);
+    await user.click(second);
+    expect(screen.getByRole("button", { name: "Apply selected (2)" })).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: /I checked the selected suggestions/u }));
     await user.click(screen.getByRole("button", { name: "Apply selected (2)" }));
     await waitFor(() => expect(applyCatalogBatchResults).toHaveBeenCalledWith(
       LIBRARY.id,
-      { schemaVersion: "academiccloud.catalog-results.v1" },
-      PREVIEW.documentDigest,
+      PREVIEW.planId,
       [
-        { resourceId: "auto", previewVersion: "a".repeat(43) },
-        { resourceId: "review", previewVersion: "b".repeat(43) },
+        { resourceId: "auto", previewVersion: "a".repeat(43), acknowledgeEvidence: true },
+        { resourceId: "review", previewVersion: "b".repeat(43), acknowledgeEvidence: true },
       ],
     ));
+    expect(screen.getByRole("region", { name: "Per-item apply results" })).toBeInTheDocument();
   });
 
   it("keeps the export list and request bounded to the PDFs selected before opening the dialog", async () => {

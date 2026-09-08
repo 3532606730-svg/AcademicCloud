@@ -223,9 +223,11 @@ test("structured bibliography persists field-level human authority and exact-onl
 
   const reset = metadata.resetBibliographicFieldAuthority(
     OWNER, library.id, fileId, saved.bibliographyVersion,
-    [{ fieldName: "materialClass", scopeKey: "" }],
+    [{ fieldName: "materialClass", scopeKey: "" }, { fieldName: "contributors", scopeKey: "" }],
   );
   assert.equal(reset.fieldAuthorities.some((entry) => entry.fieldName === "materialClass"), false);
+  assert.equal(reset.fieldAuthorities.some((entry) => entry.fieldName === "contributors"), false);
+  assert.equal(reset.fieldAuthorities.some((entry) => entry.fieldName === "contributor.role"), true);
   assert.equal(reset.fieldAuthorities.some((entry) => entry.fieldName === "publication.publisher"), true);
   assert.equal(persistence.repositories.bibliography.findProfile(library.ownerDomainId, "metadata-record")?.materialClass, "scholarly_monograph");
 });

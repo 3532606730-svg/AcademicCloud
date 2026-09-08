@@ -4,6 +4,7 @@ import {
   CATALOG_FILENAME_POLICY_VERSION,
   CATALOG_FILENAME_STYLES,
   CATALOG_RESULTS_SCHEMA_VERSION,
+  CATALOG_RESULTS_PATCH_SCHEMA_VERSION,
   type CatalogBatchManifest,
   type CatalogDisposition,
   type CatalogFilenameStyle,
@@ -21,6 +22,28 @@ import { MATERIAL_TYPES, type CanonicalMetadataInput, type MaterialType } from "
 export const MAX_CATALOG_BATCH_RESOURCES = 500;
 export const MAX_CATALOG_RESULTS_BYTES = 8 * 1024 * 1024;
 export const MAX_CATALOG_NOTES_CHARACTERS = 2_000;
+export const MAX_CATALOG_APPLY_BYTES = 256 * 1024;
+
+export const CATALOG_PATCH_FIELDS = [
+  "materialType", "canonicalTitle", "subtitle", "alternativeTitles", "dateStatement", "identifiers",
+  "materialClass", "contributors", "publication.publisher", "publication.place", "publication.publicationDate",
+  "publication.editionNumber", "publication.printing", "series", "volume", "language",
+  "carrierEdition.editionType", "carrierEdition.editionStatement", "carrierEdition.facsimileStatement",
+  "sourceEdition.dynasty", "sourceEdition.reignTitle", "sourceEdition.reignYear", "sourceEdition.absoluteYear",
+  "sourceEdition.printer", "sourceEdition.imprint", "sourceEdition.bookshop", "sourceEdition.institution",
+  "sourceEdition.printingPlace", "sourceEdition.editionType", "sourceEdition.editionStatement", "sourceEdition.holdingInformation",
+] as const;
+export type CatalogPatchField = (typeof CATALOG_PATCH_FIELDS)[number];
+export interface CatalogBibliographyPatch {
+  set: Partial<Record<CatalogPatchField, unknown>>;
+  clear: CatalogPatchField[];
+}
+export interface CatalogEvidenceSummary {
+  executionState: "ready" | "failed" | "unknown";
+  state: "unverified" | "insufficient" | "failed";
+  pages: number[];
+  notes: string | null;
+}
 
 export class CatalogContractError extends Error {
   constructor(readonly code: "invalid_input" | "manifest_digest_mismatch") {
@@ -40,6 +63,7 @@ export interface ImportedCatalogBibliography {
   responsibilityStatement?: string | undefined;
   filenameStyle: CatalogFilenameStyle;
   importWarnings: CatalogImportWarning[];
+  patch?: CatalogBibliographyPatch;
 }
 
 export interface CatalogImportWarning {
@@ -54,10 +78,12 @@ export interface ImportedCatalogResult {
   bibliographic: ImportedCatalogBibliography | null;
   confidence: number;
   notes: string | null;
+  evidence?: CatalogEvidenceSummary;
+  legacy?: boolean;
 }
 
 export interface CatalogResultsDocument {
-  schemaVersion: typeof CATALOG_RESULTS_SCHEMA_VERSION;
+  schemaVersion: typeof CATALOG_RESULTS_SCHEMA_VERSION | typeof CATALOG_RESULTS_PATCH_SCHEMA_VERSION;
   batchId: string;
   sourceManifestSha256: string;
   sourceManifest: CatalogBatchManifest;
@@ -236,9 +262,101 @@ function bibliography(value: unknown): ImportedCatalogBibliography {
   };
 }
 
-function result(value: unknown): ImportedCatalogResult {
+export function catalogFieldValue(value: Record<string, unknown>, field: string): unknown {
+  const [parent, child] = field.split(".");
+  if (!parent) return undefined;
+  if (!child) return value[parent];
+  const nested = value[parent];
+  return typeof nested === "object" && nested !== null && !Array.isArray(nested)
+    ? (nested as Record<string, unknown>)[child] : undefined;
+}
+
+export function setCatalogField(value: Record<string, unknown>, field: string, entry: unknown): void {
+  const [parent, child] = field.split(".");
+  if (!parent) throw new CatalogContractError("invalid_input");
+  if (!child) {
+    if (entry === undefined) delete value[parent]; else value[parent] = entry;
+    return;
+  }
+  const nested = value[parent];
+  const target: Record<string, unknown> = typeof nested === "object" && nested !== null && !Array.isArray(nested)
+    ? nested as Record<string, unknown> : {};
+  value[parent] = target;
+  if (entry === undefined) delete target[child]; else target[child] = entry;
+}
+
+function emptyExternalValue(value: unknown): boolean {
+  return value === undefined || value === null || Array.isArray(value) && value.length === 0;
+}
+
+function normalizedBibliographyFields(input: ImportedCatalogBibliography): Record<string, unknown> {
+  return { ...input, ...input.profile };
+}
+
+function legacyBibliography(value: unknown): ImportedCatalogBibliography {
+  const parsed = bibliography(value);
+  const raw = object(value);
+  const normalized = normalizedBibliographyFields(parsed);
+  const set: CatalogBibliographyPatch["set"] = {};
+  for (const field of CATALOG_PATCH_FIELDS) {
+    const proposed = catalogFieldValue(normalized, field);
+    // V1 omitted, null, and empty containers are ambiguous. Never infer a
+    // destructive clear from them. A v2 clear operation is required instead.
+    if (!emptyExternalValue(catalogFieldValue(raw, field)) && !emptyExternalValue(proposed)) set[field] = proposed;
+  }
+  return { ...parsed, patch: { set, clear: [] } };
+}
+
+function patchBibliography(value: unknown): ImportedCatalogBibliography {
   const input = object(value);
-  exactKeys(input, ["resourceId", "sourceIdentity", "disposition", "bibliographic", "confidence", "notes"]);
+  exactKeys(input, ["set", "clear", "filenameStyle"], ["responsibilityStatement"]);
+  const rawSet = object(input.set);
+  if (Object.keys(rawSet).some((field) => !(CATALOG_PATCH_FIELDS as readonly string[]).includes(field))) {
+    throw new CatalogContractError("invalid_input");
+  }
+  if (!Array.isArray(input.clear) || input.clear.length > CATALOG_PATCH_FIELDS.length) throw new CatalogContractError("invalid_input");
+  const clear = input.clear.map((field) => enumValue(field, CATALOG_PATCH_FIELDS));
+  if (new Set(clear).size !== clear.length || clear.some((field) => field in rawSet
+    || ["canonicalTitle", "materialClass", "materialType"].includes(field))) throw new CatalogContractError("invalid_input");
+  if (Object.values(rawSet).some(emptyExternalValue)) throw new CatalogContractError("invalid_input");
+  const candidate: Record<string, unknown> = {
+    canonicalTitle: "Catalog validation placeholder", materialClass: "unknown", contributors: [],
+    publication: {}, carrierEdition: {}, sourceEdition: {}, filenameStyle: input.filenameStyle,
+    ...(input.responsibilityStatement === undefined ? {} : { responsibilityStatement: input.responsibilityStatement }),
+  };
+  for (const [field, entry] of Object.entries(rawSet)) setCatalogField(candidate, field, entry);
+  const parsed = bibliography(candidate);
+  const normalized = normalizedBibliographyFields(parsed);
+  const set: CatalogBibliographyPatch["set"] = {};
+  for (const field of Object.keys(rawSet) as CatalogPatchField[]) {
+    const proposed = catalogFieldValue(normalized, field);
+    // Filtering an invalid ISBN must not turn an intended set into a clear.
+    if (!emptyExternalValue(proposed)) set[field] = proposed;
+  }
+  return { ...parsed, patch: { set, clear } };
+}
+
+function evidenceSummary(value: unknown, notes: string | null): CatalogEvidenceSummary {
+  if (value === undefined) return { executionState: "unknown", state: "unverified", pages: [], notes };
+  const input = object(value);
+  exactKeys(input, ["executionState", "pages"], ["notes"]);
+  const executionState = enumValue(input.executionState, ["ready", "failed", "unknown"] as const);
+  if (!Array.isArray(input.pages) || input.pages.length > 20
+    || input.pages.some((page) => !Number.isSafeInteger(page) || page < 0 || page >= 100_000)
+    || new Set(input.pages).size !== input.pages.length
+    || executionState === "failed" && input.pages.length > 0) throw new CatalogContractError("invalid_input");
+  return {
+    executionState,
+    // External evidence summaries and their digests are not an attestation.
+    state: executionState === "failed" ? "failed" : input.pages.length === 0 ? "insufficient" : "unverified",
+    pages: input.pages as number[],
+    notes: input.notes === undefined || input.notes === null ? notes : text(input.notes, MAX_CATALOG_NOTES_CHARACTERS),
+  };
+}
+
+function result(value: unknown, legacy: boolean): ImportedCatalogResult {
+  const input = object(value);
+  exactKeys(input, ["resourceId", "sourceIdentity", "disposition", "bibliographic", "confidence", "notes"], legacy ? [] : ["evidence"]);
   const disposition = enumValue(input.disposition, CATALOG_DISPOSITIONS);
   if (!Number.isSafeInteger(input.confidence) || (input.confidence as number) < 0 || (input.confidence as number) > 100) {
     throw new CatalogContractError("invalid_input");
@@ -246,32 +364,44 @@ function result(value: unknown): ImportedCatalogResult {
   if (disposition === "unknown" && input.bibliographic !== null || disposition !== "unknown" && input.bibliographic === null) {
     throw new CatalogContractError("invalid_input");
   }
+  const notes = input.notes === null ? null : text(input.notes, MAX_CATALOG_NOTES_CHARACTERS);
   return {
     resourceId: text(input.resourceId, 128, SAFE_ID),
     sourceIdentity: sourceIdentity(input.sourceIdentity),
     disposition,
-    bibliographic: input.bibliographic === null ? null : bibliography(input.bibliographic),
+    bibliographic: input.bibliographic === null ? null : legacy ? legacyBibliography(input.bibliographic) : patchBibliography(input.bibliographic),
     confidence: input.confidence as number,
-    notes: input.notes === null ? null : text(input.notes, MAX_CATALOG_NOTES_CHARACTERS),
+    notes,
+    evidence: evidenceSummary(input.evidence, notes),
+    legacy,
   };
 }
 
 export function parseCatalogResultsDocument(value: unknown): CatalogResultsDocument {
   const input = object(value);
   exactKeys(input, ["schemaVersion", "batchId", "sourceManifestSha256", "sourceManifest", "results"]);
-  if (input.schemaVersion !== CATALOG_RESULTS_SCHEMA_VERSION || !Array.isArray(input.results)
+  if (![CATALOG_RESULTS_SCHEMA_VERSION, CATALOG_RESULTS_PATCH_SCHEMA_VERSION].includes(input.schemaVersion as typeof CATALOG_RESULTS_SCHEMA_VERSION) || !Array.isArray(input.results)
     || input.results.length < 1 || input.results.length > MAX_CATALOG_BATCH_RESOURCES) throw new CatalogContractError("invalid_input");
   const sourceManifest = parseCatalogBatchManifest(input.sourceManifest);
   const batchId = text(input.batchId, 128, SAFE_ID);
   if (sourceManifest.batchId !== batchId) throw new CatalogContractError("invalid_input");
-  const results = input.results.map(result);
+  const results = input.results.map((entry) => result(entry, input.schemaVersion === CATALOG_RESULTS_SCHEMA_VERSION));
+  const manifestById = new Map(sourceManifest.resources.map((entry) => [entry.resourceId, entry]));
   if (new Set(results.map((entry) => entry.resourceId)).size !== results.length
     || results.length !== sourceManifest.resources.length
-    || results.some((entry) => !sourceManifest.resources.some((resource) => resource.resourceId === entry.resourceId))) {
+    || results.some((entry) => !manifestById.has(entry.resourceId))) {
     throw new CatalogContractError("invalid_input");
   }
+  for (const entry of results) {
+    const source = manifestById.get(entry.resourceId)!;
+    if (source.pageCount !== null && entry.evidence!.pages.some((page) => page >= source.pageCount!)) {
+      throw new CatalogContractError("invalid_input");
+    }
+    // An unknown source length cannot substantiate an external page reference.
+    // Its evidence remains unverified and can never authorize automatic writes.
+  }
   return {
-    schemaVersion: CATALOG_RESULTS_SCHEMA_VERSION,
+    schemaVersion: input.schemaVersion as CatalogResultsDocument["schemaVersion"],
     batchId,
     sourceManifestSha256: text(input.sourceManifestSha256, 64, SHA256_HEX),
     sourceManifest,

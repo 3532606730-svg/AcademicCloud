@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-08-24
+**Last reconciled:** 2026-09-08
 
 ## Product Direction
 
@@ -26,66 +26,44 @@ Source-Grounded Intelligence
 
 The current reliability interlock changes sequencing, not this model.
 
-## Active final-stabilization interlock
+## Active vNext remediation interlock
 
-The Owner-authorized
-`ACADEMICCLOUD-FINAL-STABILIZATION-FULL-CORPUS-ZERO-COST-PERFORMANCE`
-program supersedes the former post-Layer-1 `UPLOAD-PERF01` next pointer and the
-earlier whole-product closure. It does not add product scope. It integrates
-correctness/stability repair, unambiguous AI-generation state, every available
-Owner source, every AI-eligible production Library resource, and material
-zero-cost performance work across existing paths. Final authority requires a
-frozen full-corpus clean sweep and whole-product production regression.
+The Owner accepted the complete 360 review on 2026-09-06 and made
+ACADEMICCLOUD-VNEXT-REMEDIATION01 the sole active integration and production
+remediation task. It supersedes the old stabilization execution pointer while
+preserving its correctness, privacy, local-Compute and zero-added-cost goals.
+
+Current sequence:
 
 ```text
-FINAL_STABILIZATION — ACTIVE
-→ functional and authority repair
-→ current-feature inventory and privacy-safe baselines
-→ full acceptance manifest
-→ zero-cost structural performance repair
-→ exact qualified releases and bounded production retries
-→ frozen full-corpus clean sweep
-→ whole-product regression and cost proof
-→ only then reconsider production acceptance / Internal Beta readiness
+R01-R16 and real additional defects
+→ isolated tests, equivalent search and bounded Catalog benchmarks
+→ one verified integration line and permanent CI
+→ exact Core/frontend/necessary Compute releases
+→ append-only migrations, nginx source reconciliation, readiness
+→ real signed-in export/import/Preview/Apply and resource verification
+→ whole-product regression and truthful acceptance
 ```
 
-No hard 30-second AI SLA applies. No new paid infrastructure, billable GitHub
-usage, Internal Beta/invitations, unrelated Layer 2/3/4 scope, whole-document
-OCR/indexing, embeddings, or RAG is authorized.
+The initial vNext implementation uses SQLite candidate search and complete
+server-side review plans (ADR-041), keeps original bytes and private overlays
+intact, and preserves human bibliography authority. Missing values preserve
+existing facts; only explicit reviewed clears remove them. External confidence
+is not correctness probability or write authority.
 
-The Local Compute Owner override preserves this entire interlock and changes
-only its next Compute execution strategy. ADR-037 makes an outbound-only Local
-Pull worker on the existing Owner Windows/WSL2 machine the primary normal
-production provider. GitHub Actions remains behind the provider-neutral
-boundary for CI, release qualification, and separately authorized emergency
-fallback, but normal production PDFs and the final corpus may not consume
-GitHub-hosted runners. The current sequence is now:
+The laptop remains a disposable, outbound-only executor. Its absence may delay
+AI but must not break Library, storage, search, citations or human metadata.
+Necessary model capability repair is authorized; the historic NuExtract3 C
+failures still require qualification before automatic-cataloguing acceptance.
+Current release and runtime facts belong in CURRENT_STATUS.md and
+CURRENT_STATE.json, not in this sequencing document.
 
-```text
-shared correctness/performance checkpoints
-→ durable push + local/remote equality
-→ preserve/re-hash 12 Owner sources on D
-→ WSL2-on-D + exact CPU/GPU runtime qualification
-→ pull/claim/lease/heartbeat/crash-recovery implementation
-→ representative same-resource production canaries
-→ Local Pull production cutover
-→ remaining zero-cost whole-product performance repair
-→ frozen 105-resource clean sweep (subject to final manifest recomputation)
-→ whole-product regression and cost proof
-```
+No new paid infrastructure, billable GitHub usage, Internal Beta/invitations,
+unrelated research layers, whole-document OCR/indexing, embeddings or RAG are
+authorized. The earlier full-corpus stabilization evidence remains in its
+existing task card; historical inventories are not current live acceptance.
 
-The Owner laptop is a disposable executor, not an authority or second corpus.
-Its absence may delay AI but must not affect Library, storage, Search, citation,
-metadata, or other Core availability. Initial whole-job concurrency is one;
-the runtime uses demand-driven warming and a measured host-resource envelope.
-WSL2-on-D, CUDA `sm_89`, exact Paddle CPU/GPU, exact Qwen CPU/CUDA, the 7/7
-bibliographic gate, and the Local Pull development protocol now pass. The
-sequence is currently between protocol implementation and immutable exact-SHA
-release assembly; production remains schema v25 until release qualification,
-schema-v26/Core-provider cutover, systemd activation, and forced-loss recovery
-all pass. GitHub-hosted production Compute remains frozen.
-
-## Current Reality — Operational Maturity Interlock
+## Historical operational maturity interlock
 
 Real use on 2026-08-20 exposed a gap between strong repository/unit/artifact
 evidence and end-to-end product operability. The exact RAM, provider-runtime,

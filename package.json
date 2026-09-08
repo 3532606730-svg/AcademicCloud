@@ -3,7 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=24.0.0 <25"
+    "node": ">=24.0.0 <25",
+    "npm": "11.19.1"
+  },
+  "packageManager": "npm@11.19.1",
+  "allowScripts": {
+    "argon2@0.45.1": true,
+    "better-sqlite3@13.0.3": false,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
   },
   "workspaces": [
     "backend",
@@ -17,6 +25,8 @@
     "dev:frontend": "npm run dev --workspace @academiccloud/frontend",
     "db:migrate": "npm run db:migrate --workspace @academiccloud/backend",
     "db:migrate:prod": "npm run db:migrate:prod --workspace @academiccloud/backend --",
+    "db:initialize": "npm run db:initialize --workspace @academiccloud/backend --",
+    "db:initialize:prod": "npm run db:initialize:prod --workspace @academiccloud/backend --",
     "maintenance": "npm run maintenance --workspace @academiccloud/backend --",
     "maintenance:prod": "npm run maintenance:prod --workspace @academiccloud/backend --",
     "auth:benchmark": "npm run auth:benchmark --workspace @academiccloud/backend",
@@ -31,6 +41,9 @@
     "test:ops-auditor": "node --test scripts/production-readiness-audit.test.mjs",
     "acceptance:compiled": "npm run acceptance:compiled --workspace @academiccloud/backend",
     "test:acceptance-tools": "node --test scripts/production-e2e-acceptance.test.mjs",
+    "test:compute:unit": "npm run build --workspace @academiccloud/compute-contracts && node scripts/test-compute-unit.mjs",
+    "test:ops": "node --test scripts/*.test.mjs",
+    "test:ci": "npm test --workspace @academiccloud/backend && npm test --workspace @academiccloud/frontend && npm test --workspace @academiccloud/compute-contracts && npm run test:compute:unit && npm run test:ops",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present && node --test scripts/oss-cors-contract.test.mjs",
     "build": "npm run build --workspaces --if-present"

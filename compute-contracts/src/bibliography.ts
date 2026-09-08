@@ -4,6 +4,7 @@
  * succeeded job for unchanged source bytes.
  */
 export const INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION = "l1-intelligent-library01-v11" as const;
+export const INTELLIGENT_BIBLIOGRAPHY_PROMPT_VERSION = "l1-intelligent-library01-prompt-v7" as const;
 
 export const INTELLIGENT_MATERIAL_CLASSES = [
   "scholarly_monograph",

@@ -12,8 +12,9 @@ import { CanonicalMetadataService } from "../metadata/metadata-service.js";
 import { SuggestionService } from "../suggestions/suggestion-service.js";
 import type { SqliteConfig } from "../persistence/sqlite/config.js";
 import { openSqliteDatabase } from "../persistence/sqlite/database.js";
-import { assertMigrationsCurrent, runMigrations } from "../persistence/sqlite/migrations.js";
-import { assertRulesetAdmissionsCurrent, runRulesetAdmissions } from "../persistence/sqlite/ruleset-admissions.js";
+import { assertMigrationsCurrent } from "../persistence/sqlite/migrations.js";
+import { assertRulesetAdmissionsCurrent, assertRuntimeRulesetReady } from "../persistence/sqlite/ruleset-admissions.js";
+import { initializeDatabase } from "../persistence/sqlite/initialize.js";
 import { SqlitePersistence } from "../persistence/sqlite/persistence.js";
 import type { StorageAdapter } from "../storage/storage-adapter.js";
 import { createApp } from "./app.js";
@@ -38,17 +39,15 @@ export async function createApplication(
   const database = openSqliteDatabase(sqliteConfig.databasePath);
 
   try {
-    // Reviewed production model: backup -> stop -> release switch -> explicit
-    // db:migrate:prod -> start. Production startup therefore NEVER applies
-    // migrations — it fails closed when the schema is missing or not current.
-    // Development/test keep the convenient automatic migration path.
+    // Explicit db:initialize:prod prepares schema and admission before serving.
+    // Production startup never repairs or migrates persistent state implicitly.
     if (config.environment === "production") {
       assertMigrationsCurrent(database, sqliteConfig.migrationsDirectory);
       assertRulesetAdmissionsCurrent(database, sqliteConfig.rulesetAdmissionsDirectory);
     } else {
-      runMigrations(database, sqliteConfig.migrationsDirectory);
-      runRulesetAdmissions(database, sqliteConfig.rulesetAdmissionsDirectory);
+      initializeDatabase(database, sqliteConfig);
     }
+    const runtimeRuleset = assertRulesetAdmissionsCurrent(database, sqliteConfig.rulesetAdmissionsDirectory);
     const persistence = new SqlitePersistence(database);
     const passwordHasher = new Argon2idPasswordHasher();
     const authService = new AuthService({
@@ -106,7 +105,10 @@ export async function createApplication(
       citations: { service: citationService },
       catalogBatch: { service: catalogBatchService },
       libraries: { service: libraryService },
-      readinessCheck: () => persistence.isReady(),
+      readinessCheck: () => {
+        assertRuntimeRulesetReady(database, runtimeRuleset);
+        return persistence.isReady();
+      },
     });
 
     const jobDeadlineSweep = setInterval(() => {

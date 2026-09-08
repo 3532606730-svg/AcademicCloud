@@ -16,6 +16,7 @@ import {
   localCatalogText,
 } from "./catalog-local-bridge.ts";
 import { describeError } from "./i18n.ts";
+import { BatchCatalogReview, EMPTY_ACKNOWLEDGEMENTS, type ReviewAcknowledgements } from "./batch-catalog-review.tsx";
 import { useLanguage } from "./i18n-react.tsx";
 
 const MAX_RESULTS_BYTES = 8 * 1024 * 1024;
@@ -103,7 +104,7 @@ export function BatchCatalogDialog({
     () => new Set(boundedPdfHoldings(initialHoldings).map((entry) => entry.file.id)),
   );
   const [uncataloguedTruncated, setUncataloguedTruncated] = useState(false);
-  const [document, setDocument] = useState<unknown>(null);
+  const [acknowledgements, setAcknowledgements] = useState<ReviewAcknowledgements>({ ...EMPTY_ACKNOWLEDGEMENTS });
   const [preview, setPreview] = useState<CatalogPreview | null>(null);
   const [selectedPreviewIds, setSelectedPreviewIds] = useState<ReadonlySet<string>>(new Set());
   const [applyResults, setApplyResults] = useState<CatalogApplyResult[] | null>(null);
@@ -114,6 +115,7 @@ export function BatchCatalogDialog({
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
+    closedRef.current = false;
     dialogRef.current?.showModal();
     return () => {
       closedRef.current = true;
@@ -185,49 +187,57 @@ export function BatchCatalogDialog({
   }
 
   async function importResults(file: File): Promise<void> {
-    setError(null); setApplyResults(null); setPreview(null); setDocument(null);
+    setError(null); setApplyResults(null); setPreview(null); setAcknowledgements({ ...EMPTY_ACKNOWLEDGEMENTS });
     if (file.size < 2 || file.size > MAX_RESULTS_BYTES || !api.previewCatalogBatchResults) {
-      setError(new Error("invalid_input")); return;
+      setError(Object.assign(new Error("catalog_results_invalid"), { code: "catalog_results_invalid" })); return;
     }
     setBusy(true);
     try {
       const parsed = JSON.parse(await file.text()) as unknown;
       const nextPreview = await api.previewCatalogBatchResults(library.id, parsed);
-      setDocument(parsed);
+      if (closedRef.current) return;
       setPreview(nextPreview);
-      setSelectedPreviewIds(new Set(nextPreview.items.filter((entry) => entry.category === "auto").map((entry) => entry.resourceId)));
+      setSelectedPreviewIds(new Set());
     } catch (caught: unknown) {
-      setError(caught);
-    } finally { setBusy(false); }
+      if (!closedRef.current) setError(caught instanceof SyntaxError
+        ? Object.assign(new Error("catalog_results_invalid"), { code: "catalog_results_invalid" }) : caught);
+    } finally { if (!closedRef.current) setBusy(false); }
   }
 
-  function togglePreview(resourceId: string): void {
-    setSelectedPreviewIds((current) => {
-      const next = new Set(current);
-      if (next.has(resourceId)) next.delete(resourceId); else next.add(resourceId);
-      return next;
-    });
+  function changeSelection(ids: ReadonlySet<string>): void {
+    setSelectedPreviewIds(ids);
+    setAcknowledgements({ ...EMPTY_ACKNOWLEDGEMENTS });
   }
+
+  const selectedItems = preview?.items.filter((item) => selectedPreviewIds.has(item.resourceId)) ?? [];
+  const acknowledged = selectedItems.every((item) =>
+    (!item.requiresAcknowledgement.evidence || acknowledgements.evidence)
+    && (!item.requiresAcknowledgement.humanConflict || acknowledgements.humanConflict)
+    && (!item.requiresAcknowledgement.clear || acknowledgements.clear));
 
   async function apply(): Promise<void> {
-    if (!preview || document === null || !api.applyCatalogBatchResults || selectedPreviewIds.size < 1) return;
-    if (!window.confirm(t("batchCatalog.applyConfirm", { count: selectedPreviewIds.size }))) return;
+    if (!preview || !api.applyCatalogBatchResults || selectedPreviewIds.size < 1 || !acknowledged) return;
     setBusy(true); setError(null);
     try {
       const response = await api.applyCatalogBatchResults(
         library.id,
-        document,
-        preview.documentDigest,
+        preview.planId,
         preview.items.filter((entry) => selectedPreviewIds.has(entry.resourceId)).map((entry) => ({
           resourceId: entry.resourceId,
           previewVersion: entry.previewVersion,
+          ...(entry.requiresAcknowledgement.evidence && acknowledgements.evidence ? { acknowledgeEvidence: true as const } : {}),
+          ...(entry.requiresAcknowledgement.humanConflict && acknowledgements.humanConflict ? { acknowledgeHumanConflict: true as const } : {}),
+          ...(entry.requiresAcknowledgement.clear && acknowledgements.clear ? { acknowledgeClear: true as const } : {}),
         })),
       );
-      setApplyResults(response.results);
+      if (closedRef.current) return;
+      setApplyResults((previous) => [...new Map([...(previous ?? []), ...response.results].map((entry) => [entry.resourceId, entry])).values()]);
+      const completed = new Set(response.results.filter((entry) => entry.status === "applied" || entry.status === "unchanged").map((entry) => entry.resourceId));
+      changeSelection(new Set([...selectedPreviewIds].filter((id) => !completed.has(id))));
       if (response.results.some((entry) => entry.status === "applied")) onApplied();
     } catch (caught: unknown) {
-      setError(caught);
-    } finally { setBusy(false); }
+      if (!closedRef.current) setError(caught);
+    } finally { if (!closedRef.current) setBusy(false); }
   }
 
   return (
@@ -241,6 +251,12 @@ export function BatchCatalogDialog({
       </div>
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
       {localExportError && <div className="alert alert--error" role="alert">{localExportError}</div>}
+      <ol className="catalog-steps" aria-label={language === "zh-CN" ? "批量编目步骤" : "Batch catalog steps"}>
+        {(language === "zh-CN" ? ["选择资料", "准备证据", "导入结果", "审核建议", "确认应用", "逐项结果"] : ["Select", "Evidence", "Import", "Review", "Confirm", "Results"]).map((step, index) => <li key={step} aria-current={index === (applyResults ? 5 : preview ? 3 : 0) ? "step" : undefined}><span>{index + 1}</span>{step}</li>)}
+      </ol>
+      {busy && <p className="catalog-busy" role="status">{language === "zh-CN" ? "正在处理，请稍候…" : "Working, please wait…"}</p>}
+      <details className="catalog-preparation" open={!preview}>
+      <summary>{language === "zh-CN" ? "选择资料、准备证据与导入" : "Selection, evidence and import"}</summary>
       <section aria-labelledby="batch-catalog-export-title">
         <h3 id="batch-catalog-export-title">{t("batchCatalog.exportTitle")}</h3>
         <div className="batch-catalog-selection-actions">
@@ -273,51 +289,21 @@ export function BatchCatalogDialog({
       </section>
       <section aria-labelledby="batch-catalog-import-title">
         <h3 id="batch-catalog-import-title">{t("batchCatalog.importTitle")}</h3>
-        <input type="file" accept="application/json,.json" disabled={busy} onChange={(event) => {
+        <input aria-label={t("batchCatalog.importTitle")} type="file" accept="application/json,.json" disabled={busy} onChange={(event) => {
           const file = event.target.files?.[0]; if (file) void importResults(file); event.currentTarget.value = "";
         }} />
       </section>
+      </details>
       {preview && (
         <section aria-labelledby="batch-catalog-preview-title">
           <h3 id="batch-catalog-preview-title">{t("batchCatalog.previewTitle")}</h3>
-          <p className="batch-catalog-counts">
-            AUTO {preview.counts.AUTO} · REVIEW {preview.counts.REVIEW} · UNKNOWN {preview.counts.UNKNOWN} · EXCLUDED {preview.counts.EXCLUDED} · STALE {preview.counts.STALE} · COLLISION {preview.counts.COLLISION} · UNCHANGED {preview.counts.UNCHANGED}
-          </p>
-          <div className="batch-naming-list">
-            {preview.items.map((item) => {
-              const selectable = item.category === "auto" || item.category === "review";
-              return (
-                <article className="batch-naming-item" key={item.resourceId} data-status={item.category}>
-                  <label className="batch-naming-select">
-                    <input type="checkbox" disabled={busy || !selectable} checked={selectedPreviewIds.has(item.resourceId)} onChange={() => togglePreview(item.resourceId)} />
-                    <span className="batch-naming-main">
-                      <strong>{item.currentFilename}</strong>
-                      <small>{item.proposedFilename ?? t("batchCatalog.noRename")}</small>
-                    </span>
-                  </label>
-                  <dl className="batch-catalog-detail">
-                    <dt>{t("batchCatalog.titleField")}</dt><dd>{item.canonicalTitle ?? t("batchCatalog.unrecognized")}</dd>
-                    <dt>{t("batchCatalog.responsibility")}</dt><dd>{item.responsibility ?? t("batchCatalog.unrecognized")}</dd>
-                    <dt>{t("batchCatalog.year")}</dt><dd>{item.year ?? t("batchCatalog.unrecognized")}</dd>
-                    <dt>{t("batchCatalog.class")}</dt><dd>{item.materialClass ?? "unknown"}</dd>
-                    <dt>{t("batchCatalog.disposition")}</dt><dd>{item.disposition}</dd>
-                    <dt>{t("batchCatalog.confidence")}</dt><dd>{item.confidence}%</dd>
-                    <dt>{t("batchCatalog.identity")}</dt><dd>{t(item.identityMatch ? "batchCatalog.identityMatch" : "batchCatalog.identityMismatch")}</dd>
-                    <dt>{t("batchCatalog.collision")}</dt><dd>{item.collisionStatus}</dd>
-                    <dt>{t("batchCatalog.changes")}</dt><dd>{item.metadataChanges.length > 0 ? item.metadataChanges.join(", ") : t("batchCatalog.none")}</dd>
-                    <dt>{t("batchCatalog.warnings")}</dt><dd>{item.warnings.length > 0
-                      ? item.warnings.map((warning) => t(`batchCatalog.warning.${warning}`)).join(", ")
-                      : t("batchCatalog.none")}</dd>
-                    <dt>{t("batchCatalog.status")}</dt><dd>{item.category}</dd>
-                  </dl>
-                </article>
-              );
-            })}
-          </div>
-          <button className="button button--primary" type="button" disabled={busy || selectedPreviewIds.size < 1} onClick={() => void apply()}>{t("batchCatalog.apply", { count: selectedPreviewIds.size })}</button>
+          <BatchCatalogReview key={preview.planId} preview={preview} selected={selectedPreviewIds}
+            onSelectionChange={changeSelection} acknowledgements={acknowledgements} onAcknowledge={setAcknowledgements}
+            busy={busy} results={applyResults} />
+          <button className="button button--primary" type="button" disabled={busy || selectedPreviewIds.size < 1 || !acknowledged} onClick={() => void apply()}>{t("batchCatalog.apply", { count: selectedPreviewIds.size })}</button>
         </section>
       )}
-      {applyResults && <div className="alert alert--success" role="status">{t("batchCatalog.applyResult", { applied: applyResults.filter((entry) => entry.status === "applied").length, total: applyResults.length })}</div>}
+      {applyResults && <div className={`alert ${applyResults.every((item) => item.status === "applied" || item.status === "unchanged") ? "alert--success" : "alert--warning"}`} role="status">{t("batchCatalog.applyResult", { applied: applyResults.filter((entry) => entry.status === "applied").length, total: applyResults.length })}</div>}
       <footer className="batch-naming-actions"><button className="button button--quiet" type="button" disabled={busy && !exportActive} onClick={closeDialog}>{t("batchCatalog.close")}</button></footer>
     </dialog>
   );

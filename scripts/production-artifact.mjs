@@ -32,6 +32,7 @@ const requiredRuntimePaths = [
   "backend/dist/main.js",
   "backend/dist/persistence/sqlite/migrate.js",
   "backend/dist/persistence/sqlite/admit-rulesets.js",
+  "backend/dist/persistence/sqlite/initialize-database.js",
   "backend/dist/operations/account-main.js",
   "backend/dist/operations/backup-main.js",
   "backend/dist/operations/recovery-main.js",

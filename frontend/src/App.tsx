@@ -52,6 +52,7 @@ import { BatchNamingDialog } from "./batch-naming.tsx";
 import { BatchCatalogDialog } from "./batch-catalog.tsx";
 import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
+import { clearViewPreferences, useHistoryDialog, useWorkspaceLocation } from "./view-context.ts";
 import { CitationDialog } from "./citation.tsx";
 import {
   forgetSourceHandle,
@@ -447,6 +448,7 @@ interface PreviewState {
   url: string;
   returnFocus: HTMLElement | null;
   download: () => Promise<void>;
+  resource?: ResourceDetailsRequest;
 }
 
 interface ResourceDetailsRequest {
@@ -681,8 +683,7 @@ function DriveView({
   onSignedOut: (message?: string) => void;
 }) {
   const { language, t } = useLanguage();
-  const [view, setView] = useState<DriveViewName>("library");
-  const [path, setPath] = useState<FolderEntry[]>([]);
+  const { view, setView, path, setPath } = useWorkspaceLocation(account.id);
   const [entries, setEntries] = useState<EntriesResponse>(EMPTY_ENTRIES);
   const [pending, setPending] = useState<FileEntry[]>([]);
   const [recycle, setRecycle] = useState<RecycleResponse>(EMPTY_RECYCLE);
@@ -708,6 +709,8 @@ function DriveView({
   const [sourceRecoveryFallbacks, setSourceRecoveryFallbacks] = useState<Record<string, string>>({});
   const [recoveringSourceId, setRecoveringSourceId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  const previewRequest = useRef(0);
+  useEffect(() => () => { previewRequest.current++; }, [view, path]);
   const [resourceDetailsRequest, setResourceDetailsRequest] = useState<ResourceDetailsRequest | null>(null);
   const [citationRequest, setCitationRequest] = useState<CitationRequest | null>(null);
   const [batchNamingRequest, setBatchNamingRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
@@ -990,14 +993,18 @@ function DriveView({
     // Explicit four-way request state machine: the Favorites view owns its
     // listFavorites lifecycle and must NEVER fall through to listRecycle.
     const request: Promise<void> = view === "library"
-      ? api.listEntries(currentFolderId, controller.signal).then(setEntries)
+      ? api.listEntries(currentFolderId, controller.signal).then((value) => { if (!controller.signal.aborted) setEntries(value); })
       : view === "pending"
-        ? api.listPending(currentFolderId, controller.signal).then(setPending)
+        ? api.listPending(currentFolderId, controller.signal).then((value) => { if (!controller.signal.aborted) setPending(value); })
         : view === "recycle"
-          ? api.listRecycle(controller.signal).then(setRecycle)
+          ? api.listRecycle(controller.signal).then((value) => { if (!controller.signal.aborted) setRecycle(value); })
           : Promise.resolve();
 
     request.catch((caught: unknown) => {
+      if (controller.signal.aborted) return;
+      if (currentFolderId && caught instanceof ApiError && caught.code === "not_found") {
+        setPath([]);
+      }
       if (!(caught instanceof DOMException && caught.name === "AbortError")) {
         setError(caught);
       }
@@ -1552,6 +1559,7 @@ function DriveView({
     for (const job of jobs) job.controller.abort();
     try {
       await api.logout();
+      clearViewPreferences(account.id);
       onSignedOut();
     } catch (caught: unknown) {
       setError(caught);
@@ -1939,6 +1947,7 @@ function DriveView({
   }
 
   async function openPreview(file: FileEntry, returnFocus?: HTMLElement | null) {
+    const requestId = ++previewRequest.current;
     // The originating row-action trigger is passed explicitly: the removed
     // portal menuitem must never be captured as the restore target.
     const fallbackFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -1946,6 +1955,7 @@ function DriveView({
     setError(null);
     try {
       const authorization = await api.createDownload(file.id, "inline");
+      if (requestId !== previewRequest.current) return;
       setPreview({
         file,
         url: authorization.url,
@@ -1955,9 +1965,9 @@ function DriveView({
     } catch (caught: unknown) {
       // preview_unavailable renders the localized fail-safe message; the
       // Preview button never silently triggers a download.
-      setError(caught);
+      if (requestId === previewRequest.current) setError(caught);
     } finally {
-      setBusyId(null);
+      if (requestId === previewRequest.current) setBusyId(null);
     }
   }
 
@@ -1974,11 +1984,13 @@ function DriveView({
     holding: LibraryHolding,
     returnFocus?: HTMLElement | null,
   ) {
+    const requestId = ++previewRequest.current;
     const fallbackFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setBusyId(`preview-${holding.file.id}`);
     setError(null);
     try {
       const authorization = await api.createLibraryDownload(library.id, holding.file.id, "inline");
+      if (requestId !== previewRequest.current) return;
       setPreview({
         file: {
           displayName: libraryHoldingDisplayTitle(holding, language),
@@ -1987,11 +1999,12 @@ function DriveView({
         url: authorization.url,
         returnFocus: returnFocus ?? fallbackFocus,
         download: () => downloadLibraryHolding(library, holding),
+        resource: { library, holding, returnFocus: returnFocus ?? fallbackFocus },
       });
     } catch (caught: unknown) {
-      setError(caught);
+      if (requestId === previewRequest.current) setError(caught);
     } finally {
-      setBusyId(null);
+      if (requestId === previewRequest.current) setBusyId(null);
     }
   }
 
@@ -2273,6 +2286,7 @@ function DriveView({
             <AnnouncementFeed api={api} revision={announcementRevision} />
             <SharedLibraryPanel
               api={api}
+              accountId={account.id}
               revision={revision}
               onCatalogueChange={reconcileLibraryCatalogue}
               renderCatalogue={({ library, holdings, loading: holdingsLoading, nextCursor, loadingMore, sort, onSortChange, onLoadMore }) => {
@@ -2303,13 +2317,14 @@ function DriveView({
                     {library && (
                       <LibrarySearchField
                         api={api}
+                        accountId={account.id}
                         library={library}
                         language={language}
                         t={t}
                         sort={sort}
                         onSortChange={onSortChange}
                         onActiveChange={setLibrarySearchActive}
-                        onOpenResult={(result) => openResourceDetails(library, librarySearchResultToHolding(result))}
+                        onOpenResult={(result) => void openLibraryPreview(library, librarySearchResultToHolding(result))}
                       />
                     )}
                     {!librarySearchActive && selectedEntries.length > 0 && (
@@ -2861,7 +2876,9 @@ function DriveView({
           }}
         />
       )}
-      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void preview.download()} />}
+      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void preview.download()}
+        onDetails={preview.resource ? () => setResourceDetailsRequest(preview.resource!) : undefined}
+        onCitation={preview.resource ? () => setCitationRequest(preview.resource!) : undefined} />}
       {moveRequest && (
         <MoveDialog
           api={api}
@@ -4168,26 +4185,34 @@ function FolderBadge() {
   return <FolderIcon size={19} className="file-badge file-badge--folder" />;
 }
 
-function PreviewDialog({ preview, onClose, onDownload }: { preview: PreviewState; onClose: () => void; onDownload: () => void }) {
-  const { t } = useLanguage();
-  const dialogRef = useModalDialog(onClose, false, preview.returnFocus);
+function PreviewDialog({ preview, onClose, onDownload, onDetails, onCitation }: {
+  preview: PreviewState; onClose: () => void; onDownload: () => void;
+  onDetails?: (() => void) | undefined; onCitation?: (() => void) | undefined;
+}) {
+  const { t, language } = useLanguage();
+  const close = useHistoryDialog(onClose);
+  const dialogRef = useModalDialog(close, false, preview.returnFocus);
+  const [loaded, setLoaded] = useState(false);
 
   return (
       <dialog ref={dialogRef} className="preview-modal" aria-labelledby="preview-title">
         <header>
           <h2 id="preview-title">{preview.file.displayName}</h2>
-          <button className="button button--quiet preview-close-button" type="button" onClick={onClose} aria-label={t("preview.closeAria")}>{t("preview.close")}</button>
+          <button className="button button--quiet preview-close-button" type="button" onClick={close} aria-label={t("preview.closeAria")}>{t("preview.close")}</button>
         </header>
         <div className="preview-content">
+          {!loaded && <p className="preview-loading" role="status">{language === "zh-CN" ? "正在打开资料…" : "Opening resource…"}</p>}
           {preview.file.mediaType.startsWith("image/") ? (
-            <img src={preview.url} alt={t("preview.imageAlt", { name: preview.file.displayName })} referrerPolicy="no-referrer" />
+            <img src={preview.url} onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} alt={t("preview.imageAlt", { name: preview.file.displayName })} referrerPolicy="no-referrer" />
           ) : (
-            <iframe src={preview.url} title={t("preview.frameTitle", { name: preview.file.displayName })} referrerPolicy="no-referrer" />
+            <iframe src={preview.url} onLoad={() => setLoaded(true)} title={t("preview.frameTitle", { name: preview.file.displayName })} referrerPolicy="no-referrer" />
           )}
         </div>
         <footer>
           <a className="button preview-open-button" href={preview.url} target="_blank" rel="noreferrer">{t("preview.open")}</a>
           <button className="button preview-download-button" type="button" onClick={onDownload}>{t("menu.download")}</button>
+          {onDetails && <button className="button button--quiet" type="button" onClick={() => { close(); onDetails(); }}>{language === "zh-CN" ? "资料详情" : "Resource details"}</button>}
+          {onCitation && <button className="button button--quiet" type="button" onClick={() => { close(); onCitation(); }}>{language === "zh-CN" ? "引用" : "Citation"}</button>}
         </footer>
       </dialog>
   );

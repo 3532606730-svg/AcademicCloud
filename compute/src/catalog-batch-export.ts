@@ -481,9 +481,14 @@ export async function createCatalogEvidencePackage(options: {
     {
       path: "review-contract.json",
       bytes: encoder.encode(`${JSON.stringify({
-        schemaVersion: "academiccloud.catalog-review-contract.v1",
-        resultsSchemaVersion: "academiccloud.catalog-results.v1",
+        schemaVersion: "academiccloud.catalog-review-contract.v2",
+        resultsSchemaVersion: "academiccloud.catalog-results.v2",
+        legacyResultsSchemaVersion: "academiccloud.catalog-results.v1",
         sourceManifestSha256: sha256(canonicalCatalogJson(manifest)),
+        bibliographyExample: { set: { canonicalTitle: "Title verified from the source", "publication.publisher": "Publisher verified from the source" }, clear: [], filenameStyle: "preserve_original" },
+        fieldPolicy: "Omitted fields preserve existing values. Use clear with explicit field paths to remove values; null and empty replacement arrays are not clears. Do not invent missing facts.",
+        evidencePolicy: "List zero-based source pages and executionState (ready, failed, unknown). An external evidence summary is unverified; AUTO and confidence never bypass human review.",
+        confidencePolicy: "Integer self-rating 0–100, not calibrated correctness probability. UNKNOWN must have bibliographic: null. Explicit human correction may be returned as REVIEW with a non-null patch.",
       }, null, 2)}\n`),
     },
     ...evidence.map((entry) => ({

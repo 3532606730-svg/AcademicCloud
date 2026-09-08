@@ -83,7 +83,7 @@ export interface LibrarySearchFilters {
   volume?: string | undefined;
 }
 
-interface NormalizedSearchFilters {
+export interface NormalizedSearchFilters {
   materialClass?: MaterialClass | undefined;
   contributor?: string | undefined;
   language?: string | undefined;
@@ -107,6 +107,7 @@ export interface SearchableAuthority {
 export interface SearchableHolding {
   fileId: string;
   displayName: string;
+  mediaType?: string | null;
   sizeBytes: number;
   artifactId: string;
   artifactCreatedAt: Date;
@@ -119,6 +120,8 @@ export interface SearchableHolding {
 
 export interface LibrarySearchResult {
   fileId: string;
+  mediaType: string | null;
+  sizeBytes: number;
   canonicalTitle: string | null;
   authorLabels: string[];
   contributorLabels: string[];
@@ -165,7 +168,7 @@ const MATERIAL_CLASS_SEARCH_LABELS: Readonly<Record<MaterialClass, readonly stri
   unknown: ["未分类", "unknown"],
 };
 
-function normalizeForMatch(value: string): string {
+export function normalizeForMatch(value: string): string {
   return value.normalize("NFC").toLocaleLowerCase().replace(/[\s\p{P}\p{S}\p{Z}]+/gu, "");
 }
 
@@ -226,7 +229,7 @@ function authorityLabels(holding: SearchableHolding, roles?: readonly AuthorityR
   return labels;
 }
 
-function contributorLabels(holding: SearchableHolding): string[] {
+export function contributorLabels(holding: SearchableHolding): string[] {
   return [
     ...holding.authorLabels,
     ...(holding.bibliography?.contributors.flatMap((contributor) => [contributor.label, contributor.roleLabel ?? ""]) ?? []),
@@ -234,11 +237,11 @@ function contributorLabels(holding: SearchableHolding): string[] {
   ].filter(Boolean);
 }
 
-function identifierValues(holding: SearchableHolding): string[] {
+export function identifierValues(holding: SearchableHolding): string[] {
   return (holding.metadata?.identifiers ?? []).map((identifier) => identifier.value);
 }
 
-function publisherValues(holding: SearchableHolding): string[] {
+export function publisherValues(holding: SearchableHolding): string[] {
   return [
     holding.bibliography?.publication.publisher ?? "",
     ...holding.authorities.filter((authority) => authority.role === "publisher").flatMap((authority) => [authority.label, ...authority.aliases]),
@@ -284,7 +287,7 @@ function bibliographyValues(holding: SearchableHolding): string[] {
   return [...base, ...composites.filter(Boolean), base.join("")];
 }
 
-function otherMetadataValues(holding: SearchableHolding): string[] {
+export function otherMetadataValues(holding: SearchableHolding): string[] {
   const metadata = holding.metadata;
   return [
     ...(metadata ? [
@@ -367,7 +370,7 @@ function isSearchSort(value: string): value is LibrarySearchSort {
 }
 
 interface RankedHolding { rank: number; holding: SearchableHolding }
-type SearchSortKey = Array<string | number>;
+export type SearchSortKey = Array<string | number>;
 
 function effectiveTitle(holding: SearchableHolding): string {
   return holding.canonicalTitle?.trim() || holding.displayName;
@@ -401,13 +404,13 @@ function compareRanked(left: RankedHolding, right: RankedHolding, sort: LibraryS
   return compareSortKeys(sortKey(left, sort), sortKey(right, sort), sort);
 }
 
-interface SearchCursorPayload { v: 2; identity: string; key: SearchSortKey }
+export interface SearchCursorPayload { v: 2; identity: string; key: SearchSortKey }
 
 function searchIdentity(query: string, filters: NormalizedSearchFilters, sort: LibrarySearchSort): string {
   return createHash("sha256").update(JSON.stringify({ query, filters, sort }), "utf8").digest("hex");
 }
 
-function encodeCursor(identity: string, key: SearchSortKey): string {
+export function encodeSearchCursor(identity: string, key: SearchSortKey): string {
   const payload: SearchCursorPayload = { v: 2, identity, key };
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
@@ -441,7 +444,7 @@ function publisherLabel(holding: SearchableHolding): string | null {
   return publisherValues(holding)[0] ?? null;
 }
 
-function toResult(holding: SearchableHolding): LibrarySearchResult {
+export function toSearchResult(holding: SearchableHolding): LibrarySearchResult {
   const composed = composeCatalogueDisplay({
     canonicalTitle: holding.canonicalTitle,
     fallbackDisplayName: holding.displayName,
@@ -450,6 +453,8 @@ function toResult(holding: SearchableHolding): LibrarySearchResult {
   });
   return {
     fileId: holding.fileId,
+    mediaType: holding.mediaType ?? null,
+    sizeBytes: holding.sizeBytes,
     canonicalTitle: holding.canonicalTitle,
     authorLabels: [...holding.authorLabels],
     contributorLabels: composed.contributorLabels,
@@ -464,14 +469,21 @@ function toResult(holding: SearchableHolding): LibrarySearchResult {
   };
 }
 
-export function searchHoldings(
-  holdings: readonly SearchableHolding[],
+export function prepareSearch(
   rawQuery: string,
   limit: number = SEARCH_DEFAULT_LIMIT,
   cursor: string | null = null,
   rawFilters: LibrarySearchFilters = {},
   rawSort: string = "relevance",
-): LibrarySearchPage {
+): {
+  query: string;
+  queryCompact: string;
+  filters: NormalizedSearchFilters;
+  identity: string;
+  after: SearchCursorPayload | null;
+  sort: LibrarySearchSort;
+  limit: number;
+} {
   if (!Number.isInteger(limit) || limit < 1 || limit > SEARCH_MAX_LIMIT) throw new SearchInputError("invalid_limit");
   if (!isSearchSort(rawSort)) throw new SearchInputError("invalid_sort");
   const query = normalizeSearchQuery(rawQuery);
@@ -483,6 +495,21 @@ export function searchHoldings(
   if (cursor !== null && (!after || after.identity !== identity || !validCursorKey(after.key, rawSort))) {
     throw new SearchInputError("invalid_cursor");
   }
+  return { query, queryCompact, filters, identity, after, sort: rawSort, limit };
+}
+
+export type PreparedSearch = ReturnType<typeof prepareSearch>;
+
+/** Pure reference implementation retained as the semantic oracle for SQL search. */
+export function searchHoldings(
+  holdings: readonly SearchableHolding[],
+  rawQuery: string,
+  limit: number = SEARCH_DEFAULT_LIMIT,
+  cursor: string | null = null,
+  rawFilters: LibrarySearchFilters = {},
+  rawSort: string = "relevance",
+): LibrarySearchPage {
+  const { query, queryCompact, filters, identity, after, sort } = prepareSearch(rawQuery, limit, cursor, rawFilters, rawSort);
 
   const matched: RankedHolding[] = [];
   for (const holding of holdings) {
@@ -491,15 +518,15 @@ export function searchHoldings(
     if (matchRank < 0) continue;
     matched.push({ rank: matchRank, holding });
   }
-  matched.sort((left, right) => compareRanked(left, right, rawSort));
+  matched.sort((left, right) => compareRanked(left, right, sort));
 
   const remaining = after
-    ? matched.filter((item) => compareSortKeys(sortKey(item, rawSort), after.key, rawSort) > 0)
+    ? matched.filter((item) => compareSortKeys(sortKey(item, sort), after.key, sort) > 0)
     : matched;
   const page = remaining.slice(0, limit);
   const hasMore = remaining.length > limit;
   return {
-    results: page.map((item) => toResult(item.holding)),
-    nextCursor: hasMore && page.length > 0 ? encodeCursor(identity, sortKey(page[page.length - 1]!, rawSort)) : null,
+    results: page.map((item) => toSearchResult(item.holding)),
+    nextCursor: hasMore && page.length > 0 ? encodeSearchCursor(identity, sortKey(page[page.length - 1]!, sort)) : null,
   };
 }

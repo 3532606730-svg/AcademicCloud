@@ -1,5 +1,8 @@
 import type { LibraryRepository } from "../../library/repositories.js";
-import type { HoldingCursor } from "../../library/search.js";
+import { normalizeForMatch, type HoldingCursor, type PreparedSearch, type SearchSortKey } from "../../library/search.js";
+import { matchesCombinedSearch, searchTextOrder } from "../../library/search-projection.js";
+import { SqliteSearchProjection } from "./search-projection.js";
+import { librarySearchSql, librarySearchParameters } from "./library-search-query.js";
 import type {
   Library,
   LibraryHolding,
@@ -304,6 +307,8 @@ export class SqliteLibraryRepository implements LibraryRepository {
   readonly #findRecycledHoldingByFile;
   readonly #verifyRecycledHoldingExclusive;
   readonly #listSorted: ReadonlyMap<LibraryHoldingSort, BetterSqlite3.Statement<SortedAfterParameters, HoldingRow>>;
+  readonly #searchProjection: SqliteSearchProjection;
+  readonly #searchStatements = new Map<string, BetterSqlite3.Statement<Record<string, string | number | null>, HoldingRow & { match_rank: number }>>();
 
   constructor(private readonly database: SqliteDatabase) {
     // Deterministic Han→pinyin sort keys for the title sorts. Registered before
@@ -311,6 +316,11 @@ export class SqliteLibraryRepository implements LibraryRepository {
     database.function("pinyin_key", { deterministic: true }, (value: unknown) => (
       typeof value === "string" ? pinyinSortKey(value) : ""
     ));
+    database.function("search_normalize", { deterministic: true }, (value: string) => normalizeForMatch(value));
+    database.function("search_text_order", { deterministic: true }, (value: string) => searchTextOrder(value));
+    database.function("search_epoch", { deterministic: true }, (value: string) => new Date(value).getTime());
+    database.function("search_combined", { deterministic: true }, matchesCombinedSearch);
+    this.#searchProjection = new SqliteSearchProjection(database);
     this.#createDomain = database.prepare<{ domainId: string; createdAt: string }>(`
       INSERT INTO ownership_domains (id, kind, account_id, created_at)
       VALUES (@domainId, 'library', NULL, @createdAt)
@@ -722,6 +732,29 @@ export class SqliteLibraryRepository implements LibraryRepository {
       afterArtifactId: after?.artifactId ?? null,
       limit,
     }).map(toHolding);
+  }
+
+  refreshSearchProjection(ownerDomainId: string): number {
+    return this.#searchProjection.refresh(ownerDomainId);
+  }
+
+  searchHoldingsPage(libraryId: string, search: PreparedSearch): Array<{ holding: LibraryHolding; key: SearchSortKey }> {
+    let statement = this.#searchStatements.get(search.sort);
+    if (!statement) {
+      statement = this.database.prepare(librarySearchSql(holdingFrom, holdingColumns, search.sort));
+      this.#searchStatements.set(search.sort, statement);
+    }
+    return statement.all(librarySearchParameters(libraryId, search)).map((row) => {
+      const holding = toHolding(row);
+      let key: SearchSortKey;
+      if (search.sort === "relevance") key = [row.match_rank, holding.file.id];
+      else if (search.sort === "newest" || search.sort === "oldest") key = [holding.artifactCreatedAt.getTime(), holding.artifactId, holding.file.id];
+      else if (search.sort === "title_asc" || search.sort === "title_desc") {
+        const title = holding.canonicalTitle?.trim() || holding.file.displayName;
+        key = [pinyinSortKey(title), title, holding.file.id];
+      } else key = [holding.file.sizeBytes, holding.file.id];
+      return { holding, key };
+    });
   }
 
   listHoldingsSorted(

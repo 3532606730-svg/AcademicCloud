@@ -104,9 +104,9 @@ test("Local Pull systemd runs only the immutable D-drive WSL release with outbou
   assert.match(environment, /^ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET=replace-through-secret-installation$/m);
   assert.doesNotMatch(environment, /GITHUB_|BEGIN PRIVATE KEY|ac_session=/u);
   assert.match(assembler, /SOURCE_COMMIT.*\^\[a-f0-9\]\{40\}\$/u);
-  assert.match(assembler, /npm ci --workspace @academiccloud\/compute-contracts --workspace @academiccloud\/compute/u);
+  assert.match(assembler, /npm@11\.19\.1 -- npm ci --strict-allow-scripts --workspace @academiccloud\/compute-contracts --workspace @academiccloud\/compute/u);
   assert.match(assembler, /--include-workspace-root=true/u);
-  assert.match(assembler, /npm ci --omit=dev --workspace @academiccloud\/compute-contracts --workspace @academiccloud\/compute/u);
+  assert.match(assembler, /npm@11\.19\.1 -- npm ci --strict-allow-scripts --omit=dev --workspace @academiccloud\/compute-contracts --workspace @academiccloud\/compute/u);
   assert.match(assembler, /--include-workspace-root=false/u);
   assert.match(assembler, /NUEXTRACT_REVISION="28a1aae6288c5d50bdf999ca2e572240966d669b"/u);
   assert.match(assembler, /NUEXTRACT_SHA256="1e6792f3402347785eb54e965255329e96204233b4bbf717c67a99f267736383"/u);
@@ -174,7 +174,7 @@ test("Core production artifact excludes OCR/PDF-render runtime and retains only 
   assert.match(workflow, /Core OCR\/PDF-render runtime/u);
 });
 
-test("Compute workflow owns the exact release-local PaddleOCR/Qwen boundary and bounded worker controls", () => {
+test("manual emergency Compute fallback retains its pinned runtime and bounded worker controls", () => {
   const runtime = read("scripts/verify-intelligent-compute-runtime.mjs");
   const builder = read("scripts/build-intelligent-compute-runtime.sh");
   const sidecar = read("compute/scripts/paddle_ocr_sidecar.py");
@@ -201,11 +201,12 @@ test("Compute workflow owns the exact release-local PaddleOCR/Qwen boundary and 
   assert.match(workflow, /group: derived-compute-\$\{\{ inputs\.job_id \}\}/u);
   assert.match(workflow, /ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET/u);
   assert.match(workflow, /ACADEMICCLOUD_COMPUTE_CORE_ORIGIN/u);
-  assert.match(workflow, /intelligent-qualification\.ts/u);
-  assert.match(workflow, /visual-architecture-qualification\.ts/u);
-  assert.equal(workflow.match(/INTELLIGENT_COMPARISON_ASSETS/gu)?.length, 1);
-  assert.equal(workflow.match(/PADDLE_OCR_STARTUP_DIAGNOSTICS/gu)?.length, 1);
-  assert.match(workflow, /\/usr\/bin\/time -v/u);
+  assert.doesNotMatch(workflow, /pull_request:|INTELLIGENT_COMPARISON_ASSETS|PADDLE_OCR_STARTUP_DIAGNOSTICS/u);
+  assert.match(workflow, /workflow_dispatch:/u);
+  const regression = read(".github/workflows/regression.yml");
+  assert.match(regression, /pull_request:/u);
+  assert.match(regression, /npm run test:ci/u);
+  assert.match(regression, /npm ci --strict-allow-scripts/u);
   assert.match(workflow, /node --expose-gc output\/worker\/compute\/dist\/main\.js/u);
   assert.doesNotMatch(workflow, /node --expose-gc compute\/dist\/main\.js/u);
   assert.match(workflow, /--core-base-url="\$COMPUTE_INPUT_CORE_ORIGIN"/u);
@@ -214,8 +215,7 @@ test("Compute workflow owns the exact release-local PaddleOCR/Qwen boundary and 
   assert.doesNotMatch(workflow, /--(?:core-base-url|job-id|attempt-id)=\$\{\{ inputs\./u);
   assert.match(workflow, /compute\/test\/realistic-paddle-ocr-e2e\.test\.ts/u);
   assert.doesNotMatch(workflow, /TESSERACT_BUILDER_IMAGE|build-tesseract-runtime|realistic-ocr-e2e/u);
-  assert.equal(workflow.match(/COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24\.04-intelligent/gu)?.length, 2);
-  assert.match(workflow, /GNU_MAX_RSS_KB.*-lt 6291456/su);
+  assert.equal(workflow.match(/COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24\.04-intelligent/gu)?.length, 1);
   assert.doesNotMatch(workflow, /ACADEMICCLOUD_OCR_EMERGENCY_LEGACY/u);
 
   const protectedJob = workflow.split("\n  metadata-suggestion:")[1] ?? "";

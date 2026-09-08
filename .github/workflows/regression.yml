@@ -1,0 +1,85 @@
+name: AcademicCloud regression
+
+on:
+  pull_request:
+  push:
+    branches: [main, "codex/vnext-remediation-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    name: Core / frontend / contracts / Compute / operations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Select the supported npm installer
+        run: npm install --global npm@11.19.1
+
+      - name: Install the locked tree with reviewed lifecycle scripts
+        run: npm ci --strict-allow-scripts
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=low
+
+      - name: Run complete application and pure Compute regression
+        run: npm run test:ci
+
+      - name: Check types and build every workspace
+        run: |
+          npm run typecheck
+          npm run build
+          npm run acceptance:compiled
+
+      - name: Verify deployment script syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' script; do bash -n "$script"; done < <(git ls-files -z 'scripts/*.sh' 'scripts/local-compute/*.sh')
+          pwsh -NoProfile -NonInteractive -Command '$files = git ls-files "scripts/*.ps1" "scripts/local-compute/*.ps1"; foreach ($file in $files) { $errors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$null, [ref]$errors); if ($errors.Count -ne 0) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 } }'
+
+  windows-install:
+    name: Windows native dependency installation
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Select the supported npm installer
+        run: npm install --global npm@11.19.1
+
+      - name: Install the locked tree with reviewed lifecycle scripts
+        run: npm ci --strict-allow-scripts
+
+      - name: Verify installed native SQLite and password hashing
+        run: node --input-type=module -e "import assert from 'node:assert/strict'; import Database from 'better-sqlite3'; import argon2 from 'argon2'; const db = new Database(':memory:'); assert.equal(db.prepare('SELECT 1 AS value').get().value, 1); db.close(); const hash = await argon2.hash('synthetic-install-check'); assert.equal(await argon2.verify(hash, 'synthetic-install-check'), true);"

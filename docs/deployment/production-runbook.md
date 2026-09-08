@@ -2,20 +2,23 @@
 
 This runbook prepares the approved Layer 1 single-host topology: Nginx serves the static SPA and proxies `/api` to one loopback-only Node.js process; SQLite stores control-plane metadata; file bytes travel directly between the browser and a private OSS bucket.
 
-The checked-in files are templates, not authorization to mutate the server or cloud account. Real credentials, bucket/RAM/CORS/versioning changes, DNS, certificate issuance, firewall changes, package installation, service enablement, and production data operations require a separate approved deployment window.
+The checked-in files define the operational mechanism. The active task defines
+authorization: [ACADEMICCLOUD-VNEXT-REMEDIATION01](../../tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md)
+authorizes the required release, initialization, configuration and live product
+verification without repeated approval. Use the existing infrastructure and
+protect credentials, source bytes, resource identity and access boundaries.
+The exact deployed commit and completion evidence belong in
+[CURRENT_STATUS.md](../../CURRENT_STATUS.md) and the active task, rather than
+being duplicated as a second current-state record here. Artifact `9405764771`
+and source `8d289702…` remain permanently disallowed.
 
-The most recent bounded authority, `L1-INTELLIGENT-LIBRARY01`, is complete and
-consumed. Exact artifact `9477785607` / source `017a47d…` runs at schema
-v24/history 001–024 after a stopped-service verified backup, encrypted private
-off-host publication and independent rehash, exactly migrations 023–024,
-immutable install, and bounded production verification. The immediate rollback
-is previous application `53317bb…` plus the recorded v22 pre-migration database.
-No further deployment or production mutation is authorized by the completed
-card; `8d289702…` remains permanently disallowed.
+## Deployment preflight
 
-## Approval-gated preflight
-
-Record the operator, maintenance window, domain, release commit, current release path, backup destination, and rollback release before change.
+Identify the intended commit, current immutable release, database path and
+schema-compatible recovery option. Reuse an adequate existing recovery point;
+do not generate a fresh backup or duplicate artifact for every ordinary edit.
+Use the established `academiccloud-prod` SSH alias with non-interactive,
+host-key-verified access. Do not print the environment file or credentials.
 
 Verify on the target host:
 
@@ -30,7 +33,9 @@ Verify on the target host:
 - An encrypted off-host database-backup destination and retention policy exist. A same-server backup is only a staging copy.
 - The private OSS deployment gate in [OSS Deployment Checklist](oss-deployment-checklist.md) is fully signed off.
 
-Abort if any preflight fails. Do not weaken database durability, password hashing, authorization, or hardening to fit the host; increase memory instead.
+Resolve a concrete failed preflight before cutover. Do not weaken database
+durability, password hashing, authorization or hardening to fit the host. A
+capacity problem requires diagnosis within the existing cost constraints.
 
 `PROD-02H` measured the former approximately 407 MiB Alibaba host and failed this gate: minimum whole-host `MemAvailable` was 38,992 KiB and a global OOM occurred. After the Owner-reported upgrade, Linux exposed `916,044 KiB` `MemTotal`; `PROD-02I` accepted runtime suitability with minimum `MemAvailable=393,396 KiB`, minimum `SwapFree=1,048,572 KiB`, a 241,455,104-byte cgroup peak, zero OOM evidence, and complete runtime/compiled acceptance. This result does not waive any remaining live deployment gate. Any further RAM/server change has real-cost implications and requires explicit Owner approval.
 
@@ -44,16 +49,36 @@ Linux/Node 24 build environment; never run npm lifecycle or native build scripts
 as root:
 
 ```bash
-npm ci
-npm test
+npm exec --yes --package=npm@11.19.1 -- npm ci --strict-allow-scripts
+npm run test:ci
 npm run typecheck
 npm run build
+npm run acceptance:compiled
 npm audit --audit-level=high
-npm audit --omit=dev --audit-level=high
+npm audit --omit=dev --audit-level=low
 ```
 
+Node.js 24 and npm 11.19.1 are the supported installer combination. The root
+`allowScripts` policy permits the reviewed versioned Argon2, esbuild and
+platform-specific fsevents scripts and explicitly denies the unnecessary
+`better-sqlite3@13.0.3` install script. SQLite loads its packaged native
+prebuild. This avoids npm's known implicit `node-gyp` behavior without globally
+disabling dependency scripts; see the [upstream issue](https://github.com/WiseLibs/better-sqlite3/issues/1516)
+and [npm lifecycle policy](https://docs.npmjs.com/cli/v11/commands/npm-install-scripts/).
+Review a changed lifecycle package version before updating its permission.
+
+`AcademicCloud regression` is the permanent application/operations gate,
+including real PDF.js/native canvas tests with injected OCR and a clean Windows
+native-install smoke. The two actual OCR-engine qualification suites remain
+separate. `Linux production build` produces and independently verifies the
+exact Core artifact. The manual `Derived compute emergency fallback` workflow
+does not run on ordinary pull requests and is not the normal production
+Compute provider.
+
 The release artifact contains the tracked runtime files, `backend/dist`,
-`frontend/dist`, `database/migrations`, `package.json`, `package-lock.json`, and
+`frontend/dist`, `database/migrations`, `database/ruleset-admissions`,
+`backend/dist/persistence/sqlite/initialize-database.js`, `package.json`,
+`package-lock.json`, and
 production dependencies built for the target Linux x86_64/Node 24 ABI,
 including verified `better-sqlite3` and Argon2 native modules. The Alibaba host
 only verifies and unpacks that already validated artifact; it does not run npm.
@@ -71,7 +96,7 @@ expired artifact, different source commit, unexpected native-module path, or
 missing evidence aborts the deployment window; never rebuild on Alibaba as a
 fallback.
 
-Use immutable timestamped release directories such as `/opt/academiccloud/releases/<commit>` and a `/opt/academiccloud/current` symlink. Verify ownership and that the service cannot write the release tree.
+Use immutable commit-named release directories such as `/opt/academiccloud/releases/<commit>` and a `/opt/academiccloud/current` symlink. Verify ownership and that the service cannot write the release tree.
 
 ## Configuration and protected one-shot operations
 
@@ -85,10 +110,13 @@ logged one-shot result:
 
 ```bash
 academiccloud_op() {
+  local release_root="${ACADEMICCLOUD_OPERATION_RELEASE_ROOT:-$(readlink -f /opt/academiccloud/current)}"
+  [[ "$release_root" =~ ^/opt/academiccloud/releases/[a-f0-9]{40}$ ]] || return 2
+  test -d "$release_root/backend" || return 2
   sudo systemd-run --quiet --wait --pipe --collect \
     --property=User=academiccloud \
     --property=Group=academiccloud \
-    --property=WorkingDirectory=/opt/academiccloud/current/backend \
+    --property="WorkingDirectory=$release_root/backend" \
     --property=EnvironmentFile=/etc/academiccloud/academiccloud.env \
     --property=UMask=0077 \
     --property=NoNewPrivileges=yes \
@@ -96,14 +124,52 @@ academiccloud_op() {
     --property=ProtectSystem=strict \
     --property=ProtectHome=yes \
     --property=ReadWritePaths=/var/lib/academiccloud \
+    /usr/bin/env \
+    "MIGRATIONS_DIRECTORY=$release_root/database/migrations" \
+    "RULESET_ADMISSIONS_DIRECTORY=$release_root/database/ruleset-admissions" \
     "$@"
 }
 ```
 
-Use this runner for compiled migration, account provisioning, backup, verify,
-and maintenance commands. Never replace it with an unconfigured `sudo -u` call.
-Before every mutation, print and independently compare the configured absolute
-database and migrations paths against the approved change record.
+Use this runner for compiled initialization, account provisioning, backup,
+verification and maintenance. Set `ACADEMICCLOUD_OPERATION_RELEASE_ROOT` to an
+exact staged release when operating before the `current` switch; unset it
+afterward. The final `/usr/bin/env` arguments deliberately override only the
+two non-secret release-relative asset paths after systemd loads the protected
+environment. This matters because the installed production environment points
+`MIGRATIONS_DIRECTORY` through `current`: a staged initializer must not
+accidentally read the previous release's migration directory. `DATABASE_PATH`
+continues to come from the protected environment.
+
+## Supported initialization and readiness
+
+The supported fresh-install and upgrade entry is `db:initialize` in a source
+checkout, or `db:initialize:prod` after compilation. It performs, in order:
+
+1. Validate the admission manifest, immutable SQL assets and compiled runtime identity.
+2. Apply pending append-only migrations, including `035_library_search_projection.sql` and `036_bibliographic_contributor_collection_authority.sql`.
+3. Admit missing declared rulesets without rewriting existing registry history.
+4. Verify the migration/admission state and initialize the derived Library search projection.
+
+The result contains migration, admission and projection summaries, not source
+document content. Repeating initialization preserves current admissions and
+rebuilds only the projection work required by its state. The low-level
+`db:migrate` and `db:admit-rulesets` commands remain available for diagnosis;
+neither alone is the supported complete readiness process.
+
+Production startup checks the migration and admission invariants and refuses
+an incomplete database; it does not silently migrate or admit rulesets. `/api/ready` also checks the
+compiled runtime admission, returning an unavailable state if it is removed or
+changed. Fix a missing admission through the exact initializer, not a direct
+registry edit or a retry intended to bypass readiness. An admission checksum or
+identity conflict needs correction of the selected release/configuration;
+never overwrite a historical registry row to make it pass.
+
+Schema 035 adds a rebuildable search projection and dirty markers. It does not
+replace PDF bytes, canonical bibliography or resource identity. See
+[ADR-041](../decisions/ADR-041-vnext-review-plans-and-search-projection.md).
+Schema 036 retains human contributor-list decisions, including an explicitly
+empty list. This authority is durable canonical state, not a rebuildable search cache.
 
 ## First deployment
 
@@ -124,11 +190,11 @@ database and migrations paths against the approved change record.
    sudo systemd-analyze security academiccloud.service
    ```
 
-4. With the API still stopped, initialize or upgrade the exact configured SQLite database:
+4. With the API still stopped, initialize the exact configured SQLite database:
 
    ```bash
    academiccloud_op /usr/bin/node \
-     /opt/academiccloud/current/backend/dist/persistence/sqlite/migrate.js
+     /opt/academiccloud/current/backend/dist/persistence/sqlite/initialize-database.js
    ```
 
 5. For a first deployment only, provision the first account after migration and
@@ -152,7 +218,7 @@ database and migrations paths against the approved change record.
 
    The password must be 12–1024 characters. Provisioning stores only Argon2id,
    rejects an existing case-insensitive login, and returns no password/hash.
-   Account creation is a credential change and requires explicit approval.
+   Run account creation only when it belongs to the active task's authorization.
 
 6. Start the service, then verify locally before Nginx:
 
@@ -169,15 +235,13 @@ database and migrations paths against the approved change record.
 
 ## Routine release and rollback
 
-> The reviewed L1-UX01 production window has a dedicated operator checklist
-> with capture/verify/rollback matrices: see
-> `docs/deployment/l1-ux01-production-gate.md` (two transactions: files-domain
-> infrastructure, then application deployment) and
-> `docs/deployment/files-ajtlab-top-plan.md`. Use those for the UX01 window;
-> the generic routine below remains the baseline procedure.
-
-1. Stage and validate the new immutable release without switching `current`. Open the approved operations shell and define `academiccloud_op` as above.
-2. Create and verify a consistent backup:
+1. Stage and validate the new immutable release without switching `current`.
+   Verify the included initializer, migrations and admission assets belong to
+   the intended commit. Define `academiccloud_op` as above.
+2. Determine whether the change needs a new recovery point. Reuse an adequate
+   existing one for ordinary code/configuration changes. If a persistent change
+   requires a new consistent database recovery point, use the existing backup
+   mechanism once and verify it:
 
    ```bash
    academiccloud_op /usr/bin/node \
@@ -188,7 +252,8 @@ database and migrations paths against the approved change record.
      verify --input=/var/lib/academiccloud/backups/pre-<commit>.sqlite
    ```
 
-3. Copy the verified backup to the approved encrypted off-host destination before migration.
+   Publish a newly required recovery point through the existing encrypted
+   off-host mechanism. Do not copy the live database file or WAL manually.
 
    When using the OPS01A `recovery-main.js backup-create` / `receipt-verify`
    boundary instead of `backup-main.js`, invoke the script through the exact
@@ -208,15 +273,80 @@ database and migrations paths against the approved change record.
    configured database/migrations paths, no-clobber behavior, and receipt
    verification. `backup-main.js` does not have this entry-guard quirk.
 
-4. Stop the API, switch `current`, redefine `academiccloud_op` so its working directory resolves through the new `current`, run the new compiled migration entry through it, start, and verify health/readiness plus the critical path. File uploads/downloads remain approval-gated live OSS tests.
-   The production application itself NEVER applies migrations at startup: it
-   opens the database, asserts the schema is initialized and current, and
-   fails closed (startup refuses) when any pending/missing migration exists.
-   Only the explicit compiled migration runner may change the production
-   schema. Development/test startups keep the automatic migration path.
-5. If startup, migration, readiness, or smoke checks fail, stop. An application-only rollback is allowed only when the old release supports the current schema. Otherwise restore the matching pre-migration database backup and old release as an inseparable pair using [Backup and Recovery](backup-recovery.md).
+3. When initialization is needed, stop the API and run the staged release's
+   initializer against the protected production database:
+
+   ```bash
+   ACADEMICCLOUD_OPERATION_RELEASE_ROOT=/opt/academiccloud/releases/<exact-40-character-commit>
+   academiccloud_op /usr/bin/node \
+     "$ACADEMICCLOUD_OPERATION_RELEASE_ROOT/backend/dist/persistence/sqlite/initialize-database.js"
+   ```
+
+   The helper pins both migration and admission directories to this staged
+   release, even while `current` still selects the previous application. Verify
+   the successful summary, schema history 001–036, current v11/prompt-v7
+   admission, projection initialization and foreign-key integrity. Initialization
+   is repeatable; a failed step must be diagnosed before starting the service.
+4. Atomically select the verified release, unset
+   `ACADEMICCLOUD_OPERATION_RELEASE_ROOT`, and start/restart the API. Verify
+   the actual process/release identity, loopback and public `/api/health` and
+   `/api/ready`, then the changed signed-in product paths. Install/render the
+   matching nginx source as described below, run `nginx -t`, and reload only
+   after validation. Do not reinstall unrelated units or alter credentials.
+5. After a real failure, recover according to the actual database state. A
+   release that recognizes only migrations through 034 rejects a database with
+   035–036 and is **not** an application-only rollback. Prefer a corrected,
+   schema-036-compatible release; derived search state can be repaired by the
+   supported initializer. Database restoration is reserved for a failure that
+   requires it, using the matching recovery pair and accounting for any writes
+   since the recovery point. See [Backup and Recovery](backup-recovery.md).
 
 Never downgrade a database with ad hoc SQL. Never switch releases while retaining an incompatible migrated database merely because the process starts.
+
+## Catalog edge and product verification
+
+Render the repository nginx template into
+`/etc/nginx/sites-available/academiccloud`; the established enabled link is
+`/etc/nginx/sites-enabled/academiccloud` (no `.conf` suffix). Preserve the
+existing production hostname, certificate paths and exact source origins.
+Keep the repository as the source of truth instead of appending another
+production-only location block.
+
+| Request | Core and nginx maximum | Meaning |
+| --- | ---: | --- |
+| Ordinary API | 16 KiB | Existing default |
+| Compute callback | 512 KiB | Existing capability-authenticated result boundary |
+| Catalog export-request | 128 KiB | Up to 500 bounded resource IDs |
+| Catalog Preview | 8 MiB | Results document sent directly as JSON |
+| Catalog Apply | 256 KiB | Plan ID plus up to 500 selections/acknowledgements |
+
+Apply no longer carries a second copy of the results document. Preview plans
+are actor/Library-bound, expire after 30 minutes, and are limited to four plans
+and 32 MiB total memory. A restart or eviction requires a fresh Preview; the UI
+must not silently reuse a stale plan. Within a surviving plan, completed items
+replay their recorded outcomes when the same selection is retried.
+
+After `nginx -t` and reload, exercise the real authenticated edge: a supported
+large results document must reach Preview, and the resulting plan/selection
+envelope must reach Apply. Verify oversized bodies are rejected at the specific
+route boundary while ordinary API limits remain unchanged. A 401/404 on an
+unauthenticated request alone does not prove an accepted product envelope.
+Review exact current/proposed values, explicit clears, human conflicts and
+unverified-evidence acknowledgements before the authorized live Apply. Check
+persisted bibliography and filename, stable resource/object identity, partial
+results, and retrieval afterward. An uncertain field remains unknown rather
+than being manufactured for a smoke test.
+
+The Catalog Bridge is a separate release under
+`/srv/academiccloud-compute/catalog-releases/<commit>` selected by
+`catalog-current` in `AcademicCloudComputeV2`. Use its existing
+`assemble-catalog-bridge-release.sh`, `verify-catalog-bridge-release.sh` and
+`activate-catalog-bridge-release.sh` sequence; the assembler selects the same
+pinned npm/lifecycle policy. Verify loopback health at port 43117, exact
+production-Origin CORS, and a signed-in browser export/cancel path. Check the
+existing Windows-login launcher before reinstalling it. Bridge activation does
+not select or start the main reasoning worker; that independent qualification
+and activation belongs to its own explicit step in the active task.
 
 ## Operations
 
@@ -236,13 +366,17 @@ Never downgrade a database with ad hoc SQL. Never switch releases while retainin
 
 ## Installed production foundation checkpoint (historical)
 
+All checkpoint records below are historical evidence, including their
+then-current release, authority and rollback statements. They do not define
+the vNext deployment state or supersede the active task.
+
 `PROD-03A` installed GitHub artifact `9225471228`, source `639baa9596a17f4160521f31440d9e3ac3b12eda`, as the root-owned immutable release selected by `/opt/academiccloud/current`. Its evidence bundle SHA-256 is `8d2752951784345259369d76e3a8775bb9fd21977195578024f7041184e9f2e5`. At that checkpoint the exact production unit was installed disabled/inactive with no PID or port 3000 listener and Nginx exposed only its prior default port-80 site. Prepared edge and bootstrap files were root-only and outside active configuration trees.
 
 Certbot 2.9.0 plus `python3-acme`, `python3-certbot`, `python3-configargparse`, `python3-josepy`, `python3-parsedatetime`, and `python3-rfc3339` were the only package additions; APT upgraded and removed zero packages. The Certbot timer is disabled/inactive. Two prior publication attempts correctly failed closed on non-traversable extracted directory modes, automatically rolled back, preserved evidence, and left no state before the corrected run. Existing host locale fallback warnings and unrelated `cloudmonitor.service` verification warnings did not change an AcademicCloud gate.
 
-## Current production state
+## L1 intelligent-library production checkpoint (historical)
 
-Production runs exact immutable source
+At this checkpoint, production ran exact immutable source
 `017a47dbd837264175d8cbcb3f469a01e3e62c92`, previous application release
 `53317bb0156589baa21bc69c22e199d200c49840`, at schema v24/history 001–024.
 Artifact `9477785607` from workflow `32580834900` has GitHub digest
@@ -276,7 +410,7 @@ identical; the five new bibliographic/AI tables were empty, proving no backfill
 or full-Library AI wave. The optional canary was skipped because no task-owned
 authenticated fixture existed and no pre-existing private resource was used.
 
-Rollback was not required. The current rollback is an inseparable app-plus-
+Rollback was not required. The checkpoint's rollback was an inseparable app-plus-
 database pair: select `53317bb0156589baa21bc69c22e199d200c49840` only together
 with restoration of `academiccloud-pre-l1-20260822T152800Z.sqlite`, then verify
 schema v22/history 001–022, integrity/FK, exact process identity, and health/

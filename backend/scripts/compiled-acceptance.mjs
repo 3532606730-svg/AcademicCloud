@@ -51,8 +51,9 @@ let application;
 const applicationDiagnostics = new WeakMap();
 
 try {
-  const firstMigration = runJson(join(distDirectory, "persistence", "sqlite", "migrate.js"));
-  const firstRulesetAdmission = runJson(join(distDirectory, "persistence", "sqlite", "admit-rulesets.js"));
+  const firstInitialization = runJson(join(distDirectory, "persistence", "sqlite", "initialize-database.js"));
+  const firstMigration = firstInitialization.migrations;
+  const firstRulesetAdmission = firstInitialization.admissions;
   const account = runJson(
     join(distDirectory, "operations", "account-main.js"),
     ["--login=CompiledAcceptance", "--password-stdin"],
@@ -286,8 +287,9 @@ try {
   );
   await stopApplication(application);
   application = undefined;
-  const redeployMigration = runJson(join(distDirectory, "persistence", "sqlite", "migrate.js"));
-  const redeployRulesetAdmission = runJson(join(distDirectory, "persistence", "sqlite", "admit-rulesets.js"));
+  const redeployInitialization = runJson(join(distDirectory, "persistence", "sqlite", "initialize-database.js"));
+  const redeployMigration = redeployInitialization.migrations;
+  const redeployRulesetAdmission = redeployInitialization.admissions;
 
   const result = {
     status: "ok",
@@ -360,7 +362,7 @@ try {
     redeployMigrationCount: redeployMigration.appliedVersions.length,
     redeployRulesetAdmissionCount: redeployRulesetAdmission.admitted.length,
   };
-  assert.equal(result.firstMigrationCount, 34);
+  assert.equal(result.firstMigrationCount, 36);
   assert.equal(result.firstRulesetAdmissionCount, 2);
   assert.equal(result.currentRulesetVersion, "l1-intelligent-library01-v11");
   assert.equal(result.provisionedLogin, "CompiledAcceptance");

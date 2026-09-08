@@ -20,25 +20,29 @@ Representative deterministic cases include PDF, PNG, UTF-8 text, and ZIP/binary.
 The final local gate is:
 
 ```powershell
-npm.cmd ci --ignore-scripts
-npm.cmd test
+npm.cmd exec --yes --package=npm@11.19.1 -- npm ci --strict-allow-scripts
+npm.cmd run test:ci
 npm.cmd run typecheck
 npm.cmd run build
 npm.cmd run acceptance:compiled
 npm.cmd audit --audit-level=high
-npm.cmd audit --omit=dev --audit-level=high
+npm.cmd audit --omit=dev --audit-level=low
 npm.cmd run auth:benchmark
 ```
 
 `acceptance:compiled` uses a temporary SQLite database and random local-only credentials to exercise compiled migration, first-account provisioning, two application processes, a session across restart, maintenance dry-run, non-overwriting online backup, isolated restore verification, and repeat migration. Also verify the secret scan, deployment artifact tests, and `git diff --check`.
 
-On the recorded Windows workstation, ordinary `npm ci` reaches npm's implicit
-`node-gyp` configuration for `better-sqlite3` and requires the absent Visual
-Studio C++ workload even though the pinned package contains a working Windows
-prebuild. The reproducible local gate therefore uses `npm ci --ignore-scripts`,
-then proves the packaged `better-sqlite3` and Argon2 native modules through the
-database suite and benchmark. This exception does not authorize a
-production-host install. A real `npm ci --omit=dev` on the approximately
+The supported installer is npm 11.19.1 with strict, versioned `allowScripts`
+permissions. The unwanted implicit `better-sqlite3@13.0.3` compilation is
+explicitly denied while its shipped Windows/Linux prebuild remains usable;
+Argon2, esbuild and supported-platform fsevents lifecycle scripts remain
+explicitly allowed. A clean isolated Windows installation verified the actual
+Argon2/esbuild scripts and native SQLite load. This supersedes the historical
+blanket `--ignore-scripts` workaround. Permanent regression CI includes a
+separate Windows native-install check and the full pure Compute suite; actual
+release-local OCR/model qualification is reported separately.
+
+This does not authorize a production-host install. A real `npm ci --omit=dev` on the approximately
 407 MiB Alibaba target was OOM-killed, and system evidence confirmed the
 native-install memory failure. Target-host `npm ci`, `node-gyp`, native
 compilation, and frontend builds are unsupported. Production dependencies

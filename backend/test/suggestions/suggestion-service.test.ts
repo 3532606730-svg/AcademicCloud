@@ -9,10 +9,11 @@ import type {
   DerivedComputeResult,
   IntelligentBibliographyResult,
 } from "@academiccloud/compute-contracts";
-import { INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION } from "@academiccloud/compute-contracts";
+import { canonicalCatalogJson, INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION } from "@academiccloud/compute-contracts";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
+import { CatalogBatchService } from "../../src/catalog-batch/catalog-batch-service.js";
 import { LocalPullComputeDispatcher } from "../../src/compute/local-pull-dispatcher.js";
 import { SuggestionError, SuggestionService } from "../../src/suggestions/suggestion-service.js";
 import { SUGGESTION_RULESET_VERSION } from "../../src/suggestions/suggestion.js";
@@ -704,6 +705,86 @@ test("valid AI can add the first contributor to an existing empty unowned biblio
   const authorities = persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record");
   assert.equal(authorities.find((entry) => entry.fieldName === "contributor.label")?.source, "ai");
   assert.equal(authorities.find((entry) => entry.fieldName === "contributor.role")?.source, "ai");
+});
+
+for (const decision of ["clear", "remove", "reorder", "same", "clear-empty"] as const) {
+  test(`Catalog contributor ${decision} survives a later real suggestion callback with human collection authority`, async (context) => {
+    const state = fixture(context);
+    const { persistence, library, fileId, suggestions, metadata, storage, dispatcher } = state;
+    const completeAi = async (contributor: string) => {
+      const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+      const attempt = (dispatcher as CapturingDispatcher).jobs.at(-1)!;
+      const claim = await suggestions.claimJob(job.id, attempt.attemptId);
+      await suggestions.applyComputeResult(intelligentResult(job.id, attempt.attemptId, { contributor }), claim.capability.token);
+    };
+    await completeAi("王明");
+    const initial = persistence.repositories.bibliography.findProfile(library.ownerDomainId, "suggestion-record")!;
+    const augmented = decision === "remove" || decision === "reorder"
+      ? [...initial.contributors, { id: "second-ai-contributor", label: "李清", role: "editor" as const }]
+      : decision === "clear-empty" ? [] : initial.contributors;
+    persistence.repositories.bibliography.saveProfile({
+      ...initial, contributors: augmented, actorAccountId: OWNER.id, expectedRevision: initial.revision, now: NOW,
+    });
+    const before = persistence.repositories.bibliography.findProfile(library.ownerDomainId, "suggestion-record")!;
+    const wanted = decision === "clear" || decision === "clear-empty" ? []
+      : decision === "remove" ? before.contributors.slice(0, 1)
+        : decision === "reorder" ? [...before.contributors].reverse() : before.contributors;
+    const catalog = new CatalogBatchService({ persistence, storage, coreBaseUrl: "https://academiccloud.example", now: () => NOW });
+    const request = await catalog.prepareExport(OWNER, library.id, [fileId]);
+    const manifest = { ...request.manifest, resources: request.manifest.resources.map((entry) => ({ ...entry, pageCount: 2 })) };
+    const document = {
+      schemaVersion: "academiccloud.catalog-results.v2", batchId: manifest.batchId, sourceManifest: manifest,
+      sourceManifestSha256: createHash("sha256").update(canonicalCatalogJson(manifest)).digest("hex"),
+      results: [{ resourceId: fileId, sourceIdentity: manifest.resources[0]!.sourceIdentity, disposition: "review", confidence: 0,
+        notes: "Explicit human contributor decision",
+        bibliographic: { filenameStyle: "preserve_original",
+          set: wanted.length > 0 ? { contributors: wanted.map(({ id: _id, authorityId: _authority, ...entry }) => entry) } : {},
+          clear: wanted.length === 0 ? ["contributors"] : [],
+        },
+      }],
+    };
+    const preview = catalog.preview(OWNER, library.id, document);
+    const item = preview.items[0]!;
+    const contributorField = item.fields.find((field) => field.field === "contributors")!;
+    assert.equal(contributorField.proposedAuthority, "human");
+    assert.equal(item.category, "review");
+    const selection = { resourceId: item.resourceId, previewVersion: item.previewVersion,
+      acknowledgeEvidence: true as const, acknowledgeHumanConflict: true as const, acknowledgeClear: true as const };
+    assert.equal(catalog.apply(OWNER, library.id, preview.planId, [selection])[0]!.status, "applied");
+    const confirmed = persistence.repositories.bibliography.findProfile(library.ownerDomainId, "suggestion-record")!;
+    assert.deepEqual(confirmed.contributors, wanted);
+    const marker = persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record")
+      .find((field) => field.fieldName === "contributors")!;
+    assert.equal(marker.source, "human");
+    assert.equal(marker.actorAccountId, OWNER.id);
+    assert.equal(marker.scopeKey, "");
+    if (wanted.length === 0) assert.equal(persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record")
+      .some((field) => field.fieldName.startsWith("contributor.")), false);
+
+    // A later source revision gets its own durable job; a completed job for
+    // exactly the same fingerprint correctly replays instead of recomputing.
+    const currentFile = persistence.repositories.files.findByDomainId(library.ownerDomainId, fileId)!;
+    persistence.repositories.files.updateForDomain({ ...currentFile, displayName: "later-source-revision.pdf", updatedAt: NOW }, "active", currentFile.revision);
+    await completeAi("不能恢复的 AI 作者");
+    assert.deepEqual(metadata.getDetails(OWNER, library.id, fileId).bibliography!.contributors, wanted);
+    assert.equal(persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record")
+      .find((field) => field.fieldName === "contributors")!.source, "human");
+  });
+}
+
+test("normal bibliography editing preserves an explicit empty contributor decision through AI completion", async (context) => {
+  const { library, fileId, suggestions, metadata, persistence } = fixture(context);
+  const detail = metadata.getDetails(OWNER, library.id, fileId);
+  metadata.updateBibliography(OWNER, library.id, fileId, detail.bibliographyVersion, {
+    materialClass: "unknown", contributors: [], publication: {}, carrierEdition: {}, sourceEdition: {},
+  });
+  const marker = persistence.repositories.bibliography.listFieldAuthorities(library.ownerDomainId, "suggestion-record")
+    .find((field) => field.fieldName === "contributors");
+  assert.equal(marker?.source, "human");
+  const job = await suggestions.requestGeneration(OWNER, library.id, fileId);
+  const claim = await suggestions.claimJob(job.id, "attempt-1");
+  await suggestions.applyComputeResult(intelligentResult(job.id, "attempt-1"), claim.capability.token);
+  assert.deepEqual(metadata.getDetails(OWNER, library.id, fileId).bibliography!.contributors, []);
 });
 
 test("structured ambiguous AI evidence is reviewable while extraction alone is not", async (context) => {

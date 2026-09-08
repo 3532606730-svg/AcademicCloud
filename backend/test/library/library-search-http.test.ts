@@ -124,6 +124,8 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
     assert.equal(filtered.statusCode, 200);
     assert.deepEqual((filtered.json() as { results: Array<{ fileId: string; materialClass: string; catalogueDisplayTitle: string }> }).results, [{
       fileId,
+      mediaType: "application/pdf",
+      sizeBytes: 12,
       materialClass: "primary_source_modern_edition",
       catalogueDisplayTitle: "元代宰相制度研究 中华书局1976点校本",
       canonicalTitle: "元代宰相制度研究",

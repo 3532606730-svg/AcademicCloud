@@ -444,7 +444,11 @@ export class CanonicalMetadataService {
       });
       if (!saved) throw new MetadataError("concurrent_change");
       const now = this.#now();
-      for (const field of changedBibliographicFields(current, saved)) {
+      const changedFields = changedBibliographicFields(current, saved);
+      // This endpoint submits the complete human-reviewed contributor list.
+      // Even an unchanged empty list is a decision, not an invitation to AI.
+      if (!changedFields.some((field) => field.fieldName === "contributors")) changedFields.push({ fieldName: "contributors", scopeKey: "" });
+      for (const field of changedFields) {
         repositories.bibliography.setFieldAuthority({
           recordId: holding.recordId,
           ownerDomainId: library.ownerDomainId,

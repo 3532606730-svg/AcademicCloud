@@ -1,11 +1,8 @@
-name: Derived compute worker
+name: Derived compute emergency fallback
 
 run-name: AcademicCloud derived compute ${{ inputs.job_id }}/${{ inputs.attempt_id }}
 
 on:
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       job_id:
@@ -32,165 +29,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  qualification:
-    name: Compute qualification / clean Linux worker
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    env:
-      QUALIFICATION_BASE_SOURCE: fff33c7e2ffe6c6cd726c18c85d2bdd4bafe7643
-      QUALIFICATION_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}
-      QUALIFICATION_SOURCE_REF: codex/project-memory-reconcile-20260817
-      COMPUTE_MEMORY_PROFILE: github-hosted-ubuntu-24.04-intelligent
-
-    steps:
-      - name: Check out the exact qualification source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Verify exact source, ref, runner, and intelligent-library baseline
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$GITHUB_EVENT_NAME" = "pull_request"
-          test "$GITHUB_HEAD_REF" = "$QUALIFICATION_SOURCE_REF"
-          test "$RUNNER_OS" = "Linux"
-          test "$(uname -m)" = "x86_64"
-          test "$(git rev-parse HEAD)" = "$QUALIFICATION_SOURCE_COMMIT"
-          git cat-file -e "$QUALIFICATION_BASE_SOURCE^{commit}"
-          git merge-base --is-ancestor "$QUALIFICATION_BASE_SOURCE" HEAD
-
-      - name: Set up latest Node.js 24
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          check-latest: true
-          package-manager-cache: false
-
-      - name: Install only Compute and shared-contract development dependencies
-        run: npm ci --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute --include-workspace-root=false
-
-      - name: Verify shared Compute contracts
-        run: |
-          npm run typecheck --workspace @academiccloud/compute-contracts
-          npm test --workspace @academiccloud/compute-contracts
-          npm run build --workspace @academiccloud/compute-contracts
-
-      - name: Verify Compute source
-        run: |
-          npm run typecheck --workspace @academiccloud/compute
-          npm test --workspace @academiccloud/compute
-          npm run build --workspace @academiccloud/compute
-
-      - name: Build the pinned worker-local PaddleOCR and Qwen runtime
-        shell: bash
-        env:
-          INTELLIGENT_COMPARISON_ASSETS: "1"
-        run: |
-          set -euo pipefail
-          mkdir -p output
-          bash scripts/build-intelligent-compute-runtime.sh output/qualification/runtime
-
-      - name: Install a qualification-only CJK rendering font
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
-
-      - name: Verify real PaddleOCR, real Qwen reasoning, and Linux memory
-        shell: bash
-        env:
-          PADDLE_OCR_PYTHON_PATH: ${{ github.workspace }}/output/qualification/runtime/paddle/venv/bin/python
-          PADDLE_OCR_SIDECAR_PATH: ${{ github.workspace }}/output/qualification/runtime/paddle/paddle_ocr_sidecar.py
-          PADDLE_OCR_DETECTION_MODEL_PATH: ${{ github.workspace }}/output/qualification/runtime/paddle/models/PP-OCRv6_small_det
-          PADDLE_OCR_RECOGNITION_MODEL_PATH: ${{ github.workspace }}/output/qualification/runtime/paddle/models/PP-OCRv6_small_rec
-          BIBLIOGRAPHY_LLAMA_SERVER_PATH: ${{ github.workspace }}/output/qualification/runtime/llama/bin/llama-server
-          BIBLIOGRAPHY_QWEN_MODEL_PATH: ${{ github.workspace }}/output/qualification/runtime/qwen/Qwen3-1.7B-Q8_0.gguf
-          BIBLIOGRAPHY_QWEN_VL_MODEL_PATH: ${{ github.workspace }}/output/qualification/runtime/comparison/qwen-vl/Qwen3VL-2B-Instruct-Q4_K_M.gguf
-          BIBLIOGRAPHY_QWEN_VL_MMPROJ_PATH: ${{ github.workspace }}/output/qualification/runtime/comparison/qwen-vl/mmproj-Qwen3VL-2B-Instruct-Q8_0.gguf
-          PADDLE_OCR_STARTUP_DIAGNOSTICS: "1"
-        run: |
-          set -euo pipefail
-          readonly EVIDENCE_DIR="output/qualification-evidence"
-          mkdir -p "$EVIDENCE_DIR"
-          readonly QUALIFICATION_FONT="$(fc-match -f '%{file}\n' 'Noto Sans CJK SC' | head -n 1)"
-          test -s "$QUALIFICATION_FONT"
-          export BIBLIOGRAPHY_QUALIFICATION_FONT_PATH="$QUALIFICATION_FONT"
-          node scripts/verify-intelligent-compute-runtime.mjs output/qualification/runtime > "$EVIDENCE_DIR/runtime-verification.json"
-          npx tsx --test compute/test/realistic-paddle-ocr-e2e.test.ts | tee "$EVIDENCE_DIR/realistic-paddle-ocr-e2e.tap"
-          ! grep -Eq '^# skipped [1-9][0-9]*$|# SKIP' "$EVIDENCE_DIR/realistic-paddle-ocr-e2e.tap"
-          set +e
-          /usr/bin/time -v -o "$EVIDENCE_DIR/visual-comparison-memory-resource.txt" \
-            npx tsx compute/scripts/visual-architecture-qualification.ts \
-            2> "$EVIDENCE_DIR/visual-comparison.stderr" \
-            | tee "$EVIDENCE_DIR/visual-comparison.jsonl"
-          readonly VISUAL_EXIT="${PIPESTATUS[0]}"
-          set -e
-          readonly VISUAL_MAX_RSS_KB="$(sed -nE 's/^[[:space:]]*Maximum resident set size \(kbytes\):[[:space:]]*([0-9]+)$/\1/p' "$EVIDENCE_DIR/visual-comparison-memory-resource.txt")"
-          test -n "$VISUAL_MAX_RSS_KB"
-          test "$VISUAL_MAX_RSS_KB" -lt 6291456
-          readonly VISUAL_JSON="$(grep -E '^\{"status":"(ok|failed)"' "$EVIDENCE_DIR/visual-comparison.jsonl" | tail -n 1)"
-          jq -e '.status == "ok" and .pipelinePassed == 3 and .total == 3' <<<"$VISUAL_JSON" >/dev/null
-          test "$VISUAL_EXIT" -eq 0
-          set +e
-          /usr/bin/time -v -o "$EVIDENCE_DIR/intelligent-memory-resource.txt" \
-            npx tsx compute/scripts/intelligent-qualification.ts \
-            2> "$EVIDENCE_DIR/intelligent-qualification.stderr" \
-            | tee "$EVIDENCE_DIR/intelligent-qualification.jsonl"
-          readonly PROBE_EXIT="${PIPESTATUS[0]}"
-          set -e
-          readonly GNU_MAX_RSS_KB="$(sed -nE 's/^[[:space:]]*Maximum resident set size \(kbytes\):[[:space:]]*([0-9]+)$/\1/p' "$EVIDENCE_DIR/intelligent-memory-resource.txt")"
-          test -n "$GNU_MAX_RSS_KB"
-          test "$GNU_MAX_RSS_KB" -lt 6291456
-          readonly PROBE_JSON="$(grep -E '^\{"status":"(ok|failed)"' "$EVIDENCE_DIR/intelligent-qualification.jsonl" | tail -n 1)"
-          test -n "$PROBE_JSON"
-          jq -e '.status == "ok" and .passed == 7 and .total == 7' <<<"$PROBE_JSON" >/dev/null
-          {
-            echo "### Intelligent Compute qualification evidence"
-            echo
-            echo "The exact pinned PP-OCRv6 small + Qwen3-1.7B Q8_0 path passed all seven bounded bibliographic cases. GNU time encompasses the Node and local model child processes; the gate is below 6 GiB on the GitHub-hosted runner."
-            echo
-            echo '```json'
-            jq '{status, passed, total, outcomes}' <<<"$PROBE_JSON"
-            echo '```'
-            echo "Maximum resident set size (kbytes): $GNU_MAX_RSS_KB"
-            echo
-            echo "A qualification-only exact-pinned Qwen3-VL-2B direct-visual path was compared on the same three rendered multilingual/vertical pages; it is not included in the production runtime."
-            echo
-            echo '```json'
-            jq '{status, selectedArchitecture, pipelinePassed, visualPassed, total, visualCompleted, pipelineMilliseconds, visualMilliseconds, outcomes}' <<<"$VISUAL_JSON"
-            echo '```'
-            echo "Visual comparison maximum resident set size (kbytes): $VISUAL_MAX_RSS_KB"
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit "$PROBE_EXIT"
-
-      - name: Verify qualification output and production-shell safety
-        if: always() && github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          readonly EVIDENCE_DIR="output/qualification-evidence"
-          test -s "$EVIDENCE_DIR/runtime-verification.json"
-          test -s "$EVIDENCE_DIR/realistic-paddle-ocr-e2e.tap"
-          test -s "$EVIDENCE_DIR/visual-comparison-memory-resource.txt"
-          test -s "$EVIDENCE_DIR/visual-comparison.jsonl"
-          test -f "$EVIDENCE_DIR/visual-comparison.stderr"
-          test -s "$EVIDENCE_DIR/intelligent-memory-resource.txt"
-          test -s "$EVIDENCE_DIR/intelligent-qualification.jsonl"
-          test -f "$EVIDENCE_DIR/intelligent-qualification.stderr"
-          ! grep -ERniE \
-            'Authorization:[[:space:]]*(Bearer|Basic)|[?&](X-Amz-|x-oss-|Signature=|security-token=)|"(sourceUrl|callbackUrl|capability|candidates|evidenceExcerpt|canonicalTitle|contributors|publisher)"[[:space:]]*:|ACADEMICCLOUD_COMPUTE_BOOTSTRAP_SECRET' \
-            "$EVIDENCE_DIR"
-          ! grep -Eq -- '--(core-base-url|job-id|attempt-id)=\$\{\{ inputs\.' .github/workflows/derived-compute-worker.yml
-          grep -Fq -- '--core-base-url="$COMPUTE_INPUT_CORE_ORIGIN"' .github/workflows/derived-compute-worker.yml
-          grep -Fq -- '--job-id="$COMPUTE_INPUT_JOB_ID"' .github/workflows/derived-compute-worker.yml
-          grep -Fq -- '--attempt-id="$COMPUTE_INPUT_ATTEMPT_ID"' .github/workflows/derived-compute-worker.yml
-          ! grep -q "actions/upload""-artifact" .github/workflows/derived-compute-worker.yml
-
   metadata-suggestion:
     name: Metadata suggestion / clean Linux worker
     if: github.event_name == 'workflow_dispatch'
@@ -230,15 +68,18 @@ jobs:
           check-latest: true
           package-manager-cache: false
 
+      - name: Select the supported npm installer
+        run: npm install --global npm@11.19.1
+
       - name: Install only Compute and shared-contract development dependencies
-        run: npm ci --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute --include-workspace-root=false
+        run: npm ci --strict-allow-scripts --workspace @academiccloud/compute-contracts --workspace @academiccloud/compute --include-workspace-root=false
 
       - name: Verify shared contract and Compute source
         run: |
           npm run typecheck --workspace @academiccloud/compute-contracts
           npm test --workspace @academiccloud/compute-contracts
           npm run typecheck --workspace @academiccloud/compute
-          npm test --workspace @academiccloud/compute
+          npm run test:compute:unit
           npm run build --workspace @academiccloud/compute-contracts
           npm run build --workspace @academiccloud/compute
 

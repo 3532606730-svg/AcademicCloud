@@ -55,10 +55,10 @@ export function correctReviewedCatalogResults(value: unknown): {
       continue;
     }
     if (!result.bibliographic || result.bibliographic.importWarnings.length === 0) continue;
-    const rawBibliographic = record(raw.bibliographic);
+    const rawBibliographic = result.legacy ? record(raw.bibliographic) : record(record(raw.bibliographic).set);
     const identifiers = rawBibliographic.identifiers;
     if (!Array.isArray(identifiers)) throw new TypeError("invalid catalog identifiers");
-    rawBibliographic.identifiers = identifiers.filter((entry) => {
+    const retained = identifiers.filter((entry) => {
       const identifier = record(entry);
       const invalid = identifier.scheme === "isbn"
         && typeof identifier.value === "string"
@@ -66,6 +66,8 @@ export function correctReviewedCatalogResults(value: unknown): {
       if (invalid) invalidIdentifiersRemoved += 1;
       return !invalid;
     });
+    if (!result.legacy && retained.length === 0) delete rawBibliographic.identifiers;
+    else rawBibliographic.identifiers = retained;
   }
 
   const corrected = parseCatalogResultsDocument(document);

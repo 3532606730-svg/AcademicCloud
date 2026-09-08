@@ -91,3 +91,64 @@ test("strict results contract rejects duplicate IDs, path traversal, unknown dis
   extra.script = "alert(1)";
   assert.throws(() => parseCatalogResultsDocument(extra));
 });
+
+test("v2 distinguishes absent fields from clears and rejects ambiguous or privileged external replacements", () => {
+  const base = validDocument();
+  const document = { ...base, schemaVersion: "academiccloud.catalog-results.v2", results: [{
+    ...base.results[0]!, bibliographic: { set: { canonicalTitle: "保留其他字段" }, clear: ["subtitle"], filenameStyle: "preserve_original" },
+    evidence: { executionState: "ready", pages: [0] },
+  }] };
+  const parsed = parseCatalogResultsDocument(document).results[0]!;
+  assert.deepEqual(parsed.bibliographic!.patch, { set: { canonicalTitle: "保留其他字段" }, clear: ["subtitle"] });
+  assert.equal(parsed.evidence!.state, "unverified");
+  assert.equal(parsed.legacy, false);
+  const invalidPatches = [
+    { set: { subtitle: null }, clear: [] },
+    { set: { alternativeTitles: [] }, clear: [] },
+    { set: { subtitle: "" }, clear: [] },
+    { set: { contributors: [{ id: "internal-id", label: "Name", role: "author" }] }, clear: [] },
+    { set: { contributors: [{ authorityId: "internal-authority", label: "Name", role: "author" }] }, clear: [] },
+    { set: { authorityLinks: [] }, clear: [] },
+    { set: { "publication.publisher": "Publisher" }, clear: ["publication.publisher"] },
+    { set: {}, clear: ["canonicalTitle"] },
+    { set: {}, clear: ["materialClass"] },
+    { set: {}, clear: ["typeFields"] },
+    { set: {}, clear: ["subtitle", "subtitle"] },
+  ];
+  for (const patch of invalidPatches) assert.throws(() => parseCatalogResultsDocument({ ...document, results: [{
+    ...document.results[0], bibliographic: { ...patch, filenameStyle: "preserve_original" },
+  }] }), JSON.stringify(patch));
+  for (const evidence of [{ executionState: "failed", pages: [0] }, { executionState: "verified", pages: [0] },
+    { executionState: "ready", pages: [-1] }, { executionState: "ready", pages: [0, 0] }, { executionState: "ready", pages: [0], attested: true }]) {
+    assert.throws(() => parseCatalogResultsDocument({ ...document, results: [{ ...document.results[0], evidence }] }));
+  }
+  assert.throws(() => parseCatalogResultsDocument({ ...document, results: [{ ...document.results[0], disposition: "unknown" }] }));
+  assert.equal(parseCatalogResultsDocument({ ...document, results: [{ ...document.results[0], disposition: "unknown", bibliographic: null }] }).results[0]!.bibliographic, null);
+});
+
+test("legacy null and empty arrays never silently clear existing values", () => {
+  const document = validDocument();
+  const result = document.results[0]!;
+  const parsed = parseCatalogResultsDocument({ ...document, results: [{ ...result, bibliographic: {
+    ...result.bibliographic, subtitle: null, alternativeTitles: [], identifiers: [], contributors: [],
+  } }] }).results[0]!;
+  assert.equal(parsed.legacy, true);
+  assert.deepEqual(parsed.bibliographic!.patch!.clear, []);
+  for (const field of ["subtitle", "alternativeTitles", "identifiers", "contributors"]) assert.equal(Object.hasOwn(parsed.bibliographic!.patch!.set, field), false);
+});
+
+test("evidence page references respect the exact source page count and unknown lengths remain unverified", () => {
+  const base = validDocument();
+  const document = { ...base, schemaVersion: "academiccloud.catalog-results.v2", results: [{
+    ...base.results[0]!, bibliographic: { set: {}, clear: [], filenameStyle: "preserve_original" },
+    evidence: { executionState: "ready", pages: [0] },
+  }] };
+  assert.deepEqual(parseCatalogResultsDocument(document).results[0]!.evidence!.pages, [0]);
+  for (const pages of [[1], [999], [0, 1]]) {
+    assert.throws(() => parseCatalogResultsDocument({ ...document, results: [{ ...document.results[0], evidence: { executionState: "ready", pages } }] }));
+  }
+  const unknown = { ...document, sourceManifest: { ...document.sourceManifest,
+    resources: [{ ...document.sourceManifest.resources[0], pageCount: null }],
+  } };
+  assert.equal(parseCatalogResultsDocument(unknown).results[0]!.evidence!.state, "unverified");
+});

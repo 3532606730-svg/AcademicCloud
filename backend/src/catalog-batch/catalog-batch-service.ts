@@ -16,6 +16,7 @@ import {
   type BibliographicFieldName,
   type BibliographicProfile,
   type BibliographicProfileInput,
+  type BibliographicFieldAuthority,
   type MaterialClass,
 } from "../bibliography/bibliography.js";
 import type { StoredFile } from "../drive/file.js";
@@ -27,14 +28,15 @@ import type { StorageAdapter, StorageObjectMetadata } from "../storage/storage-a
 import { recordAuditEvent } from "../audit/audit-service.js";
 import {
   CatalogContractError,
-  importedLegacyMetadata,
   MAX_CATALOG_BATCH_RESOURCES,
+  MAX_CATALOG_RESULTS_BYTES,
   parseCatalogResultsDocument,
   type CatalogResultsDocument,
   type ImportedCatalogBibliography,
   type ImportedCatalogResult,
+  type CatalogEvidenceSummary,
 } from "./contracts.js";
-import { formatCatalogFilename } from "./filename-policy.js";
+import { compileCatalogBibliography, type CatalogFieldDiff } from "./catalog-plan.js";
 import {
   CATALOG_INTERNAL_SOURCE_EXCLUSIONS,
   findCatalogInternalSourceExclusion,
@@ -46,8 +48,11 @@ const EXPORT_CAPABILITY_BYTES = 32;
 const EXPORT_CAPABILITY_MILLISECONDS = 24 * 60 * 60 * 1_000;
 const MAX_ACTIVE_EXPORT_CAPABILITIES = 8;
 const SOURCE_AUTHORIZATION_SECONDS = 15 * 60;
+export const CATALOG_PLAN_TTL_MILLISECONDS = 30 * 60 * 1_000;
+export const MAX_ACTIVE_CATALOG_PLANS = 4;
+export const MAX_CATALOG_PLAN_MEMORY_BYTES = 32 * 1024 * 1024;
 
-export type CatalogBatchErrorCode = "invalid_input" | "not_found" | "stale" | "conflict" | "storage_unavailable";
+export type CatalogBatchErrorCode = "invalid_input" | "not_found" | "stale" | "conflict" | "storage_unavailable" | "plan_expired" | "plan_too_large";
 
 export class CatalogBatchError extends Error {
   constructor(readonly code: CatalogBatchErrorCode, options?: ErrorOptions) {
@@ -68,7 +73,7 @@ interface ExportCapability {
 export type CatalogPreviewCategory = "auto" | "review" | "unknown" | "excluded" | "stale" | "collision" | "unchanged";
 export type CatalogCollisionStatus = "none" | "exact_duplicate" | "name_collision";
 export type CatalogRenameStatus = "proposed" | "no_rename" | "unchanged" | "exact_duplicate" | "name_collision";
-export type CatalogPreviewWarning = "internal_test_resource_excluded" | "invalid_isbn_removed";
+export type CatalogPreviewWarning = "internal_test_resource_excluded" | "invalid_isbn_removed" | "legacy_preserve_semantics" | "unverified_evidence" | "missing_required_title";
 
 export interface CatalogPreviewItem {
   resourceId: string;
@@ -88,11 +93,16 @@ export interface CatalogPreviewItem {
   warnings: CatalogPreviewWarning[];
   category: CatalogPreviewCategory;
   previewVersion: string;
+  fields: CatalogFieldDiff[];
+  evidence: CatalogEvidenceSummary;
+  requiresAcknowledgement: { humanConflict: boolean; clear: boolean; evidence: boolean };
 }
 
 export interface CatalogPreview {
   batchId: string;
   documentDigest: string;
+  planId: string;
+  expiresAt: string;
   counts: Record<"AUTO" | "REVIEW" | "UNKNOWN" | "EXCLUDED" | "STALE" | "COLLISION" | "UNCHANGED", number>;
   items: CatalogPreviewItem[];
 }
@@ -100,12 +110,16 @@ export interface CatalogPreview {
 export interface CatalogApplySelection {
   resourceId: string;
   previewVersion: string;
+  acknowledgeHumanConflict?: true;
+  acknowledgeClear?: true;
+  acknowledgeEvidence?: true;
 }
 
 export interface CatalogApplyResult {
   resourceId: string;
-  status: "applied" | "unchanged" | "stale" | "collision" | "not_found" | "invalid_input" | "conflict";
+  status: "applied" | "unchanged" | "stale" | "collision" | "not_found" | "invalid_input" | "conflict" | "acknowledgement_required";
   displayName: string | null;
+  replayed?: true;
 }
 
 interface PlannedItem {
@@ -117,6 +131,16 @@ interface PlannedItem {
   currentBibliography: BibliographicProfile | null;
   nextMetadata: CanonicalMetadataInput | null;
   nextBibliography: BibliographicProfileInput | null;
+  snapshotVersion?: string;
+}
+
+interface StoredCatalogPlan {
+  actorId: string;
+  libraryId: string;
+  expiresAt: Date;
+  memoryBytes: number;
+  items: ReadonlyMap<string, PlannedItem>;
+  completed: Map<string, CatalogApplyResult>;
 }
 
 function sha256(value: string): string {
@@ -165,7 +189,7 @@ function bibliographyInput(profile: BibliographicProfile | null): BibliographicP
   if (!profile) return null;
   return {
     materialClass: profile.materialClass,
-    contributors: profile.contributors.map(({ id: _id, ...entry }) => ({ ...entry })),
+    contributors: profile.contributors.map((entry) => ({ ...entry })),
     publication: { ...profile.publication },
     ...(profile.series === undefined ? {} : { series: profile.series }),
     ...(profile.volume === undefined ? {} : { volume: profile.volume }),
@@ -217,6 +241,7 @@ export class CatalogBatchService {
   readonly #createToken: () => string;
   readonly #excludedCatalogSources: readonly CatalogInternalSourceExclusion[];
   readonly #capabilities = new Map<string, ExportCapability>();
+  readonly #plans = new Map<string, StoredCatalogPlan>();
 
   constructor(options: {
     persistence: Persistence;
@@ -363,35 +388,78 @@ export class CatalogBatchService {
   }
 
   preview(actor: AuthenticatedAccount, libraryId: string, value: unknown): CatalogPreview {
+    this.#requireOwnerManager(actor, libraryId, this.#persistence.repositories);
     const document = this.#parseDocument(value);
-    return this.#persistence.runInTransaction((repositories) => this.#previewInRepositories(actor, libraryId, document, repositories));
+    const plans = this.#persistence.runInTransaction((repositories) => this.#previewInRepositories(actor, libraryId, document, repositories));
+    const now = this.#now();
+    this.#prunePlans(now);
+    // Account conservatively for strings and object overhead as well as the
+    // serialized values; both count and aggregate memory have hard bounds.
+    const memoryBytes = Buffer.byteLength(JSON.stringify(plans), "utf8") * 4;
+    if (memoryBytes > MAX_CATALOG_PLAN_MEMORY_BYTES) throw new CatalogBatchError("plan_too_large");
+    const usedBytes = () => [...this.#plans.values()].reduce((sum, plan) => sum + plan.memoryBytes, 0);
+    while (this.#plans.size >= MAX_ACTIVE_CATALOG_PLANS || usedBytes() + memoryBytes > MAX_CATALOG_PLAN_MEMORY_BYTES) {
+      const oldest = this.#plans.keys().next().value;
+      if (!oldest) break;
+      this.#plans.delete(oldest);
+    }
+    const planId = randomBytes(32).toString("base64url");
+    const expiresAt = new Date(now.getTime() + CATALOG_PLAN_TTL_MILLISECONDS);
+    this.#plans.set(planId, {
+      actorId: actor.id, libraryId, expiresAt, memoryBytes,
+      items: new Map(plans.map((entry) => [entry.public.resourceId, entry])), completed: new Map(),
+    });
+    // Do not hand callers mutable references to the authoritative cached plan.
+    const items = structuredClone(plans.map((entry) => entry.public));
+    return { batchId: document.batchId, documentDigest: sha256(canonicalCatalogJson(document)), planId,
+      expiresAt: expiresAt.toISOString(), counts: publicCounts(items), items };
   }
 
   apply(
     actor: AuthenticatedAccount,
     libraryId: string,
-    value: unknown,
-    documentDigest: unknown,
+    planId: unknown,
     selections: unknown,
   ): CatalogApplyResult[] {
-    const document = this.#parseDocument(value);
-    if (typeof documentDigest !== "string" || documentDigest !== sha256(canonicalCatalogJson(document))) {
-      throw new CatalogBatchError("invalid_input");
-    }
+    if (typeof planId !== "string" || !/^[A-Za-z0-9_-]{43}$/u.test(planId)) throw new CatalogBatchError("invalid_input");
     const selected = this.#parseSelections(selections);
+    this.#prunePlans(this.#now());
+    const plan = this.#plans.get(planId);
+    this.#requireOwnerManager(actor, libraryId, this.#persistence.repositories);
+    if (!plan) throw new CatalogBatchError("plan_expired");
+    if (plan.actorId !== actor.id || plan.libraryId !== libraryId) throw new CatalogBatchError("not_found");
     const results: CatalogApplyResult[] = [];
     for (const selection of selected) {
       try {
         const result = this.#persistence.runInTransaction((repositories) => {
-          const preview = this.#previewInRepositories(actor, libraryId, document, repositories);
-          const item = preview.items.find((entry) => entry.resourceId === selection.resourceId);
-          if (!item || item.previewVersion !== selection.previewVersion) throw new CatalogBatchError("stale");
+          const library = this.#requireOwnerManager(actor, libraryId, repositories);
+          const planned = plan.items.get(selection.resourceId);
+          const item = planned?.public;
+          if (!planned || !item || item.previewVersion !== selection.previewVersion) throw new CatalogBatchError("stale");
+          const completed = plan.completed.get(selection.resourceId);
+          if (completed) return { ...completed, replayed: true as const };
           if (item.category === "stale") throw new CatalogBatchError("stale");
           if (item.category === "collision") return { resourceId: item.resourceId, status: "collision" as const, displayName: item.currentFilename };
           if (item.category === "unknown" || item.category === "excluded") throw new CatalogBatchError("invalid_input");
+          const holding = repositories.libraries.findHoldingByFile(libraryId, item.resourceId);
+          const file = holding ? repositories.files.findByDomainId(library.ownerDomainId, item.resourceId) : null;
+          if (!holding || !file || file.state !== "active") throw new CatalogBatchError("stale");
+          const metadata = repositories.metadata.findMetadata(library.ownerDomainId, holding.recordId);
+          const bibliography = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
+          const authorities = repositories.bibliography.listFieldAuthorities(library.ownerDomainId, holding.recordId);
+          if (planned.snapshotVersion !== this.#snapshotVersion(holding, file, metadata, bibliography, authorities)) {
+            throw new CatalogBatchError("stale");
+          }
           if (item.category === "unchanged") return { resourceId: item.resourceId, status: "unchanged" as const, displayName: item.currentFilename };
-          const imported = document.results.find((entry) => entry.resourceId === item.resourceId)!;
-          const planned = this.#planItem(actor, libraryId, document, imported, repositories);
+          if (item.requiresAcknowledgement.humanConflict && selection.acknowledgeHumanConflict !== true
+            || item.requiresAcknowledgement.clear && selection.acknowledgeClear !== true
+            || item.requiresAcknowledgement.evidence && selection.acknowledgeEvidence !== true) {
+            return { resourceId: item.resourceId, status: "acknowledgement_required" as const, displayName: item.currentFilename };
+          }
+          if (item.renameStatus === "proposed" && item.proposedFilename) {
+            const collision = repositories.files.findAvailableByDomainName(library.ownerDomainId, file.folderId, item.proposedFilename);
+            if (collision && collision.id !== file.id) return { resourceId: item.resourceId, status: "collision" as const, displayName: file.displayName };
+          }
           if (!planned.file || !planned.holding || !planned.library || !planned.nextMetadata || !planned.nextBibliography) {
             throw new CatalogBatchError("stale");
           }
@@ -402,6 +470,7 @@ export class CatalogBatchService {
             displayName: item.renameStatus === "proposed" ? item.proposedFilename : item.currentFilename,
           };
         });
+        if (result.status === "applied" || result.status === "unchanged") plan.completed.set(selection.resourceId, result);
         results.push(result);
       } catch (error: unknown) {
         const code = error instanceof CatalogBatchError ? error.code : "conflict";
@@ -416,6 +485,11 @@ export class CatalogBatchService {
   }
 
   #parseDocument(value: unknown): CatalogResultsDocument {
+    try {
+      if (Buffer.byteLength(JSON.stringify(value), "utf8") > MAX_CATALOG_RESULTS_BYTES) throw new CatalogBatchError("invalid_input");
+    } catch (error: unknown) {
+      throw new CatalogBatchError("invalid_input", { cause: error });
+    }
     let document: CatalogResultsDocument;
     try {
       document = parseCatalogResultsDocument(value);
@@ -426,21 +500,25 @@ export class CatalogBatchService {
     if (sha256(canonicalCatalogJson(document.sourceManifest)) !== document.sourceManifestSha256) {
       throw new CatalogBatchError("invalid_input");
     }
+    const manifests = new Map(document.sourceManifest.resources.map((entry) => [entry.resourceId, entry]));
     for (const result of document.results) {
-      const manifest = document.sourceManifest.resources.find((entry) => entry.resourceId === result.resourceId)!;
+      const manifest = manifests.get(result.resourceId)!;
       if (!sameCatalogSourceIdentity(manifest.sourceIdentity, result.sourceIdentity)) throw new CatalogBatchError("invalid_input");
     }
     return document;
   }
 
-  #previewInRepositories(actor: AuthenticatedAccount, libraryId: string, document: CatalogResultsDocument, repositories: RepositorySet): CatalogPreview {
+  #previewInRepositories(actor: AuthenticatedAccount, libraryId: string, document: CatalogResultsDocument, repositories: RepositorySet): PlannedItem[] {
     this.#requireOwnerManager(actor, libraryId, repositories);
-    const plans = document.results.map((result) => this.#planItem(actor, libraryId, document, result, repositories));
+    const manifests = new Map(document.sourceManifest.resources.map((entry) => [entry.resourceId, entry]));
+    const plans = document.results.map((result) => this.#planItem(actor, libraryId, document, result, repositories, manifests.get(result.resourceId)!));
     const targets = new Map<string, PlannedItem[]>();
     for (const plan of plans) {
       const filename = plan.public.proposedFilename;
       if (!filename || !plan.file || !plan.public.identityMatch) continue;
-      const key = filename.normalize("NFC").toLocaleLowerCase("en");
+      // SQLite NOCASE folds ASCII only; the namespace is per folder, not the
+      // entire Library. Match the actual storage-name uniqueness contract.
+      const key = canonicalCatalogJson([plan.file.folderId, filename.replace(/[A-Z]/gu, (letter) => letter.toLowerCase())]);
       targets.set(key, [...targets.get(key) ?? [], plan]);
     }
     for (const group of targets.values()) {
@@ -457,13 +535,7 @@ export class CatalogBatchService {
           .digest("base64url");
       }
     }
-    const items = plans.map((entry) => entry.public);
-    return {
-      batchId: document.batchId,
-      documentDigest: sha256(canonicalCatalogJson(document)),
-      counts: publicCounts(items),
-      items,
-    };
+    return plans;
   }
 
   #planItem(
@@ -472,9 +544,17 @@ export class CatalogBatchService {
     document: CatalogResultsDocument,
     result: ImportedCatalogResult,
     repositories: RepositorySet,
+    manifestResource: CatalogBatchManifest["resources"][number],
   ): PlannedItem {
     const library = this.#requireOwnerManager(actor, libraryId, repositories);
-    const manifestResource = document.sourceManifest.resources.find((entry) => entry.resourceId === result.resourceId)!;
+    const evidence = result.evidence ?? { executionState: "unknown" as const, state: "unverified" as const, pages: [], notes: result.notes };
+    if (manifestResource.pageCount === null) {
+      evidence.state = evidence.executionState === "failed" ? "failed" : "insufficient";
+    }
+    const reviewDetails = {
+      fields: [] as CatalogFieldDiff[], evidence,
+      requiresAcknowledgement: { humanConflict: false, clear: false, evidence: true },
+    };
     const holding = repositories.libraries.findHoldingByFile(libraryId, result.resourceId);
     const file = holding ? repositories.files.findByDomainId(library.ownerDomainId, result.resourceId) : null;
     const identityMatch = Boolean(file && file.state === "active"
@@ -482,9 +562,10 @@ export class CatalogBatchService {
       && sameCatalogSourceIdentity(result.sourceIdentity, catalogSourceIdentity(file)));
     const currentFilename = file?.displayName ?? manifestResource.currentFilename;
     if (!identityMatch || !file || !holding) {
-      const previewVersion = sha256(canonicalCatalogJson([document.batchId, result.resourceId, "stale"]));
+      const previewVersion = createHash("sha256").update(canonicalCatalogJson([document.batchId, result.resourceId, "stale"])).digest("base64url");
       return {
         public: {
+          ...reviewDetails,
           resourceId: result.resourceId, currentFilename, proposedFilename: null,
           canonicalTitle: result.bibliographic?.canonicalTitle ?? null, responsibility: null, year: null,
           materialClass: result.bibliographic?.profile.materialClass ?? null, disposition: result.disposition,
@@ -496,6 +577,8 @@ export class CatalogBatchService {
     }
     const currentMetadata = repositories.metadata.findMetadata(library.ownerDomainId, holding.recordId);
     const currentBibliography = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
+    const authorities = repositories.bibliography.listFieldAuthorities(library.ownerDomainId, holding.recordId);
+    const snapshotVersion = this.#snapshotVersion(holding, file, currentMetadata, currentBibliography, authorities);
     const internalExclusion = findCatalogInternalSourceExclusion(
       result.resourceId,
       catalogSourceIdentity(file),
@@ -510,6 +593,7 @@ export class CatalogBatchService {
       ])).digest("base64url");
       return {
         public: {
+          ...reviewDetails,
           resourceId: result.resourceId, currentFilename, proposedFilename: null, canonicalTitle: null,
           responsibility: null, year: null, materialClass: null, disposition: result.disposition,
           confidence: result.confidence, notes: result.notes, identityMatch: true, collisionStatus: "none",
@@ -523,6 +607,7 @@ export class CatalogBatchService {
       const previewVersion = this.#previewVersion(document, result, file, currentMetadata, currentBibliography, null, "none");
       return {
         public: {
+          ...reviewDetails,
           resourceId: result.resourceId, currentFilename, proposedFilename: null, canonicalTitle: null,
           responsibility: null, year: null, materialClass: null, disposition: result.disposition,
           confidence: result.confidence, notes: result.notes, identityMatch: true, collisionStatus: "none",
@@ -532,21 +617,16 @@ export class CatalogBatchService {
       };
     }
     const imported = result.bibliographic;
-    const nextMetadata = importedLegacyMetadata(imported, metadataInput(currentMetadata), inferredMaterialType(imported.profile.materialClass));
-    const nextBibliography = imported.profile;
-    const filename = formatCatalogFilename({
-      canonicalTitle: imported.canonicalTitle,
-      materialClass: imported.profile.materialClass,
-      contributors: imported.profile.contributors,
-      currentFilename,
-      ...(imported.profile.carrierEdition.editionType ? { editionType: imported.profile.carrierEdition.editionType } : {}),
-      ...(imported.profile.carrierEdition.editionStatement ? { editionStatement: imported.profile.carrierEdition.editionStatement } : {}),
-      ...(imported.profile.publication.publisher ? { publisher: imported.profile.publication.publisher } : {}),
-      ...(imported.dateStatement ? { dateStatement: imported.dateStatement } : {}),
-      ...(imported.profile.publication.publicationDate ? { publicationDate: imported.profile.publication.publicationDate } : {}),
-      ...(imported.responsibilityStatement ? { responsibilityStatement: imported.responsibilityStatement } : {}),
-      filenameStyle: imported.filenameStyle,
-    });
+    const compiled = compileCatalogBibliography({ imported, metadata: currentMetadata, bibliography: currentBibliography,
+      authorities, currentFilename, evidence, notes: result.notes, createId: this.#createId });
+    if (!compiled) return {
+      public: { ...reviewDetails, resourceId: result.resourceId, currentFilename, proposedFilename: null, canonicalTitle: null,
+        responsibility: null, year: null, materialClass: null, disposition: result.disposition, confidence: result.confidence,
+        notes: result.notes, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: [],
+        warnings: ["missing_required_title"], category: "unknown", previewVersion: snapshotVersion },
+      library, holding, file, currentMetadata, currentBibliography, nextMetadata: null, nextBibliography: null, snapshotVersion,
+    };
+    const { metadata: nextMetadata, bibliography: nextBibliography, filename, fields } = compiled;
     let collisionStatus: CatalogCollisionStatus = "none";
     let renameStatus: CatalogRenameStatus = filename.status === "proposed" ? "proposed" : "no_rename";
     const proposedFilename = filename.status === "proposed" ? filename.filename : null;
@@ -562,22 +642,32 @@ export class CatalogBatchService {
       ...changedMetadataLabels(metadataInput(currentMetadata), nextMetadata),
       ...changedBibliographyLabels(currentBibliography, nextBibliography).map((entry) => `bibliography.${entry}`),
     ];
+    if (fields.some((field) => field.field === "contributors" && field.proposedAuthority === "human")
+      && !metadataChanges.includes("bibliography.contributors")) metadataChanges.push("bibliography.contributors");
     if (renameStatus === "proposed") metadataChanges.push("displayName");
     let category: CatalogPreviewCategory;
     if (collisionStatus !== "none") category = "collision";
     else if (metadataChanges.length === 0) category = "unchanged";
-    else if (result.disposition === "auto" && renameStatus !== "no_rename") category = "auto";
     else category = "review";
-    const previewVersion = this.#previewVersion(document, result, file, currentMetadata, currentBibliography, proposedFilename, collisionStatus);
+    const previewVersion = createHash("sha256").update(canonicalCatalogJson([
+      "academiccloud.catalog-preview.v2", document.batchId, result, snapshotVersion, fields, proposedFilename, collisionStatus,
+    ])).digest("base64url");
     return {
       public: {
+        ...reviewDetails,
+        fields,
+        requiresAcknowledgement: {
+          humanConflict: fields.some((field) => field.operation === "conflict"),
+          clear: Boolean(imported.patch?.clear.some((name) => fields.some((field) => field.field === name && field.proposedAuthority === "human"))),
+          evidence: true,
+        },
         resourceId: result.resourceId,
         currentFilename,
         proposedFilename,
-        canonicalTitle: imported.canonicalTitle,
+        canonicalTitle: nextMetadata.canonicalTitle,
         responsibility: filename.status === "proposed" ? filename.responsibility : null,
         year: filename.status === "proposed" ? filename.year : null,
-        materialClass: imported.profile.materialClass,
+        materialClass: nextBibliography.materialClass,
         disposition: result.disposition,
         confidence: result.confidence,
         notes: result.notes,
@@ -585,11 +675,11 @@ export class CatalogBatchService {
         collisionStatus,
         renameStatus,
         metadataChanges,
-        warnings: imported.importWarnings.map((entry) => entry.code),
+        warnings: [...imported.importWarnings.map((entry) => entry.code), "unverified_evidence", ...(result.legacy ? ["legacy_preserve_semantics" as const] : [])],
         category,
         previewVersion,
       },
-      library, holding, file, currentMetadata, currentBibliography, nextMetadata, nextBibliography,
+      library, holding, file, currentMetadata, currentBibliography, nextMetadata, nextBibliography, snapshotVersion,
     };
   }
 
@@ -614,15 +704,8 @@ export class CatalogBatchService {
       });
     }
     if (changedBibliographyLabels(currentBibliography, nextBibliography).length > 0) {
-      const currentIds = new Map((currentBibliography?.contributors ?? []).map((entry) => [
-        canonicalCatalogJson([entry.label, entry.role, entry.roleLabel ?? null]), entry.id,
-      ]));
       const saved = repositories.bibliography.saveProfile({
         ...nextBibliography,
-        contributors: nextBibliography.contributors.map((entry) => ({
-          ...entry,
-          id: currentIds.get(canonicalCatalogJson([entry.label, entry.role, entry.roleLabel ?? null])) ?? this.#createId(),
-        })),
         recordId: holding.recordId,
         ownerDomainId: library.ownerDomainId,
         actorAccountId: actor.id,
@@ -642,6 +725,12 @@ export class CatalogBatchService {
         file.revision,
       );
       if (!updated || updated.objectKey !== file.objectKey) throw new CatalogBatchError("conflict");
+    }
+    if (plan.public.fields.some((field) => field.field === "contributors" && field.proposedAuthority === "human")) {
+      repositories.bibliography.setFieldAuthority({
+        recordId: holding.recordId, ownerDomainId: library.ownerDomainId, fieldName: "contributors", scopeKey: "",
+        source: "human", actorAccountId: actor.id, now,
+      });
     }
     recordAuditEvent(repositories, {
       action: "libraries.metadata_update",
@@ -691,9 +780,16 @@ export class CatalogBatchService {
     const selections = value.map((entry) => {
       if (typeof entry !== "object" || entry === null || Array.isArray(entry)) throw new CatalogBatchError("invalid_input");
       const item = entry as Record<string, unknown>;
-      if (Object.keys(item).length !== 2 || typeof item.resourceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/u.test(item.resourceId)
+      const acknowledgementKeys = ["acknowledgeHumanConflict", "acknowledgeClear", "acknowledgeEvidence"] as const;
+      if (Object.keys(item).some((key) => !["resourceId", "previewVersion", ...acknowledgementKeys].includes(key))
+        || acknowledgementKeys.some((key) => item[key] !== undefined && item[key] !== true)
+        || typeof item.resourceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/u.test(item.resourceId)
         || typeof item.previewVersion !== "string" || !/^[A-Za-z0-9_-]{43}$/u.test(item.previewVersion)) throw new CatalogBatchError("invalid_input");
-      return { resourceId: item.resourceId, previewVersion: item.previewVersion };
+      return { resourceId: item.resourceId, previewVersion: item.previewVersion,
+        ...(item.acknowledgeHumanConflict === true ? { acknowledgeHumanConflict: true as const } : {}),
+        ...(item.acknowledgeClear === true ? { acknowledgeClear: true as const } : {}),
+        ...(item.acknowledgeEvidence === true ? { acknowledgeEvidence: true as const } : {}),
+      };
     });
     if (new Set(selections.map((entry) => entry.resourceId)).size !== selections.length) throw new CatalogBatchError("invalid_input");
     return selections;
@@ -710,5 +806,21 @@ export class CatalogBatchService {
 
   #pruneCapabilities(now: Date): void {
     for (const [batchId, capability] of this.#capabilities) if (capability.expiresAt <= now) this.#capabilities.delete(batchId);
+  }
+
+  #prunePlans(now: Date): void {
+    for (const [id, plan] of this.#plans) if (plan.expiresAt <= now) this.#plans.delete(id);
+  }
+
+  #snapshotVersion(holding: LibraryHolding, file: StoredFile, metadata: CanonicalMetadata | null,
+    bibliography: BibliographicProfile | null, authorities: BibliographicFieldAuthority[]): string {
+    // Date values are projected to ISO before canonicalization. Include record,
+    // artifact/version, folder, internal contributor links and field authority,
+    // not merely the display name or coarse metadata revision.
+    const snapshot: unknown = JSON.parse(JSON.stringify({
+      holding: [holding.libraryId, holding.recordId, holding.artifactId, holding.versionId],
+      file, metadata, bibliography, authorities,
+    }));
+    return createHash("sha256").update(canonicalCatalogJson(snapshot)).digest("base64url");
   }
 }

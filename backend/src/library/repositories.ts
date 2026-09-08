@@ -8,7 +8,7 @@ import type {
   NewLibrary,
   NewLibraryMembership,
 } from "./library.js";
-import type { HoldingCursor } from "./search.js";
+import type { HoldingCursor, PreparedSearch, SearchSortKey } from "./search.js";
 import type { StoredFileState } from "../drive/file.js";
 import type { ScholarlyAttachmentState } from "../research/record.js";
 
@@ -25,6 +25,10 @@ export interface LibraryRepository {
   listHoldings(libraryId: string, limit: number): LibraryHolding[];
   /** Keyset-paginated holdings after `after` (null = first page), newest first. */
   listHoldingsPage(libraryId: string, after: HoldingCursor | null, limit: number): LibraryHolding[];
+  /** Authorization precedes refresh; only this domain's changed records are rebuilt. */
+  refreshSearchProjection(ownerDomainId: string): number;
+  /** SQL selects, ranks, sorts and pages before any candidate metadata hydration. */
+  searchHoldingsPage(libraryId: string, search: PreparedSearch): Array<{ holding: LibraryHolding; key: SearchSortKey }>;
   /**
    * Keyset-paginated holdings under a deterministic server-side sort. `after`
    * carries the sort's own comparison fields: primary (ISO timestamp for

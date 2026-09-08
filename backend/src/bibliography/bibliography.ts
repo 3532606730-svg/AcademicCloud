@@ -65,6 +65,7 @@ export const EDITION_TYPES = [
 export type EditionType = (typeof EDITION_TYPES)[number];
 
 export const BIBLIOGRAPHIC_FIELD_NAMES = [
+  "contributors",
   "materialClass",
   "canonicalTitle",
   "subtitle",
@@ -354,6 +355,12 @@ export function changedBibliographicFields(
   next: BibliographicProfileInput,
 ): Array<{ fieldName: BibliographicFieldName; scopeKey: string }> {
   const changed: Array<{ fieldName: BibliographicFieldName; scopeKey: string }> = [];
+  const contributorValues = (entries: BibliographicContributorInput[]) => entries.map((entry) => [
+    entry.id ?? null, entry.label, entry.role, entry.roleLabel ?? null, entry.authorityId ?? null,
+  ]);
+  if (JSON.stringify(contributorValues(previous?.contributors ?? [])) !== JSON.stringify(contributorValues(next.contributors))) {
+    changed.push({ fieldName: "contributors", scopeKey: "" });
+  }
   const before = previous ? bibliographicScalarFields(previous) : new Map<BibliographicFieldName, unknown>();
   for (const [fieldName, value] of bibliographicScalarFields(next)) {
     if ((!previous && value !== undefined) || (previous && before.get(fieldName) !== value)) {

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION, INTELLIGENT_BIBLIOGRAPHY_PROMPT_VERSION } from "@academiccloud/compute-contracts";
 
 import type { SqliteDatabase } from "./database.js";
 
@@ -106,6 +107,7 @@ export function runRulesetAdmissions(
   directory: string,
 ): RulesetAdmissionResult {
   const manifest = readRulesetAdmissionManifest(directory);
+  assertRuntimeRulesetIdentity(manifest.current);
   const before = readSchemaState(database);
   const admitted: string[] = [];
   const alreadyAdmitted: string[] = [];
@@ -145,6 +147,7 @@ export function assertRulesetAdmissionsCurrent(
   existingManifest?: RulesetAdmissionManifest,
 ): BibliographicRulesetIdentity {
   const manifest = existingManifest ?? readRulesetAdmissionManifest(directory);
+  assertRuntimeRulesetIdentity(manifest.current);
   for (const admission of manifest.admissions) {
     const row = readRegistryRow(database, admission.rulesetVersion);
     if (!row) {
@@ -153,6 +156,23 @@ export function assertRulesetAdmissionsCurrent(
     assertRegistryIdentity(row, admission);
   }
   return manifest.current;
+}
+
+/** Runtime authority is compiled into Core; a self-consistent historical manifest is not sufficient. */
+export function assertRuntimeRulesetIdentity(identity: BibliographicRulesetIdentity): void {
+  if (identity.contractVersion !== 1
+    || identity.rulesetVersion !== INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION
+    || identity.promptVersion !== INTELLIGENT_BIBLIOGRAPHY_PROMPT_VERSION) {
+    throw new Error("Bibliographic ruleset manifest does not match the current runtime");
+  }
+}
+
+/** Bounded live readiness check; callers cache the verified release manifest at startup. */
+export function assertRuntimeRulesetReady(database: SqliteDatabase, expected: BibliographicRulesetIdentity): void {
+  assertRuntimeRulesetIdentity(expected);
+  const row = readRegistryRow(database, expected.rulesetVersion);
+  if (!row) throw new Error("Bibliographic runtime admission is missing");
+  assertRegistryIdentity(row, expected);
 }
 
 function readRegistryRow(database: SqliteDatabase, rulesetVersion: string): RegistryRow | undefined {

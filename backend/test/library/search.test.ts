@@ -38,6 +38,7 @@ function holding(overrides: Partial<SearchableHolding> = {}): SearchableHolding 
     fileId: "file-a",
     displayName: "zhangfan-yuandai-zaixiang.pdf",
     sizeBytes: 12,
+    mediaType: "application/pdf",
     artifactId: "artifact-a",
     artifactCreatedAt: new Date("2026-08-18T00:00:00.000Z"),
     canonicalTitle: "元代宰相制度研究",
@@ -156,10 +157,12 @@ test("result DTO exposes only presentation fields, never internal identity", () 
   const result = page.results[0]!;
   assert.deepEqual(Object.keys(result).sort(), [
     "authorLabels", "canonicalTitle", "catalogueDisplayTitle", "contributorLabels", "date", "displayName",
-    "editionStatement", "fileId", "language", "materialClass", "materialType", "publisher",
+    "editionStatement", "fileId", "language", "materialClass", "materialType", "mediaType", "publisher", "sizeBytes",
   ]);
   assert.equal(result.publisher, "北京大学出版社");
   assert.equal(result.date, "1997");
+  assert.equal(result.mediaType, "application/pdf");
+  assert.equal(result.sizeBytes, 12);
   assert.equal("recordId" in result, false);
   assert.equal("artifactId" in result, false);
   assert.equal("ownerDomainId" in result, false);

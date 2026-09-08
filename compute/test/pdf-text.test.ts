@@ -376,14 +376,20 @@ test("range-backed inspector accepts an object larger than the whole-object comp
   assert.ok(requests.every(([begin, end]) => end > begin && end - begin <= SUGGESTION_LIMITS.rangeChunkBytes));
 });
 
-test("range-backed document loading uses the aggregate request budget while later parser work stays bounded", async () => {
+test("range-backed document loading outlives the per-stage budget within the aggregate budget", async () => {
   const bytes = makeOversizedRealisticPdf(["Range-backed title evidence"], {}, 3 * 1024 * 1024);
+  // Deliberately delay one provider read beyond the parser budget. Give the
+  // real native parser realistic headroom instead of requiring a 20 ms parse
+  // on a contended CI host. Applying the per-stage budget to document loading
+  // still fails this test before the delayed source response can complete.
+  const parserBudgetMilliseconds = 1_000;
+  const sourceDelayMilliseconds = 1_500;
   let reads = 0;
   const source = {
     length: bytes.byteLength,
     async read(begin: number, end: number): Promise<Uint8Array> {
       reads += 1;
-      if (reads > 1) await new Promise((resolve) => setTimeout(resolve, 50));
+      if (reads === 2) await new Promise((resolve) => setTimeout(resolve, sourceDelayMilliseconds));
       return bytes.slice(begin, end);
     },
   };
@@ -392,8 +398,8 @@ test("range-backed document loading uses the aggregate request budget while late
     new RecordingOcrAdapter(async () => recognized("unused")),
     limits({
       rangeChunkBytes: 512 * 1024,
-      timeoutMilliseconds: 20,
-      totalRequestTimeoutMilliseconds: 1_000,
+      timeoutMilliseconds: parserBudgetMilliseconds,
+      totalRequestTimeoutMilliseconds: 15_000,
     }),
   );
   assert.equal(inspection.pages[0]?.text.includes("Range-backed title evidence"), true);

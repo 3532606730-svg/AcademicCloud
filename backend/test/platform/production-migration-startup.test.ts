@@ -75,7 +75,7 @@ test("development startup initializes and migrates a disposable database", async
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 34);
+  assert.equal(readSchemaVersion(databasePath), 36);
 });
 
 test("production startup with a current schema succeeds without mutating it", async (context) => {
@@ -93,7 +93,7 @@ test("production startup with a current schema succeeds without mutating it", as
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 34);
+  assert.equal(readSchemaVersion(databasePath), 36);
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -113,7 +113,7 @@ test("production startup with a current schema but missing ruleset admission fai
     }, new InMemoryStorageAdapter()),
     /ruleset admission is not current/u,
   );
-  assert.equal(readSchemaVersion(databasePath), 34);
+  assert.equal(readSchemaVersion(databasePath), 36);
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -147,8 +147,8 @@ test("the explicit migration runner still applies pending migrations normally", 
   const upgraded = openSqliteDatabase(databasePath);
   const result = runMigrations(upgraded, latest);
   upgraded.close();
-  assert.deepEqual(result.appliedVersions, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]);
-  assert.equal(result.currentVersion, 34);
+  assert.deepEqual(result.appliedVersions, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]);
+  assert.equal(result.currentVersion, 36);
   assert.equal(hasFavoritesTable(databasePath), true);
   rmSync(directory, { recursive: true, force: true });
 });
@@ -163,4 +163,29 @@ test("production startup refuses an uninitialized database", async (context) => 
     /schema is not initialized/,
   );
   rmSync(directory, { recursive: true, force: true });
+});
+
+test("live readiness detects unavailable runtime admission while health remains independent", async (context) => {
+  const { latest } = migrationFixtures(context);
+  const directory = mkdtempSync(join(tmpdir(), "academiccloud-readiness-admission-"));
+  const databasePath = join(directory, "test.sqlite");
+  const database = openSqliteDatabase(databasePath);
+  runMigrations(database, latest);
+  runRulesetAdmissions(database, RULESET_ADMISSIONS_DIRECTORY);
+  const app = await createApplication(productionConfig(), { databasePath, migrationsDirectory: latest,
+    rulesetAdmissionsDirectory: RULESET_ADMISSIONS_DIRECTORY }, new InMemoryStorageAdapter());
+  try {
+    assert.equal((await app.inject({ method: "GET", url: "/api/ready" })).statusCode, 200);
+    database.exec("ALTER TABLE scholarly_bibliographic_ruleset_registry RENAME TO unavailable_registry");
+    const response = await app.inject({ method: "GET", url: "/api/ready" });
+    assert.equal(response.statusCode, 503);
+    assert.deepEqual(response.json(), { status: "unavailable", service: "academiccloud-api" });
+    assert.equal((await app.inject({ method: "GET", url: "/api/health" })).statusCode, 200);
+    database.exec("ALTER TABLE unavailable_registry RENAME TO scholarly_bibliographic_ruleset_registry");
+    assert.equal((await app.inject({ method: "GET", url: "/api/ready" })).statusCode, 200);
+  } finally {
+    await app.close();
+    database.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
