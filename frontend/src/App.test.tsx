@@ -1625,7 +1625,7 @@ describe("App", () => {
     await waitFor(() => expect(getUploadStatus).toHaveBeenCalledTimes(2));
     expect(abandonMultipartUpload).not.toHaveBeenCalled();
     expect(abandonLegacyUpload).not.toHaveBeenCalled();
-    expect(within(job as HTMLElement).getByRole("alert")).toHaveTextContent("Uploads are temporarily unavailable");
+    expect(within(job as HTMLElement).getByRole("alert")).toHaveTextContent("File services are temporarily unavailable");
   });
 
   it("uses legacy abandon only for a durably classified legacy upload", async () => {
@@ -2100,7 +2100,7 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Library" });
 
     await user.click(screen.getByRole("button", { name: "Recycle" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Uploads are temporarily unavailable");
+    expect(await screen.findByRole("alert")).toHaveTextContent("File services are temporarily unavailable");
 
     await user.click(screen.getByRole("button", { name: "Favorites" }));
     expect(await screen.findByText("paper.pdf")).toBeInTheDocument();
@@ -2135,7 +2135,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Favorites" }));
     // The retry failure surfaces as an actionable Favorites error — the page
     // is NOT silently stuck in permanent loading.
-    expect(await screen.findByRole("alert")).toHaveTextContent("Uploads are temporarily unavailable");
+    expect(await screen.findByRole("alert")).toHaveTextContent("File services are temporarily unavailable");
     expect(within(screen.getByRole("alert")).getByRole("button", { name: "Refresh" })).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(listFavorites).toHaveBeenCalledTimes(2);
