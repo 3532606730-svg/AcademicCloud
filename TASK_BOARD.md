@@ -1,12 +1,12 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-09-07. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
+**Last reconciled:** 2026-09-09. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
 ## Active task
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | ACTIVE — local R01–R16 remediation and additional defects implemented/verified; remaining benchmark/browser coverage, checkpoint/CI/main integration, exact release/migrations and real production verification |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | ACTIVE — Core6972b21 and Bridgeba0a deployed; schema036, main integration and CI green; finish real Catalog Apply, whole-product browser verification and necessary Compute qualification |
 
 The Owner's 2026-09-06 instruction authorizes remediation of the accepted review and real newly found defects, including necessary production/data/service changes and main integration. Use existing authority without repeated approval requests. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 

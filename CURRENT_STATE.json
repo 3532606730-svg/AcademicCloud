@@ -1,29 +1,29 @@
 {
-  "lastReconciled": "2026-09-08",
+  "lastReconciled": "2026-09-09",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner-authorized full remediation, integration, release, migration, necessary Compute repair and real Catalog Apply; no additional approval required within scope",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "09b6587198da947408f63fc41a929eba22766ab0",
-    "mainIntegration": "pending",
-    "localSynchronized": false
+    "checkpoint": "6972b212975bf15ce8221ec47ab5d03924cadf41",
+    "mainIntegration": "fast-forwarded main and integration to verified 6972b21",
+    "localSynchronized": true
   },
   "production": {
-    "observedAt": "2026-09-06",
-    "coreFrontendCommit": "196c9c5ee7ed60c6a261df5eef65f32cccaff639",
-    "schemaVersion": 34,
-    "migrationHistory": "001-034",
+    "observedAt": "2026-09-09",
+    "coreFrontendCommit": "6972b212975bf15ce8221ec47ab5d03924cadf41",
+    "schemaVersion": 36,
+    "migrationHistory": "001-036",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "healthy/ready at last observation",
-    "catalogBridgeCommit": "e261d11bda258da489561a4eba6155020f19301f",
+    "health": "healthy/ready; integrity OK; zero FK violations; zero service restarts",
+    "catalogBridgeCommit": "ba0a74f28470a312f2e05135033f5b5a727ef093",
     "catalogBridgeState": "active",
     "computeDistro": "AcademicCloudComputeV2",
     "mainInferenceState": "service absent/inactive",
-    "vnextDeployed": false
+    "vnextDeployed": true
   },
   "candidate": {
     "schemaVersion": 36,
@@ -42,7 +42,7 @@
   },
   "verification": {
     "backend": "426/426",
-    "frontend": "321/321 complete run; subsequent changed UI/translations 49/49",
+    "frontend": "322/322",
     "contracts": "3/3",
     "compute": "150 pass; 1 skip",
     "operations": "79/79",
@@ -50,14 +50,15 @@
     "typesBuild": "pass",
     "compiledAcceptance": "pass schema036, v11 admission, repeat initialization, persistence/recovery",
     "strictNpmInstall": "pass npm11.19.1",
-    "browser": "six-width synthetic verification; normal signed-in production Library access confirmed 2026-09-08; changed live paths pending deployment",
+    "browser": "six-width real before matrix; deployed live-path acceptance in progress",
     "catalogBenchmark10000Holdings500SelectedMs": {
       "oldApply": 121267.617,
       "newApply": 1149.913,
       "oldPreviewMedian": 470.674,
       "newPreviewMedian": 616.811
     },
-    "checkpointReview": "bounded read-only review: no material deploy blocker"
+    "checkpointReview": "bounded read-only review: no material deploy blocker",
+    "remoteCI": "integration34256916482 and main34257616163 PASS"
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",
@@ -66,7 +67,7 @@
     "next": "necessary capability repair and qualification; no blanket acceptance from activation"
   },
   "blockers": [],
-  "next": "Publish verified integration, remote CI, main integration, exact release/migrations/nginx, signed-in real Catalog and whole-product verification",
+  "next": "Real Catalog export/import/Preview/Apply, whole-product browser verification, qualified Compute repair and automatic-cataloguing acceptance",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

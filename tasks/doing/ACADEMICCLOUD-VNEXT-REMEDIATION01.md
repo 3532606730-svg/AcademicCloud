@@ -36,14 +36,14 @@ Backend catalog/library/metadata/suggestions/persistence; frontend Library/detai
 
 ## Current State
 
-ACTIVE, reconciled 2026-09-07. Integration branch codex/vnext-remediation-20260906 at D:/Projects/AcademicCloud-vnext, based on exact remote B eb03dbd2fff86d4925193e7f7de69e30336e9993. Local remediation is implemented with verification below. Implementation checkpoint 09b6587198da947408f63fc41a929eba22766ab0 is committed locally; push, main merge and deployment are pending.
+ACTIVE, reconciled 2026-09-09. Integration branch codex/vnext-remediation-20260906 at D:/Projects/AcademicCloud-vnext incorporates exact B eb03dbd2fff86d4925193e7f7de69e30336e9993. Core/frontend6972b212975bf15ce8221ec47ab5d03924cadf41 is published on integration/main, passes both remote CI runs and is deployed at schema036. Active local and remote HEAD equality was verified. Bridgeba0a74f28470a312f2e05135033f5b5a727ef093 is deployed and verified. Main inference remains absent/inactive pending qualification.
 
 Work is explicitly separated:
 - **PREEXISTING_DIRTY_FILES:** original W retains ten tracked dirty files and 630 untracked files; review/staging trees are preserved. W NuExtract work already in B was not replaced by stale code.
 - **FILES_CHANGED_BY_THIS_REVIEW:** prior safe fixes and remediation are integrated only in the vNext worktree; Git diff/status is the exact inventory.
 - **REVIEW_ONLY_TEMPORARY_FILES:** ignored output/vnext contains local fixtures, logs, benchmarks and screenshots, not production data or release authority.
 
-Last production observation (2026-09-06, read-only): Core 196c9c5ee7ed60c6a261df5eef65f32cccaff639, schema/history 34/001–034, eleven admissions, healthy/ready/active with zero restarts; Catalog Bridge e261d11bda258da489561a4eba6155020f19301f active in V2; main inference service absent/inactive. No task production/data/OSS mutation yet.
+Post-deployment production verification: Core6972b21, schema/history36/001–036, eleven admissions, healthy/ready/active with zero restarts; 132 search projection rows, zero dirty rows, integrity OK and zero FK violations. Applied migrations035/036 and repository nginx limits; no original byte or canonical business metadata changes yet. The existing backup mechanism produced one encrypted schema034 recovery point, verified off-host in private backup commit1a9d1c7acf7f7afc5530dc8614bcdb1a30b15c40.
 
 ## Completed
 
@@ -65,19 +65,19 @@ The runbook selects candidate migration/admission paths after protected environm
 ## Remaining
 
 - Complete the remaining live browser matrix after deployment. Local normal-list/Catalog comparisons and error/empty/loading screenshots are complete; bounded release review found no material blocker.
-- Checkpoint/publish integration, pass remote CI, integrate main, verify active local/remote identity without discarding work.
-- Assemble/verify/deploy an exact release, run append-only migrations 035–036/initialization, reconcile nginx/services, verify runtime/readiness/integrity.
 - Execute real signed-in export/import/Preview/Apply and check data, filenames, Search and reading/details; report exact mutations/outcomes.
 - Resolve and qualify necessary Compute capability repair. Historical NuExtract3 B passed, two C resources failed closed at canonical_schema_invalid; automatic-cataloguing acceptance remains open.
 - Close production-relevant findings only after deployment/live evidence; deliver the complete final report.
 
 ## Blockers
 
-2026-09-08: normal signed-in production Library access is available and SSH readiness passes. GitHub rejects workflow-file publication because the existing OAuth credential lacks workflow scope; the device authorization flow requires account-holder login. Existing GitHub SSH/GCM credentials cannot publish. Local Linux qualification follows the equivalent release boundary in ADR-041 while remote publication/CI remain outstanding. No further Owner approval for deployment, migration, main integration, Apply or necessary Compute repair is required.
+Production and GitHub sessions are available; workflow authorization is complete. No approval blocker remains. Intermittent network failures receive bounded retries. Main inference is still unqualified; repeated offline C diagnostics are narrowing the native/canonical adapter failure before any activation.
 
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
+
+2026-09-09: exact integration CI34256916482 and main CI34257616163 pass, including Windows native installation. Linux backend426/frontend322/contracts3/Compute150+1skip/operations79, type/build/compiled acceptance and zero-vulnerability audits pass. Two production-package builds are byte-identical (archive0cb8e61cb946960ba65bfd3c3855470d9994c30f2b800517c69bb47ff626a218; manifest4,930 files/37,108,689 bytes), with extracted runtime checks passing locally and on Alibaba. Production schema/current release/registry/integrity/FK/nginx/public readiness pass. Six-width real before screenshots and reading baseline are in the original tree's ignored output/vnext-live; after/live workflow checks continue.
 
 2026-09-08 checkpoint: final changed UI/translations 49/49; metadata authority-reset tests 6/6. Catalog Apply at 100/1,000/10,000 total holdings (100/500/500 selected): baseline 545/23,757/121,268 ms; candidate 96/592/1,150 ms. Full persistence/object-key/audit assertions passed. Preview median 9/73/471 ms baseline versus 33/247/617 ms candidate. Normal list DTO/cursor equality passes; latency remains materially unchanged. These are Windows in-process synthetic service measurements, not production latency.
 
@@ -92,4 +92,4 @@ The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Next Action
 
-Publish when GitHub workflow authorization is available; continue exact Linux release qualification, deployment and signed-in live verification independently. Do not mark production-relevant findings RESOLVED before deployment and appropriate verification.
+Finish real Catalog export/import/Preview/Apply and whole-product browser checks; complete the bounded Compute diagnosis and qualification. Reconcile exact outcomes and deliver the required final report only after dependent acceptance is complete or literally blocked.
