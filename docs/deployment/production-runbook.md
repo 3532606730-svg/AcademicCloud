@@ -45,8 +45,9 @@ Do not build or install dependencies on the Alibaba production host, and do not
 copy Windows `node_modules` to Ubuntu. A real target-host
 `npm ci --omit=dev` was OOM-killed, so `npm ci`, `node-gyp`, native compilation,
 and frontend builds are prohibited there. Use a compatible GitHub Actions
-Linux/Node 24 build environment; never run npm lifecycle or native build scripts
-as root:
+Linux/Node 24 build environment, or the existing Owner Ubuntu 24.04/WSL builder
+under the equivalent qualification boundary below. Never run npm lifecycle or
+native build scripts as root:
 
 ```bash
 npm exec --yes --package=npm@11.19.1 -- npm ci --strict-allow-scripts
@@ -95,6 +96,18 @@ release archive against its SHA-256 file before extraction. A mismatch,
 expired artifact, different source commit, unexpected native-module path, or
 missing evidence aborts the deployment window; never rebuild on Alibaba as a
 fallback.
+
+When GitHub credentials or hosted execution are unavailable, a local Linux
+release may use the same production-artifact prepare/finalize/pack/verify
+commands against a clean archive of an exact committed source. Use Ubuntu
+24.04 x86-64, Node 24 and pinned npm 11.19.1 as a non-root user. Run the complete
+Linux test/type/build/compiled-acceptance and dependency gates above, reproduce
+the production package twice, and independently verify an extracted bundle.
+Record the builder and source in the existing task evidence. This produces
+the same four-file runtime bundle but has no GitHub artifact ID or service
+digest; never invent them or call it a successful remote CI run. GitHub
+publication/main synchronization and remote CI remain separate outstanding
+requirements. No build or dependency installation moves onto Alibaba.
 
 Use immutable commit-named release directories such as `/opt/academiccloud/releases/<commit>` and a `/opt/academiccloud/current` symlink. Verify ownership and that the service cannot write the release tree.
 

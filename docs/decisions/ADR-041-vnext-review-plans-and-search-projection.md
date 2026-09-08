@@ -24,6 +24,8 @@ Useful UI context is stored in account-scoped session storage/history state. Res
 
 Reproducible installation uses npm 11.19.1 and strict versioned lifecycle-script permissions. SQLite uses its packaged prebuild; other required native build scripts remain explicitly allowed. The same policy applies to CI and assembled release packages.
 
+Release qualification may also run on the existing Owner Ubuntu 24.04/WSL machine when GitHub account authorization or hosted execution is unavailable. An exact committed source archive, non-root Node 24 build, complete Linux checks, reproducible production packaging and extracted-runtime verification remain mandatory. This avoids added cost and keeps build work off the small production host. Local qualification does not claim remote CI success or waive source publication/main synchronization; those states remain explicit until the external service permits them.
+
 ## Consequences and verification
 
 Core keeps bounded ephemeral review state and SQLite derived search tables, with no new resident services or paid infrastructure. Tests must cover full Preview/Apply persistence equivalence, human conflicts/clear/preserve, plan isolation/expiry/retry, per-item rollback and linear revalidation; SQL search equivalence and 100/1,000/10,000 benchmarks; fresh initialization/readiness; transport boundaries; and UI journeys. Production-relevant findings remain open until deployed and verified through normal signed-in workflows.

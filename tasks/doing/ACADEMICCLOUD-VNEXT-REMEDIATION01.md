@@ -73,7 +73,7 @@ The runbook selects candidate migration/admission paths after protected environm
 
 ## Blockers
 
-2026-09-08: normal signed-in production Library access is now available. SSH readiness passes; intermittent connection resets require bounded retries. No current external blocker. No further approval for deployment, migration, main integration, Apply or necessary Compute repair is required.
+2026-09-08: normal signed-in production Library access is available and SSH readiness passes. GitHub rejects workflow-file publication because the existing OAuth credential lacks workflow scope; the device authorization flow requires account-holder login. Existing GitHub SSH/GCM credentials cannot publish. Local Linux qualification follows the equivalent release boundary in ADR-041 while remote publication/CI remain outstanding. No further Owner approval for deployment, migration, main integration, Apply or necessary Compute repair is required.
 
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
@@ -92,4 +92,4 @@ The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Next Action
 
-Finish remaining targeted benchmarks/browser evidence, then checkpoint/publish, remote CI, main integration and exact deployment. Continue independent work while production login is unavailable. Do not mark production-relevant findings RESOLVED before deployment and appropriate verification.
+Publish when GitHub workflow authorization is available; continue exact Linux release qualification, deployment and signed-in live verification independently. Do not mark production-relevant findings RESOLVED before deployment and appropriate verification.
