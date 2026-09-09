@@ -599,10 +599,14 @@ export function adaptNuExtractBibliographyResponse(value: unknown, prompt: strin
     const label = nativeOptionalText(contributor.label);
     const role = nativeOptionalText(contributor.role);
     const roleLabel = nativeOptionalText(contributor.roleLabel);
-    if (label === null || role === null || roleLabel === null
+    if (label === null || role === null
       || !INTELLIGENT_CONTRIBUTOR_ROLES.includes(role as (typeof INTELLIGENT_CONTRIBUTOR_ROLES)[number])) {
       throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
     }
+    // Native extraction can recognize a name and infer a role without finding
+    // explicit role wording in the source. Omit that unsupported contributor;
+    // never manufacture the missing role evidence or discard other facts.
+    if (roleLabel === null) return;
     const evidence = exactNativeEvidence(sources, [label, roleLabel]);
     if (!evidence) return;
     const scopeKey = `contributor:${contributors.length}`;

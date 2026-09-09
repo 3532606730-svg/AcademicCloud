@@ -297,14 +297,16 @@ test("a stuck heartbeat aborts the active attempt at lease expiry instead of wed
 });
 
 test("process-isolated lease keeper renews continuously while the compute process is blocked beyond the original lease", async (context) => {
-  const heartbeatServer = await independentHeartbeatServer("renew");
+  const heartbeatServer = await independentHeartbeatServer("renew", 2_000);
   context.after(() => heartbeatServer.close());
   const current = {
     ...claim(),
     callbackUrl: `${heartbeatServer.origin}/api/internal/compute/jobs/job-local/result`,
-    lease: { expiresAt: new Date(Date.now() + 500).toISOString(), heartbeatAfterMilliseconds: 1_000 },
+    lease: { expiresAt: new Date(Date.now() + 5_000).toISOString(), heartbeatAfterMilliseconds: 1_000 },
   };
   let callbacks = 0;
+  let renewalsBeforeBlocking = 0;
+  let renewalsAfterBlocking = 0;
   const fetchImplementation: typeof fetch = async (input) => {
     const url = new URL(String(input));
     if (url.pathname === "/api/internal/compute/pull") return Response.json(current);
@@ -317,11 +319,20 @@ test("process-isolated lease keeper renews continuously while the compute proces
   const inspector: BoundedPdfTextSource = {
     async inspect() { throw new Error("whole-object reads are forbidden"); },
     async inspectRange() {
-      const blockedUntil = Date.now() + 700;
-      while (Date.now() < blockedUntil) {
-        // Deterministically model a synchronous PDF/render/native boundary
-        // without relying on a timer that would yield the event loop.
+      // Wait for an actual renewal so child/tsx startup is not mistaken for
+      // starvation. Shared CI runners need more than a 150 ms renewed lease.
+      const readyDeadline = Date.now() + 5_000;
+      while ((renewalsBeforeBlocking = await heartbeatServer.stats()) === 0) {
+        assert.ok(Date.now() < readyDeadline, "the isolated keeper must begin renewing");
+        await new Promise((resolve) => setTimeout(resolve, 20));
       }
+      const blockedUntil = Math.max(Date.parse(current.lease.expiresAt) + 500, Date.now() + 3_000);
+      const blocker = new Int32Array(new SharedArrayBuffer(4));
+      // Block this event loop like a native call, without burning a CI CPU
+      // needed by the independent server and keeper. No JS timer can run here.
+      while (Date.now() < blockedUntil) Atomics.wait(blocker, 0, 0, blockedUntil - Date.now());
+      renewalsAfterBlocking = await heartbeatServer.stats();
+      assert.ok(Date.now() > Date.parse(current.lease.expiresAt));
       return {
         pageCount: 1,
         pageIndices: [1],
@@ -337,12 +348,12 @@ test("process-isolated lease keeper renews continuously while the compute proces
     inspector,
     reasoner: successfulReasoner(),
     leaseKeeperMode: "process",
-    testHeartbeatDelayMilliseconds: 20,
-    networkTimeouts: { heartbeatMilliseconds: 100 },
+    testHeartbeatDelayMilliseconds: 100,
+    networkTimeouts: { heartbeatMilliseconds: 1_000 },
   });
   assert.equal(outcome?.result.state, "succeeded");
   assert.equal(callbacks, 1);
-  assert.ok(await heartbeatServer.stats() >= 3, "the isolated keeper must renew throughout main-thread starvation");
+  assert.ok(renewalsAfterBlocking - renewalsBeforeBlocking >= 3, "the isolated keeper must renew during main-thread starvation");
 });
 
 test("process-isolated lease failure remains fail-closed and cannot callback after main-process starvation", async (context) => {

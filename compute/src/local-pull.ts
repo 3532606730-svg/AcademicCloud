@@ -665,7 +665,13 @@ export async function runLocalPullWorker(
   options: {
     fetchImplementation?: typeof fetch;
     signal?: AbortSignal;
-    onEvent?: (event: { event: string; jobId?: string; attemptId?: string; state?: string }) => void;
+    onEvent?: (event: {
+      event: string;
+      jobId?: string;
+      attemptId?: string;
+      state?: string;
+      failureDiagnostic?: ComputeWorkerOutcome["failureDiagnostic"];
+    }) => void;
     runtimeFactory?: () => ComputeWorkerRuntime;
     networkTimeouts?: Partial<LocalPullNetworkTimeouts>;
   } = {},
@@ -699,6 +705,15 @@ export async function runLocalPullWorker(
             jobId: outcome.result.jobId,
             attemptId: outcome.result.attemptId,
             state: outcome.result.state,
+            // Project only the worker's controlled diagnostic fields. Never
+            // log the error object, source authorization, or extracted text.
+            ...(outcome.failureDiagnostic === undefined ? {} : { failureDiagnostic: {
+              code: outcome.failureDiagnostic.code,
+              stage: outcome.failureDiagnostic.stage,
+              ...(outcome.failureDiagnostic.detail === undefined ? {} : { detail: outcome.failureDiagnostic.detail }),
+              ...(outcome.failureDiagnostic.rangeRequests === undefined ? {} : { rangeRequests: outcome.failureDiagnostic.rangeRequests }),
+              ...(outcome.failureDiagnostic.rangeBytes === undefined ? {} : { rangeBytes: outcome.failureDiagnostic.rangeBytes }),
+            } }),
           });
           if (outcome.result.state === "failed" && outcome.result.errorCode === "compute_internal_error") {
             await runtimePool.invalidate();

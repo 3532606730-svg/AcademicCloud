@@ -182,6 +182,41 @@ test("NuExtract adapter rejects malformed or contradictory native facts without 
   assert.equal((unsupported.canonical as { publication?: unknown }).publication, undefined);
 });
 
+test("NuExtract omits contributors without source role wording while preserving evidenced facts", () => {
+  const canonical = {
+    canonicalTitle: "Controlled Collected Papers", alternativeTitles: [], identifiers: [],
+    contributors: [
+      { label: "Alex North", role: "author", roleLabel: null },
+      { label: "Sam West", role: "editor", roleLabel: "Edited by" },
+      { label: "Jo East", role: "author", roleLabel: "" },
+    ],
+    publication: { publisher: "Example Press" }, carrierEdition: {}, sourceEdition: {},
+  };
+  const prompt = JSON.stringify({ pages: [{ pageIndex: 4, pageClass: "title_page",
+    evidenceOrigin: "native_text", fieldEvidenceEligible: true,
+    text: "Controlled Collected Papers\nEdited by Sam West\nExample Press\nAlex North\nJo East" }] });
+  const result = adaptNuExtractBibliographyResponse({ canonical }, prompt);
+  assert.deepEqual(result.canonical, {
+    materialClass: "unknown", canonicalTitle: "Controlled Collected Papers",
+    contributors: [{ label: "Sam West", role: "editor", roleLabel: "Edited by" }],
+    publication: { publisher: "Example Press" },
+  });
+  assert.equal(result.status, "ambiguous");
+  assert.equal(result.overallConfidence, 0);
+  const contributorFields = (result.fields as Array<Record<string, unknown>>)
+    .filter((field) => String(field.fieldName).startsWith("contributor."));
+  assert.equal(contributorFields.length, 3);
+  assert.ok(contributorFields.every((field) => field.scopeKey === "contributor:0"
+    && field.confidence === 0 && field.sourcePageIndex === 4 && field.evidenceText === "Edited by Sam West"));
+  for (const contributor of [
+    { label: "Alex North", role: "invented_role", roleLabel: null },
+    { label: "Alex North", role: "author", roleLabel: 42 },
+  ]) {
+    assert.throws(() => adaptNuExtractBibliographyResponse({ canonical: { ...canonical, contributors: [contributor] } }, prompt),
+      (error: unknown) => error instanceof BibliographicIntelligenceError && error.diagnostic === "canonical_schema_invalid");
+  }
+});
+
 function emptyCanonical(title: string): IntelligentCanonicalBibliography {
   return {
     materialClass: "scholarly_monograph",

@@ -36,7 +36,7 @@ Backend catalog/library/metadata/suggestions/persistence; frontend Library/detai
 
 ## Current State
 
-ACTIVE, reconciled 2026-09-09. Integration branch codex/vnext-remediation-20260906 at D:/Projects/AcademicCloud-vnext incorporates exact B eb03dbd2fff86d4925193e7f7de69e30336e9993. Core/frontend6972b212975bf15ce8221ec47ab5d03924cadf41 is published on integration/main, passes both remote CI runs and is deployed at schema036. Active local and remote HEAD equality was verified. Bridgeba0a74f28470a312f2e05135033f5b5a727ef093 is deployed and verified. Main inference remains absent/inactive pending qualification.
+ACTIVE, reconciled 2026-09-09. Integration branch codex/vnext-remediation-20260906 at D:/Projects/AcademicCloud-vnext incorporates exact B eb03dbd2fff86d4925193e7f7de69e30336e9993. Core/frontend and main Compute36c4d75e6ba59b34007f096f78f20ab11ccec448 are published on integration/main and deployed at schema036. Active local and remote HEAD equality was verified. Bridgeba0a74f28470a312f2e05135033f5b5a727ef093 is deployed and verified. Main Compute is enabled NORMAL concurrency one, temporarily stopped for exclusive offline follow-up qualification. Integration CI passes; the main repeat exposed a test timing race, now repaired locally.
 
 Work is explicitly separated:
 - **PREEXISTING_DIRTY_FILES:** original W retains ten tracked dirty files and 630 untracked files; review/staging trees are preserved. W NuExtract work already in B was not replaced by stale code.
@@ -49,7 +49,9 @@ Real Catalog Apply completed through the signed-in Owner UI: preserved manifest1
 
 Six real responsive after screenshots (1600/1440/1366/1024/768/390) have no horizontal overflow; 1440/390 visually checked after paint settlement. Existing Catalog startup helper plus hidden WSL keepalive fix bridge disappearance when the CLI exits. Windows/Linux health now pass persistently. Browser Use independently rejects loopback with ERR_BLOCKED_BY_CLIENT, so fresh browser export is unverified; the real Apply used preserved evidence.
 
-The next candidate fixes three diagnosed native adapter defects: scalar PDF/OCR line wrapping, ineligible evidence-page shadowing and edition digits matched inside unrelated numbers. Offline exact-fact-boundaries passes six cases including both real C PDFs; real C remains reviewable UNKNOWN class. Frozen v11 validation/provenance/class/confidence/authority contracts are unchanged. Focused33 tests and read-only review pass. The file details label is corrected from misleading original filename to file display name; this label and adapter await exact release.
+Deployed36c4 fixes scalar PDF/OCR line wrapping, ineligible evidence-page shadowing and edition digits matched inside unrelated numbers. Immutable offline6/6 and both normal-site C retries pass; real C remains reviewable UNKNOWN class. v11 validation/provenance/class/confidence/authority contracts remain unchanged. The file details label now correctly identifies the file display name.
+
+New Mongolia Today normal upload automatically queued a job. Deliberate worker loss recovered via systemd and natural lease expiration into attempt2; no Core/search/PDF outage. The recovered attempt failed closed because thirteen contributors lacked explicit source role wording. The bounded follow-up omits those unsupported contributors while retaining strict type/enum/evidence rules; the real PDF passes offline with19 fields, UNKNOWN/ambiguous and no auto-promotion. Main is temporarily stopped for exact final seven-case qualification. Follow-up also repairs same-ID retry/idempotent-success UI state, labels the uncalibrated model score honestly, preserves safe Local Pull diagnostics, patches Vitest4.1.11, and synchronizes the lease test on real heartbeats.
 
 ## Completed
 
@@ -72,16 +74,20 @@ The runbook selects candidate migration/admission paths after protected environm
 
 - Finish remaining whole-product browser evidence; six real responsive widths and the real Catalog correction flow now pass.
 - Preserve the exact verified Catalog mutation record; fresh export has a Browser Use loopback block, independent of bridge health.
-- Package/deploy the offline-qualified Compute adapter and verify normal signed-in automatic-cataloguing/retry and resilience. Both historical C failures now pass offline; live AI acceptance remains open.
+- Package/deploy the new-upload adapter/UI/diagnostic/test repairs, qualify all seven immutable cases and retry the uploaded source through the normal website. Both C retries and natural worker-loss recovery already pass.
 - Close production-relevant findings only after deployment/live evidence; deliver the complete final report.
 
 ## Blockers
 
-Production and GitHub sessions are available; no approval blocker remains. Browser Use blocks direct loopback export. Main inference remains inactive pending exact release verification and live acceptance; offline adapter qualification now passes6/6.
+Production and GitHub sessions are available; no approval blocker remains. Browser Use blocks direct loopback export. New-upload behavior is locally repaired and awaits exact release/live verification; it is not an external blocker. Worker stop is temporary exclusive offline qualification, with NORMAL/enabled configuration retained.
 
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
+
+2026-09-09 follow-up checkpoint: Compute158 passed/one skipped, all workspace typechecks, frontend324/324 and complete audit zero vulnerabilities. Null source role wording no longer discards valid bibliography; malformed types/enums still reject. Exact old release reproduces the real upload failure, bounded candidate passes19 evidenced fields. Four safe-diagnostic completion tests exclude private source/error/capability material. Lease regression now synchronizes on first real heartbeat and observes at least three renewals while the parent is blocked beyond its original lease. All six live HTTP body boundaries and normal Favorites/filter/sort/refresh checks pass. These new runtime changes await deployment.
+
+2026-09-09 production follow-up:36c4d75 is main/Core/frontend/Compute; full immutable verifier and offline6/6 pass. Main worker enabled/active NORMAL concurrency1. Normal-UI C2 job7aedd762 attemptfe23982c succeeded12:20:54Z (89.801s); C1 joba3a4bfc9 attempt041be081 succeeded12:22:32Z (43.796s). Exact v11/NuExtract3 results retain19/10 fields, UNKNOWN class, no auto-apply, unchanged files/canonical metadata and zero FK violations. Evidence: output/vnext/live-c-results-verification.json. New real Mongolia Today upload resource4b492f3f-bb91-49df-8ffe-767f1ce61147 automatically created jobffc568e0. Controlled local worker loss12:26:05Z restarted normally (NRestarts1); natural lease recovery remains in progress. Main CI34342462609 has one test timing failure, under bounded repair; integration CI34341820660 passes. Local frontend324/324 covers newly fixed same-ID retry and idempotent completed-job UI state. Vitest4.1.11 patch restores zero complete-audit findings.
 
 2026-09-09 follow-up: Compute deterministic suite153 passed/one skipped; focused adapter33/33; frontend details/translations44/44; Compute build/typecheck and independent review pass. Pinned NuExtract3/llama offline6/6 includes C1 in18,369ms and C2 in35,491ms, both exact v11 reviewable UNKNOWN classification. Real Catalog persistence verification and six real browser widths pass. Evidence remains in ignored output/vnext/compute-qualification/exact-fact-boundaries and live-catalog-persistence-verification.json, plus original output/vnext-live/screenshots.
 
@@ -100,4 +106,4 @@ The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Next Action
 
-Checkpoint and release the qualified adapter plus corrected display-name label. Verify exact immutable Compute, then normal signed-in automatic-cataloguing/retry and resilience; finish whole-product evidence and the required final report.
+Checkpoint and release the new-upload/UI/diagnostic/test repairs. Verify the exact seven-case immutable Compute release and normal-site upload retry; complete remaining whole-product checks and the required final report.

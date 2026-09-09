@@ -279,6 +279,46 @@ describe("Resource details", () => {
     expect(screen.queryByRole("button", { name: "Edit information" })).not.toBeInTheDocument();
   });
 
+  it("keeps Core's successful state when generation reuses the completed job", async () => {
+    const user = userEvent.setup();
+    const onSuggestionJobChange = vi.fn();
+    const summary = { fileId: HOLDING.file.id, state: "ai_succeeded_reviewable", job: SUCCEEDED_JOB };
+    const states = vi.fn().mockResolvedValue([summary]);
+    renderDetails({ onSuggestionJobChange, api: {
+      getLibraryMetadataSuggestions: vi.fn().mockResolvedValue(AI_SUGGESTION_RUN),
+      getLatestLibraryMetadataSuggestionStates: states,
+      generateLibraryMetadataSuggestions: vi.fn().mockResolvedValue(SUCCEEDED_JOB),
+    } });
+    await screen.findByText("AI cataloguing succeeded — reviewable evidence is available");
+    const before = states.mock.calls.length;
+    await user.click(screen.getByRole("button", { name: "Organize with AI" }));
+    await waitFor(() => expect(states.mock.calls.length).toBeGreaterThan(before));
+    expect(screen.getByText("AI cataloguing succeeded — reviewable evidence is available")).toBeInTheDocument();
+    expect(screen.queryByText("Content was extracted, but no reviewable AI result was produced")).not.toBeInTheDocument();
+    expect(onSuggestionJobChange).toHaveBeenLastCalledWith(SUCCEEDED_JOB, "ai_succeeded_reviewable");
+  });
+
+  it("resumes polling when a failed job is retried under the same ID", async () => {
+    const user = userEvent.setup();
+    const failed: DerivedMetadataJob = { ...SUCCEEDED_JOB, state: "failed", errorCode: "compute_invalid_result", resultRef: null };
+    const queued: DerivedMetadataJob = { ...failed, state: "queued", attempts: 2, errorCode: null, finishedAt: null, progress: 0 };
+    const completed = { ...SUCCEEDED_JOB, attempts: 2 };
+    const onSuggestionJobChange = vi.fn();
+    const states = vi.fn().mockResolvedValueOnce([{ fileId: HOLDING.file.id, state: "failed", job: failed }])
+      .mockResolvedValue([{ fileId: HOLDING.file.id, state: "ai_succeeded_reviewable", job: completed }]);
+    const poll = vi.fn().mockResolvedValue(completed);
+    renderDetails({ onSuggestionJobChange, api: {
+      getLibraryMetadataSuggestions: vi.fn().mockResolvedValue(AI_SUGGESTION_RUN),
+      getLatestLibraryMetadataSuggestionStates: states,
+      generateLibraryMetadataSuggestions: vi.fn().mockResolvedValue(queued),
+      getLibraryMetadataSuggestionJob: poll,
+    } });
+    await screen.findByText("The current AI cataloguing run failed");
+    await user.click(screen.getByRole("button", { name: "Organize with AI" }));
+    await waitFor(() => expect(poll).toHaveBeenCalled(), { timeout: 4_000 });
+    await waitFor(() => expect(onSuggestionJobChange).toHaveBeenCalledWith(completed, "ai_succeeded_reviewable"), { timeout: 4_000 });
+  });
+
   it.each([
     ["book", { editionStatement: "First edition" }, "Edition statement"],
     ["article", { locator: "pp. 1–20" }, "Pages or locator"],
@@ -571,6 +611,12 @@ describe("Resource details", () => {
       }
       if (path.endsWith("/metadata/suggestion-jobs/latest") && method === "GET") {
         return new Response(JSON.stringify({ job: null }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (path.includes("/metadata/suggestion-states?") && method === "GET") {
+        return new Response(JSON.stringify({ states: suggestionReads > 1
+          ? [{ fileId: HOLDING.file.id, state: "extraction_only", job: SUCCEEDED_JOB }]
+          : [{ fileId: HOLDING.file.id, state: "not_run", job: null }] }),
+        { status: 200, headers: { "content-type": "application/json" } });
       }
       if (path.endsWith("/metadata/suggestion-jobs/job-1") && method === "GET") {
         return new Response(JSON.stringify({ job: SUCCEEDED_JOB }), { status: 200, headers: { "content-type": "application/json" } });

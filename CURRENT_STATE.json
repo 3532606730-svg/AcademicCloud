@@ -6,13 +6,13 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "6972b212975bf15ce8221ec47ab5d03924cadf41",
-    "mainIntegration": "fast-forwarded main and integration to verified 6972b21",
+    "checkpoint": "36c4d75e6ba59b34007f096f78f20ab11ccec448",
+    "mainIntegration": "fast-forwarded main and integration to36c4d75",
     "localSynchronized": true
   },
   "production": {
     "observedAt": "2026-09-09",
-    "coreFrontendCommit": "6972b212975bf15ce8221ec47ab5d03924cadf41",
+    "coreFrontendCommit": "36c4d75e6ba59b34007f096f78f20ab11ccec448",
     "schemaVersion": 36,
     "migrationHistory": "001-036",
     "rulesetAdmissions": 11,
@@ -22,7 +22,7 @@
     "catalogBridgeCommit": "ba0a74f28470a312f2e05135033f5b5a727ef093",
     "catalogBridgeState": "active",
     "computeDistro": "AcademicCloudComputeV2",
-    "mainInferenceState": "service absent/inactive",
+    "mainInferenceState": "36c4d75 enabled NORMAL concurrency1; temporarily inactive for exact follow-up offline qualification",
     "vnextDeployed": true
   },
   "candidate": {
@@ -42,9 +42,9 @@
   },
   "verification": {
     "backend": "426/426",
-    "frontend": "322/322",
+    "frontend": "324/324 local follow-up",
     "contracts": "3/3",
-    "compute": "150 pass; 1 skip",
+    "compute": "158 pass; 1 skip (follow-up local suite)",
     "operations": "79/79",
     "metadataAuthorityReset": "6/6",
     "typesBuild": "pass",
@@ -58,19 +58,21 @@
       "newPreviewMedian": 616.811
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
-    "remoteCI": "integration34256916482 and main34257616163 PASS"
+    "remoteCI": "integration34341820660 PASS; main34342462609 timing race repaired locally, new CI pending"
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",
     "historicalProductionB": "pass reviewable",
     "historicalProductionC": "two canonical_schema_invalid failures, no promotion",
-    "next": "exact candidate packaging/deployment, normal signed-in retry/automatic-cataloguing and resilience",
-    "candidateOffline": "6/6: A/B/B/UNKNOWN and both real C PDFs; real C class UNKNOWN, unchanged v11 validator"
+    "next": "seven-case immutable follow-up release then normal-site new-upload retry",
+    "candidateOffline": "6/6: A/B/B/UNKNOWN and both real C PDFs; real C class UNKNOWN, unchanged v11 validator",
+    "currentProductionC": "both normal-UI retries succeeded; UNKNOWN class,19/10 evidence fields, no canonical/source mutation",
+    "normalUpload": "Automatic job and natural lease recovery PASS; attempt2 failed unsupported null contributor role wording; bounded optional omission passes offline19fields, exact release/live retry pending"
   },
   "blockers": [
     "Browser Use blocks direct loopback with ERR_BLOCKED_BY_CLIENT; fresh browser export not verified"
   ],
-  "next": "Release qualified adapter/display-name label, verify live AI acceptance and finish whole-product report",
+  "next": "Publish UI/new-upload/diagnostic/CI repairs, qualify immutable7cases, deploy and complete live acceptance/report",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

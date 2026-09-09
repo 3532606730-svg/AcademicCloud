@@ -6,7 +6,7 @@
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | ACTIVE — real Catalog Apply and six-width browser matrix pass; Compute adapter offline6/6; release exact repair then finish normal AI/retry/resilience and whole-product acceptance |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | ACTIVE — real Catalog Apply, both C retries and natural worker-loss recovery pass; release new-upload contributor omission/UI/CI repairs, qualify exact seven-case runtime, then finish normal upload acceptance and final report |
 
 The Owner's 2026-09-06 instruction authorizes remediation of the accepted review and real newly found defects, including necessary production/data/service changes and main integration. Use existing authority without repeated approval requests. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 

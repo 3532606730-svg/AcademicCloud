@@ -653,7 +653,7 @@ export function ResourceDetailsDialog({
       controller.abort();
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionJob?.id, suggestionsEnabled]);
+  }, [api, library.id, holding.file.id, onSuggestionJobChange, suggestionJob?.id, suggestionJob?.state, suggestionJob?.attempts, suggestionsEnabled]);
 
   useEffect(() => {
     if (!editing || library.role !== "manager") return;
@@ -679,8 +679,20 @@ export function ResourceDetailsDialog({
       // Fast naming: the lightweight filename-derived run is persisted
       // synchronously with the request, so the candidates appear immediately
       // while the OCR/Compute job continues asynchronously.
-      const run = await api.getLibraryMetadataSuggestions?.(library.id, holding.file.id);
+      const [run, states] = await Promise.all([
+        api.getLibraryMetadataSuggestions?.(library.id, holding.file.id),
+        job.state === "succeeded"
+          ? api.getLatestLibraryMetadataSuggestionStates?.(library.id, [holding.file.id])
+          : undefined,
+      ]);
       if (run !== undefined) setSuggestionRun(run);
+      // Idempotent generation can return the same completed job. Its ID/state
+      // does not retrigger polling, so recover Core's authoritative state here.
+      const summary = states?.[0];
+      if (summary?.job?.id === job.id && summary.job.resultRef === job.resultRef) {
+        setCataloguingState(summary.state);
+        onSuggestionJobChange?.(job, summary.state);
+      }
     } catch (caught) {
       setSuggestionsError(safeSuggestionError(caught));
     } finally {
