@@ -49,10 +49,20 @@ ln -sfn "$RELEASE_ROOT" "${COMPUTE_ROOT}/.current.$$"
 mv -Tf "${COMPUTE_ROOT}/.current.$$" "$CURRENT_LINK"
 systemctl daemon-reload
 systemctl enable academiccloud-local-compute.service
-BEFORE_RESTARTS="$(systemctl show academiccloud-local-compute.service --property=NRestarts --value 2>/dev/null || printf '0')"
-[[ "$BEFORE_RESTARTS" =~ ^[0-9]+$ ]] || BEFORE_RESTARTS=0
 if ! systemctl restart academiccloud-local-compute.service \
   || ! systemctl is-active --quiet academiccloud-local-compute.service; then
+  rollback_activation
+fi
+
+# An explicit restart begins a new systemd invocation and resets NRestarts.
+# Measure stability against this invocation, not the previous release's count.
+if ! STARTED_PROPERTIES="$(systemctl show academiccloud-local-compute.service \
+  --property=NRestarts --property=MainPID)"; then
+  rollback_activation
+fi
+STARTED_RESTARTS="$(sed -n 's/^NRestarts=//p' <<<"$STARTED_PROPERTIES")"
+STARTED_MAIN_PID="$(sed -n 's/^MainPID=//p' <<<"$STARTED_PROPERTIES")"
+if [[ ! "$STARTED_RESTARTS" =~ ^[0-9]+$ || ! "$STARTED_MAIN_PID" =~ ^[1-9][0-9]*$ ]]; then
   rollback_activation
 fi
 
@@ -61,6 +71,7 @@ SERVICE_PROPERTIES="$(systemctl show academiccloud-local-compute.service \
   --property=ActiveState --property=SubState --property=Result --property=NRestarts \
   --property=MainPID --property=ExecMainStatus --property=User --property=Group --property=FragmentPath)"
 AFTER_RESTARTS="$(sed -n 's/^NRestarts=//p' <<<"$SERVICE_PROPERTIES")"
+AFTER_MAIN_PID="$(sed -n 's/^MainPID=//p' <<<"$SERVICE_PROPERTIES")"
 if ! grep -qx 'ActiveState=active' <<<"$SERVICE_PROPERTIES" \
   || ! grep -qx 'SubState=running' <<<"$SERVICE_PROPERTIES" \
   || ! grep -qx 'Result=success' <<<"$SERVICE_PROPERTIES" \
@@ -69,7 +80,8 @@ if ! grep -qx 'ActiveState=active' <<<"$SERVICE_PROPERTIES" \
   || ! grep -qx 'Group=academiccloud' <<<"$SERVICE_PROPERTIES" \
   || ! grep -qx "FragmentPath=$UNIT_TARGET" <<<"$SERVICE_PROPERTIES" \
   || ! grep -Eq '^MainPID=[1-9][0-9]*$' <<<"$SERVICE_PROPERTIES" \
-  || [[ "$AFTER_RESTARTS" != "$BEFORE_RESTARTS" ]] \
+  || [[ "$AFTER_RESTARTS" != "$STARTED_RESTARTS" ]] \
+  || [[ "$AFTER_MAIN_PID" != "$STARTED_MAIN_PID" ]] \
   || [[ "$(readlink -f "$CURRENT_LINK")" != "$RELEASE_ROOT" ]] \
   || [[ "$(stat -c '%U:%G|%a' "$ENVIRONMENT_FILE")" != 'academiccloud:academiccloud|600' ]]; then
   rollback_activation
