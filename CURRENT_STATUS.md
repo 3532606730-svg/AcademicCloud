@@ -43,15 +43,19 @@ Verified after deployment on 2026-09-09:
 | Main inference worker | Service absent/inactive; automatic-cataloguing acceptance remains open |
 | vNext migration/release | Deployed; migrations035/036 applied once, no additional admissions; repository nginx limits active |
 
-The exact Ubuntu24.04/Node24.19 local build reproduced archive SHA-256 0cb8e61cb946960ba65bfd3c3855470d9994c30f2b800517c69bb47ff626a218 twice. Its 4,930-file/37,108,689-byte manifest and extracted native/compiled runtime pass both locally and on Alibaba, with no production build/install. One schema034 recovery point was created through the existing backup command and encrypted with the existing public recipient; private backup commit 1a9d1c7acf7f7afc5530dc8614bcdb1a30b15c40 verifies off-host publication. No source bytes or canonical business metadata have been changed by this task yet.
+The exact Ubuntu24.04/Node24.19 local build reproduced archive SHA-256 0cb8e61cb946960ba65bfd3c3855470d9994c30f2b800517c69bb47ff626a218 twice. Its 4,930-file/37,108,689-byte manifest and extracted native/compiled runtime pass both locally and on Alibaba, with no production build/install. One schema034 recovery point was created through the existing backup command and encrypted with the existing public recipient; private backup commit 1a9d1c7acf7f7afc5530dc8614bcdb1a30b15c40 verifies off-host publication.
 
-Historical NuExtract3 offline qualification and production B passed. Two distinct real multilingual C jobs failed closed at bibliographic_reasoning/canonical_schema_invalid, with no false success or canonical promotion. Current authorization permits capability repair; an unqualified worker must not be presented as accepted.
+Real signed-in Catalog v2 import/Preview/Apply passed: the preserved 82-resource evidence manifest produced one reviewed correction, 78 UNKNOWN and three internal exclusions. Only resource894cce4f-38be-4f7f-9f9f-a8eb379b5aef changed: 《黑毡上的北魏皇帝》, 罗新, 海豚出版社, 2014.06, with explicit title/copyright evidence. Twelve reviewed operations preserved source bytes, object key/checksum/size and Resource/Record/Artifact/Version identities. Read-only database comparison confirms one changed file and one successful metadata audit, fourteen human field authorities plus human contributor-list authority, and zero FK violations. ISBN search, reading, details, citation and refresh context passed. Six real responsive after widths have no horizontal overflow.
+
+The existing Windows startup helper and a hidden WSL keepalive now keep the independent Catalog Bridge reachable after CLI exit. Browser Use blocks loopback directly with ERR_BLOCKED_BY_CLIENT; fresh in-browser export remains externally unverified although Core export authorization and Windows/Linux bridge health pass. Import/Apply used preserved evidence, not a claimed fresh export.
+
+Historical NuExtract3 production B passed; two real multilingual C jobs failed closed. The current adapter repair folds scalar layout whitespace, honors fact-page eligibility and applies the existing numeric evidence boundary before choosing a source line. Offline qualification now passes A/B/B/UNKNOWN plus both real C PDFs (6/6), with the unchanged v11 validator and pinned model/runtime. Both real C results remain reviewable with UNKNOWN class; no unsupported class or confidence is promoted. Thirty-three focused tests and independent review pass. This candidate is not yet deployed or accepted through normal production AI paths.
 
 ## Remaining work and blockers
 
-Finish real authenticated Catalog export/import/Preview/Apply, data/filename/Search/reading/details verification and the six-width after matrix. Diagnose and qualify the necessary NuExtract repair before main inference activation and normal automatic-cataloguing acceptance.
+Release the qualified adapter and corrected file-display-name label, verify the exact immutable runtime, then complete normal signed-in automatic-cataloguing/retry and resilience acceptance. Finish remaining whole-product evidence and final report.
 
-Production and GitHub signed-in sessions are available. GitHub workflow authorization is complete; there is no remaining approval blocker. Intermittent network failures receive bounded retries. Main inference remains unqualified; the two preserved C PDFs still fail at the canonical adapter boundary in offline diagnostics.
+Production and GitHub signed-in sessions are available; no approval blocker remains. Fresh browser-to-loopback export is blocked by Browser Use. Main inference activation/live acceptance remains pending exact candidate packaging and qualification evidence; offline C adapter failures are repaired.
 
 ## Historical evidence
 

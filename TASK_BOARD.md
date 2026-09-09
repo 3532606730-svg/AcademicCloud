@@ -6,7 +6,7 @@
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | ACTIVE — Core6972b21 and Bridgeba0a deployed; schema036, main integration and CI green; finish real Catalog Apply, whole-product browser verification and necessary Compute qualification |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | ACTIVE — real Catalog Apply and six-width browser matrix pass; Compute adapter offline6/6; release exact repair then finish normal AI/retry/resilience and whole-product acceptance |
 
 The Owner's 2026-09-06 instruction authorizes remediation of the accepted review and real newly found defects, including necessary production/data/service changes and main integration. Use existing authority without repeated approval requests. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 

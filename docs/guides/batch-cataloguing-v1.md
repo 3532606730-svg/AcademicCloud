@@ -1,4 +1,6 @@
-# Batch Cataloguing V1
+# Batch Cataloguing: local evidence and v2 review
+
+The evidence ZIP remains v1. Results v2 and immutable review plans follow [ADR-041](../decisions/ADR-041-vnext-review-plans-and-search-projection.md); legacy v1 results remain accepted conservatively.
 
 Batch Cataloguing is an Owner-only, human-mediated roundtrip. AcademicCloud does not call an external AI service and remains usable without one.
 
@@ -15,7 +17,9 @@ Library resources
 
 ## Export
 
-In the Library, select at least one PDF, choose **Batch Cataloguing**, and choose **Prepare local evidence export**. The browser downloads:
+In the Library, select PDFs, choose **Batch Cataloguing**, and start local evidence export. The browser obtains a private export request from Core and sends it to the Catalog Bridge on this computer. The bridge exports bounded evidence independently of the main inference worker; do not activate inference merely to export. The bridge must be running and the browser must permit the site's connection to loopback. Progress, cancellation and the finished ZIP are available in the dialog.
+
+For the explicit manual CLI fallback, retain the private request locally as:
 
 ```text
 academiccloud-catalog-export-request-<batch-id>.json
@@ -127,7 +131,9 @@ Example (abbreviated to one resource):
 
 The actual `sourceManifest.resources` value must be the array of resource objects, not the explanatory string shown in this abbreviated example.
 
-Allowed dispositions are `auto`, `review`, and `unknown`. `auto` is only bulk-selection eligibility; it is still visible and not applied automatically. `review` requires explicit selection. `unknown`, stale identities, and collisions cannot be applied.
+Allowed external dispositions are `auto`, `review`, and `unknown`. External `auto` becomes REVIEW: it conveys no selection or write authority. Nothing is preselected. UNKNOWN has no applicable proposal unless the Owner supplies an explicit corrected proposal with evidence and reviews it. Stale identities, internal test resources and collisions are excluded. Confidence is the external producer's uncalibrated self-rating; it is neither a probability nor permission to apply.
+
+Prefer `academiccloud.catalog-results.v2`. Each resource carries allowlisted field operations: set replaces an explicit value, clear intentionally removes an optional value, and an omitted field preserves current data. Preview shows before/after values and authority changes for every operation. Acknowledging evidence is mandatory; overwriting existing human facts and clearing values require their respective acknowledgements. Legacy v1 is translated conservatively and cannot silently clear omitted fields. Use the exported review contract and the strict shared schema for complete field names and shapes.
 
 ## Filename policy
 
@@ -138,14 +144,22 @@ AcademicCloud deterministically projects display filenames and never changes `ob
 - CJK article/chapter-like work: `作者：《论文名》（年份）.pdf`
 - foreign-language book: `Title (Author, Year).pdf`
 
+For historical sources, modern publication and historical source edition are separate. Source-edition publisher/imprint information has priority over a holding institution in source naming. Verbose provenance and edition narratives stay in details instead of being copied into filenames. The server uses the merged post-review metadata to derive a name, so omitted fields retain the same meaning in Preview and Apply.
+
 Missing title, responsibility, or date yields `NO_RENAME`; there are no invented placeholders. Invalid filesystem punctuation is conservatively mapped to Unicode full-width equivalents. AcademicCloud never adds `_2`, `_3`, `_final`, or similar suffixes.
 
-Same-name/same-content is `EXACT_DUPLICATE`; same-name/different-content is `NAME_COLLISION`. Neither overwrites the existing resource.
+Within the same folder, same-name/same-content is `EXACT_DUPLICATE`; same-name/different-content is `NAME_COLLISION`. ASCII case variants collide. Neither overwrites the existing resource; another folder does not cause a false collision.
 
 ## Import and apply
 
 The results file is strict untrusted input. Core rejects unknown keys where specified, wrong schema/batch/digest, duplicate IDs, path traversal, uncontrolled enum values, excessive arrays/text, internal contributor/authority IDs, and any resource/source identity mismatch.
 
-Preview performs no mutation. It shows current/proposed filenames, canonical title, responsibility, year, material class, confidence, identity/collision status, and changed metadata fields. Apply accepts only explicitly selected preview versions, revalidates the live state transactionally, preserves the object key, records normal `libraries.metadata_update` audit activity, and establishes changed bibliographic field authority as human under the confirming Owner account. No schema migration or new audit vocabulary is required.
+Preview performs no persistent mutation. It shows current/proposed filenames, every field operation, evidence, confidence, identity/collision status and required acknowledgements in pages of 25 items. Core retains an immutable, actor/Library-bound plan for at most 30 minutes. A restart, expiry or eviction requires a fresh Preview; no stale plan can apply.
+
+The Preview body is limited to 8 MiB. Apply sends the plan ID, at most 500 selected item versions and acknowledgements, with a separate 256 KiB limit; it never resends the results document. Core holds at most four plans within a conservative 32 MiB memory budget. An oversized plan requires a smaller batch.
+
+Apply revalidates source, metadata, authority, folder and collisions in each selected item's transaction. It preserves object keys and stable identities, records normal `libraries.metadata_update` audit activity, and establishes explicitly adopted fields as human authority. Migration036 adds human contributor-collection authority, so clearing/removing/reordering a list cannot be undone by a later AI retry. Existing contributor identities and authority links are preserved where applicable.
+
+Completed items remain completed during retries; replay of a completed item returns its original result without another write. Partial failure leaves remaining items visible for review. Refresh expired/stale plans and inspect the changed values before trying again.
 
 If an existing canonical record has material-type-specific fields, an incompatible external `materialType` proposal cannot discard them. AcademicCloud preserves the current material type and its type-specific fields while still allowing separately safe, explicitly selected bibliographic changes.

@@ -50,7 +50,7 @@
     "typesBuild": "pass",
     "compiledAcceptance": "pass schema036, v11 admission, repeat initialization, persistence/recovery",
     "strictNpmInstall": "pass npm11.19.1",
-    "browser": "six-width real before matrix; deployed live-path acceptance in progress",
+    "browser": "six real responsive before/after widths; live Catalog import/Preview/Apply, ISBN search, reading, details, citation and refresh pass",
     "catalogBenchmark10000Holdings500SelectedMs": {
       "oldApply": 121267.617,
       "newApply": 1149.913,
@@ -64,10 +64,13 @@
     "historicalNuExtract3Offline": "4/4 pass",
     "historicalProductionB": "pass reviewable",
     "historicalProductionC": "two canonical_schema_invalid failures, no promotion",
-    "next": "necessary capability repair and qualification; no blanket acceptance from activation"
+    "next": "exact candidate packaging/deployment, normal signed-in retry/automatic-cataloguing and resilience",
+    "candidateOffline": "6/6: A/B/B/UNKNOWN and both real C PDFs; real C class UNKNOWN, unchanged v11 validator"
   },
-  "blockers": [],
-  "next": "Real Catalog export/import/Preview/Apply, whole-product browser verification, qualified Compute repair and automatic-cataloguing acceptance",
+  "blockers": [
+    "Browser Use blocks direct loopback with ERR_BLOCKED_BY_CLIENT; fresh browser export not verified"
+  ],
+  "next": "Release qualified adapter/display-name label, verify live AI acceptance and finish whole-product report",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

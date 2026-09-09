@@ -97,6 +97,60 @@ test("NuExtract native facts project exactly into the frozen v11 model shape", (
   });
 });
 
+test("NuExtract scalar layout whitespace retains exact evidence and cannot create unsupported facts", () => {
+  const prompt = JSON.stringify({ pages: [{ pageIndex: 7, pageClass: "copyright_page", evidenceOrigin: "ocr", fieldEvidenceEligible: true,
+    text: "题名：受控题名\n版本：据原本\n影印\n出版日期：二〇一四年\n六月" }], embeddedMetadata: {} });
+  const result = adaptNuExtractBibliographyResponse({ canonical: {
+    canonicalTitle: "受控题名", alternativeTitles: [], identifiers: [], contributors: [],
+    publication: { publisher: "无证据\n出版社" },
+    dateStatement: "二〇一四年\r\n六月", carrierEdition: { editionStatement: "据原本\n影印" }, sourceEdition: {},
+  } }, prompt);
+  const canonical = result.canonical as Record<string, unknown>;
+  assert.equal(canonical.dateStatement, "二〇一四年 六月");
+  assert.deepEqual(canonical.carrierEdition, { editionStatement: "据原本 影印" });
+  assert.equal(canonical.publication, undefined);
+  assert.equal(canonical.materialClass, "unknown");
+  for (const field of result.fields as Array<Record<string, unknown>>) {
+    assert.equal(field.sourcePageIndex, 7);
+    assert.equal(field.confidence, 0);
+    assert.equal(field.evidenceOrigin, "ocr");
+  }
+  assert.equal(result.overallConfidence, 0);
+});
+
+test("NuExtract fact evidence ignores ineligible pages without shadowing an eligible source", () => {
+  const canonical = { canonicalTitle: "受控题名", alternativeTitles: [], identifiers: [], contributors: [],
+    publication: { publisher: "正文提及出版社" }, carrierEdition: {}, sourceEdition: {} };
+  const pages = [
+    { pageIndex: 1, pageClass: "body", evidenceOrigin: "native_text", fieldEvidenceEligible: false,
+      text: "受控题名\n正文提及出版社" },
+    { pageIndex: 2, pageClass: "title_page", evidenceOrigin: "ocr", fieldEvidenceEligible: true, text: "题名：受控题名" },
+  ];
+  const result = adaptNuExtractBibliographyResponse({ canonical }, JSON.stringify({ pages }));
+  assert.equal((result.canonical as Record<string, unknown>).publication, undefined);
+  assert.deepEqual((result.fields as Array<Record<string, unknown>>).map((field) => [field.fieldName, field.sourcePageIndex]),
+    [["canonicalTitle", 2]]);
+  assert.equal(result.overallConfidence, 0);
+  assert.equal(adaptNuExtractBibliographyResponse({ canonical }, JSON.stringify({ pages: pages.slice(0, 1) })).status, "no_bibliography");
+  assert.throws(() => adaptNuExtractBibliographyResponse({ canonical }, JSON.stringify({ pages: [{ ...pages[1], fieldEvidenceEligible: "true" }] })),
+    (error: unknown) => error instanceof BibliographicIntelligenceError && error.diagnostic === "field_evidence_invalid");
+});
+
+test("NuExtract numeric evidence cannot use a digit inside another number", () => {
+  const canonical = { canonicalTitle: "受控题名", alternativeTitles: [], identifiers: [], contributors: [],
+    publication: { editionNumber: "1" }, carrierEdition: {}, sourceEdition: {} };
+  const prompt = (text: string) => JSON.stringify({ pages: [{ pageIndex: 3, pageClass: "copyright_page",
+    evidenceOrigin: "ocr", fieldEvidenceEligible: true, text }] });
+  const withoutEdition = adaptNuExtractBibliographyResponse({ canonical }, prompt("题名：受控题名\n出版日期：2014年"));
+  assert.equal((withoutEdition.canonical as Record<string, unknown>).publication, undefined);
+  const withEdition = adaptNuExtractBibliographyResponse({ canonical }, prompt("题名：受控题名\n出版日期：2014年\n第1版"));
+  assert.deepEqual((withEdition.canonical as Record<string, unknown>).publication, { editionNumber: "1" });
+  const evidence = (withEdition.fields as Array<Record<string, unknown>>).find((field) => field.fieldName === "publication.editionNumber");
+  assert.equal(evidence?.evidenceText, "第1版");
+  assert.equal(evidence?.sourcePageIndex, 3);
+  assert.equal(evidence?.confidence, 0);
+});
+
 test("NuExtract adapter rejects malformed or contradictory native facts without coercion", () => {
   const prompt = JSON.stringify({
     pages: [{ pageIndex: 1, pageClass: "title_page", evidenceOrigin: "native_text", fieldEvidenceEligible: true, text: "题名：受控题名" }],

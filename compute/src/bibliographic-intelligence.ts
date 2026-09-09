@@ -450,7 +450,11 @@ function nativeOptionalText(value: unknown): string | null {
   if (typeof value !== "string") {
     throw new BibliographicIntelligenceError("invalid_result", "canonical_schema_invalid");
   }
-  return value;
+  // Native extraction preserves PDF/OCR line wrapping. Canonical scalar facts
+  // are single-line text, and exactNativeEvidence already compares whitespace-
+  // folded source/value pairs. Fold only layout whitespace here: no word,
+  // punctuation, enum, number, control-character, or unsupported-fact repair.
+  return value.replace(/[ \t\r\n]+/gu, " ");
 }
 
 function assignNativeCanonicalFact(canonical: Record<string, unknown>, fieldName: string, value: unknown): void {
@@ -488,7 +492,7 @@ function nuExtractEvidenceSources(prompt: string): NuExtractEvidenceSource[] {
     throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
   }
   if (!Array.isArray(parsed.pages)) throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
-  const sources: NuExtractEvidenceSource[] = parsed.pages.map((value) => {
+  const sources: NuExtractEvidenceSource[] = parsed.pages.flatMap((value) => {
     const page = nativeExactRecord(
       value,
       ["pageIndex", "pageClass", "evidenceOrigin", "fieldEvidenceEligible", "text"],
@@ -496,14 +500,18 @@ function nuExtractEvidenceSources(prompt: string): NuExtractEvidenceSource[] {
     );
     if (!Number.isSafeInteger(page.pageIndex)
       || !["native_text", "ocr"].includes(String(page.evidenceOrigin))
-      || typeof page.text !== "string") {
+      || typeof page.text !== "string"
+      || typeof page.fieldEvidenceEligible !== "boolean") {
       throw new BibliographicIntelligenceError("invalid_result", "field_evidence_invalid");
     }
-    return {
+    // Class context can include body/preface pages. They must not shadow a
+    // later authoritative title/copyright page containing the same fact.
+    if (!page.fieldEvidenceEligible) return [];
+    return [{
       pageIndex: page.pageIndex as number,
       evidenceOrigin: page.evidenceOrigin as "native_text" | "ocr",
       text: page.text,
-    };
+    }];
   });
   if (parsed.embeddedMetadata !== undefined) {
     const metadata = nativeExactRecord(parsed.embeddedMetadata, ["title", "author", "subject", "keywords"], "field_evidence_invalid");
@@ -524,9 +532,12 @@ function exactNativeEvidence(
   if (expected.length === 0) return null;
   for (const source of sources) {
     const normalized = normalizedNativeEvidence(source.text);
-    if (!expected.every((entry) => normalized.includes(entry))) continue;
+    const supports = (text: string): boolean => expected.every((entry) => (
+      text.includes(entry) && evidenceContainsValue(text, entry)
+    ));
+    if (!supports(normalized)) continue;
     const lines = source.text.split(/\r?\n/u).map(normalizedNativeEvidence).filter(Boolean);
-    const supportingLine = lines.find((line) => expected.every((entry) => line.includes(entry)));
+    const supportingLine = lines.find(supports);
     const evidenceText = supportingLine ?? (expected.length === 1 ? expected[0]! : normalized);
     if ([...evidenceText].length > 2_048) continue;
     return {
