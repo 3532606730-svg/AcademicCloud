@@ -2063,14 +2063,18 @@ export async function deriveIntelligentBibliography(
   if (result.canonical?.materialClass !== "unknown" || !reasoner.classifyMaterial) return result;
   const candidates = classEvidenceCandidatesFor(reasoningInspection);
   if (candidates.length === 0) return result;
-  const classProposal = await reasoner.classifyMaterial(classificationPromptFor(candidates), signal);
   try {
+    signal?.throwIfAborted();
+    const classProposal = await reasoner.classifyMaterial(classificationPromptFor(candidates), signal);
+    signal?.throwIfAborted();
     return applyClassOnlyProposal(result, classProposal, candidates, reasoningInspection);
   } catch (error: unknown) {
-    // Classification is an optional, bounded refinement. A malformed or stale
-    // candidate citation cannot promote the class and must not discard the
-    // already validated unknown/ambiguous bibliography.
-    if (error instanceof BibliographicIntelligenceError && error.code === "invalid_result") return result;
+    // The reasoner can report both its local timeout and parent cancellation
+    // as reasoner_timeout. A cancelled/lost-lease attempt must still abort.
+    signal?.throwIfAborted();
+    // Optional classification failures retain the validated bibliography;
+    // unclassified errors still surface rather than hiding programming faults.
+    if (error instanceof BibliographicIntelligenceError) return result;
     throw error;
   }
 }

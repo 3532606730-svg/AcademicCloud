@@ -2,6 +2,16 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## ADR-042 — Document sessions and public asset continuity
+
+**Date:** 2026-09-09. **Status:** Accepted, implementation under qualification.
+
+[ADR-042](docs/decisions/ADR-042-document-session-and-static-asset-continuity.md) retains the active reader through temporary Details/Citation views, isolates optional dialog loading and keeps manifest-verified prior public chunks reachable across deployments. No source authorization or durable data identity changes.
+
+## 2026-09-09 — Reassessment charter and Phase B takeover
+
+The Owner designated AcademicCloud-Astra-Reassessment-Execution-Charter as the current operating charter and the master handoff as history, then explicitly stopped the predecessor and directed immediate execution. The Phase A read-only gate is superseded. ACADEMICCLOUD-VNEXT-REMEDIATION01 remains the sole task and now sequences work beyond the old R01–R16 review: runtime recovery/correctness, fast polished document workflows, stable source/page identity and useful private research tools, measured Catalog/transfer/search improvements, then bounded full-text foundations. Broad implementation/publication/deployment authority does not remove privacy, evidence, data-safety or zero-cost gates. Concrete new architecture still receives its own ADR when implemented. Existing task and roadmap records carry the execution order; no parallel handoff system is introduced.
+
 ## ADR-001 — Modular Architecture Is Mandatory
 
 **Date:** 2026-08-11  

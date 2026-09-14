@@ -413,7 +413,7 @@ describe("LibrarySearchField", () => {
     expect(screen.queryByText("元史 中华书局1976点校本")).not.toBeInTheDocument();
   });
 
-  it("keeps the six server-authoritative sort choices in the quiet search row", async () => {
+  it("keeps browse sorting separate and defaults keyword search to relevance", async () => {
     const user = userEvent.setup();
     const searchLibraryHoldings = vi.fn().mockResolvedValue({ results: [], nextCursor: null });
     const onSortChange = vi.fn();
@@ -430,10 +430,35 @@ describe("LibrarySearchField", () => {
       LIBRARY.id,
       "book",
       expect.any(AbortSignal),
-      undefined,
-      undefined,
-      undefined,
-      "newest",
     ));
+    expect(sort).toHaveValue("relevance");
+    expect(within(sort).getAllByRole("option")).toHaveLength(7);
+    await user.selectOptions(sort, "oldest");
+    await waitFor(() => expect(searchLibraryHoldings).toHaveBeenLastCalledWith(
+      LIBRARY.id, "book", expect.any(AbortSignal), undefined, undefined, undefined, "oldest",
+    ));
+    expect(onSortChange).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(sort).toHaveValue("newest");
+  });
+
+  it("uses the explicit search sort for subsequent pages without changing browse order", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn()
+      .mockResolvedValueOnce({ results: [result({ canonicalTitle: "Relevant" })], nextCursor: "rank-next" })
+      .mockResolvedValueOnce({ results: [result({ canonicalTitle: "Alphabetical" })], nextCursor: "title-next" })
+      .mockResolvedValueOnce({ results: [result({ fileId: "second", canonicalTitle: "Second" })], nextCursor: null });
+    const onSortChange = vi.fn();
+    const input = renderField({ searchLibraryHoldings } as unknown as AcademicCloudApi, vi.fn(), { sort: "size_desc", onSortChange });
+    await user.type(input, "book");
+    await screen.findByText("Relevant");
+    await user.selectOptions(screen.getByLabelText("Sort"), "title_asc");
+    await screen.findByText("Alphabetical");
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Second");
+    expect(searchLibraryHoldings).toHaveBeenLastCalledWith(
+      LIBRARY.id, "book", expect.any(AbortSignal), "title-next", undefined, undefined, "title_asc",
+    );
+    expect(onSortChange).not.toHaveBeenCalled();
   });
 });

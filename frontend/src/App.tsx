@@ -47,13 +47,13 @@ import {
 import { calculateFileMd5 } from "./md5.ts";
 import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
-import { ResourceDetailsDialog } from "./resource-details.tsx";
-import { BatchNamingDialog } from "./batch-naming.tsx";
-import { BatchCatalogDialog } from "./batch-catalog.tsx";
+import { ResourceDetailsDialog, BatchNamingDialog, BatchCatalogDialog, CitationDialog } from "./deferred-dialog.tsx";
 import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
+import { canPreviewFile } from "./preview-capability.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
-import { clearViewPreferences, useHistoryDialog, useWorkspaceLocation } from "./view-context.ts";
-import { CitationDialog } from "./citation.tsx";
+import { clearViewPreferences, useWorkspaceLocation } from "./view-context.ts";
+import { PreviewDialog, type PreviewDocument } from "./preview-dialog.tsx";
+import { useModalDialog } from "./use-modal-dialog.ts";
 import {
   forgetSourceHandle,
   recoverRememberedSource,
@@ -443,10 +443,7 @@ type FilePickerWindow = Window & {
   showOpenFilePicker?: (options?: { multiple?: boolean }) => Promise<RecoverableFileHandle[]>;
 };
 
-interface PreviewState {
-  file: Pick<FileEntry, "displayName" | "mediaType">;
-  url: string;
-  returnFocus: HTMLElement | null;
+interface PreviewState extends PreviewDocument {
   download: () => Promise<void>;
   resource?: ResourceDetailsRequest;
 }
@@ -866,7 +863,9 @@ function DriveView({
     const active = metadataActivities.filter(({ job }) => job.state === "queued" || job.state === "running");
     if (active.length === 0) return;
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
+    let timer: number;
+    const poll = () => {
+      if (controller.signal.aborted) return;
       const library = active[0]!.library;
       void api.getLatestLibraryMetadataSuggestionStates!(
         library.id,
@@ -883,8 +882,13 @@ function DriveView({
                 return summary?.job ? { ...activity, job: summary.job, state: summary.state } : activity;
               })()
         )));
-      }, () => undefined);
-    }, 2_000);
+      }, () => {
+        // A failed read must not strand an otherwise live job. Success updates
+        // activity state and restarts this effect; failures retry independently.
+        if (!controller.signal.aborted) timer = window.setTimeout(poll, 5_000);
+      });
+    };
+    timer = window.setTimeout(poll, 2_000);
     return () => {
       controller.abort();
       window.clearTimeout(timer);
@@ -1948,26 +1952,20 @@ function DriveView({
 
   async function openPreview(file: FileEntry, returnFocus?: HTMLElement | null) {
     const requestId = ++previewRequest.current;
-    // The originating row-action trigger is passed explicitly: the removed
-    // portal menuitem must never be captured as the restore target.
-    const fallbackFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setBusyId(`preview-${file.id}`);
+    const focus = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setError(null);
+    setPreview({
+      requestId, file, url: null, error: null, returnFocus: focus,
+      download: () => downloadFile(file),
+      retry: () => { void openPreview(file, focus); },
+    });
     try {
       const authorization = await api.createDownload(file.id, "inline");
       if (requestId !== previewRequest.current) return;
-      setPreview({
-        file,
-        url: authorization.url,
-        returnFocus: returnFocus ?? fallbackFocus,
-        download: () => downloadFile(file),
-      });
+      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url } : current);
     } catch (caught: unknown) {
-      // preview_unavailable renders the localized fail-safe message; the
-      // Preview button never silently triggers a download.
-      if (requestId === previewRequest.current) setError(caught);
-    } finally {
-      if (requestId === previewRequest.current) setBusyId(null);
+      if (requestId !== previewRequest.current) return;
+      setPreview((current) => current?.requestId === requestId ? { ...current, error: caught } : current);
     }
   }
 
@@ -1984,31 +1982,42 @@ function DriveView({
     holding: LibraryHolding,
     returnFocus?: HTMLElement | null,
   ) {
+    if (!canPreviewFile(holding.file)) {
+      openResourceDetails(library, holding, returnFocus);
+      return;
+    }
     const requestId = ++previewRequest.current;
-    const fallbackFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setBusyId(`preview-${holding.file.id}`);
+    const focus = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setError(null);
+    setPreview({
+      requestId,
+      file: { displayName: libraryHoldingDisplayTitle(holding, language), mediaType: holding.file.mediaType ?? "application/octet-stream" },
+      url: null, error: null, returnFocus: focus,
+      download: () => downloadLibraryHolding(library, holding),
+      retry: () => { void openLibraryPreview(library, holding, focus); },
+      resource: { library, holding, returnFocus: focus },
+    });
     try {
       const authorization = await api.createLibraryDownload(library.id, holding.file.id, "inline");
       if (requestId !== previewRequest.current) return;
-      setPreview({
-        file: {
-          displayName: libraryHoldingDisplayTitle(holding, language),
-          mediaType: holding.file.mediaType ?? "application/octet-stream",
-        },
-        url: authorization.url,
-        returnFocus: returnFocus ?? fallbackFocus,
-        download: () => downloadLibraryHolding(library, holding),
-        resource: { library, holding, returnFocus: returnFocus ?? fallbackFocus },
-      });
+      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url } : current);
     } catch (caught: unknown) {
-      if (requestId === previewRequest.current) setError(caught);
-    } finally {
-      if (requestId === previewRequest.current) setBusyId(null);
+      if (requestId !== previewRequest.current) return;
+      setPreview((current) => current?.requestId === requestId ? { ...current, error: caught } : current);
     }
   }
 
+  function closeDocumentPreview() {
+    previewRequest.current++;
+    setPreview(null);
+    setResourceDetailsRequest(null);
+    setCitationRequest(null);
+    setBusyId((current) => current?.startsWith("preview-") ? null : current);
+  }
+
   function openResourceDetails(library: LibrarySummary, holding: LibraryHolding, returnFocus?: HTMLElement | null) {
+    previewRequest.current++;
+    setBusyId((current) => current?.startsWith("preview-") ? null : current);
     setResourceDetailsRequest({
       library,
       holding,
@@ -2827,10 +2836,15 @@ function DriveView({
           returnFocus={resourceDetailsRequest.returnFocus}
           onClose={() => setResourceDetailsRequest(null)}
           onSaved={(_detail: LibraryHoldingDetails) => refresh()}
-          onPreview={() => {
+          onPreview={(file) => {
             const request = resourceDetailsRequest;
             setResourceDetailsRequest(null);
-            void openLibraryPreview(request.library, request.holding, request.returnFocus);
+            // The current source remains mounted while its details are open.
+            // Metadata edits do not replace file bytes; return without signing
+            // or recreating the native reader and losing its page/zoom.
+            if (preview?.resource?.library.id === request.library.id
+              && preview.resource.holding.file.id === request.holding.file.id) return;
+            void openLibraryPreview(request.library, { ...request.holding, file: { ...request.holding.file, ...file } }, request.returnFocus);
           }}
           onDownload={() => void downloadLibraryHolding(resourceDetailsRequest.library, resourceDetailsRequest.holding)}
           onCitation={() => {
@@ -2876,9 +2890,10 @@ function DriveView({
           }}
         />
       )}
-      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(null)} onDownload={() => void preview.download()}
-        onDetails={preview.resource ? () => setResourceDetailsRequest(preview.resource!) : undefined}
-        onCitation={preview.resource ? () => setCitationRequest(preview.resource!) : undefined} />}
+      {preview && <PreviewDialog preview={preview} covered={resourceDetailsRequest !== null || citationRequest !== null}
+        onClose={closeDocumentPreview} onDownload={() => void preview.download()}
+        onDetails={preview.resource ? (trigger) => setResourceDetailsRequest({ ...preview.resource!, returnFocus: trigger }) : undefined}
+        onCitation={preview.resource ? (trigger) => setCitationRequest({ ...preview.resource!, returnFocus: trigger }) : undefined} />}
       {moveRequest && (
         <MoveDialog
           api={api}
@@ -4185,38 +4200,6 @@ function FolderBadge() {
   return <FolderIcon size={19} className="file-badge file-badge--folder" />;
 }
 
-function PreviewDialog({ preview, onClose, onDownload, onDetails, onCitation }: {
-  preview: PreviewState; onClose: () => void; onDownload: () => void;
-  onDetails?: (() => void) | undefined; onCitation?: (() => void) | undefined;
-}) {
-  const { t, language } = useLanguage();
-  const close = useHistoryDialog(onClose);
-  const dialogRef = useModalDialog(close, false, preview.returnFocus);
-  const [loaded, setLoaded] = useState(false);
-
-  return (
-      <dialog ref={dialogRef} className="preview-modal" aria-labelledby="preview-title">
-        <header>
-          <h2 id="preview-title">{preview.file.displayName}</h2>
-          <button className="button button--quiet preview-close-button" type="button" onClick={close} aria-label={t("preview.closeAria")}>{t("preview.close")}</button>
-        </header>
-        <div className="preview-content">
-          {!loaded && <p className="preview-loading" role="status">{language === "zh-CN" ? "正在打开资料…" : "Opening resource…"}</p>}
-          {preview.file.mediaType.startsWith("image/") ? (
-            <img src={preview.url} onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} alt={t("preview.imageAlt", { name: preview.file.displayName })} referrerPolicy="no-referrer" />
-          ) : (
-            <iframe src={preview.url} onLoad={() => setLoaded(true)} title={t("preview.frameTitle", { name: preview.file.displayName })} referrerPolicy="no-referrer" />
-          )}
-        </div>
-        <footer>
-          <a className="button preview-open-button" href={preview.url} target="_blank" rel="noreferrer">{t("preview.open")}</a>
-          <button className="button preview-download-button" type="button" onClick={onDownload}>{t("menu.download")}</button>
-          {onDetails && <button className="button button--quiet" type="button" onClick={() => { close(); onDetails(); }}>{language === "zh-CN" ? "资料详情" : "Resource details"}</button>}
-          {onCitation && <button className="button button--quiet" type="button" onClick={() => { close(); onCitation(); }}>{language === "zh-CN" ? "引用" : "Citation"}</button>}
-        </footer>
-      </dialog>
-  );
-}
 
 function MoveDialog({
   api,
@@ -4315,63 +4298,6 @@ function MoveDialog({
   );
 }
 
-function useModalDialog(onClose: () => void, closeDisabled = false, returnFocus?: HTMLElement | null) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const onCloseRef = useRef(onClose);
-  const closeDisabledRef = useRef(closeDisabled);
-  onCloseRef.current = onClose;
-  closeDisabledRef.current = closeDisabled;
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const previousFocus = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    const cancel = (event: Event) => {
-      event.preventDefault();
-      if (!closeDisabledRef.current) onCloseRef.current();
-    };
-    const fallbackKeys = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !closeDisabledRef.current) {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
-        "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
-      ));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
-
-    dialog.addEventListener("cancel", cancel);
-    if (typeof dialog.showModal === "function") {
-      dialog.showModal();
-    } else {
-      dialog.setAttribute("open", "");
-      document.addEventListener("keydown", fallbackKeys);
-      (dialog.querySelector<HTMLElement>("input:not([disabled]), [autofocus]") ??
-        dialog.querySelector<HTMLElement>("button:not([disabled]), a[href]"))?.focus();
-    }
-
-    return () => {
-      dialog.removeEventListener("cancel", cancel);
-      document.removeEventListener("keydown", fallbackKeys);
-      if (dialog.open && typeof dialog.close === "function") dialog.close();
-      previousFocus?.focus();
-    };
-  }, []);
-
-  return dialogRef;
-}
 
 function EmptyState({ title }: { title: string }) {
   return <div className="empty-state"><span aria-hidden="true">◇</span><h3>{title}</h3></div>;
@@ -4382,17 +4308,7 @@ function LoadingRows() {
   return <div className="loading-rows" role="status"><span /><span /><span /><span className="visually-hidden">{t("shared.loadingItems")}</span></div>;
 }
 
-function isPreviewable(file: { mediaType: string | null }): boolean {
-  if (file.mediaType === null) return false;
-  return [
-    "application/pdf",
-    "text/plain",
-    "image/png",
-    "image/jpeg",
-    "image/gif",
-    "image/webp",
-  ].includes(file.mediaType);
-}
+const isPreviewable = canPreviewFile;
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1_024) return `${bytes} B`;

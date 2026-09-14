@@ -844,6 +844,76 @@ test("an invalid class-only candidate identity preserves the validated unknown r
   assert.ok(result.warnings.includes("uncertain_material_class"));
 });
 
+for (const failure of [
+  new BibliographicIntelligenceError("invalid_result", "content_json_invalid"),
+  new BibliographicIntelligenceError("reasoner_unavailable", "request_failed"),
+  new BibliographicIntelligenceError("reasoner_timeout"),
+]) {
+  test(`optional material classification preserves validated bibliography after ${failure.code}`, async () => {
+    const source = fixture({ ...emptyCanonical("A General History of Inner Asia"), materialClass: "unknown" }, "ambiguous", ["uncertain_material_class"]);
+    const expected = await deriveIntelligentBibliography(source.inspection, source.reasoner);
+    let classificationCalls = 0;
+    const result = await deriveIntelligentBibliography(source.inspection, {
+      infer: source.reasoner.infer,
+      async classifyMaterial() {
+        classificationCalls += 1;
+        throw failure;
+      },
+    });
+
+    assert.equal(classificationCalls, 1);
+    assert.equal(result.status, "ambiguous");
+    assert.equal(result.canonical?.materialClass, "unknown");
+    assert.deepEqual(result, expected, "classification failure must retain every validated fact, warning and evidence row");
+  });
+}
+
+test("optional material classification propagates job cancellation even when the reasoner masks it", async () => {
+  for (const returnsProposal of [false, true]) {
+    const source = fixture({ ...emptyCanonical("A General History of Inner Asia"), materialClass: "unknown" }, "ambiguous", ["uncertain_material_class"]);
+    const controller = new AbortController();
+    const cancellation = new Error("The Compute attempt lost its lease.");
+    await assert.rejects(deriveIntelligentBibliography(source.inspection, {
+      infer: source.reasoner.infer,
+      async classifyMaterial(_prompt, signal) {
+        assert.equal(signal, controller.signal);
+        controller.abort(cancellation);
+        if (!returnsProposal) throw new BibliographicIntelligenceError("reasoner_timeout");
+        return { materialClass: "unknown", confidence: 0, evidenceCandidateIds: [] };
+      },
+    }, controller.signal), (error: unknown) => error === cancellation);
+  }
+});
+
+test("optional material classification does not start after job cancellation", async () => {
+  const source = fixture({ ...emptyCanonical("A General History of Inner Asia"), materialClass: "unknown" }, "ambiguous", ["uncertain_material_class"]);
+  const controller = new AbortController();
+  const cancellation = new DOMException("The Compute attempt was cancelled.", "AbortError");
+  let classificationCalls = 0;
+  await assert.rejects(deriveIntelligentBibliography(source.inspection, {
+    async infer(prompt, signal) {
+      const model = await source.reasoner.infer(prompt, signal);
+      controller.abort(cancellation);
+      return model;
+    },
+    async classifyMaterial() {
+      classificationCalls += 1;
+      return { materialClass: "unknown", confidence: 0, evidenceCandidateIds: [] };
+    },
+  }, controller.signal), (error: unknown) => error === cancellation);
+  assert.equal(classificationCalls, 0);
+});
+
+test("optional material classification propagates unclassified errors and standalone cancellation", async () => {
+  for (const failure of [new TypeError("Unexpected classifier state"), new DOMException("Cancelled", "AbortError")]) {
+    const source = fixture({ ...emptyCanonical("A General History of Inner Asia"), materialClass: "unknown" }, "ambiguous", ["uncertain_material_class"]);
+    await assert.rejects(deriveIntelligentBibliography(source.inspection, {
+      infer: source.reasoner.infer,
+      async classifyMaterial() { throw failure; },
+    }), (error: unknown) => error === failure);
+  }
+});
+
 test("canonical title evidence is never recovered from page resemblance", async () => {
   const canonical = {
     ...emptyCanonical("元朝秘史（校勘本）"),

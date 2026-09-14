@@ -4,7 +4,7 @@ ACADEMICCLOUD-VNEXT-REMEDIATION01
 
 ## Goal
 
-Complete the Owner-accepted 360 review remediation on one integrated source line, deploy the corrected existing product, correct demonstrably wrong data, and verify normal live user workflows.
+Complete the Owner's reassessment charter on one integrated source line: recover the predecessor's exact work, improve correctness, frontend quality and performance beyond the old 360 review, add justified research foundations, and deploy and verify normal live user workflows.
 
 ## Scope
 
@@ -12,7 +12,22 @@ The 2026-09-06 Owner instruction accepts R01–R16 and authorizes implementation
 
 ## Non-goals
 
-Unrequested research/social/RAG features, unnecessary infrastructure or paid services, secret exposure, history rewriting, disposal of unknown local work, and invented bibliography.
+Unjustified feature expansion, social features, premature whole-corpus OCR/RAG rollout, unnecessary infrastructure or paid services, secret exposure, history rewriting, disposal of unknown local work, and invented bibliography.
+
+### Phase B takeover — 2026-09-09
+
+The Owner designated AcademicCloud-Astra-Reassessment-Execution-Charter as the current operating charter and AcademicCloud-vNext-Astra-Master-Handoff as historical context. Both were read completely. Phase A reassessment was delivered in chat without project writes. The Owner then explicitly stopped the preceding conversation and directed immediate execution, superseding the earlier completion-signal gate. This task remains the sole execution record.
+
+Takeover: clean local HEAD5eeed4c8d8d16378310980c86bdafb9416143984; live Core/frontend and selected Compute3c8643745a196b78f67e553f53d39ef3d21f1023. The seven-case immutable qualification passed. Core is running; Compute was cleanly stopped at21:07:52HKT after a successful activation. No concurrent build/deployment was observed. Existing draft reports are incomplete historical evidence, not a final result.
+
+Ordered milestones:
+1. Recover exact runtime and reconcile state; isolate optional classification failures, Activity polling recovery, Member holdings availability, search relevance and preview capabilities. Verify focused regressions and normal-site recovery.
+2. Improve actual app/Preview opening, compressed static delivery, retained document context and a coherent responsive Library/Details/Reader surface; measure real user paths, not only iframe load events.
+3. Define immutable source generation and physical-page locations, then implement useful private Workspace/Collections/Page Notes with cross-account non-disclosure and export. Existing source identity must be audited before annotation attachment.
+4. Improve resumable/selective Catalog review and measured upload/search bottlenecks. Distinguish quality/abstention evidence from format-only qualification.
+5. Evaluate page-aware full-text foundations on bounded sources after the earlier gates; retrieval/RAG expansion depends on measured value, source permissions and cost.
+
+For each milestone: risk-appropriate tests, review, responsive visual verification, exact release where changed, normal-site checks and durable checkpoint. Preserve prior successful data corrections; do not replay real mutations merely to recreate evidence.
 
 ## Acceptance Criteria
 
@@ -36,7 +51,7 @@ Backend catalog/library/metadata/suggestions/persistence; frontend Library/detai
 
 ## Current State
 
-ACTIVE, reconciled 2026-09-09. Integration branch codex/vnext-remediation-20260906 at D:/Projects/AcademicCloud-vnext incorporates exact B eb03dbd2fff86d4925193e7f7de69e30336e9993. Core/frontend and main Compute36c4d75e6ba59b34007f096f78f20ab11ccec448 are published on integration/main and deployed at schema036. Active local and remote HEAD equality was verified. Bridgeba0a74f28470a312f2e05135033f5b5a727ef093 is deployed and verified. Main Compute is enabled NORMAL concurrency one, temporarily stopped for exclusive offline follow-up qualification. Integration CI passes; the main repeat exposed a test timing race, now repaired locally.
+PHASE B ACTIVE, reconciled2026-09-14. Takeover HEAD5eeed4c was clean; current Phase B edits belong to this agent team. Core/frontend and qualified Compute remain exact3c864374, active with zero restarts; Compute PID350. Normal-site Mongolia Today recovery result and unchanged canonical/source state are verified. Source checkpoint, exact Phase B release and live verification remain open. Earlier measurements and releases below are historical evidence, superseded where CURRENT_STATUS.md records a fresher observation.
 
 Work is explicitly separated:
 - **PREEXISTING_DIRTY_FILES:** original W retains ten tracked dirty files and 630 untracked files; review/staging trees are preserved. W NuExtract work already in B was not replaced by stale code.
@@ -85,6 +100,12 @@ The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
 
+2026-09-14 release preparation: independent frontend review, document-session8/8 and both frontend typechecks PASS. Static asset publication tests Windows31 pass/3 file-symlink privilege skips; Linux24/24, backend types PASS. Fixed pre-mkdir ancestor validation and removed immutable caching from missing-asset responses. Deployment now validates/reloads retained assets before Core selection and preserves them during application rollback. Exact Linux release and changed-path live verification remain pending.
+
+2026-09-09 Phase B milestone one: frontend344/344 (App/Details/history176/176), followed by focused12/12 including a new warm-reopen regression; frontend typecheck/build PASS; bibliography40/40 and Compute typecheck PASS; initial nginx boundary tests5/5 PASS. Preview tests cover pending authorization, close/reopen late responses, in-dialog retry, retained iframe, one signing call, Back and focus. Initial JS425,585 bytes versus511,320 (-16.77%), with optional dialogs split. Independent review corrected fallback Tab trapping for busy dialogs. Browser checks at1440/1024/768/390 preserve the exact iframe through Details/Citation, focus and browser Back, with no horizontal overflow; warm reopen has no fallback flash.
+
+Takeover live evidence: qualified3c864374 worker remains active PID51089 with zero restarts. Mongolia Today succeeded before takeover on attempt3 in57.929s, exact3c864374 journal executable; normal UI shows19 evidenced fields and UNKNOWN, scoped query-only DB confirms no auto-apply or canonical mutation. Remote main/integration5eeed4c CI passed. Further publication uses [skip ci] plus exact local Linux qualification because private Actions allowance is unavailable without broader scopes.
+
 2026-09-09 follow-up checkpoint: Compute158 passed/one skipped, all workspace typechecks, frontend324/324 and complete audit zero vulnerabilities. Null source role wording no longer discards valid bibliography; malformed types/enums still reject. Exact old release reproduces the real upload failure, bounded candidate passes19 evidenced fields. Four safe-diagnostic completion tests exclude private source/error/capability material. Lease regression now synchronizes on first real heartbeat and observes at least three renewals while the parent is blocked beyond its original lease. All six live HTTP body boundaries and normal Favorites/filter/sort/refresh checks pass. These new runtime changes await deployment.
 
 2026-09-09 production follow-up:36c4d75 is main/Core/frontend/Compute; full immutable verifier and offline6/6 pass. Main worker enabled/active NORMAL concurrency1. Normal-UI C2 job7aedd762 attemptfe23982c succeeded12:20:54Z (89.801s); C1 joba3a4bfc9 attempt041be081 succeeded12:22:32Z (43.796s). Exact v11/NuExtract3 results retain19/10 fields, UNKNOWN class, no auto-apply, unchanged files/canonical metadata and zero FK violations. Evidence: output/vnext/live-c-results-verification.json. New real Mongolia Today upload resource4b492f3f-bb91-49df-8ffe-767f1ce61147 automatically created jobffc568e0. Controlled local worker loss12:26:05Z restarted normally (NRestarts1); natural lease recovery remains in progress. Main CI34342462609 has one test timing failure, under bounded repair; integration CI34341820660 passes. Local frontend324/324 covers newly fixed same-ID retry and idempotent completed-job UI state. Vitest4.1.11 patch restores zero complete-audit findings.
@@ -106,4 +127,4 @@ The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Next Action
 
-Checkpoint and release the new-upload/UI/diagnostic/test repairs. Verify the exact seven-case immutable Compute release and normal-site upload retry; complete remaining whole-product checks and the required final report.
+Checkpoint the reviewed Phase B correctness, document-session and static-delivery fixes; qualify the exact Linux release, deploy and verify normal signed-in paths. Then refine the coherent document workspace and source-safe private research tools. Follow the ordered Phase B milestones above; final product acceptance remains open.

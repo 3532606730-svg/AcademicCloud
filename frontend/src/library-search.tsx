@@ -7,6 +7,7 @@ import type {
   LibraryHolding,
   LibraryHoldingSort,
   LibrarySearchFilters,
+  LibrarySearchSort,
   LibrarySearchResult,
   LibrarySummary,
   MaterialClass,
@@ -132,6 +133,8 @@ export function LibrarySearchField({
     return values;
   });
   const [query, setQuery] = useState(saved.query ?? "");
+  const [searchSort, setSearchSort] = useState<LibrarySearchSort>(() =>
+    SORT_OPTIONS.some((option) => option.value === saved.searchSort) ? saved.searchSort as LibraryHoldingSort : "relevance");
   const [materialClass, setMaterialClass] = useState<MaterialClass | "">(MATERIAL_CLASSES.includes(saved.materialClass as MaterialClass) ? saved.materialClass as MaterialClass : "");
   const [contributor, setContributor] = useState(saved.contributor ?? "");
   const [filterLanguage, setFilterLanguage] = useState(saved.filterLanguage ?? "");
@@ -145,8 +148,8 @@ export function LibrarySearchField({
   const [volume, setVolume] = useState(saved.volume ?? "");
   useEffect(() => {
     writeViewPreference(accountId, `search:${library?.id}`, { query, materialClass, contributor, filterLanguage,
-      publisher, year, editionType, dynasty, reignTitle, editorialRole, series, volume });
-  }, [accountId, library?.id, query, materialClass, contributor, filterLanguage, publisher, year, editionType, dynasty, reignTitle, editorialRole, series, volume]);
+      publisher, year, editionType, dynasty, reignTitle, editorialRole, series, volume, searchSort });
+  }, [accountId, library?.id, query, materialClass, contributor, filterLanguage, publisher, year, editionType, dynasty, reignTitle, editorialRole, series, volume, searchSort]);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [results, setResults] = useState<LibrarySearchResult[]>([]);
   const [error, setError] = useState<unknown>(null);
@@ -170,6 +173,9 @@ export function LibrarySearchField({
   const filterIdentity = JSON.stringify(filters);
   const hasFilters = Object.keys(filters).length > 0;
   const active = query.trim().length > 0 || hasFilters;
+  // Browsing order is independent from ranked search. An explicit choice in
+  // search applies to that query and its pages without reordering the Library.
+  const requestedSort = searchSort === "relevance" ? undefined : searchSort;
 
   const abortRef = useRef<AbortController | null>(null);
   const loadMoreAbortRef = useRef<AbortController | null>(null);
@@ -222,8 +228,8 @@ export function LibrarySearchField({
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      const request = sort
-        ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, undefined, undefined, hasFilters ? filters : undefined, sort)
+      const request = requestedSort
+        ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, undefined, undefined, hasFilters ? filters : undefined, requestedSort)
         : hasFilters
           ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, undefined, undefined, filters)
           : api.searchLibraryHoldings(libraryId, trimmed, controller.signal);
@@ -242,7 +248,7 @@ export function LibrarySearchField({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [active, api, filterIdentity, hasFilters, library, query, sort]);
+  }, [active, api, filterIdentity, hasFilters, library, query, requestedSort]);
 
   function loadMore() {
     const libraryId = library?.id;
@@ -254,8 +260,8 @@ export function LibrarySearchField({
     loadMoreAbortRef.current = controller;
     setLoadingMore(true);
     setLoadMoreError(null);
-    const request = sort
-      ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor, undefined, hasFilters ? filters : undefined, sort)
+    const request = requestedSort
+      ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor, undefined, hasFilters ? filters : undefined, requestedSort)
       : hasFilters
         ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor, undefined, filters)
         : api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor);
@@ -319,7 +325,11 @@ export function LibrarySearchField({
         </label>
         <label className="library-search-sort">
           <span className="visually-hidden">{t("library.sortLabel")}</span>
-          <select aria-label={t("library.sortLabel")} value={sort ?? "newest"} onChange={(event) => onSortChange?.(event.target.value as LibraryHoldingSort)}>
+          <select aria-label={t("library.sortLabel")} value={active ? searchSort : sort ?? "newest"} onChange={(event) => {
+            if (active) setSearchSort(event.target.value as LibrarySearchSort);
+            else onSortChange?.(event.target.value as LibraryHoldingSort);
+          }}>
+            {active && <option value="relevance">{t("librarySearch.sortRelevance")}</option>}
             {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.key)}</option>)}
           </select>
         </label>

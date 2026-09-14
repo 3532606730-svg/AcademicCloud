@@ -1,14 +1,14 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-09-09. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
+**Last reconciled:** 2026-09-14. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
 ## Active task
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | ACTIVE — real Catalog Apply, both C retries and natural worker-loss recovery pass; release new-upload contributor omission/UI/CI repairs, qualify exact seven-case runtime, then finish normal upload acceptance and final report |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — predecessor stopped by Owner; reconcile exact runtime, restore qualified worker, fix identified correctness failures, then fast/polished document workflows and source-safe private research foundations |
 
-The Owner's 2026-09-06 instruction authorizes remediation of the accepted review and real newly found defects, including necessary production/data/service changes and main integration. Use existing authority without repeated approval requests. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
+The current reassessment charter and Owner's2026-09-09 start instruction supersede the earlier read-only gate and narrow review scope. The active task contains the ordered Phase B milestones. Necessary production/data/service changes and main integration remain authorized. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 
 Integration work continues in D:/Projects/AcademicCloud-vnext on codex/vnext-remediation-20260906. Preserved dirty original/review/staging trees are not replacement targets.
 
@@ -44,7 +44,7 @@ Concrete current defects in these areas can be repaired inside vNext. These card
 
 RF-PROV01 → RF-LINEAGE01 → RF-STATS01 → RF-OVERLAY01 → RF-ORGANIZE01 → RF-VIEWS01 → RF-INTAKE01 → RF-ANNOTATE01 → RF-CITE01 → RF-EVIDENCE01 → RF-EXPORT01 → RF-LIBRARY03 → RF-LIBRARY04 → RF-RECOVERY01 → RF-AUTHMATRIX01 → RF-DERIVED01.
 
-Detailed cards remain under tasks/ready; [ROADMAP.md](ROADMAP.md) defines durable sequencing. Do not start Internal Beta/invitations, this feature queue, whole-document OCR, full-text indexing, embeddings or RAG from remediation.
+Detailed cards remain under tasks/ready as an inventory. The active Phase B milestones and [ROADMAP.md](ROADMAP.md) supersede this strict historical sequence, allowing source-safe private Workspace/Collections/Page Notes without first implementing every RF card. Internal Beta/invitations, paid infrastructure and premature whole-corpus OCR/RAG remain excluded.
 
 ## Completion rule
 

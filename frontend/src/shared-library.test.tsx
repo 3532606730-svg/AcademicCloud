@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AcademicCloudApi, LibraryHolding, LibraryHoldingsPage } from "./api.ts";
@@ -34,6 +34,31 @@ function setup(late: ReturnType<typeof deferred<LibraryHoldingsPage>>) {
 }
 
 describe("catalogue pagination request ownership", () => {
+  it("renders Member holdings while submission history is pending and isolates its failure and retry", async () => {
+    const pending = deferred<[]>();
+    const listContributions = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue([]);
+    const listHoldings = vi.fn().mockResolvedValue(page("available-book"));
+    const api = {
+      listLibraries: vi.fn().mockResolvedValue([{ ...library, role: "member" }]),
+      listLibraryHoldingsSorted: listHoldings,
+      listMyLibraryContributions: listContributions,
+    } as unknown as AcademicCloudApi;
+    render(<LanguageProvider><SharedLibraryPanel api={api} renderCatalogue={({ holdings, loading }) => <>
+      {loading ? <p>Loading catalogue</p> : holdings.map((holding) => <p key={holding.file.id}>{holding.canonicalTitle}</p>)}
+    </>} /></LanguageProvider>);
+
+    await screen.findByText("available-book");
+    expect(screen.queryByText("Loading catalogue")).not.toBeInTheDocument();
+    await act(async () => pending.reject(new Error("Submission history unavailable")));
+    const submissions = screen.getByRole("region", { name: "My submissions" });
+    expect(within(submissions).getByRole("alert")).toHaveTextContent("Submission history unavailable");
+    expect(screen.getByText("available-book")).toBeInTheDocument();
+    fireEvent.click(within(submissions).getByRole("button", { name: "Retry submissions" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(listContributions).toHaveBeenCalledTimes(2);
+    expect(listHoldings).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores a previous sort's late page and retains the new sort's cursor", async () => {
     const late = deferred<LibraryHoldingsPage>();
     const list = setup(late);

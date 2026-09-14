@@ -1,28 +1,28 @@
 {
-  "lastReconciled": "2026-09-09",
+  "lastReconciled": "2026-09-14",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
-  "authority": "Owner-authorized full remediation, integration, release, migration, necessary Compute repair and real Catalog Apply; no additional approval required within scope",
+  "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "36c4d75e6ba59b34007f096f78f20ab11ccec448",
-    "mainIntegration": "fast-forwarded main and integration to36c4d75",
-    "localSynchronized": true
+    "checkpoint": "5eeed4c8d8d16378310980c86bdafb9416143984",
+    "mainIntegration": "both main/integration independently verified at5eeed4c; Phase B publication pending",
+    "localSynchronized": false
   },
   "production": {
-    "observedAt": "2026-09-09",
-    "coreFrontendCommit": "36c4d75e6ba59b34007f096f78f20ab11ccec448",
+    "observedAt": "2026-09-14",
+    "coreFrontendCommit": "3c8643745a196b78f67e553f53d39ef3d21f1023",
     "schemaVersion": 36,
     "migrationHistory": "001-036",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "healthy/ready; integrity OK; zero FK violations; zero service restarts",
+    "health": "September14 Core active PID995661 with zero restarts; ready pass; DB integrity/schema retained last verified evidence",
     "catalogBridgeCommit": "ba0a74f28470a312f2e05135033f5b5a727ef093",
-    "catalogBridgeState": "active",
+    "catalogBridgeState": "active (last verified September9)",
     "computeDistro": "AcademicCloudComputeV2",
-    "mainInferenceState": "36c4d75 enabled NORMAL concurrency1; temporarily inactive for exact follow-up offline qualification",
+    "mainInferenceState": "exact3c86437 active/running PID350 NRestarts0; September9 normal UI result plus read-only DB/journal verify Mongolia succeeded before takeover",
     "vnextDeployed": true
   },
   "candidate": {
@@ -58,25 +58,32 @@
       "newPreviewMedian": 616.811
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
-    "remoteCI": "integration34341820660 PASS; main34342462609 timing race repaired locally, new CI pending"
+    "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
+    "currentPhaseB": "September9 frontend344/344 plus later focused12/12; September14 document-session8/8+frontend types+independent review PASS; bibliography40/40+Compute types PASS; asset/nginx Windows31 pass/3 privilege skips, Linux24/24, backend types PASS; responsive document-session1440/1024/768/390 PASS; exact Linux release pending",
+    "frontendStartupBytes": {
+      "before": 511320,
+      "after": 425585
+    }
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",
     "historicalProductionB": "pass reviewable",
     "historicalProductionC": "two canonical_schema_invalid failures, no promotion",
-    "next": "seven-case immutable follow-up release then normal-site new-upload retry",
-    "candidateOffline": "6/6: A/B/B/UNKNOWN and both real C PDFs; real C class UNKNOWN, unchanged v11 validator",
+    "next": "one affected-source immutable smoke for classifier-local failure isolation candidate",
+    "candidateOffline": "7/7 exact immutable3c86437: A/B/B/UNKNOWN, both real C sources, Mongolia Today; unchanged v11",
     "currentProductionC": "both normal-UI retries succeeded; UNKNOWN class,19/10 evidence fields, no canonical/source mutation",
-    "normalUpload": "Automatic job and natural lease recovery PASS; attempt2 failed unsupported null contributor role wording; bounded optional omission passes offline19fields, exact release/live retry pending"
+    "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
     "Browser Use blocks direct loopback with ERR_BLOCKED_BY_CLIENT; fresh browser export not verified"
   ],
-  "next": "Publish UI/new-upload/diagnostic/CI repairs, qualify immutable7cases, deploy and complete live acceptance/report",
+  "next": "Checkpoint and exact local Linux qualification; publish with skip ci; exact Core/frontend/Compute and retained-asset nginx release/live verification",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
     "tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md",
-    "docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md"
-  ]
+    "docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md",
+    "docs/decisions/ADR-042-document-session-and-static-asset-continuity.md"
+  ],
+  "phase": "PHASE_B_EXECUTION"
 }

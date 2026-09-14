@@ -97,19 +97,41 @@ expired artifact, different source commit, unexpected native-module path, or
 missing evidence aborts the deployment window; never rebuild on Alibaba as a
 fallback.
 
-When GitHub credentials or hosted execution are unavailable, a local Linux
+When GitHub credentials or hosted execution are unavailable, or included Actions
+allowance cannot be verified under the zero-billable-usage constraint, a local Linux
 release may use the same production-artifact prepare/finalize/pack/verify
 commands against a clean archive of an exact committed source. Use Ubuntu
 24.04 x86-64, Node 24 and pinned npm 11.19.1 as a non-root user. Run the complete
-Linux test/type/build/compiled-acceptance and dependency gates above, reproduce
-the production package twice, and independently verify an extracted bundle.
+Linux test/type/build/compiled-acceptance and dependency gates above and independently
+verify an extracted bundle. Build the production package twice when packaging,
+dependency locks or toolchain inputs change; unchanged packaging with prior
+reproducibility evidence needs one exact-source build plus extracted verification.
 Record the builder and source in the existing task evidence. This produces
 the same four-file runtime bundle but has no GitHub artifact ID or service
 digest; never invent them or call it a successful remote CI run. GitHub
-publication/main synchronization and remote CI remain separate outstanding
-requirements. No build or dependency installation moves onto Alibaba.
+publication/main synchronization remain separate requirements. Use `[skip ci]`
+for publication when required to guarantee zero billable hosted execution, and
+record remote CI as skipped rather than passed. No build or dependency
+installation moves onto Alibaba.
 
 Use immutable commit-named release directories such as `/opt/academiccloud/releases/<commit>` and a `/opt/academiccloud/current` symlink. Verify ownership and that the service cannot write the release tree.
+
+### Public asset continuity
+
+Before selecting a release containing lazy frontend chunks, run its
+`deployment/nginx/publish-assets.mjs` with the exact previous and candidate
+immutable release directories. The publisher verifies each manifest entry and
+adds public, content-hashed assets to `/opt/academiccloud/public-assets/assets`;
+collisions, unsafe paths or symlinks abort before publication. Never copy private
+storage objects or clear this directory during deployment.
+
+Render the matching nginx configuration, validate with `nginx -t` and reload
+the retained asset route before switching Core. A failed static transition restores
+the prior nginx configuration while Core remains on its prior release. Once the
+static transition succeeds, keep it through application rollback so already-open
+candidate and previous tabs retain their chunks. Verify old and new asset URLs,
+gzip byte equivalence, successful-response immutable caching and uncached missing
+assets. See ADR-042; this transition does not require database migration.
 
 ## Configuration and protected one-shot operations
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -1896,10 +1896,15 @@ describe("App", () => {
     const menu = await openRowMenu("paper.pdf");
     await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Online preview is currently unavailable"));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "paper.pdf" });
+    expect(dialog.querySelector("iframe")).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Retry" })).toBeEnabled();
+    await user.click(within(dialog).getByRole("button", { name: "Close preview" }));
 
     await user.click(screen.getByRole("button", { name: "Account menu" }));
     await user.click(screen.getByRole("menuitem", { name: "中文" }));
+    await user.click(screen.getByRole("button", { name: "打开 paper.pdf 的操作菜单" }));
+    await user.click(within(screen.getByRole("menu", { name: "paper.pdf 的操作" })).getByRole("menuitem", { name: "预览" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("在线预览暂不可用"));
   });
 
@@ -2588,6 +2593,84 @@ describe("App", () => {
     await waitFor(() => expect(generate).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, LIBRARY_HOLDINGS[0]!.file.id));
   });
 
+  it("recovers Activity polling after a failed status read and stops when the job completes", async () => {
+    vi.useFakeTimers();
+    try {
+      const job = {
+        id: "poll-recovery", kind: "metadata_suggestion", resourceId: LIBRARY_HOLDINGS[0]!.file.id,
+        state: "queued", progress: 0, attempts: 1, resultRef: null, errorCode: null,
+        createdAt: new Date().toISOString(), startedAt: null, finishedAt: null,
+        deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+      };
+      const states = vi.fn()
+        .mockResolvedValueOnce([{ fileId: job.resourceId, state: "queued", job }])
+        .mockRejectedValueOnce(new ApiError(503, "storage_unavailable"))
+        .mockResolvedValueOnce([{ fileId: job.resourceId, state: "ai_succeeded_reviewable", job: { ...job, state: "succeeded", finishedAt: new Date().toISOString() } }]);
+      const api = fakeApi({
+        getSession: vi.fn().mockResolvedValue(ACCOUNT),
+        listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+        getLatestLibraryMetadataSuggestionStates: states,
+      });
+      let mounted!: ReturnType<typeof render>;
+      await act(async () => { mounted = render(<App api={api} />); });
+      expect(screen.getByText("Queued")).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+      expect(states).toHaveBeenCalledTimes(2);
+      expect(screen.getByText("Queued")).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
+      expect(states).toHaveBeenCalledTimes(3);
+      expect(screen.getByText("AI cataloguing succeeded — reviewable evidence is available")).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
+      expect(states).toHaveBeenCalledTimes(3);
+      mounted.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ["manuscript.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 1024, false],
+    ["large-scan.pdf", "application/pdf", 512 * 1024 * 1024 + 1, false],
+    ["transcription.txt", "text/plain", 1024, true],
+  ] as const)("opens searched %s through its available document action", async (displayName, mediaType, sizeBytes, previewable) => {
+    const user = userEvent.setup();
+    const holding = { ...LIBRARY_HOLDINGS[0]!, file: { ...LIBRARY_HOLDINGS[0]!.file, displayName, mediaType, sizeBytes } };
+    const createLibraryDownload = vi.fn().mockResolvedValue({ method: "GET", url: "https://signed.invalid/resource", expiresAt: "2026-09-10T00:00:00Z" });
+    const getDetails = vi.fn().mockResolvedValue({
+      displayTitle: displayName, originalFilename: displayName, metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43),
+      bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: false, file: holding.file,
+    });
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraryHoldings: vi.fn().mockResolvedValue([holding]),
+      searchLibraryHoldings: vi.fn().mockResolvedValue({ results: [{
+        fileId: holding.file.id, canonicalTitle: null, authorLabels: [], contributorLabels: [], date: null,
+        publisher: null, materialType: null, materialClass: null, language: null, displayName, mediaType, sizeBytes,
+      }], nextCursor: null }),
+      createLibraryDownload,
+      getLibraryHoldingDetails: getDetails,
+    });
+    render(<App api={api} />);
+    await user.type(await screen.findByLabelText("Search Library"), "manuscript");
+    const results = await screen.findByRole("list", { name: "Search results" });
+    await user.click(within(results).getByRole("button", { name: displayName }));
+    let dialog = await screen.findByRole("dialog", { name: displayName });
+    if (previewable) {
+      expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id, "inline");
+      expect(dialog.querySelector("iframe")).toBeInTheDocument();
+      await user.click(within(dialog).getByRole("button", { name: "Resource details" }));
+      dialog = await screen.findByRole("dialog", { name: displayName });
+      await user.click(await within(dialog).findByRole("button", { name: "Preview" }));
+      expect(createLibraryDownload).toHaveBeenCalledTimes(1);
+    } else {
+      await within(dialog).findByText("File information");
+      expect(createLibraryDownload).not.toHaveBeenCalled();
+      expect(within(dialog).queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
+      await user.click(within(dialog).getByRole("button", { name: "Download" }));
+      await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id));
+    }
+  });
+
   it("shows only observable download preparing, started, and failed states", async () => {
     const user = userEvent.setup();
     let resolveDownload!: (authorization: { method: "GET"; url: string; expiresAt: string }) => void;
@@ -2609,6 +2692,194 @@ describe("App", () => {
     await user.click(within(await openRowMenu("book.pdf")).getByRole("menuitem", { name: "Download" }));
     expect(await screen.findByText("Failed")).toBeInTheDocument();
     expect(screen.getAllByRole("alert")).toHaveLength(2);
+  });
+});
+
+describe("document preview session", () => {
+  type Authorization = Awaited<ReturnType<AcademicCloudApi["createLibraryDownload"]>>;
+  function deferredAuthorization() {
+    let resolve!: (authorization: Authorization) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<Authorization>((yes, no) => { resolve = yes; reject = no; });
+    return { promise, resolve, reject };
+  }
+  function authorization(url: string): Authorization {
+    return { method: "GET", url, expiresAt: "2026-09-10T00:00:00Z" };
+  }
+  function sessionApi(overrides: Partial<AcademicCloudApi> = {}) {
+    const holding = LIBRARY_HOLDINGS[0]!;
+    return fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraryHoldings: vi.fn().mockResolvedValue([holding]),
+      createLibraryDownload: vi.fn().mockResolvedValue(authorization("https://signed.invalid/current.pdf")),
+      getLibraryHoldingDetails: vi.fn().mockResolvedValue({
+        displayTitle: holding.file.displayName, originalFilename: holding.file.displayName,
+        metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43),
+        bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: false, file: holding.file,
+      }),
+      generateLibraryCitation: vi.fn(),
+      ...overrides,
+    });
+  }
+
+  it.each(["account", "library"] as const)("opens the %s preview shell before source authorization completes", async (scope) => {
+    const user = userEvent.setup();
+    const pending = deferredAuthorization();
+    const createDownload = vi.fn().mockReturnValue(pending.promise);
+    const api = sessionApi(scope === "account" ? {
+      listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [], files: [FILE] }),
+      listLibraryHoldings: vi.fn().mockResolvedValue([]), createDownload,
+    } : { createLibraryDownload: createDownload });
+    render(<App api={api} />);
+    const name = scope === "account" ? FILE.displayName : LIBRARY_HOLDINGS[0]!.file.displayName;
+    if (scope === "account") await user.click(within(await openRowMenu(name)).getByRole("menuitem", { name: "Preview" }));
+    else await user.click(await screen.findByRole("button", { name }));
+    const shell = await screen.findByRole("dialog", { name });
+    expect(within(shell).getByRole("status")).toBeInTheDocument();
+    expect(shell.querySelector("iframe")).toBeNull();
+    expect(within(shell).getByRole("button", { name: "Download" })).toBeEnabled();
+    expect(createDownload).toHaveBeenCalledTimes(1);
+
+    await act(async () => pending.resolve(authorization("https://signed.invalid/ready.pdf")));
+    expect(screen.getByRole("dialog", { name })).toBe(shell);
+    expect(shell.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/ready.pdf");
+  });
+
+  it("does not reopen a closed document when its source authorization arrives late", async () => {
+    const user = userEvent.setup();
+    const pending = deferredAuthorization();
+    const api = sessionApi({ createLibraryDownload: vi.fn().mockReturnValue(pending.promise) });
+    render(<App api={api} />);
+    const trigger = await screen.findByRole("button", { name: "book.pdf" });
+    await user.click(trigger);
+    const shell = await screen.findByRole("dialog", { name: "book.pdf" });
+    await user.click(within(shell).getByRole("button", { name: "Close preview" }));
+    await act(async () => pending.resolve(authorization("https://signed.invalid/late.pdf")));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("never lets a closed request replace a reopened document's source", async () => {
+    const user = userEvent.setup();
+    const first = deferredAuthorization();
+    const second = deferredAuthorization();
+    const createLibraryDownload = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    render(<App api={sessionApi({ createLibraryDownload })} />);
+    const trigger = await screen.findByRole("button", { name: "book.pdf" });
+    await user.click(trigger);
+    await user.click(within(await screen.findByRole("dialog", { name: "book.pdf" })).getByRole("button", { name: "Close preview" }));
+    await user.click(trigger);
+    const reopened = await screen.findByRole("dialog", { name: "book.pdf" });
+    await act(async () => second.resolve(authorization("https://signed.invalid/new.pdf")));
+    const frame = reopened.querySelector("iframe");
+    expect(frame).toHaveAttribute("src", "https://signed.invalid/new.pdf");
+    await act(async () => first.resolve(authorization("https://signed.invalid/old.pdf")));
+    expect(reopened.querySelector("iframe")).toBe(frame);
+    expect(frame).toHaveAttribute("src", "https://signed.invalid/new.pdf");
+    expect(createLibraryDownload).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps authorization errors in the same shell and retries without initiating a download", async () => {
+    const user = userEvent.setup();
+    const retry = deferredAuthorization();
+    const createLibraryDownload = vi.fn()
+      .mockRejectedValueOnce(new ApiError(503, "preview_unavailable"))
+      .mockReturnValueOnce(retry.promise);
+    render(<App api={sessionApi({ createLibraryDownload })} />);
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    const shell = await screen.findByRole("dialog", { name: "book.pdf" });
+    expect(await within(shell).findByRole("alert")).toHaveTextContent("Online preview is currently unavailable");
+    expect(shell.querySelector("iframe")).toBeNull();
+    expect(within(shell).getByRole("button", { name: "Download" })).toBeEnabled();
+    await user.click(within(shell).getByRole("button", { name: "Retry" }));
+    expect(screen.getByRole("dialog", { name: "book.pdf" })).toBe(shell);
+    await act(async () => retry.resolve(authorization("https://signed.invalid/retried.pdf")));
+    expect(shell.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/retried.pdf");
+    expect(within(shell).queryByRole("alert")).not.toBeInTheDocument();
+    expect(createLibraryDownload.mock.calls).toEqual([
+      [DEFAULT_LIBRARY.id, LIBRARY_HOLDINGS[0]!.file.id, "inline"],
+      [DEFAULT_LIBRARY.id, LIBRARY_HOLDINGS[0]!.file.id, "inline"],
+    ]);
+  });
+
+  it("retains one iframe and authorization across Details close and its Preview action", async () => {
+    const user = userEvent.setup();
+    const api = sessionApi();
+    render(<App api={api} />);
+    const trigger = await screen.findByRole("button", { name: "book.pdf" });
+    await user.click(trigger);
+    const shell = await screen.findByRole("dialog", { name: "book.pdf" });
+    const frame = await within(shell).findByTitle("Preview of book.pdf");
+    await user.click(within(shell).getByRole("button", { name: "Resource details" }));
+    let details = await screen.findByRole("dialog", { name: "book.pdf" });
+    expect(details).not.toBe(shell);
+    expect(shell).toHaveAttribute("inert");
+    expect(frame).toBeInTheDocument();
+    await user.click(await within(details).findByRole("button", { name: "Preview" }));
+    expect(screen.getByRole("dialog", { name: "book.pdf" })).toBe(shell);
+    expect(shell.querySelector("iframe")).toBe(frame);
+    expect(shell).not.toHaveAttribute("inert");
+
+    await user.click(within(shell).getByRole("button", { name: "Resource details" }));
+    details = await screen.findByRole("dialog", { name: "book.pdf" });
+    await user.click(within(details).getByRole("button", { name: "Close resource details" }));
+    expect(screen.getByRole("dialog", { name: "book.pdf" })).toBe(shell);
+    expect(shell.querySelector("iframe")).toBe(frame);
+    expect(api.createLibraryDownload).toHaveBeenCalledTimes(1);
+    await user.click(within(shell).getByRole("button", { name: "Close preview" }));
+    expect(trigger).toHaveFocus();
+  });
+
+  it("reopens loaded Details without briefly mounting the workspace-loading dialog", async () => {
+    const user = userEvent.setup();
+    render(<App api={sessionApi()} />);
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    const shell = await screen.findByRole("dialog", { name: "book.pdf" });
+    await user.click(within(shell).getByRole("button", { name: "Resource details" }));
+    const first = await screen.findByRole("dialog", { name: "book.pdf" });
+    await within(first).findByText("File information");
+    await user.click(within(first).getByRole("button", { name: "Close resource details" }));
+
+    const loadingDialogs: Element[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) for (const node of record.addedNodes) {
+        if (!(node instanceof Element)) continue;
+        if (node.matches("dialog.deferred-dialog")) loadingDialogs.push(node);
+        loadingDialogs.push(...node.querySelectorAll("dialog.deferred-dialog"));
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    try {
+      await user.click(within(shell).getByRole("button", { name: "Resource details" }));
+      const reopened = await screen.findByRole("dialog", { name: "book.pdf" });
+      await within(reopened).findByText("File information");
+      // A final DOM snapshot misses a fallback that mounted and disappeared
+      // during import resolution; retain observed additions across the click.
+      expect(loadingDialogs).toEqual([]);
+    } finally {
+      observer.disconnect();
+    }
+  });
+
+  it("retains the document under Citation and browser Back closes the entire session", async () => {
+    const user = userEvent.setup();
+    const api = sessionApi();
+    render(<App api={api} />);
+    const trigger = await screen.findByRole("button", { name: "book.pdf" });
+    await user.click(trigger);
+    const shell = await screen.findByRole("dialog", { name: "book.pdf" });
+    const frame = await within(shell).findByTitle("Preview of book.pdf");
+    await user.click(within(shell).getByRole("button", { name: "Citation" }));
+    const citation = await screen.findByRole("dialog", { name: "book.pdf" });
+    expect(citation).not.toBe(shell);
+    expect(shell).toHaveAttribute("inert");
+    expect(frame).toBeInTheDocument();
+    expect(api.createLibraryDownload).toHaveBeenCalledTimes(1);
+    act(() => window.history.back());
+    await waitFor(() => expect(document.querySelectorAll("dialog[open]")).toHaveLength(0));
+    expect(frame).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 });
 
@@ -3674,6 +3945,8 @@ describe("row menu focus safety", () => {
 describe("library search", () => {
   const searchResult = {
     fileId: "library-file-0",
+    mediaType: "application/pdf",
+    sizeBytes: 12,
     canonicalTitle: "Searchable title",
     authorLabels: [],
     date: null,

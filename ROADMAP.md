@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-09-08
+**Last reconciled:** 2026-09-09
 
 ## Product Direction
 
@@ -27,6 +27,10 @@ Source-Grounded Intelligence
 The current reliability interlock changes sequencing, not this model.
 
 ## Active vNext remediation interlock
+
+The current Owner charter and explicit Phase B takeover on2026-09-09 supersede the narrow historical R01–R16 completion sequence below. The sole active task remains ACADEMICCLOUD-VNEXT-REMEDIATION01. Execute recovery and concrete correctness fixes first, then fast/polished Library/Preview/Reader/Details and Search; establish stable source/page identity before private Workspace, Collections and Page Notes; improve Catalog continuity, upload and search from measurements. Bounded full-text foundations follow these dependencies. Do not force the entire old RF queue to precede useful private research tools. Full-corpus OCR and RAG rollout are later evidence-dependent decisions.
+
+Existing SQLite/Core/storage-adapter/Local Pull boundaries remain valuable. Avoid a framework/database rewrite, new resident service or model change without evidence. Zero added infrastructure cost and zero billable GitHub usage remain gates. Historical parked entries are an inventory, not a competing active sequence.
 
 The Owner accepted the complete 360 review on 2026-09-06 and made
 ACADEMICCLOUD-VNEXT-REMEDIATION01 the sole active integration and production
@@ -58,10 +62,7 @@ failures still require qualification before automatic-cataloguing acceptance.
 Current release and runtime facts belong in CURRENT_STATUS.md and
 CURRENT_STATE.json, not in this sequencing document.
 
-No new paid infrastructure, billable GitHub usage, Internal Beta/invitations,
-unrelated research layers, whole-document OCR/indexing, embeddings or RAG are
-authorized. The earlier full-corpus stabilization evidence remains in its
-existing task card; historical inventories are not current live acceptance.
+The original360-review boundary below is historical. The current charter now includes the explicitly sequenced private research foundations above. Paid infrastructure, billable GitHub usage and Internal Beta/invitations remain excluded; whole-corpus OCR and RAG rollout are later evidence-dependent decisions. Earlier full-corpus stabilization evidence remains in its existing task card; historical inventories are not current live acceptance.
 
 ## Historical operational maturity interlock
 

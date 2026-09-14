@@ -31,6 +31,7 @@ import {
 import { describeError, type MessageKey } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
 import { deriveMetadataCataloguingState } from "./metadata-cataloguing-state.ts";
+import { canPreviewFile } from "./preview-capability.ts";
 
 const MATERIAL_TYPES: MaterialType[] = ["book", "article", "manuscript", "inscription", "archival_document"];
 const AUTHORITY_TYPES: AuthorityType[] = ["person", "place", "language", "work", "institution"];
@@ -458,7 +459,7 @@ export function ResourceDetailsDialog({
   autoLoadSuggestions?: boolean;
   onClose: () => void;
   onSaved: (detail: LibraryHoldingDetails) => void;
-  onPreview: () => void;
+  onPreview: (file: LibraryHoldingDetails["file"]) => void;
   onDownload: () => void;
   onCitation?: () => void;
   onSuggestionJobChange?: (job: DerivedMetadataJob, authoritativeState?: MetadataCataloguingState) => void;
@@ -1069,7 +1070,7 @@ export function ResourceDetailsDialog({
               )}
               </section>
               <footer className="resource-details-actions">
-                <button className="button button--quiet" type="button" onClick={onPreview} disabled={!holding.file.mediaType || (!holding.file.mediaType.startsWith("image/") && holding.file.mediaType !== "application/pdf")}>{t("menu.preview")}</button>
+                {canPreviewFile(detail.file) && <button className="button button--quiet" type="button" onClick={() => onPreview(detail.file)}>{t("menu.preview")}</button>}
                 <button className="button" type="button" onClick={onDownload}>{t("menu.download")}</button>
                 {api.generateLibraryCitation && onCitation && <button className="button" type="button" onClick={onCitation}>{t("citation.action")}</button>}
                 {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--primary" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.edit")}</button>}

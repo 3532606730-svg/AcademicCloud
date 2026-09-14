@@ -50,6 +50,9 @@ export function SharedLibraryPanel({
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [contributions, setContributions] = useState<LibraryContribution[]>([]);
+  const [contributionsLoading, setContributionsLoading] = useState(false);
+  const [contributionsError, setContributionsError] = useState<unknown>(null);
+  const [contributionsRevision, setContributionsRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -78,7 +81,6 @@ export function SharedLibraryPanel({
     setLoadingMore(false);
     if (!library) {
       setHoldings([]);
-      setContributions([]);
       return;
     }
     let cancelled = false;
@@ -87,14 +89,10 @@ export function SharedLibraryPanel({
     const loadHoldings = api.listLibraryHoldingsSorted
       ? api.listLibraryHoldingsSorted(library.id, sort, null)
       : api.listLibraryHoldings(library.id).then((items) => ({ holdings: items, nextCursor: null }));
-    Promise.all([
-      loadHoldings,
-      library.role === "manager" ? Promise.resolve([]) : api.listMyLibraryContributions(library.id),
-    ]).then(([page, nextContributions]) => {
+    loadHoldings.then((page) => {
       if (cancelled) return;
       setHoldings(page.holdings);
       setNextCursor(page.nextCursor);
-      setContributions(nextContributions);
     }, (caught) => {
       if (!cancelled) setError(caught);
     }).finally(() => {
@@ -105,6 +103,27 @@ export function SharedLibraryPanel({
       catalogueRequestVersion.current += 1;
     };
   }, [api, library, revision, sort]);
+
+  useEffect(() => {
+    setContributions([]);
+    setContributionsError(null);
+    if (!library || library.role === "manager") {
+      setContributionsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setContributionsLoading(true);
+    // Submission history is supplementary: it neither gates Library results
+    // nor gets refetched when the researcher only changes catalogue sorting.
+    api.listMyLibraryContributions(library.id).then((items) => {
+      if (!cancelled) setContributions(items);
+    }, (caught) => {
+      if (!cancelled) setContributionsError(caught);
+    }).finally(() => {
+      if (!cancelled) setContributionsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [api, library, revision, contributionsRevision]);
 
   function loadMore() {
     if (!library || !nextCursor || loading || loadingMore) return;
@@ -157,9 +176,11 @@ export function SharedLibraryPanel({
         },
         onLoadMore: loadMore,
       })}
-      {library?.role !== "manager" && contributions.length > 0 && (
+      {library && library.role !== "manager" && (contributions.length > 0 || contributionsLoading || contributionsError !== null) && (
         <section className="shared-library-members" aria-labelledby="shared-library-my-contributions-title">
-          <div className="section-heading"><h3 id="shared-library-my-contributions-title">{t("sharedLibrary.myContributions")}</h3><span>{contributions.length}</span></div>
+          <div className="section-heading"><h3 id="shared-library-my-contributions-title">{t("sharedLibrary.myContributions")}</h3>{contributions.length > 0 && <span>{contributions.length}</span>}</div>
+          {contributionsLoading && <p className="muted" role="status">{t("sharedLibrary.loading")}</p>}
+          {contributionsError !== null && <div className="alert alert--error" role="alert">{describeError(contributionsError, language)} <button type="button" onClick={() => setContributionsRevision((value) => value + 1)}>{t("sharedLibrary.retryContributions")}</button></div>}
           <div className="shared-library-member-list">
             {contributions.map((contribution) => (
               <article className="shared-library-member" key={contribution.id}>
