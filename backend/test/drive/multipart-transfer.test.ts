@@ -36,6 +36,7 @@ test("multipart upload retains completed parts, resumes only missing parts, and 
     sizeBytes,
     checksum: { algorithm: "md5", value: MD5 },
   });
+  assert.equal(persistence.repositories.files.findCurrentDocumentSource(created.file.id), null);
   assert.equal(created.transfer.totalParts, 2);
   assert.equal(created.transfer.completedBytes, 0);
   assert.equal(service.pendingUploadKind("owner-1", created.file.id), "multipart");
@@ -93,11 +94,15 @@ test("multipart upload retains completed parts, resumes only missing parts, and 
     multipartUploadVersion(afterIncomplete),
   );
   assert.equal(completed.state, "active");
+  const completedSource = persistence.repositories.files.findCurrentDocumentSource(created.file.id)!;
+  assert.ok(completedSource.sourceId);
   assert.equal(persistence.repositories.multipartUploads!.findByFileId("owner-1", created.file.id), null);
   assert.equal(storage.hasMultipartUpload(upload.providerUploadId), false);
   assert.equal((await service.completeMultipartUpload("owner-1", created.file.id, "stale")).state, "active");
+  assert.deepEqual(persistence.repositories.files.findCurrentDocumentSource(created.file.id), completedSource);
 
   const download = await service.createDownload("owner-1", created.file.id);
+  assert.deepEqual(download.source, { resourceId: created.file.id, sourceId: completedSource.sourceId });
   assert.equal(download.acceptRanges, "bytes");
   assert.equal(download.sizeBytes, sizeBytes);
   assert.equal(download.etag, `multipart-${upload.providerUploadId}`);

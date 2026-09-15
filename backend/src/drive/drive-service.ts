@@ -23,6 +23,7 @@ import {
   type MultipartUploadRepository,
 } from "../transfer/multipart-transfer.js";
 import type { StoredFile } from "./file.js";
+import { sourceMatchesFile, type DocumentSourceDescriptor } from "./document-source.js";
 import type { Folder } from "./folder.js";
 import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.js";
 import type { AuditEventKind, AuditOutcome, AuditReasonCode } from "../audit/audit-event.js";
@@ -106,6 +107,7 @@ export interface CompleteUploadStatus {
 export type UploadStatus = MultipartUploadStatus | LegacyUploadStatus | CompleteUploadStatus;
 
 export interface ResumableDownloadAuthorization extends BrowserDownloadAuthorization {
+  source: DocumentSourceDescriptor;
   sizeBytes: number;
   etag: string;
   acceptRanges: "bytes";
@@ -895,6 +897,8 @@ export class DriveService {
     if (file.state !== "active" || file.storageProvider !== this.storage.provider) {
       throw new DriveError("not_found");
     }
+    const source = this.persistence.repositories.files.findCurrentDocumentSource(file.id);
+    if (!source || !sourceMatchesFile(source, file)) throw new DriveError("concurrent_change");
 
     // Inline Preview requires a dedicated browser GET domain; the native
     // bucket domain forces downloads, so failing safely here is the contract.
@@ -926,8 +930,11 @@ export class DriveService {
         downloadFilename,
         disposition,
       });
+      const currentSource = this.persistence.repositories.files.findCurrentDocumentSource(file.id);
+      if (currentSource?.sourceId !== source.sourceId) throw new DriveError("concurrent_change");
       return {
         ...authorization,
+        source: { resourceId: source.resourceId, sourceId: source.sourceId },
         sizeBytes: metadata.sizeBytes,
         etag: metadata.etag,
         acceptRanges: "bytes",

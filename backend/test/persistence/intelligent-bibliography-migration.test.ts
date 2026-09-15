@@ -39,7 +39,7 @@ test("migration 023 is additive, leaves historical metadata absent, and enforces
       ) VALUES ('record-1', ?, 'book', '既有人工题名', 'owner', 'owner', ?, ?)
     `).run(library.owner_domain_id, NOW.toISOString(), NOW.toISOString());
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36], currentVersion: 36 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37], currentVersion: 37 });
     assert.equal(database.prepare<[], { count: number }>("SELECT count(*) AS count FROM scholarly_bibliographic_profiles").get()!.count, 0);
     assert.equal(database.prepare<[], { canonical_title: string }>("SELECT canonical_title FROM scholarly_record_metadata WHERE record_id = 'record-1'").get()!.canonical_title, "既有人工题名");
 

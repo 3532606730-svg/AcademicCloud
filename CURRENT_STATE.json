@@ -8,7 +8,8 @@
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
     "checkpoint": "73b26d257c0f9508758bdb90d42165e80939cecd",
     "mainIntegration": "73b26d2 atomically pushed and both tracking heads/local HEAD verified before Owner batch-publication instruction",
-    "localSynchronized": true
+    "localSynchronized": false,
+    "localState": "Intentionally ahead of last published73b: local-only integrated improvement checkpoints per Owner"
   },
   "production": {
     "observedAt": "2026-09-15",
@@ -26,10 +27,11 @@
     "vnextDeployed": true
   },
   "candidate": {
-    "schemaVersion": 36,
+    "schemaVersion": 37,
     "migrations": [
       "035_library_search_projection",
-      "036_bibliographic_contributor_collection_authority"
+      "036_bibliographic_contributor_collection_authority",
+      "037_document_source_generations"
     ],
     "catalogResults": "v2 explicit set/clear; v1 conservative compatibility",
     "catalogPlan": "actor/Library bound; 30 minutes; four plans; 32 MiB accounted aggregate",
@@ -78,7 +80,8 @@
       "deployment": "intermediate deployment cancelled; include in final combined release",
       "linux": "73b26d2: backend452/frontend360/contracts3/Compute165/ops84 all PASS (1064); all types/build, source/extracted compiled acceptance and full/production audit zero vulnerabilities",
       "archiveSha256": "949fbe51d1e47416c1390284e9a95be0098315a3aceba766c441e74cb962e905"
-    }
+    },
+    "documentSource": "Local schema37: dedicated verifier backend455pass/0fail/3 Windows symlink skips; build/compiled acceptance PASS; hash-verified old73b Linux runtime with complete migration history startup/activation/rename/download PASS, missing37 fails closed"
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",

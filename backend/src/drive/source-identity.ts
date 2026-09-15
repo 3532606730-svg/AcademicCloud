@@ -4,7 +4,7 @@ import type { CatalogSourceIdentity } from "@academiccloud/compute-contracts";
 
 import type { StoredFile } from "./file.js";
 
-/** Existing immutable source identity used by bibliography generation. */
+/** Request/CAS snapshot for bibliography generation, not a durable page identity. */
 export function catalogSourceIdentity(file: StoredFile): CatalogSourceIdentity {
   return {
     sourceFingerprint: createHash("sha256")

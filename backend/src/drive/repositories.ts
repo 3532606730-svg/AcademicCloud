@@ -1,5 +1,6 @@
 import type { NewFolder, Folder } from "./folder.js";
 import type { NewStoredFile, StoredFile } from "./file.js";
+import type { DocumentSource } from "./document-source.js";
 
 export interface FolderRepository {
   create(folder: NewFolder): Folder;
@@ -11,6 +12,8 @@ export interface FolderRepository {
 }
 
 export interface StoredFileRepository {
+  /** Internal lookup; caller must first authorize this active file. */
+  findCurrentDocumentSource(fileId: string): DocumentSource | null;
   create(file: NewStoredFile): StoredFile;
   findById(ownerId: string, id: string): StoredFile | null;
   findByDomainId(ownerDomainId: string, id: string): StoredFile | null;

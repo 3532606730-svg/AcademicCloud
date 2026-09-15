@@ -829,6 +829,8 @@ export type UploadTransfer = MultipartTransfer
   | { kind: "complete"; file: FileEntry };
 
 export interface DownloadAuthorization {
+  /** Added by the source-generation contract; older releases omit it. */
+  source?: { resourceId: string; sourceId: string };
   method: "GET";
   url: string;
   expiresAt: string;

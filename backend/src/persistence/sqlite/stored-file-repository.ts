@@ -1,4 +1,5 @@
 import type { NewStoredFile, StoredFile, StoredFileState } from "../../drive/file.js";
+import type { DocumentSource } from "../../drive/document-source.js";
 import type { StoredFileRepository } from "../../drive/repositories.js";
 import type { SqliteDatabase } from "./database.js";
 import { fromDatabaseTimestamp, toDatabaseTimestamp } from "./records.js";
@@ -68,6 +69,7 @@ function toStoredFile(row: StoredFileRow): StoredFile {
 }
 
 export class SqliteStoredFileRepository implements StoredFileRepository {
+  readonly #findCurrentDocumentSource;
   readonly #insert;
   readonly #findById;
   readonly #findByDomainId;
@@ -81,6 +83,14 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
   readonly #listStale;
 
   constructor(database: SqliteDatabase) {
+    this.#findCurrentDocumentSource = database.prepare<[string], DocumentSource>(`
+      SELECT s.file_id AS resourceId, s.id AS sourceId, s.storage_provider AS storageProvider,
+        s.object_key AS objectKey, s.size_bytes AS sizeBytes, s.checksum_algorithm AS checksumAlgorithm,
+        s.checksum, s.recorded_at AS recordedAt
+      FROM document_current_sources c JOIN document_sources s ON s.file_id = c.file_id AND s.id = c.source_id
+      JOIN files f ON f.id = c.file_id
+      WHERE c.file_id = ? AND f.state = 'active'
+    `);
     this.#insert = database.prepare<StoredFileParameters>(`
       INSERT INTO files (
         id, owner_domain_id, uploaded_by_account_id, folder_id, display_name, storage_provider, object_key,
@@ -244,6 +254,10 @@ export class SqliteStoredFileRepository implements StoredFileRepository {
   findById(ownerId: string, id: string): StoredFile | null {
     const row = this.#findById.get(ownerId, id);
     return row ? toStoredFile(row) : null;
+  }
+
+  findCurrentDocumentSource(fileId: string): DocumentSource | null {
+    return this.#findCurrentDocumentSource.get(fileId) ?? null;
   }
 
   findByDomainId(ownerDomainId: string, id: string): StoredFile | null {

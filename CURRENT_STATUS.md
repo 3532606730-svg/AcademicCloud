@@ -10,7 +10,7 @@ The charter authorizes implementation beyond R01–R16, visual refinement, optim
 
 ## Source and takeover evidence
 
-Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. Current source checkpoint **73b26d257c0f9508758bdb90d42165e80939cecd** is published to main and integration; both remote tracking heads and the clean active local checkout were verified equal after an atomic fast-forward push. Takeover source5eeed4c remains historical.
+Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. Last published source **73b26d257c0f9508758bdb90d42165e80939cecd** is on main and integration; equality was verified at publication. New local checkpoints intentionally lead those branches while the integrated batch continues. Takeover source5eeed4c remains historical.
 
 Predecessor CI34355914519/main and34354370164/integration passed at5eeed4c. Current publication uses [skip ci] with exact local Linux qualification to guarantee zero billable hosted usage. The original D:/Projects/AcademicCloud checkout and other review/staging work remain preserved; synchronization refers to the active vNext checkout. The predecessor's ignored final-draft report is incomplete and is not final acceptance.
 
@@ -46,6 +46,12 @@ The repository is private and remaining included Actions allowance cannot be ver
 Search now carries the authorized Holding identity/version and uses the same resource rows, selection, favorites, details/download and permitted batch actions as browsing. Changing query/filter/sort clears previous selection; paging preserves it; revision changes cancel old requests. List/Search/Favorites share bounded metadata/bibliography/authority projection. Details returns the current Holding after edits, allowing the open reading title to update without replacing the iframe. Owner folder loading no longer hides already available Library holdings. Bibliography subtitles use separate facts, avoid repeating title authors and keep historical edition statements together.
 
 Backend78 related tests and types/build pass; full frontend360/360, types/build pass. Local browser1440/1024/768/390 selection/toolbars have no horizontal overflow; desktop/mobile screenshots reviewed. Parent diff review covers authorization, query scope and stale UI responses; follow-up subagent review stopped at its account usage limit and is not counted as completed. No migrations, dependencies, Compute model/runtime or production writes in this new milestone yet. Source73b26d2 was pushed before the Owner requested one final combined publication. An already-started exact Linux validation may finish locally; no deployment of this intermediate checkpoint. Continue the integrated improvement batch with local checks/checkpoints, then perform final qualification, push/deployment and live acceptance once.
+
+## Source generations — locally implemented and independently verified
+
+ADR-043/migration037 records immutable byte generations, backfills already activated files without changing their records or objects, and captures single/multipart/compatible-old-runtime activation atomically. Rename, move, ownership promotion and recycle/restore keep the same generation; actual byte-tuple changes create a new one. Preview/download returns only authorized resourceId/sourceId and rejects a source change or recycle during signing. Catalog CAS/fingerprints remain unchanged.
+
+Dedicated verifier: backend455 passed, zero failures, three Windows symlink-permission skips; current build and compiled acceptance PASS. Tests cover retained deleted/purging/purged migration rows, rollback transactions, cross-file constraints and unauthorized requests with zero source queries. Reused hash-verified73b Linux runtime passes schema37 startup/activation/rename/download with complete migration history, while an incomplete directory fails closed. This is local migration/compatibility evidence; production stays schema36/live7e. Next implement private Workspace/Collections/Page Notes; one final combined publication remains required.
 
 ## Established evidence retained
 
