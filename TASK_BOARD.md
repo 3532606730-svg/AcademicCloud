@@ -1,12 +1,12 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-09-14. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
+**Last reconciled:** 2026-09-15. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
 ## Active task
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — predecessor stopped by Owner; reconcile exact runtime, restore qualified worker, fix identified correctness failures, then fast/polished document workflows and source-safe private research foundations |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — first correctness/document-session release7e2d1bf deployed and public checks green; finish signed-in QA, then unified Library/Search and source-safe private research foundations |
 
 The current reassessment charter and Owner's2026-09-09 start instruction supersede the earlier read-only gate and narrow review scope. The active task contains the ordered Phase B milestones. Necessary production/data/service changes and main integration remain authorized. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 

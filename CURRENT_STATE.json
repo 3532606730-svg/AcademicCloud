@@ -1,28 +1,28 @@
 {
-  "lastReconciled": "2026-09-14",
+  "lastReconciled": "2026-09-15",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "5eeed4c8d8d16378310980c86bdafb9416143984",
-    "mainIntegration": "both main/integration independently verified at5eeed4c; Phase B publication pending",
-    "localSynchronized": false
+    "checkpoint": "7e2d1bfb42a1135d93973bcf788eae5e045bb5f6",
+    "mainIntegration": "implementation checkpoint atomically pushed to main/integration; active vNext HEAD and both tracking heads verified equal; later documentation checkpoints do not change deployed runtime",
+    "localSynchronized": true
   },
   "production": {
-    "observedAt": "2026-09-14",
-    "coreFrontendCommit": "3c8643745a196b78f67e553f53d39ef3d21f1023",
+    "observedAt": "2026-09-15",
+    "coreFrontendCommit": "7e2d1bfb42a1135d93973bcf788eae5e045bb5f6",
     "schemaVersion": 36,
     "migrationHistory": "001-036",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "September14 Core active PID995661 with zero restarts; ready pass; DB integrity/schema retained last verified evidence",
+    "health": "Core active PID1091689 with zero restarts; loopback/public ready pass; exact schema/admissions/integrity/FK pass, no migration",
     "catalogBridgeCommit": "ba0a74f28470a312f2e05135033f5b5a727ef093",
-    "catalogBridgeState": "active (last verified September9)",
+    "catalogBridgeState": "active PID334 NRestarts0",
     "computeDistro": "AcademicCloudComputeV2",
-    "mainInferenceState": "exact3c86437 active/running PID350 NRestarts0; September9 normal UI result plus read-only DB/journal verify Mongolia succeeded before takeover",
+    "mainInferenceState": "exact7e2d1bf active/running PID1195 NRestarts0 NORMAL; actual executable/cwd match; full verifier and affected-source immutable smoke PASS",
     "vnextDeployed": true
   },
   "candidate": {
@@ -41,16 +41,16 @@
     "dependencyProductionAdvisories": 0
   },
   "verification": {
-    "backend": "426/426",
-    "frontend": "324/324 local follow-up",
+    "backend": "450/450 exact7e2d1bf Linux",
+    "frontend": "345/345 exact7e2d1bf Linux",
     "contracts": "3/3",
-    "compute": "158 pass; 1 skip (follow-up local suite)",
-    "operations": "79/79",
+    "compute": "165/165 exact7e2d1bf deterministic Linux suite",
+    "operations": "84/84 exact7e2d1bf Linux",
     "metadataAuthorityReset": "6/6",
     "typesBuild": "pass",
-    "compiledAcceptance": "pass schema036, v11 admission, repeat initialization, persistence/recovery",
+    "compiledAcceptance": "exact7e2d1bf source/extracted Linux and Alibaba runtime PASS; schema036, v11 admission, repeat initialization, persistence/recovery",
     "strictNpmInstall": "pass npm11.19.1",
-    "browser": "six real responsive before/after widths; live Catalog import/Preview/Apply, ISBN search, reading, details, citation and refresh pass",
+    "browser": "historical real Catalog/reading/search pass; current document-session local browser1440/1024/768/390 pass; deployed changed-path signed-in verification pending Edge connection",
     "catalogBenchmark10000Holdings500SelectedMs": {
       "oldApply": 121267.617,
       "newApply": 1149.913,
@@ -59,25 +59,29 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "September9 frontend344/344 plus later focused12/12; September14 document-session8/8+frontend types+independent review PASS; bibliography40/40+Compute types PASS; asset/nginx Windows31 pass/3 privilege skips, Linux24/24, backend types PASS; responsive document-session1440/1024/768/390 PASS; exact Linux release pending",
+    "currentPhaseB": "1047 exact Linux tests, types/build/source+extracted acceptance and zero-vulnerability audits PASS; independent review and local responsive document sessions PASS; Core/frontend/Compute deployed,20 public HTTP checks PASS; signed-in changed-path acceptance pending",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
-    }
+    },
+    "initialJavaScriptAndCssTransferredBytes": {"before":575746,"after":132478},
+    "publicAssets": "8 previous/current assets identity+gzip hash/size/security/cache pass; missing chunk404 not immutable; health/ready200 and anonymous session401 no-store/uncompressed",
+    "releaseArchiveSha256": "22a1355c0dd13971af7429537c913a75dfbf0fc6083b78fff2f6585b5acd6fe1"
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",
     "historicalProductionB": "pass reviewable",
     "historicalProductionC": "two canonical_schema_invalid failures, no promotion",
-    "next": "one affected-source immutable smoke for classifier-local failure isolation candidate",
-    "candidateOffline": "7/7 exact immutable3c86437: A/B/B/UNKNOWN, both real C sources, Mongolia Today; unchanged v11",
+    "next": "normal signed-in changed-path acceptance; no redundant successful Catalog retry",
+    "candidateOffline": "historical3c seven-case PASS; exact7e2d1bf immutable MongoliaToday smoke1/1 PASS in31062ms, OCRtrue,19 evidenced fields, UNKNOWN/ambiguous; unchanged v11/model/runtime; runtime smoke not factual precision measurement",
     "currentProductionC": "both normal-UI retries succeeded; UNKNOWN class,19/10 evidence fields, no canonical/source mutation",
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Browser Use blocks direct loopback with ERR_BLOCKED_BY_CLIENT; fresh browser export not verified"
+    "September15 Edge browser connection unavailable; current signed-in changed-path acceptance pending",
+    "Historical Browser Use direct-loopback ERR_BLOCKED_BY_CLIENT; fresh browser export remains unverified"
   ],
-  "next": "Checkpoint and exact local Linux qualification; publish with skip ci; exact Core/frontend/Compute and retained-asset nginx release/live verification",
+  "next": "Complete signed-in live document-session/Search/Details/download QA after Edge reconnects; then unified Library/Search rows and immutable source/page foundations",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

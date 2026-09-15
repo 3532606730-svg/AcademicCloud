@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-09-14. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
+**Last reconciled:** 2026-09-15. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
 ## Active work and authority
 
@@ -10,32 +10,34 @@ The charter authorizes implementation beyond R01–R16, visual refinement, optim
 
 ## Source and takeover evidence
 
-Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. Takeover HEAD was **5eeed4c8d8d16378310980c86bdafb9416143984**, with a clean worktree. It includes the predecessor's contributor omission, UI retry repairs and activation-stability fix. On September14, both GitHub main and integration still point to that exact commit; Phase B edits remain local and uncommitted.
+Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. Phase B implementation checkpoint **7e2d1bfb42a1135d93973bcf788eae5e045bb5f6** is published to main and integration; both remote tracking heads and the clean active local checkout were verified equal after an atomic fast-forward push. Takeover source5eeed4c remains historical.
 
-The latest independent remote check found both main and integration at5eeed4c, with predecessor CI34355914519/main and34354370164/integration passing. The original D:/Projects/AcademicCloud checkout and other review/staging work remain preserved. No previous process was killed by this agent. The predecessor's ignored final-draft report is incomplete and is not final acceptance.
+Predecessor CI34355914519/main and34354370164/integration passed at5eeed4c. Current publication uses [skip ci] with exact local Linux qualification to guarantee zero billable hosted usage. The original D:/Projects/AcademicCloud checkout and other review/staging work remain preserved; synchronization refers to the active vNext checkout. The predecessor's ignored final-draft report is incomplete and is not final acceptance.
 
 ## Last observed runtime
 
-| Component | Last evidence (September14 unless stated) |
+| Component | Evidence on September15 |
 |---|---|
-| Core/frontend | Exact3c8643745a196b78f67e553f53d39ef3d21f1023; selector and actual process cwd agree |
-| Core health | Active/running PID995661, zero restarts; loopback readiness passes |
-| Database | Last verified schema/history36/001–036, eleven admissions, integrity OK and zero FK violations; no takeover migration |
-| Main Compute | Exact3c864374 selected; prior immutable seven-case qualification PASS; active/running PID350, zero restarts |
-| Catalog Bridge | September9: exactba0a74f28470a312f2e05135033f5b5a727ef093, active/running, zero restarts |
-| Concurrent operations | No ongoing build/deployment/qualification observed during recovery |
+| Core/frontend | Exact7e2d1bfb42a1135d93973bcf788eae5e045bb5f6; selector and actual process cwd agree |
+| Core health | Active/running PID1091689, zero restarts; loopback and public readiness pass |
+| Database | Schema/history36/001–036, eleven admissions, integrity OK and zero FK violations; no migration in this release |
+| Main Compute | Exact7e2d1bf selected; full immutable verifier and affected-source smoke PASS; active/running PID1195, zero restarts, actual executable/cwd agree; NORMAL |
+| Catalog Bridge | Exactba0a74f28470a312f2e05135033f5b5a727ef093, active/running PID334, zero restarts |
+| Public assets | Six candidate and two previous assets retained; exact bytes/gzip/security/cache checks PASS |
 
 Compute's September9 stop was a normal requested stop, not a crash. Its initiating caller is unknown. This agent restored the qualified worker, and September14 recovery confirms the same release active. The activation-script-only commit5eeed4c did not require rebuilding that qualified runtime.
 
 Mongolia Today jobffc568e0 succeeded on attempt3 from13:00:51.988Z to13:01:49.917Z, before takeover. Journal process identity proves exact3c864374. The signed-in Details/AI panel shows success with19 evidenced fields, UNKNOWN class and no canonical record. A scoped query-only DB check confirms v11/prompt-v7, auto_applied=0, no applied fields and unchanged source revision1. Do not retry an already successful job merely to recreate evidence.
 
-## Phase B milestone one — local, not yet deployed
+## Phase B first release — deployed; signed-in changed-path acceptance pending
 
 Optional classification failures now retain the validated bibliography while cancellation/lease loss propagates. Activity polling recovers after transient failure; Member holdings do not wait for submission history. Search defaults to relevance independently of browse sort. Shared MIME/size affordances route unsupported previews to Details and allow plain text consistently.
 
-Preview displays immediately before authorization returns, keeps authorization errors/retry in the same dialog, ignores late closed requests, and retains its native iframe through Details/Citation. Optional Details/Citation/Catalog/Batch Naming load in separate chunks with an isolated retry surface. Initial JS is425,585 bytes versus511,320 previously (16.77% smaller), before the separately prepared static gzip fix. This measures build payload, not first-page paint. ADR-042 introduces verified additive public assets so open tabs retain their chunks through deployments and rollbacks.
+Preview displays immediately before authorization returns, keeps authorization errors/retry in the same dialog, ignores late closed requests, and retains its native iframe through Details/Citation. Optional Details/Citation/Catalog/Batch Naming load in separate chunks with an isolated retry surface. Initial JS is425,585 bytes versus511,320 previously (16.77% smaller). Live nginx gzip delivers initial JS120,019 and CSS12,459 bytes:132,478 combined versus575,746 previously, 76.99% less transferred. These are payload measurements, not first-page paint or whole-app latency. ADR-042 preserves old public assets through releases and application rollback.
 
-Verification: September9 frontend344/344 plus later focused12/12 including the added warm-reopen regression; frontend typecheck/build pass. Bibliography40/40 and Compute typecheck pass. September14 independent review, document-session8/8 and both frontend typechecks pass. Real-browser document-session checks at1440/1024/768/390 preserve the exact iframe, focus and browser Back with no horizontal overflow. Initial nginx tests5/5 passed; new asset-publication boundary tests and exact Linux release gates are in progress.
+Exact Linux qualification: backend450, frontend345, contracts3, Compute unit165 and operations84 all pass (1,047 tests); all types/build, source and extracted compiled acceptance, full/production audits pass with zero vulnerabilities. Build used Ubuntu24.04, non-root, Node24.19.0/npm11.19.1. Archive SHA25622a1355c0dd13971af7429537c913a75dfbf0fc6083b78fff2f6585b5acd6fe1;4,935 files/37,121,240 bytes. Alibaba independently verified the same bundle and extracted runtime before selection; its existing npm11.17.0 was only read for evidence, with no installation/build there.
+
+Independent frontend review and real-browser document-session checks at1440/1024/768/390 passed before release, preserving the exact iframe, focus and browser Back with no overflow. Public live verification now passes20 GET checks: all8 old/new assets match their manifests under identity/gzip, missing chunks have no immutable caching, security headers remain and anonymous session is401. The exact Compute smoke passes Mongolia Today in31,062ms with19 evidenced fields, ambiguous/UNKNOWN and no model/validator changes; this is runtime compatibility evidence, not a measured factual-precision score. September15 Edge connection is unavailable, so normal signed-in changed-path acceptance is explicitly pending.
 
 The repository is private and remaining included Actions allowance cannot be verified with existing read scopes. Publish with [skip ci] and qualify locally to uphold zero new billable GitHub usage. New remote CI is skipped, not claimed passed.
 
@@ -51,7 +53,7 @@ The repository is private and remaining included Actions allowance cannot be ver
 
 ## Immediate execution order
 
-1. Finish reviewed static-asset publication, checkpoint and qualify the exact Linux release; deploy the completed correctness/document-session fixes and verify signed-in paths.
+1. Reconnect the existing signed-in browser and verify the deployed document-session, Search, Details, download and responsive paths; reconcile the release checkpoint.
 2. Improve compressed static delivery, app/Preview opening, retained document context and a polished responsive Library/Details/Reader surface. Measure real path latency.
 3. Establish immutable source/page identity, then useful private Workspace/Collections/Page Notes with privacy and export tests.
 4. Improve selective/resumable Catalog and measured upload/search bottlenecks; evaluate quality with field evidence and abstention, not schema acceptance alone.
