@@ -10,7 +10,7 @@ The charter authorizes implementation beyond R01–R16, visual refinement, optim
 
 ## Source and takeover evidence
 
-Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. Phase B implementation checkpoint **7e2d1bfb42a1135d93973bcf788eae5e045bb5f6** is published to main and integration; both remote tracking heads and the clean active local checkout were verified equal after an atomic fast-forward push. Takeover source5eeed4c remains historical.
+Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. Current source checkpoint **73b26d257c0f9508758bdb90d42165e80939cecd** is published to main and integration; both remote tracking heads and the clean active local checkout were verified equal after an atomic fast-forward push. Takeover source5eeed4c remains historical.
 
 Predecessor CI34355914519/main and34354370164/integration passed at5eeed4c. Current publication uses [skip ci] with exact local Linux qualification to guarantee zero billable hosted usage. The original D:/Projects/AcademicCloud checkout and other review/staging work remain preserved; synchronization refers to the active vNext checkout. The predecessor's ignored final-draft report is incomplete and is not final acceptance.
 
@@ -41,11 +41,11 @@ Independent frontend review and real-browser document-session checks at1440/1024
 
 The repository is private and remaining included Actions allowance cannot be verified with existing read scopes. Publish with [skip ci] and qualify locally to uphold zero new billable GitHub usage. New remote CI is skipped, not claimed passed.
 
-## Unified Library/Search — locally verified, release pending
+## Unified Library/Search — verified locally; included in the final combined release
 
 Search now carries the authorized Holding identity/version and uses the same resource rows, selection, favorites, details/download and permitted batch actions as browsing. Changing query/filter/sort clears previous selection; paging preserves it; revision changes cancel old requests. List/Search/Favorites share bounded metadata/bibliography/authority projection. Details returns the current Holding after edits, allowing the open reading title to update without replacing the iframe. Owner folder loading no longer hides already available Library holdings. Bibliography subtitles use separate facts, avoid repeating title authors and keep historical edition statements together.
 
-Backend78 related tests and types/build pass; full frontend360/360, types/build pass. Local browser1440/1024/768/390 selection/toolbars have no horizontal overflow; desktop/mobile screenshots reviewed. Parent diff review covers authorization, query scope and stale UI responses; follow-up subagent review stopped at its account usage limit and is not counted as completed. No migrations, dependencies, Compute model/runtime or production writes in this new milestone yet. Exact Linux packaging, publication and deployment remain next.
+Backend78 related tests and types/build pass; full frontend360/360, types/build pass. Local browser1440/1024/768/390 selection/toolbars have no horizontal overflow; desktop/mobile screenshots reviewed. Parent diff review covers authorization, query scope and stale UI responses; follow-up subagent review stopped at its account usage limit and is not counted as completed. No migrations, dependencies, Compute model/runtime or production writes in this new milestone yet. Source73b26d2 was pushed before the Owner requested one final combined publication. An already-started exact Linux validation may finish locally; no deployment of this intermediate checkpoint. Continue the integrated improvement batch with local checks/checkpoints, then perform final qualification, push/deployment and live acceptance once.
 
 ## Established evidence retained
 
@@ -59,8 +59,8 @@ Backend78 related tests and types/build pass; full frontend360/360, types/build 
 
 ## Immediate execution order
 
-1. Publish and qualify the unified Library/Search checkpoint on Linux, deploy exact Core/frontend, and verify changed normal signed-in paths. The preceding7e document-session release is verified.
-2. Continue measured app/Preview and Library/Details/Reader improvements; retain the deployed compressed assets and document-session guarantees.
+1. Finish the integrated improvement batch locally. The Owner has requested one final publication/deployment rather than milestone releases; preserve live7e while continuing.
+2. Continue measured app/Preview and Library/Details/Reader improvements, then source/page-safe research foundations; use focused checks and local Git checkpoints until final integration.
 3. Establish immutable source/page identity, then useful private Workspace/Collections/Page Notes with privacy and export tests.
 4. Improve selective/resumable Catalog and measured upload/search bottlenecks; evaluate quality with field evidence and abstention, not schema acceptance alone.
 5. Evaluate bounded full-text foundations after the preceding dependencies; no immediate whole-corpus OCR/RAG rollout.

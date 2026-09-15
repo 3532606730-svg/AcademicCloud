@@ -6,8 +6,8 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "7e2d1bfb42a1135d93973bcf788eae5e045bb5f6",
-    "mainIntegration": "implementation checkpoint atomically pushed to main/integration; active vNext HEAD and both tracking heads verified equal; later documentation checkpoints do not change deployed runtime",
+    "checkpoint": "73b26d257c0f9508758bdb90d42165e80939cecd",
+    "mainIntegration": "73b26d2 atomically pushed and both tracking heads/local HEAD verified before Owner batch-publication instruction",
     "localSynchronized": true
   },
   "production": {
@@ -75,7 +75,9 @@
       "frontend": "360/360 full suite, types/build PASS",
       "browser": "synthetic desktop/mobile screenshots and1440/1024/768/390 search selection toolbar PASS",
       "independentFollowupReview": "subagent usage limit; parent scoped review completed",
-      "deployment": "pending exact Linux qualification and release"
+      "deployment": "intermediate deployment cancelled; include in final combined release",
+      "linux": "73b26d2: backend452/frontend360/contracts3/Compute165/ops84 all PASS (1064); all types/build, source/extracted compiled acceptance and full/production audit zero vulnerabilities",
+      "archiveSha256": "949fbe51d1e47416c1390284e9a95be0098315a3aceba766c441e74cb962e905"
     }
   },
   "computeQualification": {
@@ -90,13 +92,15 @@
   "blockers": [
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works"
   ],
-  "next": "Publish and exact-Linux-qualify unified Library/Search, deploy Core/frontend and live-verify; preserve unchanged Compute7e; then immutable source/page identity",
+  "next": "Continue source/page identity and private research foundations locally; preserve live7e; finish integrated improvements before one final publication/deployment",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
     "tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md",
     "docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md",
-    "docs/decisions/ADR-042-document-session-and-static-asset-continuity.md"
+    "docs/decisions/ADR-042-document-session-and-static-asset-continuity.md",
+    "docs/decisions/ADR-043-document-source-generations-and-page-locations.md"
   ],
-  "phase": "PHASE_B_EXECUTION"
+  "phase": "PHASE_B_EXECUTION",
+  "publicationCadence": "Owner2026-09-15: local implementation/tests/checkpoints until the integrated batch is complete; then one final push/deployment/live acceptance"
 }

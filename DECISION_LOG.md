@@ -2,6 +2,14 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## 2026-09-15 — One combined publication after local integration
+
+The Owner requests completing the integrated improvement batch locally before one final publication/deployment. Continue implementation, focused verification and local Git checkpoints; do not push/deploy individual milestones. Source73b26d2 was already pushed when this instruction arrived. Live Core/frontend/Compute remain7e2d1bf. Final exact qualification, migration/deployment and normal-site acceptance remain required.
+
+## ADR-043 — Source generations before page notes
+
+[ADR-043](docs/decisions/ADR-043-document-source-generations-and-page-locations.md) separates immutable recorded byte generations and one-based physical-page locations from mutable file/Catalog CAS revisions. Atomic database capture covers upload activation and byte-identity changes without coupling Drive to optional research modules. Existing authorized responses provide the descriptor; private overlays and source-replacement behavior must preserve authorship and non-disclosure. Migration037 is local work for the final combined release.
+
 ## ADR-042 — Document sessions and public asset continuity
 
 **Date:** 2026-09-09. **Status:** Accepted, implementation under qualification.

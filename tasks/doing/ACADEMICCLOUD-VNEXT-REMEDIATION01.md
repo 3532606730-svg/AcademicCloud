@@ -27,7 +27,7 @@ Ordered milestones:
 4. Improve resumable/selective Catalog review and measured upload/search bottlenecks. Distinguish quality/abstention evidence from format-only qualification.
 5. Evaluate page-aware full-text foundations on bounded sources after the earlier gates; retrieval/RAG expansion depends on measured value, source permissions and cost.
 
-For each milestone: risk-appropriate tests, review, responsive visual verification, exact release where changed, normal-site checks and durable checkpoint. Preserve prior successful data corrections; do not replay real mutations merely to recreate evidence.
+For each milestone: risk-appropriate tests, review, responsive visual verification and a local durable checkpoint. Owner instruction2026-09-15 evening batches remote publication/deployment: complete integrated work first, then one final exact release and normal-site acceptance; do not push/deploy every milestone. Preserve prior successful data corrections; do not replay real mutations merely to recreate evidence.
 
 ## Acceptance Criteria
 
@@ -43,7 +43,7 @@ For each milestone: risk-appropriate tests, review, responsive visual verificati
 
 ## Relevant ADRs
 
-ADR-014, ADR-022, ADR-023, ADR-031–040 and [ADR-041 — vNext review plans and search projection](../../docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md).
+ADR-014, ADR-022, ADR-023, ADR-031–040, [ADR-041 — vNext review plans and search projection](../../docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md), ADR-042 and [ADR-043 — source generations and page locations](../../docs/decisions/ADR-043-document-source-generations-and-page-locations.md).
 
 ## Relevant Modules / Files
 
@@ -51,7 +51,7 @@ Backend catalog/library/metadata/suggestions/persistence; frontend Library/detai
 
 ## Current State
 
-PHASE B ACTIVE, reconciled2026-09-15. Exact implementation checkpoint7e2d1bfb42a1135d93973bcf788eae5e045bb5f6 is published to main/integration and deployed to Core/frontend/Compute. Exact Linux1047 tests and both local/Alibaba extracted runtime verifiers pass. Core PID1091689 and Compute PID1195 active with zero restarts; schema/history36 and eleven admissions unchanged, integrity/FK pass. Public retained/gzip assets pass. Signed-in document-session, Search, capability fallback and completed DOCX download now pass. Unified Library/Search is locally qualified (backend78 related/frontend360 complete tests, types/build and four-width browser checks); exact Linux packaging/release is next. The broader charter remains active. Earlier measurements and releases below are historical evidence.
+PHASE B ACTIVE, reconciled2026-09-15. Exact implementation checkpoint7e2d1bfb42a1135d93973bcf788eae5e045bb5f6 is published to main/integration and deployed to Core/frontend/Compute. Exact Linux1047 tests and both local/Alibaba extracted runtime verifiers pass. Core PID1091689 and Compute PID1195 active with zero restarts; schema/history36 and eleven admissions unchanged, integrity/FK pass. Public retained/gzip assets pass. Signed-in document-session, Search, capability fallback and completed DOCX download now pass. Unified Library/Search is locally qualified (backend78 related/frontend360 complete tests, types/build and four-width browser checks); source73b26d2 was pushed before the Owner requested one final combined publication; remaining work continues locally and intermediate deployment is cancelled. The broader charter remains active. Earlier measurements and releases below are historical evidence.
 
 Work is explicitly separated:
 - **PREEXISTING_DIRTY_FILES:** original W retains ten tracked dirty files and 630 untracked files; review/staging trees are preserved. W NuExtract work already in B was not replaced by stale code.
@@ -89,7 +89,7 @@ The runbook selects candidate migration/admission paths after protected environm
 
 - Finish remaining whole-product browser evidence; six real responsive widths and the real Catalog correction flow now pass.
 - Preserve the exact verified Catalog mutation record; fresh export has a Browser Use loopback block, independent of bridge health.
-- Package/deploy the locally qualified unified Library/Search and bibliography-display milestone. Preserve deployed7e Compute and prior source/AI qualification; do not repeat already successful corpus jobs.
+- Include the locally qualified unified Library/Search and bibliography-display milestone in the final combined release; no intermediate deployment. Preserve deployed7e Compute and prior source/AI qualification; do not repeat already successful corpus jobs.
 - Close production-relevant findings only after deployment/live evidence; deliver the complete final report.
 
 ## Blockers
@@ -99,6 +99,8 @@ Production, GitHub and the existing signed-in Edge session are available; no app
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
+
+2026-09-15 local-only qualification of73b26d2: Linux backend452/frontend360/contracts3/Compute165/ops84 (1064 tests), all types/build, source/extracted compiled acceptance and both audits PASS, zero vulnerabilities. Archive SHA256949fbe51d1e47416c1390284e9a95be0098315a3aceba766c441e74cb962e905;4937 files/37,127,501 bytes. Already-started packaging finished locally; artifact was not copied to production or deployed. Owner now requires one final combined publication; source identity/overlay development continues locally under ADR-043.
 
 2026-09-15 evening: deployed7e signed-in document-session checks PASS. Mongolia Today renders; the exact iframe remains through Details/Citation; Back closes it and restores row focus. Relevance Search returns both Mongolia results after one transient network timeout (Core loopback/public ready pass). DOCX routes to Details and normal Download completes as13,639 bytes,16 ZIP entries including word/document.xml. Live Library1440/1024/768/390 has no horizontal overflow; viewport overrides removed. No canonical or source mutation. New unified Library/Search: backend78 related tests, backend types/build, frontend360/360 complete tests and types/build PASS. Local responsive screenshots and selection toolbar checks at1440/1024/768/390 PASS; changed query clears selection. Tests cover true search Holding IDs, pagination selection, legacy late-response cancellation, metadata-save title refresh retaining the iframe, and canonical/source-edition subtitle distinctions. Parent reviewed scoped diff; follow-up independent review unavailable due account limit, not claimed passed. Exact new release remains pending.
 
@@ -133,4 +135,4 @@ Takeover live evidence: qualified3c864374 worker remains active PID51089 with ze
 
 ## Next Action
 
-Checkpoint/publish the qualified unified Library/Search change with [skip ci], build and verify the exact Linux Core/frontend artifact, deploy with retained assets, and verify normal Search selection/details/download and bibliography display. Compute has no changes in this milestone and remains7e. Then establish immutable source/page identities before private Workspace/Collections/Page Notes. Final whole-product acceptance remains open.
+Continue locally with immutable source/page identities and private Workspace/Collections/Page Notes, measured upload/search and Catalog improvements. Preserve existing checked source73b26d2 and live7e; do not push or deploy intermediate milestones. Finish this integrated batch, then run final exact qualification, one combined publication/deployment and whole-product live acceptance.
