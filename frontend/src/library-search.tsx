@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type {
   AcademicCloudApi,
@@ -19,6 +19,13 @@ import type { Translator } from "./i18n-react.tsx";
 import { readViewPreference, writeViewPreference } from "./view-context.ts";
 
 const SEARCH_DEBOUNCE_MS = 280;
+const EMPTY_HOLDINGS: LibraryHolding[] = [];
+
+export interface LibrarySearchState {
+  identity: string;
+  active: boolean;
+  holdings: LibraryHolding[];
+}
 
 const SORT_OPTIONS: ReadonlyArray<{ value: LibraryHoldingSort; key: MessageKey }> = [
   { value: "newest", key: "library.sortNewest" },
@@ -67,27 +74,8 @@ function contributorRoleKey(value: ContributorRole): MessageKey {
   return `contributorRole.${value}` as MessageKey;
 }
 
-export function librarySearchResultToHolding(result: LibrarySearchResult): LibraryHolding {
-  return {
-    recordId: "",
-    recordLabel: result.displayName,
-    canonicalTitle: result.canonicalTitle,
-    authorLabels: [...result.authorLabels],
-    materialClass: result.materialClass ?? null,
-    contributorLabels: [...(result.contributorLabels ?? result.authorLabels)],
-    editionStatement: result.editionStatement ?? null,
-    catalogueDisplayTitle: result.catalogueDisplayTitle ?? "",
-    artifactId: "",
-    versionId: "",
-    version: "",
-    file: {
-      id: result.fileId,
-      displayName: result.displayName,
-      mediaType: result.mediaType ?? null,
-      sizeBytes: result.sizeBytes ?? 0,
-      updatedAt: "",
-    },
-  };
+export function librarySearchResultToHolding(result: LibrarySearchResult): LibraryHolding | null {
+  return result.holding ?? null;
 }
 
 function secondaryLine(result: LibrarySearchResult, t: Translator): string | null {
@@ -111,6 +99,9 @@ export function LibrarySearchField({
   t,
   onOpenResult,
   onActiveChange,
+  onStateChange,
+  renderResults,
+  revision = 0,
   sort,
   onSortChange,
 }: {
@@ -121,6 +112,9 @@ export function LibrarySearchField({
   t: Translator;
   onOpenResult: (result: LibrarySearchResult) => void;
   onActiveChange?: (active: boolean) => void;
+  onStateChange?: (state: LibrarySearchState) => void;
+  renderResults?: (results: LibrarySearchResult[]) => ReactNode;
+  revision?: number;
   sort?: LibraryHoldingSort;
   onSortChange?: (sort: LibraryHoldingSort) => void;
 }) {
@@ -152,6 +146,7 @@ export function LibrarySearchField({
   }, [accountId, library?.id, query, materialClass, contributor, filterLanguage, publisher, year, editionType, dynasty, reignTitle, editorialRole, series, volume, searchSort]);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [results, setResults] = useState<LibrarySearchResult[]>([]);
+  const [resultRequestKey, setResultRequestKey] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -176,6 +171,19 @@ export function LibrarySearchField({
   // Browsing order is independent from ranked search. An explicit choice in
   // search applies to that query and its pages without reordering the Library.
   const requestedSort = searchSort === "relevance" ? undefined : searchSort;
+  const libraryId = library?.id;
+  const trimmedQuery = query.trim();
+  const identity = JSON.stringify([libraryId ?? null, trimmedQuery, filters, searchSort]);
+  const requestKey = JSON.stringify([identity, revision]);
+  const currentRequestKeyRef = useRef(requestKey);
+  currentRequestKeyRef.current = requestKey;
+  // A query can change before the fetching effect runs. Never render or report
+  // results from that previous request under the new selection identity.
+  const visibleStatus = !libraryId || !active ? "idle"
+    : resultRequestKey !== requestKey ? "loading" : status;
+  const holdings = useMemo(() => visibleStatus === "success"
+    ? results.map(librarySearchResultToHolding).filter((holding) => holding !== null)
+    : EMPTY_HOLDINGS, [visibleStatus, results]);
 
   const abortRef = useRef<AbortController | null>(null);
   const loadMoreAbortRef = useRef<AbortController | null>(null);
@@ -183,19 +191,25 @@ export function LibrarySearchField({
   const requestIdRef = useRef(0);
   const onActiveChangeRef = useRef(onActiveChange);
   onActiveChangeRef.current = onActiveChange;
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
+  const identityRef = useRef(identity);
+  identityRef.current = identity;
 
   useEffect(() => { onActiveChangeRef.current?.(active); }, [active]);
+  useEffect(() => {
+    onStateChangeRef.current?.({ identity, active, holdings });
+  }, [identity, active, holdings]);
 
   useEffect(() => () => {
     onActiveChangeRef.current?.(false);
+    onStateChangeRef.current?.({ identity: identityRef.current, active: false, holdings: EMPTY_HOLDINGS });
     abortRef.current?.abort();
     loadMoreAbortRef.current?.abort();
     if (debounceRef.current) clearTimeout(debounceRef.current);
   }, []);
 
   useEffect(() => {
-    const libraryId = library?.id;
-    const trimmed = query.trim();
     if (!libraryId || !active) {
       abortRef.current?.abort();
       abortRef.current = null;
@@ -213,6 +227,8 @@ export function LibrarySearchField({
     }
 
     setStatus("loading");
+    setResultRequestKey(requestKey);
+    setResults([]);
     setError(null);
     setNextCursor(null);
     setLoadingMore(false);
@@ -229,17 +245,17 @@ export function LibrarySearchField({
       const controller = new AbortController();
       abortRef.current = controller;
       const request = requestedSort
-        ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, undefined, undefined, hasFilters ? filters : undefined, requestedSort)
+        ? api.searchLibraryHoldings(libraryId, trimmedQuery, controller.signal, undefined, undefined, hasFilters ? filters : undefined, requestedSort)
         : hasFilters
-          ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, undefined, undefined, filters)
-          : api.searchLibraryHoldings(libraryId, trimmed, controller.signal);
+          ? api.searchLibraryHoldings(libraryId, trimmedQuery, controller.signal, undefined, undefined, filters)
+          : api.searchLibraryHoldings(libraryId, trimmedQuery, controller.signal);
       request.then((page) => {
-        if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+        if (requestIdRef.current !== requestId || currentRequestKeyRef.current !== requestKey || controller.signal.aborted) return;
         setResults(page.results);
         setNextCursor(page.nextCursor);
         setStatus("success");
       }, (caught: unknown) => {
-        if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+        if (requestIdRef.current !== requestId || currentRequestKeyRef.current !== requestKey || controller.signal.aborted) return;
         setError(caught);
         setStatus("error");
       });
@@ -247,36 +263,36 @@ export function LibrarySearchField({
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+      loadMoreAbortRef.current?.abort();
     };
-  }, [active, api, filterIdentity, hasFilters, library, query, requestedSort]);
+  }, [active, api, filterIdentity, hasFilters, libraryId, trimmedQuery, requestedSort, requestKey]);
 
   function loadMore() {
-    const libraryId = library?.id;
-    const trimmed = query.trim();
-    if (!libraryId || !active || !nextCursor || loadingMore) return;
+    if (!libraryId || visibleStatus !== "success" || !nextCursor || loadingMore || loadMoreAbortRef.current) return;
     const requestId = requestIdRef.current;
-    loadMoreAbortRef.current?.abort();
     const controller = new AbortController();
     loadMoreAbortRef.current = controller;
     setLoadingMore(true);
     setLoadMoreError(null);
     const request = requestedSort
-      ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor, undefined, hasFilters ? filters : undefined, requestedSort)
+      ? api.searchLibraryHoldings(libraryId, trimmedQuery, controller.signal, nextCursor, undefined, hasFilters ? filters : undefined, requestedSort)
       : hasFilters
-        ? api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor, undefined, filters)
-        : api.searchLibraryHoldings(libraryId, trimmed, controller.signal, nextCursor);
+        ? api.searchLibraryHoldings(libraryId, trimmedQuery, controller.signal, nextCursor, undefined, filters)
+        : api.searchLibraryHoldings(libraryId, trimmedQuery, controller.signal, nextCursor);
     request.then((page) => {
-      if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+      if (requestIdRef.current !== requestId || currentRequestKeyRef.current !== requestKey || controller.signal.aborted) return;
       setResults((current) => {
         const seen = new Set(current.map((item) => item.fileId));
         return [...current, ...page.results.filter((item) => !seen.has(item.fileId))];
       });
       setNextCursor(page.nextCursor);
     }, (caught: unknown) => {
-      if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+      if (requestIdRef.current !== requestId || currentRequestKeyRef.current !== requestKey || controller.signal.aborted) return;
       setLoadMoreError(caught);
     }).finally(() => {
-      if (requestIdRef.current === requestId) setLoadingMore(false);
+      if (loadMoreAbortRef.current === controller) loadMoreAbortRef.current = null;
+      if (requestIdRef.current === requestId && currentRequestKeyRef.current === requestKey && !controller.signal.aborted) setLoadingMore(false);
     });
   }
 
@@ -308,7 +324,7 @@ export function LibrarySearchField({
             maxLength={100}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Escape") {
+              if (event.key === "Escape" && !event.nativeEvent.isComposing && !event.defaultPrevented) {
                 event.preventDefault();
                 clearSearch();
               }
@@ -351,12 +367,12 @@ export function LibrarySearchField({
       </div>
       {active && (
         <div className="library-search-results">
-          {status === "loading" && <p className="muted" role="status">{t("librarySearch.loading")}</p>}
-          {status === "error" && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
-          {status === "success" && results.length === 0 && <p className="muted">{t("librarySearch.noResults")}</p>}
-          {status === "success" && results.length > 0 && (
+          {visibleStatus === "loading" && <p className="muted" role="status">{t("librarySearch.loading")}</p>}
+          {visibleStatus === "error" && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
+          {visibleStatus === "success" && results.length === 0 && <p className="muted">{t("librarySearch.noResults")}</p>}
+          {visibleStatus === "success" && results.length > 0 && (
             <>
-              <ul className="library-search-list" aria-label={t("librarySearch.resultsAria")}>
+              {renderResults ? <section aria-label={t("librarySearch.resultsAria")}>{renderResults(results)}</section> : <ul className="library-search-list" aria-label={t("librarySearch.resultsAria")}>
                 {results.map((result) => {
                   const title = composeLibraryDisplayTitle({
                     canonicalTitle: result.canonicalTitle,
@@ -368,7 +384,7 @@ export function LibrarySearchField({
                   const meta = secondaryLine(result, t);
                   return <li key={result.fileId}><button type="button" className="library-search-result" onClick={() => onOpenResult(result)}><span className="library-search-result-title">{title}</span>{meta && <span className="library-search-result-meta">{meta}</span>}</button></li>;
                 })}
-              </ul>
+              </ul>}
               {nextCursor !== null && (
                 <div className="library-search-more">
                   <button type="button" className="button button--small" disabled={loadingMore} onClick={loadMore}>{loadingMore ? t("librarySearch.loading") : t("librarySearch.loadMore")}</button>

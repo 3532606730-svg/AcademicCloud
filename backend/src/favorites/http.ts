@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { fileDto, folderDto } from "../drive/http.js";
-import { libraryHoldingView } from "../library/holding-view.js";
 import { FavoriteError } from "./favorite.js";
 import type { FavoriteService } from "./favorite-service.js";
 
@@ -30,7 +29,7 @@ export async function registerFavoritesHttp(app: FastifyInstance, favoriteServic
     const snapshot = favoriteService.listFavorites(requireAccountId(request.authAccount));
     return {
       files: snapshot.files.map(fileDto),
-      libraryHoldings: snapshot.libraryHoldings.map(({ library, role, holding, bibliography }) => ({
+      libraryHoldings: snapshot.libraryHoldings.map(({ library, role, view }) => ({
         library: {
           id: library.id,
           name: library.name,
@@ -38,7 +37,7 @@ export async function registerFavoritesHttp(app: FastifyInstance, favoriteServic
           isDefault: library.isDefault,
           createdAt: library.createdAt.toISOString(),
         },
-        holding: libraryHoldingView(holding, bibliography),
+        holding: view,
       })),
       folders: snapshot.folders.map((entry) => ({
         ...folderDto(entry.folder),

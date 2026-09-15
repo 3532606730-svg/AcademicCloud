@@ -156,6 +156,13 @@ test("manager canonical edits preserve physical identity, lineage, filename, pro
   const saved = metadata.updateMetadata(OWNER, library.id, fileId, initial.metadataVersion, update);
 
   assert.equal(saved.displayTitle, "元西域人华化考");
+  assert.equal(saved.holding.canonicalTitle, "元西域人华化考", "write response projects the saved metadata, not its pre-write holding snapshot");
+  assert.deepEqual(saved.holding.authorLabels, ["陈垣"]);
+  assert.deepEqual(saved.holding, metadata.getDetails(MEMBER, library.id, fileId).holding);
+  assert.equal(saved.holding.recordId, initial.holding.recordId);
+  assert.equal(saved.holding.artifactId, initial.holding.artifactId);
+  assert.equal(saved.holding.versionId, initial.holding.versionId);
+  assert.equal(saved.holding.version, initial.holding.version, "canonical edits do not invent a new file CAS version");
   const projectedHolding = persistence.repositories.libraries.listHoldings(library.id, 10)[0];
   assert.equal(projectedHolding?.canonicalTitle, "元西域人华化考");
   assert.deepEqual(projectedHolding?.authorLabels, ["陈垣"]);

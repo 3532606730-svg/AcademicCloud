@@ -30,6 +30,7 @@ test("modern scholarly display composes author and title with a space without mu
   });
   const display = composeCatalogueDisplay({ canonicalTitle: "モンゴル帝国の興亡", fallbackDisplayName: "scan.pdf", bibliography });
   assert.equal(display.title, "杉山正明 モンゴル帝国の興亡");
+  assert.deepEqual(display.secondaryContributorLabels, []);
   assert.equal(bibliography.contributors[0]?.label, "杉山正明");
 });
 
@@ -46,6 +47,7 @@ test("modern edited and traditional-source displays keep carrier and source fact
     }),
   });
   assert.equal(modern.title, "元史 中华书局1976点校本");
+  assert.deepEqual(modern.secondaryContributorLabels, ["顾颉刚"]);
 
   const explicitModern = composeCatalogueDisplay({
     canonicalTitle: "元史",
@@ -93,6 +95,23 @@ test("modern edited and traditional-source displays keep carrier and source fact
     }),
   });
   assert.equal(explicitFacsimile.title, "某书 某出版社影印清乾隆十年刻本");
+});
+
+test("secondary contributors use structured authorship and deduplicate without parsing the title", () => {
+  const bibliography = profile({ contributors: [
+    { id: "author", label: "Author", role: "author" },
+    { id: "author-editor", label: "Author", role: "editor" },
+    { id: "editor", label: "Editor", role: "editor" },
+    { id: "same-editor", label: " Editor ", role: "translator" },
+  ] });
+  const modern = composeCatalogueDisplay({ canonicalTitle: "Editor in the title", fallbackDisplayName: "Author.pdf", bibliography });
+  assert.equal(modern.title, "Author Editor in the title");
+  assert.deepEqual(modern.contributorLabels, ["Author", "Editor"]);
+  assert.deepEqual(modern.secondaryContributorLabels, ["Editor"], "a title substring never implies an authorship fact");
+  const unnamed = composeCatalogueDisplay({ canonicalTitle: null, fallbackDisplayName: "Author.pdf", bibliography });
+  assert.deepEqual(unnamed.secondaryContributorLabels, ["Author", "Editor"], "filename fallback does not suppress contributors");
+  const unknown = composeCatalogueDisplay({ canonicalTitle: "Author in the title", fallbackDisplayName: "scan.pdf", bibliography: { ...bibliography, materialClass: "unknown" } });
+  assert.deepEqual(unknown.secondaryContributorLabels, ["Author", "Editor"]);
 });
 
 test("display falls back safely and never invents missing edition placeholders", () => {

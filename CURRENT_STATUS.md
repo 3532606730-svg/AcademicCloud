@@ -29,7 +29,7 @@ Compute's September9 stop was a normal requested stop, not a crash. Its initiati
 
 Mongolia Today jobffc568e0 succeeded on attempt3 from13:00:51.988Z to13:01:49.917Z, before takeover. Journal process identity proves exact3c864374. The signed-in Details/AI panel shows success with19 evidenced fields, UNKNOWN class and no canonical record. A scoped query-only DB check confirms v11/prompt-v7, auto_applied=0, no applied fields and unchanged source revision1. Do not retry an already successful job merely to recreate evidence.
 
-## Phase B first release — deployed; signed-in changed-path acceptance pending
+## Phase B first release — deployed and changed paths verified
 
 Optional classification failures now retain the validated bibliography while cancellation/lease loss propagates. Activity polling recovers after transient failure; Member holdings do not wait for submission history. Search defaults to relevance independently of browse sort. Shared MIME/size affordances route unsupported previews to Details and allow plain text consistently.
 
@@ -37,9 +37,15 @@ Preview displays immediately before authorization returns, keeps authorization e
 
 Exact Linux qualification: backend450, frontend345, contracts3, Compute unit165 and operations84 all pass (1,047 tests); all types/build, source and extracted compiled acceptance, full/production audits pass with zero vulnerabilities. Build used Ubuntu24.04, non-root, Node24.19.0/npm11.19.1. Archive SHA25622a1355c0dd13971af7429537c913a75dfbf0fc6083b78fff2f6585b5acd6fe1;4,935 files/37,121,240 bytes. Alibaba independently verified the same bundle and extracted runtime before selection; its existing npm11.17.0 was only read for evidence, with no installation/build there.
 
-Independent frontend review and real-browser document-session checks at1440/1024/768/390 passed before release, preserving the exact iframe, focus and browser Back with no overflow. Public live verification now passes20 GET checks: all8 old/new assets match their manifests under identity/gzip, missing chunks have no immutable caching, security headers remain and anonymous session is401. The exact Compute smoke passes Mongolia Today in31,062ms with19 evidenced fields, ambiguous/UNKNOWN and no model/validator changes; this is runtime compatibility evidence, not a measured factual-precision score. September15 Edge connection is unavailable, so normal signed-in changed-path acceptance is explicitly pending.
+Independent frontend review and real-browser document-session checks at1440/1024/768/390 passed before release, preserving the exact iframe, focus and browser Back with no overflow. Public live verification now passes20 GET checks: all8 old/new assets match their manifests under identity/gzip, missing chunks have no immutable caching, security headers remain and anonymous session is401. The exact Compute smoke passes Mongolia Today in31,062ms with19 evidenced fields, ambiguous/UNKNOWN and no model/validator changes; this is runtime compatibility evidence, not a measured factual-precision score. September15 evening Edge reconnected. On deployed index-C0hEWJDD.js, the real Mongolia Today PDF renders; Details/Citation preserve the exact iframe, Back closes the session and restores focus. Relevance search returns the two Mongolia resources. DOCX opens Details without a Preview affordance; normal Download produced a13,639-byte local DOCX with16 valid ZIP entries including word/document.xml. Live Library widths1440/1024/768/390 have no horizontal overflow. One transient browser/network timeout recovered; loopback and public readiness passed. This does not claim a PDF first-page timing benchmark.
 
 The repository is private and remaining included Actions allowance cannot be verified with existing read scopes. Publish with [skip ci] and qualify locally to uphold zero new billable GitHub usage. New remote CI is skipped, not claimed passed.
+
+## Unified Library/Search — locally verified, release pending
+
+Search now carries the authorized Holding identity/version and uses the same resource rows, selection, favorites, details/download and permitted batch actions as browsing. Changing query/filter/sort clears previous selection; paging preserves it; revision changes cancel old requests. List/Search/Favorites share bounded metadata/bibliography/authority projection. Details returns the current Holding after edits, allowing the open reading title to update without replacing the iframe. Owner folder loading no longer hides already available Library holdings. Bibliography subtitles use separate facts, avoid repeating title authors and keep historical edition statements together.
+
+Backend78 related tests and types/build pass; full frontend360/360, types/build pass. Local browser1440/1024/768/390 selection/toolbars have no horizontal overflow; desktop/mobile screenshots reviewed. Parent diff review covers authorization, query scope and stale UI responses; follow-up subagent review stopped at its account usage limit and is not counted as completed. No migrations, dependencies, Compute model/runtime or production writes in this new milestone yet. Exact Linux packaging, publication and deployment remain next.
 
 ## Established evidence retained
 
@@ -53,8 +59,8 @@ The repository is private and remaining included Actions allowance cannot be ver
 
 ## Immediate execution order
 
-1. Reconnect the existing signed-in browser and verify the deployed document-session, Search, Details, download and responsive paths; reconcile the release checkpoint.
-2. Improve compressed static delivery, app/Preview opening, retained document context and a polished responsive Library/Details/Reader surface. Measure real path latency.
+1. Publish and qualify the unified Library/Search checkpoint on Linux, deploy exact Core/frontend, and verify changed normal signed-in paths. The preceding7e document-session release is verified.
+2. Continue measured app/Preview and Library/Details/Reader improvements; retain the deployed compressed assets and document-session guarantees.
 3. Establish immutable source/page identity, then useful private Workspace/Collections/Page Notes with privacy and export tests.
 4. Improve selective/resumable Catalog and measured upload/search bottlenecks; evaluate quality with field evidence and abstention, not schema acceptance alone.
 5. Evaluate bounded full-text foundations after the preceding dependencies; no immediate whole-corpus OCR/RAG rollout.

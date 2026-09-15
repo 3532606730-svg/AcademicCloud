@@ -2645,14 +2645,14 @@ describe("App", () => {
       listLibraryHoldings: vi.fn().mockResolvedValue([holding]),
       searchLibraryHoldings: vi.fn().mockResolvedValue({ results: [{
         fileId: holding.file.id, canonicalTitle: null, authorLabels: [], contributorLabels: [], date: null,
-        publisher: null, materialType: null, materialClass: null, language: null, displayName, mediaType, sizeBytes,
+        publisher: null, materialType: null, materialClass: null, language: null, displayName, mediaType, sizeBytes, holding,
       }], nextCursor: null }),
       createLibraryDownload,
       getLibraryHoldingDetails: getDetails,
     });
     render(<App api={api} />);
     await user.type(await screen.findByLabelText("Search Library"), "manuscript");
-    const results = await screen.findByRole("list", { name: "Search results" });
+    const results = await screen.findByRole("region", { name: "Search results" });
     await user.click(within(results).getByRole("button", { name: displayName }));
     let dialog = await screen.findByRole("dialog", { name: displayName });
     if (previewable) {
@@ -2860,6 +2860,35 @@ describe("document preview session", () => {
     } finally {
       observer.disconnect();
     }
+  });
+
+  it("updates the reading title after metadata save without replacing the source iframe", async () => {
+    const user = userEvent.setup();
+    const holding = LIBRARY_HOLDINGS[0]!;
+    const detail = {
+      holding, displayTitle: holding.file.displayName, originalFilename: holding.file.displayName,
+      metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43),
+      bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: true, file: holding.file,
+    };
+    const updated = { ...holding, canonicalTitle: "New canonical title", catalogueDisplayTitle: "New canonical title" };
+    const api = sessionApi({
+      getLibraryHoldingDetails: vi.fn().mockResolvedValue(detail),
+      updateLibraryHoldingMetadata: vi.fn().mockResolvedValue({ ...detail, holding: updated, displayTitle: "New canonical title" }),
+    });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    const shell = screen.getByRole("dialog", { name: "book.pdf" });
+    const frame = await within(shell).findByTitle("Preview of book.pdf");
+    await user.click(within(shell).getByRole("button", { name: "Resource details" }));
+    await user.click(await screen.findByRole("button", { name: "Edit information" }));
+    await user.type(screen.getByLabelText("Canonical title"), "New canonical title");
+    await user.click(screen.getByRole("button", { name: "Save metadata" }));
+    await waitFor(() => expect(api.updateLibraryHoldingMetadata).toHaveBeenCalled());
+    await user.click(await screen.findByRole("button", { name: "Preview" }));
+    expect(screen.getByRole("dialog", { name: "New canonical title" })).toBe(shell);
+    expect(shell.querySelector("iframe")).toBe(frame);
+    expect(frame).toHaveAttribute("title", "Preview of New canonical title");
+    expect(api.createLibraryDownload).toHaveBeenCalledTimes(1);
   });
 
   it("retains the document under Citation and browser Back closes the entire session", async () => {
@@ -3943,7 +3972,9 @@ describe("row menu focus safety", () => {
 });
 
 describe("library search", () => {
+  const searchHolding = { ...LIBRARY_HOLDINGS[0]!, canonicalTitle: "Searchable title", catalogueDisplayTitle: "Searchable title" };
   const searchResult = {
+    holding: searchHolding,
     fileId: "library-file-0",
     mediaType: "application/pdf",
     sizeBytes: 12,
@@ -3954,6 +3985,72 @@ describe("library search", () => {
     materialType: null,
     displayName: "book.pdf",
   };
+
+  it("renders holdings while the unrelated Owner folder request is pending", async () => {
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listEntries: vi.fn().mockReturnValue(new Promise(() => undefined)),
+      listLibraryHoldings: vi.fn().mockResolvedValue([searchHolding]),
+    });
+    render(<App api={api} />);
+    expect(await screen.findByRole("button", { name: "Searchable title" })).toBeInTheDocument();
+    expect(screen.queryByText("This folder is empty")).not.toBeInTheDocument();
+  });
+
+  it("keeps search selection across pages and uses real identities outside the browse page", async () => {
+    const user = userEvent.setup();
+    const second = { ...LIBRARY_HOLDINGS[1]!, canonicalTitle: "Second result", catalogueDisplayTitle: "Second result" };
+    const searchLibraryHoldings = vi.fn().mockResolvedValueOnce({ results: [searchResult], nextCursor: "page-2" })
+      .mockResolvedValue({ results: [{ ...searchResult, fileId: second.file.id, holding: second }], nextCursor: null });
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), searchLibraryHoldings,
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[2]!]),
+    });
+    render(<App api={api} />);
+    await user.type(await screen.findByLabelText("Search Library"), "search");
+    await user.click(await screen.findByRole("checkbox", { name: "Select Searchable title" }));
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select Second result" }));
+    expect(screen.getByRole("checkbox", { name: "Select Searchable title" })).toBeChecked();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add favorites" }));
+    await waitFor(() => expect(api.setFileFavorite).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(api.setFileFavorite).mock.calls).toEqual([[searchHolding.file.id, true], [second.file.id, true]]);
+    expect(api.bulkOperation).not.toHaveBeenCalled();
+  });
+
+  it("clears the previous selection when a query changes or returns to browsing", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraryHoldings: vi.fn().mockResolvedValue([searchHolding]),
+      searchLibraryHoldings: vi.fn().mockResolvedValue({ results: [searchResult], nextCursor: null }),
+    });
+    render(<App api={api} />);
+    const input = await screen.findByLabelText("Search Library");
+    await user.type(input, "first");
+    await user.click(await screen.findByRole("checkbox", { name: "Select Searchable title" }));
+    await user.type(input, " second");
+    expect(await screen.findByRole("checkbox", { name: "Select Searchable title" })).not.toBeChecked();
+    expect(screen.queryByText("1 selected")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: "Select Searchable title" }));
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(await screen.findByRole("checkbox", { name: "Select Searchable title" })).not.toBeChecked();
+  });
+
+  it("ignores a legacy summary's late hydration after leaving the Library", async () => {
+    const user = userEvent.setup();
+    let resolve!: (detail: unknown) => void;
+    const { holding: _holding, ...legacyResult } = searchResult;
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      searchLibraryHoldings: vi.fn().mockResolvedValue({ results: [legacyResult], nextCursor: null }),
+      getLibraryHoldingDetails: vi.fn().mockReturnValue(new Promise((yes) => { resolve = yes; })),
+    });
+    render(<App api={api} />);
+    await user.type(await screen.findByLabelText("Search Library"), "search");
+    await user.click(await screen.findByRole("button", { name: "Searchable title" }));
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    await act(async () => resolve({ holding: searchHolding }));
+    expect(api.createLibraryDownload).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 
   it("keeps the normal folder catalogue when the search field is empty", async () => {
     const api = fakeApi({
@@ -3966,7 +4063,7 @@ describe("library search", () => {
 
     expect(await screen.findByLabelText("Search Library")).toBeInTheDocument();
     expect(await screen.findByRole("table", { name: "Catalogue" })).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Search results" })).not.toBeInTheDocument();
     expect(screen.queryByText("No matching resources")).not.toBeInTheDocument();
   });
 
@@ -3984,12 +4081,13 @@ describe("library search", () => {
     expect(await screen.findByRole("table", { name: "Catalogue" })).toBeInTheDocument();
 
     await user.type(input, "search");
-    expect(await screen.findByRole("list", { name: "Search results" })).toBeInTheDocument();
-    expect(screen.queryByRole("table", { name: "Catalogue" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Search results" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Search results" })).getByRole("table", { name: "Catalogue" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "book.pdf" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Clear search" }));
     expect(await screen.findByRole("table", { name: "Catalogue" })).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Search results" })).not.toBeInTheDocument();
     expect(input).toHaveValue("");
   });
 

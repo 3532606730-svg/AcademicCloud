@@ -3,6 +3,9 @@ import type { StoredFile } from "../drive/file.js";
 import type { Persistence } from "../persistence/contracts.js";
 import { FavoriteError, type FavoriteFolderWithAncestors, type FavoritesSnapshot } from "./favorite.js";
 import { isLegacyProd03c2FixtureFolder } from "../drive/synthetic-fixtures.js";
+import { projectLibraryHoldings } from "../library/holding-projection.js";
+
+type AccessibleFavoriteHolding = Omit<FavoritesSnapshot["libraryHoldings"][number], "bibliography" | "view">;
 
 // Bound on the ancestor walk: the database enforces acyclicity, this cap is a
 // defensive guard against any pathological hierarchy.
@@ -23,13 +26,27 @@ export class FavoriteService {
     const folderIds = favorites.listFolderIds(accountId);
 
     const favoriteFiles: StoredFile[] = [];
-    const libraryHoldings: FavoritesSnapshot["libraryHoldings"] = [];
+    const accessibleHoldings: AccessibleFavoriteHolding[] = [];
     for (const id of fileIds) {
       const scoped = this.#findAccessibleFile(accountId, id);
       if (!scoped || scoped.file.state !== "active") continue;
-      if (scoped.libraryHolding) libraryHoldings.push(scoped.libraryHolding);
+      if (scoped.libraryHolding) accessibleHoldings.push(scoped.libraryHolding);
       else favoriteFiles.push(scoped.file);
     }
+
+    const holdingsByDomain = new Map<string, AccessibleFavoriteHolding[]>();
+    for (const entry of accessibleHoldings) {
+      const group = holdingsByDomain.get(entry.library.ownerDomainId) ?? [];
+      group.push(entry);
+      holdingsByDomain.set(entry.library.ownerDomainId, group);
+    }
+    const projectionByFile = new Map([...holdingsByDomain].flatMap(([domain, entries]) =>
+      projectLibraryHoldings(domain, entries.map((entry) => entry.holding), this.#persistence.repositories)
+        .map((entry) => [entry.holding.file.id, entry] as const)));
+    const libraryHoldings = accessibleHoldings.map((entry) => {
+      const projected = projectionByFile.get(entry.holding.file.id)!;
+      return { ...entry, bibliography: projected.searchable.bibliography, view: projected.holding };
+    });
 
     const favoriteFolders: FavoriteFolderWithAncestors[] = [];
     for (const id of folderIds) {
@@ -52,7 +69,7 @@ export class FavoriteService {
 
   #findAccessibleFile(accountId: string, fileId: string): {
     file: StoredFile;
-    libraryHolding: FavoritesSnapshot["libraryHoldings"][number] | null;
+    libraryHolding: AccessibleFavoriteHolding | null;
   } | null {
     const repositories = this.#persistence.repositories;
     const account = repositories.accounts.findById(accountId);
@@ -66,8 +83,7 @@ export class FavoriteService {
     if (!holding) return null;
     const file = repositories.files.findByDomainId(library.ownerDomainId, fileId);
     if (!file) return null;
-    const bibliography = repositories.bibliography.findProfile(library.ownerDomainId, holding.recordId);
-    return { file, libraryHolding: { library, role: membership.role, holding, bibliography } };
+    return { file, libraryHolding: { library, role: membership.role, holding } };
   }
 
   setFolderFavorite(accountId: string, folderId: string, favorite: boolean): void {

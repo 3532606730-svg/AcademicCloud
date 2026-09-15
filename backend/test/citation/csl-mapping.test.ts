@@ -6,6 +6,13 @@ import type { MetadataDetail } from "../../src/metadata/metadata-service.js";
 
 function detail(): MetadataDetail {
   return {
+    holding: {
+      recordId: "record-1", recordLabel: "scan.pdf", artifactId: "artifact-1", versionId: "version-1", version: "v".repeat(43),
+      canonicalTitle: "资治通鉴", authorLabels: [], materialClass: "primary_source_modern_edition",
+      contributorLabels: ["司马光", "胡三省", "顾颉刚"], secondaryContributorLabels: ["司马光", "胡三省", "顾颉刚"],
+      publisher: "中华书局", date: "1956", editionStatement: "现代点校本", catalogueDisplayTitle: "备用题名",
+      file: { id: "file-1", displayName: "scan.pdf", mediaType: "application/pdf", sizeBytes: 12, updatedAt: "2026-08-22T00:00:00.000Z" },
+    },
     displayTitle: "备用题名",
     originalFilename: "scan.pdf",
     metadataVersion: "m".repeat(43),

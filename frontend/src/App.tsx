@@ -11,6 +11,7 @@ import {
   type Invitation,
   type LibraryHolding,
   type LibraryHoldingDetails,
+  type LibrarySearchResult,
   type LibraryRecycleFile,
   type LibrarySummary,
   type ManagedAccount,
@@ -48,7 +49,7 @@ import { calculateFileMd5 } from "./md5.ts";
 import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
 import { ResourceDetailsDialog, BatchNamingDialog, BatchCatalogDialog, CitationDialog } from "./deferred-dialog.tsx";
-import { libraryHoldingDisplayTitle } from "./library-display-title.ts";
+import { libraryHoldingDisplayTitle, libraryHoldingSecondaryLine } from "./library-display-title.ts";
 import { canPreviewFile } from "./preview-capability.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
 import { clearViewPreferences, useWorkspaceLocation } from "./view-context.ts";
@@ -691,7 +692,11 @@ function DriveView({
     library: LibrarySummary | null;
     holdings: LibraryHolding[];
   }>({ library: null, holdings: [] });
-  const [librarySearchActive, setLibrarySearchActive] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState<{ identity: string; active: boolean; holdings: LibraryHolding[] }>({
+    identity: "", active: false, holdings: [],
+  });
+  const librarySearchActive = librarySearch.active;
+  const searchSelectionIdentity = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState<unknown>(null);
@@ -748,12 +753,13 @@ function DriveView({
   }, [account.role, api, libraryCatalogue.library?.id, revision]);
 
   const favoriteLibraryHoldings = favorites?.libraryHoldings ?? [];
+  const searchingLibrary = view === "library" && path.length === 0 && librarySearchActive;
   const visibleSelectableEntries: SelectableEntry[] = view === "library"
     ? [
-        ...entries.folders.map((item): SelectableEntry => ({ scope: "account_folder", item })),
-        ...entries.files.map((item): SelectableEntry => ({ scope: "account_file", item })),
+        ...(!searchingLibrary ? entries.folders.map((item): SelectableEntry => ({ scope: "account_folder", item })) : []),
+        ...(!searchingLibrary ? entries.files.map((item): SelectableEntry => ({ scope: "account_file", item })) : []),
         ...(path.length === 0 && libraryCatalogue.library
-          ? libraryCatalogue.holdings.map((item): SelectableEntry => ({
+          ? (searchingLibrary ? librarySearch.holdings : libraryCatalogue.holdings).map((item): SelectableEntry => ({
               scope: "library_holding",
               library: libraryCatalogue.library!,
               item,
@@ -797,6 +803,13 @@ function DriveView({
     library: LibrarySummary | null;
     holdings: LibraryHolding[];
   }) => setLibraryCatalogue(state), []);
+  const reconcileLibrarySearch = useCallback((state: { identity: string; active: boolean; holdings: LibraryHolding[] }) => {
+    if (searchSelectionIdentity.current !== null && searchSelectionIdentity.current !== state.identity) {
+      setSelectedKeys(new Set());
+    }
+    searchSelectionIdentity.current = state.identity;
+    setLibrarySearch(state);
+  }, []);
   const recordMetadataActivity = useCallback((
     library: LibrarySummary,
     holding: LibraryHolding,
@@ -2007,6 +2020,22 @@ function DriveView({
     }
   }
 
+  async function openSearchResult(library: LibrarySummary, result: LibrarySearchResult) {
+    const focus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const requestId = ++previewRequest.current;
+    try {
+      // A summary from an older page has no mutation identity. Hydrate only
+      // the document being opened; current search rows need no extra request.
+      const holding = librarySearchResultToHolding(result)
+        ?? (await api.getLibraryHoldingDetails(library.id, result.fileId)).holding;
+      if (requestId !== previewRequest.current) return;
+      if (!holding) throw new Error(t("librarySearch.refreshRequired"));
+      await openLibraryPreview(library, holding, focus);
+    } catch (caught) {
+      if (requestId === previewRequest.current) setError(caught);
+    }
+  }
+
   function closeDocumentPreview() {
     previewRequest.current++;
     setPreview(null);
@@ -2301,7 +2330,9 @@ function DriveView({
               renderCatalogue={({ library, holdings, loading: holdingsLoading, nextCursor, loadingMore, sort, onSortChange, onLoadMore }) => {
                 const rootFolders = account.role === "owner" ? entries.folders : [];
                 const rootFiles = account.role === "owner" ? entries.files : [];
-                const catalogueLoading = loading || holdingsLoading;
+                // The canonical Library can open while Owner folder entries
+                // are still loading. Empty-state certainty still waits for both.
+                const catalogueLoading = holdingsLoading || (loading && holdings.length === 0);
                 const catalogueEmpty = rootFolders.length + rootFiles.length + holdings.length === 0;
                 const allSelectedAreHoldings = selectedEntries.length > 0
                   && selectedEntries.every((entry) => entry.scope === "library_holding")
@@ -2320,55 +2351,11 @@ function DriveView({
                   && api.createCatalogBatchExportRequest !== undefined
                   && api.previewCatalogBatchResults !== undefined
                   && api.applyCatalogBatchResults !== undefined;
-                return (
-                  <section aria-labelledby="contents-title">
-                    <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
-                    {library && (
-                      <LibrarySearchField
-                        api={api}
-                        accountId={account.id}
-                        library={library}
-                        language={language}
-                        t={t}
-                        sort={sort}
-                        onSortChange={onSortChange}
-                        onActiveChange={setLibrarySearchActive}
-                        onOpenResult={(result) => void openLibraryPreview(library, librarySearchResultToHolding(result))}
-                      />
-                    )}
-                    {!librarySearchActive && selectedEntries.length > 0 && (
-                      <BulkToolbar
-                        mode="library"
-                        selectedCount={selectedEntries.length}
-                        busy={busyId === "bulk"}
-                        onClear={() => setSelectedKeys(new Set())}
-                        {...(selectionCapabilities.move ? { onMove: (trigger: HTMLElement) => setMoveRequest({
-                          kind: "bulk",
-                          items: selectedEntries.filter(isAccountEntry),
-                          returnFocus: trigger,
-                        }) } : {})}
-                        {...(selectionCapabilities.recycle ? { onRecycle: () => void recycleSelected().catch(() => undefined) } : {})}
-                        {...(selectionCapabilities.favoriteAdd ? { onFavoriteAdd: () => void runFavoriteSelection(true) } : {})}
-                        {...(selectionCapabilities.favoriteRemove ? { onFavoriteRemove: () => void runFavoriteSelection(false) } : {})}
-                        {...(batchNamingAvailable ? { onBatchName: () => setBatchNamingRequest({
-                          library: library!,
-                          holdings: selectedEntries.map((entry) => (entry.scope === "library_holding" ? entry.item : entry.item)),
-                        }) } : {})}
-                        {...(batchCatalogAvailable ? { onBatchCatalog: () => setBatchCatalogRequest({
-                          library: library!,
-                          holdings: selectedEntries.map((entry) => (entry.scope === "library_holding" ? entry.item : entry.item)),
-                        }) } : {})}
-                      />
-                    )}
-                    {librarySearchActive ? null : catalogueLoading ? <LoadingRows /> : !library ? (
-                      <EmptyState title={t("sharedLibrary.empty")} />
-                    ) : catalogueEmpty ? (
-                      <EmptyState title={t("folder.emptyTitle")} />
-                    ) : (
+                const renderEntries = (folders: FolderEntry[], files: FileEntry[], displayHoldings: LibraryHolding[]) => (
                       <EntryTable
-                        folders={rootFolders}
-                        files={rootFiles}
-                        libraryHoldings={holdings.map((holding) => ({ library, holding }))}
+                        folders={folders}
+                        files={files}
+                        libraryHoldings={library ? displayHoldings.map((holding) => ({ library, holding })) : []}
                         busyId={busyId}
                         onEnterFolder={enterFolder}
                         onRenameFolder={renameFolder}
@@ -2393,6 +2380,64 @@ function DriveView({
                         onToggleSelected={toggleSelection}
                         selectionDisabled={busyId === "bulk"}
                       />
+                );
+                const selectionToolbar = selectedEntries.length > 0 ? (
+                      <BulkToolbar
+                        mode="library"
+                        selectedCount={selectedEntries.length}
+                        busy={busyId === "bulk"}
+                        onClear={() => setSelectedKeys(new Set())}
+                        {...(selectionCapabilities.move ? { onMove: (trigger: HTMLElement) => setMoveRequest({
+                          kind: "bulk",
+                          items: selectedEntries.filter(isAccountEntry),
+                          returnFocus: trigger,
+                        }) } : {})}
+                        {...(selectionCapabilities.recycle ? { onRecycle: () => void recycleSelected().catch(() => undefined) } : {})}
+                        {...(selectionCapabilities.favoriteAdd ? { onFavoriteAdd: () => void runFavoriteSelection(true) } : {})}
+                        {...(selectionCapabilities.favoriteRemove ? { onFavoriteRemove: () => void runFavoriteSelection(false) } : {})}
+                        {...(batchNamingAvailable ? { onBatchName: () => setBatchNamingRequest({
+                          library: library!,
+                          holdings: selectedEntries.map((entry) => (entry.scope === "library_holding" ? entry.item : entry.item)),
+                        }) } : {})}
+                        {...(batchCatalogAvailable ? { onBatchCatalog: () => setBatchCatalogRequest({
+                          library: library!,
+                          holdings: selectedEntries.map((entry) => (entry.scope === "library_holding" ? entry.item : entry.item)),
+                        }) } : {})}
+                      />
+                ) : null;
+                return (
+                  <section aria-labelledby="contents-title">
+                    <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
+                    {library && (
+                      <LibrarySearchField
+                        api={api}
+                        accountId={account.id}
+                        library={library}
+                        language={language}
+                        t={t}
+                        sort={sort}
+                        onSortChange={onSortChange}
+                        revision={revision}
+                        onStateChange={reconcileLibrarySearch}
+                        onOpenResult={(result) => void openSearchResult(library, result)}
+                        renderResults={(results) => (<>
+                          {selectionToolbar}
+                          {results.some((result) => result.holding) && renderEntries([], [], results.flatMap((result) => result.holding ? [result.holding] : []))}
+                          {results.filter((result) => !result.holding).map((result) => (
+                            <button key={result.fileId} className="library-search-result" type="button" onClick={() => void openSearchResult(library, result)}>
+                              {result.catalogueDisplayTitle || result.canonicalTitle || result.displayName}
+                            </button>
+                          ))}
+                        </>)}
+                      />
+                    )}
+                    {!librarySearchActive && selectionToolbar}
+                    {librarySearchActive ? null : catalogueLoading ? <LoadingRows /> : !library ? (
+                      <EmptyState title={t("sharedLibrary.empty")} />
+                    ) : catalogueEmpty ? (
+                      <EmptyState title={t("folder.emptyTitle")} />
+                    ) : (
+                      renderEntries(rootFolders, rootFiles, holdings)
                     )}
                     {!librarySearchActive && nextCursor && (
                       <div className="library-load-more">
@@ -2835,7 +2880,19 @@ function DriveView({
           holding={resourceDetailsRequest.holding}
           returnFocus={resourceDetailsRequest.returnFocus}
           onClose={() => setResourceDetailsRequest(null)}
-          onSaved={(_detail: LibraryHoldingDetails) => refresh()}
+          onSaved={(detail: LibraryHoldingDetails) => {
+            const holding = detail.holding;
+            const library = resourceDetailsRequest.library;
+            if (holding) {
+              setResourceDetailsRequest((current) => current?.library.id === library.id && current.holding.file.id === holding.file.id
+                ? { ...current, holding } : current);
+              setPreview((current) => current?.resource?.library.id === library.id && current.resource.holding.file.id === holding.file.id
+                ? { ...current, file: { ...current.file, displayName: libraryHoldingDisplayTitle(holding, language) },
+                  resource: { ...current.resource, holding }, download: () => downloadLibraryHolding(library, holding) }
+                : current);
+            }
+            refresh();
+          }}
           onPreview={(file) => {
             const request = resourceDetailsRequest;
             setResourceDetailsRequest(null);
@@ -3901,6 +3958,7 @@ function EntryTable({
       ))}
       {libraryHoldings.map(({ library, holding }) => {
         const displayTitle = libraryHoldingDisplayTitle(holding, language);
+        const secondaryLine = libraryHoldingSecondaryLine(holding, t);
         const key = selectionKey("library_holding", holding.file.id, library.id);
         return (
         <div className={selectedKeys.has(key) ? "entry-row is-selected" : "entry-row"} role="row" key={`${library.id}:${holding.artifactId}`} data-entry-kind="library-holding">
@@ -3923,6 +3981,7 @@ function EntryTable({
               ) : onOpenHoldingDetails ? (
                 <button className="entry-link entry-filename" type="button" title={displayTitle} onClick={(event) => onOpenHoldingDetails(library, holding, event.currentTarget)}>{displayTitle}</button>
               ) : <strong className="entry-filename" title={displayTitle}>{displayTitle}</strong>}
+              {secondaryLine && <span className="entry-bibliography">{secondaryLine}</span>}
               <span className="entry-mobile-meta">{fileKindLabel(holding.file, t)} · {formatBytes(holding.file.sizeBytes)}</span>
             </div>
           </div>

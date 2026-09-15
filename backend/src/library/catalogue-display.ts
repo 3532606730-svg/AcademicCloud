@@ -121,6 +121,8 @@ export interface CatalogueBibliography {
 export interface CatalogueDisplay {
   title: string;
   contributorLabels: string[];
+  /** Contributors not already composed into the presentation title. */
+  secondaryContributorLabels: string[];
   editionStatement: string | null;
 }
 
@@ -232,12 +234,13 @@ export function composeCatalogueDisplay(input: CatalogueDisplayInput): Catalogue
     ? profile.contributors.map((contributor) => contributor.label)
     : input.legacyAuthorLabels ?? []);
   if (!canonicalTitle) {
-    return { title: input.fallbackDisplayName, contributorLabels, editionStatement: null };
+    return { title: input.fallbackDisplayName, contributorLabels, secondaryContributorLabels: contributorLabels, editionStatement: null };
   }
   if (!profile) {
     return {
       title: canonicalTitle,
       contributorLabels,
+      secondaryContributorLabels: contributorLabels,
       editionStatement: null,
     };
   }
@@ -248,16 +251,18 @@ export function composeCatalogueDisplay(input: CatalogueDisplayInput): Catalogue
     return {
       title: authors.length > 0 ? `${authors.join("、")} ${canonicalTitle}` : canonicalTitle,
       contributorLabels,
+      secondaryContributorLabels: contributorLabels.filter((label) => !authors.includes(label)),
       editionStatement: carrierEditionStatement(profile),
     };
   }
   if (!HISTORICAL_SOURCE_CLASSES.has(profile.materialClass)) {
-    return { title: canonicalTitle, contributorLabels, editionStatement: null };
+    return { title: canonicalTitle, contributorLabels, secondaryContributorLabels: contributorLabels, editionStatement: null };
   }
   const editionStatement = historicalEditionStatement(profile);
   return {
     title: editionStatement ? `${canonicalTitle} ${editionStatement}` : canonicalTitle,
     contributorLabels,
+    secondaryContributorLabels: contributorLabels,
     editionStatement,
   };
 }

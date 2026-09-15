@@ -7,6 +7,7 @@ import type { PasswordHasher } from "../../src/auth/password-hasher.js";
 import { DriveService } from "../../src/drive/drive-service.js";
 import { FavoriteService } from "../../src/favorites/favorite-service.js";
 import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
+import { LibraryService } from "../../src/library/library-service.js";
 import { createApp, type CreateAppOptions } from "../../src/platform/app.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createTestPersistence } from "../persistence/helpers.js";
@@ -218,7 +219,7 @@ test("favorites listing hides soft-deleted resources and includes folder ancesto
 });
 
 test("favorites listing preserves Library scope and holding identity instead of projecting a shared file as account Drive", async (context) => {
-  const { app, database, persistence, login } = await fixture(context);
+  const { app, database, persistence, login, driveService } = await fixture(context);
   const memberCookie = await login("member-2");
   const library = persistence.repositories.libraries.findDefault();
   assert.ok(library);
@@ -257,18 +258,22 @@ test("favorites listing preserves Library scope and holding identity instead of 
   const authorB = metadata.createAuthority({ id: "owner-1", loginName: "owner-1", role: "owner" }, library.id, {
     type: "person", canonicalLabel: "Author B", aliases: [],
   });
+  const publisher = metadata.createAuthority({ id: "owner-1", loginName: "owner-1", role: "owner" }, library.id, {
+    type: "institution", canonicalLabel: "Legacy Press", aliases: ["Press Alias"],
+  });
   const detail = metadata.getDetails({ id: "owner-1", loginName: "owner-1", role: "owner" }, library.id, fileId);
   metadata.updateMetadata({ id: "owner-1", loginName: "owner-1", role: "owner" }, library.id, fileId, detail.metadataVersion, {
     materialType: "book",
     canonicalTitle: "Canonical favorite title",
     subtitle: null,
     alternativeTitles: [],
-    dateStatement: null,
+    dateStatement: "1997",
     identifiers: [],
     typeFields: {},
     authorityLinks: [
       { authorityId: authorA.id, role: "author" },
       { authorityId: authorB.id, role: "author" },
+      { authorityId: publisher.id, role: "publisher" },
     ],
   });
 
@@ -311,6 +316,9 @@ test("favorites listing preserves Library scope and holding identity instead of 
     authorLabels: ["Author A", "Author B"],
     materialClass: null,
     contributorLabels: ["Author A", "Author B"],
+    secondaryContributorLabels: ["Author A", "Author B"],
+    publisher: "Legacy Press",
+    date: "1997",
     editionStatement: null,
     catalogueDisplayTitle: "Canonical favorite title",
     artifactId,
@@ -324,4 +332,22 @@ test("favorites listing preserves Library scope and holding identity instead of 
       updatedAt: timestamp,
     },
   });
+  const libraries = new LibraryService(persistence, driveService, () => NOW);
+  const listed = libraries.listHoldings("member-2", library.id)[0]!;
+  assert.deepEqual(body.libraryHoldings[0]!.holding, listed);
+  assert.deepEqual(libraries.searchHoldings("member-2", library.id, "Canonical favorite title", 50, null).results[0]!.holding, listed);
+  assert.deepEqual(metadata.getDetails({ id: "member-2", loginName: "member-2", role: "member" }, library.id, fileId).holding, listed);
+
+  persistence.repositories.bibliography.saveProfile({
+    recordId, ownerDomainId: library.ownerDomainId, actorAccountId: "owner-1", expectedRevision: null, now: NOW,
+    materialClass: "scholarly_monograph",
+    contributors: [{ id: "favorite-author", label: "Author A", role: "author" }, { id: "favorite-editor", label: "Editor", role: "editor" }],
+    publication: { publisher: "Current Press", publicationDate: "2026" }, carrierEdition: {}, sourceEdition: {},
+  });
+  const canonicalResponse = await app.inject({ method: "GET", url: "/api/favorites", headers: { cookie: memberCookie } });
+  const canonical = canonicalResponse.json<{ libraryHoldings: Array<{ holding: unknown }> }>().libraryHoldings[0]!.holding;
+  assert.deepEqual(canonical, libraries.listHoldings("member-2", library.id)[0]!);
+  const ownerCookie = await login("owner-1");
+  const ownerFavorites = await app.inject({ method: "GET", url: "/api/favorites", headers: { cookie: ownerCookie } });
+  assert.deepEqual(ownerFavorites.json<{ libraryHoldings: unknown[] }>().libraryHoldings, [], "Owner does not inherit another member's Favorites");
 });

@@ -10,6 +10,9 @@ export interface LibraryHoldingView {
   authorLabels: string[];
   materialClass: MaterialClass | null;
   contributorLabels: string[];
+  secondaryContributorLabels: string[];
+  publisher: string | null;
+  date: string | null;
   editionStatement: string | null;
   catalogueDisplayTitle: string;
   artifactId: string;
@@ -25,7 +28,11 @@ export interface LibraryHoldingView {
 }
 
 /** Shared active-holding DTO for Library and private Favorites catalogue views. */
-export function libraryHoldingView(holding: LibraryHolding, bibliography: BibliographicProfile | null = null): LibraryHoldingView {
+export function libraryHoldingView(
+  holding: LibraryHolding,
+  bibliography: BibliographicProfile | null = null,
+  legacyPublication: { publisher: string | null; date: string | null } = { publisher: null, date: null },
+): LibraryHoldingView {
   const display = composeCatalogueDisplay({
     canonicalTitle: holding.canonicalTitle,
     fallbackDisplayName: holding.file.displayName,
@@ -39,6 +46,9 @@ export function libraryHoldingView(holding: LibraryHolding, bibliography: Biblio
     authorLabels: [...holding.authorLabels],
     materialClass: bibliography?.materialClass ?? null,
     contributorLabels: display.contributorLabels,
+    secondaryContributorLabels: display.secondaryContributorLabels,
+    publisher: bibliography?.publication.publisher || legacyPublication.publisher,
+    date: bibliography?.publication.publicationDate ?? legacyPublication.date,
     editionStatement: display.editionStatement,
     catalogueDisplayTitle: display.title,
     artifactId: holding.artifactId,

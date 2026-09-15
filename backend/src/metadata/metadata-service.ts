@@ -6,6 +6,7 @@ import { recordAuditEvent, tryRecordAuditAttempt } from "../audit/audit-service.
 import type { AuditEventKind, AuditReasonCode } from "../audit/audit-event.js";
 import type { Library, LibraryHolding, LibraryMembership } from "../library/library.js";
 import { composeCatalogueDisplay } from "../library/catalogue-display.js";
+import { libraryHoldingView, type LibraryHoldingView } from "../library/holding-view.js";
 import {
   BIBLIOGRAPHIC_FIELD_NAMES,
   BibliographyValidationError,
@@ -73,6 +74,7 @@ export interface PublicMetadata {
 }
 
 export interface MetadataDetail {
+  holding: LibraryHoldingView;
   displayTitle: string;
   originalFilename: string;
   metadataVersion: string;
@@ -653,6 +655,15 @@ export class CanonicalMetadataService {
       bibliography,
     });
     return {
+      holding: libraryHoldingView({
+        ...holding,
+        canonicalTitle: publicMetadata?.canonicalTitle ?? null,
+        authorLabels: publicMetadata?.authorityLinks.filter((link) => link.role === "author")
+          .map((link) => link.canonicalLabel) ?? [],
+      }, bibliography, {
+        publisher: publicMetadata?.authorityLinks.find((link) => link.role === "publisher")?.canonicalLabel ?? null,
+        date: publicMetadata?.dateStatement ?? null,
+      }),
       displayTitle: display.title,
       originalFilename: holding.file.displayName,
       metadataVersion: metadataVersion(holding.recordId, metadata),

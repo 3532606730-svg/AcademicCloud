@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { composeLibraryDisplayTitle } from "./library-display-title.ts";
+import { composeLibraryDisplayTitle, libraryHoldingSecondaryLine } from "./library-display-title.ts";
+import type { LibraryHolding } from "./api.ts";
+import { translate } from "./i18n.ts";
 
 describe("ordinary Library catalogue display titles", () => {
   it("composes one author and the canonical title without changing either fact", () => {
@@ -54,5 +56,32 @@ describe("ordinary Library catalogue display titles", () => {
       editionStatement: "明万历二十四年金陵唐氏重刻本",
       fallbackDisplayName: "old.pdf",
     }, "zh-CN")).toBe("某书 明万历二十四年金陵唐氏重刻本");
+  });
+});
+
+describe("Library bibliography subtitle", () => {
+  const holding: LibraryHolding = {
+    recordId: "r", recordLabel: "书名", canonicalTitle: "书名", authorLabels: ["作者"],
+    artifactId: "a", versionId: "v", version: "server-version",
+    file: { id: "f", displayName: "scan.pdf", mediaType: "application/pdf", sizeBytes: 42, updatedAt: "2026-09-15T00:00:00Z" },
+  };
+  const t = (key: Parameters<typeof translate>[1]) => translate("en", key);
+
+  it("uses separate facts and server-selected contributors without repeating the main author", () => {
+    expect(libraryHoldingSecondaryLine({ ...holding, materialClass: "scholarly_monograph",
+      secondaryContributorLabels: ["译者", "译者"], date: "2026", publisher: "大学出版社" }, t))
+      .toBe(`译者 · 2026 · 大学出版社 · ${t("materialClass.scholarly_monograph")}`);
+  });
+
+  it("keeps historical edition publication together with the main title", () => {
+    expect(libraryHoldingSecondaryLine({ ...holding, materialClass: "primary_source_modern_edition",
+      editionStatement: "中华书局1976年点校本", date: "1976", publisher: "中华书局", secondaryContributorLabels: ["宋濂"] }, t))
+      .toBe(`宋濂 · ${t("materialClass.primary_source_modern_edition")}`);
+  });
+
+  it("shows available historical facts without an edition and leaves missing metadata quiet", () => {
+    expect(libraryHoldingSecondaryLine({ ...holding, date: "1976", publisher: "中华书局", materialClass: "traditional_book" }, t))
+      .toBe(`1976 · 中华书局 · ${t("materialClass.traditional_book")}`);
+    expect(libraryHoldingSecondaryLine({ ...holding, materialClass: "unknown", secondaryContributorLabels: [" "] }, t)).toBeNull();
   });
 });

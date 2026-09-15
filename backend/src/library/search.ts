@@ -17,6 +17,7 @@ import type {
 } from "../metadata/metadata.js";
 import { composeCatalogueDisplay, editionTypeDisplayLabel } from "./catalogue-display.js";
 import type { LibraryHoldingSort } from "./library.js";
+import type { LibraryHoldingView } from "./holding-view.js";
 import { pinyinSortKey } from "./pinyin.js";
 
 /**
@@ -118,7 +119,7 @@ export interface SearchableHolding {
   authorities: SearchableAuthority[];
 }
 
-export interface LibrarySearchResult {
+export interface LibrarySearchSummary {
   fileId: string;
   mediaType: string | null;
   sizeBytes: number;
@@ -136,8 +137,12 @@ export interface LibrarySearchResult {
   displayName: string;
 }
 
-export interface LibrarySearchPage {
-  results: LibrarySearchResult[];
+export interface LibrarySearchResult extends LibrarySearchSummary {
+  holding: LibraryHoldingView;
+}
+
+export interface LibrarySearchPage<Result extends LibrarySearchSummary = LibrarySearchResult> {
+  results: Result[];
   nextCursor: string | null;
 }
 
@@ -444,7 +449,7 @@ function publisherLabel(holding: SearchableHolding): string | null {
   return publisherValues(holding)[0] ?? null;
 }
 
-export function toSearchResult(holding: SearchableHolding): LibrarySearchResult {
+export function toSearchResult(holding: SearchableHolding): LibrarySearchSummary {
   const composed = composeCatalogueDisplay({
     canonicalTitle: holding.canonicalTitle,
     fallbackDisplayName: holding.displayName,
@@ -508,7 +513,7 @@ export function searchHoldings(
   cursor: string | null = null,
   rawFilters: LibrarySearchFilters = {},
   rawSort: string = "relevance",
-): LibrarySearchPage {
+): LibrarySearchPage<LibrarySearchSummary> {
   const { query, queryCompact, filters, identity, after, sort } = prepareSearch(rawQuery, limit, cursor, rawFilters, rawSort);
 
   const matched: RankedHolding[] = [];

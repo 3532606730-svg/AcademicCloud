@@ -1,5 +1,6 @@
 import type { LibraryHolding } from "./api.ts";
 import type { Language } from "./i18n.ts";
+import type { Translator } from "./i18n-react.tsx";
 
 export interface LibraryDisplayTitleInput {
   canonicalTitle: string | null;
@@ -42,4 +43,20 @@ export function libraryHoldingDisplayTitle(holding: LibraryHolding, language: La
     editionStatement: holding.editionStatement,
     fallbackDisplayName: holding.file.displayName,
   }, language);
+}
+
+/** Server-supplied facts only; never recover metadata by splitting a title. */
+export function libraryHoldingSecondaryLine(holding: LibraryHolding, t: Translator): string | null {
+  // Historical edition titles already carry the publication/source statement.
+  // Keep that statement together instead of reconstructing it in the subtitle.
+  const historicalEdition = Boolean(holding.canonicalTitle && holding.editionStatement)
+    && ["primary_source_modern_edition", "traditional_book", "archival_document",
+      "inscription_epigraphy", "rubbing", "manuscript", "collected_documents"].includes(holding.materialClass ?? "");
+  const parts = [
+    ...(holding.secondaryContributorLabels ?? []),
+    historicalEdition ? null : holding.date,
+    historicalEdition ? null : holding.publisher,
+    holding.materialClass && holding.materialClass !== "unknown" ? t(`materialClass.${holding.materialClass}`) : null,
+  ].flatMap((part) => part?.trim() ? [part.trim()] : []);
+  return [...new Set(parts)].join(" · ") || null;
 }

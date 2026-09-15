@@ -10,6 +10,7 @@ import { openSqliteDatabase } from "../../src/persistence/sqlite/database.js";
 import { runMigrations } from "../../src/persistence/sqlite/migrations.js";
 import { createApplication } from "../../src/platform/application.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
+import type { LibraryHoldingView } from "../../src/library/holding-view.js";
 
 const MIGRATIONS_DIRECTORY = fileURLToPath(new URL("../../../database/migrations", import.meta.url));
 const RULESET_ADMISSIONS_DIRECTORY = fileURLToPath(new URL("../../../database/ruleset-admissions", import.meta.url));
@@ -111,10 +112,17 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
     const memberCookie = await login("member-search");
     const found = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings/search?q=${encodeURIComponent("元代宰相")}`, headers: headers(memberCookie) });
     assert.equal(found.statusCode, 200);
-    const body = found.json() as { results: Array<{ fileId: string; canonicalTitle: string | null }>; nextCursor: string | null };
+    const body = found.json() as { results: Array<{ fileId: string; canonicalTitle: string | null; holding: LibraryHoldingView }>; nextCursor: string | null };
     assert.equal(body.results.length, 1);
     assert.equal(body.results[0]?.fileId, fileId);
     assert.equal(body.results[0]?.canonicalTitle, "元代宰相制度研究");
+    const listing = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings`, headers: headers(memberCookie) });
+    assert.equal(listing.statusCode, 200);
+    const listedHolding = listing.json<{ holdings: LibraryHoldingView[] }>().holdings[0]!;
+    assert.deepEqual(body.results[0]!.holding, listedHolding);
+    const details = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings/${fileId}/details`, headers: headers(memberCookie) });
+    assert.equal(details.statusCode, 200);
+    assert.deepEqual(details.json<{ holding: LibraryHoldingView }>().holding, listedHolding);
 
     const filtered = await app.inject({
       method: "GET",
@@ -137,6 +145,7 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
       language: "汉语",
       editionStatement: "中华书局1976点校本",
       displayName: "scan-001.pdf",
+      holding: listedHolding,
     }]);
 
     const noMatch = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings/search?q=${encodeURIComponent("不存在")}`, headers: headers(memberCookie) });

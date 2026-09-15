@@ -50,7 +50,7 @@
     "typesBuild": "pass",
     "compiledAcceptance": "exact7e2d1bf source/extracted Linux and Alibaba runtime PASS; schema036, v11 admission, repeat initialization, persistence/recovery",
     "strictNpmInstall": "pass npm11.19.1",
-    "browser": "historical real Catalog/reading/search pass; current document-session local browser1440/1024/768/390 pass; deployed changed-path signed-in verification pending Edge connection",
+    "browser": "deployed7e real PDF, retained iframe through Details/Citation, Back/focus, relevance Search, DOCX Details fallback and completed13639-byte DOCX download PASS; live Library1440/1024/768/390 no horizontal overflow; overrides removed",
     "catalogBenchmark10000Holdings500SelectedMs": {
       "oldApply": 121267.617,
       "newApply": 1149.913,
@@ -59,29 +59,38 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "1047 exact Linux tests, types/build/source+extracted acceptance and zero-vulnerability audits PASS; independent review and local responsive document sessions PASS; Core/frontend/Compute deployed,20 public HTTP checks PASS; signed-in changed-path acceptance pending",
+    "currentPhaseB": "7e exact Linux1047 tests/release/public20 GET and normal changed-path browser acceptance PASS; next unified Library/Search locally qualified, not yet deployed",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
     },
-    "initialJavaScriptAndCssTransferredBytes": {"before":575746,"after":132478},
+    "initialJavaScriptAndCssTransferredBytes": {
+      "before": 575746,
+      "after": 132478
+    },
     "publicAssets": "8 previous/current assets identity+gzip hash/size/security/cache pass; missing chunk404 not immutable; health/ready200 and anonymous session401 no-store/uncompressed",
-    "releaseArchiveSha256": "22a1355c0dd13971af7429537c913a75dfbf0fc6083b78fff2f6585b5acd6fe1"
+    "releaseArchiveSha256": "22a1355c0dd13971af7429537c913a75dfbf0fc6083b78fff2f6585b5acd6fe1",
+    "nextCoreFrontendCandidate": {
+      "backend": "78 related tests and types/build PASS",
+      "frontend": "360/360 full suite, types/build PASS",
+      "browser": "synthetic desktop/mobile screenshots and1440/1024/768/390 search selection toolbar PASS",
+      "independentFollowupReview": "subagent usage limit; parent scoped review completed",
+      "deployment": "pending exact Linux qualification and release"
+    }
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",
     "historicalProductionB": "pass reviewable",
     "historicalProductionC": "two canonical_schema_invalid failures, no promotion",
-    "next": "normal signed-in changed-path acceptance; no redundant successful Catalog retry",
+    "next": "preserve qualified active7e; next milestone changes only Core/frontend",
     "candidateOffline": "historical3c seven-case PASS; exact7e2d1bf immutable MongoliaToday smoke1/1 PASS in31062ms, OCRtrue,19 evidenced fields, UNKNOWN/ambiguous; unchanged v11/model/runtime; runtime smoke not factual precision measurement",
     "currentProductionC": "both normal-UI retries succeeded; UNKNOWN class,19/10 evidence fields, no canonical/source mutation",
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "September15 Edge browser connection unavailable; current signed-in changed-path acceptance pending",
-    "Historical Browser Use direct-loopback ERR_BLOCKED_BY_CLIENT; fresh browser export remains unverified"
+    "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works"
   ],
-  "next": "Complete signed-in live document-session/Search/Details/download QA after Edge reconnects; then unified Library/Search rows and immutable source/page foundations",
+  "next": "Publish and exact-Linux-qualify unified Library/Search, deploy Core/frontend and live-verify; preserve unchanged Compute7e; then immutable source/page identity",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

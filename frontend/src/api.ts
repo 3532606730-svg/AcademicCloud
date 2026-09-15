@@ -209,6 +209,9 @@ export interface LibraryHolding {
   authorLabels: string[];
   materialClass?: MaterialClass | null;
   contributorLabels?: string[];
+  secondaryContributorLabels?: string[];
+  publisher?: string | null;
+  date?: string | null;
   editionStatement?: string | null;
   catalogueDisplayTitle?: string;
   artifactId: string;
@@ -224,6 +227,8 @@ export interface LibraryHolding {
 }
 
 export interface LibrarySearchResult {
+  /** Present on current servers; older open clients ignore this additive DTO. */
+  holding?: LibraryHolding;
   mediaType?: string | null;
   sizeBytes?: number;
   fileId: string;
@@ -368,6 +373,7 @@ export interface BibliographicFieldAuthority {
   establishedAt: string;
 }
 export interface LibraryHoldingDetails {
+  holding?: LibraryHolding;
   displayTitle: string;
   originalFilename: string;
   metadataVersion: string;

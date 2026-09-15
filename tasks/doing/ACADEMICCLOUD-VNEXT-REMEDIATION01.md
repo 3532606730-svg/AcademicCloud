@@ -51,7 +51,7 @@ Backend catalog/library/metadata/suggestions/persistence; frontend Library/detai
 
 ## Current State
 
-PHASE B ACTIVE, reconciled2026-09-15. Exact implementation checkpoint7e2d1bfb42a1135d93973bcf788eae5e045bb5f6 is published to main/integration and deployed to Core/frontend/Compute. Exact Linux1047 tests and both local/Alibaba extracted runtime verifiers pass. Core PID1091689 and Compute PID1195 active with zero restarts; schema/history36 and eleven admissions unchanged, integrity/FK pass. Public retained/gzip assets pass. Signed-in changed-path acceptance awaits Edge connection; the broader charter remains active. Earlier measurements and releases below are historical evidence.
+PHASE B ACTIVE, reconciled2026-09-15. Exact implementation checkpoint7e2d1bfb42a1135d93973bcf788eae5e045bb5f6 is published to main/integration and deployed to Core/frontend/Compute. Exact Linux1047 tests and both local/Alibaba extracted runtime verifiers pass. Core PID1091689 and Compute PID1195 active with zero restarts; schema/history36 and eleven admissions unchanged, integrity/FK pass. Public retained/gzip assets pass. Signed-in document-session, Search, capability fallback and completed DOCX download now pass. Unified Library/Search is locally qualified (backend78 related/frontend360 complete tests, types/build and four-width browser checks); exact Linux packaging/release is next. The broader charter remains active. Earlier measurements and releases below are historical evidence.
 
 Work is explicitly separated:
 - **PREEXISTING_DIRTY_FILES:** original W retains ten tracked dirty files and 630 untracked files; review/staging trees are preserved. W NuExtract work already in B was not replaced by stale code.
@@ -89,16 +89,18 @@ The runbook selects candidate migration/admission paths after protected environm
 
 - Finish remaining whole-product browser evidence; six real responsive widths and the real Catalog correction flow now pass.
 - Preserve the exact verified Catalog mutation record; fresh export has a Browser Use loopback block, independent of bridge health.
-- Package/deploy the new-upload adapter/UI/diagnostic/test repairs, qualify all seven immutable cases and retry the uploaded source through the normal website. Both C retries and natural worker-loss recovery already pass.
+- Package/deploy the locally qualified unified Library/Search and bibliography-display milestone. Preserve deployed7e Compute and prior source/AI qualification; do not repeat already successful corpus jobs.
 - Close production-relevant findings only after deployment/live evidence; deliver the complete final report.
 
 ## Blockers
 
-Production and GitHub sessions are available; no approval blocker remains. Browser Use blocks direct loopback export. New-upload behavior is locally repaired and awaits exact release/live verification; it is not an external blocker. Worker stop is temporary exclusive offline qualification, with NORMAL/enabled configuration retained.
+Production, GitHub and the existing signed-in Edge session are available; no approval blocker remains. Local browser fixture access works again; the historical Catalog export loopback restriction must be rechecked on its actual normal path before declaring it current. Two follow-up subagent tasks encountered the account usage limit after their implementation/test deliveries; parent integration continues. Compute7e remains active in NORMAL.
 
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
+
+2026-09-15 evening: deployed7e signed-in document-session checks PASS. Mongolia Today renders; the exact iframe remains through Details/Citation; Back closes it and restores row focus. Relevance Search returns both Mongolia results after one transient network timeout (Core loopback/public ready pass). DOCX routes to Details and normal Download completes as13,639 bytes,16 ZIP entries including word/document.xml. Live Library1440/1024/768/390 has no horizontal overflow; viewport overrides removed. No canonical or source mutation. New unified Library/Search: backend78 related tests, backend types/build, frontend360/360 complete tests and types/build PASS. Local responsive screenshots and selection toolbar checks at1440/1024/768/390 PASS; changed query clears selection. Tests cover true search Holding IDs, pagination selection, legacy late-response cancellation, metadata-save title refresh retaining the iframe, and canonical/source-edition subtitle distinctions. Parent reviewed scoped diff; follow-up independent review unavailable due account limit, not claimed passed. Exact new release remains pending.
 
 2026-09-15 first Phase B release: exact7e2d1bf Linux backend450/frontend345/contracts3/Compute165/ops84 PASS, all types/build/compiled acceptance and zero-vulnerability audits PASS. Non-root Node24.19.0/npm11.19.1 build; archive22a1355c0dd13971af7429537c913a75dfbf0fc6083b78fff2f6585b5acd6fe1, manifest4935 files/37,121,240 bytes. Alibaba independently verifies the same archive and extracted runtime before selection, without installation/build or live DB access. No migration/admission changes. Main/integration atomically fast-forwarded with [skip ci]; active vNext checkout verified equal. Core/frontend and Compute exact7e are active; full Compute hash verifier and15-second activation stability PASS, control remains NORMAL. The one affected-source immutable MongoliaToday smoke passes31,062ms with19 evidenced fields, ambiguous/UNKNOWN and unchanged v11/model; classification duplicate-ID failure preserves valid bibliography. This is runtime smoke, not measured factual accuracy. Prior source bytes and successful real Catalog corrections remain untouched.
 
@@ -131,4 +133,4 @@ Takeover live evidence: qualified3c864374 worker remains active PID51089 with ze
 
 ## Next Action
 
-Reconnect Edge and complete signed-in changed-path QA on deployed7e2d1bf: Preview/Details/Citation state, relevance Search, capability fallbacks, download and responsive widths. Then unify Library/Search using real Holding identities and bibliographic display fields, remove unrelated initial-loading coupling, and establish immutable source/page identities before private Workspace/Collections/Page Notes. Final product acceptance remains open.
+Checkpoint/publish the qualified unified Library/Search change with [skip ci], build and verify the exact Linux Core/frontend artifact, deploy with retained assets, and verify normal Search selection/details/download and bibliography display. Compute has no changes in this milestone and remains7e. Then establish immutable source/page identities before private Workspace/Collections/Page Notes. Final whole-product acceptance remains open.

@@ -17,7 +17,8 @@ import type {
   LibraryRecycledHolding,
   LibraryRole,
 } from "./library.js";
-import { libraryHoldingView, type LibraryHoldingView } from "./holding-view.js";
+import type { LibraryHoldingView } from "./holding-view.js";
+import { projectLibraryHoldings } from "./holding-projection.js";
 import { composeCatalogueDisplay, composeCatalogueFilename } from "./catalogue-display.js";
 import {
   prepareSearch,
@@ -25,8 +26,6 @@ import {
   toSearchResult,
   type LibrarySearchFilters,
   type LibrarySearchPage,
-  type SearchableAuthority,
-  type SearchableHolding,
 } from "./search.js";
 import type { ContributionCandidate, ContributionState, LibraryContribution } from "./contribution.js";
 import {
@@ -535,10 +534,7 @@ export class LibraryService {
     const repositories = this.#persistence.repositories;
     const library = this.#requireMember(accountId, libraryId, repositories);
     const holdings = repositories.libraries.listHoldings(libraryId, limit);
-    const profiles = new Map(repositories.bibliography
-      .findProfiles(library.ownerDomainId, holdings.map((holding) => holding.recordId))
-      .map((profile) => [profile.recordId, profile]));
-    return holdings.map((holding) => libraryHoldingView(holding, profiles.get(holding.recordId) ?? null));
+    return projectLibraryHoldings(library.ownerDomainId, holdings, repositories).map((item) => item.holding);
   }
 
   listHoldingsSorted(
@@ -560,16 +556,13 @@ export class LibraryService {
       const page = repositories.libraries.listHoldingsSorted(library.id, sort, after, limit + 1);
       const hasMore = page.length > limit;
       const visible = page.slice(0, limit);
-      const profiles = new Map(repositories.bibliography
-        .findProfiles(library.ownerDomainId, visible.map((holding) => holding.recordId))
-        .map((profile) => [profile.recordId, profile]));
       let nextCursor: string | null = null;
       if (hasMore && visible.length > 0) {
         const last = visible[visible.length - 1]!;
         nextCursor = encodeHoldingSortCursor(holdingSortCursorFor(sort, last));
       }
       return {
-        holdings: visible.map((holding) => libraryHoldingView(holding, profiles.get(holding.recordId) ?? null)),
+        holdings: projectLibraryHoldings(library.ownerDomainId, visible, repositories).map((item) => item.holding),
         nextCursor,
       };
     });
@@ -593,57 +586,11 @@ export class LibraryService {
       repositories.libraries.refreshSearchProjection(library.ownerDomainId);
       const candidates = repositories.libraries.searchHoldingsPage(library.id, search);
       const visible = candidates.slice(0, limit);
-      const searchable = this.#searchableHoldings(library.ownerDomainId, visible.map((item) => item.holding), repositories);
+      const projected = projectLibraryHoldings(library.ownerDomainId, visible.map((item) => item.holding), repositories);
       return {
-        results: searchable.map(toSearchResult),
+        results: projected.map(({ holding, searchable }) => ({ ...toSearchResult(searchable), holding })),
         nextCursor: candidates.length > limit && visible.length > 0
           ? encodeSearchCursor(search.identity, visible[visible.length - 1]!.key) : null,
-      };
-    });
-  }
-
-  #searchableHoldings(
-    ownerDomainId: string,
-    holdings: LibraryHolding[],
-    repositories: RepositorySet,
-  ): SearchableHolding[] {
-    const recordIds = holdings.map((holding) => holding.recordId);
-    const metadataByRecord = new Map(repositories.metadata
-      .findMetadataMany(ownerDomainId, recordIds)
-      .map((metadata) => [metadata.recordId, metadata]));
-    const bibliographyByRecord = new Map(repositories.bibliography
-      .findProfiles(ownerDomainId, recordIds)
-      .map((profile) => [profile.recordId, profile]));
-    const authorityIds = [...new Set([...metadataByRecord.values()]
-      .flatMap((metadata) => metadata.authorityLinks.map((link) => link.authorityId)))];
-    const authoritiesById = new Map(repositories.metadata
-      .findAuthorities(ownerDomainId, authorityIds)
-      .map((authority) => [authority.id, authority]));
-    return holdings.map((holding) => {
-      const metadata = metadataByRecord.get(holding.recordId) ?? null;
-      const authorities: SearchableAuthority[] = [];
-      for (const link of metadata?.authorityLinks ?? []) {
-        const authority = authoritiesById.get(link.authorityId);
-        if (!authority) continue;
-        authorities.push({
-          type: authority.type,
-          role: link.role,
-          label: authority.canonicalLabel,
-          aliases: [...authority.aliases],
-        });
-      }
-      return {
-        fileId: holding.file.id,
-        displayName: holding.file.displayName,
-        sizeBytes: holding.file.sizeBytes,
-        mediaType: holding.file.mediaType,
-        artifactId: holding.artifactId,
-        artifactCreatedAt: holding.artifactCreatedAt,
-        canonicalTitle: holding.canonicalTitle,
-        metadata,
-        bibliography: bibliographyByRecord.get(holding.recordId) ?? null,
-        authorLabels: [...holding.authorLabels],
-        authorities,
       };
     });
   }

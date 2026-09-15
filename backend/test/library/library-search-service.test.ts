@@ -3,6 +3,7 @@ import { test, type TestContext } from "node:test";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
 import { DriveService } from "../../src/drive/drive-service.js";
+import { driveEntryVersion } from "../../src/drive/bulk.js";
 import { LibraryError, LibraryService } from "../../src/library/library-service.js";
 import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
@@ -131,9 +132,17 @@ test("authority-scoped search returns only accessible holdings across the whole 
   assert.deepEqual(byTitle.results[0]?.authorLabels, ["张帆"]);
   assert.equal(byTitle.results[0]?.publisher, "中华书局");
   assert.equal(byTitle.results[0]?.date, "1976");
+  const listed = libraries.listHoldingsSorted(MEMBER.id, library.id, "newest", null).holdings;
+  assert.deepEqual(byTitle.results[0]!.holding, listed.find((holding) => holding.file.id === bookA));
+  assert.equal(byTitle.results[0]!.holding.publisher, "中华书局");
+  assert.equal(byTitle.results[0]!.holding.date, "1976");
+  assert.deepEqual(byTitle.results[0]!.holding.secondaryContributorLabels, ["顾颉刚"]);
 
   const byAuthor = libraries.searchHoldings(MEMBER.id, library.id, "Peter Jackson", 50, null);
   assert.deepEqual(byAuthor.results.map((item) => item.fileId), [bookB]);
+  assert.deepEqual(byAuthor.results[0]!.holding, listed.find((holding) => holding.file.id === bookB));
+  assert.equal(byAuthor.results[0]!.holding.publisher, "Routledge", "legacy authority publisher fallback agrees with Search");
+  assert.equal(byAuthor.results[0]!.holding.date, "2018");
 
   const byIdentifier = libraries.searchHoldings(MEMBER.id, library.id, "9787301032145", 50, null);
   assert.deepEqual(byIdentifier.results.map((item) => item.fileId), [bookA]);
@@ -177,6 +186,9 @@ test("catalogue search hydrates metadata, bibliography, and authorities in const
   metadataRepository.findMetadata = () => { throw new Error("singular metadata hydration is forbidden"); };
   bibliographyRepository.findProfile = () => { throw new Error("singular bibliography hydration is forbidden"); };
   metadataRepository.findAuthority = () => { throw new Error("singular authority hydration is forbidden"); };
+  persistence.repositories.libraries.findHoldingByFile = () => { throw new Error("search must use its already-authorized candidate holdings"); };
+  persistence.repositories.libraries.listHoldings = () => { throw new Error("search must not scan all holdings"); };
+  persistence.repositories.libraries.listHoldingsPage = () => { throw new Error("search must not scan all holding pages"); };
   metadataRepository.findMetadataMany = (...arguments_) => {
     batchCalls.metadata += 1;
     return findMetadataMany(...arguments_);
@@ -193,6 +205,17 @@ test("catalogue search hydrates metadata, bibliography, and authorities in const
   const result = libraries.searchHoldings(OWNER.id, library.id, "元史", 50, null);
   assert.deepEqual(result.results.map((entry) => entry.fileId).sort(), [first, second].sort());
   assert.deepEqual(batchCalls, { metadata: 1, bibliography: 1, authorities: 1 });
+  batchCalls.metadata = 0;
+  batchCalls.bibliography = 0;
+  batchCalls.authorities = 0;
+  const firstPage = libraries.searchHoldings(OWNER.id, library.id, "元史", 1, null);
+  assert.equal(firstPage.results.length, 1);
+  assert.ok(firstPage.nextCursor);
+  assert.deepEqual(batchCalls, { metadata: 1, bibliography: 1, authorities: 1 });
+  const secondPage = libraries.searchHoldings(OWNER.id, library.id, "元史", 1, firstPage.nextCursor);
+  assert.equal(secondPage.results.length, 1);
+  assert.equal(secondPage.nextCursor, null);
+  assert.notEqual(firstPage.results[0]!.holding.file.id, secondPage.results[0]!.holding.file.id);
 });
 
 test("non-members, disabled accounts, and guessed libraries are indistinguishable from no match", (context) => {
@@ -222,8 +245,8 @@ test("non-members, disabled accounts, and guessed libraries are indistinguishabl
   ));
 });
 
-test("search results never expose internal identities", (context) => {
-  const { database, libraries, metadata } = fixture(context);
+test("search returns real public holding identities without physical storage or private account data", (context) => {
+  const { database, libraries, metadata, persistence } = fixture(context);
   const library = libraries.createLibrary(OWNER, "Shared Sources");
   const ownerDomainId = `library:${library.id}`;
   const book = addHolding(database, ownerDomainId, "dd", "book.pdf");
@@ -234,4 +257,57 @@ test("search results never expose internal identities", (context) => {
     assert.ok(!["recordId", "artifactId", "versionId", "ownerDomainId", "rank"].includes(key), `leaked ${key}`);
   }
   assert.equal(result.fileId, book);
+  assert.deepEqual(result.holding, libraries.listHoldings(OWNER.id, library.id)[0]);
+  assert.equal(result.holding.recordId, "search-record-dd");
+  assert.equal(result.holding.artifactId, "search-artifact-dd");
+  assert.equal(result.holding.versionId, "search-version-dd");
+  const file = persistence.repositories.files.findByDomainId(ownerDomainId, book)!;
+  assert.equal(result.holding.version, driveEntryVersion(file));
+  assert.equal(result.holding.file.updatedAt, file.updatedAt.toISOString());
+  for (const key of ["objectKey", "storageProvider", "ownerDomainId", "uploadedByAccountId", "favorites", "checksum", "rank"]) {
+    assert.equal(JSON.stringify(result).includes(`"${key}"`), false, `leaked ${key}`);
+  }
+  const later = new Date(NOW.getTime() + 5000).toISOString();
+  database.prepare("UPDATE files SET display_name = ?, revision = revision + 1, updated_at = ? WHERE id = ?").run("renamed.pdf", later, book);
+  const changed = libraries.searchHoldings(OWNER.id, library.id, "元代宰相", 50, null).results[0]!.holding;
+  assert.notEqual(changed.version, result.holding.version);
+  assert.equal(changed.file.updatedAt, later);
+  assert.equal(changed.file.displayName, "renamed.pdf");
+  assert.equal(changed.recordId, result.holding.recordId);
+  assert.equal(changed.artifactId, result.holding.artifactId);
+  assert.equal(changed.versionId, result.holding.versionId);
+  assert.throws(() => libraries.recycleHolding(OWNER, library.id, book, result.holding.version), (error) =>
+    error instanceof LibraryError && error.code === "concurrent_change");
+});
+
+test("page hydration is bounded and excludes other library and account-domain matches", (context) => {
+  const { database, libraries, metadata, persistence } = fixture(context);
+  const library = libraries.createLibrary(OWNER, "Visible");
+  libraries.addMember(OWNER, library.id, MEMBER.id, "member");
+  const foreignLibrary = libraries.createLibrary(OWNER, "Hidden");
+  for (const suffix of ["one", "two", "three"]) addHolding(database, `library:${library.id}`, suffix, `same-${suffix}.pdf`);
+  addHolding(database, `library:${foreignLibrary.id}`, "foreign", "same-foreign.pdf");
+  addHolding(database, `account:${OWNER.id}`, "private", "same-private.pdf");
+  const metadataRepository = persistence.repositories.metadata;
+  const findMetadataMany = metadataRepository.findMetadataMany.bind(metadataRepository);
+  const hydratedIds: string[][] = [];
+  context.mock.method(metadataRepository, "findMetadataMany", (domain: string, ids: string[]) => {
+    assert.equal(domain, `library:${library.id}`);
+    hydratedIds.push([...ids]);
+    return findMetadataMany(domain, ids);
+  });
+  const result = libraries.searchHoldings(MEMBER.id, library.id, "same", 1, null);
+  assert.equal(result.results.length, 1);
+  assert.deepEqual(hydratedIds, [[result.results[0]!.holding.recordId]]);
+  assert.equal(result.results[0]!.holding.publisher, null);
+  assert.equal(result.results[0]!.holding.date, null);
+  assert.deepEqual(result.results[0]!.holding.secondaryContributorLabels, []);
+  assert.equal(result.results[0]!.holding.catalogueDisplayTitle, result.results[0]!.displayName);
+  assert.equal(JSON.stringify(result).includes("foreign"), false);
+  assert.equal(JSON.stringify(result).includes("private"), false);
+  const countBeforeDenial = hydratedIds.length;
+  assert.throws(() => libraries.searchHoldings(MEMBER.id, foreignLibrary.id, "same", 1, null), (error) =>
+    error instanceof LibraryError && error.code === "not_found");
+  assert.equal(hydratedIds.length, countBeforeDenial, "membership denial occurs before hydration");
+  assert.throws(() => metadata.getDetails(MEMBER, library.id, "search-file-foreign"));
 });

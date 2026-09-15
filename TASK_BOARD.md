@@ -6,7 +6,7 @@
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — first correctness/document-session release7e2d1bf deployed and public checks green; finish signed-in QA, then unified Library/Search and source-safe private research foundations |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B —7e2d1bf deployed and signed-in changed paths verified; unified Library/Search locally qualified, exact release next; source/page-safe private research foundations follow |
 
 The current reassessment charter and Owner's2026-09-09 start instruction supersede the earlier read-only gate and narrow review scope. The active task contains the ordered Phase B milestones. Necessary production/data/service changes and main integration remain authorized. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 

@@ -5,7 +5,7 @@ import { dirname } from "node:path";
 import { test, type TestContext } from "node:test";
 import { DriveService } from "../../src/drive/drive-service.js";
 import { LibraryService } from "../../src/library/library-service.js";
-import { collectAllHoldings, searchHoldings, type LibrarySearchFilters, type LibrarySearchSort, type SearchableHolding } from "../../src/library/search.js";
+import { collectAllHoldings, searchHoldings, type LibrarySearchFilters, type LibrarySearchPage, type LibrarySearchSort, type SearchableHolding } from "../../src/library/search.js";
 import { initializeLibrarySearchProjection } from "../../src/persistence/sqlite/search-projection.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import { createTestPersistence } from "../persistence/helpers.js";
@@ -13,6 +13,10 @@ import { createTestPersistence } from "../persistence/helpers.js";
 const NOW = new Date("2026-09-06T00:00:00.000Z");
 const OWNER = { id: "search-owner", loginName: "search-owner", role: "owner" as const };
 const SORTS: LibrarySearchSort[] = ["relevance", "newest", "oldest", "title_asc", "title_desc", "size_asc", "size_desc"];
+
+function summaries(page: LibrarySearchPage) {
+  return { ...page, results: page.results.map(({ holding: _holding, ...summary }) => summary) };
+}
 
 function fixture(context: TestContext, count: number, rich = true) {
   const { database, persistence } = createTestPersistence(context);
@@ -101,7 +105,11 @@ test("SQL search equals the full-scan oracle for multilingual ranks, all sorts, 
     do {
       const expected = searchHoldings(reference, query, 7, cursor, filters, sort);
       const actual = state.libraries.searchHoldings(OWNER.id, state.library.id, query, 7, cursor, filters, sort);
-      assert.deepEqual(actual, expected, `${query}/${JSON.stringify(filters)}/${sort}/page ${pages}`);
+      assert.deepEqual(summaries(actual), expected, `${query}/${JSON.stringify(filters)}/${sort}/page ${pages}`);
+      for (const result of actual.results) {
+        assert.equal(result.holding.file.id, result.fileId);
+        assert.equal(result.holding.artifactId, reference.find((item) => item.fileId === result.fileId)!.artifactId);
+      }
       cursor = actual.nextCursor; pages++;
       assert.ok(pages < 30, "cursor must advance");
     } while (cursor);
@@ -153,7 +161,7 @@ test("100/1,000/10,000 search benchmarks compare the old path and bound hydratio
         const newStart = performance.now();
         const actual = state.libraries.searchHoldings(OWNER.id, state.library.id, query, 50, null, {}, sort);
         newMs += performance.now() - newStart;
-        assert.deepEqual(actual, expected);
+        assert.deepEqual(summaries(actual), expected);
       }
       report.push({ records: count, profile: rich ? "rich" : "sparse", query, sort, buildMs: Math.round(buildMs), oldMs: +(oldMs / 3).toFixed(2), newMs: +(newMs / 3).toFixed(2) });
     }
