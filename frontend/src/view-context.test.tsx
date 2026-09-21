@@ -66,3 +66,67 @@ it("closing a reading dialog returns to its list context without an extra Back e
   expect(close).toHaveBeenCalledTimes(1);
   expect(window.history.state.academiccloudView.path[0].id).toBe("folder-a");
 });
+
+it("blocks Back for a nested draft, then closes research and Preview in separate steps", async () => {
+  const closePreview = vi.fn();
+  const preview = renderHook(() => useHistoryDialog(closePreview));
+  const previewId = window.history.state.academiccloudDialog;
+  const closeResearch = vi.fn();
+  const guard = vi.fn(() => false);
+  const research = renderHook(() => useHistoryDialog(closeResearch, { canClose: guard }));
+  const researchId = window.history.state.academiccloudDialog;
+  const initialLength = window.history.length;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    act(() => window.history.back());
+    await waitFor(() => expect(guard).toHaveBeenCalledTimes(attempt));
+    expect(window.history.state.academiccloudDialog).toBe(researchId);
+    expect(window.history.length).toBe(initialLength);
+    expect(closeResearch).not.toHaveBeenCalled();
+    expect(closePreview).not.toHaveBeenCalled();
+  }
+  guard.mockReturnValue(true);
+  act(() => window.history.back());
+  await waitFor(() => expect(closeResearch).toHaveBeenCalledTimes(1));
+  expect(closePreview).not.toHaveBeenCalled();
+  expect(window.history.state.academiccloudDialog).toBe(previewId);
+  research.unmount();
+  act(() => window.history.back());
+  await waitFor(() => expect(closePreview).toHaveBeenCalledTimes(1));
+  expect(window.history.state?.academiccloudDialog).toBeUndefined();
+  preview.unmount();
+});
+
+it("consumes research history before a prepared Preview transition commits", async () => {
+  const closeResearch = vi.fn();
+  const research = renderHook(() => useHistoryDialog(closeResearch));
+  const commit = vi.fn(() => expect(window.history.state?.academiccloudDialog).toBeUndefined());
+  act(() => research.result.current.replaceWith(commit));
+  expect(commit).not.toHaveBeenCalled();
+  await waitFor(() => expect(closeResearch).toHaveBeenCalledTimes(1));
+  expect(commit).toHaveBeenCalledTimes(1);
+  research.unmount();
+  const closePreview = vi.fn();
+  const preview = renderHook(() => useHistoryDialog(closePreview));
+  act(() => window.history.back());
+  await waitFor(() => expect(closePreview).toHaveBeenCalledTimes(1));
+  expect(window.history.state?.academiccloudDialog).toBeUndefined();
+  preview.unmount();
+});
+
+it("reuses the underlying Preview step when opening a document from its research panel", async () => {
+  const closePreview = vi.fn();
+  const preview = renderHook(() => useHistoryDialog(closePreview));
+  const previewId = window.history.state.academiccloudDialog;
+  const closeResearch = vi.fn();
+  const research = renderHook(() => useHistoryDialog(closeResearch));
+  const commit = vi.fn(() => expect(window.history.state.academiccloudDialog).toBe(previewId));
+  act(() => research.result.current.replaceWith(commit));
+  await waitFor(() => expect(commit).toHaveBeenCalledOnce());
+  expect(closeResearch).toHaveBeenCalledOnce();
+  expect(closePreview).not.toHaveBeenCalled();
+  research.unmount();
+  act(() => window.history.back());
+  await waitFor(() => expect(closePreview).toHaveBeenCalledOnce());
+  expect(window.history.state?.academiccloudDialog).toBeUndefined();
+  preview.unmount();
+});

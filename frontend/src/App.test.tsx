@@ -18,6 +18,7 @@ import {
 import type { UploadProgressMetrics } from "./direct-upload.ts";
 import { DirectUploadError } from "./direct-upload.ts";
 import { LanguageProvider } from "./i18n-react.tsx";
+import type { WorkspaceApi } from "./workspace-api.ts";
 
 const ACTIVITY_PREFERENCE_KEY = "academiccloud.activity-center.expanded.v1:account-1";
 
@@ -2721,6 +2722,156 @@ describe("document preview session", () => {
       ...overrides,
     });
   }
+
+  function researchApi(): WorkspaceApi {
+    const resource = { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source", title: "book.pdf", mediaType: "application/pdf", libraryId: DEFAULT_LIBRARY.id };
+    const note = { id: "research-note", resourceId: resource.resourceId, sourceId: resource.sourceId, physicalPage: 7, locator: null,
+      body: "Private research text", revision: 1, createdAt: "2026-09-15", updatedAt: "2026-09-15", deletedAt: null };
+    return {
+      collections: vi.fn().mockResolvedValue([]), resource: vi.fn().mockResolvedValue({ resource, reading: null, collectionIds: [] }),
+      notes: vi.fn().mockResolvedValue({ items: [note], resources: [resource], nextBeforeId: null }),
+      note: vi.fn().mockResolvedValue({ note, resource }), createNote: vi.fn(), updateNote: vi.fn(), saveReading: vi.fn(),
+      reading: vi.fn().mockResolvedValue({ items: [], resources: [], nextBeforeId: null }),
+      createCollection: vi.fn(), updateCollection: vi.fn(), setCollectionItem: vi.fn(), collectionItems: vi.fn(),
+    };
+  }
+
+  it("opens private Page Notes over Preview without re-signing or replacing its iframe", async () => {
+    const user = userEvent.setup();
+    const api = sessionApi({ workspace: researchApi(), createLibraryDownload: vi.fn().mockResolvedValue({
+      ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source" },
+    }) });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
+    const frame = preview.querySelector("iframe");
+    const trigger = within(preview).getByRole("button", { name: "Page notes" });
+    await user.click(trigger);
+    const research = await screen.findByRole("dialog", { name: "My research" });
+    await within(research).findByText("Private research text");
+    expect(preview.querySelector("iframe")).toBe(frame);
+    expect(preview).toHaveAttribute("inert");
+    expect(api.createLibraryDownload).toHaveBeenCalledOnce();
+    await user.click(within(research).getByRole("button", { name: "Close my research" }));
+    expect(preview.querySelector("iframe")).toBe(frame);
+    expect(preview).not.toHaveAttribute("inert");
+    expect(trigger).toHaveFocus();
+  });
+
+  it.each(["note", "collection"] as const)("preserves an unsaved %s and its exact Preview through Back until discard", async (draft) => {
+    const user = userEvent.setup();
+    const api = sessionApi({ workspace: researchApi(), createLibraryDownload: vi.fn().mockResolvedValue({
+      ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source" },
+    }) });
+    render(<App api={api} />);
+    const row = await screen.findByRole("button", { name: "book.pdf" });
+    await user.click(row);
+    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
+    const frame = await within(preview).findByTitle("Preview of book.pdf");
+    const trigger = within(preview).getByRole("button", { name: "Page notes" });
+    await user.click(trigger);
+    const research = await screen.findByRole("dialog", { name: "My research" });
+    await within(research).findByText("Private research text");
+    if (draft === "note") await user.click(within(research).getByRole("button", { name: "Write a page note" }));
+    const input = within(research).getByRole("textbox", { name: draft === "note" ? "Note" : "Collection name" });
+    await user.type(input, "Private unsaved draft");
+    const researchHistoryId = window.history.state.academiccloudDialog;
+    act(() => window.history.back());
+    await within(research).findByText(`Save or discard your ${draft} changes before leaving.`);
+    expect(input).toHaveValue("Private unsaved draft");
+    expect(preview.querySelector("iframe")).toBe(frame);
+    expect(preview).toHaveAttribute("inert");
+    expect(window.history.state.academiccloudDialog).toBe(researchHistoryId);
+    expect(JSON.stringify(window.history.state)).not.toMatch(/Private|research-source|signed\.invalid/u);
+    expect(window.location.hash + window.location.search).toBe("");
+    await user.click(within(research).getByRole("button", { name: "Discard changes" }));
+    act(() => window.history.back());
+    await waitFor(() => expect(research).not.toBeInTheDocument());
+    expect(preview.querySelector("iframe")).toBe(frame);
+    expect(preview).not.toHaveAttribute("inert");
+    expect(trigger).toHaveFocus();
+    act(() => window.history.back());
+    await waitFor(() => expect(preview).not.toBeInTheDocument());
+    expect(row).toHaveFocus();
+    expect(api.createLibraryDownload).toHaveBeenCalledOnce();
+  });
+
+  it("blocks Back while a research write is pending and closes only research after it saves", async () => {
+    const user = userEvent.setup();
+    const researchApiValue = researchApi();
+    let finish!: (value: Awaited<ReturnType<WorkspaceApi["saveReading"]>>) => void;
+    researchApiValue.saveReading = vi.fn().mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const api = sessionApi({ workspace: researchApiValue, createLibraryDownload: vi.fn().mockResolvedValue({
+      ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source" },
+    }) });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
+    const frame = await within(preview).findByTitle("Preview of book.pdf");
+    await user.click(within(preview).getByRole("button", { name: "Page notes" }));
+    const research = await screen.findByRole("dialog", { name: "My research" });
+    const status = await within(research).findByRole("combobox", { name: "Reading status" });
+    await user.selectOptions(status, "reading");
+    expect(status).toBeDisabled();
+    const researchHistoryId = window.history.state.academiccloudDialog;
+    act(() => window.history.back());
+    await within(research).findByText("Save or discard your note changes before leaving.");
+    expect(preview.querySelector("iframe")).toBe(frame);
+    expect(research).toBeInTheDocument();
+    expect(window.history.state.academiccloudDialog).toBe(researchHistoryId);
+    await act(async () => finish({ resourceId: LIBRARY_HOLDINGS[0]!.file.id, status: "reading", important: false, toCite: false, revision: 1, updatedAt: "2026-09-21" }));
+    expect(status).toHaveValue("reading");
+    act(() => window.history.back());
+    await waitFor(() => expect(research).not.toBeInTheDocument());
+    expect(preview.querySelector("iframe")).toBe(frame);
+    expect(preview).not.toHaveAttribute("inert");
+    act(() => window.history.back());
+    await waitFor(() => expect(preview).not.toBeInTheDocument());
+  });
+
+  it("opens a saved page from standalone research with one Preview Back step", async () => {
+    const user = userEvent.setup();
+    const holding = LIBRARY_HOLDINGS[0]!;
+    const api = sessionApi({ workspace: researchApi(),
+      getLibraryHoldingDetails: vi.fn().mockResolvedValue({ holding, displayTitle: "book.pdf", originalFilename: "book.pdf",
+        metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43), bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: false, file: holding.file }),
+      createLibraryDownload: vi.fn().mockResolvedValue({ ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: holding.file.id, sourceId: "research-source" } }),
+    });
+    render(<App api={api} />);
+    const trigger = await screen.findByRole("button", { name: "My research" });
+    await user.click(trigger);
+    const research = await screen.findByRole("dialog", { name: "My research" });
+    await user.click(await within(research).findByRole("button", { name: "Open resource" }));
+    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
+    expect(research).not.toBeInTheDocument();
+    expect(preview.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=7");
+    act(() => window.history.back());
+    await waitFor(() => expect(preview).not.toBeInTheDocument());
+    expect(window.history.state.academiccloudDialog).toBeUndefined();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("rejects a fresh authorization for replacement bytes when reopening a saved note", async () => {
+    const user = userEvent.setup();
+    const holding = LIBRARY_HOLDINGS[0]!;
+    const api = sessionApi({ workspace: researchApi(),
+      getLibraryHoldingDetails: vi.fn().mockResolvedValue({ holding, displayTitle: "book.pdf", originalFilename: "book.pdf",
+        metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43), bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: false, file: holding.file }),
+      createLibraryDownload: vi.fn().mockResolvedValueOnce({ ...authorization("https://signed.invalid/original.pdf"), source: { resourceId: holding.file.id, sourceId: "research-source" } })
+        .mockResolvedValueOnce({ ...authorization("https://signed.invalid/replacement.pdf"), source: { resourceId: holding.file.id, sourceId: "changed-source" } }),
+    });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
+    const frame = preview.querySelector("iframe");
+    await user.click(within(preview).getByRole("button", { name: "Page notes" }));
+    const research = await screen.findByRole("dialog", { name: "My research" });
+    await user.click(await within(research).findByRole("button", { name: "Open resource" }));
+    expect(await within(research).findByRole("alert")).toHaveTextContent("changed elsewhere");
+    expect(preview.querySelector("iframe")).toBe(frame);
+    expect(frame).toHaveAttribute("src", "https://signed.invalid/original.pdf");
+    expect(document.querySelector('iframe[src*="replacement"]')).toBeNull();
+  });
 
   it.each(["account", "library"] as const)("opens the %s preview shell before source authorization completes", async (scope) => {
     const user = userEvent.setup();

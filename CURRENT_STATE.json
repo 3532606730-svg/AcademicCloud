@@ -1,5 +1,5 @@
 {
-  "lastReconciled": "2026-09-15",
+  "lastReconciled": "2026-09-22",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
@@ -9,7 +9,7 @@
     "checkpoint": "73b26d257c0f9508758bdb90d42165e80939cecd",
     "mainIntegration": "73b26d2 atomically pushed and both tracking heads/local HEAD verified before Owner batch-publication instruction",
     "localSynchronized": false,
-    "localState": "Intentionally ahead of last published73b: local-only integrated improvement checkpoints per Owner"
+    "localState": "Intentionally ahead of last published73b: source037 checkpoint8857e27 and private Workspace038 locally verified; no intermediate push/deployment"
   },
   "production": {
     "observedAt": "2026-09-15",
@@ -27,11 +27,12 @@
     "vnextDeployed": true
   },
   "candidate": {
-    "schemaVersion": 37,
+    "schemaVersion": 38,
     "migrations": [
       "035_library_search_projection",
       "036_bibliographic_contributor_collection_authority",
-      "037_document_source_generations"
+      "037_document_source_generations",
+      "038_private_research_workspace"
     ],
     "catalogResults": "v2 explicit set/clear; v1 conservative compatibility",
     "catalogPlan": "actor/Library bound; 30 minutes; four plans; 32 MiB accounted aggregate",
@@ -81,7 +82,18 @@
       "linux": "73b26d2: backend452/frontend360/contracts3/Compute165/ops84 all PASS (1064); all types/build, source/extracted compiled acceptance and full/production audit zero vulnerabilities",
       "archiveSha256": "949fbe51d1e47416c1390284e9a95be0098315a3aceba766c441e74cb962e905"
     },
-    "documentSource": "Local schema37: dedicated verifier backend455pass/0fail/3 Windows symlink skips; build/compiled acceptance PASS; hash-verified old73b Linux runtime with complete migration history startup/activation/rename/download PASS, missing37 fails closed"
+    "documentSource": "Local schema37: dedicated verifier backend455pass/0fail/3 Windows symlink skips; build/compiled acceptance PASS; hash-verified old73b Linux runtime with complete migration history startup/activation/rename/download PASS, missing37 fails closed",
+    "privateWorkspace": {
+      "backend": "467 pass/0 fail/3 Windows symlink-permission skips",
+      "frontend": "384/384 full suite",
+      "typesBuild": "both PASS",
+      "compiledAcceptance": "schema038 restart/recovery/privacy PASS",
+      "oldRuntime": "exact73b 4921 files hash-verified; complete schema038 history startup/overlay preservation PASS; incomplete history rejects",
+      "browser": "Real-backend synthetic notes/collections/reading/recovery/guarded Back/export and four widths PASS; PDF source/page URL verified, native iframe did not paint",
+      "review": "Independent backend and final history/source-opening review: no material finding",
+      "evidence": "output/vnext/workspace-browser-verification.json",
+      "publication": "local only; final combined release and normal-site acceptance pending"
+    }
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",
@@ -95,15 +107,16 @@
   "blockers": [
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works"
   ],
-  "next": "Continue source/page identity and private research foundations locally; preserve live7e; finish integrated improvements before one final publication/deployment",
+  "next": "Complete Catalog review recovery; measured transfer/search/app latency and visual review; field-quality/abstention and bounded full-text evaluation; inherited corpus acceptance and29-section report. Finish ALL local work before one final publication/deployment.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
     "tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md",
     "docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md",
     "docs/decisions/ADR-042-document-session-and-static-asset-continuity.md",
-    "docs/decisions/ADR-043-document-source-generations-and-page-locations.md"
+    "docs/decisions/ADR-043-document-source-generations-and-page-locations.md",
+    "docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md"
   ],
   "phase": "PHASE_B_EXECUTION",
-  "publicationCadence": "Owner2026-09-15: local implementation/tests/checkpoints until the integrated batch is complete; then one final push/deployment/live acceptance"
+  "publicationCadence": "Owner2026-09-15, reaffirmed2026-09-22: complete ALL integrated work locally with tests/checkpoints; then one final push/deployment/live acceptance"
 }

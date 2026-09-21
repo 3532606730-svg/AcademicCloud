@@ -55,3 +55,6 @@ export const BatchCatalogDialog = deferDialog<ComponentProps<typeof import("./ba
 export const BatchNamingDialog = deferDialog<ComponentProps<typeof import("./batch-naming.tsx").BatchNamingDialog>>(
   () => import("./batch-naming.tsx").then((module) => ({ default: module.BatchNamingDialog })),
 );
+export const WorkspaceDialog = deferDialog<ComponentProps<typeof import("./workspace.tsx").WorkspaceDialog>>(
+  () => import("./workspace.tsx").then((module) => ({ default: module.WorkspaceDialog })),
+);

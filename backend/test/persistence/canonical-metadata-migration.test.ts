@@ -79,7 +79,7 @@ test("migration 018 upgrades v17 additively and preserves accepted filename, phy
       WHERE files.id = 'file-1'
     `).get();
 
-  assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37], currentVersion: 37 });
+  assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38], currentVersion: 38 });
     const after = database.prepare(`
       SELECT files.id AS file_id, files.owner_domain_id, files.uploaded_by_account_id,
         files.display_name, files.object_key, files.checksum_algorithm, files.checksum,
@@ -101,7 +101,7 @@ test("migration 018 upgrades v17 additively and preserves accepted filename, phy
         (SELECT count(*) FROM scholarly_record_metadata) AS metadata,
         (SELECT count(*) FROM scholarly_authorities) AS authorities
     `).get(), { metadata: 0, authorities: 0 });
-  assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [], currentVersion: 37 });
+  assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [], currentVersion: 38 });
 
     database.prepare(`
       INSERT INTO scholarly_record_metadata (

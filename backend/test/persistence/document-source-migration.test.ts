@@ -9,10 +9,15 @@ import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
 test("037 backfills recorded activated identities without changing file rows and survives reopen", (context) => {
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-source-migration-"));
+  const through37 = mkdtempSync(join(tmpdir(), "academiccloud-source-through37-"));
   for (const name of readdirSync(INITIAL_MIGRATIONS_DIRECTORY)) if (Number(name.slice(0, 3)) <= 36) {
     copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, name), join(directory, name));
   }
   context.after(() => rmSync(directory, { recursive: true, force: true }));
+  for (const name of readdirSync(INITIAL_MIGRATIONS_DIRECTORY)) if (Number(name.slice(0, 3)) <= 37) {
+    copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, name), join(through37, name));
+  }
+  context.after(() => rmSync(through37, { recursive: true, force: true }));
   const filename = join(directory, "before.sqlite");
   let database = openSqliteDatabase(filename);
   try {
@@ -33,7 +38,7 @@ test("037 backfills recorded activated identities without changing file rows and
       state === "purged" ? "2026-09-15" : null,
       ["deleted", "purging"].includes(state) ? `recycle-${state}` : null);
     const before = database.prepare("SELECT * FROM files ORDER BY id").all();
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).appliedVersions, [37]);
+    assert.deepEqual(runMigrations(database, through37).appliedVersions, [37]);
     assert.deepEqual(database.prepare("SELECT * FROM files ORDER BY id").all(), before);
     const sources = database.prepare("SELECT * FROM document_sources ORDER BY file_id").all();
     assert.equal(sources.length, 4);
@@ -50,7 +55,7 @@ test("037 backfills recorded activated identities without changing file rows and
     database.close();
     database = openSqliteDatabase(filename);
     assert.deepEqual(database.prepare("SELECT * FROM document_sources ORDER BY file_id").all(), sources);
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).appliedVersions, []);
+    assert.deepEqual(runMigrations(database, through37).appliedVersions, []);
     // Older code's ordinary activation is still captured by the database.
     database.prepare("UPDATE files SET state = 'active', activated_at = '2026-09-15' WHERE id = 'pending_upload'").run();
     assert.equal(database.prepare<[], { n: number }>("SELECT count(*) AS n FROM document_sources").get()!.n, 5);

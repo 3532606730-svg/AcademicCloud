@@ -1,4 +1,5 @@
 import { ERROR_MESSAGES } from "./i18n.ts";
+import { createWorkspaceApi, type WorkspaceApi } from "./workspace-api.ts";
 
 export interface Account {
   id: string;
@@ -884,6 +885,7 @@ export class ApiError extends Error {
 type Fetcher = typeof fetch;
 
 export interface AcademicCloudApi {
+  workspace?: WorkspaceApi;
   getSession(signal?: AbortSignal): Promise<Account>;
   login(loginName: string, password: string): Promise<Account>;
   registerMember(inviteToken: string, loginName: string, password: string): Promise<ManagedAccount>;
@@ -1016,6 +1018,7 @@ export interface AcademicCloudApi {
 }
 
 export class ApiClient implements AcademicCloudApi {
+  readonly workspace = createWorkspaceApi(<T>(path: string, init?: RequestInit) => this.#request<T>(path, init));
   readonly #fetch: Fetcher;
   readonly #onUnauthorized: () => void;
 

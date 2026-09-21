@@ -32,6 +32,8 @@ import type { CitationService } from "../citation/citation-service.js";
 import { registerCitationHttp } from "../citation/http.js";
 import type { CatalogBatchService } from "../catalog-batch/catalog-batch-service.js";
 import { registerCatalogBatchHttp } from "../catalog-batch/http.js";
+import type { WorkspaceService } from "../workspace/service.js";
+import { registerWorkspaceHttp } from "../workspace/http.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -150,6 +152,7 @@ export interface CreateAppOptions {
   suggestions?: { service: SuggestionService; bootstrapSecret?: string | null };
   citations?: { service: CitationService };
   catalogBatch?: { service: CatalogBatchService };
+  workspace?: { service: WorkspaceService };
   readinessCheck?: () => boolean;
 }
 
@@ -328,6 +331,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   if (options.catalogBatch) {
     if (!options.auth) throw new Error("catalog batch routes require authentication composition");
     await registerCatalogBatchHttp(app, options.catalogBatch.service);
+  }
+
+  if (options.workspace) {
+    if (!options.auth) throw new Error("workspace routes require authentication composition");
+    await registerWorkspaceHttp(app, options.workspace.service);
   }
 
   return app;

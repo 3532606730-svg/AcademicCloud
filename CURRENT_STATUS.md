@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-09-15. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
+**Last reconciled:** 2026-09-22. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
 ## Active work and authority
 
@@ -51,7 +51,15 @@ Backend78 related tests and types/build pass; full frontend360/360, types/build 
 
 ADR-043/migration037 records immutable byte generations, backfills already activated files without changing their records or objects, and captures single/multipart/compatible-old-runtime activation atomically. Rename, move, ownership promotion and recycle/restore keep the same generation; actual byte-tuple changes create a new one. Preview/download returns only authorized resourceId/sourceId and rejects a source change or recycle during signing. Catalog CAS/fingerprints remain unchanged.
 
-Dedicated verifier: backend455 passed, zero failures, three Windows symlink-permission skips; current build and compiled acceptance PASS. Tests cover retained deleted/purging/purged migration rows, rollback transactions, cross-file constraints and unauthorized requests with zero source queries. Reused hash-verified73b Linux runtime passes schema37 startup/activation/rename/download with complete migration history, while an incomplete directory fails closed. This is local migration/compatibility evidence; production stays schema36/live7e. Next implement private Workspace/Collections/Page Notes; one final combined publication remains required.
+Dedicated verifier: backend455 passed, zero failures, three Windows symlink-permission skips; current build and compiled acceptance PASS. Tests cover retained deleted/purging/purged migration rows, rollback transactions, cross-file constraints and unauthorized requests with zero source queries. Reused hash-verified73b Linux runtime passes schema37 startup/activation/rename/download with complete migration history, while an incomplete directory fails closed. This is local migration/compatibility evidence; last observed production remains schema36/live7e. Source checkpoint8857e27 is local only.
+
+## Private Workspace — locally implemented and verified
+
+ADR-044/migration038 adds account-private reading state, important/to-cite flags, named Collections and Page Notes bound to immutable source generations. Notes and collections support recoverable removal/archive; account-scoped NDJSON export includes authored state. Collection membership and text edits use revision checks; delayed requests cannot silently undo later changes. Current resource access is rechecked independently, and Owner has no exception to another account's research privacy. Notes on replaced/unavailable sources remain authored records and cannot open against different bytes.
+
+Full frontend384/384 and backend467 passed/0 failed/3 Windows symlink-permission skips; types/build and schema038 compiled acceptance PASS. The dedicated backend verifier confirmed the hash-verified old73b runtime accepts complete schema038 history and preserves overlays; incomplete migration history fails closed. Local browser checks used the real backend and isolated synthetic SQLite data: create/save/reopen notes, manual page7 link, draft-protected Back retaining Preview, separate dialog Back/focus, collection membership/archive/restore, note trash/restore, reading flags, and persisted reload pass. Four widths1440/1024/768/390 have no overflow. Downloaded NDJSON contains the Owner's notes and excludes the Member sentinel and object keys. IAB did not paint the native PDF: source-aware URL/page fragment and retained iframe are verified, rendered page7 is not claimed. These checks do not replace final signed-in production acceptance.
+
+Evidence: output/vnext/workspace-{frontend-final,backend-validation,compiled-validation,old-runtime-validation}.log and workspace-browser-verification.json. The Owner reaffirmed on September22: finish all integrated work before publication. Workspace completion does not close Catalog/transfer/search measurement, bounded full-text evaluation or whole-product final acceptance.
 
 ## Established evidence retained
 
@@ -66,8 +74,9 @@ Dedicated verifier: backend455 passed, zero failures, three Windows symlink-perm
 ## Immediate execution order
 
 1. Finish the integrated improvement batch locally. The Owner has requested one final publication/deployment rather than milestone releases; preserve live7e while continuing.
-2. Continue measured app/Preview and Library/Details/Reader improvements, then source/page-safe research foundations; use focused checks and local Git checkpoints until final integration.
-3. Establish immutable source/page identity, then useful private Workspace/Collections/Page Notes with privacy and export tests.
+   September22 priority update: improve the actual website's visual quality first; the other integrated items remain required.
+2. Preserve locally qualified unified Library/Search, source-generation037 and private Workspace038; keep remaining app/Preview/Library/Details/Reader evidence explicit and use local Git checkpoints.
+3. Reconcile every remaining charter item against code and evidence; private Workspace completion is one milestone, not completion of the integrated batch.
 4. Improve selective/resumable Catalog and measured upload/search bottlenecks; evaluate quality with field evidence and abstention, not schema acceptance alone.
 5. Evaluate bounded full-text foundations after the preceding dependencies; no immediate whole-corpus OCR/RAG rollout.
 

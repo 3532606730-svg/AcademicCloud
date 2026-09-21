@@ -48,7 +48,8 @@ import {
 import { calculateFileMd5 } from "./md5.ts";
 import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
-import { ResourceDetailsDialog, BatchNamingDialog, BatchCatalogDialog, CitationDialog } from "./deferred-dialog.tsx";
+import { ResourceDetailsDialog, BatchNamingDialog, BatchCatalogDialog, CitationDialog, WorkspaceDialog } from "./deferred-dialog.tsx";
+import type { WorkspaceResource } from "./workspace-api.ts";
 import { libraryHoldingDisplayTitle, libraryHoldingSecondaryLine } from "./library-display-title.ts";
 import { canPreviewFile } from "./preview-capability.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
@@ -445,6 +446,8 @@ type FilePickerWindow = Window & {
 };
 
 interface PreviewState extends PreviewDocument {
+  resourceId: string;
+  sourceId: string | null;
   download: () => Promise<void>;
   resource?: ResourceDetailsRequest;
 }
@@ -714,6 +717,7 @@ function DriveView({
   const previewRequest = useRef(0);
   useEffect(() => () => { previewRequest.current++; }, [view, path]);
   const [resourceDetailsRequest, setResourceDetailsRequest] = useState<ResourceDetailsRequest | null>(null);
+  const [researchRequest, setResearchRequest] = useState<{ resourceId?: string; sourceId?: string; returnFocus: HTMLElement | null } | null>(null);
   const [citationRequest, setCitationRequest] = useState<CitationRequest | null>(null);
   const [batchNamingRequest, setBatchNamingRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
   const [batchCatalogRequest, setBatchCatalogRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
@@ -1968,14 +1972,14 @@ function DriveView({
     const focus = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setError(null);
     setPreview({
-      requestId, file, url: null, error: null, returnFocus: focus,
+      requestId, resourceId: file.id, sourceId: null, file, url: null, error: null, returnFocus: focus,
       download: () => downloadFile(file),
       retry: () => { void openPreview(file, focus); },
     });
     try {
       const authorization = await api.createDownload(file.id, "inline");
       if (requestId !== previewRequest.current) return;
-      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url } : current);
+      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url, sourceId: authorization.source?.sourceId ?? null } : current);
     } catch (caught: unknown) {
       if (requestId !== previewRequest.current) return;
       setPreview((current) => current?.requestId === requestId ? { ...current, error: caught } : current);
@@ -2004,6 +2008,7 @@ function DriveView({
     setError(null);
     setPreview({
       requestId,
+      resourceId: holding.file.id, sourceId: null,
       file: { displayName: libraryHoldingDisplayTitle(holding, language), mediaType: holding.file.mediaType ?? "application/octet-stream" },
       url: null, error: null, returnFocus: focus,
       download: () => downloadLibraryHolding(library, holding),
@@ -2013,7 +2018,7 @@ function DriveView({
     try {
       const authorization = await api.createLibraryDownload(library.id, holding.file.id, "inline");
       if (requestId !== previewRequest.current) return;
-      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url } : current);
+      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url, sourceId: authorization.source?.sourceId ?? null } : current);
     } catch (caught: unknown) {
       if (requestId !== previewRequest.current) return;
       setPreview((current) => current?.requestId === requestId ? { ...current, error: caught } : current);
@@ -2174,7 +2179,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || citationRequest !== null || batchNamingRequest !== null || batchCatalogRequest !== null || moveRequest !== null || accountAdministrationOpen}>
+    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || researchRequest !== null || citationRequest !== null || batchNamingRequest !== null || batchCatalogRequest !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand"><span>AC</span> AcademicCloud</div>
@@ -2201,6 +2206,9 @@ function DriveView({
           <button className={view === "favorites" ? "nav-item is-active" : "nav-item"} aria-current={view === "favorites" ? "page" : undefined} onClick={() => goToView("favorites")}>
             <StarIcon size={18} /> {t("nav.favorites")}
           </button>
+          {api.workspace && <button className="nav-item" type="button" onClick={(event) => setResearchRequest({ returnFocus: event.currentTarget })}>
+            <TextIcon size={18} /> {t("workspace.title")}
+          </button>}
           <button className={view === "pending" ? "nav-item is-active" : "nav-item"} aria-current={view === "pending" ? "page" : undefined} onClick={() => goToView("pending")}>
             <PendingIcon size={18} /> {t("nav.pending")}
           </button>
@@ -2909,6 +2917,12 @@ function DriveView({
             setResourceDetailsRequest(null);
             setCitationRequest(request);
           }}
+          {...(api.workspace ? { onResearch: () => {
+            const request = resourceDetailsRequest;
+            setResourceDetailsRequest(null);
+            setResearchRequest({ resourceId: request.holding.file.id, returnFocus: request.returnFocus,
+              ...(preview?.resourceId === request.holding.file.id && preview.sourceId ? { sourceId: preview.sourceId } : {}) });
+          } } : {})}
           onSuggestionJobChange={handleResourceSuggestionJobChange}
         />
       )}
@@ -2947,10 +2961,46 @@ function DriveView({
           }}
         />
       )}
-      {preview && <PreviewDialog preview={preview} covered={resourceDetailsRequest !== null || citationRequest !== null}
+      {preview && <PreviewDialog preview={preview} covered={resourceDetailsRequest !== null || citationRequest !== null || researchRequest !== null}
         onClose={closeDocumentPreview} onDownload={() => void preview.download()}
         onDetails={preview.resource ? (trigger) => setResourceDetailsRequest({ ...preview.resource!, returnFocus: trigger }) : undefined}
-        onCitation={preview.resource ? (trigger) => setCitationRequest({ ...preview.resource!, returnFocus: trigger }) : undefined} />}
+        onCitation={preview.resource ? (trigger) => setCitationRequest({ ...preview.resource!, returnFocus: trigger }) : undefined}
+        onResearch={api.workspace && preview.sourceId ? (trigger) => setResearchRequest({ resourceId: preview.resourceId, sourceId: preview.sourceId!, returnFocus: trigger }) : undefined} />}
+      {researchRequest && api.workspace && <WorkspaceDialog api={api.workspace}
+        {...(researchRequest.resourceId ? { initialResourceId: researchRequest.resourceId } : {})}
+        {...(researchRequest.sourceId ? { expectedSourceId: researchRequest.sourceId } : {})}
+        returnFocus={researchRequest.returnFocus} onClose={() => setResearchRequest(null)}
+        onOpenResource={async (resource: WorkspaceResource, physicalPage?: number) => {
+          if (preview?.resourceId === resource.resourceId && preview.sourceId === resource.sourceId && physicalPage === undefined) return () => {};
+          const requestId = ++previewRequest.current;
+          let details: ResourceDetailsRequest | undefined;
+          if (resource.libraryId) {
+            const [libraries, detail] = await Promise.all([api.listLibraries(), api.getLibraryHoldingDetails(resource.libraryId, resource.resourceId)]);
+            const library = libraries.find((entry) => entry.id === resource.libraryId);
+            if (!library || !detail.holding) throw new ApiError(404, "not_found");
+            details = { library, holding: detail.holding, returnFocus: researchRequest.returnFocus };
+            if (!canPreviewFile(detail.holding.file)) {
+              if (requestId !== previewRequest.current) throw new ApiError(409, "concurrent_change");
+              return () => setResourceDetailsRequest(details!);
+            }
+          }
+          const authorization = resource.libraryId
+            ? await api.createLibraryDownload(resource.libraryId, resource.resourceId, "inline")
+            : await api.createDownload(resource.resourceId, "inline");
+          if (requestId !== previewRequest.current) throw new ApiError(409, "concurrent_change");
+          if (authorization.source?.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
+          const url = new URL(authorization.url, window.location.href);
+          if (physicalPage !== undefined) url.hash = `page=${physicalPage}`;
+          const focus = researchRequest.returnFocus;
+          const download = () => performDownload(resource.resourceId, resource.title, () => resource.libraryId
+            ? api.createLibraryDownload(resource.libraryId, resource.resourceId) : api.createDownload(resource.resourceId));
+          return () => setPreview({ requestId, resourceId: resource.resourceId, sourceId: resource.sourceId,
+            file: { displayName: resource.title, mediaType: resource.mediaType ?? "application/octet-stream" },
+            url: url.toString(), error: null, returnFocus: focus, download,
+            ...(details ? { resource: details } : {}),
+            retry: () => setResearchRequest({ resourceId: resource.resourceId, sourceId: resource.sourceId, returnFocus: focus }),
+          });
+        }} />}
       {moveRequest && (
         <MoveDialog
           api={api}

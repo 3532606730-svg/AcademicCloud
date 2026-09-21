@@ -130,6 +130,15 @@ try {
   if (memberLoginResponse.status !== 200) throw new Error("compiled Member login failed");
   const memberCookie = memberLoginResponse.headers.get("set-cookie")?.split(";", 1)[0];
   if (!memberCookie?.startsWith("__Host-ac_session=")) throw new Error("compiled Member session cookie missing");
+  const workspaceResource = await fetchJson(`http://127.0.0.1:${port}/api/workspace/resources/${compiledHolding.fileId}`, {
+    headers: { cookie: memberCookie },
+  });
+  const compiledPageNote = await fetchJson(`http://127.0.0.1:${port}/api/workspace/notes`, {
+    method: "POST",
+    headers: { cookie: memberCookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
+    body: JSON.stringify({ resourceId: compiledHolding.fileId, sourceId: workspaceResource.resource.sourceId,
+      physicalPage: 2, locator: "printed page i", body: "Member-authored compiled private note" }),
+  });
   const createdAnnouncement = await fetchJson(`http://127.0.0.1:${port}/api/announcements`, {
     method: "POST",
     headers: { cookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
@@ -194,6 +203,12 @@ try {
     `http://127.0.0.1:${port}/api/libraries/canonical-library/holdings/${compiledHolding.fileId}/details`,
     { headers: { cookie } },
   );
+  const notesAfterRestart = await fetchJson(`http://127.0.0.1:${port}/api/workspace/notes`, { headers: { cookie: memberCookie } });
+  assert.deepEqual(notesAfterRestart.items, [compiledPageNote.note]);
+  const exactNoteAfterRestart = await fetchJson(`http://127.0.0.1:${port}/api/workspace/notes/${compiledPageNote.note.id}`, { headers: { cookie: memberCookie } });
+  assert.deepEqual(exactNoteAfterRestart.note, compiledPageNote.note);
+  const ownerNotesAfterRestart = await fetchJson(`http://127.0.0.1:${port}/api/workspace/notes`, { headers: { cookie } });
+  assert.deepEqual(ownerNotesAfterRestart.items, []);
   const retiredPasswordChange = await fetch(`http://127.0.0.1:${port}/api/auth/password`, {
     method: "POST",
     headers: { cookie, origin: environment.APP_ORIGIN, "content-type": "application/json" },
@@ -285,6 +300,8 @@ try {
     `http://127.0.0.1:${port}/api/libraries/canonical-library/holdings/${compiledHolding.fileId}/details`,
     { headers: { cookie } },
   );
+  const restoredPageNotes = await fetchJson(`http://127.0.0.1:${port}/api/workspace/notes`, { headers: { cookie: newMemberCookie } });
+  assert.deepEqual(restoredPageNotes.items, [compiledPageNote.note]);
   await stopApplication(application);
   application = undefined;
   const redeployInitialization = runJson(join(distDirectory, "persistence", "sqlite", "initialize-database.js"));
@@ -323,6 +340,8 @@ try {
       metadataAfterRestart.displayTitle === "Compiled Canonical Title"
       && metadataAfterRestart.originalFilename === "compiled-acquisition.pdf"
       && metadataAfterRestart.metadata?.authorityLinks?.[0]?.canonicalLabel === "Compiled Author",
+    privatePageNoteSurvivedRestart: notesAfterRestart.items[0]?.id === compiledPageNote.note.id,
+    ownerCannotReadMemberNotes: ownerNotesAfterRestart.items.length === 0,
     selfServicePasswordRouteRetired: retiredPasswordChange.status === 404,
     credentialResetRevokedOldMemberSession: revokedMemberSession.status === 401,
     freshMemberLoginAfterCredentialReset: newMemberLoginResponse.status === 200,
@@ -359,10 +378,11 @@ try {
       restoredMetadata.displayTitle === compiledMetadata.displayTitle
       && restoredMetadata.originalFilename === "compiled-acquisition.pdf"
       && restoredMetadata.metadata?.identifiers?.[0]?.value === "compiled-1",
+    restoredPrivatePageNoteValid: restoredPageNotes.items[0]?.sourceId === compiledPageNote.note.sourceId,
     redeployMigrationCount: redeployMigration.appliedVersions.length,
     redeployRulesetAdmissionCount: redeployRulesetAdmission.admitted.length,
   };
-  assert.equal(result.firstMigrationCount, 37);
+  assert.equal(result.firstMigrationCount, 38);
   assert.equal(result.firstRulesetAdmissionCount, 2);
   assert.equal(result.currentRulesetVersion, "l1-intelligent-library01-v11");
   assert.equal(result.provisionedLogin, "CompiledAcceptance");

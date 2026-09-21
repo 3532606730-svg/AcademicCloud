@@ -4,11 +4,17 @@ Record only meaningful product, architecture, security, infrastructure, or workf
 
 ## 2026-09-15 — One combined publication after local integration
 
-The Owner requests completing the integrated improvement batch locally before one final publication/deployment. Continue implementation, focused verification and local Git checkpoints; do not push/deploy individual milestones. Source73b26d2 was already pushed when this instruction arrived. Live Core/frontend/Compute remain7e2d1bf. Final exact qualification, migration/deployment and normal-site acceptance remain required.
+The Owner requests completing the integrated improvement batch locally before one final publication/deployment, reaffirmed on2026-09-22 with an explicit reminder to retain all other charter work. Continue implementation, focused verification and local Git checkpoints; do not push/deploy individual milestones. Source73b26d2 was already pushed when this instruction arrived. Last observed Core/frontend/Compute remain7e2d1bf. Final exact qualification, migration/deployment and normal-site acceptance remain required.
 
 ## ADR-043 — Source generations before page notes
 
+September22 execution priority: the Owner requests visual improvement before the next Catalog feature. This changes order, preserves the full integrated scope, and does not authorize an intermediate publication.
+
 [ADR-043](docs/decisions/ADR-043-document-source-generations-and-page-locations.md) separates immutable recorded byte generations and one-based physical-page locations from mutable file/Catalog CAS revisions. Atomic database capture covers upload activation and byte-identity changes without coupling Drive to optional research modules. Existing authorized responses provide the descriptor; private overlays and source-replacement behavior must preserve authorship and non-disclosure. Migration037 is local work for the final combined release.
+
+## ADR-044 — Private workspace and authored page notes
+
+[ADR-044](docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md) implements independent account-private reading states, semantic Collections and source-bound Page Notes after the verified037 identity foundation. CAS edits, recoverable deletion/archive, resource reauthorization and streamed authored-state export preserve privacy and data safety. No administrator research view, inferred page tracking or original-file annotation writes. Implementation and verification remain local until final integration.
 
 ## ADR-042 — Document sessions and public asset continuity
 

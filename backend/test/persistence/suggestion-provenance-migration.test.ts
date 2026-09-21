@@ -72,7 +72,7 @@ test("migration 020 preserves legacy evidence truth and enforces prospective OCR
     insertLegacyCandidate.run("legacy-run:0", 0, "Native title", "title_page", 1, "title_page", "Native title");
     insertLegacyCandidate.run("legacy-run:1", 1, "Embedded title", "embedded_pdf_metadata", null, null, "Embedded title");
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37], currentVersion: 37 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38], currentVersion: 38 });
     assert.deepEqual(
       database.prepare<[], { evidence_origin: string; ocr_engine: string | null; ocr_confidence: number | null }>(`
         SELECT evidence_origin, ocr_engine, ocr_confidence

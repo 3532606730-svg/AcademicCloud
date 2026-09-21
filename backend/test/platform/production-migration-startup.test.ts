@@ -75,7 +75,7 @@ test("development startup initializes and migrates a disposable database", async
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 37);
+  assert.equal(readSchemaVersion(databasePath), 38);
 });
 
 test("production startup with a current schema succeeds without mutating it", async (context) => {
@@ -93,7 +93,7 @@ test("production startup with a current schema succeeds without mutating it", as
   } finally {
     await app.close();
   }
-  assert.equal(readSchemaVersion(databasePath), 37);
+  assert.equal(readSchemaVersion(databasePath), 38);
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -113,7 +113,7 @@ test("production startup with a current schema but missing ruleset admission fai
     }, new InMemoryStorageAdapter()),
     /ruleset admission is not current/u,
   );
-  assert.equal(readSchemaVersion(databasePath), 37);
+  assert.equal(readSchemaVersion(databasePath), 38);
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -147,8 +147,8 @@ test("the explicit migration runner still applies pending migrations normally", 
   const upgraded = openSqliteDatabase(databasePath);
   const result = runMigrations(upgraded, latest);
   upgraded.close();
-  assert.deepEqual(result.appliedVersions, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37]);
-  assert.equal(result.currentVersion, 37);
+  assert.deepEqual(result.appliedVersions, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38]);
+  assert.equal(result.currentVersion, 38);
   assert.equal(hasFavoritesTable(databasePath), true);
   rmSync(directory, { recursive: true, force: true });
 });

@@ -25,6 +25,8 @@ import {
 } from "../compute/github-actions-dispatcher.js";
 import { CitationService } from "../citation/citation-service.js";
 import { CatalogBatchService } from "../catalog-batch/catalog-batch-service.js";
+import { WorkspaceService } from "../workspace/service.js";
+import { SqliteWorkspaceRepository } from "../persistence/sqlite/workspace-repository.js";
 
 export async function createApplication(
   config: AppConfig,
@@ -105,6 +107,7 @@ export async function createApplication(
       citations: { service: citationService },
       catalogBatch: { service: catalogBatchService },
       libraries: { service: libraryService },
+      workspace: { service: new WorkspaceService(persistence, new SqliteWorkspaceRepository(database)) },
       readinessCheck: () => {
         assertRuntimeRulesetReady(database, runtimeRuleset);
         return persistence.isReady();

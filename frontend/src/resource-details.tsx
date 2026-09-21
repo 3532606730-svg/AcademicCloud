@@ -450,6 +450,7 @@ export function ResourceDetailsDialog({
   onPreview,
   onDownload,
   onCitation,
+  onResearch,
   onSuggestionJobChange,
 }: {
   api: AcademicCloudApi;
@@ -462,6 +463,7 @@ export function ResourceDetailsDialog({
   onPreview: (file: LibraryHoldingDetails["file"]) => void;
   onDownload: () => void;
   onCitation?: () => void;
+  onResearch?: () => void;
   onSuggestionJobChange?: (job: DerivedMetadataJob, authoritativeState?: MetadataCataloguingState) => void;
 }) {
   const { language, t } = useLanguage();
@@ -1073,6 +1075,7 @@ export function ResourceDetailsDialog({
                 {canPreviewFile(detail.file) && <button className="button button--quiet" type="button" onClick={() => onPreview(detail.file)}>{t("menu.preview")}</button>}
                 <button className="button" type="button" onClick={onDownload}>{t("menu.download")}</button>
                 {api.generateLibraryCitation && onCitation && <button className="button" type="button" onClick={onCitation}>{t("citation.action")}</button>}
+                {onResearch && <button className="button button--quiet" type="button" onClick={onResearch}>{t("workspace.title")}</button>}
                 {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--primary" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.edit")}</button>}
                 {detail.canEditMetadata && api.updateLibraryHoldingBibliography && <button className="button button--quiet" type="button" onClick={() => { setEditingBibliography(true); setNotice(""); }}>{t("metadata.editBibliography")}</button>}
               </footer>

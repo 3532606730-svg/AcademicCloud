@@ -13,13 +13,14 @@ export interface PreviewDocument {
   retry: () => void;
 }
 
-export function PreviewDialog({ preview, covered = false, onClose, onDownload, onDetails, onCitation }: {
+export function PreviewDialog({ preview, covered = false, onClose, onDownload, onDetails, onCitation, onResearch }: {
   preview: PreviewDocument;
   covered?: boolean;
   onClose: () => void;
   onDownload: () => void;
   onDetails?: ((trigger: HTMLElement) => void) | undefined;
   onCitation?: ((trigger: HTMLElement) => void) | undefined;
+  onResearch?: ((trigger: HTMLElement) => void) | undefined;
 }) {
   const { t, language } = useLanguage();
   const close = useHistoryDialog(onClose);
@@ -73,6 +74,8 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
             onClick={(event) => onDetails(event.currentTarget)}>{t("preview.details")}</button>}
           {onCitation && <button className="button button--quiet" type="button"
             onClick={(event) => onCitation(event.currentTarget)}>{t("preview.citation")}</button>}
+          {onResearch && <button className="button button--quiet" type="button"
+            onClick={(event) => onResearch(event.currentTarget)}>{t("workspace.notes")}</button>}
         </div>
         <div className="preview-file-actions">
           {preview.url

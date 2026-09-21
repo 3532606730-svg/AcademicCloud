@@ -27,7 +27,7 @@ Ordered milestones:
 4. Improve resumable/selective Catalog review and measured upload/search bottlenecks. Distinguish quality/abstention evidence from format-only qualification.
 5. Evaluate page-aware full-text foundations on bounded sources after the earlier gates; retrieval/RAG expansion depends on measured value, source permissions and cost.
 
-For each milestone: risk-appropriate tests, review, responsive visual verification and a local durable checkpoint. Owner instruction2026-09-15 evening batches remote publication/deployment: complete integrated work first, then one final exact release and normal-site acceptance; do not push/deploy every milestone. Preserve prior successful data corrections; do not replay real mutations merely to recreate evidence.
+For each milestone: risk-appropriate tests, review, responsive visual verification and a local durable checkpoint. Owner instruction2026-09-15 evening, reaffirmed2026-09-22, batches remote publication/deployment: complete all integrated work first, then one final exact release and normal-site acceptance; do not push/deploy individual milestones. Preserve prior successful data corrections; do not replay real mutations merely to recreate evidence.
 
 ## Acceptance Criteria
 
@@ -43,13 +43,15 @@ For each milestone: risk-appropriate tests, review, responsive visual verificati
 
 ## Relevant ADRs
 
-ADR-014, ADR-022, ADR-023, ADR-031–040, [ADR-041 — vNext review plans and search projection](../../docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md), ADR-042 and [ADR-043 — source generations and page locations](../../docs/decisions/ADR-043-document-source-generations-and-page-locations.md).
+ADR-014, ADR-022, ADR-023, ADR-031–040, [ADR-041 — vNext review plans and search projection](../../docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md), ADR-042, [ADR-043 — source generations and page locations](../../docs/decisions/ADR-043-document-source-generations-and-page-locations.md) and [ADR-044 — private Workspace](../../docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md).
 
 ## Relevant Modules / Files
 
-Backend catalog/library/metadata/suggestions/persistence; frontend Library/details/Batch/view context; Compute contracts/export/runtime; migrations 035–036; deployment/release scripts; regression CI; current-state documents.
+Backend catalog/library/metadata/suggestions/workspace/persistence; frontend Library/details/Batch/workspace/view context; Compute contracts/export/runtime; migrations 035–038; deployment/release scripts; regression CI; current-state documents.
 
 ## Current State
+
+PHASE B local progress reconciled2026-09-22: source-generation037 and private Workspace038 are locally implemented and verified. Full frontend384 and backend467 pass with three Windows symlink-permission skips; types/build, compiled acceptance and old73b schema038 compatibility pass. Real-backend synthetic browser checks cover notes, collections, reading flags, guarded Back, recovery and isolated export. Independent final history/source-transition review found no material issue. No new publication, production migration or deployment; September15 runtime observations below remain historical. The Owner again requires all remaining charter content before one final publication.
 
 PHASE B ACTIVE, reconciled2026-09-15. Exact implementation checkpoint7e2d1bfb42a1135d93973bcf788eae5e045bb5f6 is published to main/integration and deployed to Core/frontend/Compute. Exact Linux1047 tests and both local/Alibaba extracted runtime verifiers pass. Core PID1091689 and Compute PID1195 active with zero restarts; schema/history36 and eleven admissions unchanged, integrity/FK pass. Public retained/gzip assets pass. Signed-in document-session, Search, capability fallback and completed DOCX download now pass. Unified Library/Search is locally qualified (backend78 related/frontend360 complete tests, types/build and four-width browser checks); source73b26d2 was pushed before the Owner requested one final combined publication; remaining work continues locally and intermediate deployment is cancelled. The broader charter remains active. Earlier measurements and releases below are historical evidence.
 
@@ -80,6 +82,7 @@ New Mongolia Today normal upload automatically queued a job. Deliberate worker l
 | R15 | Current source/runtime/authority/queue reconciled; historical release dumps replaced with existing evidence links |
 | R16 | npm 11.19.1 strict lifecycle policy, reproducible clean install, zero production advisories, permanent CI and deterministic Compute unit entry point |
 | Additional defects | Contributor identity/link preservation; same-folder collision scope; durable human list replacement/clear against later AI retry (036); source-page bounds and v2 corrections; partial retries retain completed results |
+| Private research foundation | Source037 plus Workspace038; reading flags, multi-collection membership, recoverable archive/notes, manual source/page attachment, revision-safe edits and isolated NDJSON export locally verified; final release/live acceptance pending |
 
 Normal bibliography editing marks the submitted contributor collection as human. Catalog marks only an explicit list operation and includes authority-only adoption in Preview. Seven cross-service tests cover replacement/removal/reorder/empty/no-resurrection and unowned AI fill. Source identities, object keys and immutable evidence remain protected.
 
@@ -87,9 +90,15 @@ The runbook selects candidate migration/admission paths after protected environm
 
 ## Remaining
 
+- Complete Catalog review recovery across close/reopen and expired plans, without carrying old authority or silently reapplying successful items. Existing selection, filtering and in-session partial retry are implemented.
+- Complete a scoped latency ledger for app/list, actual PDF paint, Details, download, upload stages and Workspace; reuse existing search100/1,000/10,000 and Apply benchmarks, and optimize demonstrated bottlenecks.
+- Complete changed-path visual/interaction review across Login, Library/Search, Preview/Reader, Details/editor, Batch, Admin and empty/loading/error states at required widths.
+- Evaluate fixed-sample Catalog/Compute field support, errors, omissions, justified abstention and review cost; format/runtime qualification alone does not prove accuracy.
+- Evaluate bounded page-aware full-text foundations and record value, source/page identity, permissions, invalidation and resource budget; reconcile NOW/NEXT/LATER/EXPERIMENTAL/DO NOT PRIORITIZE roadmap with success criteria. Whole-corpus OCR/RAG rollout is excluded.
+- Retain inherited full-corpus acceptance: reconcile current Owner-source and AI-eligible Library inventory/status, process only unfinished or materially affected sources, and verify zero failed/stuck/false-reviewable/state mismatches. Do not rerun successful jobs merely to recreate evidence.
 - Finish remaining whole-product browser evidence; six real responsive widths and the real Catalog correction flow now pass.
 - Preserve the exact verified Catalog mutation record; fresh export has a Browser Use loopback block, independent of bridge health.
-- Include the locally qualified unified Library/Search and bibliography-display milestone in the final combined release; no intermediate deployment. Preserve deployed7e Compute and prior source/AI qualification; do not repeat already successful corpus jobs.
+- Include locally qualified unified Library/Search, bibliography display, source037 and Workspace038 in the final combined release after all local milestones are ready; no intermediate publication/deployment. Preserve deployed7e Compute and prior source/AI qualification; do not repeat already successful corpus jobs.
 - Close production-relevant findings only after deployment/live evidence; deliver the complete final report.
 
 ## Blockers
@@ -99,6 +108,8 @@ Production, GitHub and the existing signed-in Edge session are available; no app
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
+
+2026-09-22 private Workspace038: full frontend384/384, backend467 pass/0 fail/3 Windows symlink-permission skips; both types/build and compiled acceptance PASS. Dedicated backend review covers collection-wide CAS/no-op/stale conflicts/rollback, private export/Owner isolation and active-reading pagination before LIMIT. Exact old73b runtime4,921 files hash-verified; complete schema038 history starts and preserves overlays, incomplete history fails closed. Real-backend synthetic browser checks pass note save/reopen/reload, explicit page7 source-aware link, collection membership/archive/restore, note trash/restore, reading flags, nested draft-protected Back/focus, four-width overflow and downloaded private NDJSON. Busy-history regression is tested; IAB native PDF did not paint, so no rendered-page claim. Final independent history/source-opening review found no material finding. Evidence: output/vnext/workspace-{frontend-final,backend-validation,compiled-validation,old-runtime-validation}.log and workspace-browser-verification.json. Viewport reset and harness stopped. No production writes or publication.
 
 2026-09-15 local source-generation037 checkpoint: dedicated verifier reports backend455 pass/0 fail/3 Windows symlink skips; backend build and compiled acceptance PASS. Added retained deleted/purging/purged backfill, signing-time recycle and zero-source-query unauthorized regressions. Hash-verified old73b Linux runtime supports schema37 with complete migration history, including activation, rename and download; incomplete history fails closed. No production migration or publication. Evidence: output/vnext/document-source-*-verifier.log. Continue private overlay implementation locally.
 
@@ -137,4 +148,4 @@ Takeover live evidence: qualified3c864374 worker remains active PID51089 with ze
 
 ## Next Action
 
-Continue locally with immutable source/page identities and private Workspace/Collections/Page Notes, measured upload/search and Catalog improvements. Preserve existing checked source73b26d2 and live7e; do not push or deploy intermediate milestones. Finish this integrated batch, then run final exact qualification, one combined publication/deployment and whole-product live acceptance.
+Owner2026-09-22 prioritizes visual quality first. Checkpoint Workspace038 locally, then improve the actual Library/Reader/Details/research visual system and responsive states before returning to Catalog recovery and the remaining latency/quality/full-text items. Preserve published73b26d2 and last-observed live7e; do not push or deploy intermediate milestones. Finish all local integrated work, then final exact qualification, one combined publication/deployment, whole-product live acceptance and the29-section final report.

@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-09-09
+**Last reconciled:** 2026-09-22
 
 ## Product Direction
 
@@ -28,7 +28,7 @@ The current reliability interlock changes sequencing, not this model.
 
 ## Active vNext remediation interlock
 
-The current Owner charter and explicit Phase B takeover on2026-09-09 supersede the narrow historical R01–R16 completion sequence below. The sole active task remains ACADEMICCLOUD-VNEXT-REMEDIATION01. Execute recovery and concrete correctness fixes first, then fast/polished Library/Preview/Reader/Details and Search; establish stable source/page identity before private Workspace, Collections and Page Notes; improve Catalog continuity, upload and search from measurements. Bounded full-text foundations follow these dependencies. September15: document-session/static-delivery release7e is verified live; unified Library/Search identities, selection and bibliography display are locally qualified. The Owner now requests finishing the integrated batch locally before one final publication/deployment. Do not force the entire old RF queue to precede useful private research tools. Full-corpus OCR and RAG rollout are later evidence-dependent decisions.
+The current Owner charter and explicit Phase B takeover on2026-09-09 supersede the narrow historical R01–R16 completion sequence below. The sole active task remains ACADEMICCLOUD-VNEXT-REMEDIATION01. Execute recovery and concrete correctness fixes first, then fast/polished Library/Preview/Reader/Details and Search; establish stable source/page identity before private Workspace, Collections and Page Notes; improve Catalog continuity, upload and search from measurements. Bounded full-text foundations follow these dependencies. September22: document-session/static-delivery release7e has September15 live evidence; unified Library/Search, source-generation037 and private Workspace038 are locally verified. Catalog review recovery, measured transfer/search, bounded full-text evaluation and final whole-product acceptance remain open. The Owner now requests finishing the integrated batch locally before one final publication/deployment. Do not force the entire old RF queue to precede useful private research tools. Full-corpus OCR and RAG rollout are later evidence-dependent decisions.
 
 Existing SQLite/Core/storage-adapter/Local Pull boundaries remain valuable. Avoid a framework/database rewrite, new resident service or model change without evidence. Zero added infrastructure cost and zero billable GitHub usage remain gates. Historical parked entries are an inventory, not a competing active sequence.
 
