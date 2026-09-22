@@ -1997,6 +1997,36 @@ function DriveView({
     );
   }
 
+  async function addLibraryHoldingToResearch(
+    library: LibrarySummary,
+    holding: LibraryHolding,
+    returnFocus?: HTMLElement,
+  ) {
+    if (!api.workspace) return;
+    const resourceId = holding.file.id;
+    setBusyId(`research-${resourceId}`);
+    setError(null);
+    setNotice("");
+    try {
+      const current = await api.workspace.resource(resourceId);
+      const reading = current.reading;
+      if (!reading || reading.status === null) {
+        await api.workspace.saveReading(resourceId, {
+          status: "queued",
+          important: reading?.important ?? false,
+          toCite: reading?.toCite ?? false,
+          revision: reading?.revision ?? 0,
+        });
+      }
+      setNotice(t("workspace.added"));
+      setResearchRequest({ resourceId, sourceId: current.resource.sourceId, returnFocus: returnFocus ?? null });
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function openLibraryPreview(
     library: LibrarySummary,
     holding: LibraryHolding,
@@ -2383,6 +2413,7 @@ function DriveView({
                         onDeleteFile={deleteFile}
                         onPreviewHolding={(holdingLibrary, holding, trigger) => void openLibraryPreview(holdingLibrary, holding, trigger)}
                         onOpenHoldingDetails={(holdingLibrary, holding, trigger) => openResourceDetails(holdingLibrary, holding, trigger)}
+                        {...(api.workspace ? { onAddToResearch: (holdingLibrary: LibrarySummary, holding: LibraryHolding, trigger?: HTMLElement) => void addLibraryHoldingToResearch(holdingLibrary, holding, trigger) } : {})}
                         onDownloadHolding={(holdingLibrary, holding) => void downloadLibraryHolding(holdingLibrary, holding)}
                         {...(account.role === "owner" ? {
                           onRecycleHolding: (holdingLibrary: LibrarySummary, holding: LibraryHolding) => recycleLibraryHolding(holdingLibrary, holding),
@@ -2720,6 +2751,7 @@ function DriveView({
                 onDeleteFile={deleteFile}
                 onPreviewHolding={(library, holding, trigger) => void openLibraryPreview(library, holding, trigger)}
                 onOpenHoldingDetails={(library, holding, trigger) => openResourceDetails(library, holding, trigger)}
+                {...(api.workspace ? { onAddToResearch: (library: LibrarySummary, holding: LibraryHolding, trigger?: HTMLElement) => void addLibraryHoldingToResearch(library, holding, trigger) } : {})}
                 onDownloadHolding={(library, holding) => void downloadLibraryHolding(library, holding)}
                 starFileIds={favoriteFileIds}
                 starFolderIds={favoriteFolderIds}
@@ -3927,6 +3959,7 @@ function EntryTable({
   onDeleteFile,
   onOpenHoldingDetails,
   onPreviewHolding,
+  onAddToResearch,
   onDownloadHolding,
   onRecycleHolding,
   starFileIds,
@@ -3952,6 +3985,7 @@ function EntryTable({
   onDeleteFile: (file: FileEntry) => void;
   onOpenHoldingDetails?: (library: LibrarySummary, holding: LibraryHolding, trigger?: HTMLElement) => void;
   onPreviewHolding?: (library: LibrarySummary, holding: LibraryHolding, trigger?: HTMLElement) => void;
+  onAddToResearch?: (library: LibrarySummary, holding: LibraryHolding, trigger?: HTMLElement) => void;
   onDownloadHolding?: (library: LibrarySummary, holding: LibraryHolding) => void;
   onRecycleHolding?: (library: LibrarySummary, holding: LibraryHolding) => void;
   starFileIds?: ReadonlySet<string>;
@@ -4068,6 +4102,12 @@ function EntryTable({
                     key: "details",
                     label: t("metadata.details"),
                     onSelect: (trigger: HTMLElement) => onOpenHoldingDetails(library, holding, trigger),
+                  }] : []),
+                  ...(onAddToResearch ? [{
+                    key: "research",
+                    label: t("workspace.add"),
+                    disabled: busyId === `research-${holding.file.id}`,
+                    onSelect: (trigger: HTMLElement) => onAddToResearch(library, holding, trigger),
                   }] : []),
                   {
                     key: "download",

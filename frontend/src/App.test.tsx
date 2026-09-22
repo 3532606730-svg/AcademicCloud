@@ -2736,6 +2736,24 @@ describe("document preview session", () => {
     };
   }
 
+  it("puts a Library holding into My research from its row menu", async () => {
+    const user = userEvent.setup();
+    const workspace = researchApi();
+    const api = sessionApi({ workspace });
+    render(<App api={api} />);
+
+    await screen.findByRole("button", { name: "book.pdf" });
+    await user.click(screen.getByRole("button", { name: "Open actions for book.pdf" }));
+    await user.click(screen.getByRole("menuitem", { name: "Put in my research" }));
+
+    await screen.findByRole("dialog", { name: "My research" });
+    expect(workspace.saveReading).toHaveBeenCalledWith("library-file-0", {
+      status: "queued", important: false, toCite: false, revision: 0,
+    });
+    const research = await screen.findByRole("dialog", { name: "My research" });
+    expect(within(research).getByRole("heading", { name: "Page notes" })).toBeInTheDocument();
+  });
+
   it("opens private Page Notes over Preview without re-signing or replacing its iframe", async () => {
     const user = userEvent.setup();
     const api = sessionApi({ workspace: researchApi(), createLibraryDownload: vi.fn().mockResolvedValue({

@@ -85,21 +85,37 @@
     "documentSource": "Local schema37: dedicated verifier backend455pass/0fail/3 Windows symlink skips; build/compiled acceptance PASS; hash-verified old73b Linux runtime with complete migration history startup/activation/rename/download PASS, missing37 fails closed",
     "privateWorkspace": {
       "backend": "467 pass/0 fail/3 Windows symlink-permission skips",
-      "frontend": "384/384 full suite",
+      "frontend": "386/386 full suite",
       "typesBuild": "both PASS",
       "compiledAcceptance": "schema038 restart/recovery/privacy PASS",
       "oldRuntime": "exact73b 4921 files hash-verified; complete schema038 history startup/overlay preservation PASS; incomplete history rejects",
-      "browser": "Real-backend synthetic notes/collections/reading/recovery/guarded Back/export and four widths PASS; PDF source/page URL verified, native iframe did not paint",
+      "browser": "Real-backend synthetic notes/collections/reading/recovery/guarded Back/export and four widths PASS; Library holding row add-to-research opens queued private resource; PDF source/page URL verified, native iframe did not paint",
       "review": "Independent backend and final history/source-opening review: no material finding",
       "evidence": "output/vnext/workspace-browser-verification.json",
       "publication": "local only; final combined release and normal-site acceptance pending"
     },
     "visualRedesign": {
-      "scope": "Library/Search, Preview/Reader, Details/Citation, Workspace/Collections/Notes, Admin, Batch, Login and responsive states",
+      "scope": "Library/Search, Preview/Reader, Details/Citation, private Workspace Research Desk, Admin, Batch, Login and responsive states",
       "build": "pass; initial index JS434.52 kB/gzip123.15 kB; CSS68.67 kB/gzip12.59 kB; no new dependencies/assets/fonts",
-      "focusedTests": "citation/presentation18/18; prior full visual run382/384 with stale presentation assertions corrected by15/15 and166/166 follow-up",
+      "focusedTests": "frontend25 files/386 tests; citation/presentation18/18; Library-to-Workspace add path covered; prior full visual run382/384 with stale presentation assertions corrected by15/15 and166/166 follow-up",
       "browser": "synthetic signed-in browser checks; widths1600/1440/1366/1024/768/390 no horizontal overflow; native PDF paint not claimed",
       "publication": "local only; final combined release pending"
+    },
+    "latencyLedger": {
+      "document": "docs/performance/vnext-latency-ledger.md",
+      "measured": "synthetic list/search/Preview/Apply service timings, one-request public asset/API transport probes, and local checksum stage",
+      "unmeasured": "normal-path PDF first paint, Details/editor timing, signed-download TTFB, real upload stages, and Workspace action timing",
+      "decision": "retain projection and one-plan Apply; do not infer production SLA or add telemetry/service without a normal signed-in capture"
+    },
+    "fieldQualityEvaluation": {
+      "document": "docs/evaluation/catalog-field-quality-and-abstention.md",
+      "evidence": "fixed title/class samples, pinned validator/evidence/provenance qualification, real C1/C2 and normal-upload UNKNOWN smoke, and historical human review cost",
+      "boundary": "no field-level accuracy claim without independent gold adjudication; UNKNOWN/ambiguous remain non-authoritative"
+    },
+    "boundedFullTextEvaluation": {
+      "document": "docs/architecture/bounded-page-aware-full-text-evaluation.md",
+      "status": "design-only; source/page identity, ACL inheritance, generation invalidation and resource-budget evaluation defined",
+      "excluded": "real extraction, persistent OCR text, full-text index/search, embeddings, retrieval and RAG rollout"
     }
   },
   "computeQualification": {
@@ -114,7 +130,7 @@
   "blockers": [
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works"
   ],
-  "next": "Complete browser/live acceptance of Catalog review recovery; measured transfer/search/app latency; field-quality/abstention and bounded full-text evaluation; inherited corpus acceptance and29-section report. Visual redesign and close/reopen recovery are locally qualified; finish ALL local work before one final publication/deployment.",
+  "next": "Complete browser/live and expiry-edge acceptance of Catalog review recovery; capture remaining normal-path timings; reconcile inherited corpus acceptance and29-section report. Latency, field-quality/abstention and bounded full-text boundaries are recorded locally with explicit unmeasured/design-only limits. Visual redesign and close/reopen recovery are locally qualified; finish ALL local work before one final publication/deployment.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -122,7 +138,11 @@
     "docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md",
     "docs/decisions/ADR-042-document-session-and-static-asset-continuity.md",
     "docs/decisions/ADR-043-document-source-generations-and-page-locations.md",
-    "docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md"
+    "docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md",
+    "docs/performance/vnext-latency-ledger.md",
+    "docs/evaluation/catalog-field-quality-and-abstention.md",
+    "docs/architecture/bounded-page-aware-full-text-evaluation.md",
+    "DECISION_LOG.md"
   ],
   "phase": "PHASE_B_EXECUTION",
   "publicationCadence": "Owner2026-09-15, reaffirmed2026-09-22: complete ALL integrated work locally with tests/checkpoints; then one final push/deployment/live acceptance"

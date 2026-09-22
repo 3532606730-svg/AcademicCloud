@@ -138,12 +138,22 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, retu
   return <dialog ref={dialog} className="research-dialog" aria-labelledby="research-title">
     <header className="research-header"><div><span className="research-private">{c.private}</span><h2 id="research-title">{t("workspace.title")}</h2></div><button className="button button--quiet" type="button" onClick={close} aria-label={c.close}>{t("preview.close")}</button></header>
     <div className="research-body">
-      {resourceId ? <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { setResourceId(undefined); setCollectionId(null); }}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3></div> :
-        <nav className="research-tabs" aria-label={t("workspace.title")}>{(["notes", "reading", "collections"] as const).map((value) => <button type="button" key={value} disabled={locked} aria-current={tab === value ? "page" : undefined} onClick={() => { setTab(value); setCollectionId(null); setNotice(""); }}>{c[value]}</button>)}</nav>}
-      {!!error && <div className="research-error" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.conflict : describeError(error, language)}</p><button className="button button--small" type="button" disabled={busy} onClick={refresh}>{c.retry}</button></div>}
-      {notice && <p role="status" className="research-notice">{notice}</p>}
-      {loading && <p role="status" className="research-empty">{c.loading}</p>}
-      {resource && <section className="research-resource-settings" aria-label={c.status}>
+      <div className="research-workbench">
+        <aside className="research-rail" aria-label={t("workspace.title")}>
+          <div className="research-rail-brand"><span>AC</span><strong>RESEARCH<br />DESK</strong></div>
+          <span className="research-rail-kicker">{c.private}</span>
+          {resourceId ? <div className="research-rail-context"><span>{c.active}</span><strong>{resource?.resource.title ?? c.loading}</strong></div> :
+            <nav className="research-tabs" aria-label={t("workspace.title")}>{(["notes", "reading", "collections"] as const).map((value) => <button type="button" key={value} disabled={locked} aria-current={tab === value ? "page" : undefined} onClick={() => { setTab(value); setCollectionId(null); setNotice(""); }}>{c[value]}</button>)}</nav>}
+          <div className="research-rail-divider" />
+          <div className="research-rail-status"><span>{resourceId ? c.status : c.all}</span><strong>{resourceId ? (resource?.reading?.status === "finished" ? c.finished : resource?.reading?.status === "reading" ? c.inProgress : c.none) : tab === "notes" ? c.notes : tab === "reading" ? c.reading : c.collections}</strong></div>
+        </aside>
+        <main className="research-main">
+          <div className="research-toolbar"><span className="research-toolbar-index">01</span><span>{resourceId ? c.active : t("workspace.title")}</span><span className="research-toolbar-rule" /><span className="research-toolbar-meta">{resourceId ? c.private : c.all}</span></div>
+          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { setResourceId(undefined); setCollectionId(null); }}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3></div>}
+          {!!error && <div className="research-error" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.conflict : describeError(error, language)}</p><button className="button button--small" type="button" disabled={busy} onClick={refresh}>{c.retry}</button></div>}
+          {notice && <p role="status" className="research-notice">{notice}</p>}
+          {loading && <p role="status" className="research-empty">{c.loading}</p>}
+          {resource && <section className="research-resource-settings" aria-label={c.status}>
         <div className="research-reading-controls"><label>{c.status}<select disabled={locked} value={resource.reading?.status ?? ""} onChange={(e) => {
           const status = (e.target.value || null) as ReadingState["status"];
           void run(async () => { const next = await api.saveReading(resourceId!, { status, important: resource.reading?.important ?? false, toCite: resource.reading?.toCite ?? false, revision: resource.reading?.revision ?? 0 }); setResource((r) => r ? { ...r, reading: next } : r); setNotice(c.saved); });
@@ -183,7 +193,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, retu
         {notes?.nextBeforeId && <button className="button" type="button" disabled={locked} onClick={() => void moreNotes()}>{c.more}</button>}
       </>}
       {!resourceId && tab === "reading" && reading && <>{resourceCards(reading.items.filter((entry) => entry.status || entry.important || entry.toCite), reading.resources)}{reading.nextBeforeId && <button className="button" disabled={locked} type="button" onClick={() => void run(async () => { const next = await api.reading(reading.nextBeforeId!); setReading({ ...next, items: [...reading.items, ...next.items], resources: [...reading.resources, ...next.resources] }); })}>{c.more}</button>}</>}
-      {!resourceId && tab === "collections" && <>
+          {!resourceId && tab === "collections" && <>
         <div className="research-collections">{collections.map((collection) => <div className="research-collection" key={collection.id}><button className="research-collection-name" type="button" disabled={locked} aria-pressed={collectionId === collection.id} onClick={() => setCollectionId(collection.id)}>{collection.name}<span>{collection.itemCount}{collection.archivedAt ? ` · ${c.archived}` : ""}</span></button>
           <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => setEditingCollection(collection)} aria-label={`${c.editCollection}: ${collection.name}`}>{c.rename}</button><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => void run(async () => { await api.updateCollection(collection, collection.name, !collection.archivedAt); refresh(); })}>{collection.archivedAt ? c.restore : c.archive}</button></div>)}</div>
         {editingCollection && <form className="research-collection-form" onSubmit={(event) => { event.preventDefault(); void run(async () => {
@@ -194,8 +204,20 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, retu
         {editingCollection && collectionConflict && <div className="research-conflict"><p>{collectionConflict.name}</p><button className="button" type="button" disabled={busy} onClick={() => setEditingCollection({ ...collectionConflict, name: editingCollection.name })}>{c.useDraft}</button></div>}
         {selectedCollection && <h3 className="research-section-heading">{selectedCollection.name}</h3>}{items && resourceCards(items.items, items.resources)}
         {items?.nextBeforeId && <button className="button" type="button" disabled={locked} onClick={() => void run(async () => { const next = await api.collectionItems(collectionId!, items.nextBeforeId!); setItems({ ...next, items: [...items.items, ...next.items], resources: [...items.resources, ...next.resources] }); })}>{c.more}</button>}
-      </>}
-    </div><footer className="research-footer"><a className="button button--quiet" href="/api/workspace/export" download="academiccloud-personal-workspace.ndjson">{c.export}</a><span>{c.private}</span></footer>
+          </>}
+        </main>
+        <aside className="research-inspector" aria-label={c.private}>
+          <div className="research-inspector-heading"><span>PRIVATE OVERLAY</span><strong>{resourceId ? (resource?.resource.title ?? c.loading) : c.private}</strong></div>
+          <dl className="research-inspector-facts">
+            <div><dt>{c.notes}</dt><dd>{notes?.items.length ?? 0}</dd></div>
+            <div><dt>{c.collections}</dt><dd>{collections.length}</dd></div>
+            <div><dt>{c.status}</dt><dd>{resourceId ? (resource?.reading?.status === "finished" ? c.finished : resource?.reading?.status === "reading" ? c.inProgress : c.none) : c.all}</dd></div>
+          </dl>
+          <p className="research-inspector-note">{c.private}. {resourceId && resource?.resource.mediaType === "application/pdf" ? c.physicalHelp : c.empty}</p>
+          <a className="research-inspector-export" href="/api/workspace/export" download="academiccloud-personal-workspace.ndjson">{c.export}<span aria-hidden="true">↗</span></a>
+        </aside>
+      </div>
+    </div><footer className="research-footer"><span>{c.private}</span><span>AC / WORKSPACE</span></footer>
   </dialog>;
 }
 

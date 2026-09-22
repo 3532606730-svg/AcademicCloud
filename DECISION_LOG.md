@@ -10,6 +10,10 @@ The Owner requests completing the integrated improvement batch locally before on
 
 The Owner authorized a broad visual refactor and asked for a clean, premium interface with low resource use. The implementation renews the existing CSS/component surface across Library/Search, Reader/Preview, Details/Citation, private Workspace, Admin, Batch, Login and responsive empty/loading/error states. It keeps the existing product flows, accessibility names, source/session behavior and data contracts, uses no new dependency, remote font, image asset or resident service, and remains local until the integrated batch is complete. The bounded Catalog recovery implementation follows this visual checkpoint and remains pending browser/live acceptance.
 
+## 2026-09-23 — Private Workspace research-desk surface
+
+The Owner authorized a denser, reader-workbench-like presentation specifically for `我的研究`, while keeping `资料库` calm and lightweight. The private Workspace now uses a dark research rail, compact workbench toolbar, warm inspector and responsive mobile stack around the existing notes, reading-state, Collections and export actions. Library holding menus also expose `放入我的研究`; the first add creates a queued private reading state and opens that resource in the Workspace. This is a visual and bounded interaction-layer decision only: it does not add OCR/page controls, whole-document indexing, new data authority or new dependencies, and it remains local until the combined batch is ready for one publication.
+
 ## ADR-043 — Source generations before page notes
 
 September22 execution priority: the Owner requests visual improvement before the next Catalog feature. This changes order, preserves the full integrated scope, and does not authorize an intermediate publication.
