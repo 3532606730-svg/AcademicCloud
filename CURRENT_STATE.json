@@ -146,7 +146,14 @@
       "databaseIntegrity": "ok",
       "foreignKeyViolations": 0,
       "ownerChecksumMatchesIncluded": false,
-      "acceptance": "not closed; failed, not-run and extraction-only states remain; no jobs rerun"
+      "acceptance": "not closed; failed, not-run and extraction-only states remain; no jobs rerun",
+      "ownerMd5Crosscheck": {
+        "stagedOwnerFiles": 12,
+        "exactByteMd5Matches": 3,
+        "noByteMd5Match": 9,
+        "sha256AlgorithmMatches": 0,
+        "note": "Production inventory stores MD5; no resource mutation or retry performed"
+      }
     }
   },
   "computeQualification": {
@@ -159,7 +166,8 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works"
+    "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works",
+    "Current live corpus projection has 49 failed, 31 not_run and nine staged Owner PDFs without an exact byte/MD5 match; final candidate runtime and source reconciliation remain open"
   ],
   "next": "Complete Catalog browser/live and expiry-edge evidence; current 2026-09-23 read-only production projection shows 96 eligible PDFs (93 production plus 3 internal fixtures), 49 failed, 31 not_run and unresolved semantic states, so do not claim corpus acceptance or rerun jobs on the old runtime. Capture final candidate inventory/queue after the approved runtime gate, then finish normal-path timings, final report and one combined publication/deployment.",
   "authoritativeRecords": [
