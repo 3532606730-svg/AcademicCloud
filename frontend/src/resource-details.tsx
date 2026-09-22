@@ -30,8 +30,10 @@ import {
 } from "./api.ts";
 import { describeError, type MessageKey } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
+import { FileIcon } from "./icons.tsx";
 import { deriveMetadataCataloguingState } from "./metadata-cataloguing-state.ts";
 import { canPreviewFile } from "./preview-capability.ts";
+import "./document-panels.css";
 
 const MATERIAL_TYPES: MaterialType[] = ["book", "article", "manuscript", "inscription", "archival_document"];
 const AUTHORITY_TYPES: AuthorityType[] = ["person", "place", "language", "work", "institution"];
@@ -1024,11 +1026,15 @@ export function ResourceDetailsDialog({
   const detailTypeLabel = bibliography ? materialClassLabel(bibliography.materialClass, t) : metadata ? materialLabel(metadata.materialType, t) : null;
 
   return (
-    <dialog ref={dialogRef} className="resource-details-modal" aria-labelledby="resource-details-title">
-      <header>
-        <div>
-          <h2 id="resource-details-title">{displayTitle}</h2>
-          {detailTypeLabel && <span className="resource-details-type">{detailTypeLabel}</span>}
+    <dialog ref={dialogRef} className="resource-details-modal document-panel" aria-labelledby="resource-details-title">
+      <header className="document-panel-heading">
+        <div className="document-panel-identity">
+          <span className="document-panel-symbol"><FileIcon size={24} /></span>
+          <div className="document-panel-title">
+            <span className="document-panel-eyebrow">{t("metadata.details")}</span>
+            <h2 id="resource-details-title">{displayTitle}</h2>
+            {detailTypeLabel && <span className="resource-details-type">{detailTypeLabel}</span>}
+          </div>
         </div>
         <button className="button button--quiet" type="button" onClick={onClose} disabled={saving || savingBibliography || restoringAi} aria-label={t("metadata.closeAria")}>{t("preview.close")}</button>
       </header>
@@ -1039,7 +1045,20 @@ export function ResourceDetailsDialog({
           {notice && <div className="alert alert--success" role="status">{notice}</div>}
           {!editing && !editingBibliography ? (
             <>
+              <div className="document-reading-actions">
+                {canPreviewFile(detail.file) && <button className="button button--primary" type="button" onClick={() => onPreview(detail.file)}>{t("menu.preview")}</button>}
+                <button className="button" type="button" onClick={onDownload}>{t("menu.download")}</button>
+                {api.generateLibraryCitation && onCitation && <button className="button" type="button" onClick={onCitation}>{t("citation.action")}</button>}
+                {onResearch && <button className="button button--quiet" type="button" onClick={onResearch}>{t("workspace.title")}</button>}
+              </div>
               <section className="resource-identity" aria-label={language === "zh-CN" ? "书目身份" : "Bibliographic identity"}>
+              <header className="document-section-heading">
+                <h3>{language === "zh-CN" ? "书目身份" : "Bibliographic identity"}</h3>
+                <div className="document-edit-actions">
+                  {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--small button--quiet" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.edit")}</button>}
+                  {detail.canEditMetadata && api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" onClick={() => { setEditingBibliography(true); setNotice(""); }}>{t("metadata.editBibliography")}</button>}
+                </div>
+              </header>
               {metadata ? <MetadataReadOnly metadata={metadata} t={t} /> : <p className="muted">{t("metadata.noMetadata")}</p>}
               {bibliography ? <BibliographyReadOnly bibliography={bibliography} t={t} /> : <p className="muted">{t("metadata.noBibliography")}</p>}
               </section>
@@ -1071,14 +1090,6 @@ export function ResourceDetailsDialog({
                 />
               )}
               </section>
-              <footer className="resource-details-actions">
-                {canPreviewFile(detail.file) && <button className="button button--quiet" type="button" onClick={() => onPreview(detail.file)}>{t("menu.preview")}</button>}
-                <button className="button" type="button" onClick={onDownload}>{t("menu.download")}</button>
-                {api.generateLibraryCitation && onCitation && <button className="button" type="button" onClick={onCitation}>{t("citation.action")}</button>}
-                {onResearch && <button className="button button--quiet" type="button" onClick={onResearch}>{t("workspace.title")}</button>}
-                {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--primary" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.edit")}</button>}
-                {detail.canEditMetadata && api.updateLibraryHoldingBibliography && <button className="button button--quiet" type="button" onClick={() => { setEditingBibliography(true); setNotice(""); }}>{t("metadata.editBibliography")}</button>}
-              </footer>
             </>
           ) : editing ? (
             <>
@@ -1584,7 +1595,7 @@ function MetadataEditor({
       </fieldset>
       <fieldset>
         <legend>{t("metadata.alternativeTitles")}</legend>
-        {draft.alternativeTitles.map((title, index) => <div className="metadata-repeat-row" key={`alternative-${index}`}>
+        {draft.alternativeTitles.map((title, index) => <div className="metadata-repeat-row metadata-repeat-row--title" key={`alternative-${index}`}>
           <input aria-label={`${t("metadata.alternativeTitles")} ${index + 1}`} maxLength={512} value={title} onChange={(event) => setDraft((current) => ({ ...current, alternativeTitles: current.alternativeTitles.map((item, itemIndex) => itemIndex === index ? event.target.value : item) }))} />
           <button className="button button--small button--quiet" type="button" onClick={() => setDraft((current) => ({ ...current, alternativeTitles: current.alternativeTitles.filter((_, itemIndex) => itemIndex !== index) }))}>{t("alert.dismiss")}</button>
         </div>)}

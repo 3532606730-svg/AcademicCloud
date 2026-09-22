@@ -61,6 +61,10 @@ Full frontend384/384 and backend467 passed/0 failed/3 Windows symlink-permission
 
 Evidence: output/vnext/workspace-{frontend-final,backend-validation,compiled-validation,old-runtime-validation}.log and workspace-browser-verification.json. The Owner reaffirmed on September22: finish all integrated work before publication. Workspace completion does not close Catalog/transfer/search measurement, bounded full-text evaluation or whole-product final acceptance.
 
+## Visual redesign — local milestone
+
+The frontend visual system was comprehensively renewed locally on September23: neutral canvas, forest-green action hierarchy, lighter navigation, responsive Library/Search rows, full-height Reader, grouped Details/Citation panels, refreshed Workspace/Collections/Notes, and compact Admin/Batch surfaces. The redesign uses existing CSS and icons only; no dependency, remote font, image asset or resident service was added. Desktop/mobile synthetic browser checks cover Login, Library/Search, Preview/Reader, Details, Citation, Workspace, Admin, Batch, empty/error states and widths 1600/1440/1366/1024/768/390; all measured widths have no horizontal overflow. Latest frontend build and focused citation/presentation checks pass (18/18); earlier complete visual run had 382/384 before two stale presentation assertions were updated, followed by 15/15 targeted presentation and 166/166 App/presentation follow-up passes. Native PDF painting remains outside IAB evidence. This local visual checkpoint is not published; Catalog review recovery is now locally implemented with fresh-preview resume and bounded private drafts, while browser/live acceptance, the latency ledger, field-quality evaluation, bounded full-text design, corpus acceptance and final release remain open.
+
 ## Established evidence retained
 
 - Schema035/036, SQLite search projection and Catalog v2 review/Apply authority are deployed. Confidence does not confer authority; UNKNOWN does not auto-apply.

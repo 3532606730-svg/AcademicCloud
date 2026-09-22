@@ -6,6 +6,10 @@ Record only meaningful product, architecture, security, infrastructure, or workf
 
 The Owner requests completing the integrated improvement batch locally before one final publication/deployment, reaffirmed on2026-09-22 with an explicit reminder to retain all other charter work. Continue implementation, focused verification and local Git checkpoints; do not push/deploy individual milestones. Source73b26d2 was already pushed when this instruction arrived. Last observed Core/frontend/Compute remain7e2d1bf. Final exact qualification, migration/deployment and normal-site acceptance remain required.
 
+## 2026-09-23 — Visual system renewal before Catalog recovery
+
+The Owner authorized a broad visual refactor and asked for a clean, premium interface with low resource use. The implementation renews the existing CSS/component surface across Library/Search, Reader/Preview, Details/Citation, private Workspace, Admin, Batch, Login and responsive empty/loading/error states. It keeps the existing product flows, accessibility names, source/session behavior and data contracts, uses no new dependency, remote font, image asset or resident service, and remains local until the integrated batch is complete. The bounded Catalog recovery implementation follows this visual checkpoint and remains pending browser/live acceptance.
+
 ## ADR-043 — Source generations before page notes
 
 September22 execution priority: the Owner requests visual improvement before the next Catalog feature. This changes order, preserves the full integrated scope, and does not authorize an intermediate publication.

@@ -3,6 +3,7 @@ import { describeError } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
 import { useHistoryDialog } from "./view-context.ts";
 import { useModalDialog } from "./use-modal-dialog.ts";
+import { CloseIcon, DownloadIcon, FileIcon, QuoteIcon, TextIcon } from "./icons.tsx";
 
 export interface PreviewDocument {
   requestId: number;
@@ -44,7 +45,7 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
           <h2 id="preview-title">{preview.file.displayName}</h2>
         </div>
         <button className="button button--quiet preview-close-button" type="button"
-          onClick={close} aria-label={t("preview.closeAria")}>{t("preview.close")}</button>
+          onClick={close} aria-label={t("preview.closeAria")}><CloseIcon size={19} /></button>
       </header>
       <div className="preview-content" aria-busy={!loaded && !failure}>
         {failure ? (
@@ -71,17 +72,17 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
       <footer>
         <div className="preview-document-actions">
           {onDetails && <button className="button button--quiet" type="button"
-            onClick={(event) => onDetails(event.currentTarget)}>{t("preview.details")}</button>}
+            onClick={(event) => onDetails(event.currentTarget)}><FileIcon size={17} />{t("preview.details")}</button>}
           {onCitation && <button className="button button--quiet" type="button"
-            onClick={(event) => onCitation(event.currentTarget)}>{t("preview.citation")}</button>}
+            onClick={(event) => onCitation(event.currentTarget)}><QuoteIcon size={17} />{t("preview.citation")}</button>}
           {onResearch && <button className="button button--quiet" type="button"
-            onClick={(event) => onResearch(event.currentTarget)}>{t("workspace.notes")}</button>}
+            onClick={(event) => onResearch(event.currentTarget)}><TextIcon size={17} />{t("workspace.notes")}</button>}
         </div>
         <div className="preview-file-actions">
           {preview.url
             ? <a className="button preview-open-button" href={preview.url} target="_blank" rel="noreferrer">{t("preview.open")}</a>
             : <button className="button preview-open-button" type="button" disabled>{t("preview.open")}</button>}
-          <button className="button preview-download-button" type="button" onClick={onDownload}>{t("menu.download")}</button>
+          <button className="button button--primary preview-download-button" type="button" onClick={onDownload}><DownloadIcon size={17} />{t("menu.download")}</button>
         </div>
       </footer>
     </dialog>

@@ -93,6 +93,13 @@
       "review": "Independent backend and final history/source-opening review: no material finding",
       "evidence": "output/vnext/workspace-browser-verification.json",
       "publication": "local only; final combined release and normal-site acceptance pending"
+    },
+    "visualRedesign": {
+      "scope": "Library/Search, Preview/Reader, Details/Citation, Workspace/Collections/Notes, Admin, Batch, Login and responsive states",
+      "build": "pass; initial index JS434.52 kB/gzip123.15 kB; CSS68.67 kB/gzip12.59 kB; no new dependencies/assets/fonts",
+      "focusedTests": "citation/presentation18/18; prior full visual run382/384 with stale presentation assertions corrected by15/15 and166/166 follow-up",
+      "browser": "synthetic signed-in browser checks; widths1600/1440/1366/1024/768/390 no horizontal overflow; native PDF paint not claimed",
+      "publication": "local only; final combined release pending"
     }
   },
   "computeQualification": {
@@ -107,7 +114,7 @@
   "blockers": [
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works"
   ],
-  "next": "Complete Catalog review recovery; measured transfer/search/app latency and visual review; field-quality/abstention and bounded full-text evaluation; inherited corpus acceptance and29-section report. Finish ALL local work before one final publication/deployment.",
+  "next": "Complete browser/live acceptance of Catalog review recovery; measured transfer/search/app latency; field-quality/abstention and bounded full-text evaluation; inherited corpus acceptance and29-section report. Visual redesign and close/reopen recovery are locally qualified; finish ALL local work before one final publication/deployment.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

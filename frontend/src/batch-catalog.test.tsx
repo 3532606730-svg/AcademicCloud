@@ -81,6 +81,37 @@ describe("BatchCatalogDialog", () => {
     expect(screen.getByRole("button", { name: "Apply selected (0)" })).toBeDisabled();
   });
 
+  it("offers an account-session draft that resumes through a fresh preview without replaying authority", async () => {
+    const reviewSession = { accountId: "owner-session" };
+    const refreshedPreview = { ...PREVIEW, planId: "q".repeat(43) };
+    const previewCatalogBatchResults = vi.fn()
+      .mockResolvedValueOnce(PREVIEW)
+      .mockResolvedValueOnce(refreshedPreview);
+    const applyCatalogBatchResults = vi.fn().mockResolvedValue({ results: [
+      { resourceId: "auto", status: "applied", displayName: "auto.pdf" },
+      { resourceId: "review", status: "conflict", displayName: "review.pdf" },
+    ] });
+    const first = render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults, applyCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    const user = userEvent.setup();
+    await user.upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File([JSON.stringify({ schemaVersion: "academiccloud.catalog-results.v1" })], "results.json", { type: "application/json" }));
+    await user.click(screen.getAllByRole("article")[0]!.querySelector("input[type=checkbox]")!);
+    await user.click(screen.getAllByRole("article")[1]!.querySelector("input[type=checkbox]")!);
+    await user.click(screen.getByRole("checkbox", { name: /I checked the selected suggestions/u }));
+    await user.click(screen.getByRole("button", { name: "Apply selected (2)" }));
+    await waitFor(() => expect(screen.getAllByText("Applied").length).toBeGreaterThan(0));
+    await user.click(screen.getAllByRole("button", { name: "Close" })[0]!);
+    first.unmount();
+
+    render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults, applyCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    expect(screen.getByText(/private review draft/u)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resume review" }));
+    await waitFor(() => expect(previewCatalogBatchResults).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByText("Applied").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Apply selected (1)" })).toBeDisabled();
+    expect(within(screen.getAllByRole("article")[0]!).getByRole("checkbox")).toBeDisabled();
+    expect(within(screen.getAllByRole("article")[1]!).getByRole("checkbox")).toBeChecked();
+  });
+
   it("imports to a side-effect-free preview and applies only explicitly selected eligible rows", async () => {
     const previewCatalogBatchResults = vi.fn().mockResolvedValue(PREVIEW);
     const applyCatalogBatchResults = vi.fn().mockResolvedValue({ results: [

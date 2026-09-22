@@ -16,11 +16,64 @@ import {
   localCatalogText,
 } from "./catalog-local-bridge.ts";
 import { describeError } from "./i18n.ts";
-import { BatchCatalogReview, EMPTY_ACKNOWLEDGEMENTS, type ReviewAcknowledgements } from "./batch-catalog-review.tsx";
+import { BatchCatalogReview, canSelectCatalogItem, EMPTY_ACKNOWLEDGEMENTS, type ReviewAcknowledgements } from "./batch-catalog-review.tsx";
 import { useLanguage } from "./i18n-react.tsx";
 
 const MAX_RESULTS_BYTES = 8 * 1024 * 1024;
 const MAX_BATCH_RESOURCES = 500;
+const REVIEW_DRAFT_TTL_MS = 30 * 60 * 1000;
+const MAX_REVIEW_DRAFTS = 4;
+const MAX_REVIEW_DRAFT_BYTES = 32 * 1024 * 1024;
+
+export interface CatalogReviewSession { readonly accountId: string; }
+
+interface CatalogReviewDraft {
+  libraryId: string;
+  savedAt: number;
+  document: unknown;
+  selectedResourceIds: string[];
+  results: CatalogApplyResult[];
+  bytes: number;
+}
+
+const reviewDraftStore = new WeakMap<object, Map<string, CatalogReviewDraft>>();
+
+function reviewDraftsFor(session: CatalogReviewSession): Map<string, CatalogReviewDraft> {
+  let drafts = reviewDraftStore.get(session);
+  if (!drafts) { drafts = new Map(); reviewDraftStore.set(session, drafts); }
+  return drafts;
+}
+
+function discardExpiredReviewDrafts(session: CatalogReviewSession, now = Date.now()): void {
+  for (const [libraryId, draft] of reviewDraftsFor(session)) {
+    if (now - draft.savedAt > REVIEW_DRAFT_TTL_MS) reviewDraftsFor(session).delete(libraryId);
+  }
+}
+
+function getReviewDraft(session: CatalogReviewSession | undefined, libraryId: string): CatalogReviewDraft | null {
+  if (!session) return null;
+  discardExpiredReviewDrafts(session);
+  return reviewDraftsFor(session).get(libraryId) ?? null;
+}
+
+function saveReviewDraft(session: CatalogReviewSession | undefined, draft: Omit<CatalogReviewDraft, "savedAt" | "bytes">): void {
+  if (!session) return;
+  const serialized = JSON.stringify(draft.document);
+  const bytes = new TextEncoder().encode(serialized).byteLength;
+  if (bytes > MAX_REVIEW_DRAFT_BYTES) return;
+  const drafts = reviewDraftsFor(session);
+  drafts.set(draft.libraryId, { ...draft, savedAt: Date.now(), bytes });
+  const totalBytes = () => [...drafts.values()].reduce((total, entry) => total + entry.bytes, 0);
+  while (drafts.size > MAX_REVIEW_DRAFTS || totalBytes() > MAX_REVIEW_DRAFT_BYTES) {
+    const oldest = [...drafts.values()].sort((a, b) => a.savedAt - b.savedAt)[0];
+    if (!oldest) break;
+    drafts.delete(oldest.libraryId);
+  }
+}
+
+function clearReviewDraft(session: CatalogReviewSession | undefined, libraryId: string): void {
+  if (session) reviewDraftsFor(session).delete(libraryId);
+}
 
 function isPdfHolding(holding: LibraryHolding): boolean {
   return holding.file.mediaType?.toLowerCase() === "application/pdf";
@@ -86,12 +139,14 @@ export function BatchCatalogDialog({
   api,
   library,
   initialHoldings,
+  reviewSession,
   onClose,
   onApplied,
 }: {
   api: AcademicCloudApi;
   library: LibrarySummary;
   initialHoldings: LibraryHolding[];
+  reviewSession?: CatalogReviewSession;
   onClose: () => void;
   onApplied: () => void;
 }) {
@@ -113,6 +168,8 @@ export function BatchCatalogDialog({
   const [localExportError, setLocalExportError] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [resultsDocument, setResultsDocument] = useState<unknown>(null);
+  const [resumeDraft, setResumeDraft] = useState<CatalogReviewDraft | null>(() => getReviewDraft(reviewSession, library.id));
 
   useEffect(() => {
     closedRef.current = false;
@@ -128,6 +185,14 @@ export function BatchCatalogDialog({
   function closeDialog(): void {
     closedRef.current = true;
     exportAbortRef.current?.abort();
+    if (resultsDocument !== null) {
+      saveReviewDraft(reviewSession, {
+        libraryId: library.id,
+        document: resultsDocument,
+        selectedResourceIds: [...selectedPreviewIds],
+        results: applyResults ?? [],
+      });
+    }
     onClose();
   }
 
@@ -187,7 +252,7 @@ export function BatchCatalogDialog({
   }
 
   async function importResults(file: File): Promise<void> {
-    setError(null); setApplyResults(null); setPreview(null); setAcknowledgements({ ...EMPTY_ACKNOWLEDGEMENTS });
+    setError(null); setApplyResults(null); setPreview(null); setResultsDocument(null); setResumeDraft(null); setAcknowledgements({ ...EMPTY_ACKNOWLEDGEMENTS });
     if (file.size < 2 || file.size > MAX_RESULTS_BYTES || !api.previewCatalogBatchResults) {
       setError(Object.assign(new Error("catalog_results_invalid"), { code: "catalog_results_invalid" })); return;
     }
@@ -196,11 +261,33 @@ export function BatchCatalogDialog({
       const parsed = JSON.parse(await file.text()) as unknown;
       const nextPreview = await api.previewCatalogBatchResults(library.id, parsed);
       if (closedRef.current) return;
+      setResultsDocument(parsed);
       setPreview(nextPreview);
       setSelectedPreviewIds(new Set());
     } catch (caught: unknown) {
       if (!closedRef.current) setError(caught instanceof SyntaxError
         ? Object.assign(new Error("catalog_results_invalid"), { code: "catalog_results_invalid" }) : caught);
+    } finally { if (!closedRef.current) setBusy(false); }
+  }
+
+  async function resumeReview(): Promise<void> {
+    const draft = resumeDraft;
+    if (!draft || !api.previewCatalogBatchResults) return;
+    setResumeDraft(null);
+    setBusy(true); setError(null); setAcknowledgements({ ...EMPTY_ACKNOWLEDGEMENTS });
+    try {
+      const nextPreview = await api.previewCatalogBatchResults(library.id, draft.document);
+      if (closedRef.current) return;
+      const completedIds = new Set(draft.results.filter((entry) => entry.status === "applied" || entry.status === "unchanged").map((entry) => entry.resourceId));
+      const reviewableIds = new Set(nextPreview.items.filter(canSelectCatalogItem).map((entry) => entry.resourceId));
+      const selected = new Set(draft.selectedResourceIds.filter((resourceId) => reviewableIds.has(resourceId) && !completedIds.has(resourceId)));
+      setResultsDocument(draft.document);
+      setPreview(nextPreview);
+      setApplyResults(draft.results);
+      setSelectedPreviewIds(selected);
+      clearReviewDraft(reviewSession, library.id);
+    } catch (caught: unknown) {
+      if (!closedRef.current) { setResumeDraft(draft); setError(caught); }
     } finally { if (!closedRef.current) setBusy(false); }
   }
 
@@ -251,6 +338,10 @@ export function BatchCatalogDialog({
       </div>
       {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
       {localExportError && <div className="alert alert--error" role="alert">{localExportError}</div>}
+      {resumeDraft && <div className="alert alert--warning" role="status">
+        <span>{t("batchCatalog.resumeHint")}</span>
+        <button className="button button--small" type="button" disabled={busy} onClick={() => void resumeReview()}>{t("batchCatalog.resume")}</button>
+      </div>}
       <ol className="catalog-steps" aria-label={language === "zh-CN" ? "批量编目步骤" : "Batch catalog steps"}>
         {(language === "zh-CN" ? ["选择资料", "准备证据", "导入结果", "审核建议", "确认应用", "逐项结果"] : ["Select", "Evidence", "Import", "Review", "Confirm", "Results"]).map((step, index) => <li key={step} aria-current={index === (applyResults ? 5 : preview ? 3 : 0) ? "step" : undefined}><span>{index + 1}</span>{step}</li>)}
       </ol>

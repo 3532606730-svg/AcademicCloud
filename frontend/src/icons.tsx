@@ -36,6 +36,22 @@ export function LibraryIcon(props: IconProps) {
   );
 }
 
+export function SearchIcon(props: IconProps) {
+  return <Icon {...props}><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 4.5 4.5" /></Icon>;
+}
+
+export function CloseIcon(props: IconProps) {
+  return <Icon {...props}><path d="m6 6 12 12M18 6 6 18" /></Icon>;
+}
+
+export function DownloadIcon(props: IconProps) {
+  return <Icon {...props}><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4" /></Icon>;
+}
+
+export function QuoteIcon(props: IconProps) {
+  return <Icon {...props}><path d="M5 7h5v7H5zm9 0h5v7h-5zM10 14c0 3-2 4-4 4m13-4c0 3-2 4-4 4" /></Icon>;
+}
+
 export function PendingIcon(props: IconProps) {
   return (
     <Icon {...props}>

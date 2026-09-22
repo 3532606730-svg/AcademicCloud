@@ -40,6 +40,7 @@ import {
   MoreIcon,
   PdfIcon,
   PendingIcon,
+  PlusIcon,
   RecycleIcon,
   StarIcon,
   TextIcon,
@@ -53,6 +54,7 @@ import type { WorkspaceResource } from "./workspace-api.ts";
 import { libraryHoldingDisplayTitle, libraryHoldingSecondaryLine } from "./library-display-title.ts";
 import { canPreviewFile } from "./preview-capability.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
+import type { CatalogReviewSession } from "./batch-catalog.tsx";
 import { clearViewPreferences, useWorkspaceLocation } from "./view-context.ts";
 import { PreviewDialog, type PreviewDocument } from "./preview-dialog.tsx";
 import { useModalDialog } from "./use-modal-dialog.ts";
@@ -684,6 +686,7 @@ function DriveView({
   onSignedOut: (message?: string) => void;
 }) {
   const { language, t } = useLanguage();
+  const catalogReviewSession = useMemo<CatalogReviewSession>(() => ({ accountId: account.id }), [account.id]);
   const { view, setView, path, setPath } = useWorkspaceLocation(account.id);
   const [entries, setEntries] = useState<EntriesResponse>(EMPTY_ENTRIES);
   const [pending, setPending] = useState<FileEntry[]>([]);
@@ -2182,7 +2185,8 @@ function DriveView({
     <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || researchRequest !== null || citationRequest !== null || batchNamingRequest !== null || batchCatalogRequest !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
-        <div className="brand"><span>AC</span> AcademicCloud</div>
+        <div className="brand topbar-brand"><span>AC</span> AcademicCloud</div>
+        <div className="topbar-location" aria-hidden="true"><LibraryIcon size={17} /><span>{workspaceTitle}</span></div>
         <div className="account-menu">
           <AccountMenu
             accountName={account.loginName}
@@ -2199,6 +2203,7 @@ function DriveView({
       </header>
 
       <aside className="sidebar" aria-label={t("nav.primaryAria")}>
+        <div className="brand sidebar-brand"><span>AC</span> AcademicCloud</div>
         <nav>
           <button className={view === "library" ? "nav-item is-active" : "nav-item"} aria-current={view === "library" ? "page" : undefined} onClick={() => goToView("library")}>
             <LibraryIcon size={18} /> {t("nav.library")}
@@ -2209,7 +2214,7 @@ function DriveView({
           {api.workspace && <button className="nav-item" type="button" onClick={(event) => setResearchRequest({ returnFocus: event.currentTarget })}>
             <TextIcon size={18} /> {t("workspace.title")}
           </button>}
-          <button className={view === "pending" ? "nav-item is-active" : "nav-item"} aria-current={view === "pending" ? "page" : undefined} onClick={() => goToView("pending")}>
+          <button className={`nav-item nav-item--utility${view === "pending" ? " is-active" : ""}`} aria-current={view === "pending" ? "page" : undefined} onClick={() => goToView("pending")}>
             <PendingIcon size={18} /> {t("nav.pending")}
           </button>
           <button className={view === "recycle" ? "nav-item is-active" : "nav-item"} aria-current={view === "recycle" ? "page" : undefined} onClick={() => goToView("recycle")}>
@@ -2290,15 +2295,17 @@ function DriveView({
           </div>
           {view === "library" && (
             <div className="command-bar">
-              {account.role === "owner" && <button className="button button--quiet" type="button" onClick={openNewFolderDialog}>
-                {t("workspace.newFolder")}
+              {account.role === "owner" && <button className="button button--quiet new-folder-command" type="button" aria-label={t("workspace.newFolder")} onClick={openNewFolderDialog}>
+                <PlusIcon size={16} />
+                <span>{t("workspace.newFolder")}</span>
               </button>}
               <button className="button button--primary upload-button" type="button" onClick={() => void chooseFreshFiles()}>
+                <UploadIcon size={17} />
                 {t("workspace.uploadResources")}
               </button>
               {uploadPickerFallbackAvailable && (
                 <button
-                  className="button button--quiet"
+                  className="button button--quiet upload-fallback-command"
                   type="button"
                   onClick={() => {
                     setUploadPickerFallbackAvailable(false);
@@ -2954,6 +2961,7 @@ function DriveView({
           api={api}
           library={batchCatalogRequest.library}
           initialHoldings={batchCatalogRequest.holdings}
+          reviewSession={catalogReviewSession}
           onClose={() => setBatchCatalogRequest(null)}
           onApplied={() => {
             setSelectedKeys(new Set());

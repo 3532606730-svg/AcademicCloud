@@ -10,6 +10,8 @@ import type {
   LibrarySummary,
 } from "./api.ts";
 import { useLanguage } from "./i18n-react.tsx";
+import { LibraryIcon } from "./icons.tsx";
+import "./document-panels.css";
 
 const STYLES: ReadonlyArray<{ id: CitationStyleId; label: string }> = [
   { id: "chicago-notes-bibliography", label: "Chicago Notes & Bibliography" },
@@ -151,13 +153,21 @@ export function CitationDialog({
 
   const title = holding.catalogueDisplayTitle || holding.canonicalTitle || holding.file.displayName;
   return (
-    <dialog ref={dialogRef} className="citation-modal" aria-labelledby="citation-dialog-title">
-      <header>
-        <div><span className="citation-eyebrow">{t("citation.action")}</span><h2 id="citation-dialog-title">{title}</h2></div>
+    <dialog ref={dialogRef} className="citation-modal document-panel" aria-labelledby="citation-dialog-title">
+      <header className="document-panel-heading">
+        <div className="document-panel-identity">
+          <span className="document-panel-symbol"><LibraryIcon size={24} /></span>
+          <div className="document-panel-title">
+            <span className="document-panel-eyebrow">{t("citation.action")}</span>
+            <h2 id="citation-dialog-title">{title}</h2>
+            {holding.authorLabels.length > 0 && <span className="document-panel-subtitle">{holding.authorLabels.join(" · ")}</span>}
+          </div>
+        </div>
         <button className="button button--quiet" type="button" onClick={onClose} disabled={generating} aria-label={t("citation.closeAria")}>{t("preview.close")}</button>
       </header>
       <div className="citation-body">
         {error && <div className="alert alert--error" role="alert">{t("citation.error")}</div>}
+        <div className="citation-controls">
         <label className="citation-style-field">{t("citation.style")}
           <select value={style} onChange={(event) => { setStyle(event.target.value as CitationStyleId); setResult(null); setCopied(null); }}>
             {STYLES.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
@@ -166,7 +176,7 @@ export function CitationDialog({
         <fieldset className="citation-locators">
           <legend>{t("citation.locators")}</legend>
           {locators.map((locator) => (
-            <div className="citation-locator-row" key={locator.id}>
+            <div className={`citation-locator-row${locator.type === "custom" || locator.type === "folio" ? " citation-locator-row--extended" : ""}`} key={locator.id}>
               <select aria-label={t("citation.locatorType")} value={locator.type} onChange={(event) => {
                 const type = event.target.value as CitationLocatorType;
                 setLocators((current) => current.map((item) => {
@@ -193,12 +203,13 @@ export function CitationDialog({
               }}>
                 <option value="">{t("citation.folioUnspecified")}</option><option value="recto">{t("citation.recto")}</option><option value="verso">{t("citation.verso")}</option>
               </select>}
-              <button className="button button--small button--quiet" type="button" aria-label={t("citation.removeLocator")} onClick={() => { setLocators((current) => current.filter((item) => item.id !== locator.id)); setResult(null); }}>{t("alert.dismiss")}</button>
+              <button className="button button--small button--quiet" type="button" aria-label={t("citation.removeLocator")} onClick={() => { setLocators((current) => current.filter((item) => item.id !== locator.id)); setResult(null); }}>{t("citation.removeLocator")}</button>
             </div>
           ))}
           {locators.length < 12 && <button className="button button--small" type="button" onClick={() => setLocators((current) => [...current, { id: nextId.current++, type: "page", value: "" }])}>{t("citation.addLocator")}</button>}
         </fieldset>
         <button className="button button--primary citation-generate" type="button" disabled={generating} onClick={() => void generate()}>{generating ? t("citation.generating") : t("citation.generate")}</button>
+        </div>
         {result && <div className="citation-results" aria-live="polite">
           {result.completeness === "partial" && <p className="citation-partial">{t("citation.partial")}</p>}
           <CitationOutput label={result.outputs.fullNote ? t("citation.fullNote") : t("citation.citation")} kind={result.outputs.fullNote ? "fullNote" : "citation"} value={result.outputs.fullNote ?? result.outputs.citation} copied={copied} onCopy={copy} />

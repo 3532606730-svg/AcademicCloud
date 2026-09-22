@@ -36,28 +36,29 @@ function ruleHas(block: string, selector: string, declaration: RegExp): boolean 
 }
 
 describe("desktop presentation stylesheet", () => {
-  it("keeps the sidebar below the topbar on the document scrollbar without a nested scroll area", () => {
+  it("keeps the full-height sidebar on the document scrollbar without a nested scroll area", () => {
     const desktop = styles.slice(0, styles.indexOf("@media (max-width: 64rem)"));
     const sidebarRule = /\.sidebar\s*\{([^}]*)\}/.exec(desktop)?.[1] ?? "";
     expect(sidebarRule).toMatch(/position:\s*sticky/);
-    expect(sidebarRule).toMatch(/top:\s*3\.5rem/);
-    expect(sidebarRule).toContain("height: calc(100vh - 3.5rem)");
-    expect(sidebarRule).toContain("height: calc(100dvh - 3.5rem)");
+    expect(sidebarRule).toMatch(/top:\s*0/);
+    expect(sidebarRule).toContain("height: 100vh");
+    expect(sidebarRule).toContain("height: 100dvh");
     expect(sidebarRule).toMatch(/align-self:\s*start/);
     expect(sidebarRule).not.toMatch(/overflow(?:-y)?:\s*(?:auto|scroll)/);
   });
 });
 
 describe("mobile presentation stylesheet", () => {
-  it("turns the sidebar itself into a fixed safe-area bottom navigation with four equal destinations", () => {
+  it("turns the sidebar into safe-area bottom navigation with an equal column for each available destination", () => {
     const block = mobileBlock();
     expect(ruleHas(block, ".sidebar {", /position:\s*fixed/)).toBe(true);
     expect(ruleHas(block, ".sidebar {", /top:\s*auto/)).toBe(true);
     expect(ruleHas(block, ".sidebar {", /height:\s*auto/)).toBe(true);
     expect(ruleHas(block, ".sidebar {", /calc\(0\.35rem \+ env\(safe-area-inset-bottom\)\)/)).toBe(true);
-    expect(ruleHas(block, ".sidebar nav {", /repeat\(4,\s*minmax\(0,\s*1fr\)\)/)).toBe(true);
+    expect(ruleHas(block, ".sidebar nav {", /grid-auto-flow:\s*column/)).toBe(true);
+    expect(ruleHas(block, ".sidebar nav {", /grid-auto-columns:\s*minmax\(0,\s*1fr\)/)).toBe(true);
     // The workspace must clear the fixed navigation.
-    expect(ruleHas(block, ".workspace {", /calc\(7\.5rem \+ env\(safe-area-inset-bottom\)\)/)).toBe(true);
+    expect(ruleHas(block, ".workspace {", /calc\(5\.5rem \+ env\(safe-area-inset-bottom\)\)/)).toBe(true);
   });
 
   it("makes the mobile preview a fullscreen dynamic-viewport reader with a vh fallback in the right order", () => {

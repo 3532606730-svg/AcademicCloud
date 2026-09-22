@@ -88,9 +88,15 @@ Normal bibliography editing marks the submitted contributor collection as human.
 
 The runbook selects candidate migration/admission paths after protected environment loading, avoiding old-current initialization. Repository nginx carries route-specific limits.
 
+## Visual redesign checkpoint
+
+- Reworked the existing frontend visual system for a clean, restrained, premium presentation across Library/Search, Preview/Reader, Details/Citation, Workspace/Collections/Notes, Admin, Batch, Login and responsive empty/loading/error states. No new dependencies, remote fonts, image assets or resident services.
+- Browser QA on synthetic signed-in data covered widths 1600/1440/1366/1024/768/390 with no horizontal overflow; Login error/recovery, search empty state, Preview toolbar, Citation generation/results, Details actions, Workspace note editor/Collections, Admin and Batch surfaces were inspected. Native PDF painting was not claimed.
+- Build passed; focused citation/presentation tests 18/18 passed; previous full visual run's stale mobile assertions were updated and targeted follow-up passed.
+
 ## Remaining
 
-- Complete Catalog review recovery across close/reopen and expired plans, without carrying old authority or silently reapplying successful items. Existing selection, filtering and in-session partial retry are implemented.
+- Catalog review recovery is locally implemented: in-memory account-session/library-bound drafts expire after 30 minutes, cap at four drafts and 32 MiB, retain only imported results/selection intent/completed results, and resume through a fresh server Preview with acknowledgements cleared and completed items excluded. Browser/live acceptance and expiry-edge evidence remain open.
 - Complete a scoped latency ledger for app/list, actual PDF paint, Details, download, upload stages and Workspace; reuse existing search100/1,000/10,000 and Apply benchmarks, and optimize demonstrated bottlenecks.
 - Complete changed-path visual/interaction review across Login, Library/Search, Preview/Reader, Details/editor, Batch, Admin and empty/loading/error states at required widths.
 - Evaluate fixed-sample Catalog/Compute field support, errors, omissions, justified abstention and review cost; format/runtime qualification alone does not prove accuracy.
@@ -148,4 +154,4 @@ Takeover live evidence: qualified3c864374 worker remains active PID51089 with ze
 
 ## Next Action
 
-Owner2026-09-22 prioritizes visual quality first. Checkpoint Workspace038 locally, then improve the actual Library/Reader/Details/research visual system and responsive states before returning to Catalog recovery and the remaining latency/quality/full-text items. Preserve published73b26d2 and last-observed live7e; do not push or deploy intermediate milestones. Finish all local integrated work, then final exact qualification, one combined publication/deployment, whole-product live acceptance and the29-section final report.
+Complete bounded Catalog review recovery with a fresh server Preview on resume, then the latency ledger, field-quality/abstention, bounded full-text evaluation, inherited corpus acceptance and final report. The September23 visual milestone is locally checked across six widths and remains unpublished. Preserve published73b26d2 and last-observed live7e; do not push or deploy intermediate milestones. Finish all local integrated work, then final exact qualification, one combined publication/deployment, whole-product live acceptance and the29-section final report.

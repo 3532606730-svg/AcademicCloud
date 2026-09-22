@@ -17,6 +17,7 @@ import { composeLibraryDisplayTitle } from "./library-display-title.ts";
 import { describeError, type Language, type MessageKey } from "./i18n.ts";
 import type { Translator } from "./i18n-react.tsx";
 import { readViewPreference, writeViewPreference } from "./view-context.ts";
+import { SearchIcon } from "./icons.tsx";
 
 const SEARCH_DEBOUNCE_MS = 280;
 const EMPTY_HOLDINGS: LibraryHolding[] = [];
@@ -315,6 +316,7 @@ export function LibrarySearchField({
     <div className="library-search">
       <div className="library-search-toolbar">
         <div className="library-search-field">
+          <SearchIcon className="library-search-icon" size={18} />
           <input
             type="search"
             className="library-search-input"
