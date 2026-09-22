@@ -85,7 +85,7 @@
     "documentSource": "Local schema37: dedicated verifier backend455pass/0fail/3 Windows symlink skips; build/compiled acceptance PASS; hash-verified old73b Linux runtime with complete migration history startup/activation/rename/download PASS, missing37 fails closed",
     "privateWorkspace": {
       "backend": "467 pass/0 fail/3 Windows symlink-permission skips",
-      "frontend": "386/386 full suite",
+      "frontend": "387/387 full suite",
       "typesBuild": "both PASS",
       "compiledAcceptance": "schema038 restart/recovery/privacy PASS",
       "oldRuntime": "exact73b 4921 files hash-verified; complete schema038 history startup/overlay preservation PASS; incomplete history rejects",
@@ -97,7 +97,7 @@
     "visualRedesign": {
       "scope": "Library/Search, Preview/Reader, Details/Citation, private Workspace Research Desk, Admin, Batch, Login and responsive states",
       "build": "pass; initial index JS434.52 kB/gzip123.15 kB; CSS68.67 kB/gzip12.59 kB; no new dependencies/assets/fonts",
-      "focusedTests": "frontend25 files/386 tests; citation/presentation18/18; Library-to-Workspace add path covered; prior full visual run382/384 with stale presentation assertions corrected by15/15 and166/166 follow-up",
+      "focusedTests": "frontend25 files/387 tests; citation/presentation18/18; Library-to-Workspace add path covered; prior full visual run382/384 with stale presentation assertions corrected by15/15 and166/166 follow-up",
       "browser": "synthetic signed-in browser checks; widths1600/1440/1366/1024/768/390 no horizontal overflow; native PDF paint not claimed",
       "publication": "local only; final combined release pending"
     },

@@ -112,6 +112,23 @@ describe("BatchCatalogDialog", () => {
     expect(within(screen.getAllByRole("article")[1]!).getByRole("checkbox")).toBeChecked();
   });
 
+  it("drops a private review draft after the 30-minute recovery window", async () => {
+    let now = 1_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const reviewSession = { accountId: "expired-session" };
+    const previewCatalogBatchResults = vi.fn().mockResolvedValue(PREVIEW);
+    const first = render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    const user = userEvent.setup();
+    await user.upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File([JSON.stringify({ schemaVersion: "academiccloud.catalog-results.v1" })], "results.json", { type: "application/json" }));
+    await waitFor(() => expect(previewCatalogBatchResults).toHaveBeenCalledTimes(1));
+    await user.click(screen.getAllByRole("button", { name: "Close" })[0]!);
+    first.unmount();
+
+    now += 30 * 60 * 1000 + 1;
+    render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    expect(screen.queryByText(/private review draft/u)).not.toBeInTheDocument();
+  });
+
   it("imports to a side-effect-free preview and applies only explicitly selected eligible rows", async () => {
     const previewCatalogBatchResults = vi.fn().mockResolvedValue(PREVIEW);
     const applyCatalogBatchResults = vi.fn().mockResolvedValue({ results: [
