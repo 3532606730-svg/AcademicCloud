@@ -20,6 +20,10 @@ The three supplied screenshots depict a separate dense historical-document Reade
 
 For the current vNext batch, the Research Desk may borrow the density and information hierarchy only through real supported paths: `原文` opens the source-aware Reader/Preview, `笔记` uses private source-bound Page Notes, `保存修改` uses existing private/Citation/Details saves, and `导出` uses the account-private Workspace NDJSON contract. The OCR blocks, image overlays, full-document/range/rubbing recognition, text-layer search/highlight list and full-text `.txt` export require a separately authorized derived-text/OCR/index/lineage contract. They remain parked and must not appear as enabled controls or be implied by visual copy in this release.
 
+## 2026-09-23 — OCR execution deferred; reserve a backend contract
+
+The Owner clarified that OCR should not run in the current batch, while a backend interface should remain for a future Reader implementation. The vNext tree therefore adds only the provider-neutral `academiccloud.reader-ocr.v1` contract, a strict page/source request shape and a fail-closed `ReaderOcrBackend` port. The authenticated HTTP surface exposes capabilities and a deferred request response (`ocr_deferred`) without reading objects, starting a worker, persisting text, creating an index or exporting OCR. Future adapters must re-resolve authorization and the immutable `resourceId + sourceId` generation through the existing server-side source path before execution; the current metadata-suggestion job/parser is intentionally not reused.
+
 ## ADR-043 — Source generations before page notes
 
 September22 execution priority: the Owner requests visual improvement before the next Catalog feature. This changes order, preserves the full integrated scope, and does not authorize an intermediate publication.

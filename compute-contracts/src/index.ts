@@ -19,6 +19,8 @@ export const DERIVED_COMPUTE_ERROR_CODES = [
 ] as const;
 export type DerivedComputeErrorCode = (typeof DERIVED_COMPUTE_ERROR_CODES)[number];
 
+export * from "./ocr.js";
+
 export interface DerivedComputeDispatchJob {
   id: string;
   kind: DerivedComputeJobKind;

@@ -34,6 +34,8 @@ import type { CatalogBatchService } from "../catalog-batch/catalog-batch-service
 import { registerCatalogBatchHttp } from "../catalog-batch/http.js";
 import type { WorkspaceService } from "../workspace/service.js";
 import { registerWorkspaceHttp } from "../workspace/http.js";
+import { registerReaderOcrHttp } from "../reader-ocr/http.js";
+import { UnavailableReaderOcrBackend } from "../reader-ocr/port.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -253,6 +255,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
         ? {}
         : { credentialResetRateLimitMax: options.credentialReset.redemptionRateLimitMax }),
     });
+    await registerReaderOcrHttp(app, new UnavailableReaderOcrBackend());
   }
 
   if (options.drive) {

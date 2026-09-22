@@ -118,6 +118,14 @@
       "status": "design-only; source/page identity, ACL inheritance, generation invalidation and resource-budget evaluation defined",
       "excluded": "real extraction, persistent OCR text, full-text index/search, embeddings, retrieval and RAG rollout"
     },
+    "readerOcrInterface": {
+      "contractVersion": "academiccloud.reader-ocr.v1",
+      "status": "deferred; fail-closed backend seam only",
+      "http": "authenticated capabilities plus bounded request endpoint; valid requests return 503 ocr_deferred",
+      "selection": "physical one-based single page or range capped at 64 pages",
+      "sideEffects": "no object read, worker dispatch, text persistence, index or export",
+      "futureAuthority": "re-resolve authorized resourceId+sourceId generation through server-side source path before adapter execution"
+    },
     "currentCorpusProjection": {
       "observedAt": "2026-09-23",
       "source": "privacy-safe read-only production inventory over academiccloud-prod",
