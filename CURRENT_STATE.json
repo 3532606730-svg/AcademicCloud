@@ -154,6 +154,14 @@
         "sha256AlgorithmMatches": 0,
         "note": "Production inventory stores MD5; no resource mutation or retry performed"
       }
+    },
+    "localRootSuite": {
+      "command": "npm test",
+      "total": 1031,
+      "passed": 1025,
+      "failed": 0,
+      "skipped": 6,
+      "note": "backend 3 Windows symlink privilege; compute 1 symlink privilege plus Tesseract/PaddleOCR release-local runtime skips; no code changes"
     }
   },
   "computeQualification": {
