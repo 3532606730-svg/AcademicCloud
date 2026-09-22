@@ -73,6 +73,10 @@ The fixed-sample field-quality boundary is recorded in [Catalog field quality an
 
 The bounded page-aware full-text work is design-only in [bounded page-aware full-text evaluation](docs/architecture/bounded-page-aware-full-text-evaluation.md). It reuses source037/ADR-043 identity and private Workspace page anchors, and evaluates value, page identity, inherited authorization, source-generation invalidation, resource budget and zero-cost constraints without creating OCR text, indexes, embeddings, retrieval or RAG state. NOW/NEXT/LATER/EXPERIMENTAL/DO NOT PRIORITIZE decisions are explicit; no product rollout follows from this checkpoint.
 
+## Inherited corpus acceptance boundary
+
+A read-only audit on September23 found all 12 Owner acceptance PDFs present under `D:\AcademicCloudCompute\staging\acceptance-sources` with matching stable hashes (199,835,281 bytes total). The historical 82-item Catalog manifest remains identity/privacy/CRC safe and is interpreted as one reviewed result, 78 reviewable UNKNOWN results and three internal exclusions; the raw JSON's 81 UNKNOWN dispositions do not encode those exclusions. Six `SOURCE_REPLACEMENT_REQUIRED` entries remain intentionally unresolved and must not be replayed or presented as successful. The available worker-recovery and pre-worker snapshots are September9 historical files showing failed/running/succeeded counts, so they do not prove a current whole-corpus zero-failed/stuck/state-match sweep. Generate one current read-only inventory and queue projection at the final gate, without rerunning already successful jobs.
+
 ## Established evidence retained
 
 - Schema035/036, SQLite search projection and Catalog v2 review/Apply authority are deployed. Confidence does not confer authority; UNKNOWN does not auto-apply.
