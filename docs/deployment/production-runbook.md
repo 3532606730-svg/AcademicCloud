@@ -182,7 +182,7 @@ The supported fresh-install and upgrade entry is `db:initialize` in a source
 checkout, or `db:initialize:prod` after compilation. It performs, in order:
 
 1. Validate the admission manifest, immutable SQL assets and compiled runtime identity.
-2. Apply pending append-only migrations, including `035_library_search_projection.sql` and `036_bibliographic_contributor_collection_authority.sql`.
+2. Apply pending append-only migrations, including `035_library_search_projection.sql`, `036_bibliographic_contributor_collection_authority.sql`, `037_document_source_generations.sql`, and `038_private_research_workspace.sql`.
 3. Admit missing declared rulesets without rewriting existing registry history.
 4. Verify the migration/admission state and initialize the derived Library search projection.
 
@@ -205,6 +205,12 @@ replace PDF bytes, canonical bibliography or resource identity. See
 [ADR-041](../decisions/ADR-041-vnext-review-plans-and-search-projection.md).
 Schema 036 retains human contributor-list decisions, including an explicitly
 empty list. This authority is durable canonical state, not a rebuildable search cache.
+Schema 037 records immutable document source generations and physical-page
+attachment identity for source-aware Preview and private Page Notes. It
+backfills from already recorded file byte metadata and does not reread or copy
+object bytes. Schema 038 adds the account-private Reading State, Collections,
+Page Notes and streamed research export overlay. Both migrations are additive;
+their registries and authored overlays are preserved during rollback planning.
 
 ## First deployment
 
@@ -319,7 +325,7 @@ empty list. This authority is durable canonical state, not a rebuildable search 
 
    The helper pins both migration and admission directories to this staged
    release, even while `current` still selects the previous application. Verify
-   the successful summary, schema history 001–036, current v11/prompt-v7
+   the successful summary, schema history 001–038, current v11/prompt-v7
    admission, projection initialization and foreign-key integrity. Initialization
    is repeatable; a failed step must be diagnosed before starting the service.
 4. Atomically select the verified release, unset
@@ -330,11 +336,13 @@ empty list. This authority is durable canonical state, not a rebuildable search 
    after validation. Do not reinstall unrelated units or alter credentials.
 5. After a real failure, recover according to the actual database state. A
    release that recognizes only migrations through 034 rejects a database with
-   035–036 and is **not** an application-only rollback. Prefer a corrected,
-   schema-036-compatible release; derived search state can be repaired by the
-   supported initializer. Database restoration is reserved for a failure that
-   requires it, using the matching recovery pair and accounting for any writes
-   since the recovery point. See [Backup and Recovery](backup-recovery.md).
+   035–038 and is **not** an application-only rollback. Prefer a corrected,
+   schema-038-compatible release with the complete migration and admission
+   directories. Never down-migrate, discard the source-generation registry, or
+   remove authored private Workspace overlays to make an older binary start.
+   Database restoration is reserved for a failure that requires it, using the
+   matching recovery pair and accounting for any writes since the recovery
+   point. See [Backup and Recovery](backup-recovery.md).
 
 Never downgrade a database with ad hoc SQL. Never switch releases while retaining an incompatible migrated database merely because the process starts.
 
