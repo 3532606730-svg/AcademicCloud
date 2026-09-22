@@ -194,6 +194,15 @@ describe("private workspace", () => {
     expect(screen.getByRole("link", { name: "Export my research" })).toHaveAttribute("href", "/api/workspace/export");
   });
 
+  it("keeps a queued reading item visible in the desk status summaries", async () => {
+    const f = fixture({ resource: vi.fn().mockResolvedValue({ resource: RESOURCE, reading: { resourceId: RESOURCE.resourceId, status: "queued", important: false, toCite: false, revision: 1, updatedAt: NOTE.updatedAt }, collectionIds: [] }) });
+    renderWorkspace(f.api);
+    await screen.findByRole("button", { name: "Write a page note" });
+    expect(screen.getByRole("combobox", { name: "Reading status" })).toHaveValue("queued");
+    expect(document.querySelector(".research-rail-status strong")).toHaveTextContent("To read");
+    expect(document.querySelectorAll(".research-inspector-facts dd")[2]).toHaveTextContent("To read");
+  });
+
   it("ignores cancelled initial loads after navigation and opens exact note page", async () => {
     const user = userEvent.setup(); let resolve!: (value: WorkspacePage<PageNote>) => void;
     const pending = new Promise<WorkspacePage<PageNote>>((r) => { resolve = r; });

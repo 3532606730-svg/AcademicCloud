@@ -45,6 +45,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, retu
 }) {
   const { language, t } = useLanguage();
   const c = COPY[language];
+  const readingStatusLabel = (status: ReadingState["status"] | null | undefined) => status === "finished" ? c.finished : status === "reading" ? c.inProgress : status === "queued" ? c.queued : c.none;
   const [resourceId, setResourceId] = useState(initialResourceId);
   const [resource, setResource] = useState<ResourceWorkspace | null>(null);
   const [collections, setCollections] = useState<ResearchCollection[]>([]);
@@ -145,7 +146,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, retu
           {resourceId ? <div className="research-rail-context"><span>{c.active}</span><strong>{resource?.resource.title ?? c.loading}</strong></div> :
             <nav className="research-tabs" aria-label={t("workspace.title")}>{(["notes", "reading", "collections"] as const).map((value) => <button type="button" key={value} disabled={locked} aria-current={tab === value ? "page" : undefined} onClick={() => { setTab(value); setCollectionId(null); setNotice(""); }}>{c[value]}</button>)}</nav>}
           <div className="research-rail-divider" />
-          <div className="research-rail-status"><span>{resourceId ? c.status : c.all}</span><strong>{resourceId ? (resource?.reading?.status === "finished" ? c.finished : resource?.reading?.status === "reading" ? c.inProgress : c.none) : tab === "notes" ? c.notes : tab === "reading" ? c.reading : c.collections}</strong></div>
+          <div className="research-rail-status"><span>{resourceId ? c.status : c.all}</span><strong>{resourceId ? readingStatusLabel(resource?.reading?.status) : tab === "notes" ? c.notes : tab === "reading" ? c.reading : c.collections}</strong></div>
         </aside>
         <main className="research-main">
           <div className="research-toolbar"><span className="research-toolbar-index">01</span><span>{resourceId ? c.active : t("workspace.title")}</span><span className="research-toolbar-rule" /><span className="research-toolbar-meta">{resourceId ? c.private : c.all}</span></div>
@@ -211,7 +212,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, retu
           <dl className="research-inspector-facts">
             <div><dt>{c.notes}</dt><dd>{notes?.items.length ?? 0}</dd></div>
             <div><dt>{c.collections}</dt><dd>{collections.length}</dd></div>
-            <div><dt>{c.status}</dt><dd>{resourceId ? (resource?.reading?.status === "finished" ? c.finished : resource?.reading?.status === "reading" ? c.inProgress : c.none) : c.all}</dd></div>
+            <div><dt>{c.status}</dt><dd>{resourceId ? readingStatusLabel(resource?.reading?.status) : c.all}</dd></div>
           </dl>
           <p className="research-inspector-note">{c.private}. {resourceId && resource?.resource.mediaType === "application/pdf" ? c.physicalHelp : c.empty}</p>
           <a className="research-inspector-export" href="/api/workspace/export" download="academiccloud-personal-workspace.ndjson">{c.export}<span aria-hidden="true">↗</span></a>
