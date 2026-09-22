@@ -149,7 +149,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, retu
         </aside>
         <main className="research-main">
           <div className="research-toolbar"><span className="research-toolbar-index">01</span><span>{resourceId ? c.active : t("workspace.title")}</span><span className="research-toolbar-rule" /><span className="research-toolbar-meta">{resourceId ? c.private : c.all}</span></div>
-          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { setResourceId(undefined); setCollectionId(null); }}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3></div>}
+          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { setResourceId(undefined); setCollectionId(null); }}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3>{resource && sourceMatches && <button className="button button--small button--primary" type="button" disabled={locked} onClick={() => void open(resource.resource)}>{c.open}</button>}</div>}
           {!!error && <div className="research-error" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.conflict : describeError(error, language)}</p><button className="button button--small" type="button" disabled={busy} onClick={refresh}>{c.retry}</button></div>}
           {notice && <p role="status" className="research-notice">{notice}</p>}
           {loading && <p role="status" className="research-empty">{c.loading}</p>}

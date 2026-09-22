@@ -179,6 +179,7 @@ describe("private workspace", () => {
   it("updates explicit reading flags and collections using only the current resource revision", async () => {
     const user = userEvent.setup(); const f = fixture(); renderWorkspace(f.api);
     await screen.findByRole("button", { name: "Write a page note" });
+    expect(screen.getByRole("button", { name: "Open resource" })).toBeInTheDocument();
     await user.selectOptions(screen.getByRole("combobox", { name: "Reading status" }), "reading");
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Reading status" })).toHaveValue("reading"));
     await user.click(screen.getByLabelText("Important"));

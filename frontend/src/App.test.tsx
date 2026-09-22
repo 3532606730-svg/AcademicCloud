@@ -2884,7 +2884,8 @@ describe("document preview session", () => {
     const frame = preview.querySelector("iframe");
     await user.click(within(preview).getByRole("button", { name: "Page notes" }));
     const research = await screen.findByRole("dialog", { name: "My research" });
-    await user.click(await within(research).findByRole("button", { name: "Open resource" }));
+    const note = await within(research).findByText("Private research text");
+    await user.click(within(note.closest("article")!).getByRole("button", { name: "Open resource" }));
     expect(await within(research).findByRole("alert")).toHaveTextContent("changed elsewhere");
     expect(preview.querySelector("iframe")).toBe(frame);
     expect(frame).toHaveAttribute("src", "https://signed.invalid/original.pdf");
