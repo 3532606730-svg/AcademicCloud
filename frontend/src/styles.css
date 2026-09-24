@@ -651,7 +651,10 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
 .destination-folder { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; padding: 0.6rem; color: var(--ink); text-align: left; border: 0; border-radius: 0.5rem; background: transparent; cursor: pointer; }
 .destination-folder:hover { background: var(--forest-soft); }
 .preview-modal { width: min(86rem, calc(100% - 3rem)); height: calc(100dvh - 3rem); max-height: calc(100dvh - 3rem); grid-template-rows: auto minmax(18rem, 1fr) auto; overflow: hidden; padding: 0; color: var(--ink); border: 1px solid #dce3dd; border-radius: 1rem; background: var(--paper); box-shadow: var(--shadow); }
-.preview-modal--pdf { grid-template-rows: auto auto minmax(18rem, 1fr) auto; }
+.preview-modal--pdf { grid-template-rows: auto minmax(0, 1fr) auto; }
+.preview-modal--pdf:has(.preview-action-error) { grid-template-rows: auto minmax(0, 1fr) auto auto; }
+.preview-action-error { margin: 0; padding: 8px 20px; color: var(--danger); background: var(--danger-soft); }
+.preview-modal--pdf .preview-content { display: flex; overflow: hidden; }
 .preview-modal[open] { display: grid; }
 .preview-modal > header, .preview-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 1.5rem; }
 .preview-modal h2 { max-width: 45rem; }
@@ -1122,7 +1125,7 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
     border-radius: 0;
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
-  .preview-modal--pdf { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+  .preview-modal--pdf { grid-template-rows: auto minmax(0, 1fr) auto; }
   .preview-page-controls { flex-wrap: wrap; gap: .35rem; padding: .4rem .9rem; }
   .preview-page-controls .button { min-height: 2.75rem; }
   .preview-page-controls input { min-height: 2.75rem; }
@@ -1479,3 +1482,10 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
   .preview-document-actions .button { flex: 1; min-height: 2.75rem; }
   .preview-file-actions .button { min-width: 4.5rem; }
 }
+
+/* Top-level workspace navigation stays available on desktop and mobile. */
+.workspace-switch { display: inline-flex; align-items: center; flex: 0 0 auto; padding: 3px; gap: 3px; border: 1px solid var(--line); border-radius: 9px; background: #eef1ed; }
+.workspace-switch button { border: 0; border-radius: 6px; min-height: 34px; padding: 6px 16px; color: var(--muted); background: transparent; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.workspace-switch button[aria-current] { color: var(--forest-deep); background: #fff; box-shadow: 0 1px 3px #243c3012; font-weight: 650; }
+.workspace-switch button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+@media (max-width: 700px) { .topbar:has(.workspace-switch) .topbar-brand { display: none; } .workspace-switch button { min-height: 38px; padding-inline: 12px; } }

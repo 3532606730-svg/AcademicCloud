@@ -196,14 +196,26 @@
 .research-main--reader > .research-document-heading { flex: 0 0 auto; margin: 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none; }
 .research-main--reader > .research-error,
 .research-main--reader > .research-notice { flex: 0 0 auto; margin: 8px 16px; }
-.research-resource-layout { display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr); }
+.research-resource-layout { display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(0, 1fr) minmax(310px, 370px); }
 .research-reader { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-right: 1px solid #d2d9d7; background: #343b3c; }
 .research-reader-toolbar { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid #d2d9d7; background: #f5f6f3; }
 .research-reader-toolbar label { display: flex; align-items: center; gap: 6px; color: #55666a; font-size: 12px; white-space: nowrap; }
 .research-reader-toolbar input { width: 64px; min-height: 34px; padding: 5px 7px; border: 1px solid #cad5d1; border-radius: 4px; background: #fffefa; color: #26343b; font: inherit; }
 .research-reader-toolbar-spacer { flex: 1 1 auto; }
 .research-reader-expired { color: #835b27; font-size: 12px; line-height: 1.35; }
-.research-reader-content { display: grid; min-height: 0; flex: 1 1 auto; place-items: center; overflow: hidden; }
+.research-reader-content { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; overflow: hidden; }
+.research-reader-content > .pdf-reader { flex: 1 1 0; }
+.research-reader-content > .research-reader-message { margin: auto; }
+.research-reader-file-actions { justify-content: flex-end; padding: 4px 12px; border-top: 1px solid #d2d9d7; border-bottom: 0; }
+.research-settings-disclosure { margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.research-settings-disclosure > summary { padding: 10px 0 14px; color: var(--muted); font-size: 13px; cursor: pointer; }
+.research-current-page { margin: -6px 0 16px; color: var(--muted); font-size: 12px; }
+.research-main--reader .research-resource-details .research-section-heading { margin-top: 4px; align-items: center; }
+.research-main--reader .research-note, .research-main--reader .research-note-editor { padding: 16px; }
+.research-main--reader .research-note-location { grid-template-columns: 86px minmax(0, 1fr); gap: 10px; }
+.research-page:has(.research-main--reader) .research-header { min-height: 52px; padding-block: 8px; }
+.research-main--reader > .research-document-heading { padding: 8px 16px; }
+.research-main--reader > .research-document-heading h3 { font-size: 15px; max-height: 3.1em; overflow: auto; }
 .research-reader-content iframe { width: 100%; height: 100%; border: 0; background: #fff; }
 .research-reader-message { max-width: 28rem; margin: 0; padding: 20px; color: #fffefa; text-align: center; }
 .research-reader-message p { line-height: 1.6; }
@@ -237,3 +249,40 @@
   .research-reader-toolbar .button { min-height: 38px; }
   .research-resource-details { padding: 14px 12px 24px; }
 }
+
+/* Independent Research shell: one active document, bounded contextual rail. */
+.research-page .research-header { min-height: 64px; padding: 8px 20px; justify-content: flex-start; gap: 22px; color: var(--ink); background: #fffefa; border-bottom-color: #d9dfd9; }
+.research-page:has(.research-main--reader) .research-header { min-height: 64px; }
+.research-brand { width: 180px; flex: 0 0 auto; font-size: 15px; }
+.research-brand > span { width: 32px; height: 32px; }
+.research-private-label { margin-left: auto; font-size: 12px; color: var(--muted); }
+.research-document-tabs { display: flex; flex: 0 0 auto; align-items: stretch; gap: 3px; min-height: 43px; max-height: 43px; padding: 5px 10px 0; overflow-x: auto; scrollbar-width: thin; border-bottom: 1px solid #d9dfd9; background: #e8ece7; }
+.research-document-tabs button { border: 0; color: #58655e; background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+.research-home-tab { flex: 0 0 auto; padding: 6px 20px; border-radius: 6px 6px 0 0; }
+.research-home-tab[aria-selected=true] { background: #fffefa; color: var(--forest-deep); }
+.research-document-tab { display: flex; align-items: center; flex: 0 0 auto; max-width: 240px; border: 1px solid transparent; border-bottom: 0; border-radius: 6px 6px 0 0; }
+.research-document-tab.is-active { background: #fffefa; border-color: #d9dfd9; }
+.research-document-tab > [role=tab] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 8px 12px; max-width: 205px; }
+.research-document-tab.is-active > [role=tab] { color: var(--forest-deep); font-weight: 650; }
+.research-document-tab .research-tab-close { min-width: 30px; min-height: 30px; font-size: 19px; margin-right: 3px; border-radius: 5px; }
+.research-tab-close:hover { background: #dce3dc; }
+.research-page .research-workbench, .research-page .research-workbench--resource, .research-page .research-workbench--reader { grid-template-columns: 216px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.research-page .research-inspector { display: none; }
+.research-page .research-rail { min-height: 0; overflow-y: auto; padding: 20px 12px; color: #40564b; border-right: 1px solid #d9dfd9; background: #edf1eb; }
+.research-page .research-rail .research-tabs button { color: #52645a; font-size: 13px; border-radius: 6px; }
+.research-page .research-rail .research-tabs button:hover { color: var(--forest-deep); background: #dce6da; }
+.research-page .research-rail .research-tabs button[aria-current] { color: var(--forest-deep); background: #dce6da; border-color: transparent; }
+.research-recents { margin-top: 28px; }
+.research-recents h3 { margin: 0 10px 12px; color: #718076; font-size: 11px; font-weight: 600; }
+.research-recents > button { display: flex; width: 100%; flex-direction: column; gap: 6px; text-align: left; padding: 12px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #33473d; cursor: pointer; }
+.research-recents > button + button { margin-top: 4px; }
+.research-recents > button:hover, .research-recents > button[aria-current] { border-color: #d5dfd2; background: #fffefa; }
+.research-recents > button > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.55; font-size: 12px; }
+.research-recents small, .research-recents p { color: #77827a; font-size: 11px; line-height: 1.6; }
+.research-recents p { padding: 0 10px; }
+.research-note-tools { display: flex; align-items: center; gap: 3px; margin-bottom: 8px; }
+.research-note-tools > span { margin-right: auto; color: #52645a; font-size: 12px; }
+.research-main .research-note-body, .research-note-editor textarea { font-size: var(--note-font-size, 15px); }
+@media (max-width: 1150px) { .research-page .research-workbench, .research-page .research-workbench--resource, .research-page .research-workbench--reader { grid-template-columns: 178px minmax(0, 1fr); } .research-resource-layout { grid-template-columns: minmax(0, 1fr) 290px; } .research-brand { width: 144px; } }
+@media (max-width: 900px) { .research-page .research-main { grid-column: 2; grid-row: 1; } .research-page .research-rail { grid-column: 1; grid-row: 1; } .research-private-label { display: none; } }
+@media (max-width: 700px) { .research-page .research-header, .research-page:has(.research-main--reader) .research-header { min-height: 56px; padding: 7px 12px; } .research-brand { display: none; } .research-document-tab { max-width: 195px; } .research-page .research-workbench { display: flex; } .research-page .research-rail { display: block; flex: 0 0 auto; padding: 7px 10px; border-right: 0; border-bottom: 1px solid #d9dfd9; overflow: visible; } .research-page .research-rail .research-tabs { display: flex; } .research-page .research-rail .research-tabs button { text-align: center; flex: 1; min-height: 35px; } .research-recents { display: none; } .research-page .research-main { min-height: 0; flex: 1 1 auto; } .research-document-tabs { min-height: 43px; } }

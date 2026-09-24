@@ -1,8 +1,9 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { pdfAssetsPlugin } from "./pdf-assets-plugin";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), pdfAssetsPlugin()],
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],

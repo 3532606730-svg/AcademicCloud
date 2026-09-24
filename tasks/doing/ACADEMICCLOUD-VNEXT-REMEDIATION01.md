@@ -51,6 +51,8 @@ Backend catalog/library/metadata/suggestions/workspace/persistence; frontend Lib
 
 ## Current State
 
+September24 combined deployment COMPLETE: Owner requested immediate release without additional broad tests. Exact970 Core/frontend selected and running as PID1264984/NRestarts0; migrations037/038 applied exactly once, history38/admissions11/integrityOK/FK0. Frozen pre/post checks preserve42 business tables and all135 activated-file source tuples; empty initial private overlays and2 projection refreshes recorded. Current schema36 recovery was encrypted/off-host verified in backup commit7ec61964bc56bcb34354ce72c6d650d20f402ef0. Main/integration published docs00a5750 including runtime970. Compute7e/nginx unchanged, rollback unused. Dedicated medium agent performs only bounded signed-in live sanity; broader tests stopped. Existing corpus and report gates remain open. The following candidate/history paragraphs describe earlier checkpoints.
+
 September24 final candidate qualification: exact970cc479 passes Linux1124/1124 (backend471/frontend401/contracts3/Compute165/ops84), all types/build, source/extracted compiled acceptance and zero-vulnerability full/production audits. Independent Alibaba artifact verification passes without installation/build or live DB access. Archive SHA2565982240e308b0a321335ce6283979486d300915dead1653b2e517a3e78ecc97f. Exact old7e passes schema038 startup/source/private-overlay compatibility when supplied complete migration history; its original incomplete directory correctly rejects. Read-only live preflight remains7e/schema36/admissions11/integrityOK/FK0. Signed-in browser access is restored and baseline Details/PDF rendering recorded. Root prepares one encrypted schema36 recovery point, bounded37/38 migration and data-preserving binary rollback; dedicated medium agent owns verification. No release switch/publication yet; all earlier runtime paragraphs below are history.
 
 PHASE B local progress reconciled2026-09-24: source-generation037 and private Workspace038 are locally implemented and verified. One complete local deterministic gate on runtime source7b140f1 passed 1,118 tests with four Windows symlink-permission skips and zero failures; whole-workspace typecheck/build pass. Earlier schema038 compiled acceptance and old73b compatibility pass remain valid. Real-backend synthetic browser checks cover notes, collections, reading flags, guarded Back, recovery and isolated export. The private Workspace has a dedicated `/research` page with inline source-aware PDF reading, and Library row actions put a holding into private research as a queued item before opening it. Existing private APIs and data contracts remain authoritative. Independent history/source-transition and Reader reviews have no remaining material local finding. No new publication, production migration or deployment; September15 runtime observations below remain historical. The Owner requires all remaining charter content before one final publication.
@@ -98,6 +100,15 @@ The runbook selects candidate migration/admission paths after protected environm
 
 ## Remaining
 
+Owner consolidated reader/workspace acceptance (2026-09-24, ADR-045):
+- [ ] Owned PDF.js Preview/Research reader with correct page jumps and rendered-page note attachment; direct Preview “放入我的研究”.
+- [ ] Independent `/research`, upper-left Library/Research switch, contextual rail without duplicate workspace navigation, closeable document tabs, recent positions and protected drafts.
+- [ ] Rotation, zoom, native-text copy/search/export, private highlights/list/clear, notes/save/font controls; scanning/OCR remains interface-only.
+- [ ] Durable private source-bound progress/highlights, cross-account isolation/CAS, compatible additive migration/rollback.
+- [ ] Exact PDF worker/resource publication, GET/Range CORS and CSP; browser-first performance with no added Core services/cost.
+- [ ] Proportionate focused verification, real desktop/mobile browser path, exact release/live acceptance and Git/state reconciliation.
+
+
 - Catalog review recovery is locally implemented: account/Library-bound tab drafts survive a same-tab refresh, expire after 30 minutes, cap at four drafts and 32 MiB across the imported document, selections and results, and are cleared at sign-out. Resume obtains a fresh server Preview with acknowledgements cleared and completed items excluded. Focused refresh/expiry/quota tests and local signed-in browser acceptance pass; live acceptance remains open.
 - Latency ledger is now recorded at `docs/performance/vnext-latency-ledger.md`: existing list/search/Preview/Apply/checksum evidence is separated from transport probes, while PDF first paint, Details, signed-download TTFB, real upload stages and Workspace timing remain explicitly unmeasured with capture conditions recorded. No unmeasured value is treated as a production SLA.
 - Complete changed-path visual/interaction review across Login, Library/Search, Preview/Reader, Details/editor, Batch, Admin and empty/loading/error states at required widths.
@@ -128,6 +139,13 @@ Production, GitHub and the existing signed-in Edge session are available; no app
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
+
+Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance.
+
+Prior targeted reader evidence: backend30/30, frontend47+1, Linux assets32/32, CORS/CSP5/5 and old970 schema039 compatibility with complete history. Root resolved the review false positive from exact pinned PDF.js TextLayer constructor; no extra rotation assignment needed.
+
+
+2026-09-24 combined cutover PASS: output/vnext/integrated-970-deployment.log contains exact migration[37,38], current38, eleven admissions, preserved42 tables,135 matching source generations, FK0/integrityOK and active PID1264984/NRestarts0. The immutable artifact had already passed Linux1124/1124 and host checks; no further broad test run was made. Backup ciphertext9369e088…e55ad was remotely read back at private backup commit7ec61964…2ef0. No Compute/nginx change and no database restoration. Bounded signed-in candidate sanity follows.
 
 2026-09-24 exact970 final gate: dedicated medium verifier reports1124/1124 Linux tests, zero failures/skips, types/build/source and extracted compiled acceptance PASS, audits0. Host verifier SHA2569d6c75caf8e4b92b8257a7e3c7b385d0b2533dee0b2b9730a8f3696c1e04a5ea; archive598224…97f and manifest2b66ad…1781. Exact7e4919 runtime files hash-verified; complete schema038 startup, old activation/download, source preservation, repeat migrations0 and retained private overlays PASS; incomplete history rejects. Evidence: output/vnext/qualification-970-summary.json, verify-038-deployed-7e-runtime.log, host-970-runtime-verification.log and production-read-only-preflight-970.log. Production signed-in baseline measured Details and visibly rendered Mongolia Today page1; no writes and no PDF first-paint timing claim.
 
@@ -182,4 +200,4 @@ Takeover live evidence: qualified3c864374 worker remains active PID51089 with ze
 
 ## Next Action
 
-Finish the current schema36 encrypted recovery and reviewed migration/recovery script, then publish/deploy the exact qualified970 Core/frontend as the one combined release. Normal signed-in production access is restored; dedicated medium validation owns changed-path Library/Reader/Workspace/Catalog/transfer acceptance while root continues remaining corpus and final-report work. Preserve qualified active Compute7e, successful jobs and the six damaged-source replacement gates. OCR remains deferred. Record documentation HEAD separately from runtime source970; no intermediate feature deployment.
+Build, commit/publish and deploy ADR045 owned-reader candidate with additive039 and the prepared CSP/assets. One Codex IAB smoke and live CORS contract passed. Follow latest Owner no-new-backup/integrity/rollback-prep direction; do not rerun broad tests. Then verify normal signed-in live reader. Preserve Compute7e, successful corpus jobs, six damaged-source replacement gate and unfinished final report.

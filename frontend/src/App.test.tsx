@@ -1,3 +1,4 @@
+import { MockPdfReader, pdfReaderControl } from "./pdf-reader-test-double.tsx";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,7 +23,10 @@ import type { WorkspaceApi } from "./workspace-api.ts";
 
 const ACTIVITY_PREFERENCE_KEY = "academiccloud.activity-center.expanded.v1:account-1";
 
+vi.mock("./pdf-reader.tsx", () => ({ PdfReader: MockPdfReader }));
+
 beforeEach(() => {
+  pdfReaderControl.autoRender = true; pdfReaderControl.mounts = 0;
   // Most legacy interaction tests exercise controls inside the Activity Center.
   // Give those tests an explicit saved preference; focused tests below verify
   // the product's collapsed first-use state and preference persistence.
@@ -1112,7 +1116,7 @@ describe("App", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "paper.pdf" });
     expect(createDownload).toHaveBeenCalledWith("file-1", "inline");
-    expect(within(dialog).getByTitle("Preview of paper.pdf")).toHaveAttribute("referrerpolicy", "no-referrer");
+    expect(within(dialog).getByTestId("pdf-reader")).toHaveAttribute("data-source", "https://signed.invalid/preview");
     await user.keyboard("{Escape}");
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
 
@@ -1898,7 +1902,7 @@ describe("App", () => {
     await user.click(within(menu).getByRole("menuitem", { name: "Preview" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Online preview is currently unavailable"));
     const dialog = screen.getByRole("dialog", { name: "paper.pdf" });
-    expect(dialog.querySelector("iframe")).toBeNull();
+    expect(dialog.querySelector('[data-testid="pdf-reader"]')).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Retry" })).toBeEnabled();
     await user.click(within(dialog).getByRole("button", { name: "Close preview" }));
 
@@ -2658,7 +2662,7 @@ describe("App", () => {
     let dialog = await screen.findByRole("dialog", { name: displayName });
     if (previewable) {
       expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id, "inline");
-      expect(dialog.querySelector("iframe")).toBeInTheDocument();
+      expect(dialog.querySelector('[data-testid="pdf-reader"]')).toBeInTheDocument();
       await user.click(within(dialog).getByRole("button", { name: "Resource details" }));
       dialog = await screen.findByRole("dialog", { name: displayName });
       await user.click(await within(dialog).findByRole("button", { name: "Preview" }));
@@ -2728,7 +2732,9 @@ describe("document preview session", () => {
     const note = { id: "research-note", resourceId: resource.resourceId, sourceId: resource.sourceId, physicalPage: 7, locator: null,
       body: "Private research text", revision: 1, createdAt: "2026-09-15", updatedAt: "2026-09-15", deletedAt: null };
     return {
-      collections: vi.fn().mockResolvedValue([]), resource: vi.fn().mockResolvedValue({ resource, reading: null, collectionIds: [] }),
+      progress: vi.fn().mockResolvedValue(null), saveProgress: vi.fn().mockImplementation(async (resourceId, input) => ({ ...input, resourceId, revision: input.revision + 1, updatedAt: "2026-09-24" })),
+    recent: vi.fn().mockResolvedValue({ items: [], resources: [], nextBeforeId: null }), highlights: vi.fn().mockResolvedValue({ items: [], nextBeforeId: null }), createHighlight: vi.fn(), updateHighlight: vi.fn(),
+    collections: vi.fn().mockResolvedValue([]), resource: vi.fn().mockResolvedValue({ resource, reading: null, collectionIds: [] }),
       notes: vi.fn().mockResolvedValue({ items: [note], resources: [resource], nextBeforeId: null }),
       note: vi.fn().mockResolvedValue({ note, resource }), createNote: vi.fn(), updateNote: vi.fn(), saveReading: vi.fn(),
       reading: vi.fn().mockResolvedValue({ items: [], resources: [], nextBeforeId: null }),
@@ -2769,7 +2775,7 @@ describe("document preview session", () => {
     await within(research).findByText("Private research text");
     expect(window.location.pathname).toBe("/research");
     expect(preview).not.toBeInTheDocument();
-    expect(within(research).getByTitle("Source: book.pdf")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=1");
+    expect(within(research).getByTitle("Source: book.pdf")).toHaveAttribute("data-page", "1");
     expect(api.createLibraryDownload).toHaveBeenCalledTimes(2);
     act(() => window.history.back());
     await waitFor(() => expect(window.location.pathname).toBe("/"));
@@ -2786,10 +2792,11 @@ describe("document preview session", () => {
     const refreshed = await screen.findByRole("region", { name: "My research" });
     await within(refreshed).findByText("Private research text");
     expect(window.location.pathname).toBe("/research");
+    await within(refreshed).findByTestId("pdf-reader");
     expect(api.createLibraryDownload).toHaveBeenCalledTimes(4);
     expect(window.location.search + window.location.hash).toBe("");
     expect(JSON.stringify(window.history.state)).not.toMatch(/Private research text|signed\.invalid/u);
-    await user.click(within(refreshed).getByRole("button", { name: "Back" }));
+    await user.click(within(refreshed).getByRole("button", { name: "Library" }));
     await waitFor(() => expect(window.location.pathname).toBe("/"));
   });
 
@@ -2810,9 +2817,10 @@ describe("document preview session", () => {
     const refreshed = await screen.findByRole("region", { name: "My research" });
     expect(await within(refreshed).findByRole("button", { name: "My resources" })).toBeVisible();
     expect(within(refreshed).queryByRole("button", { name: "All research" })).not.toBeInTheDocument();
+    await user.click(within(refreshed).getByRole("button", { name: "Page notes" }));
     expect(await within(refreshed).findByText("Private research text")).toBeVisible();
     expect(document.title).toBe("My research · AcademicCloud");
-    await user.click(within(refreshed).getByRole("button", { name: "Back" }));
+    await user.click(within(refreshed).getByRole("button", { name: "Library" }));
     await waitFor(() => expect(window.location.pathname).toBe("/"));
     expect(document.title).toBe("AcademicCloud");
   });
@@ -2826,7 +2834,7 @@ describe("document preview session", () => {
     await user.click(await screen.findByRole("button", { name: "book.pdf" }));
     const preview = await screen.findByRole("dialog", { name: "book.pdf" });
     await user.click(within(preview).getByRole("button", { name: "Next page" }));
-    expect(preview.querySelector("iframe")?.src).toBe("https://signed.invalid/research.pdf#page=2");
+    expect(preview.querySelector('[data-testid="pdf-reader"]')?.getAttribute("data-page")).toBe("2");
     await user.click(within(preview).getByRole("button", { name: "Page notes" }));
     const research = await screen.findByRole("region", { name: "My research" });
     expect(window.location.pathname).toBe("/research");
@@ -2836,49 +2844,29 @@ describe("document preview session", () => {
     expect(within(editor).getByRole("textbox", { name: "Note" })).toHaveFocus();
   });
 
-  it("preserves a Reader note draft through same-route Back and returns once after discard", async () => {
+  it("protects an inline Reader draft when switching back to Library", async () => {
     const user = userEvent.setup();
-    const holding = LIBRARY_HOLDINGS[0]!;
-    const api = sessionApi({ workspace: researchApi(),
-      getLibraryHoldingDetails: vi.fn().mockResolvedValue({ holding, displayTitle: "book.pdf", originalFilename: "book.pdf",
-        metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43), bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: false, file: holding.file }),
-      createLibraryDownload: vi.fn().mockResolvedValue({ ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: holding.file.id, sourceId: "research-source" } }),
-    });
+    const api = sessionApi({ workspace: researchApi(), createLibraryDownload: vi.fn().mockResolvedValue({ ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source" } }) });
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: "My research" }));
     const research = await screen.findByRole("region", { name: "My research" });
-    const previousResearchState: unknown = window.history.state;
+    await user.click(within(research).getByRole("button", { name: "Page notes" }));
     await user.click(await within(research).findByRole("button", { name: "Open resource" }));
-    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
-    await user.click(within(preview).getByRole("button", { name: "Next page" }));
-    expect(preview.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=8");
-    await user.click(within(preview).getByRole("button", { name: "Page notes" }));
-    const editor = await screen.findByRole("form", { name: "Write a page note" });
-    const note = within(editor).getByRole("textbox", { name: "Note" });
-    await user.type(note, "Private Reader page eight draft");
-    const draftHistoryState: unknown = window.history.state;
-    const historyLength = window.history.length;
-    expect(draftHistoryState).not.toEqual(previousResearchState);
-
-    act(() => window.history.back());
-    await screen.findByText("Save or discard your note changes before leaving.");
-    await waitFor(() => expect(window.history.state).toEqual(draftHistoryState));
-    expect(window.location.pathname).toBe("/research");
-    expect(note).toHaveValue("Private Reader page eight draft");
+    const reader = await within(research).findByTestId("pdf-reader");
+    expect(reader).toHaveAttribute("data-page", "7");
+    await user.click(within(reader).getByRole("button", { name: "Next page" }));
+    await user.click(within(research).getByRole("button", { name: "Write a page note" }));
+    const editor = within(research).getByRole("form", { name: "Write a page note" });
+    await user.type(within(editor).getByRole("textbox", { name: "Note" }), "Private Reader page eight draft");
+    await user.click(within(research).getByRole("button", { name: "Library" }));
+    expect(await within(research).findByText("Save or discard your note changes before leaving.")).toBeInTheDocument();
+    expect(within(editor).getByRole("textbox", { name: "Note" })).toHaveValue("Private Reader page eight draft");
     expect(within(editor).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(8);
-    expect(window.history.length).toBe(historyLength);
-    expect(screen.getByTitle("Source: book.pdf")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=8");
-    expect(JSON.stringify(window.history.state)).not.toMatch(/Private Reader|signed\.invalid/u);
-
-    await user.click(within(editor).getByRole("button", { name: "Discard changes" }));
-    await user.click(screen.getByRole("button", { name: "Back" }));
-    await waitFor(() => expect(window.history.state).toEqual(previousResearchState));
     expect(window.location.pathname).toBe("/research");
-    expect(screen.queryByRole("form", { name: "Write a page note" })).not.toBeInTheDocument();
-    expect(await screen.findByText("Private research text")).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(JSON.stringify(window.history.state)).not.toMatch(/Private Reader|signed\.invalid/u);
+    await user.click(within(editor).getByRole("button", { name: "Discard changes" }));
+    await user.click(within(research).getByRole("button", { name: "Library" }));
     await waitFor(() => expect(window.location.pathname).toBe("/"));
-    expect(await screen.findByRole("button", { name: "book.pdf" })).toBeVisible();
   });
 
   it.each(["note", "collection"] as const)("preserves an unsaved %s on the research page through Back until discard", async (draft) => {
@@ -2910,11 +2898,11 @@ describe("document preview session", () => {
     expect(JSON.stringify(window.history.state)).not.toMatch(/Private|signed\.invalid/u);
     expect(window.location.hash + window.location.search).toBe("");
     await user.click(within(research).getByRole("button", { name: "Discard changes" }));
-    await user.click(within(research).getByRole("button", { name: "Back" }));
+    await user.click(within(research).getByRole("button", { name: "Library" }));
     await waitFor(() => expect(research).not.toBeInTheDocument());
     expect(window.location.pathname).toBe("/");
     expect(row).toBeVisible();
-    expect(document.querySelector("iframe")).toBeNull();
+    expect(document.querySelector('[data-testid="pdf-reader"]')).toBeNull();
     expect(api.createLibraryDownload).toHaveBeenCalledTimes(2);
   });
 
@@ -2947,34 +2935,24 @@ describe("document preview session", () => {
     act(() => window.history.back());
     await waitFor(() => expect(research).not.toBeInTheDocument());
     expect(window.location.pathname).toBe("/");
-    expect(document.querySelector("iframe")).toBeNull();
+    expect(document.querySelector('[data-testid="pdf-reader"]')).toBeNull();
   });
 
-  it("opens a saved page from standalone research with one Preview Back step", async () => {
-    const user = userEvent.setup();
-    const holding = LIBRARY_HOLDINGS[0]!;
-    const api = sessionApi({ workspace: researchApi(),
-      getLibraryHoldingDetails: vi.fn().mockResolvedValue({ holding, displayTitle: "book.pdf", originalFilename: "book.pdf",
-        metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43), bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: false, file: holding.file }),
-      createLibraryDownload: vi.fn().mockResolvedValue({ ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: holding.file.id, sourceId: "research-source" } }),
-    });
+  it("opens a saved note page in the independent research reader", async () => {
+    const user = userEvent.setup(); const api = sessionApi({ workspace: researchApi(), createLibraryDownload: vi.fn().mockResolvedValue({ ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source" } }) });
     render(<App api={api} />);
-    const trigger = await screen.findByRole("button", { name: "My research" });
-    await user.click(trigger);
+    await user.click(await screen.findByRole("button", { name: "My research" }));
     const research = await screen.findByRole("region", { name: "My research" });
-    expect(window.location.pathname).toBe("/research");
+    await user.click(within(research).getByRole("button", { name: "Page notes" }));
     await user.click(await within(research).findByRole("button", { name: "Open resource" }));
-    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
-    expect(preview.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=7");
-    act(() => window.history.back());
-    await waitFor(() => expect(preview).not.toBeInTheDocument());
-    const returned = await screen.findByRole("region", { name: "My research" });
+    expect(await within(research).findByTestId("pdf-reader")).toHaveAttribute("data-page", "7");
+    expect(screen.queryByRole("dialog", { name: "book.pdf" })).not.toBeInTheDocument();
     expect(window.location.pathname).toBe("/research");
-    await within(returned).findByText("Private research text");
-    expect(window.history.state.academiccloudDialog).toBeUndefined();
-    await user.click(within(returned).getByRole("button", { name: "Back" }));
+    await user.click(within(research).getByRole("button", { name: "All research" }));
+    expect(within(research).queryByTestId("pdf-reader")).not.toBeInTheDocument();
+    await within(research).findByText("Private research text");
+    await user.click(within(research).getByRole("button", { name: "Library" }));
     await waitFor(() => expect(window.location.pathname).toBe("/"));
-    expect(trigger).toBeVisible();
   });
 
   it.each(["sourceId", "resourceId"] as const)("rejects a fresh inline authorization with a different %s in Research", async (mismatch) => {
@@ -2997,7 +2975,7 @@ describe("document preview session", () => {
     expect(await within(research).findByRole("alert")).toHaveTextContent("The source file changed. Return to the Library and reopen it.");
     expect(window.location.pathname).toBe("/research");
     expect(preview).not.toBeInTheDocument();
-    expect(document.querySelector("iframe")).toBeNull();
+    expect(document.querySelector('[data-testid="pdf-reader"]')).toBeNull();
     expect(api.createLibraryDownload).toHaveBeenCalledTimes(2);
   });
 
@@ -3013,11 +2991,11 @@ describe("document preview session", () => {
     await user.click(await screen.findByRole("button", { name: "book.pdf" }));
     await user.click(within(await screen.findByRole("dialog", { name: "book.pdf" })).getByRole("button", { name: "Page notes" }));
     const research = await screen.findByRole("region", { name: "My research" });
-    expect(await within(research).findByTitle("Source: book.pdf")).toHaveAttribute("src", "https://signed.invalid/original.pdf#page=1");
+    expect(await within(research).findByTitle("Source: book.pdf")).toHaveAttribute("data-page", "1");
     await user.click(within(research).getByRole("button", { name: "Download original" }));
     await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledTimes(3));
     expect(click).not.toHaveBeenCalled();
-    expect(within(research).getByTitle("Source: book.pdf")).toHaveAttribute("src", "https://signed.invalid/original.pdf#page=1");
+    expect(within(research).getByTitle("Source: book.pdf")).toHaveAttribute("data-page", "1");
     click.mockRestore();
   });
 
@@ -3035,13 +3013,13 @@ describe("document preview session", () => {
     else await user.click(await screen.findByRole("button", { name }));
     const shell = await screen.findByRole("dialog", { name });
     expect(within(shell).getByRole("status")).toBeInTheDocument();
-    expect(shell.querySelector("iframe")).toBeNull();
+    expect(shell.querySelector('[data-testid="pdf-reader"]')).toBeNull();
     expect(within(shell).getByRole("button", { name: "Download" })).toBeEnabled();
     expect(createDownload).toHaveBeenCalledTimes(1);
 
     await act(async () => pending.resolve(authorization("https://signed.invalid/ready.pdf")));
     expect(screen.getByRole("dialog", { name })).toBe(shell);
-    expect(shell.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/ready.pdf");
+    expect(shell.querySelector('[data-testid="pdf-reader"]')).toHaveAttribute("data-source", "https://signed.invalid/ready.pdf");
   });
 
   it("does not reopen a closed document when its source authorization arrives late", async () => {
@@ -3055,7 +3033,7 @@ describe("document preview session", () => {
     await user.click(within(shell).getByRole("button", { name: "Close preview" }));
     await act(async () => pending.resolve(authorization("https://signed.invalid/late.pdf")));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(document.querySelector("iframe")).toBeNull();
+    expect(document.querySelector('[data-testid="pdf-reader"]')).toBeNull();
     expect(trigger).toHaveFocus();
   });
 
@@ -3071,11 +3049,11 @@ describe("document preview session", () => {
     await user.click(trigger);
     const reopened = await screen.findByRole("dialog", { name: "book.pdf" });
     await act(async () => second.resolve(authorization("https://signed.invalid/new.pdf")));
-    const frame = reopened.querySelector("iframe");
-    expect(frame).toHaveAttribute("src", "https://signed.invalid/new.pdf");
+    const frame = reopened.querySelector('[data-testid="pdf-reader"]');
+    expect(frame).toHaveAttribute("data-source", "https://signed.invalid/new.pdf");
     await act(async () => first.resolve(authorization("https://signed.invalid/old.pdf")));
-    expect(reopened.querySelector("iframe")).toBe(frame);
-    expect(frame).toHaveAttribute("src", "https://signed.invalid/new.pdf");
+    expect(reopened.querySelector('[data-testid="pdf-reader"]')).toBe(frame);
+    expect(frame).toHaveAttribute("data-source", "https://signed.invalid/new.pdf");
     expect(createLibraryDownload).toHaveBeenCalledTimes(2);
   });
 
@@ -3089,12 +3067,12 @@ describe("document preview session", () => {
     await user.click(await screen.findByRole("button", { name: "book.pdf" }));
     const shell = await screen.findByRole("dialog", { name: "book.pdf" });
     expect(await within(shell).findByRole("alert")).toHaveTextContent("Online preview is currently unavailable");
-    expect(shell.querySelector("iframe")).toBeNull();
+    expect(shell.querySelector('[data-testid="pdf-reader"]')).toBeNull();
     expect(within(shell).getByRole("button", { name: "Download" })).toBeEnabled();
     await user.click(within(shell).getByRole("button", { name: "Retry" }));
     expect(screen.getByRole("dialog", { name: "book.pdf" })).toBe(shell);
     await act(async () => retry.resolve(authorization("https://signed.invalid/retried.pdf")));
-    expect(shell.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/retried.pdf");
+    expect(shell.querySelector('[data-testid="pdf-reader"]')).toHaveAttribute("data-source", "https://signed.invalid/retried.pdf");
     expect(within(shell).queryByRole("alert")).not.toBeInTheDocument();
     expect(createLibraryDownload.mock.calls).toEqual([
       [DEFAULT_LIBRARY.id, LIBRARY_HOLDINGS[0]!.file.id, "inline"],
@@ -3102,7 +3080,7 @@ describe("document preview session", () => {
     ]);
   });
 
-  it("retains one iframe and authorization across Details close and its Preview action", async () => {
+  it("retains one reader and authorization across Details close and its Preview action", async () => {
     const user = userEvent.setup();
     const api = sessionApi();
     render(<App api={api} />);
@@ -3117,14 +3095,14 @@ describe("document preview session", () => {
     expect(frame).toBeInTheDocument();
     await user.click(await within(details).findByRole("button", { name: "Preview" }));
     expect(screen.getByRole("dialog", { name: "book.pdf" })).toBe(shell);
-    expect(shell.querySelector("iframe")).toBe(frame);
+    expect(shell.querySelector('[data-testid="pdf-reader"]')).toBe(frame);
     expect(shell).not.toHaveAttribute("inert");
 
     await user.click(within(shell).getByRole("button", { name: "Resource details" }));
     details = await screen.findByRole("dialog", { name: "book.pdf" });
     await user.click(within(details).getByRole("button", { name: "Close resource details" }));
     expect(screen.getByRole("dialog", { name: "book.pdf" })).toBe(shell);
-    expect(shell.querySelector("iframe")).toBe(frame);
+    expect(shell.querySelector('[data-testid="pdf-reader"]')).toBe(frame);
     expect(api.createLibraryDownload).toHaveBeenCalledTimes(1);
     await user.click(within(shell).getByRole("button", { name: "Close preview" }));
     expect(trigger).toHaveFocus();
@@ -3161,7 +3139,7 @@ describe("document preview session", () => {
     }
   });
 
-  it("updates the reading title after metadata save without replacing the source iframe", async () => {
+  it("updates the reading title after metadata save without replacing the source reader", async () => {
     const user = userEvent.setup();
     const holding = LIBRARY_HOLDINGS[0]!;
     const detail = {
@@ -3185,7 +3163,7 @@ describe("document preview session", () => {
     await waitFor(() => expect(api.updateLibraryHoldingMetadata).toHaveBeenCalled());
     await user.click(await screen.findByRole("button", { name: "Preview" }));
     expect(screen.getByRole("dialog", { name: "New canonical title" })).toBe(shell);
-    expect(shell.querySelector("iframe")).toBe(frame);
+    expect(shell.querySelector('[data-testid="pdf-reader"]')).toBe(frame);
     expect(frame).toHaveAttribute("title", "Preview of New canonical title");
     expect(api.createLibraryDownload).toHaveBeenCalledTimes(1);
   });
@@ -3714,7 +3692,7 @@ describe("zero-descriptive-copy", () => {
     expect(within(dialog).queryByText(/short-lived|expires automatically/i)).not.toBeInTheDocument();
     expect(within(dialog).queryByRole("link", { name: /new tab/i })).not.toBeInTheDocument();
     // Open remains accessible with the terse label and the signed inline URL.
-    expect(within(dialog).getByRole("link", { name: "Open" })).toHaveAttribute("href", "https://signed.invalid/preview");
+    expect(within(dialog).getByRole("link", { name: "Open" })).toHaveAttribute("href", "https://signed.invalid/preview#page=1");
 
     // Download is a separate, normal authoritative path (attachment) that must
     // not reuse the inline preview URL.

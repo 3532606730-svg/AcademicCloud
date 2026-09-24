@@ -10,7 +10,7 @@ import { SqliteWorkspaceRepository } from "../../src/persistence/sqlite/workspac
 import { WorkspaceService } from "../../src/workspace/service.js";
 import { INITIAL_MIGRATIONS_DIRECTORY } from "./helpers.js";
 
-test("038 only adds overlay tables, preserves existing Core rows and retains private state through reopen", (context) => {
+test("038–039 only add overlay tables, preserves existing Core rows and retains private state through reopen", (context) => {
   const directory = mkdtempSync(join(tmpdir(), "academiccloud-workspace-migration-"));
   for (const name of readdirSync(INITIAL_MIGRATIONS_DIRECTORY)) if (Number(name.slice(0, 3)) <= 37) {
     copyFileSync(join(INITIAL_MIGRATIONS_DIRECTORY, name), join(directory, name));
@@ -29,7 +29,7 @@ test("038 only adds overlay tables, preserves existing Core rows and retains pri
         'md5', 'AAAAAAAAAAAAAAAAAAAAAA==', 'active', 9, ?, ?, ?)`).run(now.toISOString(), now.toISOString(), now.toISOString());
     const tables = database.prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'schema_migrations' ORDER BY name").all();
     const snapshots = tables.map(({ name }) => ({ name, rows: database.prepare(`SELECT * FROM "${name.replaceAll('"', '""')}"`).all() }));
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).appliedVersions, [38]);
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).appliedVersions, [38, 39]);
     for (const snapshot of snapshots) assert.deepEqual(database.prepare(`SELECT * FROM "${snapshot.name.replaceAll('"', '""')}"`).all(), snapshot.rows, snapshot.name);
     assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
     const workspace = new WorkspaceService(persistence, new SqliteWorkspaceRepository(database), () => now);

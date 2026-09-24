@@ -1,4 +1,4 @@
-import type { CollectionItem, PageNote, ReadingState, ResearchCollection, WorkspaceRepository, WorkspaceResource } from "../../workspace/model.js";
+import type { CollectionItem, PageNote, ReadingState, ReaderProgress, TextHighlight, ResearchCollection, WorkspaceRepository, WorkspaceResource } from "../../workspace/model.js";
 import type { SqliteDatabase } from "./database.js";
 
 const noteColumns = `id, file_id AS resourceId, source_id AS sourceId, physical_page AS physicalPage,
@@ -7,11 +7,61 @@ const collectionColumns = `c.id, c.name, c.revision, c.created_at AS createdAt, 
   c.archived_at AS archivedAt, (SELECT count(*) FROM personal_collection_items i
     WHERE i.account_id = c.account_id AND i.collection_id = c.id) AS itemCount`;
 const readingColumns = `file_id AS resourceId, status, important, to_cite AS toCite, revision, updated_at AS updatedAt`;
+const progressColumns = `p.file_id AS resourceId, p.source_id AS sourceId, p.physical_page AS physicalPage, p.revision, p.updated_at AS updatedAt`;
+const highlightColumns = `id, file_id AS resourceId, source_id AS sourceId, physical_page AS physicalPage,
+  selected_text AS text, rectangles, color, revision, created_at AS createdAt, updated_at AS updatedAt, deleted_at AS deletedAt`;
+type HighlightRow = Omit<TextHighlight, "rects"> & { rectangles: string };
+const highlight = ({ rectangles, ...row }: HighlightRow): TextHighlight => ({ ...row, rects: JSON.parse(rectangles) });
 type ReadingRow = Omit<ReadingState, "important" | "toCite"> & { important: number; toCite: number };
 const reading = (row: ReadingRow): ReadingState => ({ ...row, important: row.important === 1, toCite: row.toCite === 1 });
 
 export class SqliteWorkspaceRepository implements WorkspaceRepository {
   constructor(private readonly database: SqliteDatabase) {}
+
+  getProgress(accountId: string, resourceId: string, sourceId: string): ReaderProgress | null {
+    return this.database.prepare<[string, string, string], ReaderProgress>(`SELECT ${progressColumns} FROM personal_reader_progress p
+      WHERE p.account_id = ? AND p.file_id = ? AND p.source_id = ?`).get(accountId, resourceId, sourceId) ?? null;
+  }
+  saveProgress(accountId: string, p: ReaderProgress, expectedRevision: number): boolean {
+    if (expectedRevision === 0) return this.database.prepare(`INSERT INTO personal_reader_progress
+      (account_id, file_id, source_id, physical_page, revision, updated_at) VALUES (?, ?, ?, ?, 1, ?)
+      ON CONFLICT(account_id, file_id, source_id) DO NOTHING`).run(accountId, p.resourceId, p.sourceId, p.physicalPage, p.updatedAt).changes === 1;
+    return this.database.prepare(`UPDATE personal_reader_progress SET physical_page = ?, revision = revision + 1, updated_at = ?
+      WHERE account_id = ? AND file_id = ? AND source_id = ? AND revision = ?`)
+      .run(p.physicalPage, p.updatedAt, accountId, p.resourceId, p.sourceId, expectedRevision).changes === 1;
+  }
+  listProgress(accountId: string, beforeId: string | null, limit: number, currentOnly = true): ReaderProgress[] {
+    return this.database.prepare<{ accountId: string; beforeId: string | null; limit: number }, ReaderProgress>(`
+      SELECT ${progressColumns} FROM personal_reader_progress p
+      ${currentOnly ? "JOIN document_current_sources s ON s.file_id = p.file_id AND s.source_id = p.source_id" : ""}
+      WHERE p.account_id = @accountId AND (@beforeId IS NULL OR (p.updated_at, p.source_id) <
+        (SELECT updated_at, source_id FROM personal_reader_progress WHERE account_id = @accountId AND source_id = @beforeId))
+      ORDER BY p.updated_at DESC, p.source_id DESC LIMIT @limit
+    `).all({ accountId, beforeId, limit });
+  }
+  getHighlight(accountId: string, id: string): TextHighlight | null {
+    const row = this.database.prepare<[string, string], HighlightRow>(`SELECT ${highlightColumns} FROM personal_text_highlights WHERE account_id = ? AND id = ?`).get(accountId, id);
+    return row ? highlight(row) : null;
+  }
+  listHighlights(accountId: string, filter: { resourceId?: string; sourceId?: string; deleted?: boolean; beforeId: string | null; limit: number }): TextHighlight[] {
+    return this.database.prepare<{ accountId: string; resourceId: string | null; sourceId: string | null; deleted: number | null; beforeId: string | null; limit: number }, HighlightRow>(`
+      SELECT ${highlightColumns} FROM personal_text_highlights WHERE account_id = @accountId
+        AND (@resourceId IS NULL OR file_id = @resourceId) AND (@sourceId IS NULL OR source_id = @sourceId)
+        AND (@deleted IS NULL OR (deleted_at IS NOT NULL) = @deleted)
+        AND (@beforeId IS NULL OR id < @beforeId) ORDER BY id DESC LIMIT @limit
+    `).all({ accountId, resourceId: filter.resourceId ?? null, sourceId: filter.sourceId ?? null,
+      deleted: filter.deleted === undefined ? null : +filter.deleted, beforeId: filter.beforeId, limit: filter.limit }).map(highlight);
+  }
+  createHighlight(accountId: string, h: TextHighlight): void {
+    this.database.prepare(`INSERT INTO personal_text_highlights
+      (id, account_id, file_id, source_id, physical_page, selected_text, rectangles, color, revision, created_at, updated_at, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(h.id, accountId, h.resourceId, h.sourceId, h.physicalPage,
+      h.text, JSON.stringify(h.rects), h.color, h.revision, h.createdAt, h.updatedAt, h.deletedAt);
+  }
+  saveHighlight(accountId: string, h: TextHighlight, expectedRevision: number): boolean {
+    return this.database.prepare(`UPDATE personal_text_highlights SET color = ?, revision = revision + 1, updated_at = ?, deleted_at = ?
+      WHERE account_id = ? AND id = ? AND revision = ?`).run(h.color, h.updatedAt, h.deletedAt, accountId, h.id, expectedRevision).changes === 1;
+  }
 
   resolveResources(accountId: string, ids: string[]): WorkspaceResource[] {
     if (!ids.length) return [];

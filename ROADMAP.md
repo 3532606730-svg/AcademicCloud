@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-09-24
+**Last reconciled:** 2026-09-25
 
 ## Product Direction
 
@@ -28,7 +28,12 @@ The current reliability interlock changes sequencing, not this model.
 
 ## Active vNext remediation interlock
 
-The current Owner charter and explicit Phase B takeover on 2026-09-09 supersede the narrow historical R01–R16 completion sequence below. The sole active task remains ACADEMICCLOUD-VNEXT-REMEDIATION01. Unified Library/Search, source-generation037, private Workspace038, inline PDF reading and resumable Catalog review now pass their local gates. The inherited expiry defect in existing-note page jumps is repaired and checked against source replacement. Details and note-save timings now include a signed-in browser against real local HTTP/Auth/SQLite; production transport and PDF first-paint timings remain open. The bounded full-text evaluation is recorded as design-only, and the Owner has deferred OCR execution. Finish candidate qualification before one combined publication/deployment, then verify live workflows and the current corpus. Do not force the entire old RF queue to precede useful private research tools. Full-corpus OCR and RAG rollout remain later evidence-dependent decisions.
+September25 reader milestone under ADR045: owned client-side PDF.js rendering, independent Library/Research navigation, closeable research tabs/recent reading, private source-bound progress/highlights and page notes, native-text search/export. Same shared resource bytes and account-private overlays. Local IAB smoke passed;039 release is next. OCR remains interface-only; no new service or infrastructure cost.
+
+
+September24 milestone: the integrated970 Core/frontend release is deployed with source037 and Workspace038; exact Linux1124/1124, host verification and data-preserving migration checks pass. The Owner requested fast deployment without additional broad testing. The next gate is bounded normal-site confirmation, then unfinished/affected corpus and final-report completion. Compute7e remains active and unchanged; the six damaged-source replacement cases remain an external gate.
+
+The current Owner charter and explicit Phase B takeover on 2026-09-09 supersede the narrow historical R01–R16 completion sequence below. The sole active task remains ACADEMICCLOUD-VNEXT-REMEDIATION01. Unified Library/Search, source-generation037, private Workspace038, inline PDF reading and resumable Catalog review now pass their local gates. The inherited expiry defect in existing-note page jumps is repaired and checked against source replacement. Details and note-save timings now include a signed-in browser against real local HTTP/Auth/SQLite; production transport and PDF first-paint timings remain open. The bounded full-text evaluation is recorded as design-only, and the Owner has deferred OCR execution. Candidate qualification and the combined publication/deployment are complete; continue the remaining live workflows and current-corpus work. Do not force the entire old RF queue to precede useful private research tools. Full-corpus OCR and RAG rollout remain later evidence-dependent decisions.
 
 Existing SQLite/Core/storage-adapter/Local Pull boundaries remain valuable. Avoid a framework/database rewrite, new resident service or model change without evidence. Zero added infrastructure cost and zero billable GitHub usage remain gates. Historical parked entries are an inventory, not a competing active sequence.
 

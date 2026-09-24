@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-09-24. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
+**Last reconciled:** 2026-09-25. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
 ## Active work and authority
 
@@ -10,21 +10,33 @@ The charter authorizes implementation beyond R01–R16, visual refinement, optim
 
 September24 continuation recovered the active vNext tree instead of replaying the obsolete original checkout. The Owner requests `medium` effort for all subagents and a dedicated validation agent; root owns implementation, reconciliation and release preparation. The publication cadence remains one combined release after the local integrated batch.
 
+## Owned reader and independent Research — current candidate
+
+ADR-045 supersedes the historical native-PDF description below. The local candidate uses pinned PDF.js6.2.108, source-bound private progress/highlights (additive migration039), direct preview footer add, top Library/Research switch, independent tabs and recent reading, rendered-page notes, native-text search/export, rotation/zoom and a bounded one-canvas renderer. Rendering and text work run in the browser; Core stores only private sidecars. OCR stays deferred behind its existing interface.
+
+Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance.
+
+Earlier targeted evidence is retained: reader backend30, frontend47+1, Linux assets32 and CORS/CSP5 passed; exact old970 with complete001–039 migrations preserves authored overlays. Current production remains970/schema38 until cutover. No new infrastructure or Compute change.
+
 ## Source and takeover evidence
 
-Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. Last published source **73b26d257c0f9508758bdb90d42165e80939cecd** is on main and integration; equality was verified at publication. New local checkpoints intentionally lead those branches while the integrated batch continues. Takeover source5eeed4c remains historical.
+Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. The combined runtime970 plus documentation checkpoint **00a57507d1ea507c34712f543757121bf3558937** was atomically published to main/integration. Fresh fetch verified active local HEAD equals both remote heads; post-deployment documentation reconciliation follows. Takeover source5eeed4c remains historical.
 
 Predecessor CI34355914519/main and34354370164/integration passed at5eeed4c. Current publication uses [skip ci] with exact local Linux qualification to guarantee zero billable hosted usage. The original D:/Projects/AcademicCloud checkout and other review/staging work remain preserved; synchronization refers to the active vNext checkout. The predecessor's ignored final-draft report is incomplete and is not final acceptance.
 
-## Final combined candidate — qualified, release preparation active
+## Final combined release — deployed September24
+
+The Owner requested expedited deployment after qualification. Exact970 Core/frontend is now deployed: Core PID1264984 active/running, zero restarts, loopback health/readiness PASS. Exactly migrations037/038 applied; history001–038 and eleven admissions verify, integrity OK/FK0. In the stopped-write migration window, all42 pre-existing non-derived business tables remained identical;135 source generations matched the activated files with zero byte-tuple mismatches. Private Workspace tables began empty. Two dirty search projection rows refreshed. Compute7e and nginx remained unchanged. Recovery was not used.
+
+One fresh schema36 recovery point was verified and age-encrypted before migration; encrypted files were independently fetched and rehashed in the existing private backup repository at commit7ec61964bc56bcb34354ce72c6d650d20f402ef0. No plaintext database left the host. Application recovery retains live37/38 plus a complete verified migration directory rather than discarding authored data. Main/integration publication includes runtime970 and docs00a5750; final documentation reconciliation is separate. Bounded signed-in candidate checks are in progress; no additional broad tests are planned. This release does not close the outstanding corpus/replacement or whole-charter gates.
 
 Exact source `970cc479f8098f48f9aad1f2ee406986e56c1f46` passes dedicated medium-agent Linux qualification: backend471, frontend401, contracts3, Compute165 and operations84, **1,124/1,124 with zero skips/failures**. All types/build, source and extracted compiled acceptance pass; full and production audits report zero vulnerabilities. Ubuntu24.04 x86-64 used non-root academiccloud, Node24.19.0/npm11.19.1. The four-file bundle archive SHA256 is `5982240e308b0a321335ce6283979486d300915dead1653b2e517a3e78ecc97f`; manifest4960 entries/37,285,225bytes. Independent Alibaba verification as the service account passes the same bundle/native modules/compiled schema038/private isolation and recovery checks, without install/build or live database access.
 
-September24 read-only live preflight confirms exact7e selector/process, active Core with zero restarts, schema/history36/001–036, eleven admissions, integrity OK and zero FK violations. The existing recovery point predates schema36, so one current encrypted off-host recovery point is being prepared before37/38. Exact hash-verified7e passes the synthetic schema038 compatibility fixture only with complete migration assets; rollback must retain the actual37/38 schema and authored overlays and explicitly override its migration directory after environment loading. Compute remains exact7e enabled/active; this combined release changes only Core/frontend.
+September24 read-only live preflight confirms exact7e selector/process, active Core with zero restarts, schema/history36/001–036, eleven admissions, integrity OK and zero FK violations. The prior recovery point predated schema36; the fresh recovery and completed migration are recorded above. Exact hash-verified7e passes the synthetic schema038 compatibility fixture only with complete migration assets; rollback must retain the actual37/38 schema and authored overlays and explicitly override its migration directory after environment loading. Compute remains exact7e enabled/active; this combined release changes only Core/frontend.
 
-Normal signed-in production browser access is restored. Baseline Details opens and a visibly painted Mongolia Today PDF are recorded in the latency ledger; candidate live behavior and first-paint/transfer timings remain open. No publication or production cutover has occurred at this checkpoint. Later documentation-only commits do not change the qualified artifact source970.
+Normal signed-in production browser access is restored. Baseline Details opens and a visibly painted Mongolia Today PDF are recorded in the latency ledger; candidate live behavior and first-paint/transfer timings remain open. The combined cutover is recorded above. Later documentation-only commits do not change the qualified artifact source970.
 
-## Last observed runtime
+## Historical September15 runtime baseline
 
 | Component | Evidence on September15 |
 |---|---|
@@ -51,19 +63,19 @@ Independent frontend review and real-browser document-session checks at1440/1024
 
 The repository is private and remaining included Actions allowance cannot be verified with existing read scopes. Publish with [skip ci] and qualify locally to uphold zero new billable GitHub usage. New remote CI is skipped, not claimed passed.
 
-## Unified Library/Search — verified locally; included in the final combined release
+## Unified Library/Search — local evidence, now included in deployed970
 
 Search now carries the authorized Holding identity/version and uses the same resource rows, selection, favorites, details/download and permitted batch actions as browsing. Changing query/filter/sort clears previous selection; paging preserves it; revision changes cancel old requests. List/Search/Favorites share bounded metadata/bibliography/authority projection. Details returns the current Holding after edits, allowing the open reading title to update without replacing the iframe. Owner folder loading no longer hides already available Library holdings. Bibliography subtitles use separate facts, avoid repeating title authors and keep historical edition statements together.
 
 Backend78 related tests and types/build pass; full frontend360/360, types/build pass. Local browser1440/1024/768/390 selection/toolbars have no horizontal overflow; desktop/mobile screenshots reviewed. Parent diff review covers authorization, query scope and stale UI responses; follow-up subagent review stopped at its account usage limit and is not counted as completed. No migrations, dependencies, Compute model/runtime or production writes in this new milestone yet. Source73b26d2 was pushed before the Owner requested one final combined publication. An already-started exact Linux validation may finish locally; no deployment of this intermediate checkpoint. Continue the integrated improvement batch with local checks/checkpoints, then perform final qualification, push/deployment and live acceptance once.
 
-## Source generations — locally implemented and independently verified
+## Source generations — local evidence, now deployed in schema037
 
 ADR-043/migration037 records immutable byte generations, backfills already activated files without changing their records or objects, and captures single/multipart/compatible-old-runtime activation atomically. Rename, move, ownership promotion and recycle/restore keep the same generation; actual byte-tuple changes create a new one. Preview/download returns only authorized resourceId/sourceId and rejects a source change or recycle during signing. Catalog CAS/fingerprints remain unchanged.
 
 Dedicated verifier: backend455 passed, zero failures, three Windows symlink-permission skips; current build and compiled acceptance PASS. Tests cover retained deleted/purging/purged migration rows, rollback transactions, cross-file constraints and unauthorized requests with zero source queries. Reused hash-verified73b Linux runtime passes schema37 startup/activation/rename/download with complete migration history, while an incomplete directory fails closed. This is local migration/compatibility evidence; last observed production remains schema36/live7e. Source checkpoint8857e27 is local only.
 
-## Private Workspace — locally implemented and verified
+## Private Workspace — local evidence, now deployed in schema038
 
 ADR-044/migration038 adds account-private reading state, important/to-cite flags, named Collections and Page Notes bound to immutable source generations. Notes and collections support recoverable removal/archive; account-scoped NDJSON export includes authored state. Collection membership and text edits use revision checks; delayed requests cannot silently undo later changes. Current resource access is rechecked independently, and Owner has no exception to another account's research privacy. Notes on replaced/unavailable sources remain authored records and cannot open against different bytes.
 
@@ -71,7 +83,7 @@ Full frontend388/388 and backend467 passed/0 failed/3 Windows symlink-permission
 
 Evidence: output/vnext/workspace-{frontend-final,backend-validation,compiled-validation,old-runtime-validation}.log and workspace-browser-verification.json. The Owner reaffirmed on September22: finish all integrated work before publication. Workspace completion does not close Catalog/transfer/search measurement, bounded full-text evaluation or whole-product final acceptance.
 
-## Visual redesign — local milestone
+## Visual redesign — local evidence, now deployed970
 
 The local frontend now uses a warm neutral catalogue palette, legible bibliographic titles, visible search/type/sort/filter controls and compact Library rows. The Owner-requested private Research Desk is a dedicated `/research` page. Selecting a PDF presents its authorized source beside reading state, collections, page notes and private export; mobile switches between source and notes. The earlier overlay, repeated privacy labels, English decoration and technical “physical page” wording have been removed. Explicit PDF page controls carry the selected one-based page into the note editor, where a page confirmation prevents silent misattribution when the native viewer was scrolled independently. Expired signed links are identified and page navigation reauthorizes the unchanged source. The app does not infer page changes inside the native PDF viewer or claim OCR/image overlays.
 
@@ -107,7 +119,7 @@ All 12 Owner acceptance PDFs remain in the local staging directory with matching
 
 This is not corpus acceptance. The 16 successful jobs must be preserved and classified from their existing results; known bad-source identities need replacement bytes or an explicit unresolved gate. Only unfinished/affected sources should proceed through normal signed-in website upload/retry after the final candidate Compute/Core qualification. The final gate requires one time-bound read-only inventory/queue/state projection plus normal-path browser acceptance and the 29-section report; the September9 snapshots and the old runtime do not prove zero failed/stuck/state mismatch.
 
-The six previously diagnosed replacement-required PDFs were checked against the historical 88-item request minus 82 result identities and the September23 inventory: all six still have identical byte length and MD5. None has an identified replacement among the 12 staged Owner files or name-matching alternates in the known local roots. The Owner has been asked whether usable copies exist; unchanged bad bytes will not be retried. Current source review also confirms `compute/` has not changed since deployed `7e2d1bf`; the new shared OCR contract is additive and only Core imports it for the disabled Reader endpoint. Exact Linux/release compatibility remains a final gate.
+The six previously diagnosed replacement-required PDFs were checked against the historical 88-item request minus 82 result identities and the September23 inventory: all six still have identical byte length and MD5. None has an identified replacement among the 12 staged Owner files or name-matching alternates in the known local roots. The Owner has been asked whether usable copies exist; unchanged bad bytes will not be retried. Current source review also confirms `compute/` has not changed since deployed `7e2d1bf`; the new shared OCR contract is additive and only Core imports it for the disabled Reader endpoint. Exact970 Linux/host qualification and the combined release have now passed; the damaged-source boundary remains.
 ## Established evidence retained
 
 - Schema035/036, SQLite search projection and Catalog v2 review/Apply authority are deployed. Confidence does not confer authority; UNKNOWN does not auto-apply.
@@ -120,14 +132,12 @@ The six previously diagnosed replacement-required PDFs were checked against the 
 
 ## Immediate execution order
 
-1. Finish the integrated improvement batch locally. The Owner has requested one final publication/deployment rather than milestone releases; preserve live7e while continuing.
-   September22 priority update: improve the actual website's visual quality first; the other integrated items remain required.
-2. Preserve locally qualified unified Library/Search, source-generation037 and private Workspace038; keep remaining app/Preview/Library/Details/Reader evidence explicit and use local Git checkpoints.
-3. Reconcile every remaining charter item against code and evidence; private Workspace completion is one milestone, not completion of the integrated batch.
-4. Improve selective/resumable Catalog and measured upload/search bottlenecks; evaluate quality with field evidence and abstention, not schema acceptance alone.
-5. Evaluate bounded full-text foundations after the preceding dependencies; no immediate whole-corpus OCR/RAG rollout.
+1. Complete the bounded signed-in sanity check on deployed970. Keep green Linux/host qualification closed; the Owner requested no additional broad tests.
+2. Record publication/runtime/local synchronization precisely, then continue normal-path unfinished/affected corpus work, preserving successful jobs and requiring new bytes for the six damaged sources.
+3. Finish remaining Catalog/transfer/private-workspace product evidence and the29-section report without equating deployment with whole-charter acceptance.
+4. Keep field quality distinct from format/evidence qualification; OCR execution, full-corpus text indexing and RAG remain deferred.
 
-Fresh browser-to-loopback export and full browser download were previously blocked by the browser automation boundary. Verify what the currently available browser can actually do before calling these product defects. Whole-product acceptance, current-source tests, publication and the final report remain open.
+Fresh browser-to-loopback export was previously blocked by an automation boundary; recheck only when its normal user path is needed. Publication and exact-source tests now pass; remaining whole-product/corpus acceptance and report work stay explicit.
 
 ## Historical records
 

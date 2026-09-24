@@ -1,10 +1,12 @@
-import { useEffect, useImperativeHandle, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
 import { ApiError } from "./api.ts";
-import type { CollectionItem, PageNote, ReadingState, ResearchCollection, ResourceWorkspace, WorkspaceApi, WorkspacePage, WorkspaceResource } from "./workspace-api.ts";
+import type { CollectionItem, PageNote, ReadingState, ResearchCollection, ResourceWorkspace, WorkspaceApi, WorkspacePage, WorkspaceResource, ReaderProgress, TextHighlight } from "./workspace-api.ts";
 import { useLanguage } from "./i18n-react.tsx";
 import { describeError, formatDate } from "./i18n.ts";
 import { useModalDialog } from "./use-modal-dialog.ts";
-import { useHistoryDialog } from "./view-context.ts";
+import { readViewPreference, writeViewPreference, useHistoryDialog } from "./view-context.ts";
+import { WorkspaceSwitch } from "./workspace-switch.tsx";
+import { PdfReader, type PdfHighlight } from "./pdf-reader.tsx";
 import "./workspace.css";
 
 const COPY = {
@@ -21,7 +23,7 @@ const COPY = {
     important: "重要", toCite: "待引用", added: "已加入收藏集", removed: "已移出收藏集", removeItem: "移出收藏集", editCollection: "编辑收藏集",
     readerView: "阅读视图", sourceView: "原文", previousPage: "上一页", nextPage: "下一页", jumpPage: "跳转", goToPage: "跳转此页",
     retryReader: "重新打开", openNewTab: "在新页打开", downloadSource: "下载原件", readerLoading: "正在打开原件…",
-    readerExpired: "原件链接已过期；翻页时会重新验证。", pageConfirm: "我已核对笔记对应的 PDF 页码", pageSyncHelp: "浏览器内滚动原文不会同步页码，请核对上方 PDF 页码后保存。",
+    readerExpired: "原件链接已过期；翻页时会重新验证。",
     readerSourceChanged: "原件已有新版本，请返回资料库重新打开。",
   },
   en: {
@@ -37,15 +39,18 @@ const COPY = {
     important: "Important", toCite: "To cite", added: "Added to collection", removed: "Removed from collection", removeItem: "Remove from collection", editCollection: "Edit collection",
     readerView: "Reading view", sourceView: "Source", previousPage: "Previous", nextPage: "Next", jumpPage: "Go", goToPage: "Go to page",
     retryReader: "Reopen", openNewTab: "Open in new tab", downloadSource: "Download original", readerLoading: "Opening source…",
-    readerExpired: "The source link expired; page navigation will reauthorize it.", pageConfirm: "I checked the PDF page for this note", pageSyncHelp: "Scrolling inside the browser PDF does not update this page number. Check it before saving.",
+    readerExpired: "The source link expired; page navigation will reauthorize it.",
     readerSourceChanged: "The source file changed. Return to the Library and reopen it.",
   },
 };
 
-type Editor = { note: PageNote | null; resource: WorkspaceResource; initialPhysicalPage?: number; requirePageConfirmation?: boolean };
+type Editor = { note: PageNote | null; resource: WorkspaceResource; initialPhysicalPage?: number; lockPage?: boolean };
 type ReaderAuthorization = { url: string; expiresAt?: string; download: () => Promise<void> };
-export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, initialPhysicalPage, returnFocus, onClose, onOpenResource, onAuthorizeReader, onRouteChange, onRegisterNavigationGuard, asPage = false }: {
+type DocumentTab = { resource: WorkspaceResource; page: number };
+
+export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSourceId, initialPhysicalPage, returnFocus, onClose, onOpenResource, onAuthorizeReader, onRouteChange, onRegisterNavigationGuard, asPage = false }: {
   api: WorkspaceApi;
+  accountId?: string;
   initialResourceId?: string;
   expectedSourceId?: string;
   initialPhysicalPage?: number;
@@ -61,13 +66,29 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   const c = COPY[language];
   const readingStatusLabel = (status: ReadingState["status"] | null | undefined) => status === "finished" ? c.finished : status === "reading" ? c.inProgress : status === "queued" ? c.queued : c.none;
   const [resourceId, setResourceId] = useState(initialResourceId);
-  const [resource, setResource] = useState<ResourceWorkspace | null>(null);
+  const [documentTabs, setDocumentTabs] = useState<DocumentTab[]>([]);
+  const tabsRef = useRef(documentTabs); tabsRef.current = documentTabs;
+  const [recent, setRecent] = useState<WorkspacePage<ReaderProgress> | null>(null);
+  const [noteFontSize, setNoteFontSize] = useState(15);
+  const [highlights, setHighlights] = useState<TextHighlight[]>([]);
+  const [highlightCursor, setHighlightCursor] = useState<string | null>(null);
+  const [highlightBusy, setHighlightBusy] = useState(false);
+  const [progressReady, setProgressReady] = useState<string | null>(null);
+  const [progressRetry, setProgressRetry] = useState(0);
+  const progressContext = useRef<{ key: string; resource: WorkspaceResource; revision: number; savedPage: number | null; pendingPage: number | null; failed: boolean } | null>(null);
+  const progressWrite = useRef<Promise<unknown>>(Promise.resolve());
+  const progressTimer = useRef<number | null>(null);
+  const requestedPage = useRef(initialPhysicalPage);
+  const activeSource = useRef<string | null>(null);
+
+  const [loadedResource, setResource] = useState<ResourceWorkspace | null>(null);
+  const resource = loadedResource?.resource.resourceId === resourceId ? loadedResource : null;
   const [collections, setCollections] = useState<ResearchCollection[]>([]);
   const [notes, setNotes] = useState<WorkspacePage<PageNote> | null>(null);
   const [reading, setReading] = useState<WorkspacePage<ReadingState> | null>(null);
   const [items, setItems] = useState<WorkspacePage<CollectionItem> | null>(null);
   const [collectionId, setCollectionId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"notes" | "reading" | "collections">("notes");
+  const [tab, setTab] = useState<"notes" | "reading" | "collections">("reading");
   const [deleted, setDeleted] = useState(false);
   const [reload, setReload] = useState(0);
   const [error, setError] = useState<unknown>(null);
@@ -76,8 +97,9 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [readerPage, setReaderPage] = useState(initialPhysicalPage ?? 1);
+  const [renderedPage, setRenderedPage] = useState<number | null>(null);
   const readerNavigation = useRef<((page: number) => Promise<void>) | null>(null);
-  const [readerView, setReaderView] = useState<"source" | "notes">(initialPhysicalPage ? "notes" : "source");
+  const [readerView, setReaderView] = useState<"source" | "notes">("source");
   const pendingInitialNote = useRef(initialPhysicalPage !== undefined);
   const [noteDirty, setNoteDirty] = useState(false);
   const [collectionName, setCollectionName] = useState("");
@@ -86,7 +108,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   const dirty = noteDirty || collectionDirty;
   const mounted = useRef(true);
   const canLeave = () => {
-    if (dirty || busy) { setNotice(collectionDirty ? c.unsavedCollection : c.unsaved); return false; }
+    if (dirty || busy || highlightBusy) { setNotice(collectionDirty ? c.unsavedCollection : c.unsaved); return false; }
     return true;
   };
   const canLeaveRef = useRef(canLeave);
@@ -100,27 +122,35 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   const dialog = useModalDialog(close, false, returnFocus);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
-    if (!dirty && !busy) return;
+    if (!dirty && !busy && !highlightBusy) return;
     const prevent = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", prevent);
     return () => window.removeEventListener("beforeunload", prevent);
-  }, [dirty, busy]);
+  }, [dirty, busy, highlightBusy]);
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setError(null); setResource(null); setNotes(null); setReading(null); setItems(null);
+    setLoading(true); setError(null); setNotes(null); setReading(null); setItems(null);
+    // Revalidate the resource independently. Side-panel refreshes keep the
+    // same reader mounted, while lost access or a changed source removes it.
+    if (!resourceId) setResource(null);
+    const resourceLoad = resourceId ? api.resource(resourceId, controller.signal).then((next) => {
+      if (!controller.signal.aborted) setResource(next);
+    }).catch((caught) => {
+      if (controller.signal.aborted) return;
+      setResource(null);
+      if (!(caught instanceof ApiError && caught.status === 404)) setError(caught);
+    }) : Promise.resolve();
     const load = async () => {
-      const [nextCollections, nextResource, nextNotes, nextReading, nextItems] = await Promise.all([
+      const [nextCollections, nextNotes, nextReading, nextItems] = await Promise.all([
         api.collections(controller.signal),
-        resourceId ? api.resource(resourceId, controller.signal).catch((caught) => {
-          if (caught instanceof ApiError && caught.status === 404) return null;
-          throw caught;
-        }) : Promise.resolve(null),
         tab === "notes" || resourceId ? api.notes({ ...(resourceId ? { resourceId } : {}), deleted }, controller.signal) : Promise.resolve(null),
         !resourceId && tab === "reading" ? api.reading(undefined, controller.signal) : Promise.resolve(null),
         !resourceId && tab === "collections" && collectionId ? api.collectionItems(collectionId, undefined, controller.signal) : Promise.resolve(null),
       ]);
       if (controller.signal.aborted) return;
-      setCollections(nextCollections); setResource(nextResource); setNotes(nextNotes); setReading(nextReading); setItems(nextItems); setLoading(false);
+      setCollections(nextCollections); setNotes(nextNotes); setReading(nextReading); setItems(nextItems);
+      await resourceLoad;
+      if (!controller.signal.aborted) setLoading(false);
     };
     void load().catch((caught) => { if (!controller.signal.aborted) { setError(caught); setLoading(false); } });
     return () => controller.abort();
@@ -132,18 +162,125 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
     catch (caught) { if (mounted.current) setError(caught); }
     finally { if (mounted.current) setBusy(false); }
   };
-  const refresh = () => setReload((n) => n + 1);
+  const refresh = () => { setReload((n) => n + 1); if (progressContext.current?.failed) setProgressRetry((value) => value + 1); };
   const finishEditor = () => { setEditor(null); setNoteDirty(false); setNotice(""); };
-  const sourceMatches = !expectedSourceId || resourceId !== initialResourceId || resource?.resource.sourceId === expectedSourceId;
+  const tabSource = documentTabs.find((entry) => entry.resource.resourceId === resourceId)?.resource.sourceId;
+  const expected = tabSource ?? (resourceId === initialResourceId ? expectedSourceId : undefined);
+  const sourceMatches = !expected || resource?.resource.sourceId === expected;
   const readerResource = asPage && onAuthorizeReader && resource?.resource.mediaType === "application/pdf" && sourceMatches ? resource.resource : null;
   useEffect(() => {
-    setReaderPage(resourceId === initialResourceId ? initialPhysicalPage ?? 1 : 1);
-  }, [resourceId, initialResourceId, initialPhysicalPage]);
+    setResourceId(initialResourceId); requestedPage.current = initialPhysicalPage;
+    pendingInitialNote.current = initialPhysicalPage !== undefined;
+    setRenderedPage(null);
+  }, [initialResourceId, initialPhysicalPage, expectedSourceId]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void api.recent(undefined, controller.signal).then(setRecent).catch((caught) => { if (!controller.signal.aborted) setError(caught); });
+    return () => controller.abort();
+  }, [api, reload]);
+  useEffect(() => {
+    const saved = readViewPreference<Array<{ resourceId: string; sourceId: string; page: number }>>(accountId, "research-tabs", []);
+    if (!Array.isArray(saved) || saved.length > 12) return;
+    const controller = new AbortController();
+    const valid = saved.filter((entry) => entry && typeof entry.resourceId === "string" && entry.resourceId.length <= 128 && typeof entry.sourceId === "string" && entry.sourceId.length <= 128 && Number.isSafeInteger(entry.page) && entry.page > 0 && entry.page <= 1_000_000);
+    void Promise.all(valid.map(async (entry) => {
+      try { const current = await api.resource(entry.resourceId, controller.signal); return current.resource.sourceId === entry.sourceId ? { resource: current.resource, page: entry.page } : null; }
+      catch { return null; }
+    })).then((entries) => { if (!controller.signal.aborted) setDocumentTabs((current) => [...current, ...entries.filter((entry): entry is DocumentTab => Boolean(entry) && !current.some((tab) => tab.resource.resourceId === entry!.resource.resourceId))].slice(0, 12)); });
+    return () => controller.abort();
+  }, [accountId, api]);
+  useEffect(() => {
+    writeViewPreference(accountId, "research-tabs", documentTabs.map((entry) => ({ resourceId: entry.resource.resourceId, sourceId: entry.resource.sourceId, page: entry.page })));
+  }, [accountId, documentTabs]);
+  useEffect(() => {
+    if (!resource || !sourceMatches) return;
+    const current = resource.resource;
+    setDocumentTabs((tabs) => {
+      const existing = tabs.find((entry) => entry.resource.resourceId === current.resourceId);
+      if (existing) return tabs.map((entry) => entry === existing ? { ...entry, resource: current } : entry);
+      return tabs.length < 12 ? [...tabs, { resource: current, page: 1 }] : tabs;
+    });
+  }, [resource, sourceMatches]);
+  const sourceKey = resource && sourceMatches ? resource.resource.resourceId + ":" + resource.resource.sourceId : null;
+  const flushProgress = (context = progressContext.current) => {
+    if (!context || context.failed || context.pendingPage === null) return;
+    const nextPage = context.pendingPage; context.pendingPage = null;
+    progressWrite.current = progressWrite.current.catch(() => {}).then(async () => {
+      if (context.failed) return;
+      const saved = await api.saveProgress(context.resource.resourceId, { sourceId: context.resource.sourceId, physicalPage: nextPage, revision: context.revision });
+      context.revision = saved.revision; context.savedPage = nextPage;
+      if (!mounted.current || activeSource.current !== context.key) return;
+      setRecent((previous) => ({ items: [saved, ...(previous?.items ?? []).filter((entry) => entry.resourceId !== saved.resourceId)].slice(0, 50), resources: [context.resource, ...(previous?.resources ?? []).filter((entry) => entry.resourceId !== context.resource.resourceId)], nextBeforeId: previous?.nextBeforeId ?? null }));
+    }).catch((caught) => { context.failed = true; if (mounted.current && activeSource.current === context.key) setError(caught); });
+  };
+  useEffect(() => {
+    setProgressReady(null); setRenderedPage(null); setHighlights([]); setHighlightCursor(null);
+    progressContext.current = null; activeSource.current = sourceKey;
+    if (!resource || !sourceKey) return;
+    const current = resource.resource;
+    const explicitPage = requestedPage.current; requestedPage.current = undefined;
+    const tabPage = tabsRef.current.find((entry) => entry.resource.resourceId === current.resourceId && entry.resource.sourceId === current.sourceId)?.page || undefined;
+    const controller = new AbortController();
+    const context = { key: sourceKey, resource: current, revision: 0, savedPage: null as number | null, pendingPage: null as number | null, failed: false };
+    void progressWrite.current.catch(() => {}).then(() => api.progress(current.resourceId, controller.signal)).then((saved) => {
+      if (controller.signal.aborted) return;
+      context.revision = saved?.sourceId === current.sourceId ? saved.revision : 0; context.savedPage = saved?.physicalPage ?? null;
+      progressContext.current = context;
+      setReaderPage(explicitPage ?? tabPage ?? saved?.physicalPage ?? 1);
+      setProgressReady(sourceKey);
+    }).catch((caught) => { if (!controller.signal.aborted) { setError(caught); setReaderPage(explicitPage ?? tabPage ?? 1); setProgressReady(sourceKey); context.failed = true; progressContext.current = context; } });
+    void api.highlights({ resourceId: current.resourceId, sourceId: current.sourceId }, controller.signal).then((page) => {
+      if (!controller.signal.aborted) { setHighlights(page.items); setHighlightCursor(page.nextBeforeId); }
+    }).catch((caught) => { if (!controller.signal.aborted) setError(caught); });
+    return () => { controller.abort(); if (progressTimer.current !== null) window.clearTimeout(progressTimer.current); flushProgress(context); };
+  }, [api, sourceKey, progressRetry]);
+  const rendered = (page: number) => {
+    setRenderedPage(page);
+    if (!resource || !sourceKey || progressReady !== sourceKey) return;
+    const current = resource.resource; const key = sourceKey;
+    setDocumentTabs((tabs) => tabs.map((entry) => entry.resource.resourceId === current.resourceId ? { ...entry, page } : entry));
+    if (progressTimer.current !== null) window.clearTimeout(progressTimer.current);
+    const context = progressContext.current;
+    if (!context || context.key !== key) return;
+    context.pendingPage = page;
+    progressTimer.current = window.setTimeout(() => flushProgress(context), 600);
+  };
+  const selectDocument = (entry: WorkspaceResource, page?: number) => {
+    if (!canLeave()) return;
+    if (!tabsRef.current.some((item) => item.resource.resourceId === entry.resourceId) && tabsRef.current.length >= 12) {
+      setNotice(language === "zh-CN" ? "已打开 12 份资料，请先关闭一个标签。" : "Close a document tab before opening another (12 maximum)."); return;
+    }
+    if (resourceId === entry.resourceId && resource?.resource.sourceId === entry.sourceId) {
+      if (page !== undefined) void readerNavigation.current?.(page);
+      return;
+    }
+    requestedPage.current = page; pendingInitialNote.current = false;
+    setEditor(null); setNoteDirty(false); setDeleted(false); setNotice(""); setReaderView("source"); setRenderedPage(null);
+    setDocumentTabs((tabs) => tabs.some((item) => item.resource.resourceId === entry.resourceId) ? tabs : [...tabs, { resource: entry, page: page ?? 0 }]);
+    setResourceId(entry.resourceId); onRouteChange?.(entry);
+  };
+  const showOverview = (nextTab = tab) => {
+    if (!canLeave()) return;
+    setEditor(null); setNoteDirty(false); setResourceId(undefined); setTab(nextTab); setCollectionId(null); setNotice(""); onRouteChange?.(null);
+  };
+  const closeDocument = (id: string) => {
+    if (id === resourceId && !canLeave()) return;
+    const currentTabs = tabsRef.current; const index = currentTabs.findIndex((entry) => entry.resource.resourceId === id);
+    const remaining = currentTabs.filter((entry) => entry.resource.resourceId !== id);
+    setDocumentTabs(remaining);
+    if (id !== resourceId) return;
+    const next = remaining[Math.min(index, remaining.length - 1)];
+    setEditor(null); setNoteDirty(false);
+    if (next) { requestedPage.current = next.page; setResourceId(next.resource.resourceId); onRouteChange?.(next.resource); }
+    else { setResourceId(undefined); onRouteChange?.(null); }
+  };
   useEffect(() => {
     if (!pendingInitialNote.current || !initialPhysicalPage || !resource || resourceId !== initialResourceId || !sourceMatches || resource.resource.mediaType !== "application/pdf") return;
+    if (readerResource && renderedPage !== initialPhysicalPage) return;
     pendingInitialNote.current = false;
-    setEditor({ note: null, resource: resource.resource, initialPhysicalPage, requirePageConfirmation: Boolean(asPage && onAuthorizeReader) });
-  }, [initialPhysicalPage, initialResourceId, resource, resourceId, sourceMatches]);
+    setEditor({ note: null, resource: resource.resource, initialPhysicalPage, lockPage: Boolean(readerResource) });
+    setReaderView("notes");
+  }, [initialPhysicalPage, initialResourceId, resource, resourceId, sourceMatches, readerResource, renderedPage]);
   const selectedCollection = collections.find((entry) => entry.id === collectionId);
   const latestCollection = editingCollection ? collections.find((entry) => entry.id === editingCollection.id) : undefined;
   const collectionConflict = latestCollection && latestCollection.revision !== editingCollection?.revision ? latestCollection : null;
@@ -153,11 +290,14 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
     const next = await api.setCollectionItem(collection, fileId, included);
     setCollections((current) => current.map((entry) => entry.id === next.id ? next : entry));
   };
-  const open = (entry: WorkspaceResource, physicalPage?: number) => run(async () => {
+  const open = (entry: WorkspaceResource, physicalPage?: number) => {
+    if (asPage && entry.mediaType === "application/pdf") { selectDocument(entry, physicalPage); return Promise.resolve(); }
+    return run(async () => {
     const commit = await onOpenResource(entry, physicalPage);
     if (asPage) commit();
     else close.replaceWith(commit);
-  });
+    });
+  };
   const moreNotes = () => run(async () => {
     const next = await api.notes({ ...(resourceId ? { resourceId } : {}), deleted, beforeId: notes!.nextBeforeId! });
     if (mounted.current) setNotes((current) => current ? { ...next, items: [...current.items, ...next.items], resources: [...current.resources, ...next.resources] } : current);
@@ -166,32 +306,59 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
     const current = resources.find((r) => r.resourceId === entry.resourceId);
     const state = "status" in entry ? entry as ReadingState : undefined;
     return <article className="research-resource" key={entry.resourceId}>
-      <button className="research-resource-title" type="button" disabled={locked || !current} onClick={() => { if (!current) return; setResourceId(entry.resourceId); onRouteChange?.(current); }}>{current?.title ?? c.unavailable}</button>
+      <button className="research-resource-title" type="button" disabled={locked || !current} onClick={() => { if (!current) return; selectDocument(current); }}>{current?.title ?? c.unavailable}</button>
       {state && <div className="research-badges">{state.status && <span>{state.status === "reading" ? c.inProgress : state.status === "finished" ? c.finished : c.queued}</span>}{state.important && <span>{c.important}</span>}{state.toCite && <span>{c.toCite}</span>}</div>}
       <div className="research-row-actions">{current && <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => void open(current)}>{c.open}</button>}
         {tab === "collections" && selectedCollection && <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => void run(async () => { await changeMembership(selectedCollection, entry.resourceId, false); refresh(); })}>{c.removeItem}</button>}</div>
     </article>;
   })}</div> : <p className="research-empty">{c.empty}</p>;
   return <ResearchFrame asPage={asPage} dialogRef={dialog}>
-    <header className="research-header"><h2 id="research-title">{t("workspace.title")}</h2><button className="button button--quiet" type="button" onClick={close} aria-label={asPage ? c.back : c.close}>{asPage ? c.back : t("preview.close")}</button></header>
+    <header className="research-header">{asPage ? <><div className="brand research-brand"><span>AC</span> AcademicCloud</div><WorkspaceSwitch active="research" onLibrary={close} onResearch={() => showOverview()} /><h2 id="research-title" className="visually-hidden">{t("workspace.title")}</h2><span className="research-private-label">{language === "zh-CN" ? "私人研究空间" : "Private workspace"}</span></> : <><h2 id="research-title">{t("workspace.title")}</h2><button className="button button--quiet" type="button" onClick={close} aria-label={c.close}>{t("preview.close")}</button></>}</header>
+    {asPage && <div className="research-document-tabs" role="tablist" aria-label={language === "zh-CN" ? "打开的资料" : "Open documents"}>
+      <button type="button" role="tab" aria-selected={!resourceId} className="research-home-tab" onClick={() => showOverview()}>{c.overview}</button>
+      {documentTabs.map((entry) => <div className={entry.resource.resourceId === resourceId ? "research-document-tab is-active" : "research-document-tab"} key={entry.resource.resourceId}>
+        <button type="button" role="tab" aria-selected={entry.resource.resourceId === resourceId} onClick={() => selectDocument(entry.resource, entry.page || undefined)} title={entry.resource.title}>{entry.resource.title}</button>
+        <button type="button" className="research-tab-close" aria-label={(language === "zh-CN" ? "关闭标签：" : "Close tab: ") + entry.resource.title} onClick={() => closeDocument(entry.resource.resourceId)}>×</button>
+      </div>)}
+    </div>}
     <div className="research-body">
       <div className={`research-workbench${resourceId ? " research-workbench--resource" : ""}${readerResource ? " research-workbench--reader" : ""}`}>
-        {!resourceId && <aside className="research-rail" aria-label={t("workspace.title")}>
-          <nav className="research-tabs" aria-label={t("workspace.title")}>{(["notes", "reading", "collections"] as const).map((value) => <button type="button" key={value} disabled={locked} aria-current={tab === value ? "page" : undefined} onClick={() => { setTab(value); setCollectionId(null); setNotice(""); }}>{c[value]}</button>)}</nav>
+        {(asPage || !resourceId) && <aside className="research-rail" aria-label={language === "zh-CN" ? "研究导航" : "Research navigation"}>
+          <nav className="research-tabs" aria-label={language === "zh-CN" ? "研究功能" : "Research sections"}>{(["reading", "collections", "notes"] as const).map((value) => <button type="button" key={value} aria-current={!resourceId && tab === value ? "page" : undefined} onClick={() => showOverview(value)}>{c[value]}</button>)}</nav>
+          {asPage && <section className="research-recents"><h3>{language === "zh-CN" ? "最近阅读" : "Recently read"}</h3>
+            {recent?.items.length ? recent.items.slice(0, 12).map((entry) => { const item = recent.resources.find((candidate) => candidate.resourceId === entry.resourceId); return item ? <button type="button" key={entry.resourceId} aria-current={resourceId === entry.resourceId ? "page" : undefined} onClick={() => selectDocument(item, entry.physicalPage)}><span>{item.title}</span><small>{c.atPage.replace("{page}", String(entry.physicalPage))}</small></button> : null; }) : <p>{language === "zh-CN" ? "阅读资料后，会在这里继续上次阅读。" : "Return to your recent documents here."}</p>}
+            {recent?.nextBeforeId && <button type="button" onClick={() => void run(async () => { const next = await api.recent(recent.nextBeforeId!); setRecent({ ...next, items: [...recent.items, ...next.items], resources: [...recent.resources, ...next.resources] }); })}>{c.more}</button>}
+          </section>}
         </aside>}
         <main className={`research-main${readerResource ? " research-main--reader" : ""}`}>
-          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { setResourceId(undefined); setCollectionId(null); onRouteChange?.(null); }}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3>{resource && sourceMatches && !readerResource && <button className="button button--small button--primary" type="button" disabled={locked} onClick={() => void open(resource.resource)}>{c.open}</button>}</div>}
+          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => showOverview()}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3>{resource && sourceMatches && !readerResource && <button className="button button--small button--primary" type="button" disabled={locked} onClick={() => void open(resource.resource)}>{c.open}</button>}</div>}
           {!!error && <div className="research-error" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.conflict : describeError(error, language)}</p><button className="button button--small" type="button" disabled={busy} onClick={refresh}>{c.retry}</button></div>}
           {notice && <p role="status" className="research-notice">{notice}</p>}
-          {loading && <p role="status" className="research-empty">{c.loading}</p>}
+          {loading && !readerResource && <p role="status" className="research-empty">{c.loading}</p>}
           {readerResource && <nav className="research-view-switch" aria-label={c.readerView}>
             <button type="button" aria-current={readerView === "source" ? "page" : undefined} onClick={() => setReaderView("source")}>{c.sourceView}</button>
             <button type="button" aria-current={readerView === "notes" ? "page" : undefined} onClick={() => setReaderView("notes")}>{c.notes}</button>
           </nav>}
           <div className={readerResource ? `research-resource-layout research-resource-layout--${readerView}` : "research-resource-content"}>
-          {readerResource && onAuthorizeReader && <ResearchReader key={`${readerResource.resourceId}:${readerResource.sourceId}`} resource={readerResource}
-            onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={setReaderPage} navigationRef={readerNavigation} />}
-          <div className={readerResource ? "research-resource-details" : undefined}>
+          {readerResource && progressReady !== sourceKey && <div className="research-reader"><p className="research-reader-message" role="status">{c.readerLoading}</p></div>}
+          {readerResource && onAuthorizeReader && progressReady === sourceKey && <ResearchReader key={`${readerResource.resourceId}:${readerResource.sourceId}`} resource={readerResource}
+            onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={(page) => { setRenderedPage(null); setReaderPage(page); }}
+            onPageRendered={rendered} onPageUnavailable={() => setRenderedPage(null)} navigationRef={readerNavigation}
+            highlights={highlights} onCreateHighlight={async (draft) => {
+              if (highlightBusy || !readerResource || draft.physicalPage !== renderedPage) throw new Error(c.readerLoading);
+              const key = sourceKey; setHighlightBusy(true);
+              try { const saved = await api.createHighlight({ ...draft, resourceId: readerResource.resourceId, sourceId: readerResource.sourceId }); if (mounted.current && activeSource.current === key) { setHighlights((previous) => [...previous, saved]); setNotice(c.saved); } }
+              finally { if (mounted.current) setHighlightBusy(false); }
+            }} onDeleteHighlight={async (highlight) => {
+              const stored = highlights.find((entry) => entry.id === highlight.id); if (!stored) throw new Error(c.unavailable);
+              const key = sourceKey; setHighlightBusy(true);
+              try { await api.updateHighlight(stored, { color: stored.color, deleted: true }); if (mounted.current && activeSource.current === key) { setHighlights((previous) => previous.filter((entry) => entry.id !== stored.id)); setNotice(c.saved); } }
+              finally { if (mounted.current) setHighlightBusy(false); }
+            }} onNewNote={() => { if (renderedPage !== readerPage || locked) return; setEditor({ note: null, resource: readerResource, initialPhysicalPage: readerPage, lockPage: true }); setReaderView("notes"); }} />}
+          <div className={readerResource ? "research-resource-details" : undefined} style={{ "--note-font-size": `${noteFontSize}px` } as CSSProperties}>
+          {readerResource && <div className="research-note-tools"><span>{c.notes}</span><button type="button" className="button button--small button--quiet" disabled={noteFontSize <= 12} aria-label={language === "zh-CN" ? "减小笔记字号" : "Smaller note text"} onClick={() => setNoteFontSize((value) => Math.max(12, value - 1))}>A−</button><button type="button" className="button button--small button--quiet" disabled={noteFontSize >= 24} aria-label={language === "zh-CN" ? "增大笔记字号" : "Larger note text"} onClick={() => setNoteFontSize((value) => Math.min(24, value + 1))}>A+</button></div>}
+          {readerResource && highlightCursor && <button type="button" className="button button--small" onClick={() => void run(async () => { const next = await api.highlights({ resourceId: readerResource.resourceId, sourceId: readerResource.sourceId, beforeId: highlightCursor }); setHighlights((previous) => [...previous, ...next.items]); setHighlightCursor(next.nextBeforeId); })}>{language === "zh-CN" ? "加载更多高亮" : "Load more highlights"}</button>}
+          {resource && <details className="research-settings-disclosure" open={readerResource ? undefined : true}><summary>{language === "zh-CN" ? "阅读状态与收藏集" : "Reading status & collections"}</summary>
           {resource && <section className="research-resource-settings" aria-label={c.status}>
         <div className="research-reading-controls"><label>{c.status}<select disabled={locked} value={resource.reading?.status ?? ""} onChange={(e) => {
           const status = (e.target.value || null) as ReadingState["status"];
@@ -210,9 +377,14 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
       {(resourceId || tab === "collections") && <form className="research-collection-form" onSubmit={(event) => {
         event.preventDefault(); void run(async () => { await api.createCollection(collectionName); setCollectionName(""); refresh(); });
       }}><input aria-label={c.collectionName} value={collectionName} maxLength={120} disabled={formLocked} onChange={(e) => setCollectionName(e.target.value)} placeholder={c.collectionName} /><button className="button button--small" type="submit" disabled={formLocked || !collectionName.trim()}>{c.createCollection}</button>{collectionName && <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => { setCollectionName(""); setNotice(""); }}>{c.discard}</button>}</form>}
+          </details>}
+          {!resourceId && tab === "collections" && <form className="research-collection-form" onSubmit={(event) => {
+            event.preventDefault(); void run(async () => { await api.createCollection(collectionName); setCollectionName(""); refresh(); });
+          }}><input aria-label={c.collectionName} value={collectionName} maxLength={120} disabled={formLocked} onChange={(e) => setCollectionName(e.target.value)} placeholder={c.collectionName} /><button className="button button--small" type="submit" disabled={formLocked || !collectionName.trim()}>{c.createCollection}</button>{collectionName && <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => { setCollectionName(""); setNotice(""); }}>{c.discard}</button>}</form>}
       {(resourceId || tab === "notes") && <>
         <div className="research-section-heading"><h3 className={resourceId ? undefined : "visually-hidden"}>{c.notes}</h3><div><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => setDeleted((value) => !value)}>{deleted ? c.active : c.deleted}</button>
-          {resource && !deleted && <button className="button button--small button--primary" type="button" disabled={locked || resource.resource.mediaType !== "application/pdf" || !sourceMatches} onClick={() => { const notePage = readerResource ? readerPage : resourceId === initialResourceId ? initialPhysicalPage : undefined; setEditor({ note: null, resource: resource.resource, ...(notePage ? { initialPhysicalPage: notePage } : {}), requirePageConfirmation: Boolean(readerResource) }); if (readerResource) setReaderView("notes"); }}>{c.newNote}</button>}</div></div>
+          {resource && !deleted && <button className="button button--small button--primary" type="button" disabled={locked || resource.resource.mediaType !== "application/pdf" || !sourceMatches || Boolean(readerResource && renderedPage !== readerPage)} onClick={() => { const notePage = readerResource ? renderedPage : resourceId === initialResourceId ? initialPhysicalPage : undefined; setEditor({ note: null, resource: resource.resource, ...(notePage ? { initialPhysicalPage: notePage } : {}), lockPage: Boolean(readerResource) }); if (readerResource) setReaderView("notes"); }}>{c.newNote}</button>}</div></div>
+        {readerResource && <p className="research-current-page">{renderedPage === readerPage ? c.atPage.replace("{page}", String(readerPage)) : c.readerLoading}</p>}
         {resource && !sourceMatches && <p role="status">{c.changedSource}</p>}
         {resource && resource.resource.mediaType !== "application/pdf" && <p className="research-muted">{c.noPdf}</p>}
         {editor && <NoteEditor key={editor.note?.id ?? "new"} editor={editor} api={api} busy={busy} run={run} onDirty={setNoteDirty}
@@ -271,11 +443,17 @@ function ResearchFrame({ asPage, dialogRef, children }: {
   return <dialog ref={dialogRef} className="research-dialog" aria-labelledby="research-title">{children}</dialog>;
 }
 
-function ResearchReader({ resource, onAuthorize, page, onPageChange, navigationRef }: {
+function ResearchReader({ resource, onAuthorize, page, onPageChange, onPageRendered, onPageUnavailable, navigationRef, highlights, onCreateHighlight, onDeleteHighlight, onNewNote }: {
+  highlights: TextHighlight[];
+  onCreateHighlight: (highlight: Omit<PdfHighlight, "id">) => Promise<void>;
+  onDeleteHighlight: (highlight: PdfHighlight) => Promise<void>;
+  onNewNote: () => void;
   resource: WorkspaceResource;
   onAuthorize: (resource: WorkspaceResource) => Promise<ReaderAuthorization>;
   page: number;
   onPageChange: (page: number) => void;
+  onPageRendered: (page: number) => void;
+  onPageUnavailable: () => void;
   navigationRef: RefObject<((page: number) => Promise<void>) | null>;
 }) {
   const { language } = useLanguage();
@@ -284,13 +462,16 @@ function ResearchReader({ resource, onAuthorize, page, onPageChange, navigationR
   const [authorizing, setAuthorizing] = useState(true);
   const [linkStale, setLinkStale] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [pageDraft, setPageDraft] = useState(String(page));
+  const pageCount = useRef<number | null>(null);
+  const callbacks = useRef({ onPageRendered, onPageUnavailable });
+  callbacks.current = { onPageRendered, onPageUnavailable };
   const request = useRef(0);
   const mounted = useRef(false);
   const authorizeRef = useRef(onAuthorize);
   authorizeRef.current = onAuthorize;
   const authorize = async (): Promise<boolean> => {
     const current = ++request.current;
+    callbacks.current.onPageUnavailable();
     setAuthorization(null); setLinkStale(false); setError(null); setAuthorizing(true);
     try {
       const next = await authorizeRef.current(resource);
@@ -316,7 +497,6 @@ function ResearchReader({ resource, onAuthorize, page, onPageChange, navigationR
     const timer = window.setTimeout(() => setLinkStale(true), refreshAt - Date.now());
     return () => window.clearTimeout(timer);
   }, [authorization]);
-  useEffect(() => setPageDraft(String(page)), [page]);
   const readerUrl = authorization ? (() => {
     const url = new URL(authorization.url, window.location.href);
     const hash = new URLSearchParams(url.hash.slice(1));
@@ -325,29 +505,24 @@ function ResearchReader({ resource, onAuthorize, page, onPageChange, navigationR
     return url.toString();
   })() : null;
   const goToPage = async (next: number) => {
-    if (!Number.isSafeInteger(next) || next < 1 || next > 1_000_000) return;
+    if (authorizing || !Number.isSafeInteger(next) || next < 1 || next > (pageCount.current ?? 1_000_000)) return;
     if ((!authorization || linkStale || (authorization.expiresAt && Date.parse(authorization.expiresAt) - 10_000 <= Date.now())) && !(await authorize())) return;
     onPageChange(next);
-    setPageDraft(String(next));
   };
   useImperativeHandle(navigationRef, () => goToPage);
-  const submitPage = (event: FormEvent) => { event.preventDefault(); void goToPage(Number(pageDraft)); };
   return <section className="research-reader" aria-label={c.sourceView}>
-    <form className="research-reader-toolbar" aria-label={c.page} onSubmit={submitPage}>
-      <button className="button button--small button--quiet" type="button" disabled={!readerUrl || authorizing || page <= 1} onClick={() => void goToPage(page - 1)}>{c.previousPage}</button>
-      <label>{c.page}<input type="number" min={1} max={1_000_000} step={1} required value={pageDraft} onChange={(event) => setPageDraft(event.target.value)} /></label>
-      <button className="button button--small button--quiet" type="button" disabled={!readerUrl || authorizing || page >= 1_000_000} onClick={() => void goToPage(page + 1)}>{c.nextPage}</button>
-      <button className="button button--small" type="submit" disabled={!readerUrl || authorizing || Number(pageDraft) === page}>{c.jumpPage}</button>
-      <span className="research-reader-toolbar-spacer" />
-      {linkStale && <span className="research-reader-expired" role="status">{c.readerExpired}</span>}
-      <button className="button button--small button--quiet" type="button" disabled={authorizing} onClick={() => void authorize()}>{c.retryReader}</button>
-      {readerUrl && !linkStale && <a className="button button--small button--quiet" href={readerUrl} target="_blank" rel="noreferrer">{c.openNewTab}</a>}
-      <button className="button button--small button--quiet" type="button" disabled={!authorization} onClick={() => { if (authorization) void authorization.download().catch(setError); }}>{c.downloadSource}</button>
-    </form>
     <div className="research-reader-content">
       {authorizing && <p role="status" className="research-reader-message">{c.readerLoading}</p>}
       {error !== null && <div className="research-reader-message" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.readerSourceChanged : describeError(error, language)}</p><button className="button button--small" type="button" onClick={() => void authorize()}>{c.retryReader}</button></div>}
-      {readerUrl && <iframe src={readerUrl} title={`${c.sourceView}: ${resource.title}`} referrerPolicy="no-referrer" />}
+      {authorization && <PdfReader url={authorization.url} title={resource.title} page={page} onPageChange={(next) => void goToPage(next)}
+        highlights={highlights} onCreateHighlight={onCreateHighlight} onDeleteHighlight={onDeleteHighlight} onNewNote={onNewNote}
+        navigationPending={authorizing} onRetry={() => void authorize()} onDocumentLoaded={(count) => { pageCount.current = count; }}
+        onPageRendered={(next) => callbacks.current.onPageRendered(next)} onPageUnavailable={() => callbacks.current.onPageUnavailable()} />}
+    </div>
+    <div className="research-reader-toolbar research-reader-file-actions">
+      {linkStale && <span className="research-reader-expired" role="status">{c.readerExpired}</span>}
+      {readerUrl && !linkStale && <a className="button button--small button--quiet" href={readerUrl} target="_blank" rel="noreferrer">{c.openNewTab}</a>}
+      <button className="button button--small button--quiet" type="button" disabled={!authorization} onClick={() => { if (authorization) void authorization.download().catch(setError); }}>{c.downloadSource}</button>
     </div>
   </section>;
 }
@@ -361,7 +536,6 @@ function NoteEditor({ editor, api, busy, run, onDirty, onCancel, onSaved }: {
   const [baseline, setBaseline] = useState(editor.note);
   const [latest, setLatest] = useState<PageNote | null>(null);
   const [locator, setLocator] = useState(editor.note?.locator ?? "");
-  const [pageConfirmed, setPageConfirmed] = useState(false);
   const initialPage = editor.note?.physicalPage ?? editor.initialPhysicalPage ?? 1;
   const [physicalPage, setPhysicalPage] = useState(String(initialPage));
   const dirty = body !== (editor.note?.body ?? "") || locator !== (editor.note?.locator ?? "") || physicalPage !== String(initialPage);
@@ -384,11 +558,10 @@ function NoteEditor({ editor, api, busy, run, onDirty, onCancel, onSaved }: {
     });
   };
   return <form className="research-note-editor" onSubmit={save} aria-label={editor.note ? c.edit : c.newNote}>
-    <div className="research-note-location"><label>{c.page}<input type="number" min={1} max={1_000_000} step={1} required disabled={busy || !!editor.note} value={physicalPage} onChange={(e) => { setPhysicalPage(e.target.value); setPageConfirmed(false); }} /></label><label>{c.locator}<input maxLength={200} disabled={busy} value={locator} onChange={(e) => setLocator(e.target.value)} /></label></div>
-    {!editor.note && <p className="research-muted">{editor.requirePageConfirmation ? c.pageSyncHelp : c.physicalHelp}</p>}
-    {editor.requirePageConfirmation && !editor.note && <label className="research-page-confirm"><input type="checkbox" checked={pageConfirmed} disabled={busy} onChange={(event) => setPageConfirmed(event.target.checked)} />{c.pageConfirm}</label>}
+    <div className="research-note-location"><label>{c.page}<input type="number" min={1} max={1_000_000} step={1} required disabled={busy || !!editor.note || editor.lockPage} value={physicalPage} onChange={(e) => setPhysicalPage(e.target.value)} /></label><label>{c.locator}<input maxLength={200} disabled={busy} value={locator} onChange={(e) => setLocator(e.target.value)} /></label></div>
+    {!editor.note && <p className="research-muted">{editor.lockPage ? (language === "zh-CN" ? "已关联创建笔记时正在阅读的页面。" : "Linked to the page you were reading when this note was started.") : c.physicalHelp}</p>}
     <label>{c.body}<textarea autoFocus required rows={7} maxLength={20_000} disabled={busy} value={body} onChange={(e) => setBody(e.target.value)} /></label>
     {latest && <div className="research-conflict"><h4>{c.latest}</h4>{latest.locator && <p>{latest.locator}</p>}<p className="research-note-body">{latest.body}</p><button className="button" type="button" disabled={busy} onClick={() => { setBaseline(latest); setLatest(null); }}>{c.useDraft}</button></div>}
-    <div className="research-row-actions"><button className="button button--primary" type="submit" disabled={busy || !body.trim() || latest !== null || (editor.requirePageConfirmation && !pageConfirmed)}>{c.save}</button><button className="button button--quiet" type="button" disabled={busy} onClick={onCancel}>{dirty ? c.discard : c.cancel}</button></div>
+    <div className="research-row-actions"><button className="button button--primary" type="submit" disabled={busy || !body.trim() || latest !== null}>{c.save}</button><button className="button button--quiet" type="button" disabled={busy} onClick={onCancel}>{dirty ? c.discard : c.cancel}</button></div>
   </form>;
 }

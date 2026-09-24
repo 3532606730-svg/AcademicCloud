@@ -19,6 +19,25 @@ export interface ResearchCollection {
   itemCount: number;
 }
 export interface CollectionItem { collectionId: string; resourceId: string; createdAt: string }
+export interface ReaderProgress extends DocumentSourceDescriptor {
+  physicalPage: number;
+  revision: number;
+  updatedAt: string;
+}
+/** Normalized unrotated page coordinates, measured from the upper-left corner. */
+export interface HighlightRect { x: number; y: number; width: number; height: number }
+export type HighlightColor = "yellow" | "green" | "blue" | "pink";
+export interface TextHighlight extends DocumentSourceDescriptor {
+  id: string;
+  physicalPage: number;
+  text: string;
+  rects: HighlightRect[];
+  color: HighlightColor;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
 export interface PageNote extends DocumentSourceDescriptor {
   id: string;
   physicalPage: number;
@@ -44,6 +63,13 @@ export class WorkspaceError extends Error {
 }
 
 export interface WorkspaceRepository {
+  getProgress(accountId: string, resourceId: string, sourceId: string): ReaderProgress | null;
+  saveProgress(accountId: string, state: ReaderProgress, expectedRevision: number): boolean;
+  listProgress(accountId: string, beforeId: string | null, limit: number, currentOnly?: boolean): ReaderProgress[];
+  getHighlight(accountId: string, id: string): TextHighlight | null;
+  listHighlights(accountId: string, filter: { resourceId?: string; sourceId?: string; deleted?: boolean; beforeId: string | null; limit: number }): TextHighlight[];
+  createHighlight(accountId: string, highlight: TextHighlight): void;
+  saveHighlight(accountId: string, highlight: TextHighlight, expectedRevision: number): boolean;
   resolveResources(accountId: string, resourceIds: string[]): WorkspaceResource[];
   getReading(accountId: string, resourceId: string): ReadingState | null;
   saveReading(accountId: string, state: ReadingState, expectedRevision: number): boolean;

@@ -57,6 +57,7 @@ import { LibrarySearchField, librarySearchResultToHolding } from "./library-sear
 import { clearCatalogReviewDrafts, type CatalogReviewSession } from "./catalog-review-draft.ts";
 import { clearViewPreferences, useWorkspaceLocation } from "./view-context.ts";
 import { PreviewDialog, type PreviewDocument } from "./preview-dialog.tsx";
+import { WorkspaceSwitch } from "./workspace-switch.tsx";
 import { useModalDialog } from "./use-modal-dialog.ts";
 import {
   forgetSourceHandle,
@@ -761,6 +762,7 @@ function DriveView({
     return () => window.removeEventListener("popstate", restore);
   }, []);
   function openResearch(request: ResearchRouteRequest): void {
+    if (researchActiveRef.current && !researchGuardRef.current()) return;
     const current = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
     const cleanState = { ...current };
     delete cleanState.academiccloudDialog;
@@ -2059,7 +2061,13 @@ function DriveView({
     try {
       const authorization = await api.createDownload(file.id, "inline");
       if (requestId !== previewRequest.current) return;
-      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url, sourceId: authorization.source?.sourceId ?? null } : current);
+      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url, expiresAt: authorization.expiresAt, sourceId: authorization.source?.sourceId ?? null,
+        renew: async () => {
+          const next = await api.createDownload(file.id, "inline");
+          if (!authorization.source || next.source?.resourceId !== file.id || next.source.sourceId !== authorization.source.sourceId) throw new ApiError(409, "concurrent_change");
+          return next;
+        },
+      } : current);
     } catch (caught: unknown) {
       if (requestId !== previewRequest.current) return;
       setPreview((current) => current?.requestId === requestId ? { ...current, error: caught } : current);
@@ -2085,7 +2093,18 @@ function DriveView({
     setError(null);
     setNotice("");
     try {
+      await addResourceToResearch(resourceId, returnFocus);
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function addResourceToResearch(resourceId: string, returnFocus?: HTMLElement, expectedSourceId?: string | null) {
+      if (!api.workspace) return;
       const current = await api.workspace.resource(resourceId);
+      if (expectedSourceId && current.resource.sourceId !== expectedSourceId) throw new ApiError(409, "concurrent_change");
       const reading = current.reading;
       if (!reading || reading.status === null) {
         await api.workspace.saveReading(resourceId, {
@@ -2097,11 +2116,6 @@ function DriveView({
       }
       setNotice(t("workspace.added"));
       openResearch({ resourceId, sourceId: current.resource.sourceId, returnFocus: returnFocus ?? null });
-    } catch (caught) {
-      setError(caught);
-    } finally {
-      setBusyId(null);
-    }
   }
 
   async function openLibraryPreview(
@@ -2128,7 +2142,13 @@ function DriveView({
     try {
       const authorization = await api.createLibraryDownload(library.id, holding.file.id, "inline");
       if (requestId !== previewRequest.current) return;
-      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url, sourceId: authorization.source?.sourceId ?? null } : current);
+      setPreview((current) => current?.requestId === requestId ? { ...current, url: authorization.url, expiresAt: authorization.expiresAt, sourceId: authorization.source?.sourceId ?? null,
+        renew: async () => {
+          const next = await api.createLibraryDownload(library.id, holding.file.id, "inline");
+          if (!authorization.source || next.source?.resourceId !== holding.file.id || next.source.sourceId !== authorization.source.sourceId) throw new ApiError(409, "concurrent_change");
+          return next;
+        },
+      } : current);
     } catch (caught: unknown) {
       if (requestId !== previewRequest.current) return;
       setPreview((current) => current?.requestId === requestId ? { ...current, error: caught } : current);
@@ -2293,7 +2313,7 @@ function DriveView({
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand topbar-brand"><span>AC</span> AcademicCloud</div>
-        <div className="topbar-location" aria-hidden="true"><LibraryIcon size={17} /><span>{workspaceTitle}</span></div>
+        {api.workspace ? <WorkspaceSwitch active="library" onLibrary={() => goToView("library")} onResearch={() => openResearch({ returnFocus: null })} /> : <div className="topbar-location" aria-hidden="true"><LibraryIcon size={17} /><span>{workspaceTitle}</span></div>}
         <div className="account-menu">
           <AccountMenu
             accountName={account.loginName}
@@ -2313,14 +2333,11 @@ function DriveView({
         <div className="brand sidebar-brand"><span>AC</span> AcademicCloud</div>
         <nav>
           <button className={view === "library" ? "nav-item is-active" : "nav-item"} aria-current={view === "library" ? "page" : undefined} onClick={() => goToView("library")}>
-            <LibraryIcon size={18} /> {t("nav.library")}
+            <LibraryIcon size={18} /> {language === "zh-CN" ? "全部资料" : "All resources"}
           </button>
           <button className={view === "favorites" ? "nav-item is-active" : "nav-item"} aria-current={view === "favorites" ? "page" : undefined} onClick={() => goToView("favorites")}>
             <StarIcon size={18} /> {t("nav.favorites")}
           </button>
-          {api.workspace && <button className="nav-item" type="button" onClick={(event) => openResearch({ returnFocus: event.currentTarget })}>
-            <TextIcon size={18} /> {t("workspace.title")}
-          </button>}
           <button className={`nav-item nav-item--utility${view === "pending" ? " is-active" : ""}`} aria-current={view === "pending" ? "page" : undefined} onClick={() => goToView("pending")}>
             <PendingIcon size={18} /> {t("nav.pending")}
           </button>
@@ -3082,8 +3099,9 @@ function DriveView({
         onClose={closeDocumentPreview} onDownload={() => void preview.download()}
         onDetails={preview.resource ? (trigger) => setResourceDetailsRequest({ ...preview.resource!, returnFocus: trigger }) : undefined}
         onCitation={preview.resource ? (trigger) => setCitationRequest({ ...preview.resource!, returnFocus: trigger }) : undefined}
+        onAddToResearch={api.workspace && preview.sourceId ? (trigger) => addResourceToResearch(preview.resourceId, trigger, preview.sourceId) : undefined}
         onResearch={api.workspace && preview.sourceId ? (trigger, physicalPage) => openResearch({ resourceId: preview.resourceId, sourceId: preview.sourceId!, ...(physicalPage ? { physicalPage } : {}), returnFocus: trigger }) : undefined} />}
-      {researchRequest && api.workspace && <WorkspaceDialog key={`${researchRequest.resourceId ?? "all"}:${researchRequest.sourceId ?? ""}:${researchRequest.physicalPage ?? ""}`} api={api.workspace}
+      {researchRequest && api.workspace && <WorkspaceDialog key={account.id} api={api.workspace} accountId={account.id}
         {...(researchRequest.resourceId ? { initialResourceId: researchRequest.resourceId } : {})}
         {...(researchRequest.sourceId ? { expectedSourceId: researchRequest.sourceId } : {})}
         {...(researchRequest.physicalPage ? { initialPhysicalPage: researchRequest.physicalPage } : {})}
@@ -3127,14 +3145,19 @@ function DriveView({
             ? await api.createLibraryDownload(resource.libraryId, resource.resourceId, "inline")
             : await api.createDownload(resource.resourceId, "inline");
           if (requestId !== previewRequest.current) throw new ApiError(409, "concurrent_change");
-          if (authorization.source?.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
+          if (authorization.source?.resourceId !== resource.resourceId || authorization.source.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
           const url = new URL(authorization.url, window.location.href);
           if (physicalPage !== undefined) url.hash = `page=${physicalPage}`;
           const focus = researchRequest.returnFocus;
           const download = () => performDownload(resource.resourceId, resource.title, () => authorizeResearchDownload(resource));
           return () => setPreview({ requestId, resourceId: resource.resourceId, sourceId: resource.sourceId,
             file: { displayName: resource.title, mediaType: resource.mediaType ?? "application/octet-stream" },
-            url: url.toString(), error: null, returnFocus: focus, download,
+            url: url.toString(), expiresAt: authorization.expiresAt, error: null, returnFocus: focus, download,
+            renew: async () => {
+              const next = resource.libraryId ? await api.createLibraryDownload(resource.libraryId, resource.resourceId, "inline") : await api.createDownload(resource.resourceId, "inline");
+              if (next.source?.resourceId !== resource.resourceId || next.source.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
+              return next;
+            },
             ...(details ? { resource: details } : {}),
             retry: () => openResearch({ resourceId: resource.resourceId, sourceId: resource.sourceId, returnFocus: focus }),
           });

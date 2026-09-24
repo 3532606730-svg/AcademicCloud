@@ -1,12 +1,18 @@
 import { Readable } from "node:stream";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { WorkspaceError, type PageNote, type ReadingState } from "./model.js";
+import { WorkspaceError, type PageNote, type ReadingState, type ReaderProgress, type TextHighlight } from "./model.js";
 import type { WorkspaceService } from "./service.js";
 
 const id = { type: "string", pattern: "^[A-Za-z0-9_-]{1,128}$" } as const;
 const revision = { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER - 1 } as const;
 const noteText = { body: { type: "string", minLength: 1, maxLength: 20_000 }, locator: { anyOf: [{ type: "null" }, { type: "string", minLength: 1, maxLength: 200 }] } } as const;
 const params = { type: "object", additionalProperties: false, required: ["id"], properties: { id } } as const;
+const physicalPage = { type: "integer", minimum: 1, maximum: 1_000_000 } as const;
+const color = { enum: ["yellow", "green", "blue", "pink"] } as const;
+const rect = { type: "object", additionalProperties: false, required: ["x", "y", "width", "height"], properties: {
+  x: { type: "number", minimum: 0, maximum: 1 }, y: { type: "number", minimum: 0, maximum: 1 },
+  width: { type: "number", exclusiveMinimum: 0, maximum: 1 }, height: { type: "number", exclusiveMinimum: 0, maximum: 1 },
+} } as const;
 const pageProperties = { beforeId: id, limit: { type: "integer", minimum: 1, maximum: 100 } } as const;
 function account(request: FastifyRequest): string {
   if (!request.authAccount) throw new Error("workspace requires authentication");
@@ -21,6 +27,30 @@ function result(reply: FastifyReply, work: () => unknown) {
 }
 type PageQuery = { beforeId?: string; limit?: number };
 export async function registerWorkspaceHttp(app: FastifyInstance, service: WorkspaceService): Promise<void> {
+  app.get<{ Params: { id: string } }>("/api/workspace/resources/:id/progress", { preHandler: app.authenticate, schema: { params } },
+    (request, reply) => result(reply, () => service.progress(account(request), request.params.id)));
+  app.put<{ Params: { id: string }; Body: Pick<ReaderProgress, "sourceId" | "physicalPage" | "revision"> }>("/api/workspace/resources/:id/progress", {
+    preHandler: app.authenticate, schema: { params, body: { type: "object", additionalProperties: false,
+      required: ["sourceId", "physicalPage", "revision"], properties: { sourceId: id, physicalPage, revision } } },
+  }, (request, reply) => result(reply, () => ({ progress: service.saveProgress(account(request), request.params.id, request.body) })));
+  app.get<{ Querystring: PageQuery }>("/api/workspace/recent", {
+    preHandler: app.authenticate, schema: { querystring: { type: "object", additionalProperties: false, properties: pageProperties } },
+  }, (request, reply) => result(reply, () => service.recent(account(request), request.query.beforeId, request.query.limit)));
+  app.get<{ Querystring: PageQuery & { resourceId: string; sourceId: string; deleted?: boolean } }>("/api/workspace/highlights", {
+    preHandler: app.authenticate, schema: { querystring: { type: "object", additionalProperties: false, required: ["resourceId", "sourceId"],
+      properties: { ...pageProperties, resourceId: id, sourceId: id, deleted: { type: "boolean" } } } },
+  }, (request, reply) => result(reply, () => service.highlights(account(request), request.query)));
+  app.post<{ Body: Pick<TextHighlight, "resourceId" | "sourceId" | "physicalPage" | "text" | "rects" | "color"> }>("/api/workspace/highlights", {
+    preHandler: app.authenticate, bodyLimit: 96 * 1024, schema: { body: { type: "object", additionalProperties: false,
+      required: ["resourceId", "sourceId", "physicalPage", "text", "rects", "color"], properties: {
+        resourceId: id, sourceId: id, physicalPage, text: { type: "string", minLength: 1, maxLength: 10_000 },
+        rects: { type: "array", minItems: 1, maxItems: 100, items: rect }, color,
+      } } },
+  }, (request, reply) => result(reply, () => ({ highlight: service.createHighlight(account(request), request.body) })));
+  app.patch<{ Params: { id: string }; Body: Pick<TextHighlight, "color" | "revision"> & { deleted: boolean } }>("/api/workspace/highlights/:id", {
+    preHandler: app.authenticate, schema: { params, body: { type: "object", additionalProperties: false,
+      required: ["revision", "color", "deleted"], properties: { revision, color, deleted: { type: "boolean" } } } },
+  }, (request, reply) => result(reply, () => ({ highlight: service.updateHighlight(account(request), request.params.id, request.body) })));
   app.get("/api/workspace/collections", { preHandler: app.authenticate }, (request, reply) =>
     result(reply, () => ({ collections: service.collections(account(request)) })));
   app.post<{ Body: { name: string } }>("/api/workspace/collections", {

@@ -1,38 +1,53 @@
 {
-  "lastReconciled": "2026-09-24",
+  "lastReconciled": "2026-09-25",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "73b26d257c0f9508758bdb90d42165e80939cecd",
-    "mainIntegration": "73b26d2 atomically pushed and both tracking heads/local HEAD verified before Owner batch-publication instruction",
+    "checkpoint": "00a57507d1ea507c34712f543757121bf3558937",
+    "mainIntegration": "00a5750 atomically published to main and integration; deployment runtime970; final docs reconciliation follows",
     "localSynchronized": false,
-    "localState": "Intentionally ahead of last published73b: source037, private Workspace038, dedicated Research route with inline PDF reader, visual redesign, Catalog recovery and deferred OCR contract locally verified; no intermediate push/deployment"
+    "localState": "Reader candidate changes are uncommitted; previous checkpoint00a5750 is published. Publication and HEAD equality will be recorded after push."
   },
   "production": {
     "observedAt": "2026-09-24",
-    "coreFrontendCommit": "7e2d1bfb42a1135d93973bcf788eae5e045bb5f6",
-    "schemaVersion": 36,
-    "migrationHistory": "001-036",
+    "coreFrontendCommit": "970cc479f8098f48f9aad1f2ee406986e56c1f46",
+    "schemaVersion": 38,
+    "migrationHistory": "001-038",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Read-only preflight: exact7e selector and PID1091689 cwd; Core active/running NRestarts0, schema/history36/001-036 admissions11 integrityOK/FK0, loopback healthy/ready",
+    "health": "Core PID1264984 active/running NRestarts0; loopback ready PASS; integrityOK/FK0, admissions11; migrations37/38 applied once;42 existing business tables unchanged,135 source generations match",
     "catalogBridgeCommit": "ba0a74f28470a312f2e05135033f5b5a727ef093",
     "catalogBridgeState": "active PID334 NRestarts0",
     "computeDistro": "AcademicCloudComputeV2",
     "mainInferenceState": "exact7e2d1bf active/running PID1195 NRestarts0 NORMAL; actual executable/cwd match; full verifier and affected-source immutable smoke PASS",
-    "vnextDeployed": true
+    "vnextDeployed": true,
+    "combinedRelease": {
+      "log": "output/vnext/integrated-970-deployment.log",
+      "sourceGenerations": 135,
+      "computeChanged": false,
+      "migrationsApplied": [
+        37,
+        38
+      ],
+      "deployedAt": "2026-09-24",
+      "rollbackUsed": false,
+      "preservedTables": 42,
+      "nginxChanged": false,
+      "backupCommit": "7ec61964bc56bcb34354ce72c6d650d20f402ef0"
+    }
   },
   "candidate": {
-    "schemaVersion": 38,
+    "schemaVersion": 39,
     "migrations": [
       "035_library_search_projection",
       "036_bibliographic_contributor_collection_authority",
       "037_document_source_generations",
-      "038_private_research_workspace"
+      "038_private_research_workspace",
+      "039_private_reader_state"
     ],
     "catalogResults": "v2 explicit set/clear; v1 conservative compatibility",
     "catalogPlan": "actor/Library bound; 30 minutes; four plans; 32 MiB accounted aggregate",
@@ -42,8 +57,9 @@
       "exportRequest": 131072
     },
     "dependencyProductionAdvisories": 0,
-    "sourceCommit": "970cc479f8098f48f9aad1f2ee406986e56c1f46",
-    "archiveSha256": "5982240e308b0a321335ce6283979486d300915dead1653b2e517a3e78ecc97f"
+    "sourceCommit": null,
+    "archiveSha256": null,
+    "status": "Reader candidate built locally; IAB smoke PASS; commit/build/deploy pending"
   },
   "verification": {
     "backend": "450/450 exact7e2d1bf Linux",
@@ -64,7 +80,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Exact970 combined candidate qualified locally and on Alibaba staging; release preparation, current schema36 recovery and migration37/38 remain pending; no cutover",
+    "currentPhaseB": "Combined970 Core/frontend deployed with verified37/38 migration; bounded normal-site sanity in progress; Owner requested no extra broad tests",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -94,14 +110,14 @@
       "browser": "Real-backend synthetic notes/collections/reading/recovery/guarded Back/export and four widths PASS; Library holding row add-to-research opens queued private resource; PDF source/page URL verified, native iframe did not paint; new explicit PDF page jump to private note passes focused App test",
       "review": "Independent backend and final history/source-opening review: no material finding",
       "evidence": "output/vnext/workspace-browser-verification.json",
-      "publication": "local only; final combined release and normal-site acceptance pending"
+      "publication": "Deployed970 schema038; bounded signed-in sanity in progress"
     },
     "visualRedesign": {
       "scope": "Library/Search, Preview/Reader, Details/Citation, private Workspace Research Desk, Admin, Batch, Login and responsive states",
       "build": "pass; initial index JS443.08 kB/gzip125.74 kB; CSS70.46 kB/gzip12.95 kB; no new dependencies/assets/fonts",
       "focusedTests": "frontend25 files/388 historical complete tests; GPT-6 Sol high-effort bot final App+Workspace168/168 and Batch Catalog9/9; PDF page and Catalog refresh, citation/presentation and Library-to-Workspace add path covered",
       "browser": "synthetic signed-in browser checks; dedicated /research and Reader-to-note navigation; 1024 filter and hidden-shell fixes; 390px test bot clicked PDF note Save successfully after export bar moved into layout; refresh and guarded Back pass; native PDF paint not claimed",
-      "publication": "local only; final combined release pending"
+      "publication": "Deployed970 combined release"
     },
     "inlineResearchReader": {
       "scope": "Local /research PDF source beside private notes, reading state and collections; mobile source/notes switch",
@@ -109,7 +125,7 @@
       "pageSafety": "native PDF internal scroll is not inferred; new inline page note requires explicit page confirmation",
       "focusedTests": "GPT-6 Sol high test bot App156/156 and Workspace17/17; independent Sol high review findings repaired",
       "browser": "synthetic desktop1440 layout and mobile390 source/notes/page navigation/note-page prefill pass; native PDF painting unverified",
-      "publication": "local only; final combined release pending"
+      "publication": "Deployed970 combined release"
     },
     "latestLocalDeterministicGate": {
       "runtimeSource": "7b140f1; subsequent .gitignore-only checkpoint 103810b",
@@ -249,6 +265,13 @@
         "liveDatabaseAccess": false,
         "log": "output/vnext/host-970-runtime-verification.log"
       }
+    },
+    "ownedReader": {
+      "scope": "ADR045 owned PDF.js6.2.108, independent research tabs, private progress/highlights, native text tools; OCR deferred",
+      "priorChecks": "backend30; frontend47+1; Linux assets32; CORS/CSP5; old970+039 compatibility PASS",
+      "iab": "Current built candidate synthetic IAB paint/jump/note/search/two-tabs/refresh PASS; live acceptance pending",
+      "cors": "Console saved; both storage-origin live contract PASS",
+      "review": "Root rejected rotated-layer false positive after reading pinned TextLayer constructor and setLayerDimensions; no material findings in other reviewed paths"
     }
   },
   "computeQualification": {
@@ -264,7 +287,7 @@
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works",
     "Current scholarly corpus projection has 46 failed, 31 not_run and nine staged Owner PDFs without an exact byte/MD5 match; six unchanged corrupt sources need replacement bytes; final candidate runtime and source reconciliation remain open"
   ],
-  "next": "Exact970 Linux1124/1124 and host artifact verification PASS. Complete current encrypted schema36 recovery and reviewed37/38 migration/rollback, then one combined main/integration publication and Core/frontend release. Signed-in production access is restored. Dedicated medium verification agent owns changed-path acceptance; root continues unfinished/affected corpus and29-section report. Preserve active7e Compute, successful jobs and six damaged-source replacement gate. Distinguish qualified runtime970 from docs-only HEAD.",
+  "next": "Commit/build and deploy owned-reader candidate schema039; one IAB smoke passed; no further prelaunch suites/backup/integrity-check/rollback preparation per Owner. Then normal live reader acceptance; retain corpus replacement/final-report obligations.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -276,8 +299,9 @@
     "docs/performance/vnext-latency-ledger.md",
     "docs/evaluation/catalog-field-quality-and-abstention.md",
     "docs/architecture/bounded-page-aware-full-text-evaluation.md",
-    "DECISION_LOG.md"
+    "DECISION_LOG.md",
+    "docs/decisions/ADR-045-owned-reader-and-independent-research-workspace.md"
   ],
   "phase": "PHASE_B_EXECUTION",
-  "publicationCadence": "Owner2026-09-15, reaffirmed2026-09-22: complete ALL integrated work locally with tests/checkpoints; then one final push/deployment/live acceptance"
+  "publicationCadence": "Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance."
 }

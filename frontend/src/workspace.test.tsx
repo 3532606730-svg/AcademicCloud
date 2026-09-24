@@ -1,3 +1,4 @@
+import { MockPdfReader, pdfReaderControl } from "./pdf-reader-test-double.tsx";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +14,8 @@ const page = <T,>(items: T[], resources: WorkspaceResource[] = [RESOURCE], nextB
 function fixture(overrides: Partial<WorkspaceApi> = {}) {
   let notes: PageNote[] = [];
   const api: WorkspaceApi = {
+    progress: vi.fn().mockResolvedValue(null), saveProgress: vi.fn().mockImplementation(async (resourceId, input) => ({ ...input, resourceId, revision: input.revision + 1, updatedAt: "2026-09-24" })),
+    recent: vi.fn().mockResolvedValue({ items: [], resources: [], nextBeforeId: null }), highlights: vi.fn().mockResolvedValue({ items: [], nextBeforeId: null }), createHighlight: vi.fn(), updateHighlight: vi.fn(),
     collections: vi.fn().mockResolvedValue([COLLECTION]), createCollection: vi.fn().mockResolvedValue(COLLECTION), updateCollection: vi.fn().mockResolvedValue(COLLECTION),
     collectionItems: vi.fn().mockResolvedValue(page([])), setCollectionItem: vi.fn().mockImplementation(async (collection, _resourceId, included) => ({ ...collection, revision: collection.revision + 1, itemCount: collection.itemCount + (included ? 1 : -1) })),
     resource: vi.fn().mockResolvedValue({ resource: RESOURCE, reading: null, collectionIds: [] }),
@@ -32,39 +35,96 @@ function renderWorkspace(api: WorkspaceApi, props: Partial<Parameters<typeof Wor
   const result = render(<LanguageProvider><WorkspaceDialog api={api} {...(global ? {} : { initialResourceId: RESOURCE.resourceId, expectedSourceId: RESOURCE.sourceId })} onClose={onClose} onOpenResource={onOpenResource} {...overrides} /></LanguageProvider>);
   return { ...result, onClose, onOpenResource };
 }
+vi.mock("./pdf-reader.tsx", () => ({ PdfReader: MockPdfReader }));
+beforeEach(() => { pdfReaderControl.autoRender = true; pdfReaderControl.mounts = 0; });
 beforeEach(() => window.localStorage.setItem("academiccloud.language", "en"));
 afterEach(() => window.localStorage.removeItem("academiccloud.language"));
 
 describe("private workspace", () => {
+  it("switches document tabs with their pages and closes a tab without deleting authored state", async () => {
+    const user = userEvent.setup(); const second = { ...RESOURCE, resourceId: "file-two", sourceId: "source-two", title: "Second document" };
+    const f = fixture({ resource: vi.fn().mockImplementation(async (id) => ({ resource: id === second.resourceId ? second : RESOURCE, reading: null, collectionIds: [] })),
+      recent: vi.fn().mockResolvedValue(page([{ resourceId: second.resourceId, sourceId: second.sourceId, physicalPage: 9, revision: 1, updatedAt: NOTE.updatedAt }], [second])) });
+    const authorize = vi.fn().mockImplementation(async (resource) => ({ url: "https://example.test/" + resource.resourceId + ".pdf", download: vi.fn() }));
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    await screen.findByTestId("pdf-reader");
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-page", "2");
+    await user.click(screen.getByRole("button", { name: /Second document/ }));
+    await waitFor(() => expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-source", "https://example.test/file-two.pdf"));
+    expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-page", "9");
+    await user.click(screen.getByRole("tab", { name: RESOURCE.title }));
+    await waitFor(() => expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-source", "https://example.test/file-one.pdf"));
+    expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-page", "2");
+    await user.click(screen.getByRole("button", { name: "Write a page note" }));
+    await user.type(screen.getByRole("textbox", { name: "Note" }), "Protect tab draft");
+    await user.click(screen.getByRole("button", { name: "Close tab: " + RESOURCE.title }));
+    expect(screen.getByRole("tab", { name: RESOURCE.title })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Note" })).toHaveValue("Protect tab draft");
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
+    await user.click(screen.getByRole("button", { name: "Close tab: " + RESOURCE.title }));
+    expect(screen.queryByRole("tab", { name: RESOURCE.title })).not.toBeInTheDocument();
+    expect(f.api.updateNote).not.toHaveBeenCalled(); expect(f.api.updateHighlight).not.toHaveBeenCalled();
+  });
+  it("renders the source independently of slow notes and only enables writing after the visible page completes", async () => {
+    const user = userEvent.setup(); pdfReaderControl.autoRender = false;
+    let resolveNotes!: (value: WorkspacePage<PageNote>) => void;
+    const pending = new Promise<WorkspacePage<PageNote>>((resolve) => { resolveNotes = resolve; });
+    const f = fixture({ notes: vi.fn().mockReturnValue(pending) });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: vi.fn().mockResolvedValue({ url: "https://example.test/source.pdf", download: vi.fn() }) });
+    await screen.findByTestId("pdf-reader");
+    expect(screen.getByRole("button", { name: "Write a page note" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Finish rendering test page" }));
+    expect(screen.getByRole("button", { name: "Write a page note" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(screen.getByRole("button", { name: "Write a page note" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Finish rendering test page" }));
+    await user.click(screen.getByRole("button", { name: "Write a page note" }));
+    const editor = screen.getByRole("form", { name: "Write a page note" });
+    expect(within(editor).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(2);
+    expect(within(editor).getByRole("spinbutton", { name: "PDF page" })).toBeDisabled();
+    await act(async () => resolveNotes(page([])));
+  });
+
+  it("keeps the authorized reader mounted when saving a page note", async () => {
+    const user = userEvent.setup(); const f = fixture();
+    const authorize = vi.fn().mockResolvedValue({ url: "https://example.test/source.pdf", download: vi.fn() });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    const reader = await screen.findByTestId("pdf-reader");
+    await user.click(screen.getByRole("button", { name: "Write a page note" }));
+    await user.type(screen.getByRole("textbox", { name: "Note" }), "A saved interpretation");
+    await user.click(within(screen.getByRole("form", { name: "Write a page note" })).getByRole("button", { name: "Save" }));
+    await screen.findByText("A saved interpretation");
+    expect(screen.getByTestId("pdf-reader")).toBe(reader);
+    expect(authorize).toHaveBeenCalledTimes(1);
+    expect(pdfReaderControl.mounts).toBe(1);
+  });
   it("opens a source-aware inline PDF, jumps to an explicit page, and starts the note on that page", async () => {
     const user = userEvent.setup(); const f = fixture();
     const download = vi.fn().mockResolvedValue(undefined);
     const authorize = vi.fn().mockResolvedValue({ url: "https://example.test/document.pdf?signature=bounded", download });
     renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize, initialPhysicalPage: 7 });
     const frame = await screen.findByTitle(`Source: ${RESOURCE.title}`);
-    expect(frame).toHaveAttribute("src", "https://example.test/document.pdf?signature=bounded#page=7");
+    expect(frame).toHaveAttribute("data-page", "7");
     expect(authorize).toHaveBeenCalledWith(RESOURCE);
-    await user.click(within(screen.getByRole("form", { name: "Write a page note" })).getByRole("button", { name: "Cancel" }));
+    await user.click(within(await screen.findByRole("form", { name: "Write a page note" })).getByRole("button", { name: "Cancel" }));
     const reader = await screen.findByRole("region", { name: "Source" });
-    await user.click(within(reader).getByRole("button", { name: "Next" }));
-    expect(frame).toHaveAttribute("src", "https://example.test/document.pdf?signature=bounded#page=8");
+    await user.click(within(reader).getByRole("button", { name: "Next page" }));
+    expect(frame).toHaveAttribute("data-page", "8");
     const target = within(reader).getByRole("spinbutton", { name: "PDF page" });
     await user.clear(target);
     await user.type(target, "12");
     await user.click(within(reader).getByRole("button", { name: "Go" }));
-    expect(frame).toHaveAttribute("src", "https://example.test/document.pdf?signature=bounded#page=12");
+    expect(frame).toHaveAttribute("data-page", "12");
     await user.click(screen.getByRole("button", { name: "Write a page note" }));
     const editor = screen.getByRole("form", { name: "Write a page note" });
     const notePage = within(editor).getByRole("spinbutton", { name: "PDF page" });
     expect(notePage).toHaveValue(12);
     await user.type(within(editor).getByRole("textbox", { name: "Note" }), "Compare with the source scan.");
     const save = within(editor).getByRole("button", { name: "Save" });
-    expect(save).toBeDisabled();
-    await user.click(within(editor).getByRole("checkbox", { name: "I checked the PDF page for this note" }));
     expect(save).toBeEnabled();
-    await user.clear(notePage);
-    await user.type(notePage, "13");
-    expect(save).toBeDisabled();
+    expect(notePage).toBeDisabled();
+    expect(within(editor).queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open in new tab" })).toHaveAttribute("href", "https://example.test/document.pdf?signature=bounded#page=12");
     await user.click(within(reader).getByRole("button", { name: "Download original" }));
     expect(download).toHaveBeenCalledOnce();
@@ -77,12 +137,12 @@ describe("private workspace", () => {
       .mockResolvedValueOnce({ url: "https://example.test/fresh.pdf", expiresAt: new Date(Date.now() + 60_000).toISOString(), download: vi.fn() });
     renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
     const reader = await screen.findByRole("region", { name: "Source" });
-    expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/old.pdf#page=1");
+    expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("data-page", "1");
     expect(await within(reader).findByText("The source link expired; page navigation will reauthorize it.")).toBeInTheDocument();
     expect(within(reader).queryByRole("link", { name: "Open in new tab" })).not.toBeInTheDocument();
-    await user.click(within(reader).getByRole("button", { name: "Next" }));
+    await user.click(within(reader).getByRole("button", { name: "Next page" }));
     await waitFor(() => expect(authorize).toHaveBeenCalledTimes(2));
-    expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/fresh.pdf#page=2");
+    expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("data-page", "2");
   });
 
   it("drops a stale reader authorization after navigating away and reopening the resource", async () => {
@@ -95,9 +155,9 @@ describe("private workspace", () => {
     await user.click(screen.getByRole("button", { name: "All research" }));
     await user.click(screen.getByRole("button", { name: "My resources" }));
     await user.click(await screen.findByRole("button", { name: RESOURCE.title }));
-    expect(await screen.findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/current.pdf#page=1");
+    expect(await screen.findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("data-page", "1");
     await act(async () => resolveOld({ url: "https://example.test/stale.pdf", download: vi.fn() }));
-    expect(screen.getByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/current.pdf#page=1");
+    expect(screen.getByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("data-page", "1");
   });
 
   it.each([false, true])("reauthorizes an expired existing-note jump and refuses a replaced source (replacement: %s)", async (replaced) => {
@@ -114,9 +174,9 @@ describe("private workspace", () => {
     if (replaced) {
       expect(await within(reader).findByText("The source file changed. Return to the Library and reopen it.")).toBeInTheDocument();
       expect(within(reader).queryByTitle(`Source: ${RESOURCE.title}`)).not.toBeInTheDocument();
-      expect(within(reader).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(1);
+      expect(within(reader).queryByRole("spinbutton", { name: "PDF page" })).not.toBeInTheDocument();
     } else {
-      expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/fresh.pdf#page=7");
+      expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("data-page", "7");
       expect(within(reader).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(7);
     }
   });
@@ -204,7 +264,8 @@ describe("private workspace", () => {
     await user.click(screen.getByRole("button", { name: "Close my research" }));
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByText("Save or discard your collection changes before leaving.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "My resources" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "My resources" }));
+    expect(screen.getByRole("textbox", { name: "Collection name" })).toHaveValue("New collection draft");
     expect(screen.getByRole("button", { name: "Create collection" })).toBeEnabled();
     const unload = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(unload); expect(unload.defaultPrevented).toBe(true);
     await user.click(screen.getByRole("button", { name: "Discard changes" }));
@@ -305,6 +366,7 @@ describe("private workspace", () => {
     const f = fixture({ notes }); const { onOpenResource, onClose } = renderWorkspace(f.api);
     expect(screen.getByRole("status")).toHaveTextContent("Loading…");
     await user.click(screen.getByRole("button", { name: "All research" }));
+    await user.click(screen.getByRole("button", { name: "Page notes" }));
     await screen.findByText(NOTE.body);
     expect(notes.mock.calls[0]![1].aborted).toBe(true);
     await act(async () => resolve(page([{ ...NOTE, body: "Stale private response" }])));
@@ -323,6 +385,7 @@ describe("private workspace", () => {
     });
     const f = fixture({ notes, collections, updateCollection });
     renderWorkspace(f.api, { global: true });
+    await user.click(screen.getByRole("button", { name: "Page notes" }));
     await screen.findByText(NOTE.body); await user.click(screen.getByRole("button", { name: "Load more" }));
     await screen.findByText("Second note"); expect(screen.getByText(NOTE.body)).toBeInTheDocument();
     expect(notes).toHaveBeenLastCalledWith({ deleted: false, beforeId: NOTE.id });

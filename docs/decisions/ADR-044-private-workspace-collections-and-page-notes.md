@@ -1,7 +1,7 @@
 # ADR-044 — Private workspace, Collections and Page Notes
 
 Date: 2026-09-15
-Status: Accepted for local implementation under the reassessment charter; release awaits the final integrated batch
+Status: Accepted; deployed in the September24 combined970 release under the reassessment charter
 
 Implement a small Personal Research Overlay module behind authenticated `/api/workspace` routes. Its dependencies point to authorized Core resource identity; Core file operations never depend on overlay success. It adds no service, paid dependency, AI invocation or original-file rewrite. The user-facing surface is 我的研究, with resource-level access from reading/details and a workspace for returning to saved research.
 

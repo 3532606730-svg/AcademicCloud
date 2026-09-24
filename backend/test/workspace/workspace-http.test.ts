@@ -147,3 +147,33 @@ test("membership HTTP requires collection revision, returns current collection a
   assert.equal(removed.json().collection.revision, 3);
   assert.equal(removed.json().collection.itemCount, 0);
 });
+
+
+test("reader routes authenticate, reject forged attachments, and preserve private CAS state", async (context) => {
+  const f = await httpFixture(context); const { source } = f.sharedFile();
+  const path = "/api/workspace/resources/" + source.resourceId + "/progress";
+  assert.equal((await f.app.inject({ method: "GET", url: path })).statusCode, 401);
+  assert.equal((await f.request(MEMBER.id, "PUT", path, { sourceId: source.sourceId, physicalPage: 5, revision: 0 })).statusCode, 200);
+  assert.equal((await f.request(MEMBER.id, "PUT", path, { sourceId: source.sourceId, physicalPage: 6, revision: 0 })).statusCode, 409);
+  assert.equal((await f.request(MEMBER.id, "PUT", path, { sourceId: source.sourceId, physicalPage: 6, revision: 1, accountId: OWNER.id })).statusCode, 400);
+  assert.equal((await f.request(OWNER.id, "GET", path)).json().progress, null);
+  const input = { ...source, physicalPage: 5, text: "PRIVATE_HIGHLIGHT_HTTP_SENTINEL", rects: [{ x: .1, y: .2, width: .3, height: .04 }], color: "yellow" };
+  const { resourceId, sourceId, physicalPage, text, rects, color } = input;
+  const clean = { resourceId, sourceId, physicalPage, text, rects, color };
+  const response = await f.request(MEMBER.id, "POST", "/api/workspace/highlights", clean);
+  assert.equal(response.statusCode, 200); const h = response.json().highlight;
+  const highlightPath = "/api/workspace/highlights/" + h.id;
+  assert.equal((await f.request(OWNER.id, "PATCH", highlightPath, { color: "green", revision: 1, deleted: true })).statusCode, 404);
+  assert.equal((await f.request(MEMBER.id, "PATCH", highlightPath, { color: "green", revision: 1, deleted: true, sourceId: "other" })).statusCode, 400);
+  assert.equal((await f.request(MEMBER.id, "PATCH", highlightPath, { color: "green", revision: 1, deleted: true })).statusCode, 200);
+  assert.equal((await f.request(MEMBER.id, "PATCH", highlightPath, { color: "green", revision: 1, deleted: false })).statusCode, 409);
+  for (const patch of [{ accountId: OWNER.id }, { rects: [{ x: .9, y: 0, width: .2, height: .2 }] }, { rects: Array(101).fill(rects[0]) }, { text: "x".repeat(10001) }]) {
+    assert.equal((await f.request(MEMBER.id, "POST", "/api/workspace/highlights", { ...clean, ...patch })).statusCode, 400);
+  }
+  const query = "/api/workspace/highlights?resourceId=" + resourceId + "&sourceId=" + sourceId;
+  assert.deepEqual((await f.request(OWNER.id, "GET", query)).json().items, []);
+  assert.equal((await f.request(OTHER.id, "GET", query)).statusCode, 404);
+  assert.equal((await f.request(MEMBER.id, "GET", query + "&deleted=true")).json().items.length, 1);
+  assert.doesNotMatch((await f.request(OWNER.id, "GET", "/api/workspace/export")).body, /PRIVATE_HIGHLIGHT_HTTP_SENTINEL/);
+  assert.doesNotMatch(f.logs.join(""), /PRIVATE_HIGHLIGHT_HTTP_SENTINEL/);
+});

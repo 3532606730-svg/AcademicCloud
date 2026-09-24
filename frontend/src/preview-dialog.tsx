@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { describeError } from "./i18n.ts";
 import { useLanguage } from "./i18n-react.tsx";
 import { useHistoryDialog } from "./view-context.ts";
 import { useModalDialog } from "./use-modal-dialog.ts";
 import { CloseIcon, DownloadIcon, FileIcon, QuoteIcon, TextIcon } from "./icons.tsx";
+import { PdfReader } from "./pdf-reader.tsx";
 
 export interface PreviewDocument {
   requestId: number;
@@ -12,6 +13,8 @@ export interface PreviewDocument {
   error: unknown;
   returnFocus: HTMLElement | null;
   retry: () => void;
+  expiresAt?: string;
+  renew?: () => Promise<{ url: string; expiresAt?: string }>;
 }
 
 function pdfPageFromUrl(url: string | null): number {
@@ -24,7 +27,7 @@ function pdfPageFromUrl(url: string | null): number {
   }
 }
 
-export function PreviewDialog({ preview, covered = false, onClose, onDownload, onDetails, onCitation, onResearch }: {
+export function PreviewDialog({ preview, covered = false, onClose, onDownload, onDetails, onCitation, onResearch, onAddToResearch }: {
   preview: PreviewDocument;
   covered?: boolean;
   onClose: () => void;
@@ -32,6 +35,7 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
   onDetails?: ((trigger: HTMLElement) => void) | undefined;
   onCitation?: ((trigger: HTMLElement) => void) | undefined;
   onResearch?: ((trigger: HTMLElement, physicalPage?: number) => void) | undefined;
+  onAddToResearch?: ((trigger: HTMLElement) => Promise<void>) | undefined;
 }) {
   const { t, language } = useLanguage();
   const close = useHistoryDialog(onClose);
@@ -40,7 +44,13 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
   const [imageFailed, setImageFailed] = useState(false);
   const [readerUrl, setReaderUrl] = useState(preview.url);
   const [selectedPage, setSelectedPage] = useState(() => pdfPageFromUrl(preview.url));
-  const [pageDraft, setPageDraft] = useState(() => String(pdfPageFromUrl(preview.url)));
+  const [renderedPage, setRenderedPage] = useState<number | null>(null);
+  const [expiresAt, setExpiresAt] = useState(preview.expiresAt);
+  const [navigationPending, setNavigationPending] = useState(false);
+  const [actionPending, setActionPending] = useState(false);
+  const [actionError, setActionError] = useState<unknown>(null);
+  const [readerError, setReaderError] = useState<unknown>(null);
+  const request = useRef(0);
   const isPdf = preview.file.mediaType === "application/pdf";
   useEffect(() => {
     setLoaded(false);
@@ -48,25 +58,32 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
     setReaderUrl(preview.url);
     const page = pdfPageFromUrl(preview.url);
     setSelectedPage(page);
-    setPageDraft(String(page));
+    setRenderedPage(null);
+    setExpiresAt(preview.expiresAt);
+    setActionError(null); setReaderError(null); setNavigationPending(false);
+    request.current++;
+    return () => { request.current++; };
   }, [preview.requestId, preview.url]);
-  const goToPage = (page: number) => {
+  const goToPage = async (page: number, forceRenew = false) => {
     if (!preview.url || !Number.isSafeInteger(page) || page < 1 || page > 1_000_000) return;
-    const url = new URL(readerUrl ?? preview.url, window.location.href);
-    const params = new URLSearchParams(url.hash.slice(1));
-    params.set("page", String(page));
-    url.hash = params.toString();
-    setSelectedPage(page);
-    setPageDraft(String(page));
-    setLoaded(false);
-    setReaderUrl(url.toString());
+    const current = ++request.current;
+    setReaderError(null); setNavigationPending(true); setRenderedPage(null);
+    try {
+      if (forceRenew || (expiresAt && Date.parse(expiresAt) - 10_000 <= Date.now())) {
+        if (!preview.renew) { preview.retry(); return; }
+        const fresh = await preview.renew();
+        if (request.current !== current) return;
+        setReaderUrl(fresh.url); setExpiresAt(fresh.expiresAt);
+      }
+      if (request.current === current) { setSelectedPage(page); setLoaded(false); }
+    } catch (error) {
+      if (request.current === current) { setReaderError(error); setReaderUrl(null); }
+    } finally {
+      if (request.current === current) setNavigationPending(false);
+    }
   };
-  const submitPage = (event: FormEvent) => {
-    event.preventDefault();
-    goToPage(Number(pageDraft));
-  };
-  const failure = preview.error
-    ? describeError(preview.error, language)
+  const failure = preview.error || readerError
+    ? describeError(preview.error || readerError, language)
     : imageFailed ? t("preview.imageFailed") : null;
 
   return (
@@ -80,28 +97,21 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
         <button className="button button--quiet preview-close-button" type="button"
           onClick={close} aria-label={t("preview.closeAria")}><CloseIcon size={19} /></button>
       </header>
-      {isPdf && <form className="preview-page-controls" onSubmit={submitPage} aria-label={t("preview.pageNavigation") }>
-        <button className="button button--quiet button--small" type="button" disabled={!preview.url || selectedPage <= 1}
-          onClick={() => goToPage(selectedPage - 1)}>{t("preview.previousPage")}</button>
-        <label>{t("preview.pdfPage")}<input type="number" min={1} max={1_000_000} step={1} required disabled={!preview.url}
-          value={pageDraft} onChange={(event) => setPageDraft(event.target.value)} /></label>
-        <button className="button button--quiet button--small" type="button" disabled={!preview.url || selectedPage >= 1_000_000}
-          onClick={() => goToPage(selectedPage + 1)}>{t("preview.nextPage")}</button>
-        <button className="button button--small" type="submit" disabled={!preview.url || Number(pageDraft) === selectedPage}>{t("preview.jumpPage")}</button>
-      </form>}
       <div className="preview-content" aria-busy={!loaded && !failure}>
         {failure ? (
           <div className="preview-error" role="alert">
             <p>{failure}</p>
-            <button className="button" type="button" onClick={preview.retry}>{t("preview.retry")}</button>
+            <button className="button" type="button" onClick={() => readerError ? void goToPage(selectedPage, true) : preview.retry()}>{t("preview.retry")}</button>
           </div>
         ) : (
           <>
-            {!loaded && <p className={preview.url ? "preview-loading" : "preview-opening"} role="status">
+            {!loaded && !(isPdf && readerUrl) && <p className={preview.url ? "preview-loading" : "preview-opening"} role="status">
               <span className="preview-progress" aria-hidden="true" />
               {t("preview.loading")}
             </p>}
-            {preview.url && (preview.file.mediaType.startsWith("image/") ? (
+            {isPdf && readerUrl ? <PdfReader url={readerUrl.split("#")[0]!} title={preview.file.displayName} page={selectedPage}
+              onPageChange={(page) => void goToPage(page)} onPageRendered={(page) => { setRenderedPage(page); setLoaded(true); }}
+              onPageUnavailable={() => setRenderedPage(null)} onRetry={() => void goToPage(selectedPage, true)} navigationPending={navigationPending} /> : preview.url && (preview.file.mediaType.startsWith("image/") ? (
               <img src={preview.url} onLoad={() => setLoaded(true)} onError={() => setImageFailed(true)}
                 alt={t("preview.imageAlt", { name: preview.file.displayName })} referrerPolicy="no-referrer" />
             ) : (
@@ -111,18 +121,23 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
           </>
         )}
       </div>
+      {!!actionError && <p className="preview-action-error" role="alert">{describeError(actionError, language)}</p>}
       <footer>
         <div className="preview-document-actions">
           {onDetails && <button className="button button--quiet" type="button"
             onClick={(event) => onDetails(event.currentTarget)}><FileIcon size={17} />{t("preview.details")}</button>}
           {onCitation && <button className="button button--quiet" type="button"
             onClick={(event) => onCitation(event.currentTarget)}><QuoteIcon size={17} />{t("preview.citation")}</button>}
-          {onResearch && <button className="button button--quiet" type="button"
-            onClick={(event) => onResearch(event.currentTarget, isPdf ? selectedPage : undefined)}><TextIcon size={17} />{t("workspace.notes")}</button>}
+          {onResearch && <button className="button button--quiet" type="button" disabled={isPdf && renderedPage !== selectedPage}
+            onClick={(event) => onResearch(event.currentTarget, isPdf ? renderedPage! : undefined)}><TextIcon size={17} />{t("workspace.notes")}</button>}
+          {onAddToResearch && <button className="button button--primary" type="button" disabled={actionPending} onClick={(event) => {
+            const trigger = event.currentTarget; setActionPending(true); setActionError(null);
+            void onAddToResearch(trigger).catch(setActionError).finally(() => setActionPending(false));
+          }}>{actionPending ? (language === "zh-CN" ? "正在加入…" : "Adding…") : t("workspace.add")}</button>}
         </div>
         <div className="preview-file-actions">
           {preview.url
-            ? <a className="button preview-open-button" href={readerUrl ?? preview.url} target="_blank" rel="noreferrer">{t("preview.open")}</a>
+            ? <a className="button preview-open-button" href={isPdf ? `${(readerUrl ?? preview.url).split("#")[0]}#page=${selectedPage}` : preview.url} target="_blank" rel="noreferrer">{t("preview.open")}</a>
             : <button className="button preview-open-button" type="button" disabled>{t("preview.open")}</button>}
           <button className="button button--primary preview-download-button" type="button" onClick={onDownload}><DownloadIcon size={17} />{t("menu.download")}</button>
         </div>

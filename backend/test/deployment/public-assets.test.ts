@@ -96,7 +96,7 @@ test("only direct hashed public filenames are publishable and duplicate manifest
       const candidate = release(directory, "release", { [newName]: "new chunk" });
       candidate.manifest.files[0]!.path = `frontend/dist/assets/${name}`;
       candidate.save();
-      assert.throws(() => publishAssets(candidate.root, target), /only content-hashed public asset names/u);
+      assert.throws(() => publishAssets(candidate.root, target), /content-hashed public assets|pdfjs-6/u);
       assert.equal(existsSync(target), false);
     });
   }
@@ -115,7 +115,7 @@ test("source directory aliases cannot publish bytes from outside the immutable r
   const candidate = release(directory, "release", { [newName]: "new chunk" });
   const alias = join(directory, "aliased-release");
   linkDirectory(candidate.root, alias);
-  assert.throws(() => publishAssets(alias, target), /asset source must not traverse symlinks/u);
+  assert.throws(() => publishAssets(alias, target), /source must not traverse symlinks/u);
   assert.equal(existsSync(target), false);
 });
 
@@ -178,4 +178,60 @@ test("a directory occupying an asset name is preserved and rejected", (t) => {
   mkdirSync(join(target, newName), { recursive: true });
   assert.throws(() => publishAssets(candidate.root, target));
   assert.ok(lstatSync(join(target, newName)).isDirectory());
+});
+
+
+function pdfRelease(directory: string, label: string, files: Record<string, string>) {
+  const digest = createHash("sha256");
+  for (const name of Object.keys(files).sort()) {
+    const bytes = Buffer.from(files[name]!);
+    digest.update(name + "\0" + bytes.length + "\0" + createHash("sha256").update(bytes).digest("hex") + "\n");
+  }
+  const group = "pdfjs-6.2.108-" + digest.digest("hex");
+  return { ...release(directory, label, Object.fromEntries(Object.entries(files).map(([name, value]) => [group + "/" + name, value]))), group };
+}
+
+test("PDF worker and nested resources publish under a verified immutable directory", (t) => {
+  const { directory, target } = fixture(t);
+  const files = { "pdf.worker.min.mjs": "worker", "LICENSE.txt": "Apache notice", "cmaps/Adobe-Japan1-UCS2.bcmap": "cmap", "wasm/openjpeg.wasm": "wasm", "standard_fonts/FoxitSerif.pfb": "font", "iccs/CGATS001Compat-v2-micro.icc": "icc" };
+  const first = pdfRelease(directory, "pdf-one", files);
+  assert.equal(publishAssets(first.root, target).added, 6);
+  assert.equal(publishAssets(first.root, target).added, 0);
+  const second = pdfRelease(directory, "pdf-two", { ...files, "pdf.worker.min.mjs": "worker-two" });
+  assert.equal(publishAssets(second.root, target).added, 6);
+  assert.equal(readFileSync(join(target, first.group, "pdf.worker.min.mjs"), "utf8"), "worker");
+  assert.equal(readFileSync(join(target, second.group, "pdf.worker.min.mjs"), "utf8"), "worker-two");
+});
+
+test("PDF directory digest detects removed or altered resource entries before writes", async (t) => {
+  for (const mode of ["removed", "digest"] as const) await t.test(mode, (t) => {
+    const { directory, target } = fixture(t);
+    const candidate = pdfRelease(directory, "pdf", { "pdf.worker.min.mjs": "worker", "LICENSE.txt": "notice" });
+    if (mode === "removed") candidate.manifest.files.pop();
+    else {
+      const entry = candidate.manifest.files[0]!;
+      writeFileSync(join(candidate.root, entry.path), "new worker");
+      entry.size = Buffer.byteLength("new worker"); entry.sha256 = createHash("sha256").update("new worker").digest("hex");
+    }
+    candidate.save(); assert.throws(() => publishAssets(candidate.root, target), /directory digest mismatch/u);
+    assert.equal(existsSync(target), false);
+  });
+});
+
+test("PDF destination aliases and unexpected nested paths fail closed", async (t) => {
+  for (const relative of ["cmaps/../secret.js", "cmaps/sub/name.bcmap", "private.json", "../secrets"]) await t.test(relative, (t) => {
+    const { directory, target } = fixture(t);
+    const candidate = pdfRelease(directory, "pdf", { "pdf.worker.min.mjs": "worker" });
+    candidate.manifest.files[0]!.path = "frontend/dist/assets/" + candidate.group + "/" + relative;
+    candidate.save(); assert.throws(() => publishAssets(candidate.root, target)); assert.equal(existsSync(target), false);
+  });
+  await t.test("nested directory alias", (t) => {
+    const { directory, target } = fixture(t);
+    const candidate = pdfRelease(directory, "pdf", { "pdf.worker.min.mjs": "worker", "cmaps/font.bcmap": "font" });
+    const outside = join(directory, "outside"); mkdirSync(outside);
+    mkdirSync(join(target, candidate.group), { recursive: true }); linkDirectory(outside, join(target, candidate.group, "cmaps"));
+    assert.throws(() => publishAssets(candidate.root, target));
+    assert.deepEqual(readdirSync(outside), []);
+    assert.equal(existsSync(join(target, candidate.group, "pdf.worker.min.mjs")), false);
+  });
 });

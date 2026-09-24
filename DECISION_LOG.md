@@ -554,3 +554,7 @@ External evidence and confidence never confer canonical authority. Migration
 One initializer reconciles migrations, append-only admissions and projection;
 readiness rejects an incompatible runtime. Core remains modular and small.
 Deployment and live data acceptance are separate from local verification.
+
+## 2026-09-25 — Owned reader expedited release
+
+ADR045 records browser-side PDF.js and the independent Research workspace; OCR is deferred. Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance. This supersedes only the per-release verification cadence, not source identity, authorization or private-overlay boundaries.

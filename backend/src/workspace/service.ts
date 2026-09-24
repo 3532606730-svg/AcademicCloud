@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Persistence } from "../persistence/contracts.js";
-import { WorkspaceError, type PageNote, type ReadingState, type ResearchCollection,
+import { WorkspaceError, type PageNote, type ReadingState, type ReaderProgress, type TextHighlight, type ResearchCollection,
   type WorkspaceRepository, type WorkspacePage, type WorkspaceResource } from "./model.js";
 
 function identifier(value: string): string {
@@ -8,7 +8,7 @@ function identifier(value: string): string {
   return value;
 }
 function revision(value: number): number {
-  if (!Number.isSafeInteger(value) || value < 0) throw new WorkspaceError("invalid_input");
+  if (!Number.isSafeInteger(value) || value < 0 || value >= Number.MAX_SAFE_INTEGER) throw new WorkspaceError("invalid_input");
   return value;
 }
 function text(value: string, max: number, multiline = false): string {
@@ -45,6 +45,74 @@ export class WorkspaceService {
     const collection = this.repository.getCollection(accountId, identifier(id));
     if (!collection) throw new WorkspaceError("not_found");
     return collection;
+  }
+  private requirePdfSource(accountId: string, resourceId: string, sourceId: string): WorkspaceResource {
+    const resource = this.requireResource(accountId, resourceId);
+    identifier(sourceId);
+    if (resource.sourceId !== sourceId) throw new WorkspaceError("concurrent_change");
+    if (resource.mediaType !== "application/pdf") throw new WorkspaceError("invalid_input");
+    return resource;
+  }
+  progress(accountId: string, resourceId: string) {
+    const resource = this.requireResource(accountId, resourceId);
+    return { progress: this.repository.getProgress(accountId, resourceId, resource.sourceId) };
+  }
+  saveProgress(accountId: string, resourceId: string, input: Pick<ReaderProgress, "sourceId" | "physicalPage" | "revision">) {
+    return this.persistence.runInTransaction(() => {
+      this.requirePdfSource(accountId, resourceId, input.sourceId);
+      if (!Number.isSafeInteger(input.physicalPage) || input.physicalPage < 1 || input.physicalPage > 1_000_000) throw new WorkspaceError("invalid_input");
+      const progress: ReaderProgress = { resourceId, sourceId: input.sourceId, physicalPage: input.physicalPage,
+        revision: revision(input.revision) + 1, updatedAt: this.now().toISOString() };
+      if (!this.repository.saveProgress(accountId, progress, input.revision)) throw new WorkspaceError("concurrent_change");
+      return progress;
+    });
+  }
+  recent(accountId: string, beforeId?: string, limit?: number) {
+    this.requireAccount(accountId);
+    const query = paging(beforeId, limit);
+    const result = page(this.repository.listProgress(accountId, query.beforeId, query.limit + 1), query.limit, (item) => item.sourceId);
+    const resources = this.repository.resolveResources(accountId, result.items.map((item) => item.resourceId));
+    const authorized = new Set(resources.map((item) => item.resourceId));
+    return { ...result, items: result.items.filter((item) => authorized.has(item.resourceId)), resources };
+  }
+  highlights(accountId: string, filter: { resourceId: string; sourceId: string; deleted?: boolean; beforeId?: string; limit?: number }) {
+    this.requirePdfSource(accountId, filter.resourceId, filter.sourceId);
+    const query = paging(filter.beforeId, filter.limit);
+    return page(this.repository.listHighlights(accountId, { ...filter, deleted: filter.deleted ?? false, ...query, limit: query.limit + 1 }), query.limit, (item) => item.id);
+  }
+  createHighlight(accountId: string, input: Pick<TextHighlight, "resourceId" | "sourceId" | "physicalPage" | "text" | "rects" | "color">) {
+    return this.persistence.runInTransaction(() => {
+      this.requirePdfSource(accountId, input.resourceId, input.sourceId);
+      if (!Number.isSafeInteger(input.physicalPage) || input.physicalPage < 1 || input.physicalPage > 1_000_000
+        || !["yellow", "green", "blue", "pink"].includes(input.color) || !Array.isArray(input.rects)
+        || input.rects.length < 1 || input.rects.length > 100) throw new WorkspaceError("invalid_input");
+      const rects = input.rects.map((r) => {
+        if (!r || typeof r !== "object" || Object.keys(r).some((k) => !["x", "y", "width", "height"].includes(k))
+          || ![r.x, r.y, r.width, r.height].every((n) => Number.isFinite(n) && n >= 0 && n <= 1)
+          || r.width <= 0 || r.height <= 0 || r.x + r.width > 1.000001 || r.y + r.height > 1.000001) throw new WorkspaceError("invalid_input");
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      });
+      const now = this.now().toISOString();
+      const highlight: TextHighlight = { id: this.newId(), resourceId: input.resourceId, sourceId: input.sourceId,
+        physicalPage: input.physicalPage, text: text(input.text, 10_000, true), rects, color: input.color,
+        revision: 1, createdAt: now, updatedAt: now, deletedAt: null };
+      this.repository.createHighlight(accountId, highlight);
+      return highlight;
+    });
+  }
+  updateHighlight(accountId: string, id: string, input: Pick<TextHighlight, "color" | "revision"> & { deleted: boolean }) {
+    return this.persistence.runInTransaction(() => {
+      this.requireAccount(accountId);
+      const current = this.repository.getHighlight(accountId, identifier(id));
+      if (!current) throw new WorkspaceError("not_found");
+      this.requirePdfSource(accountId, current.resourceId, current.sourceId);
+      if (!["yellow", "green", "blue", "pink"].includes(input.color) || typeof input.deleted !== "boolean") throw new WorkspaceError("invalid_input");
+      const now = this.now().toISOString();
+      const highlight: TextHighlight = { ...current, color: input.color, revision: revision(input.revision) + 1,
+        updatedAt: now, deletedAt: input.deleted ? current.deletedAt ?? now : null };
+      if (!this.repository.saveHighlight(accountId, highlight, input.revision)) throw new WorkspaceError("concurrent_change");
+      return highlight;
+    });
   }
   resource(accountId: string, resourceId: string) {
     const resource = this.requireResource(accountId, resourceId);
@@ -191,6 +259,22 @@ export class WorkspaceService {
       for (const note of notes) yield line("page_note", note);
       if (notes.length < 100) break;
       beforeId = notes.at(-1)!.id;
+    }
+    beforeId = null;
+    while (true) {
+      this.requireAccount(accountId);
+      const states = this.repository.listProgress(accountId, beforeId, 100, false);
+      for (const state of states) yield line("reader_progress", state);
+      if (states.length < 100) break;
+      beforeId = states.at(-1)!.sourceId;
+    }
+    beforeId = null;
+    while (true) {
+      this.requireAccount(accountId);
+      const highlights = this.repository.listHighlights(accountId, { beforeId, limit: 100 });
+      for (const highlight of highlights) yield line("text_highlight", highlight);
+      if (highlights.length < 100) break;
+      beforeId = highlights.at(-1)!.id;
     }
     yield line("complete", { completedAt: this.now().toISOString() });
   }

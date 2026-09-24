@@ -1,7 +1,7 @@
 # ADR-043 — Document source generations and physical-page locations
 
 Date: 2026-09-15
-Status: Accepted for local implementation under the reassessment charter; production migration awaits the final combined release
+Status: Accepted; deployed in the September24 combined970 release under the reassessment charter
 
 Files have a mutable revision used for concurrency control. Rename, move, recycle and other metadata operations can advance it. The existing Catalog source fingerprint deliberately includes that revision and must remain unchanged. Scholarly ArtifactVersion currently references a file without capturing immutable byte identity. Neither identifier is a durable page-note attachment on its own.
 

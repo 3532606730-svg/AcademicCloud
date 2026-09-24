@@ -22,11 +22,11 @@ Every item is an approval-gated cloud/account change or verification. Record the
 ## CORS gate
 
 - [ ] Allowed origin is the one exact production HTTPS `APP_ORIGIN`; no `*`, alternate scheme, wildcard subdomain, or development origin.
-- [ ] Allowed methods are exactly `POST` and `PUT`. `POST` preserves the legacy browser form-upload contract; `PUT` is required for resumable multipart parts. Downloads and previews use signed navigation/subresource URLs rather than cross-origin JavaScript reads, so browser access does not receive `GET`, `HEAD`, or `DELETE` through CORS.
-- [ ] Allowed headers contain exactly `Content-MD5`. Resumable multipart `PUT` sends it as a signed HTTP request header. Legacy POST values such as `Content-Type` and `x-oss-forbid-overwrite` remain multipart form fields and are not CORS request headers. Wildcard or unrelated allowed headers are forbidden.
-- [ ] Exposed headers are empty because the upload clients read only HTTP success status, not OSS response headers. Add an exposed header only after a reviewed application change proves it is read by browser JavaScript.
+- [ ] Allowed methods are exactly `GET`, `POST` and `PUT`. `POST` preserves the legacy browser form-upload contract; `PUT` is required for resumable multipart parts; `GET` permits the owned PDF.js reader to fetch signed source URLs directly. `HEAD`, `DELETE` and other methods remain excluded.
+- [ ] Allowed headers contain exactly `Content-MD5` and `Range`. PDF.js sends bounded byte-range GET requests; resumable multipart `PUT` sends `Content-MD5` as a signed HTTP request header. Legacy POST values such as `Content-Type` and `x-oss-forbid-overwrite` remain multipart form fields and are not CORS request headers. Wildcard or unrelated allowed headers are forbidden.
+- [ ] Exposed headers are exactly `Accept-Ranges`, `Content-Length`, `Content-Range` and `Content-Encoding`, required for PDF.js range detection and response validation. No wildcard or unrelated exposed headers.
 - [ ] `Access-Control-Allow-Credentials` is platform-controlled: the Alibaba OSS CORS console exposes no credentials toggle, and the live platform emits `Access-Control-Allow-Credentials: true` automatically on approved preflights. The accepted live rule is therefore: the header is absent, OR appears exactly once with the case-insensitive value `true`; any other value, duplicate occurrence, or wildcard origin fails closed. The browser upload clients send no cookies or HTTP Authorization to OSS, so this platform-emitted header grants nothing. The preflight cache maximum age is exactly 300 seconds.
-- [ ] Preflight from the exact app origin succeeds for `POST` without request headers and for `PUT` with `Access-Control-Request-Headers: Content-MD5`. Evil, HTTP-scheme, development, unrelated-header, and non-`POST`/`PUT` method probes fail without an allow-origin response. Run `node scripts/oss-cors-contract.mjs` as the read-only live gate; POST-only/no-header CORS is not deployment-ready.
+- [ ] Preflight from the exact app origin succeeds for `POST`, `PUT` with `Content-MD5`, and `GET` with `Range` on both native OSS and `https://files.ajtlab.top`. Evil, HTTP-scheme, development, unrelated-header, `HEAD`, `DELETE` and `PATCH` probes fail without an allow-origin response. Run `node scripts/oss-cors-contract.mjs` as the read-only live gate. The previous upload-only rule is not owned-reader deployment-ready.
 
 ## Representative live acceptance
 
@@ -40,3 +40,11 @@ Every item is an approval-gated cloud/account change or verification. Record the
 - [ ] All signed URLs are short-lived, owner-authorized, and absent from logs/browser storage/history.
 
 These checks use real credentials, cloud configuration, storage and possibly billable traffic. Do not execute them without explicit approval.
+
+## Owned PDF reader CORS application
+
+The exact proposed rule is checked in at `deployment/oss/reader-cors.xml`. Apply it using the existing Owner OSS console session or an already-authorized bucket administrator, after reading and preserving the current bucket rules. Do not grant bucket administration to the application principal or replace unrelated rules. The application principal deliberately lacks GetBucketCors/PutBucketCors.
+
+The necessary reader rule admits only https://cloud.ajtlab.top, GET/POST/PUT, Content-MD5/Range, four response metadata headers, and a 300-second max age. Both signed-URL domains must pass the read-only gate. A configured local contract is not evidence of a live bucket change.
+
+PDF.js native browser rendering uses same-origin worker files and generated font blobs; its bundled WASM image decoders require the narrow CSP `wasm-unsafe-eval` allowance. JavaScript `unsafe-eval`, external workers and wildcard sources remain forbidden. Reference documentation: Mozilla PDF.js API (wasmUrl/useWasm), https://mozilla.github.io/pdf.js/api/draft/api.js.html; Alibaba OSS CORS, https://www.alibabacloud.com/help/en/oss/user-guide/configure-cross-origin-resource-sharing.
