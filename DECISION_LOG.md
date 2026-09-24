@@ -2,6 +2,10 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## 2026-09-24 — Source and private notes share the Research resource page
+
+Opening a PDF from `我的研究` now uses the full-height `/research` resource page: authorized native PDF on the left, private reading state, collections and page notes on the right; a narrow screen switches between source and notes. This uses the existing short-lived download authorization and private Workspace APIs without a new renderer, service or OCR execution. Reauthorization checks the same immutable source generation. The signed source link is marked stale shortly before expiry; page navigation reauthorizes it and the old new-tab link is withdrawn until reopened. Since the browser's native PDF viewer does not report its internal scroll page, creating an inline page note requires the researcher to confirm the PDF page explicitly. The source remains visible only to an authorized account and the note remains in that account's private overlay.
+
 ## 2026-09-15 — One combined publication after local integration
 
 The Owner requests completing the integrated improvement batch locally before one final publication/deployment, reaffirmed on2026-09-22 with an explicit reminder to retain all other charter work. Continue implementation, focused verification and local Git checkpoints; do not push/deploy individual milestones. Source73b26d2 was already pushed when this instruction arrived. Last observed Core/frontend/Compute remain7e2d1bf. Final exact qualification, migration/deployment and normal-site acceptance remain required.

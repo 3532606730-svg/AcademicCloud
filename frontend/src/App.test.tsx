@@ -2769,8 +2769,8 @@ describe("document preview session", () => {
     await within(research).findByText("Private research text");
     expect(window.location.pathname).toBe("/research");
     expect(preview).not.toBeInTheDocument();
-    expect(document.querySelector("iframe")).toBeNull();
-    expect(api.createLibraryDownload).toHaveBeenCalledOnce();
+    expect(within(research).getByTitle("Source: book.pdf")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=1");
+    expect(api.createLibraryDownload).toHaveBeenCalledTimes(2);
     act(() => window.history.back());
     await waitFor(() => expect(window.location.pathname).toBe("/"));
     expect(research).not.toBeInTheDocument();
@@ -2786,7 +2786,7 @@ describe("document preview session", () => {
     const refreshed = await screen.findByRole("region", { name: "My research" });
     await within(refreshed).findByText("Private research text");
     expect(window.location.pathname).toBe("/research");
-    expect(api.createLibraryDownload).toHaveBeenCalledOnce();
+    expect(api.createLibraryDownload).toHaveBeenCalledTimes(4);
     expect(window.location.search + window.location.hash).toBe("");
     expect(JSON.stringify(window.history.state)).not.toMatch(/Private research text|signed\.invalid/u);
     await user.click(within(refreshed).getByRole("button", { name: "Back" }));
@@ -2832,7 +2832,7 @@ describe("document preview session", () => {
     expect(window.location.pathname).toBe("/research");
     expect(preview).not.toBeInTheDocument();
     const editor = await within(research).findByRole("form", { name: "Write a page note" });
-    expect(within(research).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(2);
+    expect(within(editor).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(2);
     expect(within(editor).getByRole("textbox", { name: "Note" })).toHaveFocus();
   });
 
@@ -2867,7 +2867,7 @@ describe("document preview session", () => {
     expect(note).toHaveValue("Private Reader page eight draft");
     expect(within(editor).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(8);
     expect(window.history.length).toBe(historyLength);
-    expect(document.querySelector("iframe")).toBeNull();
+    expect(screen.getByTitle("Source: book.pdf")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=8");
     expect(JSON.stringify(window.history.state)).not.toMatch(/Private Reader|signed\.invalid/u);
 
     await user.click(within(editor).getByRole("button", { name: "Discard changes" }));
@@ -2915,7 +2915,7 @@ describe("document preview session", () => {
     expect(window.location.pathname).toBe("/");
     expect(row).toBeVisible();
     expect(document.querySelector("iframe")).toBeNull();
-    expect(api.createLibraryDownload).toHaveBeenCalledOnce();
+    expect(api.createLibraryDownload).toHaveBeenCalledTimes(2);
   });
 
   it("blocks Back while a research page write is pending and returns to Library after it saves", async () => {
@@ -2977,7 +2977,7 @@ describe("document preview session", () => {
     expect(trigger).toBeVisible();
   });
 
-  it("rejects a fresh authorization for replacement bytes when reopening a saved note", async () => {
+  it("rejects a fresh inline authorization for replacement bytes in Research", async () => {
     const user = userEvent.setup();
     const holding = LIBRARY_HOLDINGS[0]!;
     const api = sessionApi({ workspace: researchApi(),
@@ -2991,14 +2991,31 @@ describe("document preview session", () => {
     const preview = await screen.findByRole("dialog", { name: "book.pdf" });
     await user.click(within(preview).getByRole("button", { name: "Page notes" }));
     const research = await screen.findByRole("region", { name: "My research" });
-    const note = await within(research).findByText("Private research text");
-    const editor = await within(research).findByRole("form", { name: "Write a page note" });
-    await user.click(within(editor).getByRole("button", { name: "Cancel" }));
-    await user.click(within(note.closest("article")!).getByRole("button", { name: "Open resource" }));
-    expect(await within(research).findByRole("alert")).toHaveTextContent("changed elsewhere");
+    expect(await within(research).findByRole("alert")).toHaveTextContent("The source file changed. Return to the Library and reopen it.");
     expect(window.location.pathname).toBe("/research");
     expect(preview).not.toBeInTheDocument();
     expect(document.querySelector("iframe")).toBeNull();
+    expect(api.createLibraryDownload).toHaveBeenCalledTimes(2);
+  });
+
+  it("blocks an original-file download when the source changes after the Reader opens", async () => {
+    const user = userEvent.setup();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const holding = LIBRARY_HOLDINGS[0]!;
+    const original = { ...authorization("https://signed.invalid/original.pdf"), source: { resourceId: holding.file.id, sourceId: "research-source" } };
+    const replaced = { ...authorization("https://signed.invalid/replacement.pdf"), source: { resourceId: holding.file.id, sourceId: "changed-source" } };
+    const createLibraryDownload = vi.fn().mockResolvedValueOnce(original).mockResolvedValueOnce(original).mockResolvedValueOnce(replaced);
+    const api = sessionApi({ workspace: researchApi(), createLibraryDownload });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "book.pdf" })).getByRole("button", { name: "Page notes" }));
+    const research = await screen.findByRole("region", { name: "My research" });
+    expect(await within(research).findByTitle("Source: book.pdf")).toHaveAttribute("src", "https://signed.invalid/original.pdf#page=1");
+    await user.click(within(research).getByRole("button", { name: "Download original" }));
+    await waitFor(() => expect(createLibraryDownload).toHaveBeenCalledTimes(3));
+    expect(click).not.toHaveBeenCalled();
+    expect(within(research).getByTitle("Source: book.pdf")).toHaveAttribute("src", "https://signed.invalid/original.pdf#page=1");
+    click.mockRestore();
   });
 
   it.each(["account", "library"] as const)("opens the %s preview shell before source authorization completes", async (scope) => {

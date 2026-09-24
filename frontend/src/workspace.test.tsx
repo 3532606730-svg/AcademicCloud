@@ -36,6 +36,80 @@ beforeEach(() => window.localStorage.setItem("academiccloud.language", "en"));
 afterEach(() => window.localStorage.removeItem("academiccloud.language"));
 
 describe("private workspace", () => {
+  it("opens a source-aware inline PDF, jumps to an explicit page, and starts the note on that page", async () => {
+    const user = userEvent.setup(); const f = fixture();
+    const download = vi.fn().mockResolvedValue(undefined);
+    const authorize = vi.fn().mockResolvedValue({ url: "https://example.test/document.pdf?signature=bounded", download });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize, initialPhysicalPage: 7 });
+    const frame = await screen.findByTitle(`Source: ${RESOURCE.title}`);
+    expect(frame).toHaveAttribute("src", "https://example.test/document.pdf?signature=bounded#page=7");
+    expect(authorize).toHaveBeenCalledWith(RESOURCE);
+    await user.click(within(screen.getByRole("form", { name: "Write a page note" })).getByRole("button", { name: "Cancel" }));
+    const reader = await screen.findByRole("region", { name: "Source" });
+    await user.click(within(reader).getByRole("button", { name: "Next" }));
+    expect(frame).toHaveAttribute("src", "https://example.test/document.pdf?signature=bounded#page=8");
+    const target = within(reader).getByRole("spinbutton", { name: "PDF page" });
+    await user.clear(target);
+    await user.type(target, "12");
+    await user.click(within(reader).getByRole("button", { name: "Go" }));
+    expect(frame).toHaveAttribute("src", "https://example.test/document.pdf?signature=bounded#page=12");
+    await user.click(screen.getByRole("button", { name: "Write a page note" }));
+    const editor = screen.getByRole("form", { name: "Write a page note" });
+    const notePage = within(editor).getByRole("spinbutton", { name: "PDF page" });
+    expect(notePage).toHaveValue(12);
+    await user.type(within(editor).getByRole("textbox", { name: "Note" }), "Compare with the source scan.");
+    const save = within(editor).getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    await user.click(within(editor).getByRole("checkbox", { name: "I checked the PDF page for this note" }));
+    expect(save).toBeEnabled();
+    await user.clear(notePage);
+    await user.type(notePage, "13");
+    expect(save).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Open in new tab" })).toHaveAttribute("href", "https://example.test/document.pdf?signature=bounded#page=12");
+    await user.click(within(reader).getByRole("button", { name: "Download original" }));
+    expect(download).toHaveBeenCalledOnce();
+  });
+
+  it("reauthorizes an expired source before moving to another PDF page", async () => {
+    const user = userEvent.setup(); const f = fixture();
+    const authorize = vi.fn()
+      .mockResolvedValueOnce({ url: "https://example.test/old.pdf", expiresAt: new Date(Date.now() - 1000).toISOString(), download: vi.fn() })
+      .mockResolvedValueOnce({ url: "https://example.test/fresh.pdf", expiresAt: new Date(Date.now() + 60_000).toISOString(), download: vi.fn() });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    const reader = await screen.findByRole("region", { name: "Source" });
+    expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/old.pdf#page=1");
+    expect(await within(reader).findByText("The source link expired; page navigation will reauthorize it.")).toBeInTheDocument();
+    expect(within(reader).queryByRole("link", { name: "Open in new tab" })).not.toBeInTheDocument();
+    await user.click(within(reader).getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(authorize).toHaveBeenCalledTimes(2));
+    expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/fresh.pdf#page=2");
+  });
+
+  it("drops a stale reader authorization after navigating away and reopening the resource", async () => {
+    const user = userEvent.setup(); let resolveOld!: (value: { url: string; download: () => Promise<void> }) => void;
+    const old = new Promise<{ url: string; download: () => Promise<void> }>((resolve) => { resolveOld = resolve; });
+    const authorize = vi.fn().mockReturnValueOnce(old).mockResolvedValue({ url: "https://example.test/current.pdf", download: vi.fn() });
+    const f = fixture({ reading: vi.fn().mockResolvedValue(page([{ resourceId: RESOURCE.resourceId, status: "queued", important: false, toCite: false, revision: 1, updatedAt: NOTE.updatedAt }])) });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    await waitFor(() => expect(authorize).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "All research" }));
+    await user.click(screen.getByRole("button", { name: "My resources" }));
+    await user.click(await screen.findByRole("button", { name: RESOURCE.title }));
+    expect(await screen.findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/current.pdf#page=1");
+    await act(async () => resolveOld({ url: "https://example.test/stale.pdf", download: vi.fn() }));
+    expect(screen.getByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/current.pdf#page=1");
+  });
+
+  it("does not authorize an inline reader when the expected source generation changed", async () => {
+    const replacement = { ...RESOURCE, sourceId: "replacement" };
+    const authorize = vi.fn();
+    const f = fixture({ resource: vi.fn().mockResolvedValue({ resource: replacement, reading: null, collectionIds: [] }) });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    expect(await screen.findByText("File content has changed. Reopen the resource before writing a note.")).toBeInTheDocument();
+    expect(authorize).not.toHaveBeenCalled();
+    expect(screen.queryByTitle(`Source: ${RESOURCE.title}`)).not.toBeInTheDocument();
+  });
+
   it("saves an explicit physical page and locator, then edits, trashes and restores the same attachment", async () => {
     const user = userEvent.setup(); const f = fixture();
     renderWorkspace(f.api);

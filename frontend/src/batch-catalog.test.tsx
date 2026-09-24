@@ -133,6 +133,9 @@ describe("BatchCatalogDialog", () => {
     await user.click(screen.getByRole("button", { name: "Resume review" }));
     await waitFor(() => expect(previewCatalogBatchResults).toHaveBeenCalledTimes(2));
     expect(within(screen.getAllByRole("article")[0]!).getByRole("checkbox")).toBeChecked();
+    expect(within(screen.getByRole("list", { name: "Batch catalog steps" })).getByText("Review").closest("li")).toHaveAttribute("aria-current", "step");
+    expect(screen.queryByRole("region", { name: "Per-item apply results" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Applied 0 of 0 selected items/u)).not.toBeInTheDocument();
     second.unmount();
 
     clearCatalogReviewDrafts(reviewSession.accountId);

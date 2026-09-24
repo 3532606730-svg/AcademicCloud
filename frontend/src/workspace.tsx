@@ -12,13 +12,17 @@ const COPY = {
     overview: "研究概览", notes: "页码笔记", reading: "我的资料", collections: "收藏集", close: "关闭我的研究", back: "返回",
     empty: "暂无记录", loading: "正在加载…", retry: "重试", more: "加载更多", all: "全部研究", saved: "已保存",
     collectionName: "收藏集名称", createCollection: "新建收藏集", archive: "归档", restore: "恢复", archived: "已归档",
-    rename: "重命名", save: "保存", cancel: "取消", discard: "放弃更改", deleted: "已删除笔记", active: "当前笔记",
-    newNote: "写页码笔记", edit: "编辑", remove: "移入笔记回收站", page: "PDF 页码", locator: "书上页码 / 卷叶（可选）",
+    rename: "重命名", save: "保存", cancel: "取消", discard: "放弃更改", deleted: "回收站", active: "返回笔记",
+    newNote: "写页码笔记", edit: "编辑", remove: "移入回收站", page: "PDF 页码", locator: "书上页码 / 卷叶（可选）",
     body: "笔记内容", physicalHelp: "从 PDF 首页计数；书上页码可另填。", open: "打开资料", atPage: "PDF 第 {page} 页",
     unavailable: "资料暂不可用", oldSource: "笔记属于旧文件版本", changedSource: "文件内容已更新，请重新打开资料后写笔记。",
     noPdf: "页码笔记适用于 PDF。", unsaved: "笔记尚未保存，请先保存或放弃更改。", unsavedCollection: "收藏集更改尚未保存，请先保存或放弃更改。", conflict: "内容已在别处修改。草稿已保留，请重新加载后核对。",
     export: "导出我的研究", status: "阅读状态", none: "未设置", queued: "待读", inProgress: "在读", finished: "已读", latest: "最新已保存内容", useDraft: "核对后使用我的草稿",
     important: "重要", toCite: "待引用", added: "已加入收藏集", removed: "已移出收藏集", removeItem: "移出收藏集", editCollection: "编辑收藏集",
+    readerView: "阅读视图", sourceView: "原文", previousPage: "上一页", nextPage: "下一页", jumpPage: "跳转", goToPage: "跳转此页",
+    retryReader: "重新打开", openNewTab: "在新页打开", downloadSource: "下载原件", readerLoading: "正在打开原件…",
+    readerExpired: "原件链接已过期；翻页时会重新验证。", pageConfirm: "我已核对笔记对应的 PDF 页码", pageSyncHelp: "浏览器内滚动原文不会同步页码，请核对上方 PDF 页码后保存。",
+    readerSourceChanged: "原件已有新版本，请返回资料库重新打开。",
   },
   en: {
     overview: "Overview", notes: "Page notes", reading: "My resources", collections: "Collections", close: "Close my research", back: "Back",
@@ -31,11 +35,16 @@ const COPY = {
     noPdf: "Page notes are available for PDFs.", unsaved: "Save or discard your note changes before leaving.", unsavedCollection: "Save or discard your collection changes before leaving.", conflict: "This record changed elsewhere. Your draft is preserved; reload and compare before saving.",
     export: "Export my research", status: "Reading status", none: "Not set", queued: "To read", inProgress: "Reading", finished: "Finished", latest: "Latest saved note", useDraft: "Reviewed: keep my draft",
     important: "Important", toCite: "To cite", added: "Added to collection", removed: "Removed from collection", removeItem: "Remove from collection", editCollection: "Edit collection",
+    readerView: "Reading view", sourceView: "Source", previousPage: "Previous", nextPage: "Next", jumpPage: "Go", goToPage: "Go to page",
+    retryReader: "Reopen", openNewTab: "Open in new tab", downloadSource: "Download original", readerLoading: "Opening source…",
+    readerExpired: "The source link expired; page navigation will reauthorize it.", pageConfirm: "I checked the PDF page for this note", pageSyncHelp: "Scrolling inside the browser PDF does not update this page number. Check it before saving.",
+    readerSourceChanged: "The source file changed. Return to the Library and reopen it.",
   },
 };
 
-type Editor = { note: PageNote | null; resource: WorkspaceResource; initialPhysicalPage?: number };
-export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, initialPhysicalPage, returnFocus, onClose, onOpenResource, onRouteChange, onRegisterNavigationGuard, asPage = false }: {
+type Editor = { note: PageNote | null; resource: WorkspaceResource; initialPhysicalPage?: number; requirePageConfirmation?: boolean };
+type ReaderAuthorization = { url: string; expiresAt?: string; download: () => Promise<void> };
+export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, initialPhysicalPage, returnFocus, onClose, onOpenResource, onAuthorizeReader, onRouteChange, onRegisterNavigationGuard, asPage = false }: {
   api: WorkspaceApi;
   initialResourceId?: string;
   expectedSourceId?: string;
@@ -43,6 +52,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   returnFocus?: HTMLElement | null;
   onClose: () => void;
   onOpenResource: (resource: WorkspaceResource, physicalPage?: number) => Promise<() => void>;
+  onAuthorizeReader?: (resource: WorkspaceResource) => Promise<ReaderAuthorization>;
   onRouteChange?: (resource: WorkspaceResource | null) => void;
   onRegisterNavigationGuard?: (guard: (() => boolean) | null) => void;
   asPage?: boolean;
@@ -65,6 +75,8 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [readerPage, setReaderPage] = useState(initialPhysicalPage ?? 1);
+  const [readerView, setReaderView] = useState<"source" | "notes">(initialPhysicalPage ? "notes" : "source");
   const pendingInitialNote = useRef(initialPhysicalPage !== undefined);
   const [noteDirty, setNoteDirty] = useState(false);
   const [collectionName, setCollectionName] = useState("");
@@ -87,11 +99,11 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   const dialog = useModalDialog(close, false, returnFocus);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !busy) return;
     const prevent = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", prevent);
     return () => window.removeEventListener("beforeunload", prevent);
-  }, [dirty]);
+  }, [dirty, busy]);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(null); setResource(null); setNotes(null); setReading(null); setItems(null);
@@ -122,10 +134,14 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   const refresh = () => setReload((n) => n + 1);
   const finishEditor = () => { setEditor(null); setNoteDirty(false); setNotice(""); };
   const sourceMatches = !expectedSourceId || resourceId !== initialResourceId || resource?.resource.sourceId === expectedSourceId;
+  const readerResource = asPage && onAuthorizeReader && resource?.resource.mediaType === "application/pdf" && sourceMatches ? resource.resource : null;
+  useEffect(() => {
+    setReaderPage(resourceId === initialResourceId ? initialPhysicalPage ?? 1 : 1);
+  }, [resourceId, initialResourceId, initialPhysicalPage]);
   useEffect(() => {
     if (!pendingInitialNote.current || !initialPhysicalPage || !resource || resourceId !== initialResourceId || !sourceMatches || resource.resource.mediaType !== "application/pdf") return;
     pendingInitialNote.current = false;
-    setEditor({ note: null, resource: resource.resource, initialPhysicalPage });
+    setEditor({ note: null, resource: resource.resource, initialPhysicalPage, requirePageConfirmation: Boolean(asPage && onAuthorizeReader) });
   }, [initialPhysicalPage, initialResourceId, resource, resourceId, sourceMatches]);
   const selectedCollection = collections.find((entry) => entry.id === collectionId);
   const latestCollection = editingCollection ? collections.find((entry) => entry.id === editingCollection.id) : undefined;
@@ -158,15 +174,23 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   return <ResearchFrame asPage={asPage} dialogRef={dialog}>
     <header className="research-header"><h2 id="research-title">{t("workspace.title")}</h2><button className="button button--quiet" type="button" onClick={close} aria-label={asPage ? c.back : c.close}>{asPage ? c.back : t("preview.close")}</button></header>
     <div className="research-body">
-      <div className={`research-workbench${resourceId ? " research-workbench--resource" : ""}`}>
+      <div className={`research-workbench${resourceId ? " research-workbench--resource" : ""}${readerResource ? " research-workbench--reader" : ""}`}>
         {!resourceId && <aside className="research-rail" aria-label={t("workspace.title")}>
           <nav className="research-tabs" aria-label={t("workspace.title")}>{(["notes", "reading", "collections"] as const).map((value) => <button type="button" key={value} disabled={locked} aria-current={tab === value ? "page" : undefined} onClick={() => { setTab(value); setCollectionId(null); setNotice(""); }}>{c[value]}</button>)}</nav>
         </aside>}
-        <main className="research-main">
-          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { setResourceId(undefined); setCollectionId(null); onRouteChange?.(null); }}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3>{resource && sourceMatches && <button className="button button--small button--primary" type="button" disabled={locked} onClick={() => void open(resource.resource)}>{c.open}</button>}</div>}
+        <main className={`research-main${readerResource ? " research-main--reader" : ""}`}>
+          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { setResourceId(undefined); setCollectionId(null); onRouteChange?.(null); }}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3>{resource && sourceMatches && !readerResource && <button className="button button--small button--primary" type="button" disabled={locked} onClick={() => void open(resource.resource)}>{c.open}</button>}</div>}
           {!!error && <div className="research-error" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.conflict : describeError(error, language)}</p><button className="button button--small" type="button" disabled={busy} onClick={refresh}>{c.retry}</button></div>}
           {notice && <p role="status" className="research-notice">{notice}</p>}
           {loading && <p role="status" className="research-empty">{c.loading}</p>}
+          {readerResource && <nav className="research-view-switch" aria-label={c.readerView}>
+            <button type="button" aria-current={readerView === "source" ? "page" : undefined} onClick={() => setReaderView("source")}>{c.sourceView}</button>
+            <button type="button" aria-current={readerView === "notes" ? "page" : undefined} onClick={() => setReaderView("notes")}>{c.notes}</button>
+          </nav>}
+          <div className={readerResource ? `research-resource-layout research-resource-layout--${readerView}` : "research-resource-content"}>
+          {readerResource && onAuthorizeReader && <ResearchReader key={`${readerResource.resourceId}:${readerResource.sourceId}`} resource={readerResource}
+            onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={setReaderPage} />}
+          <div className={readerResource ? "research-resource-details" : undefined}>
           {resource && <section className="research-resource-settings" aria-label={c.status}>
         <div className="research-reading-controls"><label>{c.status}<select disabled={locked} value={resource.reading?.status ?? ""} onChange={(e) => {
           const status = (e.target.value || null) as ReadingState["status"];
@@ -187,7 +211,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
       }}><input aria-label={c.collectionName} value={collectionName} maxLength={120} disabled={formLocked} onChange={(e) => setCollectionName(e.target.value)} placeholder={c.collectionName} /><button className="button button--small" type="submit" disabled={formLocked || !collectionName.trim()}>{c.createCollection}</button>{collectionName && <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => { setCollectionName(""); setNotice(""); }}>{c.discard}</button>}</form>}
       {(resourceId || tab === "notes") && <>
         <div className="research-section-heading"><h3 className={resourceId ? undefined : "visually-hidden"}>{c.notes}</h3><div><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => setDeleted((value) => !value)}>{deleted ? c.active : c.deleted}</button>
-          {resource && !deleted && <button className="button button--small button--primary" type="button" disabled={locked || resource.resource.mediaType !== "application/pdf" || !sourceMatches} onClick={() => setEditor({ note: null, resource: resource.resource, ...(resourceId === initialResourceId && initialPhysicalPage ? { initialPhysicalPage } : {}) })}>{c.newNote}</button>}</div></div>
+          {resource && !deleted && <button className="button button--small button--primary" type="button" disabled={locked || resource.resource.mediaType !== "application/pdf" || !sourceMatches} onClick={() => { const notePage = readerResource ? readerPage : resourceId === initialResourceId ? initialPhysicalPage : undefined; setEditor({ note: null, resource: resource.resource, ...(notePage ? { initialPhysicalPage: notePage } : {}), requirePageConfirmation: Boolean(readerResource) }); if (readerResource) setReaderView("notes"); }}>{c.newNote}</button>}</div></div>
         {resource && !sourceMatches && <p role="status">{c.changedSource}</p>}
         {resource && resource.resource.mediaType !== "application/pdf" && <p className="research-muted">{c.noPdf}</p>}
         {editor && <NoteEditor key={editor.note?.id ?? "new"} editor={editor} api={api} busy={busy} run={run} onDirty={setNoteDirty}
@@ -201,11 +225,14 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
             {!current ? <p className="research-muted">{c.unavailable}</p> : !matches ? <p className="research-muted">{c.oldSource}</p> : null}
             <div className="research-row-actions"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => setEditor({ note, resource: current ?? { resourceId: note.resourceId, sourceId: note.sourceId, title: c.unavailable, mediaType: "application/pdf", libraryId: null } })}>{c.edit}</button>
               <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => void run(async () => { await api.updateNote(note, { body: note.body, locator: note.locator, deleted: !note.deletedAt }); refresh(); })}>{note.deletedAt ? c.restore : c.remove}</button>
-              {current && matches && <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => void open(current, note.physicalPage)}>{c.open}</button>}</div>
+              {current && matches && <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { if (readerResource && current.resourceId === readerResource.resourceId && current.sourceId === readerResource.sourceId) { setReaderPage(note.physicalPage); setReaderView("source"); } else void open(current, note.physicalPage); }}>{readerResource && current.resourceId === readerResource.resourceId ? c.goToPage : c.open}</button>}</div>
           </article>;
         })}</div> : !loading && <p className="research-empty">{c.empty}</p>)}
         {notes?.nextBeforeId && <button className="button" type="button" disabled={locked} onClick={() => void moreNotes()}>{c.more}</button>}
       </>}
+          {readerResource && <a className="research-inspector-export research-reader-export" href="/api/workspace/export" download="academiccloud-personal-workspace.ndjson">{c.export}<span aria-hidden="true">↗</span></a>}
+          </div>
+          </div>
       {!resourceId && tab === "reading" && reading && <>{resourceCards(reading.items.filter((entry) => entry.status || entry.important || entry.toCite), reading.resources)}{reading.nextBeforeId && <button className="button" disabled={locked} type="button" onClick={() => void run(async () => { const next = await api.reading(reading.nextBeforeId!); setReading({ ...next, items: [...reading.items, ...next.items], resources: [...reading.resources, ...next.resources] }); })}>{c.more}</button>}</>}
           {!resourceId && tab === "collections" && <>
         <div className="research-collections">{collections.map((collection) => <div className="research-collection" key={collection.id}><button className="research-collection-name" type="button" disabled={locked} aria-pressed={collectionId === collection.id} onClick={() => setCollectionId(collection.id)}>{collection.name}<span>{collection.itemCount}{collection.archivedAt ? ` · ${c.archived}` : ""}</span></button>
@@ -243,6 +270,85 @@ function ResearchFrame({ asPage, dialogRef, children }: {
   return <dialog ref={dialogRef} className="research-dialog" aria-labelledby="research-title">{children}</dialog>;
 }
 
+function ResearchReader({ resource, onAuthorize, page, onPageChange }: {
+  resource: WorkspaceResource;
+  onAuthorize: (resource: WorkspaceResource) => Promise<ReaderAuthorization>;
+  page: number;
+  onPageChange: (page: number) => void;
+}) {
+  const { language } = useLanguage();
+  const c = COPY[language];
+  const [authorization, setAuthorization] = useState<ReaderAuthorization | null>(null);
+  const [authorizing, setAuthorizing] = useState(true);
+  const [linkStale, setLinkStale] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [pageDraft, setPageDraft] = useState(String(page));
+  const request = useRef(0);
+  const mounted = useRef(false);
+  const authorizeRef = useRef(onAuthorize);
+  authorizeRef.current = onAuthorize;
+  const authorize = async (): Promise<boolean> => {
+    const current = ++request.current;
+    setAuthorization(null); setLinkStale(false); setError(null); setAuthorizing(true);
+    try {
+      const next = await authorizeRef.current(resource);
+      if (!mounted.current || current !== request.current) return false;
+      setAuthorization(next);
+      return true;
+    } catch (caught) {
+      if (mounted.current && current === request.current) setError(caught);
+      return false;
+    } finally {
+      if (mounted.current && current === request.current) setAuthorizing(false);
+    }
+  };
+  useEffect(() => {
+    mounted.current = true;
+    void authorize();
+    return () => { mounted.current = false; request.current++; };
+  }, [resource.resourceId, resource.sourceId]);
+  useEffect(() => {
+    if (!authorization?.expiresAt) return;
+    const refreshAt = Date.parse(authorization.expiresAt) - 10_000;
+    if (!Number.isFinite(refreshAt) || refreshAt <= Date.now()) { setLinkStale(true); return; }
+    const timer = window.setTimeout(() => setLinkStale(true), refreshAt - Date.now());
+    return () => window.clearTimeout(timer);
+  }, [authorization]);
+  useEffect(() => setPageDraft(String(page)), [page]);
+  const readerUrl = authorization ? (() => {
+    const url = new URL(authorization.url, window.location.href);
+    const hash = new URLSearchParams(url.hash.slice(1));
+    hash.set("page", String(page));
+    url.hash = hash.toString();
+    return url.toString();
+  })() : null;
+  const goToPage = async (next: number) => {
+    if (!Number.isSafeInteger(next) || next < 1 || next > 1_000_000) return;
+    if (linkStale && !(await authorize())) return;
+    onPageChange(next);
+    setPageDraft(String(next));
+  };
+  const submitPage = (event: FormEvent) => { event.preventDefault(); void goToPage(Number(pageDraft)); };
+  return <section className="research-reader" aria-label={c.sourceView}>
+    <form className="research-reader-toolbar" aria-label={c.page} onSubmit={submitPage}>
+      <button className="button button--small button--quiet" type="button" disabled={!readerUrl || authorizing || page <= 1} onClick={() => void goToPage(page - 1)}>{c.previousPage}</button>
+      <label>{c.page}<input type="number" min={1} max={1_000_000} step={1} required value={pageDraft} onChange={(event) => setPageDraft(event.target.value)} /></label>
+      <button className="button button--small button--quiet" type="button" disabled={!readerUrl || authorizing || page >= 1_000_000} onClick={() => void goToPage(page + 1)}>{c.nextPage}</button>
+      <button className="button button--small" type="submit" disabled={!readerUrl || authorizing || Number(pageDraft) === page}>{c.jumpPage}</button>
+      <span className="research-reader-toolbar-spacer" />
+      {linkStale && <span className="research-reader-expired" role="status">{c.readerExpired}</span>}
+      <button className="button button--small button--quiet" type="button" disabled={authorizing} onClick={() => void authorize()}>{c.retryReader}</button>
+      {readerUrl && !linkStale && <a className="button button--small button--quiet" href={readerUrl} target="_blank" rel="noreferrer">{c.openNewTab}</a>}
+      <button className="button button--small button--quiet" type="button" disabled={!authorization} onClick={() => { if (authorization) void authorization.download().catch(setError); }}>{c.downloadSource}</button>
+    </form>
+    <div className="research-reader-content">
+      {authorizing && <p role="status" className="research-reader-message">{c.readerLoading}</p>}
+      {error !== null && <div className="research-reader-message" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.readerSourceChanged : describeError(error, language)}</p><button className="button button--small" type="button" onClick={() => void authorize()}>{c.retryReader}</button></div>}
+      {readerUrl && <iframe src={readerUrl} title={`${c.sourceView}: ${resource.title}`} referrerPolicy="no-referrer" />}
+    </div>
+  </section>;
+}
+
 function NoteEditor({ editor, api, busy, run, onDirty, onCancel, onSaved }: {
   editor: Editor; api: WorkspaceApi; busy: boolean; run: (work: () => Promise<void>) => Promise<void>;
   onDirty: (dirty: boolean) => void; onCancel: () => void; onSaved: () => void;
@@ -252,6 +358,7 @@ function NoteEditor({ editor, api, busy, run, onDirty, onCancel, onSaved }: {
   const [baseline, setBaseline] = useState(editor.note);
   const [latest, setLatest] = useState<PageNote | null>(null);
   const [locator, setLocator] = useState(editor.note?.locator ?? "");
+  const [pageConfirmed, setPageConfirmed] = useState(false);
   const initialPage = editor.note?.physicalPage ?? editor.initialPhysicalPage ?? 1;
   const [physicalPage, setPhysicalPage] = useState(String(initialPage));
   const dirty = body !== (editor.note?.body ?? "") || locator !== (editor.note?.locator ?? "") || physicalPage !== String(initialPage);
@@ -274,10 +381,11 @@ function NoteEditor({ editor, api, busy, run, onDirty, onCancel, onSaved }: {
     });
   };
   return <form className="research-note-editor" onSubmit={save} aria-label={editor.note ? c.edit : c.newNote}>
-    <div className="research-note-location"><label>{c.page}<input type="number" min={1} max={1_000_000} step={1} required disabled={busy || !!editor.note} value={physicalPage} onChange={(e) => setPhysicalPage(e.target.value)} /></label><label>{c.locator}<input maxLength={200} disabled={busy} value={locator} onChange={(e) => setLocator(e.target.value)} /></label></div>
-    {!editor.note && <p className="research-muted">{c.physicalHelp}</p>}
+    <div className="research-note-location"><label>{c.page}<input type="number" min={1} max={1_000_000} step={1} required disabled={busy || !!editor.note} value={physicalPage} onChange={(e) => { setPhysicalPage(e.target.value); setPageConfirmed(false); }} /></label><label>{c.locator}<input maxLength={200} disabled={busy} value={locator} onChange={(e) => setLocator(e.target.value)} /></label></div>
+    {!editor.note && <p className="research-muted">{editor.requirePageConfirmation ? c.pageSyncHelp : c.physicalHelp}</p>}
+    {editor.requirePageConfirmation && !editor.note && <label className="research-page-confirm"><input type="checkbox" checked={pageConfirmed} disabled={busy} onChange={(event) => setPageConfirmed(event.target.checked)} />{c.pageConfirm}</label>}
     <label>{c.body}<textarea autoFocus required rows={7} maxLength={20_000} disabled={busy} value={body} onChange={(e) => setBody(e.target.value)} /></label>
     {latest && <div className="research-conflict"><h4>{c.latest}</h4>{latest.locator && <p>{latest.locator}</p>}<p className="research-note-body">{latest.body}</p><button className="button" type="button" disabled={busy} onClick={() => { setBaseline(latest); setLatest(null); }}>{c.useDraft}</button></div>}
-    <div className="research-row-actions"><button className="button button--primary" type="submit" disabled={busy || !body.trim() || latest !== null}>{c.save}</button><button className="button button--quiet" type="button" disabled={busy} onClick={onCancel}>{dirty ? c.discard : c.cancel}</button></div>
+    <div className="research-row-actions"><button className="button button--primary" type="submit" disabled={busy || !body.trim() || latest !== null || (editor.requirePageConfirmation && !pageConfirmed)}>{c.save}</button><button className="button button--quiet" type="button" disabled={busy} onClick={onCancel}>{dirty ? c.discard : c.cancel}</button></div>
   </form>;
 }

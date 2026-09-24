@@ -9,7 +9,7 @@
     "checkpoint": "73b26d257c0f9508758bdb90d42165e80939cecd",
     "mainIntegration": "73b26d2 atomically pushed and both tracking heads/local HEAD verified before Owner batch-publication instruction",
     "localSynchronized": false,
-    "localState": "Intentionally ahead of last published73b: source037, private Workspace038, dedicated Research route, visual redesign, Catalog recovery and deferred OCR contract locally verified; no intermediate push/deployment"
+    "localState": "Intentionally ahead of last published73b: source037, private Workspace038, dedicated Research route with inline PDF reader, visual redesign, Catalog recovery and deferred OCR contract locally verified; no intermediate push/deployment"
   },
   "production": {
     "observedAt": "2026-09-15",
@@ -62,7 +62,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Local integrated source037/workspace038/dedicated Research/visual and Catalog recovery are qualified at a local checkpoint; no final artifact or deployment evidence; live corpus projection and final candidate gate remain open",
+    "currentPhaseB": "Local integrated source037/workspace038/inline Research Reader/visual and Catalog recovery are qualified at a local checkpoint; no final artifact or deployment evidence; live corpus projection and final candidate gate remain open",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -96,15 +96,23 @@
     },
     "visualRedesign": {
       "scope": "Library/Search, Preview/Reader, Details/Citation, private Workspace Research Desk, Admin, Batch, Login and responsive states",
-      "build": "pass; initial index JS442.91 kB/gzip125.71 kB; CSS70.46 kB/gzip12.95 kB; no new dependencies/assets/fonts",
+      "build": "pass; initial index JS443.08 kB/gzip125.74 kB; CSS70.46 kB/gzip12.95 kB; no new dependencies/assets/fonts",
       "focusedTests": "frontend25 files/388 historical complete tests; GPT-6 Sol high-effort bot final App+Workspace168/168 and Batch Catalog9/9; PDF page and Catalog refresh, citation/presentation and Library-to-Workspace add path covered",
       "browser": "synthetic signed-in browser checks; dedicated /research and Reader-to-note navigation; 1024 filter and hidden-shell fixes; 390px test bot clicked PDF note Save successfully after export bar moved into layout; refresh and guarded Back pass; native PDF paint not claimed",
       "publication": "local only; final combined release pending"
     },
+    "inlineResearchReader": {
+      "scope": "Local /research PDF source beside private notes, reading state and collections; mobile source/notes switch",
+      "sourceSafety": "signed source-generation check; expired link requires reauthorization before page navigation or new-tab exposure",
+      "pageSafety": "native PDF internal scroll is not inferred; new inline page note requires explicit page confirmation",
+      "focusedTests": "GPT-6 Sol high test bot App156/156 and Workspace17/17; independent Sol high review findings repaired",
+      "browser": "synthetic desktop1440 layout and mobile390 source/notes/page navigation/note-page prefill pass; native PDF painting unverified",
+      "publication": "local only; final combined release pending"
+    },
     "latencyLedger": {
       "document": "docs/performance/vnext-latency-ledger.md",
-      "measured": "synthetic list/search/Preview/Apply service timings, one-request public asset/API transport probes, and local checksum stage",
-      "unmeasured": "normal-path PDF first paint, Details/editor timing, signed-download TTFB, real upload stages, and Workspace action timing",
+      "measured": "synthetic list/search/Preview/Apply service timings, one-request public asset/API transport probes, local checksum stage, and explicitly response-mocked warm UI diagnostics",
+      "unmeasured": "normal signed-in PDF first paint, Details/editor timing, signed-download TTFB, real upload stages, and Workspace action timing",
       "decision": "retain projection and one-plan Apply; do not infer production SLA or add telemetry/service without a normal signed-in capture"
     },
     "fieldQualityEvaluation": {
@@ -123,13 +131,14 @@
       "http": "authenticated capabilities plus bounded request endpoint; valid requests return 503 ocr_deferred",
       "selection": "physical one-based single page or range capped at 64 pages",
       "sideEffects": "no object read, worker dispatch, text persistence, index or export",
-      "futureAuthority": "re-resolve authorized resourceId+sourceId generation through server-side source path before adapter execution"
+      "futureAuthority": "re-resolve authorized resourceId+sourceId generation through server-side source path before adapter execution",
+      "localEngineEvaluation": "Owner's Mongology OCR v0.2 supports provisional Mongolian Latin line recognition only; controlled 700-line CER3.316%, not unseen-book or traditional vertical script acceptance; no inference or integration run"
     },
     "catalogReviewRecovery": {
       "scope": "account and Library bound tab draft, cleared at sign-out",
       "limits": "30-minute TTL, four drafts, 32 MiB logical aggregate for document, selection and results; browser storage quota failure is visibly warned and current-page memory retained",
       "resume": "fresh server Preview, acknowledgements reset, completed items excluded",
-      "evidence": "focused refresh, expiry, quota and sign-out tests 9/9 pass; browser and live Catalog acceptance pending"
+      "evidence": "focused refresh, expiry, quota and sign-out tests 9/9 pass; signed-in synthetic browser import/Preview/refresh/resume/partial Apply/completed exclusion/sign-out pass; live Catalog acceptance pending"
     },
     "currentCorpusProjection": {
       "observedAt": "2026-09-23",

@@ -238,7 +238,7 @@ export function BatchCatalogDialog({
       const selected = new Set(draft.selectedResourceIds.filter((resourceId) => reviewableIds.has(resourceId) && !completedIds.has(resourceId)));
       setResultsDocument(draft.document);
       setPreview(nextPreview);
-      setApplyResults(draft.results);
+      setApplyResults(draft.results.length > 0 ? draft.results : null);
       setSelectedPreviewIds(selected);
       clearReviewDraft(reviewSession, library.id);
     } catch (caught: unknown) {

@@ -2035,6 +2035,14 @@ function DriveView({
     }
   }
 
+  async function authorizeResearchDownload(resource: WorkspaceResource): Promise<{ url: string }> {
+    const authorization = resource.libraryId
+      ? await api.createLibraryDownload(resource.libraryId, resource.resourceId)
+      : await api.createDownload(resource.resourceId);
+    if (authorization.source?.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
+    return authorization;
+  }
+
   async function downloadFile(file: FileEntry) {
     await performDownload(file.id, file.displayName, () => api.createDownload(file.id));
   }
@@ -3089,6 +3097,18 @@ function DriveView({
           window.history.replaceState(nextState, "", "/research");
           researchRouteStateRef.current = nextState;
         }}
+        onAuthorizeReader={async (resource: WorkspaceResource) => {
+          if (resource.mediaType !== "application/pdf") throw new ApiError(415, "unsupported_media_type");
+          const authorization = resource.libraryId
+            ? await api.createLibraryDownload(resource.libraryId, resource.resourceId, "inline")
+            : await api.createDownload(resource.resourceId, "inline");
+          if (authorization.source?.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
+          return {
+            url: authorization.url,
+            expiresAt: authorization.expiresAt,
+            download: () => performDownload(resource.resourceId, resource.title, () => authorizeResearchDownload(resource)),
+          };
+        }}
         onOpenResource={async (resource: WorkspaceResource, physicalPage?: number) => {
           if (preview?.resourceId === resource.resourceId && preview.sourceId === resource.sourceId && physicalPage === undefined) return () => {};
           const requestId = ++previewRequest.current;
@@ -3111,8 +3131,7 @@ function DriveView({
           const url = new URL(authorization.url, window.location.href);
           if (physicalPage !== undefined) url.hash = `page=${physicalPage}`;
           const focus = researchRequest.returnFocus;
-          const download = () => performDownload(resource.resourceId, resource.title, () => resource.libraryId
-            ? api.createLibraryDownload(resource.libraryId, resource.resourceId) : api.createDownload(resource.resourceId));
+          const download = () => performDownload(resource.resourceId, resource.title, () => authorizeResearchDownload(resource));
           return () => setPreview({ requestId, resourceId: resource.resourceId, sourceId: resource.sourceId,
             file: { displayName: resource.title, mediaType: resource.mediaType ?? "application/octet-stream" },
             url: url.toString(), error: null, returnFocus: focus, download,
