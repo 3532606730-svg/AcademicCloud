@@ -1,5 +1,5 @@
 {
-  "lastReconciled": "2026-09-23",
+  "lastReconciled": "2026-09-24",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
@@ -9,8 +9,7 @@
     "checkpoint": "73b26d257c0f9508758bdb90d42165e80939cecd",
     "mainIntegration": "73b26d2 atomically pushed and both tracking heads/local HEAD verified before Owner batch-publication instruction",
     "localSynchronized": false,
-    "localState": "Intentionally ahead of last published73b: source037, private Workspace038, visual redesign and reference-reader scope audit locally verified; no intermediate push/deployment",
-    "localHead": "25e518b15a797f4304041b18502d814cded6e645"
+    "localState": "Intentionally ahead of last published73b: source037, private Workspace038, dedicated Research route, visual redesign, Catalog recovery and deferred OCR contract locally verified; no intermediate push/deployment"
   },
   "production": {
     "observedAt": "2026-09-15",
@@ -63,7 +62,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Local integrated source037/workspace038/visual redesign is qualified; current candidate a52ce71 has no artifact or deployment evidence; live corpus projection and final candidate gate remain open",
+    "currentPhaseB": "Local integrated source037/workspace038/dedicated Research/visual and Catalog recovery are qualified at a local checkpoint; no final artifact or deployment evidence; live corpus projection and final candidate gate remain open",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -90,16 +89,16 @@
       "typesBuild": "both PASS",
       "compiledAcceptance": "schema038 restart/recovery/privacy PASS",
       "oldRuntime": "exact73b 4921 files hash-verified; complete schema038 history startup/overlay preservation PASS; incomplete history rejects",
-      "browser": "Real-backend synthetic notes/collections/reading/recovery/guarded Back/export and four widths PASS; Library holding row add-to-research opens queued private resource; PDF source/page URL verified, native iframe did not paint",
+      "browser": "Real-backend synthetic notes/collections/reading/recovery/guarded Back/export and four widths PASS; Library holding row add-to-research opens queued private resource; PDF source/page URL verified, native iframe did not paint; new explicit PDF page jump to private note passes focused App test",
       "review": "Independent backend and final history/source-opening review: no material finding",
       "evidence": "output/vnext/workspace-browser-verification.json",
       "publication": "local only; final combined release and normal-site acceptance pending"
     },
     "visualRedesign": {
       "scope": "Library/Search, Preview/Reader, Details/Citation, private Workspace Research Desk, Admin, Batch, Login and responsive states",
-      "build": "pass; initial index JS434.52 kB/gzip123.15 kB; CSS68.67 kB/gzip12.59 kB; no new dependencies/assets/fonts",
-      "focusedTests": "frontend25 files/388 tests; citation/presentation18/18; Library-to-Workspace add path covered; prior full visual run382/384 with stale presentation assertions corrected by15/15 and166/166 follow-up",
-      "browser": "synthetic signed-in browser checks; widths1600/1440/1366/1024/768/390 no horizontal overflow; native PDF paint not claimed",
+      "build": "pass; initial index JS442.91 kB/gzip125.71 kB; CSS70.46 kB/gzip12.95 kB; no new dependencies/assets/fonts",
+      "focusedTests": "frontend25 files/388 historical complete tests; GPT-6 Sol high-effort bot final App+Workspace168/168 and Batch Catalog9/9; PDF page and Catalog refresh, citation/presentation and Library-to-Workspace add path covered",
+      "browser": "synthetic signed-in browser checks; dedicated /research and Reader-to-note navigation; 1024 filter and hidden-shell fixes; 390px test bot clicked PDF note Save successfully after export bar moved into layout; refresh and guarded Back pass; native PDF paint not claimed",
       "publication": "local only; final combined release pending"
     },
     "latencyLedger": {
@@ -126,6 +125,12 @@
       "sideEffects": "no object read, worker dispatch, text persistence, index or export",
       "futureAuthority": "re-resolve authorized resourceId+sourceId generation through server-side source path before adapter execution"
     },
+    "catalogReviewRecovery": {
+      "scope": "account and Library bound tab draft, cleared at sign-out",
+      "limits": "30-minute TTL, four drafts, 32 MiB logical aggregate for document, selection and results; browser storage quota failure is visibly warned and current-page memory retained",
+      "resume": "fresh server Preview, acknowledgements reset, completed items excluded",
+      "evidence": "focused refresh, expiry, quota and sign-out tests 9/9 pass; browser and live Catalog acceptance pending"
+    },
     "currentCorpusProjection": {
       "observedAt": "2026-09-23",
       "source": "privacy-safe read-only production inventory over academiccloud-prod",
@@ -137,6 +142,13 @@
         "not_run": 31,
         "succeeded": 16
       },
+      "scholarlyJobStateCountsExcludingFixtures": {
+        "failed": 46,
+        "not_run": 31,
+        "succeeded": 16
+      },
+      "distinctScholarlySourcesWithStagedOwnerFiles": 102,
+      "historicalBatch001": "2026-09-01: 94 eligible, 6 already processed, 88 in batch; 82 outputs = 1 reviewed + 81 raw UNKNOWN, of which 3 internal and 78 scholarly unreviewed/no-change; 6 unchanged corrupt sources require replacement",
       "semanticStateCounts": {
         "failed": 49,
         "not_run": 23,
@@ -161,7 +173,7 @@
         "exactByteMd5Matches": 3,
         "noByteMd5Match": 9,
         "sha256AlgorithmMatches": 0,
-        "note": "Production inventory stores MD5; no resource mutation or retry performed"
+        "note": "Production inventory stores MD5; 2 matched Owner jobs succeeded and Venice failed; remaining 9 have no exact active match; no resource mutation or retry performed"
       }
     },
     "localRootSuite": {
@@ -184,9 +196,9 @@
   },
   "blockers": [
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works",
-    "Current live corpus projection has 49 failed, 31 not_run and nine staged Owner PDFs without an exact byte/MD5 match; final candidate runtime and source reconciliation remain open"
+    "Current scholarly corpus projection has 46 failed, 31 not_run and nine staged Owner PDFs without an exact byte/MD5 match; six unchanged corrupt sources need replacement bytes; final candidate runtime and source reconciliation remain open"
   ],
-  "next": "Complete Catalog browser/live and expiry-edge evidence; current 2026-09-23 read-only production projection shows 96 eligible PDFs (93 production plus 3 internal fixtures), 49 failed, 31 not_run and unresolved semantic states, so do not claim corpus acceptance or rerun jobs on the old runtime. Capture final candidate inventory/queue after the approved runtime gate, then finish normal-path timings, final report and one combined publication/deployment.",
+  "next": "Complete Catalog browser/live and visual evidence. The 2026-09-23 read-only projection has 93 scholarly PDFs (46 failed, 31 not_run, 16 succeeded), plus 3 failed internal fixtures; 9 staged Owner PDFs have no exact active match. Preserve successful jobs, require replacement for 6 unchanged corrupt sources, and do not claim corpus acceptance. After final candidate qualification, process unfinished sources through normal signed-in paths, capture a final inventory/queue/authority snapshot, then finish timings, the 29-section report and one combined publication/deployment.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

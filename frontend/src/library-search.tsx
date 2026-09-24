@@ -314,10 +314,13 @@ export function LibrarySearchField({
 
   return (
     <div className="library-search">
+      <div className="library-search-heading"><strong>{t("librarySearch.heading")}</strong><span>{t("librarySearch.hint")}</span></div>
       <div className="library-search-toolbar">
         <div className="library-search-field">
+          <label className="library-search-control-label" htmlFor="library-search-input">{t("librarySearch.label")}</label>
           <SearchIcon className="library-search-icon" size={18} />
           <input
+            id="library-search-input"
             type="search"
             className="library-search-input"
             aria-label={t("librarySearch.label")}
@@ -335,14 +338,14 @@ export function LibrarySearchField({
           {active && <button type="button" className="library-search-clear" aria-label={t("librarySearch.clear")} onClick={clearSearch}>×</button>}
         </div>
         <label className="library-search-material">
-          <span className="visually-hidden">{t("librarySearch.materialClass")}</span>
+          <span className="library-search-control-label">{t("librarySearch.materialClass")}</span>
           <select value={materialClass} onChange={(event) => setMaterialClass(event.target.value as MaterialClass | "")}>
             <option value="">{t("librarySearch.allMaterials")}</option>
             {MATERIAL_CLASSES.map((value) => <option key={value} value={value}>{t(materialClassKey(value))}</option>)}
           </select>
         </label>
         <label className="library-search-sort">
-          <span className="visually-hidden">{t("library.sortLabel")}</span>
+          <span className="library-search-control-label">{t("library.sortLabel")}</span>
           <select aria-label={t("library.sortLabel")} value={active ? searchSort : sort ?? "newest"} onChange={(event) => {
             if (active) setSearchSort(event.target.value as LibrarySearchSort);
             else onSortChange?.(event.target.value as LibraryHoldingSort);

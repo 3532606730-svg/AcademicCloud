@@ -2746,15 +2746,78 @@ describe("document preview session", () => {
     await user.click(screen.getByRole("button", { name: "Open actions for book.pdf" }));
     await user.click(screen.getByRole("menuitem", { name: "Put in my research" }));
 
-    await screen.findByRole("dialog", { name: "My research" });
+    const research = await screen.findByRole("region", { name: "My research" });
     expect(workspace.saveReading).toHaveBeenCalledWith("library-file-0", {
       status: "queued", important: false, toCite: false, revision: 0,
     });
-    const research = await screen.findByRole("dialog", { name: "My research" });
+    expect(window.location.pathname).toBe("/research");
+    expect(screen.queryByRole("dialog", { name: "My research" })).not.toBeInTheDocument();
     expect(within(research).getByRole("heading", { name: "Page notes" })).toBeInTheDocument();
   });
 
-  it("opens private Page Notes over Preview without re-signing or replacing its iframe", async () => {
+  it("opens private Page Notes as a page and restores research through Back, Forward and refresh", async () => {
+    const user = userEvent.setup();
+    const api = sessionApi({ workspace: researchApi(), createLibraryDownload: vi.fn().mockResolvedValue({
+      ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source" },
+    }) });
+    const app = render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
+    const trigger = within(preview).getByRole("button", { name: "Page notes" });
+    await user.click(trigger);
+    const research = await screen.findByRole("region", { name: "My research" });
+    await within(research).findByText("Private research text");
+    expect(window.location.pathname).toBe("/research");
+    expect(preview).not.toBeInTheDocument();
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(api.createLibraryDownload).toHaveBeenCalledOnce();
+    act(() => window.history.back());
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(research).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "book.pdf" })).toBeVisible();
+    act(() => window.history.forward());
+    const restored = await screen.findByRole("region", { name: "My research" });
+    expect(window.location.pathname).toBe("/research");
+    await within(restored).findByText("Private research text");
+
+    // A remount models a full application reload with the same browser entry.
+    app.unmount();
+    render(<App api={api} />);
+    const refreshed = await screen.findByRole("region", { name: "My research" });
+    await within(refreshed).findByText("Private research text");
+    expect(window.location.pathname).toBe("/research");
+    expect(api.createLibraryDownload).toHaveBeenCalledOnce();
+    expect(window.location.search + window.location.hash).toBe("");
+    expect(JSON.stringify(window.history.state)).not.toMatch(/Private research text|signed\.invalid/u);
+    await user.click(within(refreshed).getByRole("button", { name: "Back" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+  });
+
+  it("keeps all research selected after leaving a resource and refreshing", async () => {
+    const user = userEvent.setup();
+    const api = sessionApi({ workspace: researchApi() });
+    const app = render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Open actions for book.pdf" }));
+    await user.click(screen.getByRole("menuitem", { name: "Put in my research" }));
+    const research = await screen.findByRole("region", { name: "My research" });
+    await within(research).findByRole("heading", { name: "book.pdf" });
+    await user.click(within(research).getByRole("button", { name: "All research" }));
+    expect(await within(research).findByRole("button", { name: "My resources" })).toBeVisible();
+    expect(window.location.pathname).toBe("/research");
+
+    app.unmount();
+    render(<App api={api} />);
+    const refreshed = await screen.findByRole("region", { name: "My research" });
+    expect(await within(refreshed).findByRole("button", { name: "My resources" })).toBeVisible();
+    expect(within(refreshed).queryByRole("button", { name: "All research" })).not.toBeInTheDocument();
+    expect(await within(refreshed).findByText("Private research text")).toBeVisible();
+    expect(document.title).toBe("My research · AcademicCloud");
+    await user.click(within(refreshed).getByRole("button", { name: "Back" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(document.title).toBe("AcademicCloud");
+  });
+
+  it("opens the private note editor directly from an explicit PDF page jump", async () => {
     const user = userEvent.setup();
     const api = sessionApi({ workspace: researchApi(), createLibraryDownload: vi.fn().mockResolvedValue({
       ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source" },
@@ -2762,21 +2825,63 @@ describe("document preview session", () => {
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: "book.pdf" }));
     const preview = await screen.findByRole("dialog", { name: "book.pdf" });
-    const frame = preview.querySelector("iframe");
-    const trigger = within(preview).getByRole("button", { name: "Page notes" });
-    await user.click(trigger);
-    const research = await screen.findByRole("dialog", { name: "My research" });
-    await within(research).findByText("Private research text");
-    expect(preview.querySelector("iframe")).toBe(frame);
-    expect(preview).toHaveAttribute("inert");
-    expect(api.createLibraryDownload).toHaveBeenCalledOnce();
-    await user.click(within(research).getByRole("button", { name: "Close my research" }));
-    expect(preview.querySelector("iframe")).toBe(frame);
-    expect(preview).not.toHaveAttribute("inert");
-    expect(trigger).toHaveFocus();
+    await user.click(within(preview).getByRole("button", { name: "Next page" }));
+    expect(preview.querySelector("iframe")?.src).toBe("https://signed.invalid/research.pdf#page=2");
+    await user.click(within(preview).getByRole("button", { name: "Page notes" }));
+    const research = await screen.findByRole("region", { name: "My research" });
+    expect(window.location.pathname).toBe("/research");
+    expect(preview).not.toBeInTheDocument();
+    const editor = await within(research).findByRole("form", { name: "Write a page note" });
+    expect(within(research).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(2);
+    expect(within(editor).getByRole("textbox", { name: "Note" })).toHaveFocus();
   });
 
-  it.each(["note", "collection"] as const)("preserves an unsaved %s and its exact Preview through Back until discard", async (draft) => {
+  it("preserves a Reader note draft through same-route Back and returns once after discard", async () => {
+    const user = userEvent.setup();
+    const holding = LIBRARY_HOLDINGS[0]!;
+    const api = sessionApi({ workspace: researchApi(),
+      getLibraryHoldingDetails: vi.fn().mockResolvedValue({ holding, displayTitle: "book.pdf", originalFilename: "book.pdf",
+        metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43), bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: false, file: holding.file }),
+      createLibraryDownload: vi.fn().mockResolvedValue({ ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: holding.file.id, sourceId: "research-source" } }),
+    });
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "My research" }));
+    const research = await screen.findByRole("region", { name: "My research" });
+    const previousResearchState: unknown = window.history.state;
+    await user.click(await within(research).findByRole("button", { name: "Open resource" }));
+    const preview = await screen.findByRole("dialog", { name: "book.pdf" });
+    await user.click(within(preview).getByRole("button", { name: "Next page" }));
+    expect(preview.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=8");
+    await user.click(within(preview).getByRole("button", { name: "Page notes" }));
+    const editor = await screen.findByRole("form", { name: "Write a page note" });
+    const note = within(editor).getByRole("textbox", { name: "Note" });
+    await user.type(note, "Private Reader page eight draft");
+    const draftHistoryState: unknown = window.history.state;
+    const historyLength = window.history.length;
+    expect(draftHistoryState).not.toEqual(previousResearchState);
+
+    act(() => window.history.back());
+    await screen.findByText("Save or discard your note changes before leaving.");
+    await waitFor(() => expect(window.history.state).toEqual(draftHistoryState));
+    expect(window.location.pathname).toBe("/research");
+    expect(note).toHaveValue("Private Reader page eight draft");
+    expect(within(editor).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(8);
+    expect(window.history.length).toBe(historyLength);
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(JSON.stringify(window.history.state)).not.toMatch(/Private Reader|signed\.invalid/u);
+
+    await user.click(within(editor).getByRole("button", { name: "Discard changes" }));
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await waitFor(() => expect(window.history.state).toEqual(previousResearchState));
+    expect(window.location.pathname).toBe("/research");
+    expect(screen.queryByRole("form", { name: "Write a page note" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Private research text")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(await screen.findByRole("button", { name: "book.pdf" })).toBeVisible();
+  });
+
+  it.each(["note", "collection"] as const)("preserves an unsaved %s on the research page through Back until discard", async (draft) => {
     const user = userEvent.setup();
     const api = sessionApi({ workspace: researchApi(), createLibraryDownload: vi.fn().mockResolvedValue({
       ...authorization("https://signed.invalid/research.pdf"), source: { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source" },
@@ -2785,36 +2890,35 @@ describe("document preview session", () => {
     const row = await screen.findByRole("button", { name: "book.pdf" });
     await user.click(row);
     const preview = await screen.findByRole("dialog", { name: "book.pdf" });
-    const frame = await within(preview).findByTitle("Preview of book.pdf");
     const trigger = within(preview).getByRole("button", { name: "Page notes" });
     await user.click(trigger);
-    const research = await screen.findByRole("dialog", { name: "My research" });
+    const research = await screen.findByRole("region", { name: "My research" });
     await within(research).findByText("Private research text");
-    if (draft === "note") await user.click(within(research).getByRole("button", { name: "Write a page note" }));
+    const editor = await within(research).findByRole("form", { name: "Write a page note" });
+    if (draft === "collection") await user.click(within(editor).getByRole("button", { name: "Cancel" }));
     const input = within(research).getByRole("textbox", { name: draft === "note" ? "Note" : "Collection name" });
     await user.type(input, "Private unsaved draft");
-    const researchHistoryId = window.history.state.academiccloudDialog;
+    const draftHistoryState: unknown = window.history.state;
+    const historyLength = window.history.length;
     act(() => window.history.back());
     await within(research).findByText(`Save or discard your ${draft} changes before leaving.`);
+    await waitFor(() => expect(window.history.state).toEqual(draftHistoryState));
     expect(input).toHaveValue("Private unsaved draft");
-    expect(preview.querySelector("iframe")).toBe(frame);
-    expect(preview).toHaveAttribute("inert");
-    expect(window.history.state.academiccloudDialog).toBe(researchHistoryId);
-    expect(JSON.stringify(window.history.state)).not.toMatch(/Private|research-source|signed\.invalid/u);
+    expect(research).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/research");
+    expect(window.history.length).toBe(historyLength);
+    expect(JSON.stringify(window.history.state)).not.toMatch(/Private|signed\.invalid/u);
     expect(window.location.hash + window.location.search).toBe("");
     await user.click(within(research).getByRole("button", { name: "Discard changes" }));
-    act(() => window.history.back());
+    await user.click(within(research).getByRole("button", { name: "Back" }));
     await waitFor(() => expect(research).not.toBeInTheDocument());
-    expect(preview.querySelector("iframe")).toBe(frame);
-    expect(preview).not.toHaveAttribute("inert");
-    expect(trigger).toHaveFocus();
-    act(() => window.history.back());
-    await waitFor(() => expect(preview).not.toBeInTheDocument());
-    expect(row).toHaveFocus();
+    expect(window.location.pathname).toBe("/");
+    expect(row).toBeVisible();
+    expect(document.querySelector("iframe")).toBeNull();
     expect(api.createLibraryDownload).toHaveBeenCalledOnce();
   });
 
-  it("blocks Back while a research write is pending and closes only research after it saves", async () => {
+  it("blocks Back while a research page write is pending and returns to Library after it saves", async () => {
     const user = userEvent.setup();
     const researchApiValue = researchApi();
     let finish!: (value: Awaited<ReturnType<WorkspaceApi["saveReading"]>>) => void;
@@ -2825,26 +2929,25 @@ describe("document preview session", () => {
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: "book.pdf" }));
     const preview = await screen.findByRole("dialog", { name: "book.pdf" });
-    const frame = await within(preview).findByTitle("Preview of book.pdf");
     await user.click(within(preview).getByRole("button", { name: "Page notes" }));
-    const research = await screen.findByRole("dialog", { name: "My research" });
+    const research = await screen.findByRole("region", { name: "My research" });
+    const editor = await within(research).findByRole("form", { name: "Write a page note" });
+    await user.click(within(editor).getByRole("button", { name: "Cancel" }));
     const status = await within(research).findByRole("combobox", { name: "Reading status" });
     await user.selectOptions(status, "reading");
     expect(status).toBeDisabled();
-    const researchHistoryId = window.history.state.academiccloudDialog;
+    const pendingHistoryState: unknown = window.history.state;
     act(() => window.history.back());
     await within(research).findByText("Save or discard your note changes before leaving.");
-    expect(preview.querySelector("iframe")).toBe(frame);
+    await waitFor(() => expect(window.history.state).toEqual(pendingHistoryState));
     expect(research).toBeInTheDocument();
-    expect(window.history.state.academiccloudDialog).toBe(researchHistoryId);
+    expect(window.location.pathname).toBe("/research");
     await act(async () => finish({ resourceId: LIBRARY_HOLDINGS[0]!.file.id, status: "reading", important: false, toCite: false, revision: 1, updatedAt: "2026-09-21" }));
     expect(status).toHaveValue("reading");
     act(() => window.history.back());
     await waitFor(() => expect(research).not.toBeInTheDocument());
-    expect(preview.querySelector("iframe")).toBe(frame);
-    expect(preview).not.toHaveAttribute("inert");
-    act(() => window.history.back());
-    await waitFor(() => expect(preview).not.toBeInTheDocument());
+    expect(window.location.pathname).toBe("/");
+    expect(document.querySelector("iframe")).toBeNull();
   });
 
   it("opens a saved page from standalone research with one Preview Back step", async () => {
@@ -2858,15 +2961,20 @@ describe("document preview session", () => {
     render(<App api={api} />);
     const trigger = await screen.findByRole("button", { name: "My research" });
     await user.click(trigger);
-    const research = await screen.findByRole("dialog", { name: "My research" });
+    const research = await screen.findByRole("region", { name: "My research" });
+    expect(window.location.pathname).toBe("/research");
     await user.click(await within(research).findByRole("button", { name: "Open resource" }));
     const preview = await screen.findByRole("dialog", { name: "book.pdf" });
-    expect(research).not.toBeInTheDocument();
     expect(preview.querySelector("iframe")).toHaveAttribute("src", "https://signed.invalid/research.pdf#page=7");
     act(() => window.history.back());
     await waitFor(() => expect(preview).not.toBeInTheDocument());
+    const returned = await screen.findByRole("region", { name: "My research" });
+    expect(window.location.pathname).toBe("/research");
+    await within(returned).findByText("Private research text");
     expect(window.history.state.academiccloudDialog).toBeUndefined();
-    expect(trigger).toHaveFocus();
+    await user.click(within(returned).getByRole("button", { name: "Back" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(trigger).toBeVisible();
   });
 
   it("rejects a fresh authorization for replacement bytes when reopening a saved note", async () => {
@@ -2881,15 +2989,16 @@ describe("document preview session", () => {
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: "book.pdf" }));
     const preview = await screen.findByRole("dialog", { name: "book.pdf" });
-    const frame = preview.querySelector("iframe");
     await user.click(within(preview).getByRole("button", { name: "Page notes" }));
-    const research = await screen.findByRole("dialog", { name: "My research" });
+    const research = await screen.findByRole("region", { name: "My research" });
     const note = await within(research).findByText("Private research text");
+    const editor = await within(research).findByRole("form", { name: "Write a page note" });
+    await user.click(within(editor).getByRole("button", { name: "Cancel" }));
     await user.click(within(note.closest("article")!).getByRole("button", { name: "Open resource" }));
     expect(await within(research).findByRole("alert")).toHaveTextContent("changed elsewhere");
-    expect(preview.querySelector("iframe")).toBe(frame);
-    expect(frame).toHaveAttribute("src", "https://signed.invalid/original.pdf");
-    expect(document.querySelector('iframe[src*="replacement"]')).toBeNull();
+    expect(window.location.pathname).toBe("/research");
+    expect(preview).not.toBeInTheDocument();
+    expect(document.querySelector("iframe")).toBeNull();
   });
 
   it.each(["account", "library"] as const)("opens the %s preview shell before source authorization completes", async (scope) => {

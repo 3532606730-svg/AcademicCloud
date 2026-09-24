@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AcademicCloudApi, CatalogPreview, LibraryHolding, LibrarySummary } from "./api.ts";
 import { BatchCatalogDialog } from "./batch-catalog.tsx";
+import { clearCatalogReviewDrafts } from "./catalog-review-draft.ts";
 import { LOCAL_CATALOG_BRIDGE_URL } from "./catalog-local-bridge.ts";
 import { LanguageProvider } from "./i18n-react.tsx";
 
@@ -30,6 +31,7 @@ const PREVIEW: CatalogPreview = {
 
 beforeEach(() => {
   window.localStorage.setItem("academiccloud.language", "en");
+  window.sessionStorage.clear();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value: vi.fn(function showModal(this: HTMLDialogElement) { this.setAttribute("open", ""); }),
@@ -81,7 +83,7 @@ describe("BatchCatalogDialog", () => {
     expect(screen.getByRole("button", { name: "Apply selected (0)" })).toBeDisabled();
   });
 
-  it("offers an account-session draft that resumes through a fresh preview without replaying authority", async () => {
+  it("restores a tab draft after a new app session through a fresh preview without replaying authority", async () => {
     const reviewSession = { accountId: "owner-session" };
     const refreshedPreview = { ...PREVIEW, planId: "q".repeat(43) };
     const previewCatalogBatchResults = vi.fn()
@@ -101,8 +103,9 @@ describe("BatchCatalogDialog", () => {
     await waitFor(() => expect(screen.getAllByText("Applied").length).toBeGreaterThan(0));
     await user.click(screen.getAllByRole("button", { name: "Close" })[0]!);
     first.unmount();
+    expect(window.sessionStorage.length).toBe(1);
 
-    render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults, applyCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults, applyCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={{ accountId: reviewSession.accountId }} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
     expect(screen.getByText(/private review draft/u)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Resume review" }));
     await waitFor(() => expect(previewCatalogBatchResults).toHaveBeenCalledTimes(2));
@@ -110,6 +113,59 @@ describe("BatchCatalogDialog", () => {
     expect(screen.getByRole("button", { name: "Apply selected (1)" })).toBeDisabled();
     expect(within(screen.getAllByRole("article")[0]!).getByRole("checkbox")).toBeDisabled();
     expect(within(screen.getAllByRole("article")[1]!).getByRole("checkbox")).toBeChecked();
+  });
+
+  it("persists an open review before close and clears the tab draft on sign-out", async () => {
+    const reviewSession = { accountId: "owner-refresh" };
+    const previewCatalogBatchResults = vi.fn().mockResolvedValue(PREVIEW);
+    const first = render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    const user = userEvent.setup();
+    await user.upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File([JSON.stringify({ schemaVersion: "academiccloud.catalog-results.v1" })], "results.json", { type: "application/json" }));
+    await user.click(screen.getAllByRole("article")[0]!.querySelector("input[type=checkbox]")!);
+    await waitFor(() => expect(window.sessionStorage.length).toBe(1));
+    first.unmount();
+
+    const otherAccount = render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={{ accountId: "different-account" }} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    expect(screen.queryByText(/private review draft/u)).not.toBeInTheDocument();
+    otherAccount.unmount();
+
+    const second = render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={{ accountId: reviewSession.accountId }} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    await user.click(screen.getByRole("button", { name: "Resume review" }));
+    await waitFor(() => expect(previewCatalogBatchResults).toHaveBeenCalledTimes(2));
+    expect(within(screen.getAllByRole("article")[0]!).getByRole("checkbox")).toBeChecked();
+    second.unmount();
+
+    clearCatalogReviewDrafts(reviewSession.accountId);
+    expect(window.sessionStorage.length).toBe(0);
+    render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={{ accountId: reviewSession.accountId }} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    expect(screen.queryByText(/private review draft/u)).not.toBeInTheDocument();
+  });
+
+  it("warns when tab storage fills, preserves in-page review, and removes a stale stored draft", async () => {
+    const reviewSession = { accountId: "quota-owner" };
+    const previewCatalogBatchResults = vi.fn().mockResolvedValue(PREVIEW);
+    const first = render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    const user = userEvent.setup();
+    await user.upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File([JSON.stringify({ schemaVersion: "academiccloud.catalog-results.v1" })], "results.json", { type: "application/json" }));
+    await waitFor(() => expect(window.sessionStorage.length).toBe(1));
+
+    const originalSetItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key.startsWith("academiccloud.catalog-review.v1:")) throw new DOMException("Storage quota exceeded", "QuotaExceededError");
+      originalSetItem.call(this, key, value);
+    });
+    await user.click(screen.getAllByRole("article")[0]!.querySelector("input[type=checkbox]")!);
+    expect(await screen.findByText(/Browser storage is unavailable or full/u)).toBeInTheDocument();
+    expect(within(screen.getAllByRole("article")[0]!).getByRole("checkbox")).toBeChecked();
+    expect(window.sessionStorage.length).toBe(0);
+
+    await user.click(screen.getAllByRole("button", { name: "Close" })[0]!);
+    first.unmount();
+    const samePage = render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    expect(screen.getByText(/private review draft/u)).toBeInTheDocument();
+    samePage.unmount();
+    render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={{ accountId: reviewSession.accountId }} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    expect(screen.queryByText(/private review draft/u)).not.toBeInTheDocument();
   });
 
   it("drops a private review draft after the 30-minute recovery window", async () => {
@@ -125,7 +181,7 @@ describe("BatchCatalogDialog", () => {
     first.unmount();
 
     now += 30 * 60 * 1000 + 1;
-    render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={reviewSession} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
+    render(<LanguageProvider><BatchCatalogDialog api={{ previewCatalogBatchResults } as unknown as AcademicCloudApi} library={LIBRARY} initialHoldings={HOLDINGS} reviewSession={{ accountId: reviewSession.accountId }} onClose={vi.fn()} onApplied={vi.fn()} /></LanguageProvider>);
     expect(screen.queryByText(/private review draft/u)).not.toBeInTheDocument();
   });
 

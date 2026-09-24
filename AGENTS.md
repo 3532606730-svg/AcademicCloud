@@ -162,6 +162,8 @@ Do not use user-facing filenames as trusted physical storage keys.
 
 ## Working Method
 
+When delegating AcademicCloud work, use GPT-6 Sol with high reasoning effort for every bot, including the dedicated test bot, as directed by the Owner.
+
 Before changing code:
 1. Follow `.agents/skills/academiccloud-workflow/SKILL.md`.
 2. Recover active/next approved task from repository state.

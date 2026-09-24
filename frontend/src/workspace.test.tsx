@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "./api.ts";
@@ -41,14 +41,15 @@ describe("private workspace", () => {
     renderWorkspace(f.api);
     expect(await screen.findByRole("button", { name: "Write a page note" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Write a page note" }));
-    await user.clear(screen.getByLabelText("Physical PDF page")); await user.type(screen.getByLabelText("Physical PDF page"), "12");
+    await user.clear(screen.getByLabelText("PDF page")); await user.type(screen.getByLabelText("PDF page"), "12");
     await user.type(screen.getByLabelText("Printed page / volume / leaf (optional)"), "卷二 葉三");
     await user.type(screen.getByRole("textbox", { name: "Note" }), "New private text");
     await user.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("New private text");
+    expect(screen.getByText("PDF page 12 · 卷二 葉三")).toBeInTheDocument();
     expect(f.api.createNote).toHaveBeenCalledWith({ resourceId: RESOURCE.resourceId, sourceId: RESOURCE.sourceId, physicalPage: 12, locator: "卷二 葉三", body: "New private text" });
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(screen.getByLabelText("Physical PDF page")).toBeDisabled();
+    expect(screen.getByLabelText("PDF page")).toBeDisabled();
     await user.clear(screen.getByRole("textbox", { name: "Note" })); await user.type(screen.getByRole("textbox", { name: "Note" }), "Edited private text");
     await user.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("Edited private text");
@@ -173,7 +174,7 @@ describe("private workspace", () => {
     expect(screen.queryByRole("button", { name: "Write a page note" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("textbox", { name: "Note" })).toHaveValue(NOTE.body);
-    expect(screen.getByLabelText("Physical PDF page")).toBeDisabled();
+    expect(screen.getByLabelText("PDF page")).toBeDisabled();
   });
 
   it("updates explicit reading flags and collections using only the current resource revision", async () => {
@@ -194,13 +195,12 @@ describe("private workspace", () => {
     expect(screen.getByRole("link", { name: "Export my research" })).toHaveAttribute("href", "/api/workspace/export");
   });
 
-  it("keeps a queued reading item visible in the desk status summaries", async () => {
+  it("keeps a queued reading item visible in the research overview", async () => {
     const f = fixture({ resource: vi.fn().mockResolvedValue({ resource: RESOURCE, reading: { resourceId: RESOURCE.resourceId, status: "queued", important: false, toCite: false, revision: 1, updatedAt: NOTE.updatedAt }, collectionIds: [] }) });
     renderWorkspace(f.api);
     await screen.findByRole("button", { name: "Write a page note" });
     expect(screen.getByRole("combobox", { name: "Reading status" })).toHaveValue("queued");
-    expect(document.querySelector(".research-rail-status strong")).toHaveTextContent("To read");
-    expect(document.querySelectorAll(".research-inspector-facts dd")[2]).toHaveTextContent("To read");
+    expect(within(screen.getByRole("complementary", { name: "Overview" })).getByText("To read")).toBeInTheDocument();
   });
 
   it("ignores cancelled initial loads after navigation and opens exact note page", async () => {

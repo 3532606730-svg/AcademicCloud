@@ -160,7 +160,7 @@ function restoreHistoryDialogs(event: PopStateEvent) {
 }
 
 /** Each reading/research overlay is one Back step; history contains only opaque dialog IDs. */
-export function useHistoryDialog(onClose: () => void, options: { canClose?: () => boolean } = {}): HistoryDialogClose {
+export function useHistoryDialog(onClose: () => void, options: { canClose?: () => boolean; enabled?: boolean } = {}): HistoryDialogClose {
   const callbacks = useRef({ onClose, canClose: options.canClose });
   callbacks.current = { onClose, canClose: options.canClose };
   const entryRef = useRef<HistoryDialogEntry | null>(null);
@@ -171,6 +171,7 @@ export function useHistoryDialog(onClose: () => void, options: { canClose?: () =
   };
   const entry = entryRef.current;
   useEffect(() => {
+    if (options.enabled === false) return;
     entry.closing = false;
     historyDialogs.push(entry);
     const entries = activeDialogs();
@@ -187,8 +188,14 @@ export function useHistoryDialog(onClose: () => void, options: { canClose?: () =
       if (index !== -1) historyDialogs.splice(index, 1);
       releaseHistoryListener();
     };
-  }, [entry]);
+  }, [entry, options.enabled]);
   const leave = (commit?: () => void) => {
+    if (options.enabled === false) {
+      if (!commit && !entry.canClose()) return;
+      commit?.();
+      if (!commit) entry.close();
+      return;
+    }
     if (entry.closing || pendingDialogExit || activeDialogs().at(-1) !== entry || (!commit && !entry.canClose())) return;
     if (window.history.state?.academiccloudDialog === entry.id) {
       pendingDialogExit = { entry, ...(commit ? { commit } : {}) };

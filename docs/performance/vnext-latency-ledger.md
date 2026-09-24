@@ -16,6 +16,9 @@ fast. All values below are wall-clock milliseconds unless stated otherwise.
   persistence equivalence assertions.
 - Browser observations are usability evidence only. The in-app browser did not
   paint the native cross-origin PDF, so it cannot supply a PDF first-paint mark.
+- A local browser probe with intercepted, in-memory API responses is a frontend
+  diagnostic only. It does not include Fastify, SQLite, storage, or network
+  latency and cannot close a normal-path measurement row.
 - A production-network metric requires a normal signed-in browser path and must
   record at least `navigationStart`, request start, response headers, first
   usable content, and completion. No production timing is inferred from the
@@ -30,11 +33,36 @@ fast. All values below are wall-clock milliseconds unless stated otherwise.
 | Metadata/search | `output/vnext/search-benchmark.json` and `metadata-only-search-benchmark.json`; 100/1,000/10,000 holdings, sparse/rich, all equivalence checks green. Candidate rich relevance medians: 2.49 / 23.48 / 324.96 ms; metadata-only rich author: 2.38 / 22.284 / 329.847 ms. | see source artifacts | **Measured synthetic service**; not a production SLA |
 | Catalog Preview | `output/vnext/batch-list-benchmark.json`; candidate medians for 100 / 1,000 / 10,000 holdings (500 selected cap): 32.708 / 247.151 / 616.811 ms. Complete field plans and source snapshots are included. | 32.708 / 247.151 / 616.811 | **Measured synthetic service**; the completeness work adds cost and remains bounded |
 | Catalog Apply | Same artifact; candidate actual transactions: 96.306 / 592.454 / 1,149.913 ms for 100 / 500 / 500 selected rows. Object keys, canonical values, audit rows, and integrity checks matched. | 96.306 / 592.454 / 1,149.913 | **Measured synthetic service**; this is the demonstrated bottleneck improvement |
-| PDF first usable page | Native cross-origin iframe URL and source/page continuity were observed. The in-app browser did not paint the PDF page. | — | **Unmeasured**; do not claim first-paint or page-render latency |
-| Details / editor | Details, Citation, and editor interactions were visually exercised at six widths; no route-level marks or controlled completion timestamps exist. | — | **Unmeasured**; add marks only in a future normal-path browser run |
+| PDF first usable page | Native cross-origin iframe URL and source/page continuity were observed. The in-app browser did not paint the PDF page. A separate local Chromium probe visually displayed a one-page synthetic PDF but did not capture its first painted frame. | — | **Unmeasured**; iframe insertion and `load` are not page paint |
+| Details / editor | Details, Citation, and editor interactions were visually exercised at six widths. A response-mocked local browser probe measured the warm Details panel only (below); no normal-path metadata or editor-save timestamps exist. | — | **Unmeasured normal path** |
 | Download signing / TTFB / completion | A signed-in DOCX route returned Core authorization and a 13,639-byte file completed in an earlier live check. Browser automation later blocked file navigation with `ERR_BLOCKED_BY_CLIENT`. | — | **Partially observed, no TTFB**; blocked external browser step prevents a complete timing claim |
 | Upload stages | SparkMD5-only local benchmark: 250 MiB ≈ 0.65–0.71 s on Node v24.16.0; checksum throughput is roughly 353–387 MiB/s for 10–250 MiB fixtures. | 0.65–0.71 s checksum | **Measured local stage only**; reserve, direct transfer, storage verification, and activation need a real network path |
-| Workspace / Collections / Notes | Normal synthetic-backend browser flows passed save/reopen/reload, collection membership, reading flags, recovery, guarded Back, and isolated export. No timing instrumentation was installed. | — | **Unmeasured**; functional evidence does not imply latency evidence |
+| Workspace / Collections / Notes | Normal synthetic-backend browser flows passed save/reopen/reload, collection membership, reading flags, recovery, guarded Back, and isolated export. A response-mocked local browser probe measured the warm empty Research Desk only (below); no normal-path note-save timestamps exist. | — | **Unmeasured normal path** |
+
+## Local browser diagnostic: response-mocked UI
+
+On September 23, Playwright Chromium 153.0.8010.53 at 1280 × 720 opened the
+actual Vite frontend at `http://127.0.0.1:4319/`. The API port was not running;
+Playwright supplied in-memory responses for one synthetic PDF holding, its
+Details record, and empty private Workspace lists. After warm-up, five repeated
+open/close actions used a capture-phase click mark, a DOM-ready
+`MutationObserver` mark, and two `requestAnimationFrame` callbacks for the next
+paint opportunity. Values include React rendering and the mocked response path,
+but exclude real backend and network work. Source HEAD was
+`292d6591d89517fa6a29de0c9623e2b6c7ec3fd6` with concurrent uncommitted
+frontend edits; this is a diagnostic snapshot, not a frozen candidate baseline.
+
+| Warm interaction | Click → DOM ready (five samples, ms) | Click → two animation frames (five samples, ms) | What the mark proves |
+|---|---|---|---|
+| Open empty Research Desk | 12.9, 12.3, 11.7, 13.2, 11.8 | 30.7, 30.6, 31.1, 30.5, 31.3 | Empty note state appeared; no note save or reload was timed |
+| Open Details | 17.9, 18.3, 18.0, 17.6, 17.5 | 47.1, 47.4, 47.1, 47.2, 47.2 | Bibliographic identity panel appeared; no metadata fetch from Core or editor save was timed |
+| Open Reader shell | 10.9, 11.0, 10.5, 10.7, 11.0 to toolbar; 24.8, 24.7, 21.0, 24.0, 21.0 to authorized iframe insertion | 47.5, 47.8, 33.3, 47.7, 36.5 after iframe insertion | Reader controls and iframe appeared; the PDF page's first usable paint was not timed |
+
+The one-page synthetic PDF was visible in a later Chromium screenshot. Its
+viewer is a separate Chrome extension frame, so React's iframe event and the
+two-frame mark cannot establish when the PDF page itself became usable. Repeat
+these paths against a frozen source and the normal signed-in backend before
+using any number as a product latency result.
 
 ## Decisions from the ledger
 

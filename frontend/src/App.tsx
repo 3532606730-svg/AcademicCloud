@@ -54,7 +54,7 @@ import type { WorkspaceResource } from "./workspace-api.ts";
 import { libraryHoldingDisplayTitle, libraryHoldingSecondaryLine } from "./library-display-title.ts";
 import { canPreviewFile } from "./preview-capability.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
-import type { CatalogReviewSession } from "./batch-catalog.tsx";
+import { clearCatalogReviewDrafts, type CatalogReviewSession } from "./catalog-review-draft.ts";
 import { clearViewPreferences, useWorkspaceLocation } from "./view-context.ts";
 import { PreviewDialog, type PreviewDocument } from "./preview-dialog.tsx";
 import { useModalDialog } from "./use-modal-dialog.ts";
@@ -395,6 +395,21 @@ function LoginView({
 }
 
 type DriveViewName = "library" | "pending" | "recycle" | "favorites";
+
+type ResearchRouteRequest = { resourceId?: string; sourceId?: string; physicalPage?: number; returnFocus: HTMLElement | null };
+
+function researchRequestFromLocation(): ResearchRouteRequest | null {
+  if (window.location.pathname !== "/research") return null;
+  const saved = window.history.state?.academiccloudResearch as Record<string, unknown> | undefined;
+  const validId = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{1,128}$/u.test(value);
+  const request: ResearchRouteRequest = { returnFocus: null };
+  if (validId(saved?.resourceId)) request.resourceId = saved.resourceId;
+  if (validId(saved?.sourceId)) request.sourceId = saved.sourceId;
+  if (Number.isSafeInteger(saved?.physicalPage) && Number(saved?.physicalPage) >= 1 && Number(saved?.physicalPage) <= 1_000_000) {
+    request.physicalPage = Number(saved!.physicalPage);
+  }
+  return request;
+}
 type UploadPhase = "queued" | "checksum" | "reserving" | "uploading" | "paused" | "resumable" | "completing" | "verifying" | "complete" | "error" | "abandoned";
 
 const ACTIVE_UPLOAD_PHASES: ReadonlySet<UploadPhase> = new Set(["checksum", "reserving", "uploading", "completing", "verifying"]);
@@ -720,7 +735,60 @@ function DriveView({
   const previewRequest = useRef(0);
   useEffect(() => () => { previewRequest.current++; }, [view, path]);
   const [resourceDetailsRequest, setResourceDetailsRequest] = useState<ResourceDetailsRequest | null>(null);
-  const [researchRequest, setResearchRequest] = useState<{ resourceId?: string; sourceId?: string; returnFocus: HTMLElement | null } | null>(null);
+  const [researchRequest, setResearchRequest] = useState<ResearchRouteRequest | null>(researchRequestFromLocation);
+  useEffect(() => { document.title = researchRequest ? `${t("workspace.title")} · AcademicCloud` : "AcademicCloud"; }, [researchRequest, t]);
+  const researchActiveRef = useRef(researchRequest !== null);
+  const researchRouteStateRef = useRef<unknown>(window.location.pathname === "/research" ? window.history.state : null);
+  const researchGuardRef = useRef<() => boolean>(() => true);
+  const registerResearchGuard = useCallback((guard: (() => boolean) | null) => {
+    researchGuardRef.current = guard ?? (() => true);
+  }, []);
+  researchActiveRef.current = researchRequest !== null;
+  if (window.location.pathname === "/research") researchRouteStateRef.current = window.history.state;
+  useEffect(() => {
+    const restore = () => {
+      const nextRequest = researchRequestFromLocation();
+      const activeState = researchRouteStateRef.current as { academiccloudResearch?: { resourceId?: string; sourceId?: string; physicalPage?: number } } | null;
+      const activeRoute = activeState?.academiccloudResearch;
+      const routeChanged = !nextRequest || activeRoute?.resourceId !== nextRequest.resourceId || activeRoute?.sourceId !== nextRequest.sourceId || activeRoute?.physicalPage !== nextRequest.physicalPage;
+      if (researchActiveRef.current && routeChanged && !researchGuardRef.current()) {
+        window.history.forward();
+        return;
+      }
+      setResearchRequest(nextRequest);
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+  function openResearch(request: ResearchRouteRequest): void {
+    const current = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+    const cleanState = { ...current };
+    delete cleanState.academiccloudDialog;
+    delete cleanState.academiccloudDialogs;
+    const fromDialog = Boolean(current.academiccloudDialog);
+    const nextState = { ...cleanState, academiccloudResearch: {
+      ...(request.resourceId ? { resourceId: request.resourceId } : {}),
+      ...(request.sourceId ? { sourceId: request.sourceId } : {}),
+      ...(request.physicalPage ? { physicalPage: request.physicalPage } : {}),
+      fromApp: true,
+    } };
+    if (window.location.pathname === "/research" || fromDialog) window.history.replaceState(nextState, "", "/research");
+    else window.history.pushState(nextState, "", "/research");
+    researchRouteStateRef.current = nextState;
+    setPreview(null);
+    setResearchRequest(request);
+  }
+  function closeResearch(): void {
+    if (window.location.pathname !== "/research") { setResearchRequest(null); return; }
+    if (window.history.state?.academiccloudResearch?.fromApp) {
+      window.history.back();
+      return;
+    }
+    const nextState = { ...(window.history.state ?? {}) };
+    delete nextState.academiccloudResearch;
+    window.history.replaceState(nextState, "", "/");
+    setResearchRequest(null);
+  }
   const [citationRequest, setCitationRequest] = useState<CitationRequest | null>(null);
   const [batchNamingRequest, setBatchNamingRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
   const [batchCatalogRequest, setBatchCatalogRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
@@ -1583,6 +1651,7 @@ function DriveView({
     for (const job of jobs) job.controller.abort();
     try {
       await api.logout();
+      clearCatalogReviewDrafts(account.id);
       clearViewPreferences(account.id);
       onSignedOut();
     } catch (caught: unknown) {
@@ -2019,7 +2088,7 @@ function DriveView({
         });
       }
       setNotice(t("workspace.added"));
-      setResearchRequest({ resourceId, sourceId: current.resource.sourceId, returnFocus: returnFocus ?? null });
+      openResearch({ resourceId, sourceId: current.resource.sourceId, returnFocus: returnFocus ?? null });
     } catch (caught) {
       setError(caught);
     } finally {
@@ -2212,7 +2281,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" inert={preview !== null || resourceDetailsRequest !== null || researchRequest !== null || citationRequest !== null || batchNamingRequest !== null || batchCatalogRequest !== null || moveRequest !== null || accountAdministrationOpen}>
+    <div className="app-shell" hidden={researchRequest !== null} inert={preview !== null || resourceDetailsRequest !== null || researchRequest !== null || citationRequest !== null || batchNamingRequest !== null || batchCatalogRequest !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand topbar-brand"><span>AC</span> AcademicCloud</div>
@@ -2241,7 +2310,7 @@ function DriveView({
           <button className={view === "favorites" ? "nav-item is-active" : "nav-item"} aria-current={view === "favorites" ? "page" : undefined} onClick={() => goToView("favorites")}>
             <StarIcon size={18} /> {t("nav.favorites")}
           </button>
-          {api.workspace && <button className="nav-item" type="button" onClick={(event) => setResearchRequest({ returnFocus: event.currentTarget })}>
+          {api.workspace && <button className="nav-item" type="button" onClick={(event) => openResearch({ returnFocus: event.currentTarget })}>
             <TextIcon size={18} /> {t("workspace.title")}
           </button>}
           <button className={`nav-item nav-item--utility${view === "pending" ? " is-active" : ""}`} aria-current={view === "pending" ? "page" : undefined} onClick={() => goToView("pending")}>
@@ -2453,7 +2522,6 @@ function DriveView({
                 ) : null;
                 return (
                   <section aria-labelledby="contents-title">
-                    <h2 id="contents-title" className="visually-hidden">{t("folder.contentsTitle")}</h2>
                     {library && (
                       <LibrarySearchField
                         api={api}
@@ -2477,6 +2545,7 @@ function DriveView({
                         </>)}
                       />
                     )}
+                    <h2 id="contents-title" className="catalogue-section-title">{t("library.catalogueTitle")}</h2>
                     {!librarySearchActive && selectionToolbar}
                     {librarySearchActive ? null : catalogueLoading ? <LoadingRows /> : !library ? (
                       <EmptyState title={t("sharedLibrary.empty")} />
@@ -2959,7 +3028,7 @@ function DriveView({
           {...(api.workspace ? { onResearch: () => {
             const request = resourceDetailsRequest;
             setResourceDetailsRequest(null);
-            setResearchRequest({ resourceId: request.holding.file.id, returnFocus: request.returnFocus,
+            openResearch({ resourceId: request.holding.file.id, returnFocus: request.returnFocus,
               ...(preview?.resourceId === request.holding.file.id && preview.sourceId ? { sourceId: preview.sourceId } : {}) });
           } } : {})}
           onSuggestionJobChange={handleResourceSuggestionJobChange}
@@ -3001,15 +3070,25 @@ function DriveView({
           }}
         />
       )}
-      {preview && <PreviewDialog preview={preview} covered={resourceDetailsRequest !== null || citationRequest !== null || researchRequest !== null}
+      {preview && <PreviewDialog preview={preview} covered={resourceDetailsRequest !== null || citationRequest !== null}
         onClose={closeDocumentPreview} onDownload={() => void preview.download()}
         onDetails={preview.resource ? (trigger) => setResourceDetailsRequest({ ...preview.resource!, returnFocus: trigger }) : undefined}
         onCitation={preview.resource ? (trigger) => setCitationRequest({ ...preview.resource!, returnFocus: trigger }) : undefined}
-        onResearch={api.workspace && preview.sourceId ? (trigger) => setResearchRequest({ resourceId: preview.resourceId, sourceId: preview.sourceId!, returnFocus: trigger }) : undefined} />}
-      {researchRequest && api.workspace && <WorkspaceDialog api={api.workspace}
+        onResearch={api.workspace && preview.sourceId ? (trigger, physicalPage) => openResearch({ resourceId: preview.resourceId, sourceId: preview.sourceId!, ...(physicalPage ? { physicalPage } : {}), returnFocus: trigger }) : undefined} />}
+      {researchRequest && api.workspace && <WorkspaceDialog key={`${researchRequest.resourceId ?? "all"}:${researchRequest.sourceId ?? ""}:${researchRequest.physicalPage ?? ""}`} api={api.workspace}
         {...(researchRequest.resourceId ? { initialResourceId: researchRequest.resourceId } : {})}
         {...(researchRequest.sourceId ? { expectedSourceId: researchRequest.sourceId } : {})}
-        returnFocus={researchRequest.returnFocus} onClose={() => setResearchRequest(null)}
+        {...(researchRequest.physicalPage ? { initialPhysicalPage: researchRequest.physicalPage } : {})}
+        returnFocus={researchRequest.returnFocus} onClose={closeResearch} onRegisterNavigationGuard={registerResearchGuard} asPage
+        onRouteChange={(resource) => {
+          const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+          const nextState = { ...currentState, academiccloudResearch: {
+            ...(resource ? { resourceId: resource.resourceId, sourceId: resource.sourceId } : {}),
+            ...(currentState.academiccloudResearch?.fromApp ? { fromApp: true } : {}),
+          } };
+          window.history.replaceState(nextState, "", "/research");
+          researchRouteStateRef.current = nextState;
+        }}
         onOpenResource={async (resource: WorkspaceResource, physicalPage?: number) => {
           if (preview?.resourceId === resource.resourceId && preview.sourceId === resource.sourceId && physicalPage === undefined) return () => {};
           const requestId = ++previewRequest.current;
@@ -3038,7 +3117,7 @@ function DriveView({
             file: { displayName: resource.title, mediaType: resource.mediaType ?? "application/octet-stream" },
             url: url.toString(), error: null, returnFocus: focus, download,
             ...(details ? { resource: details } : {}),
-            retry: () => setResearchRequest({ resourceId: resource.resourceId, sourceId: resource.sourceId, returnFocus: focus }),
+            retry: () => openResearch({ resourceId: resource.resourceId, sourceId: resource.sourceId, returnFocus: focus }),
           });
         }} />}
       {moveRequest && (
