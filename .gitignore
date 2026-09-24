@@ -8,6 +8,7 @@ dist/
 Thumbs.db
 .vite/
 coverage/
+.playwright-cli/
 output/
 database/*.sqlite
 database/*.sqlite-*
