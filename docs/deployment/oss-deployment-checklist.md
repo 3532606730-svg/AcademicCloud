@@ -48,3 +48,5 @@ The exact proposed rule is checked in at `deployment/oss/reader-cors.xml`. Apply
 The necessary reader rule admits only https://cloud.ajtlab.top, GET/POST/PUT, Content-MD5/Range, four response metadata headers, and a 300-second max age. Both signed-URL domains must pass the read-only gate. A configured local contract is not evidence of a live bucket change.
 
 PDF.js native browser rendering uses same-origin worker files and generated font blobs; its bundled WASM image decoders require the narrow CSP `wasm-unsafe-eval` allowance. JavaScript `unsafe-eval`, external workers and wildcard sources remain forbidden. Reference documentation: Mozilla PDF.js API (wasmUrl/useWasm), https://mozilla.github.io/pdf.js/api/draft/api.js.html; Alibaba OSS CORS, https://www.alibabacloud.com/help/en/oss/user-guide/configure-cross-origin-resource-sharing.
+
+PDF.js module workers use `.mjs`: the `/assets/` nginx location includes the standard MIME map and adds `application/javascript mjs`. Apply this location mapping alongside the reader CSP; the old host map includes `.js` but not `.mjs`.
