@@ -6,20 +6,20 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "00a57507d1ea507c34712f543757121bf3558937",
-    "mainIntegration": "00a5750 atomically published to main and integration; deployment runtime970; final docs reconciliation follows",
-    "localSynchronized": false,
-    "localState": "Reader candidate changes are uncommitted; previous checkpoint00a5750 is published. Publication and HEAD equality will be recorded after push."
+    "checkpoint": "d58ef44a244122b1f98b771609b95d2d7e70aade",
+    "mainIntegration": "Runtime d58ef44 published to main/integration; HEAD equality verified; later docs checkpoint is distinct",
+    "localSynchronized": true,
+    "localState": "Fresh SSH fetch verified local HEAD == origin/main == origin/codex/vnext-remediation-20260906 atd58ef44; documentation-only reconciliation follows"
   },
   "production": {
-    "observedAt": "2026-09-24",
-    "coreFrontendCommit": "970cc479f8098f48f9aad1f2ee406986e56c1f46",
-    "schemaVersion": 38,
-    "migrationHistory": "001-038",
+    "observedAt": "2026-09-25",
+    "coreFrontendCommit": "d58ef44a244122b1f98b771609b95d2d7e70aade",
+    "schemaVersion": 39,
+    "migrationHistory": "001-039",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Core PID1264984 active/running NRestarts0; loopback ready PASS; integrityOK/FK0, admissions11; migrations37/38 applied once;42 existing business tables unchanged,135 source generations match",
+    "health": "PID1266869 active/running NRestarts0; ready PASS; exact process cwd agrees; memory79900672 at cutover",
     "catalogBridgeCommit": "ba0a74f28470a312f2e05135033f5b5a727ef093",
     "catalogBridgeState": "active PID334 NRestarts0",
     "computeDistro": "AcademicCloudComputeV2",
@@ -38,6 +38,23 @@
       "preservedTables": 42,
       "nginxChanged": false,
       "backupCommit": "7ec61964bc56bcb34354ce72c6d650d20f402ef0"
+    },
+    "readerRelease": {
+      "sourceCommit": "d58ef44a244122b1f98b771609b95d2d7e70aade",
+      "migrationsApplied": [
+        39
+      ],
+      "nginxChanged": true,
+      "computeChanged": false,
+      "assetsPublished": 212,
+      "log": "output/vnext/reader-deployment.log",
+      "ownerSkipped": [
+        "new prelaunch test suites",
+        "separate artifact integrity verification",
+        "migration backup",
+        "rollback preparation"
+      ],
+      "liveBrowser": "Normal signed-in IAB MongoliaToday cover,page7,footer-add,independent Research,recent progress and locked page-note editor PASS; no production test note"
     }
   },
   "candidate": {
@@ -57,9 +74,9 @@
       "exportRequest": 131072
     },
     "dependencyProductionAdvisories": 0,
-    "sourceCommit": null,
-    "archiveSha256": null,
-    "status": "Reader candidate built locally; IAB smoke PASS; commit/build/deploy pending"
+    "sourceCommit": "d58ef44a244122b1f98b771609b95d2d7e70aade",
+    "archiveSha256": "f9d9d9d550cd787ff031e2e9f422194e24b8a5cacccfbf620a85cfedf36cf6d9",
+    "status": "DEPLOYED"
   },
   "verification": {
     "backend": "450/450 exact7e2d1bf Linux",
@@ -80,7 +97,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Combined970 Core/frontend deployed with verified37/38 migration; bounded normal-site sanity in progress; Owner requested no extra broad tests",
+    "currentPhaseB": "Owned reader d58ef44 deployed schema039; remaining integrated corpus/report objectives remain open",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -271,7 +288,9 @@
       "priorChecks": "backend30; frontend47+1; Linux assets32; CORS/CSP5; old970+039 compatibility PASS",
       "iab": "Current built candidate synthetic IAB paint/jump/note/search/two-tabs/refresh PASS; live acceptance pending",
       "cors": "Console saved; both storage-origin live contract PASS",
-      "review": "Root rejected rotated-layer false positive after reading pinned TextLayer constructor and setLayerDimensions; no material findings in other reviewed paths"
+      "review": "Root rejected rotated-layer false positive after reading pinned TextLayer constructor and setLayerDimensions; no material findings in other reviewed paths",
+      "build": "Exactd58ef44 Linux Node24.19/npm11.19.1 build/package PASS; no new suites or verify command",
+      "liveBrowser": "Normal signed-in IAB MongoliaToday cover,page7,footer-add,independent Research,recent progress and locked page-note editor PASS; no production test note"
     }
   },
   "computeQualification": {
@@ -287,7 +306,7 @@
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works",
     "Current scholarly corpus projection has 46 failed, 31 not_run and nine staged Owner PDFs without an exact byte/MD5 match; six unchanged corrupt sources need replacement bytes; final candidate runtime and source reconciliation remain open"
   ],
-  "next": "Commit/build and deploy owned-reader candidate schema039; one IAB smoke passed; no further prelaunch suites/backup/integrity-check/rollback preparation per Owner. Then normal live reader acceptance; retain corpus replacement/final-report obligations.",
+  "next": "Reader checkpoint deployed and normal signed-in IAB changed paths passed. Preserve exactd58ef44 Core/frontend and7e Compute; finish outstanding current-corpus/report work when next selected; six unchanged damaged sources require replacement; OCR stays deferred.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

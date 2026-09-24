@@ -28,7 +28,7 @@ The current reliability interlock changes sequencing, not this model.
 
 ## Active vNext remediation interlock
 
-September25 reader milestone under ADR045: owned client-side PDF.js rendering, independent Library/Research navigation, closeable research tabs/recent reading, private source-bound progress/highlights and page notes, native-text search/export. Same shared resource bytes and account-private overlays. Local IAB smoke passed;039 release is next. OCR remains interface-only; no new service or infrastructure cost.
+September25 reader milestone under ADR045: owned client-side PDF.js rendering, independent Library/Research navigation, closeable research tabs/recent reading, private source-bound progress/highlights and page notes, native-text search/export. Same shared resource bytes and account-private overlays. Local IAB smoke and normal signed-in production changed paths passed; exactd58ef44/schema039 is deployed. OCR remains interface-only; no new service or infrastructure cost.
 
 
 September24 milestone: the integrated970 Core/frontend release is deployed with source037 and Workspace038; exact Linux1124/1124, host verification and data-preserving migration checks pass. The Owner requested fast deployment without additional broad testing. The next gate is bounded normal-site confirmation, then unfinished/affected corpus and final-report completion. Compute7e remains active and unchanged; the six damaged-source replacement cases remain an external gate.

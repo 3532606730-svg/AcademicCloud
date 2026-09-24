@@ -140,6 +140,9 @@ The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
 
+September25 owned-reader release is deployed: exact Core/frontend d58ef44a244122b1f98b771609b95d2d7e70aade, schema/history39/001–039, only migration39 applied and no new admissions. Service PID1266869 active/running, NRestarts0, ready PASS; deployment memory79,900,672 bytes is a snapshot, not a load test. CSP and `.mjs` worker MIME mapping are active,212 retained reader/current assets published. Compute/Bridge unchanged. Codex IAB normal signed-in production path painted Mongolia Today cover and page7/313, preview add opened independent Research, recent-reading page7 persisted, and note editor locked page7 (cancelled without a production test note). Local synthetic IAB additionally passed note save, two-document tabs, search result jumps and reload. No new prelaunch suite, separate artifact verification, migration backup or rollback-preparation run was performed per Owner. Standard packaging and asset-publisher built-in validation remained part of installation.
+
+
 Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance.
 
 Prior targeted reader evidence: backend30/30, frontend47+1, Linux assets32/32, CORS/CSP5/5 and old970 schema039 compatibility with complete history. Root resolved the review false positive from exact pinned PDF.js TextLayer constructor; no extra rotation assignment needed.
@@ -200,4 +203,4 @@ Takeover live evidence: qualified3c864374 worker remains active PID51089 with ze
 
 ## Next Action
 
-Build, commit/publish and deploy ADR045 owned-reader candidate with additive039 and the prepared CSP/assets. One Codex IAB smoke and live CORS contract passed. Follow latest Owner no-new-backup/integrity/rollback-prep direction; do not rerun broad tests. Then verify normal signed-in live reader. Preserve Compute7e, successful corpus jobs, six damaged-source replacement gate and unfinished final report.
+Reader/workspace checkpoint complete at deployedd58ef44/schema039. Finish documentation Git synchronization; preserve Compute7e and the unchanged OCR-deferred contract. Remaining charter corpus/report obligations and six damaged-source replacements remain explicit; do not rerun successful jobs or earlier green suites.

@@ -8,15 +8,21 @@
 
 The charter authorizes implementation beyond R01–R16, visual refinement, optimization, testing, integration/main publication, exact deployment and necessary production/Compute operations. Zero added infrastructure cost and zero billable GitHub usage remain gates. Preserve original bytes, source associations, stable identities, privacy and human authority.
 
-September24 continuation recovered the active vNext tree instead of replaying the obsolete original checkout. The Owner requests `medium` effort for all subagents and a dedicated validation agent; root owns implementation, reconciliation and release preparation. The publication cadence remains one combined release after the local integrated batch.
+Historical September24 continuation recovered the active vNext tree instead of replaying the obsolete original checkout. The Owner requests `medium` effort for all subagents and a dedicated validation agent; root owns implementation, reconciliation and release preparation. The publication cadence remains one combined release after the local integrated batch.
 
-## Owned reader and independent Research — current candidate
+## Owned reader and independent Research — delivered release
 
-ADR-045 supersedes the historical native-PDF description below. The local candidate uses pinned PDF.js6.2.108, source-bound private progress/highlights (additive migration039), direct preview footer add, top Library/Research switch, independent tabs and recent reading, rendered-page notes, native-text search/export, rotation/zoom and a bounded one-canvas renderer. Rendering and text work run in the browser; Core stores only private sidecars. OCR stays deferred behind its existing interface.
+ADR-045 supersedes the historical native-PDF description below. The deployed release uses pinned PDF.js6.2.108, source-bound private progress/highlights (additive migration039), direct preview footer add, top Library/Research switch, independent tabs and recent reading, rendered-page notes, native-text search/export, rotation/zoom and a bounded one-canvas renderer. Rendering and text work run in the browser; Core stores only private sidecars. OCR stays deferred behind its existing interface.
 
-Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance.
+Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This local evidence was followed by the signed-in production acceptance recorded below.
 
-Earlier targeted evidence is retained: reader backend30, frontend47+1, Linux assets32 and CORS/CSP5 passed; exact old970 with complete001–039 migrations preserves authored overlays. Current production remains970/schema38 until cutover. No new infrastructure or Compute change.
+Earlier targeted evidence is retained: reader backend30, frontend47+1, Linux assets32 and CORS/CSP5 passed; exact old970 with complete001–039 migrations preserves authored overlays. Production is now exactd58ef44/schema39; the preceding970/schema38 is historical. No new infrastructure or Compute change.
+
+## Current deployment — owned reader, September25
+
+September25 owned-reader release is deployed: exact Core/frontend d58ef44a244122b1f98b771609b95d2d7e70aade, schema/history39/001–039, only migration39 applied and no new admissions. Service PID1266869 active/running, NRestarts0, ready PASS; deployment memory79,900,672 bytes is a snapshot, not a load test. CSP and `.mjs` worker MIME mapping are active,212 retained reader/current assets published. Compute/Bridge unchanged. Codex IAB normal signed-in production path painted Mongolia Today cover and page7/313, preview add opened independent Research, recent-reading page7 persisted, and note editor locked page7 (cancelled without a production test note). Local synthetic IAB additionally passed note save, two-document tabs, search result jumps and reload. No new prelaunch suite, separate artifact verification, migration backup or rollback-preparation run was performed per Owner. Standard packaging and asset-publisher built-in validation remained part of installation.
+
+Git publication: exact runtime d58ef44 was published to main/integration; fresh fetch verified local HEAD equals both. A final documentation-only checkpoint follows and does not change the deployed runtime.
 
 ## Source and takeover evidence
 
@@ -24,7 +30,7 @@ Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-202
 
 Predecessor CI34355914519/main and34354370164/integration passed at5eeed4c. Current publication uses [skip ci] with exact local Linux qualification to guarantee zero billable hosted usage. The original D:/Projects/AcademicCloud checkout and other review/staging work remain preserved; synchronization refers to the active vNext checkout. The predecessor's ignored final-draft report is incomplete and is not final acceptance.
 
-## Final combined release — deployed September24
+## Historical combined release — deployed September24
 
 The Owner requested expedited deployment after qualification. Exact970 Core/frontend is now deployed: Core PID1264984 active/running, zero restarts, loopback health/readiness PASS. Exactly migrations037/038 applied; history001–038 and eleven admissions verify, integrity OK/FK0. In the stopped-write migration window, all42 pre-existing non-derived business tables remained identical;135 source generations matched the activated files with zero byte-tuple mismatches. Private Workspace tables began empty. Two dirty search projection rows refreshed. Compute7e and nginx remained unchanged. Recovery was not used.
 

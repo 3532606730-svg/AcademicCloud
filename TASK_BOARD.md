@@ -4,12 +4,12 @@
 
 ## Active task
 
-Current reader milestone: ADR045 owned PDF.js reader and independent Research candidate, additive039. One Codex IAB smoke and live CORS configuration passed; proceed to build/publication/deployment, then live acceptance. Latest Owner instruction skips additional prelaunch suites and new backup/integrity/rollback preparation.970/schema38 remains live until cutover.
+Current reader milestone: ADR045 exactd58ef44 Core/frontend is deployed at schema39; one local Codex IAB smoke plus normal signed-in live PDF/Research paths passed. Compute7e unchanged. Additional prelaunch suites, separate artifact verification, migration backup and rollback preparation were skipped by explicit Owner instruction.
 
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — September24 combined970 Core/frontend deployed at schema38; Linux1124/1124, host verification and protected37/38 migration PASS; Compute7e unchanged. Finish bounded signed-in sanity and remaining normal-path corpus/report work; six damaged sources require replacement bytes. Owner requested no extra broad testing |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — owned-reader d58ef44 deployed/schema39 and normal signed-in IAB changed paths PASS. Reader checkpoint complete; remaining corpus/report work stays open, six damaged sources require replacement; OCR deferred |
 
 The current reassessment charter and Owner's2026-09-09 start instruction supersede the earlier read-only gate and narrow review scope. The active task contains the ordered Phase B milestones. Necessary production/data/service changes and main integration remain authorized. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 
