@@ -12,14 +12,14 @@
     "localState": "Intentionally ahead of last published73b: source037, private Workspace038, dedicated Research route with inline PDF reader, visual redesign, Catalog recovery and deferred OCR contract locally verified; no intermediate push/deployment"
   },
   "production": {
-    "observedAt": "2026-09-15",
+    "observedAt": "2026-09-24",
     "coreFrontendCommit": "7e2d1bfb42a1135d93973bcf788eae5e045bb5f6",
     "schemaVersion": 36,
     "migrationHistory": "001-036",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Core active PID1091689 with zero restarts; loopback/public ready pass; exact schema/admissions/integrity/FK pass, no migration",
+    "health": "Read-only preflight: exact7e selector and PID1091689 cwd; Core active/running NRestarts0, schema/history36/001-036 admissions11 integrityOK/FK0, loopback healthy/ready",
     "catalogBridgeCommit": "ba0a74f28470a312f2e05135033f5b5a727ef093",
     "catalogBridgeState": "active PID334 NRestarts0",
     "computeDistro": "AcademicCloudComputeV2",
@@ -41,7 +41,9 @@
       "apply": 262144,
       "exportRequest": 131072
     },
-    "dependencyProductionAdvisories": 0
+    "dependencyProductionAdvisories": 0,
+    "sourceCommit": "970cc479f8098f48f9aad1f2ee406986e56c1f46",
+    "archiveSha256": "5982240e308b0a321335ce6283979486d300915dead1653b2e517a3e78ecc97f"
   },
   "verification": {
     "backend": "450/450 exact7e2d1bf Linux",
@@ -62,7 +64,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Local integrated source037/workspace038/inline Research Reader/visual and Catalog recovery passed one complete local deterministic test/type/build gate; no final Linux artifact or deployment evidence; live corpus projection and final candidate gate remain open",
+    "currentPhaseB": "Exact970 combined candidate qualified locally and on Alibaba staging; release preparation, current schema36 recovery and migration37/38 remain pending; no cutover",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -118,8 +120,8 @@
     },
     "latencyLedger": {
       "document": "docs/performance/vnext-latency-ledger.md",
-      "measured": "synthetic list/search/Preview/Apply service timings, public transport probes, local checksum, response-mocked diagnostics and September24 signed-in real-local-HTTP/Auth/SQLite Details/editor/note-save timings; production timings remain open",
-      "unmeasured": "normal signed-in PDF first paint, Details/editor timing, signed-download TTFB, real upload stages, and Workspace action timing",
+      "measured": "Local controlled service/HTTP/browser metrics plus September24 normal signed-in deployed7e Details baseline and visibly rendered Mongolia Today page1",
+      "unmeasured": "Candidate production UI/save/Workspace timing, PDF first paint, signed-download TTFB and real upload stages",
       "decision": "retain projection and one-plan Apply; do not infer production SLA or add telemetry/service without a normal signed-in capture"
     },
     "fieldQualityEvaluation": {
@@ -199,6 +201,54 @@
       "failed": 0,
       "skipped": 6,
       "note": "backend 3 Windows symlink privilege; compute 1 symlink privilege plus Tesseract/PaddleOCR release-local runtime skips; no code changes"
+    },
+    "finalIntegratedCandidate": {
+      "sourceCommit": "970cc479f8098f48f9aad1f2ee406986e56c1f46",
+      "status": "PASS",
+      "environment": {
+        "node": "24.19.0",
+        "npm": "11.19.1",
+        "distribution": "Ubuntu24.04",
+        "user": "academiccloud",
+        "architecture": "x86_64"
+      },
+      "tests": {
+        "operations": 84,
+        "compute": 165,
+        "failed": 0,
+        "backend": 471,
+        "frontend": 401,
+        "contracts": 3,
+        "total": 1124,
+        "skipped": 0
+      },
+      "typecheck": "PASS",
+      "build": "PASS",
+      "sourceCompiledAcceptance": "PASS",
+      "extractedArtifactAcceptance": "PASS",
+      "fullAuditVulnerabilities": 0,
+      "productionAuditVulnerabilities": 0,
+      "archiveSha256": "5982240e308b0a321335ce6283979486d300915dead1653b2e517a3e78ecc97f",
+      "bundleDirectory": "output/vnext/production-bundle-970cc479f8098f48f9aad1f2ee406986e56c1f46",
+      "log": "output/vnext/unified-search-linux-release.log",
+      "rollbackFixture": {
+        "incompleteHistoryRejected": true,
+        "status": "PASS",
+        "privateOverlaysPreserved": true,
+        "completeHistoryStartup": true,
+        "log": "output/vnext/verify-038-deployed-7e-runtime.log",
+        "schema": 38,
+        "commit": "7e2d1bfb42a1135d93973bcf788eae5e045bb5f6",
+        "verifiedFiles": 4919
+      },
+      "hostedCiStarted": false,
+      "productionChanged": false,
+      "hostVerification": {
+        "evidenceSha256": "9d6c75caf8e4b92b8257a7e3c7b385d0b2533dee0b2b9730a8f3696c1e04a5ea",
+        "status": "PASS",
+        "liveDatabaseAccess": false,
+        "log": "output/vnext/host-970-runtime-verification.log"
+      }
     }
   },
   "computeQualification": {
@@ -214,7 +264,7 @@
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works",
     "Current scholarly corpus projection has 46 failed, 31 not_run and nine staged Owner PDFs without an exact byte/MD5 match; six unchanged corrupt sources need replacement bytes; final candidate runtime and source reconciliation remain open"
   ],
-  "next": "Finish bounded candidate review and exact Linux artifact qualification, then one combined publication/deployment. Complete normal signed-in Library/Reader/Workspace/Catalog/transfer acceptance and production timings on that release before unfinished/affected corpus processing and the final inventory/queue/authority snapshot plus 29-section report. Preserve successful jobs and require replacement bytes for six unchanged damaged PDFs. September23 counts are a dated baseline, not final acceptance. Production browser access is unavailable in the September24 continuation; independent local release work continues.",
+  "next": "Exact970 Linux1124/1124 and host artifact verification PASS. Complete current encrypted schema36 recovery and reviewed37/38 migration/rollback, then one combined main/integration publication and Core/frontend release. Signed-in production access is restored. Dedicated medium verification agent owns changed-path acceptance; root continues unfinished/affected corpus and29-section report. Preserve active7e Compute, successful jobs and six damaged-source replacement gate. Distinguish qualified runtime970 from docs-only HEAD.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

@@ -92,8 +92,26 @@ adjacent capture scripts. Four-width Reader checks at1440/1024/768/390 show no
 document overflow. At768/390 the original and notes alternate instead of
 competing for a narrow split panel; an existing note opens physical page3.
 Screenshots show actual native PDF page content in this independent Chromium,
-but its first painted frame was not timed. Production browser access was
-unavailable in this continuation; production timing rows remain open.
+but its first painted frame was not timed. Production browser access was later
+restored in the same continuation; the following baseline supersedes the
+earlier access limitation.
+
+## Signed-in production baseline before the combined release
+
+On September 24, Chromium 153.0.8010.53 at1440×900 used the normal signed-in
+website on exact deployed Core/frontend `7e2d1bf`. Three repeated Details opens
+took4285.2 /471.8 /918.3ms from click to ready DOM, with separate rendering
+opportunity marks4313.7 /496.4 /929.3ms. The first request did not start until
+2886.6ms and returned headers at4283.4ms; subsequent request starts were17.5
+and21.9ms, with headers at470.0 and916.4ms. These are public-path observations
+including browser scheduling and network, not a server processing benchmark.
+The first observation is not treated as a steady-state warm result. A screenshot
+confirms Mongolia Today page1 actually painted; first paint time remains
+unmeasured. No metadata, private research or source bytes were changed.
+
+Evidence: `output/playwright/production-7e-details-timing.log` and
+`output/playwright/production-7e-reader.png`. Candidate release measurements,
+editing/save, transfer stages and live private Workspace remain separate gates.
 
 ## Decisions from the ledger
 

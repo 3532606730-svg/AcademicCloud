@@ -164,7 +164,7 @@ Do not use user-facing filenames as trusted physical storage keys.
 
 ## Working Method
 
-When delegating AcademicCloud work, use GPT-6 Sol with high reasoning effort for every bot, including the dedicated test bot, as directed by the Owner.
+When delegating AcademicCloud work, use GPT-6 Sol with medium reasoning effort for every bot, including the dedicated verification agent. The Owner's September24 medium instruction supersedes the earlier high-effort setting. Delegate verification to that agent while the main agent continues implementation and release preparation.
 
 Before changing code:
 1. Follow `.agents/skills/academiccloud-workflow/SKILL.md`.

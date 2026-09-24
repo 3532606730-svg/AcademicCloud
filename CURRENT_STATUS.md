@@ -16,6 +16,14 @@ Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-202
 
 Predecessor CI34355914519/main and34354370164/integration passed at5eeed4c. Current publication uses [skip ci] with exact local Linux qualification to guarantee zero billable hosted usage. The original D:/Projects/AcademicCloud checkout and other review/staging work remain preserved; synchronization refers to the active vNext checkout. The predecessor's ignored final-draft report is incomplete and is not final acceptance.
 
+## Final combined candidate — qualified, release preparation active
+
+Exact source `970cc479f8098f48f9aad1f2ee406986e56c1f46` passes dedicated medium-agent Linux qualification: backend471, frontend401, contracts3, Compute165 and operations84, **1,124/1,124 with zero skips/failures**. All types/build, source and extracted compiled acceptance pass; full and production audits report zero vulnerabilities. Ubuntu24.04 x86-64 used non-root academiccloud, Node24.19.0/npm11.19.1. The four-file bundle archive SHA256 is `5982240e308b0a321335ce6283979486d300915dead1653b2e517a3e78ecc97f`; manifest4960 entries/37,285,225bytes. Independent Alibaba verification as the service account passes the same bundle/native modules/compiled schema038/private isolation and recovery checks, without install/build or live database access.
+
+September24 read-only live preflight confirms exact7e selector/process, active Core with zero restarts, schema/history36/001–036, eleven admissions, integrity OK and zero FK violations. The existing recovery point predates schema36, so one current encrypted off-host recovery point is being prepared before37/38. Exact hash-verified7e passes the synthetic schema038 compatibility fixture only with complete migration assets; rollback must retain the actual37/38 schema and authored overlays and explicitly override its migration directory after environment loading. Compute remains exact7e enabled/active; this combined release changes only Core/frontend.
+
+Normal signed-in production browser access is restored. Baseline Details opens and a visibly painted Mongolia Today PDF are recorded in the latency ledger; candidate live behavior and first-paint/transfer timings remain open. No publication or production cutover has occurred at this checkpoint. Later documentation-only commits do not change the qualified artifact source970.
+
 ## Last observed runtime
 
 | Component | Evidence on September15 |

@@ -6,7 +6,7 @@
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — last observed Core7e/schema36; local source037/Workspace038/Reader/Catalog recovery pass. Existing-note expiry repair and real local HTTP browser timings are verified. Complete exact Linux qualification, then one combined release and signed-in live measurements/whole-product/corpus acceptance; six damaged sources require replacement bytes |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — September24 Core7e/schema36 preflight green; exact970 Linux1124/1124 and host artifact/old7e rollback compatibility PASS. Signed-in production access restored. Finish schema36 recovery and one combined release, then live measurements/whole-product/corpus acceptance; six damaged sources require replacement bytes |
 
 The current reassessment charter and Owner's2026-09-09 start instruction supersede the earlier read-only gate and narrow review scope. The active task contains the ordered Phase B milestones. Necessary production/data/service changes and main integration remain authorized. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 

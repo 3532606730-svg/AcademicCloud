@@ -334,12 +334,23 @@ their registries and authored overlays are preserved during rollback planning.
    `/api/ready`, then the changed signed-in product paths. Install/render the
    matching nginx source as described below, run `nginx -t`, and reload only
    after validation. Do not reinstall unrelated units or alter credentials.
-5. After a real failure, recover according to the actual database state. A
-   release that recognizes only migrations through 034 rejects a database with
-   035–038 and is **not** an application-only rollback. Prefer a corrected,
-   schema-038-compatible release with the complete migration and admission
-   directories. Never down-migrate, discard the source-generation registry, or
-   remove authored private Workspace overlays to make an older binary start.
+5. After a real failure, recover according to the actual database state. An
+   older release with an incomplete migration directory rejects later history.
+   Exact `7e2d1bfb42a1135d93973bcf788eae5e045bb5f6` has now passed an isolated
+   schema-038 compatibility fixture: startup, source-aware old activation and
+   download, metadata/source preservation, and retained authored overlays. Its
+   own 001–036 directory still fails closed. Application-only recovery may use
+   this exact binary with the hash-verified complete migration prefix matching
+   the actual schema. For partial 037 success, supply exactly 001–037; for 038,
+   retain the candidate's complete 001–038 assets. Do not modify either immutable
+   release. A narrowly scoped systemd `ExecStart` override can invoke
+   `/usr/bin/env MIGRATIONS_DIRECTORY=<verified-directory>` before the exact old
+   Node entry point, after the protected `EnvironmentFile` has been loaded.
+   Ordinary `Environment=` cannot override an entry in that file. Reload the
+   unit, select the prior release, and verify actual process identity/readiness;
+   retain public assets. Record the recovery override and remove it only during
+   a later verified compatible release. Never down-migrate, discard the
+   source-generation registry, or remove authored private Workspace overlays.
    Database restoration is reserved for a failure that requires it, using the
    matching recovery pair and accounting for any writes since the recovery
    point. See [Backup and Recovery](backup-recovery.md).
