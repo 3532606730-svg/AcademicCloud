@@ -16,6 +16,8 @@
 
 Ordinary AcademicCloud engineering follows `.agents/skills/academiccloud-workflow/SKILL.md`. The repository is durable project memory. Product and architecture facts come from current code, Git, task cards, current-state documents, and accepted ADRs—not from chat memory.
 
+**Subagent effort (Owner instruction, 2026-09-24):** use `medium` reasoning effort for all delegated work unless the Owner changes this preference.
+
 ## Highest-Priority Rules
 
 1. **Modularity first.** Core modules have clear boundaries/interfaces; optional research/intelligence modules must not become hard dependencies of the core file system.
@@ -93,7 +95,7 @@ Owner-approved Pre-OCR direction includes:
 - Research Inbox/intake;
 - sidecar annotations, citations, page-level evidence, Evidence Bundles, Research Questions, structured export foundations.
 
-`RF-META01`, `RF-METASUGGEST01`, bounded front-matter OCR, and `RF-SEARCH01` are complete. Canonical information remains surfaced through normal `资料详情`, not a standalone `学术记录` browser. ADR-031 keeps heavy PDF/render/OCR execution in durable asynchronous Compute while Core retains authorization, candidate persistence/review, and canonical CAS authority. ADR-032 defines the Layer-1 bibliographic domain; ADR-033 defines the exact-pinned ephemeral bibliographic Compute pipeline; ADR-034 defines metadata-aware catalogue query and display identity. No raw OCR page text or rendered page image is persisted. The remaining Personal Research / pre-intelligence queue stays parked.
+`RF-META01`, `RF-METASUGGEST01`, bounded front-matter OCR, and `RF-SEARCH01` are complete. Canonical information remains surfaced through normal `资料详情`, not a standalone `学术记录` browser. ADR-031 keeps heavy PDF/render/OCR execution in durable asynchronous Compute while Core retains authorization, candidate persistence/review, and canonical CAS authority. ADR-032 defines the Layer-1 bibliographic domain; ADR-033 defines the exact-pinned ephemeral bibliographic Compute pipeline; ADR-034 defines metadata-aware catalogue query and display identity. No raw OCR page text or rendered page image is persisted. Source generations and private Workspace/Collections/Page Notes under ADR-043/044 are implemented locally in the active vNext batch; their final release and normal-site acceptance are pending. Other parked Personal Research cards do not override this accepted sequence.
 
 ### Layer 4 — Shared Academic Library
 

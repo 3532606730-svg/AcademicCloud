@@ -62,7 +62,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Local integrated source037/workspace038/inline Research Reader/visual and Catalog recovery are qualified at a local checkpoint; no final artifact or deployment evidence; live corpus projection and final candidate gate remain open",
+    "currentPhaseB": "Local integrated source037/workspace038/inline Research Reader/visual and Catalog recovery passed one complete local deterministic test/type/build gate; no final Linux artifact or deployment evidence; live corpus projection and final candidate gate remain open",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -109,9 +109,16 @@
       "browser": "synthetic desktop1440 layout and mobile390 source/notes/page navigation/note-page prefill pass; native PDF painting unverified",
       "publication": "local only; final combined release pending"
     },
+    "latestLocalDeterministicGate": {
+      "runtimeSource": "7b140f1; subsequent .gitignore-only checkpoint 103810b",
+      "testCi": "1118 pass/4 Windows symlink-permission skip/0 fail across 1122 tests: backend468+3skip, frontend399, contracts3, Compute164+1skip, operations84",
+      "typecheckBuild": "whole-workspace PASS",
+      "browser": "synthetic Reader expired-link Next reauthorized same source and advanced page1 to page2 with fresh new-tab action",
+      "limits": "not Linux artifact qualification, native PDF paint, live product acceptance or full-corpus acceptance"
+    },
     "latencyLedger": {
       "document": "docs/performance/vnext-latency-ledger.md",
-      "measured": "synthetic list/search/Preview/Apply service timings, one-request public asset/API transport probes, local checksum stage, and explicitly response-mocked warm UI diagnostics",
+      "measured": "synthetic list/search/Preview/Apply service timings, public transport probes, local checksum, response-mocked diagnostics and September24 signed-in real-local-HTTP/Auth/SQLite Details/editor/note-save timings; production timings remain open",
       "unmeasured": "normal signed-in PDF first paint, Details/editor timing, signed-download TTFB, real upload stages, and Workspace action timing",
       "decision": "retain projection and one-plan Apply; do not infer production SLA or add telemetry/service without a normal signed-in capture"
     },
@@ -207,7 +214,7 @@
     "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works",
     "Current scholarly corpus projection has 46 failed, 31 not_run and nine staged Owner PDFs without an exact byte/MD5 match; six unchanged corrupt sources need replacement bytes; final candidate runtime and source reconciliation remain open"
   ],
-  "next": "Complete Catalog browser/live and visual evidence. The 2026-09-23 read-only projection has 93 scholarly PDFs (46 failed, 31 not_run, 16 succeeded), plus 3 failed internal fixtures; 9 staged Owner PDFs have no exact active match. Preserve successful jobs, require replacement for 6 unchanged corrupt sources, and do not claim corpus acceptance. After final candidate qualification, process unfinished sources through normal signed-in paths, capture a final inventory/queue/authority snapshot, then finish timings, the 29-section report and one combined publication/deployment.",
+  "next": "Finish bounded candidate review and exact Linux artifact qualification, then one combined publication/deployment. Complete normal signed-in Library/Reader/Workspace/Catalog/transfer acceptance and production timings on that release before unfinished/affected corpus processing and the final inventory/queue/authority snapshot plus 29-section report. Preserve successful jobs and require replacement bytes for six unchanged damaged PDFs. September23 counts are a dated baseline, not final acceptance. Production browser access is unavailable in the September24 continuation; independent local release work continues.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

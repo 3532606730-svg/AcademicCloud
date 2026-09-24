@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
 import { ApiError } from "./api.ts";
 import type { CollectionItem, PageNote, ReadingState, ResearchCollection, ResourceWorkspace, WorkspaceApi, WorkspacePage, WorkspaceResource } from "./workspace-api.ts";
 import { useLanguage } from "./i18n-react.tsx";
@@ -76,6 +76,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [readerPage, setReaderPage] = useState(initialPhysicalPage ?? 1);
+  const readerNavigation = useRef<((page: number) => Promise<void>) | null>(null);
   const [readerView, setReaderView] = useState<"source" | "notes">(initialPhysicalPage ? "notes" : "source");
   const pendingInitialNote = useRef(initialPhysicalPage !== undefined);
   const [noteDirty, setNoteDirty] = useState(false);
@@ -189,7 +190,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
           </nav>}
           <div className={readerResource ? `research-resource-layout research-resource-layout--${readerView}` : "research-resource-content"}>
           {readerResource && onAuthorizeReader && <ResearchReader key={`${readerResource.resourceId}:${readerResource.sourceId}`} resource={readerResource}
-            onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={setReaderPage} />}
+            onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={setReaderPage} navigationRef={readerNavigation} />}
           <div className={readerResource ? "research-resource-details" : undefined}>
           {resource && <section className="research-resource-settings" aria-label={c.status}>
         <div className="research-reading-controls"><label>{c.status}<select disabled={locked} value={resource.reading?.status ?? ""} onChange={(e) => {
@@ -225,7 +226,7 @@ export function WorkspaceDialog({ api, initialResourceId, expectedSourceId, init
             {!current ? <p className="research-muted">{c.unavailable}</p> : !matches ? <p className="research-muted">{c.oldSource}</p> : null}
             <div className="research-row-actions"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => setEditor({ note, resource: current ?? { resourceId: note.resourceId, sourceId: note.sourceId, title: c.unavailable, mediaType: "application/pdf", libraryId: null } })}>{c.edit}</button>
               <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => void run(async () => { await api.updateNote(note, { body: note.body, locator: note.locator, deleted: !note.deletedAt }); refresh(); })}>{note.deletedAt ? c.restore : c.remove}</button>
-              {current && matches && <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { if (readerResource && current.resourceId === readerResource.resourceId && current.sourceId === readerResource.sourceId) { setReaderPage(note.physicalPage); setReaderView("source"); } else void open(current, note.physicalPage); }}>{readerResource && current.resourceId === readerResource.resourceId ? c.goToPage : c.open}</button>}</div>
+              {current && matches && <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => { if (readerResource && current.resourceId === readerResource.resourceId && current.sourceId === readerResource.sourceId) { void readerNavigation.current?.(note.physicalPage); setReaderView("source"); } else void open(current, note.physicalPage); }}>{readerResource && current.resourceId === readerResource.resourceId ? c.goToPage : c.open}</button>}</div>
           </article>;
         })}</div> : !loading && <p className="research-empty">{c.empty}</p>)}
         {notes?.nextBeforeId && <button className="button" type="button" disabled={locked} onClick={() => void moreNotes()}>{c.more}</button>}
@@ -270,11 +271,12 @@ function ResearchFrame({ asPage, dialogRef, children }: {
   return <dialog ref={dialogRef} className="research-dialog" aria-labelledby="research-title">{children}</dialog>;
 }
 
-function ResearchReader({ resource, onAuthorize, page, onPageChange }: {
+function ResearchReader({ resource, onAuthorize, page, onPageChange, navigationRef }: {
   resource: WorkspaceResource;
   onAuthorize: (resource: WorkspaceResource) => Promise<ReaderAuthorization>;
   page: number;
   onPageChange: (page: number) => void;
+  navigationRef: RefObject<((page: number) => Promise<void>) | null>;
 }) {
   const { language } = useLanguage();
   const c = COPY[language];
@@ -324,10 +326,11 @@ function ResearchReader({ resource, onAuthorize, page, onPageChange }: {
   })() : null;
   const goToPage = async (next: number) => {
     if (!Number.isSafeInteger(next) || next < 1 || next > 1_000_000) return;
-    if (linkStale && !(await authorize())) return;
+    if ((!authorization || linkStale || (authorization.expiresAt && Date.parse(authorization.expiresAt) - 10_000 <= Date.now())) && !(await authorize())) return;
     onPageChange(next);
     setPageDraft(String(next));
   };
+  useImperativeHandle(navigationRef, () => goToPage);
   const submitPage = (event: FormEvent) => { event.preventDefault(); void goToPage(Number(pageDraft)); };
   return <section className="research-reader" aria-label={c.sourceView}>
     <form className="research-reader-toolbar" aria-label={c.page} onSubmit={submitPage}>

@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-09-22
+**Last reconciled:** 2026-09-24
 
 ## Product Direction
 
@@ -28,7 +28,7 @@ The current reliability interlock changes sequencing, not this model.
 
 ## Active vNext remediation interlock
 
-The current Owner charter and explicit Phase B takeover on2026-09-09 supersede the narrow historical R01–R16 completion sequence below. The sole active task remains ACADEMICCLOUD-VNEXT-REMEDIATION01. Execute recovery and concrete correctness fixes first, then fast/polished Library/Preview/Reader/Details and Search; establish stable source/page identity before private Workspace, Collections and Page Notes; improve Catalog continuity, upload and search from measurements. Bounded full-text foundations follow these dependencies. September22: document-session/static-delivery release7e has September15 live evidence; unified Library/Search, source-generation037 and private Workspace038 are locally verified. Catalog review recovery, measured transfer/search, bounded full-text evaluation and final whole-product acceptance remain open. The Owner now requests finishing the integrated batch locally before one final publication/deployment. Do not force the entire old RF queue to precede useful private research tools. Full-corpus OCR and RAG rollout are later evidence-dependent decisions.
+The current Owner charter and explicit Phase B takeover on 2026-09-09 supersede the narrow historical R01–R16 completion sequence below. The sole active task remains ACADEMICCLOUD-VNEXT-REMEDIATION01. Unified Library/Search, source-generation037, private Workspace038, inline PDF reading and resumable Catalog review now pass their local gates. The inherited expiry defect in existing-note page jumps is repaired and checked against source replacement. Details and note-save timings now include a signed-in browser against real local HTTP/Auth/SQLite; production transport and PDF first-paint timings remain open. The bounded full-text evaluation is recorded as design-only, and the Owner has deferred OCR execution. Finish candidate qualification before one combined publication/deployment, then verify live workflows and the current corpus. Do not force the entire old RF queue to precede useful private research tools. Full-corpus OCR and RAG rollout remain later evidence-dependent decisions.
 
 Existing SQLite/Core/storage-adapter/Local Pull boundaries remain valuable. Avoid a framework/database rewrite, new resident service or model change without evidence. Zero added infrastructure cost and zero billable GitHub usage remain gates. Historical parked entries are an inventory, not a competing active sequence.
 
@@ -40,13 +40,12 @@ preserving its correctness, privacy, local-Compute and zero-added-cost goals.
 Current sequence:
 
 ```text
-R01-R16 and real additional defects
-→ isolated tests, equivalent search and bounded Catalog benchmarks
-→ one verified integration line and permanent CI
-→ exact Core/frontend/necessary Compute releases
-→ append-only migrations, nginx source reconciliation, readiness
-→ real signed-in export/import/Preview/Apply and resource verification
-→ whole-product regression and truthful acceptance
+local implementation, measured paths and candidate review
+→ exact Linux qualification, migration/rollback and immutable artifact checks
+→ one combined publication and Core/frontend release, preserving qualified Compute
+→ normal signed-in Library/Reader/Workspace/Catalog/transfer acceptance
+→ current-source inventory and only unfinished/affected corpus work
+→ final queue/authority evidence, whole-product regression and final report
 ```
 
 The initial vNext implementation uses SQLite candidate search and complete
@@ -57,8 +56,11 @@ is not correctness probability or write authority.
 
 The laptop remains a disposable, outbound-only executor. Its absence may delay
 AI but must not break Library, storage, search, citations or human metadata.
-Necessary model capability repair is authorized; the historic NuExtract3 C
-failures still require qualification before automatic-cataloguing acceptance.
+NuExtract3 qualification and both normal-site C retries already passed; retain
+that evidence and the qualified Compute release. Current corpus completion and
+final integrated product acceptance remain separate gates. Six unchanged
+replacement-required PDFs need usable source bytes; repeated execution of the
+same damaged files cannot close their acceptance. Preserve successful jobs.
 Current release and runtime facts belong in CURRENT_STATUS.md and
 CURRENT_STATE.json, not in this sequencing document.
 

@@ -1,6 +1,6 @@
 # vNext latency ledger
 
-**Date:** 2026-09-23
+**Date:** 2026-09-24
 **Scope:** local evidence for `ACADEMICCLOUD-VNEXT-REMEDIATION01`; no production
 reads, object-storage benchmark, new service, or billable CI run.
 
@@ -63,6 +63,37 @@ viewer is a separate Chrome extension frame, so React's iframe event and the
 two-frame mark cannot establish when the PDF page itself became usable. Repeat
 these paths against a frozen source and the normal signed-in backend before
 using any number as a product latency result.
+
+## Signed-in local browser with real HTTP and SQLite
+
+On September 24, headed Chromium 153.0.8010.53 at 1440 × 900 exercised the
+compiled candidate through the existing isolated backend at port 4321. The
+source was `103810b` plus the inherited responsive CSS and the existing-note
+Reader authorization repair. The fixture used eight synthetic holdings,
+temporary SQLite, real Auth/metadata/Workspace services and an in-memory
+storage adapter. No browser API response interception or production writes
+were used. These values include local HTTP and persistence, but not public
+network, OSS or production-host latency.
+
+Capture-phase clicks set the start mark; a MutationObserver recorded the
+returned identity panel or reloaded note, with two animation frames as a
+separate rendering-opportunity mark. Resource Timing records request start,
+response headers and completion. The latter mark is not PDF paint.
+
+| Interaction | Click to ready DOM, ms | Click to rendering opportunity, ms | HTTP evidence |
+|---|---|---|---|
+| First Details open in this document session | 318.7 | 346.9 | Request started at315.4; headers316.3; complete316.5. The delay preceded the API request; no server bottleneck is inferred |
+| Four warm Details opens | 17.8 / 18.1 / 18.2 / 17.6 | 47.2 / 47.3 / 47.4 / 47.1 | Request start3.6–4.1; headers4.5–5.1; complete4.7–5.4 |
+| Three metadata edits/saves | 21.6 / 5.2 / 17.5 | 46.2 / 32.1 / 47.2 | Save headers2.5–3.3; complete2.8–3.5; Library refreshes also completed |
+| Three private note edits/saves, including re-fetch | 20.5 / 20.0 / 19.9 | 47.3 / 47.4 / 47.4 | Save headers2.3–3.4; complete2.5–3.7; notes re-fetch complete19.1–19.6. The last text also survived a full browser reload |
+
+Artifacts: `output/playwright/roadmap-{details,research}-timing.log` and their
+adjacent capture scripts. Four-width Reader checks at1440/1024/768/390 show no
+document overflow. At768/390 the original and notes alternate instead of
+competing for a narrow split panel; an existing note opens physical page3.
+Screenshots show actual native PDF page content in this independent Chromium,
+but its first painted frame was not timed. Production browser access was
+unavailable in this continuation; production timing rows remain open.
 
 ## Decisions from the ledger
 

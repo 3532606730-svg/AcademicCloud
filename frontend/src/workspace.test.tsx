@@ -100,6 +100,27 @@ describe("private workspace", () => {
     expect(screen.getByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/current.pdf#page=1");
   });
 
+  it.each([false, true])("reauthorizes an expired existing-note jump and refuses a replaced source (replacement: %s)", async (replaced) => {
+    const user = userEvent.setup(); const f = fixture(); f.setNotes([NOTE]);
+    const authorize = vi.fn().mockResolvedValueOnce({ url: "https://example.test/old.pdf", expiresAt: new Date(Date.now() - 1000).toISOString(), download: vi.fn() });
+    if (replaced) authorize.mockRejectedValueOnce(new ApiError(409, "concurrent_change"));
+    else authorize.mockResolvedValueOnce({ url: "https://example.test/fresh.pdf", expiresAt: new Date(Date.now() + 60_000).toISOString(), download: vi.fn() });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    const reader = await screen.findByRole("region", { name: "Source" });
+    await within(reader).findByText("The source link expired; page navigation will reauthorize it.");
+    await user.click(screen.getByRole("button", { name: "Go to page" }));
+    await waitFor(() => expect(authorize).toHaveBeenCalledTimes(2));
+    expect(authorize).toHaveBeenNthCalledWith(2, RESOURCE);
+    if (replaced) {
+      expect(await within(reader).findByText("The source file changed. Return to the Library and reopen it.")).toBeInTheDocument();
+      expect(within(reader).queryByTitle(`Source: ${RESOURCE.title}`)).not.toBeInTheDocument();
+      expect(within(reader).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(1);
+    } else {
+      expect(await within(reader).findByTitle(`Source: ${RESOURCE.title}`)).toHaveAttribute("src", "https://example.test/fresh.pdf#page=7");
+      expect(within(reader).getByRole("spinbutton", { name: "PDF page" })).toHaveValue(7);
+    }
+  });
+
   it("does not authorize an inline reader when the expected source generation changed", async () => {
     const replacement = { ...RESOURCE, sourceId: "replacement" };
     const authorize = vi.fn();
