@@ -2977,14 +2977,17 @@ describe("document preview session", () => {
     expect(trigger).toBeVisible();
   });
 
-  it("rejects a fresh inline authorization for replacement bytes in Research", async () => {
+  it.each(["sourceId", "resourceId"] as const)("rejects a fresh inline authorization with a different %s in Research", async (mismatch) => {
     const user = userEvent.setup();
     const holding = LIBRARY_HOLDINGS[0]!;
+    const wrongSource = mismatch === "sourceId"
+      ? { resourceId: holding.file.id, sourceId: "changed-source" }
+      : { resourceId: "different-resource", sourceId: "research-source" };
     const api = sessionApi({ workspace: researchApi(),
       getLibraryHoldingDetails: vi.fn().mockResolvedValue({ holding, displayTitle: "book.pdf", originalFilename: "book.pdf",
         metadataVersion: "m".repeat(43), bibliographyVersion: "b".repeat(43), bibliography: null, metadata: null, fieldAuthorities: [], canEditMetadata: false, file: holding.file }),
       createLibraryDownload: vi.fn().mockResolvedValueOnce({ ...authorization("https://signed.invalid/original.pdf"), source: { resourceId: holding.file.id, sourceId: "research-source" } })
-        .mockResolvedValueOnce({ ...authorization("https://signed.invalid/replacement.pdf"), source: { resourceId: holding.file.id, sourceId: "changed-source" } }),
+        .mockResolvedValueOnce({ ...authorization("https://signed.invalid/replacement.pdf"), source: wrongSource }),
     });
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: "book.pdf" }));

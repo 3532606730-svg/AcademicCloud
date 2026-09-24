@@ -2039,7 +2039,7 @@ function DriveView({
     const authorization = resource.libraryId
       ? await api.createLibraryDownload(resource.libraryId, resource.resourceId)
       : await api.createDownload(resource.resourceId);
-    if (authorization.source?.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
+    if (authorization.source?.resourceId !== resource.resourceId || authorization.source.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
     return authorization;
   }
 
@@ -3102,7 +3102,7 @@ function DriveView({
           const authorization = resource.libraryId
             ? await api.createLibraryDownload(resource.libraryId, resource.resourceId, "inline")
             : await api.createDownload(resource.resourceId, "inline");
-          if (authorization.source?.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
+          if (authorization.source?.resourceId !== resource.resourceId || authorization.source.sourceId !== resource.sourceId) throw new ApiError(409, "concurrent_change");
           return {
             url: authorization.url,
             expiresAt: authorization.expiresAt,
