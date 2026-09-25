@@ -108,6 +108,7 @@ export type UploadStatus = MultipartUploadStatus | LegacyUploadStatus | Complete
 
 export interface ResumableDownloadAuthorization extends BrowserDownloadAuthorization {
   source: DocumentSourceDescriptor;
+  checksum?: { algorithm: "md5"; value: string };
   sizeBytes: number;
   etag: string;
   acceptRanges: "bytes";
@@ -935,6 +936,7 @@ export class DriveService {
       return {
         ...authorization,
         source: { resourceId: source.resourceId, sourceId: source.sourceId },
+        ...(source.checksumAlgorithm === "md5" ? { checksum: { algorithm: "md5" as const, value: source.checksum } } : {}),
         sizeBytes: metadata.sizeBytes,
         etag: metadata.etag,
         acceptRanges: "bytes",

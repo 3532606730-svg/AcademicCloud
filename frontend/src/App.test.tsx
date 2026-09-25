@@ -537,6 +537,19 @@ describe("App", () => {
     expect(listAnnouncements).toHaveBeenCalledWith(expect.any(AbortSignal));
   });
 
+  it("keeps routine announcement bodies collapsed until opened", async () => {
+    const user = userEvent.setup();
+    const announcement = { id: "routine", title: "Archive schedule", body: "Full schedule details", severity: "info" as const,
+      linkUrl: null, isActive: true, publishedAt: "2026-09-25", expiresAt: null, createdByAccountId: ACCOUNT.id, createdAt: "2026-09-25", updatedAt: "2026-09-25" };
+    render(<App api={fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAnnouncements: vi.fn().mockResolvedValue([announcement]) })} />);
+    const article = await screen.findByRole("article", { name: "Information announcement: Archive schedule" });
+    const details = article.querySelector("details")!;
+    expect(details.open).toBe(false);
+    await user.click(within(article).getByText("Archive schedule"));
+    expect(details.open).toBe(true);
+    expect(within(article).getByText("Full schedule details")).toBeVisible();
+  });
+
   it("has no hard-coded announcement fallback when the authenticated API returns none", async () => {
     const listAnnouncements = vi.fn().mockResolvedValue([]);
     const api = fakeApi({ getSession: vi.fn().mockResolvedValue(ACCOUNT), listAnnouncements });
@@ -2074,7 +2087,7 @@ describe("App", () => {
       expect(checksumFile).toHaveBeenCalledTimes(before); // nothing enqueued
       // Zero-copy: no descriptive drop sentence anywhere.
       expect(screen.queryByText(/Drop files into the Library workspace/)).not.toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: "Library" }));
+      await user.click(screen.getByRole("button", { name: "All resources" }));
     }
   });
 
@@ -2624,7 +2637,7 @@ describe("App", () => {
       expect(screen.getByText("Queued")).toBeInTheDocument();
       await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
       expect(states).toHaveBeenCalledTimes(3);
-      expect(screen.getByText("AI cataloguing succeeded — reviewable evidence is available")).toBeInTheDocument();
+      expect(screen.getByText("Extraction complete — awaiting review and adoption")).toBeInTheDocument();
       await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
       expect(states).toHaveBeenCalledTimes(3);
       mounted.unmount();
@@ -2775,7 +2788,7 @@ describe("document preview session", () => {
     await within(research).findByText("Private research text");
     expect(window.location.pathname).toBe("/research");
     expect(preview).not.toBeInTheDocument();
-    expect(within(research).getByTitle("Source: book.pdf")).toHaveAttribute("data-page", "1");
+    expect(await within(research).findByTitle("Source: book.pdf")).toHaveAttribute("data-page", "1");
     expect(api.createLibraryDownload).toHaveBeenCalledTimes(2);
     act(() => window.history.back());
     await waitFor(() => expect(window.location.pathname).toBe("/"));
@@ -2798,6 +2811,31 @@ describe("document preview session", () => {
     expect(JSON.stringify(window.history.state)).not.toMatch(/Private research text|signed\.invalid/u);
     await user.click(within(refreshed).getByRole("button", { name: "Library" }));
     await waitFor(() => expect(window.location.pathname).toBe("/"));
+  });
+
+  it("restores the active document after Library switching and reload without persisting content", async () => {
+    const user = userEvent.setup();
+    const workspace = researchApi();
+    const api = sessionApi({ workspace });
+    const app = render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Open actions for book.pdf" }));
+    await user.click(screen.getByRole("menuitem", { name: "Put in my research" }));
+    const research = await screen.findByRole("region", { name: "My research" });
+    await within(research).findByRole("heading", { name: "book.pdf" });
+    await user.click(within(research).getByRole("button", { name: "Library" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    const notice = document.querySelector(".app-notice") as HTMLElement;
+    expect(notice).toBeVisible();
+    await user.click(within(notice).getByRole("button", { name: "Dismiss" }));
+    expect(document.querySelector(".app-notice")).toBeNull();
+    const preference = window.sessionStorage.getItem("academiccloud.view.v1:account-1:research-active");
+    expect(JSON.parse(preference!)).toEqual({ resourceId: "library-file-0", sourceId: "research-source" });
+    app.unmount();
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "My research" }));
+    const restored = await screen.findByRole("region", { name: "My research" });
+    expect(await within(restored).findByRole("heading", { name: "book.pdf" })).toBeVisible();
+    expect(workspace.resource).toHaveBeenCalledWith("library-file-0");
   });
 
   it("keeps all research selected after leaving a resource and refreshing", async () => {
@@ -3157,7 +3195,7 @@ describe("document preview session", () => {
     const shell = screen.getByRole("dialog", { name: "book.pdf" });
     const frame = await within(shell).findByTitle("Preview of book.pdf");
     await user.click(within(shell).getByRole("button", { name: "Resource details" }));
-    await user.click(await screen.findByRole("button", { name: "Edit information" }));
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
     await user.type(screen.getByLabelText("Canonical title"), "New canonical title");
     await user.click(screen.getByRole("button", { name: "Save metadata" }));
     await waitFor(() => expect(api.updateLibraryHoldingMetadata).toHaveBeenCalled());

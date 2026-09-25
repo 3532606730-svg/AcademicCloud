@@ -7,6 +7,10 @@ import { useModalDialog } from "./use-modal-dialog.ts";
 import { readViewPreference, writeViewPreference, useHistoryDialog } from "./view-context.ts";
 import { WorkspaceSwitch } from "./workspace-switch.tsx";
 import { PdfReader, type PdfHighlight } from "./pdf-reader.tsx";
+import { readerLocalKey, rememberReaderFile, restoreReaderFile, verifyReaderFile, type ReaderFilePicker, type ReaderSourceIdentity } from "./reader-local-source.ts";
+import type { RecoverableFileHandle } from "./file-source-recovery.ts";
+import { LocalLibraryFolder } from "./local-library-folder.tsx";
+import { LOCAL_LIBRARY_EVENT } from "./local-library.ts";
 import "./workspace.css";
 
 const COPY = {
@@ -45,7 +49,7 @@ const COPY = {
 };
 
 type Editor = { note: PageNote | null; resource: WorkspaceResource; initialPhysicalPage?: number; lockPage?: boolean };
-type ReaderAuthorization = { url: string; expiresAt?: string; download: () => Promise<void> };
+type ReaderAuthorization = ReaderSourceIdentity & { url: string; expiresAt?: string; download: () => Promise<void> };
 type DocumentTab = { resource: WorkspaceResource; page: number };
 
 export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSourceId, initialPhysicalPage, returnFocus, onClose, onOpenResource, onAuthorizeReader, onRouteChange, onRegisterNavigationGuard, asPage = false }: {
@@ -73,8 +77,12 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
   const [highlights, setHighlights] = useState<TextHighlight[]>([]);
   const [highlightCursor, setHighlightCursor] = useState<string | null>(null);
   const [highlightBusy, setHighlightBusy] = useState(false);
+  // Keep late initial/paginated reads from resurrecting or hiding local writes.
+  const highlightChanges = useRef(new Map<string, TextHighlight>());
   const [progressReady, setProgressReady] = useState<string | null>(null);
   const [progressRetry, setProgressRetry] = useState(0);
+  const [progressIssue, setProgressIssue] = useState<{ key: string; latest: ReaderProgress | null; conflict: boolean } | null>(null);
+  const [focusReading, setFocusReading] = useState(false);
   const progressContext = useRef<{ key: string; resource: WorkspaceResource; revision: number; savedPage: number | null; pendingPage: number | null; failed: boolean } | null>(null);
   const progressWrite = useRef<Promise<unknown>>(Promise.resolve());
   const progressTimer = useRef<number | null>(null);
@@ -98,7 +106,7 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
   const [editor, setEditor] = useState<Editor | null>(null);
   const [readerPage, setReaderPage] = useState(initialPhysicalPage ?? 1);
   const [renderedPage, setRenderedPage] = useState<number | null>(null);
-  const readerNavigation = useRef<((page: number) => Promise<void>) | null>(null);
+  const readerNavigation = useRef<((page: number) => Promise<boolean>) | null>(null);
   const [readerView, setReaderView] = useState<"source" | "notes">("source");
   const pendingInitialNote = useRef(initialPhysicalPage !== undefined);
   const [noteDirty, setNoteDirty] = useState(false);
@@ -162,6 +170,15 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
     catch (caught) { if (mounted.current) setError(caught); }
     finally { if (mounted.current) setBusy(false); }
   };
+  useEffect(() => {
+    if (notice !== c.saved) return;
+    const timer = window.setTimeout(() => setNotice(""), 2400);
+    return () => window.clearTimeout(timer);
+  }, [notice, c.saved]);
+  const routeCallback = useRef(onRouteChange); routeCallback.current = onRouteChange;
+  useEffect(() => {
+    if (resource && resource.resource.resourceId === initialResourceId && (!expectedSourceId || resource.resource.sourceId === expectedSourceId)) routeCallback.current?.(resource.resource);
+  }, [resource?.resource.resourceId, resource?.resource.sourceId, initialResourceId, expectedSourceId]);
   const refresh = () => { setReload((n) => n + 1); if (progressContext.current?.failed) setProgressRetry((value) => value + 1); };
   const finishEditor = () => { setEditor(null); setNoteDirty(false); setNotice(""); };
   const tabSource = documentTabs.find((entry) => entry.resource.resourceId === resourceId)?.resource.sourceId;
@@ -206,15 +223,22 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
     if (!context || context.failed || context.pendingPage === null) return;
     const nextPage = context.pendingPage; context.pendingPage = null;
     progressWrite.current = progressWrite.current.catch(() => {}).then(async () => {
-      if (context.failed) return;
+      if (context.failed || context.savedPage === nextPage) return;
       const saved = await api.saveProgress(context.resource.resourceId, { sourceId: context.resource.sourceId, physicalPage: nextPage, revision: context.revision });
       context.revision = saved.revision; context.savedPage = nextPage;
       if (!mounted.current || activeSource.current !== context.key) return;
       setRecent((previous) => ({ items: [saved, ...(previous?.items ?? []).filter((entry) => entry.resourceId !== saved.resourceId)].slice(0, 50), resources: [context.resource, ...(previous?.resources ?? []).filter((entry) => entry.resourceId !== context.resource.resourceId)], nextBeforeId: previous?.nextBeforeId ?? null }));
-    }).catch((caught) => { context.failed = true; if (mounted.current && activeSource.current === context.key) setError(caught); });
+    }).catch(async (caught) => {
+      context.failed = true;
+      const conflict = caught instanceof ApiError && caught.code === "concurrent_change";
+      let latest: ReaderProgress | null = null;
+      if (conflict) { try { latest = await api.progress(context.resource.resourceId); } catch { /* Keep the explicit retry action. */ } }
+      if (mounted.current && activeSource.current === context.key) setProgressIssue({ key: context.key, latest, conflict });
+    });
   };
   useEffect(() => {
-    setProgressReady(null); setRenderedPage(null); setHighlights([]); setHighlightCursor(null);
+    setProgressIssue(null); setProgressReady(null); setRenderedPage(null); setHighlights([]); setHighlightCursor(null);
+    highlightChanges.current = new Map();
     progressContext.current = null; activeSource.current = sourceKey;
     if (!resource || !sourceKey) return;
     const current = resource.resource;
@@ -230,10 +254,34 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
       setProgressReady(sourceKey);
     }).catch((caught) => { if (!controller.signal.aborted) { setError(caught); setReaderPage(explicitPage ?? tabPage ?? 1); setProgressReady(sourceKey); context.failed = true; progressContext.current = context; } });
     void api.highlights({ resourceId: current.resourceId, sourceId: current.sourceId }, controller.signal).then((page) => {
-      if (!controller.signal.aborted) { setHighlights(page.items); setHighlightCursor(page.nextBeforeId); }
+      if (!controller.signal.aborted) {
+        const merged = new Map(page.items.map((item) => [item.id, item]));
+        for (const [id, item] of highlightChanges.current) { if (item.deletedAt) merged.delete(id); else merged.set(id, item); }
+        setHighlights([...merged.values()]); setHighlightCursor(page.nextBeforeId);
+      }
     }).catch((caught) => { if (!controller.signal.aborted) setError(caught); });
     return () => { controller.abort(); if (progressTimer.current !== null) window.clearTimeout(progressTimer.current); flushProgress(context); };
   }, [api, sourceKey, progressRetry]);
+  const resolveProgress = async (useLatest: boolean) => {
+    const context = progressContext.current;
+    if (!context || context.key !== sourceKey) return;
+    try {
+      const latest = await api.progress(context.resource.resourceId);
+      if (!mounted.current || progressContext.current !== context) return;
+      if (latest && latest.sourceId !== context.resource.sourceId) { setError(new ApiError(409, "concurrent_change")); return; }
+      context.revision = latest?.revision ?? 0; context.savedPage = latest?.physicalPage ?? null;
+      if (useLatest && latest) {
+        const moved = await readerNavigation.current?.(latest.physicalPage);
+        if (!moved || !mounted.current || progressContext.current !== context) return;
+        // Do not persist until the target page has actually rendered.
+        context.failed = false; context.pendingPage = null;
+      } else {
+        context.failed = false; context.pendingPage = renderedPage;
+        flushProgress(context);
+      }
+      setProgressIssue(null);
+    } catch (caught) { if (mounted.current) setError(caught); }
+  };
   const rendered = (page: number) => {
     setRenderedPage(page);
     if (!resource || !sourceKey || progressReady !== sourceKey) return;
@@ -313,7 +361,7 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
     </article>;
   })}</div> : <p className="research-empty">{c.empty}</p>;
   return <ResearchFrame asPage={asPage} dialogRef={dialog}>
-    <header className="research-header">{asPage ? <><div className="brand research-brand"><span>AC</span> AcademicCloud</div><WorkspaceSwitch active="research" onLibrary={close} onResearch={() => showOverview()} /><h2 id="research-title" className="visually-hidden">{t("workspace.title")}</h2><span className="research-private-label">{language === "zh-CN" ? "私人研究空间" : "Private workspace"}</span></> : <><h2 id="research-title">{t("workspace.title")}</h2><button className="button button--quiet" type="button" onClick={close} aria-label={c.close}>{t("preview.close")}</button></>}</header>
+    <header className="research-header">{asPage ? <><div className="brand research-brand"><span>AC</span> AcademicCloud</div><WorkspaceSwitch active="research" onLibrary={close} onResearch={() => showOverview()} /><h2 id="research-title" className="visually-hidden">{t("workspace.title")}</h2>{accountId && <LocalLibraryFolder accountId={accountId} />}<span className="research-private-label">{language === "zh-CN" ? "私人研究空间" : "Private workspace"}</span></> : <><h2 id="research-title">{t("workspace.title")}</h2><button className="button button--quiet" type="button" onClick={close} aria-label={c.close}>{t("preview.close")}</button></>}</header>
     {asPage && <div className="research-document-tabs" role="tablist" aria-label={language === "zh-CN" ? "打开的资料" : "Open documents"}>
       <button type="button" role="tab" aria-selected={!resourceId} className="research-home-tab" onClick={() => showOverview()}>{c.overview}</button>
       {documentTabs.map((entry) => <div className={entry.resource.resourceId === resourceId ? "research-document-tab is-active" : "research-document-tab"} key={entry.resource.resourceId}>
@@ -322,7 +370,7 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
       </div>)}
     </div>}
     <div className="research-body">
-      <div className={`research-workbench${resourceId ? " research-workbench--resource" : ""}${readerResource ? " research-workbench--reader" : ""}`}>
+      <div className={`research-workbench${resourceId ? " research-workbench--resource" : ""}${readerResource ? " research-workbench--reader" : ""}${readerResource && focusReading ? " research-workbench--focused" : ""}`}>
         {(asPage || !resourceId) && <aside className="research-rail" aria-label={language === "zh-CN" ? "研究导航" : "Research navigation"}>
           <nav className="research-tabs" aria-label={language === "zh-CN" ? "研究功能" : "Research sections"}>{(["reading", "collections", "notes"] as const).map((value) => <button type="button" key={value} aria-current={!resourceId && tab === value ? "page" : undefined} onClick={() => showOverview(value)}>{c[value]}</button>)}</nav>
           {asPage && <section className="research-recents"><h3>{language === "zh-CN" ? "最近阅读" : "Recently read"}</h3>
@@ -331,8 +379,9 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
           </section>}
         </aside>}
         <main className={`research-main${readerResource ? " research-main--reader" : ""}`}>
-          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => showOverview()}>{c.all}</button><h3>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3>{resource && sourceMatches && !readerResource && <button className="button button--small button--primary" type="button" disabled={locked} onClick={() => void open(resource.resource)}>{c.open}</button>}</div>}
+          {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => showOverview()}>{c.all}</button><h3 title={resource?.resource.title}>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3>{readerResource && <button type="button" className="button button--small button--quiet" aria-pressed={focusReading} disabled={locked} onClick={() => setFocusReading((value) => !value)}>{language === "zh-CN" ? (focusReading ? "显示侧栏" : "专注阅读") : (focusReading ? "Show sidebars" : "Focus reading")}</button>}{resource && sourceMatches && !readerResource && <button className="button button--small button--primary" type="button" disabled={locked} onClick={() => void open(resource.resource)}>{c.open}</button>}</div>}
           {!!error && <div className="research-error" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.conflict : describeError(error, language)}</p><button className="button button--small" type="button" disabled={busy} onClick={refresh}>{c.retry}</button></div>}
+          {progressIssue && progressIssue.key === sourceKey && <div className="research-progress-issue" role="status"><span>{progressIssue.conflict ? (language === "zh-CN" ? "另一窗口已更新阅读位置。当前页面保留，笔记未受影响。" : "Another window updated the reading position. Your current page and notes are preserved.") : (language === "zh-CN" ? "阅读位置暂未保存，可继续阅读后重试。" : "Reading position could not be saved. You can keep reading and retry.")}</span><button type="button" className="button button--small button--quiet" onClick={() => void resolveProgress(false)}>{language === "zh-CN" ? "继续当前页" : "Keep current page"}</button>{progressIssue.latest?.sourceId === resource?.resource.sourceId && <button type="button" className="button button--small button--quiet" onClick={() => void resolveProgress(true)}>{language === "zh-CN" ? "转到最新位置" : "Go to latest position"}</button>}</div>}
           {notice && <p role="status" className="research-notice">{notice}</p>}
           {loading && !readerResource && <p role="status" className="research-empty">{c.loading}</p>}
           {readerResource && <nav className="research-view-switch" aria-label={c.readerView}>
@@ -342,22 +391,32 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
           <div className={readerResource ? `research-resource-layout research-resource-layout--${readerView}` : "research-resource-content"}>
           {readerResource && progressReady !== sourceKey && <div className="research-reader"><p className="research-reader-message" role="status">{c.readerLoading}</p></div>}
           {readerResource && onAuthorizeReader && progressReady === sourceKey && <ResearchReader key={`${readerResource.resourceId}:${readerResource.sourceId}`} resource={readerResource}
-            onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={(page) => { setRenderedPage(null); setReaderPage(page); }}
+            accountId={accountId} sourceControlsLocked={highlightBusy} onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={(page) => { setRenderedPage(null); setReaderPage(page); }}
             onPageRendered={rendered} onPageUnavailable={() => setRenderedPage(null)} navigationRef={readerNavigation}
             highlights={highlights} onCreateHighlight={async (draft) => {
               if (highlightBusy || !readerResource || draft.physicalPage !== renderedPage) throw new Error(c.readerLoading);
               const key = sourceKey; setHighlightBusy(true);
-              try { const saved = await api.createHighlight({ ...draft, resourceId: readerResource.resourceId, sourceId: readerResource.sourceId }); if (mounted.current && activeSource.current === key) { setHighlights((previous) => [...previous, saved]); setNotice(c.saved); } }
+              try { const saved = await api.createHighlight({ ...draft, resourceId: readerResource.resourceId, sourceId: readerResource.sourceId }); if (mounted.current && activeSource.current === key) { highlightChanges.current.set(saved.id, saved); setHighlights((previous) => [...previous.filter((item) => item.id !== saved.id), saved]); setNotice(c.saved); } }
               finally { if (mounted.current) setHighlightBusy(false); }
             }} onDeleteHighlight={async (highlight) => {
               const stored = highlights.find((entry) => entry.id === highlight.id); if (!stored) throw new Error(c.unavailable);
               const key = sourceKey; setHighlightBusy(true);
-              try { await api.updateHighlight(stored, { color: stored.color, deleted: true }); if (mounted.current && activeSource.current === key) { setHighlights((previous) => previous.filter((entry) => entry.id !== stored.id)); setNotice(c.saved); } }
+              try { const saved = await api.updateHighlight(stored, { color: stored.color, deleted: true }); if (mounted.current && activeSource.current === key) { highlightChanges.current.set(saved.id, saved); setHighlights((previous) => previous.filter((entry) => entry.id !== stored.id)); setNotice(c.saved); } }
               finally { if (mounted.current) setHighlightBusy(false); }
-            }} onNewNote={() => { if (renderedPage !== readerPage || locked) return; setEditor({ note: null, resource: readerResource, initialPhysicalPage: readerPage, lockPage: true }); setReaderView("notes"); }} />}
+            }} onNewNote={() => { if (renderedPage !== readerPage || locked) return; setEditor({ note: null, resource: readerResource, initialPhysicalPage: readerPage, lockPage: true }); setFocusReading(false); setReaderView("notes"); }} />}
           <div className={readerResource ? "research-resource-details" : undefined} style={{ "--note-font-size": `${noteFontSize}px` } as CSSProperties}>
           {readerResource && <div className="research-note-tools"><span>{c.notes}</span><button type="button" className="button button--small button--quiet" disabled={noteFontSize <= 12} aria-label={language === "zh-CN" ? "减小笔记字号" : "Smaller note text"} onClick={() => setNoteFontSize((value) => Math.max(12, value - 1))}>A−</button><button type="button" className="button button--small button--quiet" disabled={noteFontSize >= 24} aria-label={language === "zh-CN" ? "增大笔记字号" : "Larger note text"} onClick={() => setNoteFontSize((value) => Math.min(24, value + 1))}>A+</button></div>}
-          {readerResource && highlightCursor && <button type="button" className="button button--small" onClick={() => void run(async () => { const next = await api.highlights({ resourceId: readerResource.resourceId, sourceId: readerResource.sourceId, beforeId: highlightCursor }); setHighlights((previous) => [...previous, ...next.items]); setHighlightCursor(next.nextBeforeId); })}>{language === "zh-CN" ? "加载更多高亮" : "Load more highlights"}</button>}
+          {readerResource && highlightCursor && <button type="button" className="button button--small" onClick={() => void run(async () => {
+            const key = sourceKey;
+            const next = await api.highlights({ resourceId: readerResource.resourceId, sourceId: readerResource.sourceId, beforeId: highlightCursor });
+            if (!mounted.current || activeSource.current !== key) return;
+            setHighlights((previous) => {
+              const merged = new Map([...previous, ...next.items].map((item) => [item.id, item]));
+              for (const [id, item] of highlightChanges.current) { if (item.deletedAt) merged.delete(id); else merged.set(id, item); }
+              return [...merged.values()];
+            });
+            setHighlightCursor(next.nextBeforeId);
+          })}>{language === "zh-CN" ? "加载更多高亮" : "Load more highlights"}</button>}
           {resource && <details className="research-settings-disclosure" open={readerResource ? undefined : true}><summary>{language === "zh-CN" ? "阅读状态与收藏集" : "Reading status & collections"}</summary>
           {resource && <section className="research-resource-settings" aria-label={c.status}>
         <div className="research-reading-controls"><label>{c.status}<select disabled={locked} value={resource.reading?.status ?? ""} onChange={(e) => {
@@ -443,7 +502,9 @@ function ResearchFrame({ asPage, dialogRef, children }: {
   return <dialog ref={dialogRef} className="research-dialog" aria-labelledby="research-title">{children}</dialog>;
 }
 
-function ResearchReader({ resource, onAuthorize, page, onPageChange, onPageRendered, onPageUnavailable, navigationRef, highlights, onCreateHighlight, onDeleteHighlight, onNewNote }: {
+function ResearchReader({ resource, accountId, sourceControlsLocked, onAuthorize, page, onPageChange, onPageRendered, onPageUnavailable, navigationRef, highlights, onCreateHighlight, onDeleteHighlight, onNewNote }: {
+  accountId?: string | undefined;
+  sourceControlsLocked: boolean;
   highlights: TextHighlight[];
   onCreateHighlight: (highlight: Omit<PdfHighlight, "id">) => Promise<void>;
   onDeleteHighlight: (highlight: PdfHighlight) => Promise<void>;
@@ -454,14 +515,26 @@ function ResearchReader({ resource, onAuthorize, page, onPageChange, onPageRende
   onPageChange: (page: number) => void;
   onPageRendered: (page: number) => void;
   onPageUnavailable: () => void;
-  navigationRef: RefObject<((page: number) => Promise<void>) | null>;
+  navigationRef: RefObject<((page: number) => Promise<boolean>) | null>;
 }) {
   const { language } = useLanguage();
   const c = COPY[language];
   const [authorization, setAuthorization] = useState<ReaderAuthorization | null>(null);
   const [authorizing, setAuthorizing] = useState(true);
   const [linkStale, setLinkStale] = useState(false);
+  const [documentEpoch, setDocumentEpoch] = useState(0);
+  const currentAuthorization = useRef<ReaderAuthorization | null>(null);
+  const renewal = useRef<Promise<boolean> | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [localFile, setLocalFile] = useState<File | undefined>();
+  const [localBusy, setLocalBusy] = useState(false);
+  const [localMessage, setLocalMessage] = useState("");
+  const [localRevision, setLocalRevision] = useState(0);
+  const localInput = useRef<HTMLInputElement>(null);
+  const localOperation = useRef<AbortController | null>(null);
+  const localPreferred = useRef(true);
+  const localKey = accountId ? readerLocalKey(accountId, resource.resourceId, resource.sourceId) : null;
+  const zh = language === "zh-CN";
   const pageCount = useRef<number | null>(null);
   const callbacks = useRef({ onPageRendered, onPageUnavailable });
   callbacks.current = { onPageRendered, onPageUnavailable };
@@ -469,27 +542,68 @@ function ResearchReader({ resource, onAuthorize, page, onPageChange, onPageRende
   const mounted = useRef(false);
   const authorizeRef = useRef(onAuthorize);
   authorizeRef.current = onAuthorize;
-  const authorize = async (): Promise<boolean> => {
+  const authorizeSource = async (): Promise<boolean> => {
     const current = ++request.current;
-    callbacks.current.onPageUnavailable();
-    setAuthorization(null); setLinkStale(false); setError(null); setAuthorizing(true);
+    localOperation.current?.abort();
+    const controller = new AbortController(); localOperation.current = controller;
+    if (!currentAuthorization.current) callbacks.current.onPageUnavailable();
+    setError(null); setAuthorizing(true);
     try {
       const next = await authorizeRef.current(resource);
       if (!mounted.current || current !== request.current) return false;
-      setAuthorization(next);
+      if (!localFile && localPreferred.current && localKey && !currentAuthorization.current) {
+        const restored = await restoreReaderFile(localKey, next, controller.signal);
+        if (!mounted.current || current !== request.current || controller.signal.aborted) return false;
+        setLocalFile(restored.file);
+        if (restored.needsSelection) setLocalMessage(zh ? "本地文件已移动、改变或需要重新授权，请重新选择。" : "Reselect the local file: it moved, changed, or needs permission.");
+      }
+      currentAuthorization.current = next;
+      setAuthorization(next); setLinkStale(false);
       return true;
     } catch (caught) {
-      if (mounted.current && current === request.current) setError(caught);
+      if (mounted.current && current === request.current) {
+        if (caught instanceof ApiError && [401,403,404,409].includes(caught.status)) { currentAuthorization.current = null; setAuthorization(null); setLocalFile(undefined); callbacks.current.onPageUnavailable(); }
+        setError(caught);
+      }
       return false;
     } finally {
       if (mounted.current && current === request.current) setAuthorizing(false);
     }
   };
+  const authorize = (): Promise<boolean> => {
+    if (renewal.current) return renewal.current;
+    const pending = authorizeSource().finally(() => { if (renewal.current === pending) renewal.current = null; });
+    renewal.current = pending; return pending;
+  };
+  const getRangeUrl = async (): Promise<string> => {
+    const active = currentAuthorization.current;
+    if (!active || (active.expiresAt && Date.parse(active.expiresAt) - 10_000 <= Date.now())) {
+      if (!await authorize()) throw new Error("Reader authorization unavailable");
+    }
+    const next = currentAuthorization.current;
+    if (!mounted.current || !next) throw new Error("Reader closed");
+    return next.url;
+  };
   useEffect(() => {
     mounted.current = true;
     void authorize();
-    return () => { mounted.current = false; request.current++; };
+    return () => { mounted.current = false; request.current++; localOperation.current?.abort(); };
   }, [resource.resourceId, resource.sourceId]);
+  useEffect(() => {
+    const refresh = () => setLocalRevision((value) => value + 1);
+    window.addEventListener(LOCAL_LIBRARY_EVENT, refresh);
+    return () => window.removeEventListener(LOCAL_LIBRARY_EVENT, refresh);
+  }, []);
+  useEffect(() => {
+    if (!localPreferred.current || !localRevision || !authorization || !localKey || sourceControlsLocked || localBusy || localFile) return;
+    const controller = new AbortController();
+    void restoreReaderFile(localKey, authorization, controller.signal).then((restored) => {
+      if (!mounted.current || controller.signal.aborted || !restored.file) return;
+      localPreferred.current = true; setLocalFile(restored.file);
+      setLocalMessage(zh ? "已自动关联本地原件，资料库与研究共用此文件。" : "Local original linked; Library and Research share this file.");
+    });
+    return () => controller.abort();
+  }, [localRevision, authorization, localKey, sourceControlsLocked, localBusy, localFile, zh]);
   useEffect(() => {
     if (!authorization?.expiresAt) return;
     const refreshAt = Date.parse(authorization.expiresAt) - 10_000;
@@ -505,25 +619,80 @@ function ResearchReader({ resource, onAuthorize, page, onPageChange, onPageRende
     return url.toString();
   })() : null;
   const goToPage = async (next: number) => {
-    if (authorizing || !Number.isSafeInteger(next) || next < 1 || next > (pageCount.current ?? 1_000_000)) return;
-    if ((!authorization || linkStale || (authorization.expiresAt && Date.parse(authorization.expiresAt) - 10_000 <= Date.now())) && !(await authorize())) return;
+    if (authorizing || localBusy || !Number.isSafeInteger(next) || next < 1 || next > (pageCount.current ?? 1_000_000)) return false;
+    if ((!authorization || linkStale || (authorization.expiresAt && Date.parse(authorization.expiresAt) - 10_000 <= Date.now())) && !(await authorize())) return false;
     onPageChange(next);
+    return true;
+  };
+  const useLocalFile = async (file: File, handle: RecoverableFileHandle | null) => {
+    if (sourceControlsLocked || localBusy || authorizing) return;
+    localOperation.current?.abort();
+    const controller = new AbortController(); localOperation.current = controller;
+    const current = ++request.current;
+    setLocalBusy(true); setLocalMessage(zh ? "正在核对本地原件…" : "Checking local original…");
+    try {
+      const next = await authorizeRef.current(resource);
+      await verifyReaderFile(file, next, controller.signal);
+      if (!mounted.current || current !== request.current || controller.signal.aborted) return;
+      const remembered = localKey ? await rememberReaderFile(localKey, handle) : false;
+      if (!mounted.current || current !== request.current || controller.signal.aborted) return;
+      localPreferred.current = true;
+      currentAuthorization.current = next;
+      setLocalFile(file); setAuthorization(next); setError(null); setLinkStale(false);
+      setLocalMessage(remembered
+        ? (zh ? "已记住本地原件；下次授权有效时自动读取。" : "Local original remembered; reused while permission remains valid.")
+        : (zh ? "已从本地读取；此浏览器重新打开后需再次选择文件。" : "Reading locally; select the file again after reopening this browser."));
+    } catch (caught) {
+      if (!mounted.current || controller.signal.aborted) return;
+      setLocalMessage(caught instanceof Error && caught.message === "reader_file_mismatch"
+        ? (zh ? "文件与此资料的原件不一致，请选择下载的同一版本 PDF。" : "This file does not match the original. Select the same PDF version.")
+        : caught instanceof Error && caught.message === "reader_identity_unavailable"
+          ? (zh ? "暂时无法核对原件，请刷新后重试。" : "Original identity unavailable. Refresh and retry.")
+          : describeError(caught, language));
+    } finally { if (mounted.current && current === request.current) setLocalBusy(false); }
+  };
+  const selectLocal = async () => {
+    const picker = (window as Window & { showOpenFilePicker?: ReaderFilePicker }).showOpenFilePicker;
+    if (!picker) { localInput.current?.click(); return; }
+    try {
+      const [handle] = await picker({ multiple: false, types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }] });
+      if (handle) await useLocalFile(await handle.getFile(), handle);
+    } catch (caught) {
+      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      // Embedded/older browsers can expose the picker but disallow it.
+      localInput.current?.click();
+    }
+  };
+  const useOnline = async () => {
+    if (sourceControlsLocked || localBusy) return;
+    localOperation.current?.abort(); localPreferred.current = false;
+    // The reading preference is session-local; retain the stable file association
+    // so downloading again after an online rename reuses the same local original.
+    if (!mounted.current) return;
+    setLocalFile(undefined); setLocalMessage("");
+    await authorize();
   };
   useImperativeHandle(navigationRef, () => goToPage);
   return <section className="research-reader" aria-label={c.sourceView}>
     <div className="research-reader-content">
-      {authorizing && <p role="status" className="research-reader-message">{c.readerLoading}</p>}
+      {authorizing && !authorization && <p role="status" className="research-reader-message">{c.readerLoading}</p>}
       {error !== null && <div className="research-reader-message" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.readerSourceChanged : describeError(error, language)}</p><button className="button button--small" type="button" onClick={() => void authorize()}>{c.retryReader}</button></div>}
-      {authorization && <PdfReader url={authorization.url} title={resource.title} page={page} onPageChange={(next) => void goToPage(next)}
+      {authorization && <PdfReader url={authorization.sizeBytes ? `${resource.resourceId}:${resource.sourceId}:${documentEpoch}` : authorization.url} remoteSource={authorization.sizeBytes ? { size: authorization.sizeBytes, getUrl: getRangeUrl } : undefined} localFile={localFile} title={resource.title} page={page} onPageChange={(next) => void goToPage(next)}
         highlights={highlights} onCreateHighlight={onCreateHighlight} onDeleteHighlight={onDeleteHighlight} onNewNote={onNewNote}
-        navigationPending={authorizing} onRetry={() => void authorize()} onDocumentLoaded={(count) => { pageCount.current = count; }}
+        navigationPending={authorizing || localBusy} onRetry={() => { void authorize().then((ok) => { if (ok) setDocumentEpoch((value) => value + 1); }); }} onDocumentLoaded={(count) => { pageCount.current = count; }}
         onPageRendered={(next) => callbacks.current.onPageRendered(next)} onPageUnavailable={() => callbacks.current.onPageUnavailable()} />}
     </div>
     <div className="research-reader-toolbar research-reader-file-actions">
+      <input ref={localInput} type="file" accept="application/pdf,.pdf" hidden aria-label={zh ? "选择本地原件" : "Select local original"} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void useLocalFile(file, null); }} />
+      <span className="research-reader-source-kind">{localFile ? (zh ? "本地原件" : "Local original") : (zh ? "在线原件" : "Online original")}</span>
+      <button className="button button--small button--quiet" type="button" disabled={authorizing || localBusy || sourceControlsLocked} onClick={() => localInput.current?.click()}>{zh ? "使用本地原件" : "Use local original"}</button>
+      {typeof (window as Window & { showOpenFilePicker?: ReaderFilePicker }).showOpenFilePicker === "function" && <button className="button button--small button--quiet" type="button" disabled={authorizing || localBusy || sourceControlsLocked} onClick={() => void selectLocal()} title={zh ? "选择文件并记住读取授权，下次优先使用" : "Remember read access and prefer this file next time"}>{zh ? "关联并记住" : "Link and remember"}</button>}
+      {localFile && <button className="button button--small button--quiet" type="button" disabled={authorizing || localBusy || sourceControlsLocked} onClick={() => void useOnline()}>{zh ? "切回在线原件" : "Use online original"}</button>}
       {linkStale && <span className="research-reader-expired" role="status">{c.readerExpired}</span>}
       {readerUrl && !linkStale && <a className="button button--small button--quiet" href={readerUrl} target="_blank" rel="noreferrer">{c.openNewTab}</a>}
       <button className="button button--small button--quiet" type="button" disabled={!authorization} onClick={() => { if (authorization) void authorization.download().catch(setError); }}>{c.downloadSource}</button>
     </div>
+    {localMessage && <p className="research-local-message" role="status">{localMessage}</p>}
   </section>;
 }
 

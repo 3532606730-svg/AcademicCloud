@@ -250,7 +250,7 @@ describe("Resource details", () => {
     expect(within(dialog).getByText("<img src=x onerror=alert(1)>陈垣")).toBeInTheDocument();
     expect(within(dialog).queryByRole("img")).not.toBeInTheDocument();
     expect(within(dialog).queryByText("authority-secret-id")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Edit information" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Edit title and contributors" })).toBeInTheDocument();
   });
 
   it("uses effective Library role for a read-only Member even if the surrounding account could be Owner", async () => {
@@ -259,7 +259,7 @@ describe("Resource details", () => {
       initial: detail("book", {}, false),
     });
     await screen.findByRole("dialog", { name: "元西域人华化考" });
-    expect(screen.queryByRole("button", { name: "Edit information" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit title and contributors" })).not.toBeInTheDocument();
   });
 
   it("renders an unknown future template safely without enabling a destructive edit", async () => {
@@ -276,7 +276,7 @@ describe("Resource details", () => {
     expect(screen.getAllByText("future_material").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("futureField")).toBeInTheDocument();
     expect(screen.getByText("<script>alert(1)</script>")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit information" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit title and contributors" })).not.toBeInTheDocument();
   });
 
   it("keeps Core's successful state when generation reuses the completed job", async () => {
@@ -289,11 +289,11 @@ describe("Resource details", () => {
       getLatestLibraryMetadataSuggestionStates: states,
       generateLibraryMetadataSuggestions: vi.fn().mockResolvedValue(SUCCEEDED_JOB),
     } });
-    await screen.findByText("AI cataloguing succeeded — reviewable evidence is available");
+    await screen.findByText("Extraction complete — awaiting review and adoption");
     const before = states.mock.calls.length;
     await user.click(screen.getByRole("button", { name: "Organize with AI" }));
     await waitFor(() => expect(states.mock.calls.length).toBeGreaterThan(before));
-    expect(screen.getByText("AI cataloguing succeeded — reviewable evidence is available")).toBeInTheDocument();
+    expect(screen.getByText("Extraction complete — awaiting review and adoption")).toBeInTheDocument();
     expect(screen.queryByText("Content was extracted, but no reviewable AI result was produced")).not.toBeInTheDocument();
     expect(onSuggestionJobChange).toHaveBeenLastCalledWith(SUCCEEDED_JOB, "ai_succeeded_reviewable");
   });
@@ -334,7 +334,7 @@ describe("Resource details", () => {
   it("submits only the metadata CAS snapshot and refreshes the catalogue after a successful edit", async () => {
     const { api, onSaved } = renderDetails();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Edit information" }));
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
     const title = screen.getByLabelText("Canonical title");
     await user.clear(title);
     await user.type(title, "元西域人华化考（修订）");
@@ -371,8 +371,8 @@ describe("Resource details", () => {
 
     expect(await screen.findByText("Current carrier edition")).toBeInTheDocument();
     expect(screen.getByText("Historical source / base edition")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Edit information" }));
-    await user.click(screen.getByRole("button", { name: "Edit bibliographic information" }));
+    await user.click(screen.getByRole("button", { name: "Edit title and contributors" }));
+    await user.click(screen.getByRole("button", { name: "Edit publication and edition" }));
     const publisher = screen.getByLabelText("Publisher");
     await user.clear(publisher);
     await user.type(publisher, "上海古籍出版社");
@@ -427,11 +427,11 @@ describe("Resource details", () => {
     const update = vi.fn().mockRejectedValue(new ApiError(409, "concurrent_change"));
     const { api } = renderDetails({ api: { getLibraryHoldingDetails: get, updateLibraryHoldingMetadata: update } });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Edit information" }));
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
     await user.click(screen.getByRole("button", { name: "Save metadata" }));
     expect(await screen.findByText(/latest metadata is loaded/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "其他操作的新题名" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit information" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit title and contributors" })).toBeInTheDocument();
     expect(update).toHaveBeenCalledTimes(1);
     expect(get).toHaveBeenCalledTimes(2);
     expect(api.updateLibraryHoldingMetadata).toBe(update);
@@ -440,7 +440,7 @@ describe("Resource details", () => {
   it("does not hide and discard populated fields during a material-type change", async () => {
     renderDetails();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Edit information" }));
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
     await user.selectOptions(screen.getByLabelText("Material type"), "article");
     expect(screen.getByText(/Clear the current material-specific fields/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Material type")).toHaveValue("book");
@@ -491,6 +491,8 @@ describe("Resource details", () => {
     expect(within(article!).getByText("中华书局1980整理本")).toBeInTheDocument();
     expect(within(article!).getAllByText("Unrecognized").length).toBeGreaterThanOrEqual(2);
     expect(record).not.toHaveTextContent("亦邻真");
+    expect(article!.querySelector("header")).not.toHaveTextContent("/100");
+    expect(article!.querySelector(".ai-bibliographic-record__provenance")).not.toHaveAttribute("open");
 
     const review = screen.getByText("Field evidence and conflict review (2)").closest("details");
     expect(review).not.toHaveAttribute("open");
@@ -580,7 +582,7 @@ describe("Resource details", () => {
     } });
     expect(await screen.findByText("The current AI cataloguing run failed")).toBeInTheDocument();
     expect(screen.getByText("Filename fallback")).toBeInTheDocument();
-    expect(screen.queryByText("AI cataloguing succeeded — reviewable evidence is available")).not.toBeInTheDocument();
+    expect(screen.queryByText("Extraction complete — awaiting review and adoption")).not.toBeInTheDocument();
   });
 
   it("exposes the normalized failure category and a bounded retry action", async () => {

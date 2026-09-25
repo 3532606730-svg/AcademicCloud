@@ -2,6 +2,10 @@
 
 **Last reconciled:** 2026-09-25. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
+## Reader usability hotfix — ready for release
+
+2026-09-25 hotfix candidate: immediate pending highlights; keyboard/edge-wheel paging; one-copy account/source local originals with verified streaming; renewable remote range transport preserving the same PDF.js instance; explicit reading-progress conflict actions; focused reading and compact narrow layout; restore active Research resource; compact Library announcements/notices and clearer AI adoption/editor labels. No schema/Compute/nginx/provider changes. Targeted reader/source checks and typechecks pass; Catalog 31 and Library 5 checks pass. Synthetic Codex IAB paints PDF via real 206 ranges, local file selection paints, Library→Research restores same resource/page, focus mode works; narrow390 has no overflow and PDF viewport begins332px versus439px before. Native directory picker end-to-end remains unverified in IAB. Runtime remains d58ef44 until exact release is installed.
+
 ## Active task
 
 Current reader milestone: ADR045 exactd58ef44 Core/frontend is deployed at schema39; one local Codex IAB smoke plus normal signed-in live PDF/Research paths passed. Compute7e unchanged. Additional prelaunch suites, separate artifact verification, migration backup and rollback preparation were skipped by explicit Owner instruction.

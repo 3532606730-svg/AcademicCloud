@@ -27,7 +27,7 @@ function openHandleDatabase(): Promise<IDBDatabase | null> {
   });
 }
 
-async function withHandleStore<T>(
+export async function withHandleStore<T>(
   mode: IDBTransactionMode,
   action: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T | null> {
@@ -36,9 +36,10 @@ async function withHandleStore<T>(
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORE_NAME, mode);
     const request = action(transaction.objectStore(STORE_NAME));
-    request.onsuccess = () => resolve(request.result);
+    let result: T;
+    request.onsuccess = () => { result = request.result; };
     request.onerror = () => reject(request.error ?? new Error("Source recovery storage failed."));
-    transaction.oncomplete = () => database.close();
+    transaction.oncomplete = () => { database.close(); resolve(result); };
     transaction.onabort = () => {
       database.close();
       reject(transaction.error ?? new Error("Source recovery storage was aborted."));

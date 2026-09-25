@@ -830,6 +830,7 @@ export type UploadTransfer = MultipartTransfer
   | { kind: "complete"; file: FileEntry };
 
 export interface DownloadAuthorization {
+  checksum?: { algorithm: "md5"; value: string };
   /** Added by the source-generation contract; older releases omit it. */
   source?: { resourceId: string; sourceId: string };
   method: "GET";

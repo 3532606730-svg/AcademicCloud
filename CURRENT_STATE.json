@@ -74,9 +74,9 @@
       "exportRequest": 131072
     },
     "dependencyProductionAdvisories": 0,
-    "sourceCommit": "d58ef44a244122b1f98b771609b95d2d7e70aade",
-    "archiveSha256": "f9d9d9d550cd787ff031e2e9f422194e24b8a5cacccfbf620a85cfedf36cf6d9",
-    "status": "DEPLOYED"
+    "sourceCommit": null,
+    "archiveSha256": null,
+    "status": "READER_HOTFIX_READY"
   },
   "verification": {
     "backend": "450/450 exact7e2d1bf Linux",
@@ -291,6 +291,10 @@
       "review": "Root rejected rotated-layer false positive after reading pinned TextLayer constructor and setLayerDimensions; no material findings in other reviewed paths",
       "build": "Exactd58ef44 Linux Node24.19/npm11.19.1 build/package PASS; no new suites or verify command",
       "liveBrowser": "Normal signed-in IAB MongoliaToday cover,page7,footer-add,independent Research,recent progress and locked page-note editor PASS; no production test note"
+    },
+    "readerHotfix": {
+      "status": "local candidate verified; exact deployment pending",
+      "scope": "2026-09-25 hotfix candidate: immediate pending highlights; keyboard/edge-wheel paging; one-copy account/source local originals with verified streaming; renewable remote range transport preserving the same PDF.js instance; explicit reading-progress conflict actions; focused reading and compact narrow layout; restore active Research resource; compact Library announcements/notices and clearer AI adoption/editor labels. No schema/Compute/nginx/provider changes. Targeted reader/source checks and typechecks pass; Catalog 31 and Library 5 checks pass. Synthetic Codex IAB paints PDF via real 206 ranges, local file selection paints, Library→Research restores same resource/page, focus mode works; narrow390 has no overflow and PDF viewport begins332px versus439px before. Native directory picker end-to-end remains unverified in IAB. Runtime remains d58ef44 until exact release is installed."
     }
   },
   "computeQualification": {

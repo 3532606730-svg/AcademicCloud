@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask, TextLayer } from "pdfjs-dist";
 import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
-import { cMapUrl, standardFontDataUrl, wasmUrl, iccUrl, noticesUrl, workerUrl } from "./pdf-assets.ts";
+import { cMapUrl, standardFontDataUrl, wasmUrl, iccUrl, workerUrl } from "./pdf-assets.ts";
 import { useLanguage } from "./i18n-react.tsx";
+import { remotePdfTransport } from "./remote-pdf-transport.ts";
+import { localPdfTransport } from "./local-pdf-transport.ts";
 import "./pdf-reader.css";
 
 type PdfEngine = typeof import("pdfjs-dist");
@@ -36,6 +38,8 @@ const MAX_SEARCH_RESULTS = 100;
 
 export interface PdfReaderProps {
   url: string;
+  localFile?: File | undefined;
+  remoteSource?: { size: number; getUrl: () => Promise<string> } | undefined;
   title: string;
   /** Authorized physical page. Navigation requests do not change this locally. */
   page: number;
@@ -59,7 +63,8 @@ const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 
 export function PdfReader(props: PdfReaderProps) {
-  const { url, title, page, navigationPending = false } = props;
+  const { url, localFile, title, page, navigationPending = false } = props;
+  const remoteSize = props.remoteSource?.size;
   const { language } = useLanguage();
   const zh = language === "zh-CN";
   const callbacks = useRef(props);
@@ -77,13 +82,18 @@ export function PdfReader(props: PdfReaderProps) {
   const [panel, setPanel] = useState<"search" | "highlights" | null>(null);
   const [toolMessage, setToolMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pendingHighlight, setPendingHighlight] = useState<SelectionHighlight | null>(null);
+  const highlightRequest = useRef(0);
+  const highlightSaving = useRef(false);
+  const wheelGesture = useRef({ lastAt: 0, direction: 0, distance: 0, blocked: false });
+  const wheelLanding = useRef<{ url: string; page: number } | null>(null);
   const [query, setQuery] = useState("");
   const [rangeStart, setRangeStart] = useState("1");
   const [rangeEnd, setRangeEnd] = useState("");
   const [textBusy, setTextBusy] = useState(false);
   const [results, setResults] = useState<Array<{ page: number; excerpt: string }>>([]);
   const renderQueue = useRef<Promise<void>>(Promise.resolve());
-  const [documentState, setDocumentState] = useState<{ document: PDFDocumentProxy; engine: PdfEngine; url: string } | null>(null);
+  const [documentState, setDocumentState] = useState<{ document: PDFDocumentProxy; engine: PdfEngine; url: string; localFile?: File | undefined } | null>(null);
   const [retry, setRetry] = useState(0);
   const [error, setError] = useState<unknown>(null);
   const [rendering, setRendering] = useState(true);
@@ -92,13 +102,14 @@ export function PdfReader(props: PdfReaderProps) {
   const [availableWidth, setAvailableWidth] = useState(0);
   const [zoom, setZoom] = useState<number | "width">("width");
   const [renderedScale, setRenderedScale] = useState(1);
-  const document = documentState?.url === url ? documentState.document : null;
+  const document = documentState?.url === url && documentState.localFile === localFile ? documentState.document : null;
   const pageCount = document?.numPages ?? null;
   const validPage = pageCount !== null && Number.isSafeInteger(page) && page >= 1 && page <= pageCount;
   const busy = !document || rendering || navigationPending;
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; textOperation.current++; void textStream.current?.cancel().catch(() => {}); }; }, []);
-  useEffect(() => { textOperation.current++; void textStream.current?.cancel().catch(() => {}); setTextBusy(false); setResults([]); setSelection(null); setToolMessage(""); }, [url]);
+  useEffect(() => { textOperation.current++; void textStream.current?.cancel().catch(() => {}); setTextBusy(false); setResults([]); setSelection(null); setToolMessage(""); }, [url, localFile, retry]);
+  useEffect(() => { highlightRequest.current++; highlightSaving.current = false; setPendingHighlight(null); setSaving(false); }, [url, localFile, retry]);
 
   useEffect(() => { setPageDraft(String(page)); }, [page]);
 
@@ -124,7 +135,15 @@ export function PdfReader(props: PdfReaderProps) {
         const engine = await loadEngine();
         if (cancelled) return;
         const options: DocumentInitParameters = {
-          url,
+          ...(localFile ? { range: localPdfTransport(engine.PDFDataRangeTransport, localFile, (failure) => {
+            if (cancelled) return;
+            setError(failure); setRendering(false); callbacks.current.onError?.(failure);
+            void task?.destroy().catch(() => {});
+          }), length: localFile.size } : remoteSize ? { range: remotePdfTransport(engine.PDFDataRangeTransport, remoteSize, () => callbacks.current.remoteSource!.getUrl(), (failure) => {
+            if (cancelled) return;
+            setError(failure); setRendering(false); callbacks.current.onError?.(failure);
+            void task?.destroy().catch(() => {});
+          }), length: remoteSize } : { url }),
           cMapPacked: true,
           cMapUrl, standardFontDataUrl, wasmUrl, iccUrl,
           // Fetch only needed ranges when the storage adapter supports them.
@@ -138,7 +157,7 @@ export function PdfReader(props: PdfReaderProps) {
         task = engine.getDocument(options);
         const loadedDocument = await task.promise;
         if (cancelled) return;
-        setDocumentState({ document: loadedDocument, engine, url });
+        setDocumentState({ document: loadedDocument, engine, url, localFile });
         callbacks.current.onDocumentLoaded?.(loadedDocument.numPages);
       } catch (failure) {
         if (cancelled) return;
@@ -152,7 +171,7 @@ export function PdfReader(props: PdfReaderProps) {
       // Aborts network requests and terminates this document's dedicated worker.
       if (task) void task.destroy().catch(() => {});
     };
-  }, [url, retry]);
+  }, [url, localFile, retry, remoteSize]);
 
   useEffect(() => {
     const host = surfaceRef.current;
@@ -222,6 +241,7 @@ export function PdfReader(props: PdfReaderProps) {
         // PDF-native text only. Scanned pages remain scans; no OCR is performed.
         const textContainer = window.document.createElement("div");
         textContainer.className = "pdf-reader__text textLayer";
+        textContainer.dataset.mainRotation = String(pageRotation);
         sheet.append(textContainer);
         textLayer = new documentState.engine.TextLayer({
           textContentSource: pdfPage.streamTextContent(),
@@ -267,7 +287,50 @@ export function PdfReader(props: PdfReaderProps) {
   }, [page, url]);
 
   useEffect(() => {
+    if (wheelLanding.current?.url === url && wheelLanding.current.page === geometry.current?.page) {
+      const viewport = scrollRef.current;
+      viewport?.scrollTo({ top: viewport.scrollHeight, left: 0 });
+      wheelLanding.current = null;
+    }
+  }, [geometryVersion, url]);
+
+  useEffect(() => {
+    const viewport = scrollRef.current;
+    if (!viewport) return;
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      const now = performance.now();
+      const direction = Math.sign(event.deltaY);
+      const gesture = wheelGesture.current;
+      // Require a fresh gesture after a turn; momentum must not skip pages.
+      if (now - gesture.lastAt > 220 || direction !== gesture.direction) {
+        gesture.distance = 0; gesture.blocked = false;
+      }
+      gesture.lastAt = now; gesture.direction = direction;
+      const edge = direction > 0
+        ? viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 2
+        : viewport.scrollTop <= 2;
+      if (!edge) { gesture.distance = 0; return; }
+      if (busy || !pageCount || error) { gesture.blocked = true; return; }
+      const target = page + direction;
+      if (target < 1 || target > pageCount) return;
+      event.preventDefault();
+      if (gesture.blocked || !window.getSelection()?.isCollapsed) return;
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1;
+      gesture.distance += Math.abs(event.deltaY) * unit;
+      if (gesture.distance < 80) return;
+      gesture.blocked = true; gesture.distance = 0;
+      wheelLanding.current = direction < 0 ? { url, page: target } : null;
+      callbacks.current.onPageChange(target);
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
+  }, [busy, pageCount, page, url, error]);
+
+  useEffect(() => {
+    let frame: number | null = null;
     const capture = () => {
+      frame = null;
       const current = geometry.current;
       const selected = window.getSelection();
       if (!current || rendering || navigationPending || !selected || selected.isCollapsed || selected.rangeCount !== 1) { setSelection(null); return; }
@@ -278,7 +341,7 @@ export function PdfReader(props: PdfReaderProps) {
       if (!text || text.length > 8000) { setSelection(null); return; }
       const bounds = current.sheet.getBoundingClientRect();
       const [x0, y0, x1, y1] = current.pdfPage.view as [number, number, number, number];
-      if (!bounds.width || !bounds.height || x1 <= x0 || y1 <= y0) return;
+      if (!bounds.width || !bounds.height || x1 <= x0 || y1 <= y0) { setSelection(null); return; }
       const rects: PdfHighlightRect[] = [];
       for (const rect of Array.from(range.getClientRects())) {
         if (rect.width < 1 || rect.height < 1) continue;
@@ -290,11 +353,14 @@ export function PdfReader(props: PdfReaderProps) {
         const ys = points.map(([, y]) => Math.max(0, Math.min(1, (y1 - y) / (y1 - y0))));
         const box = { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
         if (box.width > 0 && box.height > 0 && !rects.some((item) => Math.abs(item.x-box.x)<0.0001 && Math.abs(item.y-box.y)<0.0001 && Math.abs(item.width-box.width)<0.0001 && Math.abs(item.height-box.height)<0.0001)) rects.push(box);
+        if (rects.length > 100) { setSelection(null); return; }
       }
       setSelection(rects.length > 0 && rects.length <= 100 ? { physicalPage: current.page, text, rects, color: "yellow" } : null);
     };
-    window.document.addEventListener("selectionchange", capture);
-    return () => window.document.removeEventListener("selectionchange", capture);
+    // A drag can emit many selection changes within one painted frame.
+    const schedule = () => { if (frame === null) frame = window.requestAnimationFrame(capture); };
+    window.document.addEventListener("selectionchange", schedule);
+    return () => { window.document.removeEventListener("selectionchange", schedule); if (frame !== null) window.cancelAnimationFrame(frame); };
   }, [rendering, navigationPending, geometryVersion]);
 
   useEffect(() => {
@@ -306,7 +372,8 @@ export function PdfReader(props: PdfReaderProps) {
     layer.className = "pdf-reader__highlights";
     layer.setAttribute("aria-hidden", "true");
     const [x0, y0, x1, y1] = current.pdfPage.view as [number, number, number, number];
-    for (const highlight of props.highlights ?? []) {
+    const visibleHighlights = pendingHighlight ? [...(props.highlights ?? []), pendingHighlight] : props.highlights ?? [];
+    for (const highlight of visibleHighlights) {
       if (highlight.physicalPage !== current.page) continue;
       for (const rect of highlight.rects) {
         if (![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite)) continue;
@@ -323,7 +390,7 @@ export function PdfReader(props: PdfReaderProps) {
     }
     current.sheet.append(layer);
     return () => layer.remove();
-  }, [props.highlights, showHighlights, geometryVersion]);
+  }, [props.highlights, pendingHighlight, showHighlights, geometryVersion]);
 
   const copySelection = async () => {
     if (!selection) return;
@@ -331,11 +398,28 @@ export function PdfReader(props: PdfReaderProps) {
     catch { setToolMessage(zh ? "无法访问剪贴板，请选中文字后使用 Ctrl/Cmd+C" : "Clipboard unavailable; select text and press Ctrl/Cmd+C"); }
   };
   const createHighlight = async () => {
-    if (!selection || selection.physicalPage !== page || !props.onCreateHighlight || saving || busy) return;
+    if (!selection || selection.physicalPage !== page || !props.onCreateHighlight || saving || highlightSaving.current || busy) return;
+    const draft = selection;
+    const request = ++highlightRequest.current;
+    highlightSaving.current = true;
     setSaving(true);
-    try { await props.onCreateHighlight(selection); if (alive.current) { setToolMessage(zh ? "高亮已保存" : "Highlight saved"); window.getSelection()?.removeAllRanges(); } }
-    catch { if (alive.current) setToolMessage(zh ? "高亮未保存，请重试" : "Highlight was not saved; please retry"); }
-    finally { if (alive.current) setSaving(false); }
+    setPendingHighlight(draft);
+    setShowHighlights(true);
+    setSelection(null);
+    setToolMessage(zh ? "高亮正在保存…" : "Saving highlight…");
+    window.getSelection()?.removeAllRanges();
+    try {
+      await props.onCreateHighlight(draft);
+      if (alive.current && request === highlightRequest.current) setToolMessage(zh ? "高亮已保存" : "Highlight saved");
+    } catch {
+      if (alive.current && request === highlightRequest.current) {
+        // Preserve a retryable draft only while its original page is visible.
+        if (geometry.current?.page === draft.physicalPage) setSelection((current) => current ?? draft);
+        setToolMessage(zh ? "高亮未保存，请重试" : "Highlight was not saved; please retry");
+      }
+    } finally {
+      if (alive.current && request === highlightRequest.current) { highlightSaving.current = false; setPendingHighlight(null); setSaving(false); }
+    }
   };
   const removeHighlights = async (items: PdfHighlight[]) => {
     if (!props.onDeleteHighlight || saving) return;
@@ -420,10 +504,13 @@ export function PdfReader(props: PdfReaderProps) {
   };
   const submitPage = (event: FormEvent) => { event.preventDefault(); goToPage(Number(pageDraft)); };
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target !== event.currentTarget) return;
-    if (event.key === "PageDown" || event.key === "PageUp") {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.repeat || busy) return;
+    if ((event.target as HTMLElement).closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])")) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft" || event.key === "PageDown" || event.key === "PageUp") {
+      if (!window.getSelection()?.isCollapsed) return;
       event.preventDefault();
-      goToPage(page + (event.key === "PageDown" ? 1 : -1));
+      wheelLanding.current = null;
+      goToPage(page + (event.key === "ArrowRight" || event.key === "PageDown" ? 1 : -1));
     }
   };
   const retryDocument = () => {
@@ -434,11 +521,11 @@ export function PdfReader(props: PdfReaderProps) {
   const invalidPage = pageCount !== null && !validPage;
 
   return (
-    <section className="pdf-reader" aria-label={zh ? `PDF 阅读器：${title}` : `PDF reader: ${title}`}>
+    <section className="pdf-reader" onKeyDown={onKeyDown} aria-label={zh ? `PDF 阅读器：${title}` : `PDF reader: ${title}`}>
       <div className="pdf-reader__toolbar">
         <form className="pdf-reader__navigation" onSubmit={submitPage} aria-label={zh ? "PDF 页码导航" : "PDF page navigation"}>
           <button type="button" className="pdf-reader__icon-button" disabled={!pageCount || page <= 1 || navigationPending}
-            onClick={() => goToPage(page - 1)} aria-label={zh ? "上一页" : "Previous page"} title={zh ? "上一页（Page Up）" : "Previous page (Page Up)"}>‹</button>
+            onClick={() => goToPage(page - 1)} aria-label={zh ? "上一页" : "Previous page"} title={zh ? "上一页（← / Page Up）" : "Previous page (← / Page Up)"}>‹</button>
           <label className="pdf-reader__page-label"><span>{zh ? "页码" : "Page"}</span>
             <input aria-label={zh ? "PDF 页码" : "PDF page number"} type="number" min={1} max={pageCount ?? 1} step={1}
               required disabled={!pageCount || navigationPending} value={pageDraft} onChange={(event) => setPageDraft(event.target.value)} />
@@ -446,7 +533,7 @@ export function PdfReader(props: PdfReaderProps) {
           <span className="pdf-reader__total">/ {pageCount ?? "—"}</span>
           <button type="submit" className="pdf-reader__text-button" disabled={!pageCount || navigationPending || Number(pageDraft) === page}>{zh ? "前往" : "Go"}</button>
           <button type="button" className="pdf-reader__icon-button" disabled={!pageCount || page >= pageCount || navigationPending}
-            onClick={() => goToPage(page + 1)} aria-label={zh ? "下一页" : "Next page"} title={zh ? "下一页（Page Down）" : "Next page (Page Down)"}>›</button>
+            onClick={() => goToPage(page + 1)} aria-label={zh ? "下一页" : "Next page"} title={zh ? "下一页（→ / Page Down）" : "Next page (→ / Page Down)"}>›</button>
         </form>
         <div className="pdf-reader__zoom" role="group" aria-label={zh ? "页面缩放" : "Page zoom"}>
           <button type="button" className="pdf-reader__icon-button" disabled={!document || renderedScale <= MIN_ZOOM}
@@ -488,8 +575,8 @@ export function PdfReader(props: PdfReaderProps) {
         <ol className="pdf-reader__results">{props.highlights?.map((highlight) => <li key={highlight.id}><button type="button" onClick={() => goToPage(highlight.physicalPage)}><strong>{zh ? "第 " + highlight.physicalPage + " 页" : "Page " + highlight.physicalPage}</strong><span>{highlight.text}</span></button>{props.onDeleteHighlight && <button type="button" className="pdf-reader__delete" disabled={saving} onClick={() => void removeHighlights([highlight])} aria-label={zh ? "删除高亮" : "Remove highlight"}>×</button>}</li>)}</ol>
       </div>}
       {toolMessage && <div className="pdf-reader__tool-status" role="status">{toolMessage}</div>}
-      <div ref={scrollRef} className="pdf-reader__viewport" tabIndex={0} onKeyDown={onKeyDown}
-        role="region" aria-label={zh ? "PDF 页面，Page Up / Page Down 翻页" : "PDF page; Page Up / Page Down to navigate"} aria-busy={busy && !error && !invalidPage}>
+      <div ref={scrollRef} className="pdf-reader__viewport" tabIndex={0} onPointerDown={(event) => event.currentTarget.focus({ preventScroll: true })}
+        role="region" aria-label={zh ? "PDF 页面，左右方向键翻页，滚动至页边继续翻页" : "PDF page; Left / Right to navigate, scroll past page edges to turn"} aria-busy={busy && !error && !invalidPage}>
         {(error || invalidPage) && <div className="pdf-reader__message" role="alert">
           <p>{invalidPage ? (zh ? `本文件共有 ${pageCount} 页，请选择有效页码。` : `This document has ${pageCount} pages. Choose a valid page.`)
             : (zh ? "PDF 暂时无法显示，请重新加载。" : "The PDF could not be displayed. Please reload it.")}</p>
@@ -504,7 +591,6 @@ export function PdfReader(props: PdfReaderProps) {
       <div className="pdf-reader__status" role="status">
         <span>{pageCount && !busy && !error && validPage ? (zh ? `第 ${page} / ${pageCount} 页` : `Page ${page} of ${pageCount}`) : "\u00a0"}</span>
         <span>{textUnavailable ? (zh ? "本页文字暂不可选中" : "Text selection unavailable on this page") : (zh ? "PDF 页码" : "Physical PDF pages")}</span>
-        <a href={noticesUrl} target="_blank" rel="noreferrer">{zh ? "开源许可" : "Licenses"}</a>
       </div>
     </section>
   );

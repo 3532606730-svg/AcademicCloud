@@ -47,14 +47,16 @@ export function AnnouncementFeed({
           className={`announcement announcement--${announcement.severity}`}
           aria-label={t("announcements.itemAria", { severity: t(severityKey(announcement.severity)), title: announcement.title })}
         >
-          <div className="announcement-heading">
+          <details open={announcement.severity === "critical"}>
+          <summary className="announcement-heading">
             <span className="announcement-severity">{t(severityKey(announcement.severity))}</span>
             <h3>{announcement.title}</h3>
-          </div>
+          </summary>
           <p>{announcement.body}</p>
           {announcement.linkUrl !== null && (
             <a href={announcement.linkUrl} target="_blank" rel="noopener noreferrer">{t("announcements.openLink")}</a>
           )}
+          </details>
         </article>
       ))}
     </section>

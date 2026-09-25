@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "./api.ts";
 import { LanguageProvider } from "./i18n-react.tsx";
 import { WorkspaceDialog } from "./workspace.tsx";
-import type { PageNote, ResearchCollection, WorkspaceApi, WorkspacePage, WorkspaceResource } from "./workspace-api.ts";
+import type { PageNote, ResearchCollection, TextHighlight, WorkspaceApi, WorkspacePage, WorkspaceResource } from "./workspace-api.ts";
 
 const RESOURCE: WorkspaceResource = { resourceId: "file-one", sourceId: "source-one", title: "Shared academic source", libraryId: "canonical-library", mediaType: "application/pdf" };
 const NOTE: PageNote = { id: "note-one", resourceId: RESOURCE.resourceId, sourceId: RESOURCE.sourceId, physicalPage: 7, locator: "葉三", body: "Private interpretation", revision: 1, createdAt: "2026-09-15T10:00:00Z", updatedAt: "2026-09-15T10:00:00Z", deletedAt: null };
@@ -41,6 +41,34 @@ beforeEach(() => window.localStorage.setItem("academiccloud.language", "en"));
 afterEach(() => window.localStorage.removeItem("academiccloud.language"));
 
 describe("private workspace", () => {
+  it("merges late highlight reads with completed creates and removals without remounting the reader", async () => {
+    let finish!: (value: { items: TextHighlight[]; nextBeforeId: null }) => void;
+    const pending = new Promise<{ items: TextHighlight[]; nextBeforeId: null }>((resolve) => { finish = resolve; });
+    const saved: TextHighlight = { ...NOTE, id: "highlight-one", physicalPage: 1, text: "Selected text", rects: [{ x: 0.1, y: 0.1, width: 0.2, height: 0.03 }], color: "yellow" };
+    const f = fixture({ highlights: vi.fn().mockReturnValue(pending), createHighlight: vi.fn().mockResolvedValue(saved), updateHighlight: vi.fn().mockResolvedValue({ ...saved, deletedAt: NOTE.updatedAt, revision: 2 }) });
+    const authorize = vi.fn().mockResolvedValue({ url: "https://example.test/source.pdf", download: vi.fn() });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    await screen.findByTestId("pdf-reader");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Write a page note" })).toBeEnabled());
+    await act(async () => { await pdfReaderControl.props!.onCreateHighlight!(saved); });
+    expect(pdfReaderControl.props!.highlights).toEqual([saved]);
+    await act(async () => { await pdfReaderControl.props!.onDeleteHighlight!(saved); });
+    await act(async () => finish({ items: [saved], nextBeforeId: null }));
+    expect(pdfReaderControl.props!.highlights).toEqual([]);
+    expect(f.api.highlights).toHaveBeenCalledTimes(1); expect(authorize).toHaveBeenCalledTimes(1); expect(pdfReaderControl.mounts).toBe(1);
+  });
+
+  it("does not erase a just-saved highlight when an earlier empty list arrives", async () => {
+    let finish!: (value: { items: TextHighlight[]; nextBeforeId: null }) => void;
+    const saved: TextHighlight = { ...NOTE, id: "highlight-new", physicalPage: 1, text: "New selection", rects: [{ x: 0.1, y: 0.1, width: 0.2, height: 0.03 }], color: "yellow" };
+    const f = fixture({ highlights: vi.fn().mockReturnValue(new Promise((resolve) => { finish = resolve; })), createHighlight: vi.fn().mockResolvedValue(saved) });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: vi.fn().mockResolvedValue({ url: "https://example.test/source.pdf", download: vi.fn() }) });
+    await screen.findByTestId("pdf-reader");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Write a page note" })).toBeEnabled());
+    await act(async () => { await pdfReaderControl.props!.onCreateHighlight!(saved); });
+    await act(async () => finish({ items: [], nextBeforeId: null }));
+    expect(pdfReaderControl.props!.highlights).toEqual([saved]);
+  });
   it("switches document tabs with their pages and closes a tab without deleting authored state", async () => {
     const user = userEvent.setup(); const second = { ...RESOURCE, resourceId: "file-two", sourceId: "source-two", title: "Second document" };
     const f = fixture({ resource: vi.fn().mockImplementation(async (id) => ({ resource: id === second.resourceId ? second : RESOURCE, reading: null, collectionIds: [] })),
@@ -415,5 +443,55 @@ describe("private workspace", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(updateCollection).toHaveBeenCalledTimes(2));
     expect(updateCollection).toHaveBeenLastCalledWith(expect.objectContaining({ id: COLLECTION.id, revision: 2 }), "My renamed collection", false);
+  });
+});
+
+ describe("reader authorization and progress conflict recovery", () => {
+  it("retains the same reader and document identity while expired authorization is pending", async () => {
+    const user = userEvent.setup(); const f = fixture();
+    const fresh = { url: "https://example.test/fresh.pdf", sizeBytes: 100, expiresAt: new Date(Date.now() + 60_000).toISOString(), download: vi.fn() };
+    let finish!: (value: typeof fresh) => void;
+    const authorize = vi.fn().mockResolvedValueOnce({ ...fresh, url: "https://example.test/old.pdf", expiresAt: new Date(Date.now() - 1000).toISOString() })
+      .mockReturnValueOnce(new Promise<typeof fresh>((resolve) => { finish = resolve; }));
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    const reader = await screen.findByTestId("pdf-reader"); const identity = reader.getAttribute("data-source");
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(authorize).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("pdf-reader")).toBe(reader);
+    expect(reader).toHaveAttribute("data-page", "1");
+    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+    await act(async () => finish(fresh));
+    await waitFor(() => expect(reader).toHaveAttribute("data-page", "2"));
+    expect(reader).toHaveAttribute("data-source", identity);
+    expect(pdfReaderControl.mounts).toBe(1);
+    expect(await pdfReaderControl.props!.remoteSource!.getUrl()).toBe(fresh.url);
+  });
+  it.each([false, true])("stops conflicted writes until explicit resolution (use latest: %s)", async (useLatest) => {
+    const user = userEvent.setup();
+    const initial = { resourceId: RESOURCE.resourceId, sourceId: RESOURCE.sourceId, physicalPage: 1, revision: 1, updatedAt: NOTE.updatedAt };
+    const latest = { ...initial, physicalPage: 9, revision: 4 };
+    const saveProgress = vi.fn().mockRejectedValueOnce(new ApiError(409, "concurrent_change"))
+      .mockImplementation(async (resourceId, input) => ({ ...input, resourceId, revision: input.revision + 1, updatedAt: NOTE.updatedAt }));
+    const f = fixture({ progress: vi.fn().mockResolvedValueOnce(initial).mockResolvedValue(latest), saveProgress });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: vi.fn().mockResolvedValue({ url: "https://example.test/document.pdf", download: vi.fn() }) });
+    const reader = await screen.findByTestId("pdf-reader");
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    await screen.findByRole("button", { name: "Keep current page" });
+    expect(saveProgress).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(reader).toHaveAttribute("data-page", "3");
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 650)); });
+    expect(saveProgress).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: useLatest ? "Go to latest position" : "Keep current page" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Keep current page" })).not.toBeInTheDocument());
+    expect(reader).toHaveAttribute("data-page", useLatest ? "9" : "3");
+    if (useLatest) {
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 650)); });
+      expect(saveProgress).toHaveBeenCalledTimes(1);
+      await user.click(screen.getByRole("button", { name: "Next page" }));
+    }
+    await waitFor(() => expect(saveProgress).toHaveBeenCalledTimes(2));
+    expect(saveProgress).toHaveBeenLastCalledWith(RESOURCE.resourceId, { sourceId: RESOURCE.sourceId, physicalPage: useLatest ? 10 : 3, revision: 4 });
+    expect(pdfReaderControl.mounts).toBe(1);
   });
 });

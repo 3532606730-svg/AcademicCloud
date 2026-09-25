@@ -10,6 +10,10 @@ The charter authorizes implementation beyond R01–R16, visual refinement, optim
 
 Historical September24 continuation recovered the active vNext tree instead of replaying the obsolete original checkout. The Owner requests `medium` effort for all subagents and a dedicated validation agent; root owns implementation, reconciliation and release preparation. The publication cadence remains one combined release after the local integrated batch.
 
+## Reader usability hotfix — ready for release
+
+2026-09-25 hotfix candidate: immediate pending highlights; keyboard/edge-wheel paging; one-copy account/source local originals with verified streaming; renewable remote range transport preserving the same PDF.js instance; explicit reading-progress conflict actions; focused reading and compact narrow layout; restore active Research resource; compact Library announcements/notices and clearer AI adoption/editor labels. No schema/Compute/nginx/provider changes. Targeted reader/source checks and typechecks pass; Catalog 31 and Library 5 checks pass. Synthetic Codex IAB paints PDF via real 206 ranges, local file selection paints, Library→Research restores same resource/page, focus mode works; narrow390 has no overflow and PDF viewport begins332px versus439px before. Native directory picker end-to-end remains unverified in IAB. Runtime remains d58ef44 until exact release is installed.
+
 ## Owned reader and independent Research — delivered release
 
 ADR-045 supersedes the historical native-PDF description below. The deployed release uses pinned PDF.js6.2.108, source-bound private progress/highlights (additive migration039), direct preview footer add, top Library/Research switch, independent tabs and recent reading, rendered-page notes, native-text search/export, rotation/zoom and a bounded one-canvas renderer. Rendering and text work run in the browser; Core stores only private sidecars. OCR stays deferred behind its existing interface.

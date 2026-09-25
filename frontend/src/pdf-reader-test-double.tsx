@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { PdfReaderProps } from "./pdf-reader.tsx";
 /** Controlled rendering boundary: integration tests exercise parent source/page state without canvas/network. */
-export const pdfReaderControl = { autoRender: true, mounts: 0 };
+export const pdfReaderControl: { autoRender: boolean; mounts: number; props?: PdfReaderProps } = { autoRender: true, mounts: 0 };
 export function MockPdfReader(props: PdfReaderProps) {
+  pdfReaderControl.props = props;
   const latest = useRef(props); latest.current = props;
   const [draft, setDraft] = useState(String(props.page));
   useEffect(() => { pdfReaderControl.mounts++; latest.current.onDocumentLoaded?.(16); return () => latest.current.onPageUnavailable?.(); }, []);

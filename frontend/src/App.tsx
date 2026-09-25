@@ -8,6 +8,7 @@ import {
   type BulkAction,
   type BulkItem,
   type DerivedMetadataJob,
+  type DownloadAuthorization,
   type Invitation,
   type LibraryHolding,
   type LibraryHoldingDetails,
@@ -55,9 +56,11 @@ import { libraryHoldingDisplayTitle, libraryHoldingSecondaryLine } from "./libra
 import { canPreviewFile } from "./preview-capability.ts";
 import { LibrarySearchField, librarySearchResultToHolding } from "./library-search.tsx";
 import { clearCatalogReviewDrafts, type CatalogReviewSession } from "./catalog-review-draft.ts";
-import { clearViewPreferences, useWorkspaceLocation } from "./view-context.ts";
+import { clearViewPreferences, readViewPreference, writeViewPreference, useWorkspaceLocation } from "./view-context.ts";
 import { PreviewDialog, type PreviewDocument } from "./preview-dialog.tsx";
 import { WorkspaceSwitch } from "./workspace-switch.tsx";
+import { LocalLibraryFolder } from "./local-library-folder.tsx";
+import { loadLocalLibrary, saveToLocalLibrary } from "./local-library.ts";
 import { useModalDialog } from "./use-modal-dialog.ts";
 import {
   forgetSourceHandle,
@@ -705,6 +708,8 @@ function DriveView({
   const catalogReviewSession = useMemo<CatalogReviewSession>(() => ({ accountId: account.id }), [account.id]);
   const { view, setView, path, setPath } = useWorkspaceLocation(account.id);
   const [entries, setEntries] = useState<EntriesResponse>(EMPTY_ENTRIES);
+  const localDownloads = useRef(new Map<string, AbortController>());
+  useEffect(() => () => { for (const controller of localDownloads.current.values()) controller.abort(); }, []);
   const [pending, setPending] = useState<FileEntry[]>([]);
   const [recycle, setRecycle] = useState<RecycleResponse>(EMPTY_RECYCLE);
   const [libraryRecycle, setLibraryRecycle] = useState(EMPTY_LIBRARY_RECYCLE);
@@ -723,6 +728,11 @@ function DriveView({
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!notice || error !== null) return;
+    const timer = window.setTimeout(() => setNotice(""), 8_000);
+    return () => window.clearTimeout(timer);
+  }, [notice, error]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [jobs, setJobs] = useState<UploadJob[]>([]);
@@ -763,6 +773,12 @@ function DriveView({
   }, []);
   function openResearch(request: ResearchRouteRequest): void {
     if (researchActiveRef.current && !researchGuardRef.current()) return;
+    if (!request.resourceId) {
+      const saved = readViewPreference<Record<string, unknown> | null>(account.id, "research-active", null);
+      const validId = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{1,128}$/u.test(value);
+      if (validId(saved?.resourceId) && validId(saved?.sourceId)) request = { ...request, resourceId: saved.resourceId, sourceId: saved.sourceId };
+    }
+    if (request.resourceId && request.sourceId) writeViewPreference(account.id, "research-active", { resourceId: request.resourceId, sourceId: request.sourceId });
     const current = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
     const cleanState = { ...current };
     delete cleanState.academiccloudDialog;
@@ -1651,6 +1667,7 @@ function DriveView({
   async function signOut() {
     setBusyId("logout");
     for (const job of jobs) job.controller.abort();
+    for (const controller of localDownloads.current.values()) controller.abort();
     try {
       await api.logout();
       clearCatalogReviewDrafts(account.id);
@@ -2005,8 +2022,11 @@ function DriveView({
   async function performDownload(
     fileId: string,
     name: string,
-    authorize: () => Promise<{ url: string }>,
+    authorize: () => Promise<DownloadAuthorization>,
+    localFilename = name,
   ) {
+    if (localDownloads.current.has(fileId)) return;
+    const controller = new AbortController(); localDownloads.current.set(fileId, controller);
     const activityId = `${fileId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setDownloadActivities((current) => [
       { id: activityId, name, phase: "preparing", error: null },
@@ -2017,6 +2037,16 @@ function DriveView({
     setNotice("");
     try {
       const authorization = await authorize();
+      if (controller.signal.aborted) return;
+      const directory = await loadLocalLibrary(account.id);
+      if (controller.signal.aborted) return;
+      if (directory) {
+        const savedName = await saveToLocalLibrary({ accountId: account.id, directory, authorization, title: localFilename, signal: controller.signal });
+        if (controller.signal.aborted) return;
+        setDownloadActivities((current) => current.map((activity) => activity.id === activityId ? { ...activity, phase: "started" } : activity));
+        setNotice(language === "zh-CN" ? `本地原件已就绪：${savedName}` : `Local original ready: ${savedName}`);
+        return;
+      }
       const anchor = document.createElement("a");
       anchor.href = authorization.url;
       anchor.download = name;
@@ -2033,11 +2063,12 @@ function DriveView({
         : activity));
       setError(caught);
     } finally {
+      if (localDownloads.current.get(fileId) === controller) localDownloads.current.delete(fileId);
       setBusyId(null);
     }
   }
 
-  async function authorizeResearchDownload(resource: WorkspaceResource): Promise<{ url: string }> {
+  async function authorizeResearchDownload(resource: WorkspaceResource): Promise<DownloadAuthorization> {
     const authorization = resource.libraryId
       ? await api.createLibraryDownload(resource.libraryId, resource.resourceId)
       : await api.createDownload(resource.resourceId);
@@ -2079,6 +2110,7 @@ function DriveView({
       holding.file.id,
       libraryHoldingDisplayTitle(holding, language),
       () => api.createLibraryDownload(library.id, holding.file.id),
+      holding.file.displayName,
     );
   }
 
@@ -2314,6 +2346,7 @@ function DriveView({
       <header className="topbar">
         <div className="brand topbar-brand"><span>AC</span> AcademicCloud</div>
         {api.workspace ? <WorkspaceSwitch active="library" onLibrary={() => goToView("library")} onResearch={() => openResearch({ returnFocus: null })} /> : <div className="topbar-location" aria-hidden="true"><LibraryIcon size={17} /><span>{workspaceTitle}</span></div>}
+        <LocalLibraryFolder accountId={account.id} />
         <div className="account-menu">
           <AccountMenu
             accountName={account.loginName}
@@ -2456,7 +2489,7 @@ function DriveView({
         </header>
 
         {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)} <button type="button" onClick={() => setError(null)}>{t("alert.dismiss")}</button></div>}
-        {notice && <div className="alert alert--success" role="status">{notice}</div>}
+        {notice && <div className="alert alert--success app-notice" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice("")}>{t("alert.dismiss")}</button></div>}
 
         {view === "library" && path.length === 0 && (
           <>
@@ -3107,6 +3140,7 @@ function DriveView({
         {...(researchRequest.physicalPage ? { initialPhysicalPage: researchRequest.physicalPage } : {})}
         returnFocus={researchRequest.returnFocus} onClose={closeResearch} onRegisterNavigationGuard={registerResearchGuard} asPage
         onRouteChange={(resource) => {
+          writeViewPreference(account.id, "research-active", resource ? { resourceId: resource.resourceId, sourceId: resource.sourceId } : null);
           const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
           const nextState = { ...currentState, academiccloudResearch: {
             ...(resource ? { resourceId: resource.resourceId, sourceId: resource.sourceId } : {}),
@@ -3124,7 +3158,9 @@ function DriveView({
           return {
             url: authorization.url,
             expiresAt: authorization.expiresAt,
-            download: () => performDownload(resource.resourceId, resource.title, () => authorizeResearchDownload(resource)),
+            sizeBytes: authorization.sizeBytes,
+            checksum: authorization.checksum,
+            download: () => performDownload(resource.resourceId, resource.title, () => authorizeResearchDownload(resource), /\.pdf$/i.test(resource.title) ? resource.title : `${resource.title}.pdf`),
           };
         }}
         onOpenResource={async (resource: WorkspaceResource, physicalPage?: number) => {
@@ -3149,7 +3185,7 @@ function DriveView({
           const url = new URL(authorization.url, window.location.href);
           if (physicalPage !== undefined) url.hash = `page=${physicalPage}`;
           const focus = researchRequest.returnFocus;
-          const download = () => performDownload(resource.resourceId, resource.title, () => authorizeResearchDownload(resource));
+          const download = () => performDownload(resource.resourceId, resource.title, () => authorizeResearchDownload(resource), resource.mediaType === "application/pdf" && !/\.pdf$/i.test(resource.title) ? `${resource.title}.pdf` : resource.title);
           return () => setPreview({ requestId, resourceId: resource.resourceId, sourceId: resource.sourceId,
             file: { displayName: resource.title, mediaType: resource.mediaType ?? "application/octet-stream" },
             url: url.toString(), expiresAt: authorization.expiresAt, error: null, returnFocus: focus, download,

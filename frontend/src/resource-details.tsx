@@ -1055,10 +1055,11 @@ export function ResourceDetailsDialog({
               <header className="document-section-heading">
                 <h3>{language === "zh-CN" ? "书目身份" : "Bibliographic identity"}</h3>
                 <div className="document-edit-actions">
-                  {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--small button--quiet" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.edit")}</button>}
-                  {detail.canEditMetadata && api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" onClick={() => { setEditingBibliography(true); setNotice(""); }}>{t("metadata.editBibliography")}</button>}
+                  {detail.canEditMetadata && (!metadata || isMaterialType(metadata.materialType)) && <button className="button button--small button--quiet" type="button" onClick={() => { setEditing(true); setNotice(""); }}>{t("metadata.editCoreFields")}</button>}
+                  {detail.canEditMetadata && api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" onClick={() => { setEditingBibliography(true); setNotice(""); }}>{t("metadata.editPublicationFields")}</button>}
                 </div>
               </header>
+              {detail.canEditMetadata && <p className="muted">{t("metadata.editScopeHelp")}</p>}
               {metadata ? <MetadataReadOnly metadata={metadata} t={t} /> : <p className="muted">{t("metadata.noMetadata")}</p>}
               {bibliography ? <BibliographyReadOnly bibliography={bibliography} t={t} /> : <p className="muted">{t("metadata.noBibliography")}</p>}
               </section>
@@ -1094,8 +1095,8 @@ export function ResourceDetailsDialog({
           ) : editing ? (
             <>
               <header className="resource-details-editor-header">
-                <h3>{t("metadata.bibliographyTitle")}</h3>
-                {api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" onClick={() => { setEditing(false); setEditingBibliography(true); }}>{t("metadata.editBibliography")}</button>}
+                <h3>{t("metadata.coreFieldsTitle")}</h3>
+                {api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" onClick={() => { setEditing(false); setEditingBibliography(true); }}>{t("metadata.editPublicationFields")}</button>}
               </header>
               {renderSuggestionTools()}
               <MetadataEditor
@@ -1387,7 +1388,7 @@ function AiSuggestedBibliographicRecord({
         <p className="eyebrow">{t("metadata.suggestions.recordEyebrow")}</p>
         <h4 id="ai-bibliographic-record-title">{suggestion.displayTitle ?? canonical.canonicalTitle}</h4>
       </div>
-      <span className="ai-bibliographic-record__confidence">{t("metadata.suggestions.recordConfidence", { confidence: suggestion.overallConfidence })}</span>
+
     </header>
     <p className="muted">{t("metadata.suggestions.recordAuthority")}</p>
     <dl className="ai-bibliographic-record__facts">
@@ -1407,6 +1408,7 @@ function AiSuggestedBibliographicRecord({
     </dl>
     <details className="ai-bibliographic-record__provenance">
       <summary>{t("metadata.suggestions.structuredEvidence", { count: suggestion.fields.length })}</summary>
+      <p className="muted">{t("metadata.suggestions.recordConfidence", { confidence: suggestion.overallConfidence })}</p>
       <div className="ai-bibliographic-record__evidence-list">
         {suggestion.fields.map((field) => {
           const contributorIndex = field.scopeKey.startsWith("contributor:") ? Number(field.scopeKey.slice("contributor:".length)) : null;

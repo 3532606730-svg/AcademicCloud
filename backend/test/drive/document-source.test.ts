@@ -106,7 +106,10 @@ test("in-flight signing rejects a changed source but permits a metadata-only ren
     return original(input);
   };
   const before = f.persistence.repositories.files.findCurrentDocumentSource(file.id)!;
-  assert.equal((await f.drive.createDownload("owner-source", file.id)).source.sourceId, before.sourceId);
+  const download = await f.drive.createDownload("owner-source", file.id);
+  assert.equal(download.source.sourceId, before.sourceId);
+  assert.deepEqual(download.checksum, { algorithm: "md5", value: before.checksum });
+  assert.equal(download.sizeBytes, before.sizeBytes);
   f.storage.createDownloadAuthorization = async (input) => {
     f.database.prepare("UPDATE files SET checksum = ? WHERE id = ?").run("AAAAAAAAAAAAAAAAAAAAAA==", file.id);
     return original(input);
