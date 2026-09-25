@@ -1,6 +1,6 @@
 # ADR-045 — Owned PDF reader and independent private Research workspace
 
-Status: accepted by Owner direction, 2026-09-24; owned reader deployed September25. Local-file continuation below is being implemented.
+Status: accepted by Owner direction, 2026-09-24; owned reader deployed September25. Local-file and usability continuation deployed as 57b8723934446706440f7625fd02cd2262b4d712.
 
 ## Decision
 

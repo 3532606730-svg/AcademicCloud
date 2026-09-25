@@ -6,20 +6,20 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "d58ef44a244122b1f98b771609b95d2d7e70aade",
-    "mainIntegration": "Runtime d58ef44 published to main/integration; HEAD equality verified; later docs checkpoint is distinct",
+    "checkpoint": "57b8723934446706440f7625fd02cd2262b4d712",
+    "mainIntegration": "Runtime57b8723 published to both heads; final documentation reconciliation follows",
     "localSynchronized": true,
-    "localState": "Fresh SSH fetch verified local HEAD == origin/main == origin/codex/vnext-remediation-20260906 atd58ef44; documentation-only reconciliation follows"
+    "localState": "Active vNext checkout57b8723; fresh remote equality verification follows final docs publication"
   },
   "production": {
     "observedAt": "2026-09-25",
-    "coreFrontendCommit": "d58ef44a244122b1f98b771609b95d2d7e70aade",
+    "coreFrontendCommit": "57b8723934446706440f7625fd02cd2262b4d712",
     "schemaVersion": 39,
     "migrationHistory": "001-039",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "PID1266869 active/running NRestarts0; ready PASS; exact process cwd agrees; memory79900672 at cutover",
+    "health": "PID1275345 active/running NRestarts0; ready PASS; exact process cwd matches",
     "catalogBridgeCommit": "ba0a74f28470a312f2e05135033f5b5a727ef093",
     "catalogBridgeState": "active PID334 NRestarts0",
     "computeDistro": "AcademicCloudComputeV2",
@@ -55,6 +55,14 @@
         "rollback preparation"
       ],
       "liveBrowser": "Normal signed-in IAB MongoliaToday cover,page7,footer-add,independent Research,recent progress and locked page-note editor PASS; no production test note"
+    },
+    "readerHotfix": {
+      "sourceCommit": "57b8723934446706440f7625fd02cd2262b4d712",
+      "migrationsApplied": [],
+      "nginxChanged": false,
+      "computeChanged": false,
+      "log": "output/vnext/reader-hotfix-deployment.log",
+      "liveBrowser": "Reader usability hotfix deployed 2026-09-25: exact Core/frontend 57b8723934446706440f7625fd02cd2262b4d712, schema/history39/001–039, no migrations/admissions/nginx/Compute changes. Core active/running PID1275345, zero restarts, readiness PASS; memory97,255,424 bytes is a cutover snapshot. Linux Node24.19.0/npm11.19.1 build/package PASS, 5164 manifest files, archive081338faae953d0f29e3de1946a93885a65ea2efd29075f80c680ec45e530068. Main/integration fast-forward published. Signed-in Codex IAB painted Mongolia Today page23/313 via new range transport; arrows23→24→23, focused reading, local-file controls and collapsed Library announcement visible. Library→Research restores active document. Local synthetic IAB additionally confirms ordinary local-file selection/render and390px no-overflow, PDF viewport top332px versus439px. Native directory picker/save/reuse was covered by tests but not end-to-end IAB; normal on-device permission is still user-selected. Authorization-renewal retention and progress CAS recovery have targeted tests; natural five-minute expiry is not claimed as live benchmark. No production note/highlight created for acceptance."
     }
   },
   "candidate": {
@@ -74,9 +82,9 @@
       "exportRequest": 131072
     },
     "dependencyProductionAdvisories": 0,
-    "sourceCommit": null,
-    "archiveSha256": null,
-    "status": "READER_HOTFIX_READY"
+    "sourceCommit": "57b8723934446706440f7625fd02cd2262b4d712",
+    "archiveSha256": "081338faae953d0f29e3de1946a93885a65ea2efd29075f80c680ec45e530068",
+    "status": "DEPLOYED"
   },
   "verification": {
     "backend": "450/450 exact7e2d1bf Linux",
@@ -293,8 +301,8 @@
       "liveBrowser": "Normal signed-in IAB MongoliaToday cover,page7,footer-add,independent Research,recent progress and locked page-note editor PASS; no production test note"
     },
     "readerHotfix": {
-      "status": "local candidate verified; exact deployment pending",
-      "scope": "2026-09-25 hotfix candidate: immediate pending highlights; keyboard/edge-wheel paging; one-copy account/source local originals with verified streaming; renewable remote range transport preserving the same PDF.js instance; explicit reading-progress conflict actions; focused reading and compact narrow layout; restore active Research resource; compact Library announcements/notices and clearer AI adoption/editor labels. No schema/Compute/nginx/provider changes. Targeted reader/source checks and typechecks pass; Catalog 31 and Library 5 checks pass. Synthetic Codex IAB paints PDF via real 206 ranges, local file selection paints, Library→Research restores same resource/page, focus mode works; narrow390 has no overflow and PDF viewport begins332px versus439px before. Native directory picker end-to-end remains unverified in IAB. Runtime remains d58ef44 until exact release is installed."
+      "status": "DEPLOYED; changed-path live acceptance PASS",
+      "scope": "Reader usability hotfix deployed 2026-09-25: exact Core/frontend 57b8723934446706440f7625fd02cd2262b4d712, schema/history39/001–039, no migrations/admissions/nginx/Compute changes. Core active/running PID1275345, zero restarts, readiness PASS; memory97,255,424 bytes is a cutover snapshot. Linux Node24.19.0/npm11.19.1 build/package PASS, 5164 manifest files, archive081338faae953d0f29e3de1946a93885a65ea2efd29075f80c680ec45e530068. Main/integration fast-forward published. Signed-in Codex IAB painted Mongolia Today page23/313 via new range transport; arrows23→24→23, focused reading, local-file controls and collapsed Library announcement visible. Library→Research restores active document. Local synthetic IAB additionally confirms ordinary local-file selection/render and390px no-overflow, PDF viewport top332px versus439px. Native directory picker/save/reuse was covered by tests but not end-to-end IAB; normal on-device permission is still user-selected. Authorization-renewal retention and progress CAS recovery have targeted tests; natural five-minute expiry is not claimed as live benchmark. No production note/highlight created for acceptance."
     }
   },
   "computeQualification": {
