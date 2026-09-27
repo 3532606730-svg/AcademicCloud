@@ -334,7 +334,7 @@
     "docs/decisions/ADR-045-owned-reader-and-independent-research-workspace.md"
   ],
   "phase": "PHASE_B_EXECUTION",
-  "publicationCadence": "Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance.",
+  "publicationCadence": "Owner2026-09-27 unified deployment gate: collaborating AcademicCloud tasks work in isolated worktrees and coordinate file ownership. Wait until every participating task has completed its agreed current scope and the integrated applicable acceptance is green, then use one designated operator for one coordinated production deployment. No individual task may deploy independently. Ordinary non-main checkpoint publication remains allowed; this does not authorize new production scope.",
   "bookIntakeReliability": {
     "requestedAt": "2026-09-27",
     "plan": "docs/architecture/reliable-book-intake.md",
@@ -349,5 +349,37 @@
     "deployed": false,
     "architectureStatus": "proposed; durable admission intent, resource recovery and adjudicated quality remain open",
     "externalApiAuthorized": false
+  },
+  "ocrPlanningHandoff": {
+    "date": "2026-09-27",
+    "status": "integrated_planning_only",
+    "sourceCommit": "160230e455263b88b1d8c1dce789a20e7218a2ae",
+    "cherryPickCommit": "29b5760",
+    "plan": "docs/architecture/ocr-product-plan.md",
+    "qualification": "docs/architecture/ocr-mongology-qualification.md",
+    "evidence": "docs/evidence/ocr-mongology-offline-20260927.json",
+    "ownership": {
+      "intake": "durable admission, per-resource recovery, Catalog review/apply, field quality and integration state",
+      "ocr": "engine qualification, page text/layout/quality and Reader contracts"
+    },
+    "runtimeDiagnostics": {
+      "suppliedEngineTestsPassed": 48,
+      "models": 2,
+      "syntheticInputsPerModel": 13,
+      "rerunDuringIntegration": false,
+      "qualityAcceptance": false
+    },
+    "ocrEnabled": false,
+    "productionChanged": false,
+    "realDocumentsProcessed": false
+  },
+  "coordinatedRelease": {
+    "ownerInstructionDate": "2026-09-27",
+    "status": "waiting_for_participating_tasks",
+    "intake": "R0 verified; durable handoff/recovery and adjudicated field quality open",
+    "ocr": "planning delivery integrated; production implementation deferred",
+    "ux": "isolated codex/ux-reliability-20260927 from29b5760; fixes and verification in progress",
+    "singleDeploymentOperatorRequired": true,
+    "independentTaskDeploymentAllowed": false
   }
 }

@@ -125,6 +125,22 @@ recall = 正确找回的真值数 / 原书中经独立核对确实存在的适�
 OCR和模型/校验造成的损失；仅对已覆盖证据计算的条件指标不能冒充整书 recall。
 身份错配、无证据 canonical 晋升、人工信息覆盖、重复应用、跨账号泄露必须为零。
 
+## 与 OCR 规划的协作
+
+[OCR 产品规划](ocr-product-plan.md#8-与提升书籍录入可靠性的协作约定)及[Mongology 离线资格记录](ocr-mongology-qualification.md)已从独立检查点
+`160230e455263b88b1d8c1dce789a20e7218a2ae` 集成到 vNext（cherry-pick `29b5760`）。
+录入侧主写上传/准入持久意图、逐书恢复、Catalog 候选与审核应用、书目字段质量和集成状态；
+OCR 侧主写引擎资格、汉文/蒙古文适配草案、逐页文本/布局/质量及 Reader 消费合同。
+共享合同先交换 diff，不另建来源注册、入库、权限或消息系统。
+
+共同使用 `resourceId/sourceId/physicalPage`；Catalog fingerprint/CAS 仍是单独的可变请求快照。
+当前 Compute 与 Reader 页序均从1开始，仅 Mongology 的零起始 `source_page_index` 在适配边界转换。
+OCR v1 仍返回 `ocr_deferred`；异步任务、完整源授权、逐页清单和布局扩展尚未实现。
+
+48项原工程测试及两个现有模型各13条合成输入是接入方提供的离线运行证据，
+不代表真实书籍文字质量或本项目产品验收。合成探针与[证据 JSON](../evidence/ocr-mongology-offline-20260927.json)
+只用于离线资格复核；本次集成未重跑模型、处理真实文献、启用 OCR 或改变生产。
+
 ## 本次状态
 
 R0 修改为本地候选，具体测试结论记入活动任务；未发布到生产 Bridge。
