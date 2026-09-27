@@ -1,5 +1,5 @@
 import { MockPdfReader, pdfReaderControl } from "./pdf-reader-test-double.tsx";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,7 +33,12 @@ beforeEach(() => {
   window.localStorage.setItem(ACTIVITY_PREFERENCE_KEY, "1");
 });
 
-afterEach(() => {
+afterEach(async () => {
+  cleanup();
+  // jsdom queues history traversal and popstate separately. Finish a closed
+  // dialog's pending Back before resetting the next test's browser entry.
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
   window.localStorage.removeItem("academiccloud.language");
   window.localStorage.removeItem(ACTIVITY_PREFERENCE_KEY);
   window.sessionStorage.clear();
@@ -1350,7 +1355,7 @@ describe("App", () => {
     expect(screen.queryByText("Queued")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Pending" }));
-    await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "Library" }));
+    await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "All resources" }));
     expect(getUploadStatus).toHaveBeenCalledOnce();
 
     resolveStatus!(transfer);
@@ -2463,7 +2468,7 @@ describe("App", () => {
     expect(screen.getByText("1 in progress or needing attention")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Pending" }));
-    await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "Library" }));
+    await user.click(within(screen.getByRole("complementary", { name: "Primary navigation" })).getByRole("button", { name: "All resources" }));
     expect(completeUpload).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Verifying upload")).toBeInTheDocument();
 
@@ -2611,6 +2616,26 @@ describe("App", () => {
     await waitFor(() => expect(generate).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, LIBRARY_HOLDINGS[0]!.file.id));
   });
 
+  it("reports a failed AI status discovery and offers a read-only retry", async () => {
+    const user = userEvent.setup();
+    const generate = vi.fn();
+    const states = vi.fn()
+      .mockRejectedValueOnce(new ApiError(503, "storage_unavailable"))
+      .mockResolvedValue([]);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]!]),
+      getLatestLibraryMetadataSuggestionStates: states,
+      generateLibraryMetadataSuggestions: generate,
+    });
+    render(<App api={api} />);
+    expect(await screen.findByText("AI status could not be refreshed. Existing tasks are unchanged.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Refresh AI status" }));
+    await waitFor(() => expect(screen.queryByText("AI status could not be refreshed. Existing tasks are unchanged.")).not.toBeInTheDocument());
+    expect(states).toHaveBeenCalledTimes(2);
+    expect(generate).not.toHaveBeenCalled();
+  });
+
   it("recovers Activity polling after a failed status read and stops when the job completes", async () => {
     vi.useFakeTimers();
     try {
@@ -2635,9 +2660,11 @@ describe("App", () => {
       await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
       expect(states).toHaveBeenCalledTimes(2);
       expect(screen.getByText("Queued")).toBeInTheDocument();
+      expect(screen.getByText("AI status could not be refreshed. Existing tasks are unchanged.")).toBeInTheDocument();
       await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
       expect(states).toHaveBeenCalledTimes(3);
       expect(screen.getByText("Extraction complete — awaiting review and adoption")).toBeInTheDocument();
+      expect(screen.queryByText("AI status could not be refreshed. Existing tasks are unchanged.")).not.toBeInTheDocument();
       await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
       expect(states).toHaveBeenCalledTimes(3);
       mounted.unmount();
@@ -2675,7 +2702,7 @@ describe("App", () => {
     let dialog = await screen.findByRole("dialog", { name: displayName });
     if (previewable) {
       expect(createLibraryDownload).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id, "inline");
-      expect(dialog.querySelector('[data-testid="pdf-reader"]')).toBeInTheDocument();
+      expect(within(dialog).getByTitle(`Preview of ${displayName}`)).toHaveAttribute("src", "https://signed.invalid/resource");
       await user.click(within(dialog).getByRole("button", { name: "Resource details" }));
       dialog = await screen.findByRole("dialog", { name: displayName });
       await user.click(await within(dialog).findByRole("button", { name: "Preview" }));
@@ -2798,6 +2825,8 @@ describe("document preview session", () => {
     const restored = await screen.findByRole("region", { name: "My research" });
     expect(window.location.pathname).toBe("/research");
     await within(restored).findByText("Private research text");
+    await within(restored).findByTitle("Source: book.pdf");
+    await waitFor(() => expect(api.createLibraryDownload).toHaveBeenCalledTimes(3));
 
     // A remount models a full application reload with the same browser entry.
     app.unmount();
@@ -2806,7 +2835,7 @@ describe("document preview session", () => {
     await within(refreshed).findByText("Private research text");
     expect(window.location.pathname).toBe("/research");
     await within(refreshed).findByTestId("pdf-reader");
-    expect(api.createLibraryDownload).toHaveBeenCalledTimes(4);
+    await waitFor(() => expect(api.createLibraryDownload).toHaveBeenCalledTimes(4));
     expect(window.location.search + window.location.hash).toBe("");
     expect(JSON.stringify(window.history.state)).not.toMatch(/Private research text|signed\.invalid/u);
     await user.click(within(refreshed).getByRole("button", { name: "Library" }));
@@ -3776,12 +3805,12 @@ describe("mobile presentation structure", () => {
     const buttons = within(nav).getAllByRole("button");
     expect(buttons).toHaveLength(4);
     // Exact DOM/semantic/visual order — not just membership.
-    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Library", "Favorites", "Pending", "Recycle"]);
-    expect(within(nav).getByRole("button", { name: "Library" })).toHaveAttribute("aria-current", "page");
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["All resources", "Favorites", "Pending", "Recycle"]);
+    expect(within(nav).getByRole("button", { name: "All resources" })).toHaveAttribute("aria-current", "page");
 
     await user.click(within(nav).getByRole("button", { name: "Favorites" }));
     expect(within(nav).getByRole("button", { name: "Favorites" })).toHaveAttribute("aria-current", "page");
-    expect(within(nav).getByRole("button", { name: "Library" })).not.toHaveAttribute("aria-current");
+    expect(within(nav).getByRole("button", { name: "All resources" })).not.toHaveAttribute("aria-current");
   });
 
   it("structures catalogue rows for the mobile presentation: name/actions separated, truncation-capable filename, metadata line", async () => {

@@ -193,13 +193,14 @@ function renderDetails(options: {
   } as unknown as AcademicCloudApi;
   const onSaved = vi.fn();
   const onCitation = vi.fn();
+  const onClose = vi.fn();
   render(
     <LanguageProvider>
       <ResourceDetailsDialog
         api={api}
         library={options.library ?? LIBRARY}
         holding={HOLDING}
-        onClose={vi.fn()}
+        onClose={onClose}
         onSaved={onSaved}
         onPreview={vi.fn()}
         onDownload={vi.fn()}
@@ -211,7 +212,7 @@ function renderDetails(options: {
       />
     </LanguageProvider>,
   );
-  return { api, onSaved, onCitation };
+  return { api, onSaved, onCitation, onClose };
 }
 
 beforeEach(() => {
@@ -219,6 +220,67 @@ beforeEach(() => {
 });
 
 describe("Resource details", () => {
+  it("closes a clean editor without asking to discard changes", async () => {
+    const { onClose } = renderDetails();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
+    screen.getByLabelText("Canonical title").focus();
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Discard changes" })).not.toBeInTheDocument();
+  });
+
+  it("keeps a changed metadata draft on Escape and only discards after an explicit choice", async () => {
+    const { onClose } = renderDetails();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
+    const title = screen.getByLabelText("Canonical title");
+    await user.clear(title);
+    await user.type(title, "Revised title");
+    await user.keyboard("{Escape}");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(title).toHaveValue("Revised title");
+    await user.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(title).toHaveValue("Revised title");
+    await user.click(screen.getByRole("button", { name: "Close resource details" }));
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not warn when a metadata edit is reverted", async () => {
+    const { onClose } = renderDetails();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
+    const title = screen.getByLabelText("Canonical title");
+    await user.clear(title);
+    await user.type(title, "Temporary title");
+    await user.clear(title);
+    await user.type(title, "元西域人华化考");
+    await user.click(screen.getByRole("button", { name: "Close resource details" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Discard changes" })).not.toBeInTheDocument();
+  });
+
+  it("guards section changes and bibliography cancellation while drafts are changed", async () => {
+    const updateLibraryHoldingBibliography = vi.fn();
+    renderDetails({ api: { updateLibraryHoldingBibliography } });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
+    await user.type(screen.getByLabelText("Canonical title"), " revised");
+    await user.click(screen.getByRole("button", { name: "Edit publication and edition" }));
+    expect(screen.getByLabelText("Canonical title")).toHaveValue("元西域人华化考 revised");
+    await user.click(screen.getByRole("button", { name: "Keep editing" }));
+    await user.click(screen.getByRole("button", { name: "Edit publication and edition" }));
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
+    const publisher = screen.getByLabelText("Publisher");
+    await user.type(publisher, "New publisher");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(publisher).toHaveValue("New publisher");
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
+    expect(screen.queryByLabelText("Publisher")).not.toBeInTheDocument();
+    expect(updateLibraryHoldingBibliography).not.toHaveBeenCalled();
+  });
+
   it("keeps AI history opt-in when automatic suggestion loading is disabled", async () => {
     const getSuggestions = vi.fn().mockResolvedValue(null);
     const getStates = vi.fn().mockResolvedValue([]);
@@ -421,19 +483,18 @@ describe("Resource details", () => {
     expect(onCitation).toHaveBeenCalledTimes(1);
   });
 
-  it("refreshes once and exits edit mode after a stale CAS without replaying the write", async () => {
-    const latest = { ...detail(), displayTitle: "其他操作的新题名", metadataVersion: "z".repeat(43), metadata: { ...detail().metadata!, canonicalTitle: "其他操作的新题名" } };
-    const get = vi.fn().mockResolvedValueOnce(detail()).mockResolvedValueOnce(latest);
+  it("preserves the edited draft after a stale CAS without replaying the write", async () => {
+    const get = vi.fn().mockResolvedValue(detail());
     const update = vi.fn().mockRejectedValue(new ApiError(409, "concurrent_change"));
     const { api } = renderDetails({ api: { getLibraryHoldingDetails: get, updateLibraryHoldingMetadata: update } });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
+    await user.type(screen.getByLabelText("Canonical title"), " revised");
     await user.click(screen.getByRole("button", { name: "Save metadata" }));
-    expect(await screen.findByText(/latest metadata is loaded/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "其他操作的新题名" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit title and contributors" })).toBeInTheDocument();
+    expect(await screen.findByText(/Your draft is still here/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Canonical title")).toHaveValue("元西域人华化考 revised");
     expect(update).toHaveBeenCalledTimes(1);
-    expect(get).toHaveBeenCalledTimes(2);
+    expect(get).toHaveBeenCalledTimes(1);
     expect(api.updateLibraryHoldingMetadata).toBe(update);
   });
 

@@ -96,12 +96,41 @@ export function CitationDialog({
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState<"citation" | "fullNote" | "shortNote" | "bibliography" | null>(null);
   const nextId = useRef(2);
+  const requestId = useRef(0);
+  const feedbackId = useRef(0);
+  const mounted = useRef(true);
+  const contextKey = JSON.stringify([library.id, holding]);
+  const contextKeyRef = useRef(contextKey);
   const dialogRef = useCitationDialog(onClose, generating, returnFocus);
+
+  contextKeyRef.current = contextKey;
+  useEffect(() => {
+    mounted.current = true;
+    requestId.current++;
+    feedbackId.current++;
+    setResult(null);
+    setGenerating(false);
+    setError(false);
+    setCopied(null);
+    return () => {
+      mounted.current = false;
+      requestId.current++;
+      feedbackId.current++;
+    };
+  }, [contextKey]);
+
+  function invalidate() {
+    requestId.current++;
+    feedbackId.current++;
+    setResult(null);
+    setGenerating(false);
+    setError(false);
+    setCopied(null);
+  }
 
   function updateLocator(id: number, update: Partial<LocatorDraft>) {
     setLocators((current) => current.map((locator) => locator.id === id ? { ...locator, ...update } : locator));
-    setResult(null);
-    setCopied(null);
+    invalidate();
   }
 
   function requestLocators(): CitationLocator[] | null {
@@ -122,32 +151,46 @@ export function CitationDialog({
   }
 
   async function generate() {
+    const currentRequest = ++requestId.current;
+    feedbackId.current++;
     const normalized = requestLocators();
     if (!api.generateLibraryCitation || normalized === null) {
+      setResult(null);
       setError(true);
       return;
     }
     setGenerating(true);
     setError(false);
     setCopied(null);
+    setResult(null);
+    const requestedContext = contextKey;
     try {
-      setResult(await api.generateLibraryCitation(library.id, holding.file.id, { style, locators: normalized }));
+      const citation = await api.generateLibraryCitation(library.id, holding.file.id, { style, locators: normalized });
+      if (mounted.current && currentRequest === requestId.current && requestedContext === contextKeyRef.current) setResult(citation);
     } catch {
-      setResult(null);
-      setError(true);
+      if (mounted.current && currentRequest === requestId.current && requestedContext === contextKeyRef.current) {
+        setResult(null);
+        setError(true);
+      }
     } finally {
-      setGenerating(false);
+      if (mounted.current && currentRequest === requestId.current && requestedContext === contextKeyRef.current) setGenerating(false);
     }
   }
 
   async function copy(kind: "citation" | "fullNote" | "shortNote" | "bibliography", value: string) {
+    const currentFeedback = ++feedbackId.current;
+    const requestedContext = contextKey;
     try {
       await copyCitationText(value);
-      setCopied(kind);
-      setError(false);
+      if (mounted.current && currentFeedback === feedbackId.current && requestedContext === contextKeyRef.current) {
+        setCopied(kind);
+        setError(false);
+      }
     } catch {
-      setCopied(null);
-      setError(true);
+      if (mounted.current && currentFeedback === feedbackId.current && requestedContext === contextKeyRef.current) {
+        setCopied(null);
+        setError(true);
+      }
     }
   }
 
@@ -169,7 +212,7 @@ export function CitationDialog({
         {error && <div className="alert alert--error" role="alert">{t("citation.error")}</div>}
         <div className="citation-controls">
         <label className="citation-style-field">{t("citation.style")}
-          <select value={style} onChange={(event) => { setStyle(event.target.value as CitationStyleId); setResult(null); setCopied(null); }}>
+          <select value={style} onChange={(event) => { setStyle(event.target.value as CitationStyleId); invalidate(); }}>
             {STYLES.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
           </select>
         </label>
@@ -184,8 +227,7 @@ export function CitationDialog({
                   const { side: _side, label: _label, ...base } = item;
                   return { ...base, type };
                 }));
-                setResult(null);
-                setCopied(null);
+                invalidate();
               }}>
                 {LOCATORS.map((type) => <option key={type} value={type}>{locatorLabel(type, t)}</option>)}
               </select>
@@ -199,14 +241,14 @@ export function CitationDialog({
                   const { side: _side, ...base } = item;
                   return base;
                 }));
-                setResult(null);
+                invalidate();
               }}>
                 <option value="">{t("citation.folioUnspecified")}</option><option value="recto">{t("citation.recto")}</option><option value="verso">{t("citation.verso")}</option>
               </select>}
-              <button className="button button--small button--quiet" type="button" aria-label={t("citation.removeLocator")} onClick={() => { setLocators((current) => current.filter((item) => item.id !== locator.id)); setResult(null); }}>{t("citation.removeLocator")}</button>
+              <button className="button button--small button--quiet" type="button" aria-label={t("citation.removeLocator")} onClick={() => { setLocators((current) => current.filter((item) => item.id !== locator.id)); invalidate(); }}>{t("citation.removeLocator")}</button>
             </div>
           ))}
-          {locators.length < 12 && <button className="button button--small" type="button" onClick={() => setLocators((current) => [...current, { id: nextId.current++, type: "page", value: "" }])}>{t("citation.addLocator")}</button>}
+          {locators.length < 12 && <button className="button button--small" type="button" onClick={() => { setLocators((current) => [...current, { id: nextId.current++, type: "page", value: "" }]); invalidate(); }}>{t("citation.addLocator")}</button>}
         </fieldset>
         <button className="button button--primary citation-generate" type="button" disabled={generating} onClick={() => void generate()}>{generating ? t("citation.generating") : t("citation.generate")}</button>
         </div>

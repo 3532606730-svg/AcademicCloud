@@ -41,6 +41,68 @@ beforeEach(() => window.localStorage.setItem("academiccloud.language", "en"));
 afterEach(() => window.localStorage.removeItem("academiccloud.language"));
 
 describe("private workspace", () => {
+  it("reveals the thirteenth already loaded recent item without another request and opens its saved page", async () => {
+    const user = userEvent.setup();
+    const resources = Array.from({ length: 13 }, (_, index): WorkspaceResource => ({ ...RESOURCE, resourceId: `file-${index + 1}`, sourceId: `source-${index + 1}`, title: `Document ${index + 1}` }));
+    const progress = resources.map((entry, index) => ({ resourceId: entry.resourceId, sourceId: entry.sourceId, physicalPage: index + 2, revision: 1, updatedAt: NOTE.updatedAt }));
+    const recent = vi.fn().mockResolvedValue(page(progress, resources, "cursor-13"));
+    const f = fixture({ recent, resource: vi.fn().mockImplementation(async (id) => ({ resource: resources.find((entry) => entry.resourceId === id), reading: null, collectionIds: [] })) });
+    renderWorkspace(f.api, { global: true, asPage: true, onAuthorizeReader: vi.fn().mockImplementation(async (resource) => ({ url: `https://example.test/${resource.resourceId}.pdf`, download: vi.fn() })) });
+    const toggle = await screen.findByRole("button", { name: "Recently read (13)" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByRole("button", { name: /Document 13/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(recent).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: /Document 13/ }));
+    await waitFor(() => expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-source", "https://example.test/file-13.pdf"));
+    expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-page", "14");
+  });
+
+  it("fetches a recent cursor only after loaded entries are shown and blocks duplicate page requests", async () => {
+    const user = userEvent.setup();
+    const resources = Array.from({ length: 13 }, (_, index): WorkspaceResource => ({ ...RESOURCE, resourceId: `file-${index + 1}`, sourceId: `source-${index + 1}`, title: `Document ${index + 1}` }));
+    const progress = resources.map((entry, index) => ({ resourceId: entry.resourceId, sourceId: entry.sourceId, physicalPage: index + 2, revision: 1, updatedAt: NOTE.updatedAt }));
+    let finish!: (value: WorkspacePage<typeof progress[number]>) => void;
+    const pending = new Promise<WorkspacePage<typeof progress[number]>>((resolve) => { finish = resolve; });
+    const recent = vi.fn().mockResolvedValueOnce(page(progress.slice(0, 12), resources.slice(0, 12), "cursor-12")).mockReturnValueOnce(pending);
+    const f = fixture({ recent, resource: vi.fn().mockImplementation(async (id) => ({ resource: resources.find((entry) => entry.resourceId === id), reading: null, collectionIds: [] })) });
+    renderWorkspace(f.api, { global: true, asPage: true, onAuthorizeReader: vi.fn().mockImplementation(async (resource) => ({ url: `https://example.test/${resource.resourceId}.pdf`, download: vi.fn() })) });
+    await screen.findByRole("button", { name: /Document 12/ });
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(recent).toHaveBeenLastCalledWith("cursor-12", expect.any(AbortSignal));
+    expect(screen.getByRole("button", { name: "Loading…" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Loading…" }));
+    expect(recent).toHaveBeenCalledTimes(2);
+    await act(async () => finish(page([progress[12]!], [resources[12]!])));
+    await user.click(screen.getByRole("button", { name: /Document 13/ }));
+    await waitFor(() => expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-source", "https://example.test/file-13.pdf"));
+    expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-page", "14");
+  });
+
+  it("keeps cursor-loaded recent documents reachable after saving reading progress", async () => {
+    const user = userEvent.setup();
+    const resources = Array.from({ length: 52 }, (_, index): WorkspaceResource => ({ ...RESOURCE, resourceId: `file-${index + 1}`, sourceId: `source-${index + 1}`, title: `Document ${index + 1}` }));
+    const progress = resources.map((entry, index) => ({ resourceId: entry.resourceId, sourceId: entry.sourceId, physicalPage: Math.min(index + 2, 14), revision: 1, updatedAt: NOTE.updatedAt }));
+    const recent = vi.fn().mockResolvedValueOnce(page(progress.slice(0, 50), resources.slice(0, 50), "cursor-50"))
+      .mockResolvedValueOnce(page(progress.slice(50), resources.slice(50)));
+    const f = fixture({ recent, resource: vi.fn().mockImplementation(async (id) => ({ resource: resources.find((entry) => entry.resourceId === id), reading: null, collectionIds: [] })) });
+    renderWorkspace(f.api, { global: true, asPage: true, onAuthorizeReader: vi.fn().mockImplementation(async (resource) => ({ url: `https://example.test/${resource.resourceId}.pdf`, download: vi.fn() })) });
+    await screen.findByRole("button", { name: /Document 12/ });
+    for (let index = 0; index < 5; index++) await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(recent).toHaveBeenCalledTimes(2);
+    await screen.findByRole("button", { name: /Document 52/ });
+    await user.click(screen.getByRole("button", { name: /Document 52/ }));
+    await waitFor(() => expect(screen.getByTestId("pdf-reader")).toHaveAttribute("data-page", "14"));
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    await waitFor(() => expect(f.api.saveProgress).toHaveBeenCalledWith("file-52", expect.objectContaining({ physicalPage: 15 })), { timeout: 2000 });
+    await waitFor(() => expect(within(screen.getByRole("complementary", { name: "Research navigation" })).getByRole("button", { name: /Document 52/ })).toHaveTextContent("PDF page 15"));
+    await user.click(screen.getByRole("tab", { name: "Overview" }));
+    expect(screen.getByRole("button", { name: /Document 50/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Document 51/ })).toBeInTheDocument();
+  });
+
   it("merges late highlight reads with completed creates and removals without remounting the reader", async () => {
     let finish!: (value: { items: TextHighlight[]; nextBeforeId: null }) => void;
     const pending = new Promise<{ items: TextHighlight[]; nextBeforeId: null }>((resolve) => { finish = resolve; });

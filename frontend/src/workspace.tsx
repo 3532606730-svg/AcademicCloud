@@ -73,6 +73,10 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
   const [documentTabs, setDocumentTabs] = useState<DocumentTab[]>([]);
   const tabsRef = useRef(documentTabs); tabsRef.current = documentTabs;
   const [recent, setRecent] = useState<WorkspacePage<ReaderProgress> | null>(null);
+  const [recentVisible, setRecentVisible] = useState(12);
+  const [recentExpanded, setRecentExpanded] = useState(false);
+  const [recentBusy, setRecentBusy] = useState(false);
+  const recentRequest = useRef<AbortController | null>(null);
   const [noteFontSize, setNoteFontSize] = useState(15);
   const [highlights, setHighlights] = useState<TextHighlight[]>([]);
   const [highlightCursor, setHighlightCursor] = useState<string | null>(null);
@@ -192,8 +196,11 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
   }, [initialResourceId, initialPhysicalPage, expectedSourceId]);
   useEffect(() => {
     const controller = new AbortController();
-    void api.recent(undefined, controller.signal).then(setRecent).catch((caught) => { if (!controller.signal.aborted) setError(caught); });
-    return () => controller.abort();
+    setRecentVisible(12);
+    setRecent(null);
+    setRecentBusy(false);
+    void api.recent(undefined, controller.signal).then((next) => { if (!controller.signal.aborted) setRecent(next); }).catch((caught) => { if (!controller.signal.aborted) setError(caught); });
+    return () => { controller.abort(); recentRequest.current?.abort(); recentRequest.current = null; };
   }, [api, reload]);
   useEffect(() => {
     const saved = readViewPreference<Array<{ resourceId: string; sourceId: string; page: number }>>(accountId, "research-tabs", []);
@@ -227,7 +234,7 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
       const saved = await api.saveProgress(context.resource.resourceId, { sourceId: context.resource.sourceId, physicalPage: nextPage, revision: context.revision });
       context.revision = saved.revision; context.savedPage = nextPage;
       if (!mounted.current || activeSource.current !== context.key) return;
-      setRecent((previous) => ({ items: [saved, ...(previous?.items ?? []).filter((entry) => entry.resourceId !== saved.resourceId)].slice(0, 50), resources: [context.resource, ...(previous?.resources ?? []).filter((entry) => entry.resourceId !== context.resource.resourceId)], nextBeforeId: previous?.nextBeforeId ?? null }));
+      setRecent((previous) => ({ items: [saved, ...(previous?.items ?? []).filter((entry) => entry.resourceId !== saved.resourceId)], resources: [context.resource, ...(previous?.resources ?? []).filter((entry) => entry.resourceId !== context.resource.resourceId)], nextBeforeId: previous?.nextBeforeId ?? null }));
     }).catch(async (caught) => {
       context.failed = true;
       const conflict = caught instanceof ApiError && caught.code === "concurrent_change";
@@ -350,6 +357,29 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
     const next = await api.notes({ ...(resourceId ? { resourceId } : {}), deleted, beforeId: notes!.nextBeforeId! });
     if (mounted.current) setNotes((current) => current ? { ...next, items: [...current.items, ...next.items], resources: [...current.resources, ...next.resources] } : current);
   });
+  const moreRecent = async () => {
+    if (!recent || recentRequest.current) return;
+    if (recentVisible < recent.items.length) { setRecentVisible((count) => count + 12); return; }
+    const cursor = recent.nextBeforeId;
+    if (!cursor) return;
+    const controller = new AbortController();
+    recentRequest.current = controller;
+    setRecentBusy(true);
+    try {
+      const next = await api.recent(cursor, controller.signal);
+      if (controller.signal.aborted || !mounted.current) return;
+      setRecent((current) => current?.nextBeforeId === cursor ? {
+        ...next,
+        items: [...current.items, ...next.items.filter((entry) => !current.items.some((existing) => existing.resourceId === entry.resourceId))],
+        resources: [...current.resources, ...next.resources.filter((entry) => !current.resources.some((existing) => existing.resourceId === entry.resourceId))],
+      } : current);
+      setRecentVisible((count) => count + 12);
+    } catch (caught) {
+      if (!controller.signal.aborted && mounted.current) setError(caught);
+    } finally {
+      if (recentRequest.current === controller) { recentRequest.current = null; if (mounted.current) setRecentBusy(false); }
+    }
+  };
   const resourceCards = (entries: Array<{ resourceId: string }>, resources: WorkspaceResource[]) => entries.length ? <div className="research-resources">{entries.map((entry) => {
     const current = resources.find((r) => r.resourceId === entry.resourceId);
     const state = "status" in entry ? entry as ReadingState : undefined;
@@ -373,9 +403,12 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
       <div className={`research-workbench${resourceId ? " research-workbench--resource" : ""}${readerResource ? " research-workbench--reader" : ""}${readerResource && focusReading ? " research-workbench--focused" : ""}`}>
         {(asPage || !resourceId) && <aside className="research-rail" aria-label={language === "zh-CN" ? "研究导航" : "Research navigation"}>
           <nav className="research-tabs" aria-label={language === "zh-CN" ? "研究功能" : "Research sections"}>{(["reading", "collections", "notes"] as const).map((value) => <button type="button" key={value} aria-current={!resourceId && tab === value ? "page" : undefined} onClick={() => showOverview(value)}>{c[value]}</button>)}</nav>
-          {asPage && <section className="research-recents"><h3>{language === "zh-CN" ? "最近阅读" : "Recently read"}</h3>
-            {recent?.items.length ? recent.items.slice(0, 12).map((entry) => { const item = recent.resources.find((candidate) => candidate.resourceId === entry.resourceId); return item ? <button type="button" key={entry.resourceId} aria-current={resourceId === entry.resourceId ? "page" : undefined} onClick={() => selectDocument(item, entry.physicalPage)}><span>{item.title}</span><small>{c.atPage.replace("{page}", String(entry.physicalPage))}</small></button> : null; }) : <p>{language === "zh-CN" ? "阅读资料后，会在这里继续上次阅读。" : "Return to your recent documents here."}</p>}
-            {recent?.nextBeforeId && <button type="button" onClick={() => void run(async () => { const next = await api.recent(recent.nextBeforeId!); setRecent({ ...next, items: [...recent.items, ...next.items], resources: [...recent.resources, ...next.resources] }); })}>{c.more}</button>}
+          {asPage && <section className={`research-recents${recentExpanded ? " research-recents--expanded" : ""}`}><h3>{language === "zh-CN" ? "最近阅读" : "Recently read"}</h3>
+            <button className="research-recents-toggle" type="button" aria-expanded={recentExpanded} aria-controls="research-recents-list" onClick={() => setRecentExpanded((expanded) => !expanded)}>{language === "zh-CN" ? "最近阅读" : "Recently read"}{recent?.items.length ? ` (${recent.items.length})` : ""} <span aria-hidden="true">{recentExpanded ? "▴" : "▾"}</span></button>
+            <div className="research-recents-list" id="research-recents-list">
+              {recent?.items.length ? recent.items.slice(0, recentVisible).map((entry) => { const item = recent.resources.find((candidate) => candidate.resourceId === entry.resourceId); return item ? <button type="button" key={entry.resourceId} aria-current={resourceId === entry.resourceId ? "page" : undefined} onClick={() => selectDocument(item, entry.physicalPage)}><span>{item.title}</span><small>{c.atPage.replace("{page}", String(entry.physicalPage))}</small></button> : null; }) : <p>{language === "zh-CN" ? "阅读资料后，会在这里继续上次阅读。" : "Return to your recent documents here."}</p>}
+              {(recentVisible < (recent?.items.length ?? 0) || recent?.nextBeforeId) && <button type="button" disabled={recentBusy} onClick={() => void moreRecent()}>{recentBusy ? c.loading : c.more}</button>}
+            </div>
           </section>}
         </aside>}
         <main className={`research-main${readerResource ? " research-main--reader" : ""}`}>

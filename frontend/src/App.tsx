@@ -737,6 +737,9 @@ function DriveView({
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [metadataActivities, setMetadataActivities] = useState<MetadataActivity[]>([]);
+  const [metadataDiscoveryUnavailable, setMetadataDiscoveryUnavailable] = useState(false);
+  const [metadataPollingUnavailable, setMetadataPollingUnavailable] = useState(false);
+  const [metadataStatusRevision, setMetadataStatusRevision] = useState(0);
   const [downloadActivities, setDownloadActivities] = useState<DownloadActivity[]>([]);
   const [activityExpanded, setActivityExpanded] = useState(() => readActivityExpanded(account.id));
   const [uploadPickerFallbackAvailable, setUploadPickerFallbackAvailable] = useState(false);
@@ -927,11 +930,13 @@ function DriveView({
     recordMetadataActivity(resourceDetailsRequest.library, resourceDetailsRequest.holding, job, authoritativeState);
   }, [recordMetadataActivity, resourceDetailsRequest]);
 
-  // Reload-safe Job Core discovery. One authorization-scoped batch projection
-  // replaces the former per-visible-holding request fan-out.
+  // Reload-safe Job Core discovery. The API client bounds each authorized batch.
   useEffect(() => {
     const library = libraryCatalogue.library;
-    if (!library || !api.getLatestLibraryMetadataSuggestionStates || libraryCatalogue.holdings.length === 0) return;
+    if (!library || !api.getLatestLibraryMetadataSuggestionStates || libraryCatalogue.holdings.length === 0) {
+      setMetadataDiscoveryUnavailable(false);
+      return;
+    }
     const controller = new AbortController();
     const holdingsByFileId = new Map(libraryCatalogue.holdings.map((holding) => [holding.file.id, holding]));
     void api.getLatestLibraryMetadataSuggestionStates(
@@ -940,6 +945,7 @@ function DriveView({
       controller.signal,
     ).then((states) => {
       if (controller.signal.aborted) return;
+      setMetadataDiscoveryUnavailable(false);
       const visible = states.flatMap((summary) => {
         const job = summary.job;
         const holding = holdingsByFileId.get(summary.fileId);
@@ -958,16 +964,18 @@ function DriveView({
         ];
       });
     }, () => {
-      // Activity discovery is supplementary. Resource Details remains the
-      // explicit error surface for a resource-specific request failure.
+      if (!controller.signal.aborted) setMetadataDiscoveryUnavailable(true);
     });
     return () => controller.abort();
-  }, [api, libraryCatalogue]);
+  }, [api, libraryCatalogue, metadataStatusRevision]);
 
   useEffect(() => {
     if (!api.getLatestLibraryMetadataSuggestionStates) return;
     const active = metadataActivities.filter(({ job }) => job.state === "queued" || job.state === "running");
-    if (active.length === 0) return;
+    if (active.length === 0) {
+      setMetadataPollingUnavailable(false);
+      return;
+    }
     const controller = new AbortController();
     let timer: number;
     const poll = () => {
@@ -979,6 +987,7 @@ function DriveView({
         controller.signal,
       ).then((states) => {
         if (controller.signal.aborted) return;
+        setMetadataPollingUnavailable(false);
         const byFileId = new Map(states.map((summary) => [summary.fileId, summary]));
         setMetadataActivities((current) => current.map((activity) => (
           activity.library.id !== library.id
@@ -991,7 +1000,10 @@ function DriveView({
       }, () => {
         // A failed read must not strand an otherwise live job. Success updates
         // activity state and restarts this effect; failures retry independently.
-        if (!controller.signal.aborted) timer = window.setTimeout(poll, 5_000);
+        if (!controller.signal.aborted) {
+          setMetadataPollingUnavailable(true);
+          timer = window.setTimeout(poll, 5_000);
+        }
       });
     };
     timer = window.setTimeout(poll, 2_000);
@@ -999,7 +1011,7 @@ function DriveView({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [api, metadataActivities]);
+  }, [api, metadataActivities, metadataStatusRevision]);
 
   useEffect(() => {
     const completedIds = jobs.filter((job) => job.phase === "complete").map((job) => job.id);
@@ -2626,6 +2638,10 @@ function DriveView({
           </>
         )}
 
+        {(metadataDiscoveryUnavailable || metadataPollingUnavailable) && <div className="alert" role="status">
+          <span>{t("activity.metadataStatusUnavailable")}</span>{" "}
+          <button type="button" className="button button--small button--quiet" onClick={() => setMetadataStatusRevision((value) => value + 1)}>{t("activity.metadataStatusRetry")}</button>
+        </div>}
         {activityCount > 0 && (
           <section className={`activity-center${activityExpanded ? " is-expanded" : " is-collapsed"}`} aria-labelledby="activity-center-title" aria-live="polite">
             <div className="activity-center-heading">

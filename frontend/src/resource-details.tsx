@@ -478,6 +478,7 @@ export function ResourceDetailsDialog({
   const [restoringAi, setRestoringAi] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
+  const [conflictNotice, setConflictNotice] = useState(false);
   const [draft, setDraft] = useState(() => draftFromDetail({
     displayTitle: holding.canonicalTitle ?? holding.file.displayName,
     originalFilename: holding.file.displayName,
@@ -515,7 +516,35 @@ export function ResourceDetailsDialog({
   const [suggestionsAccepting, setSuggestionsAccepting] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<unknown>(null);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<Set<string>>(() => new Set());
-  const dialogRef = useResourceDialog(onClose, saving || savingBibliography || restoringAi || suggestionsGenerating || suggestionsAccepting, returnFocus);
+  const [pendingExit, setPendingExit] = useState<"close" | "view" | "metadata" | "bibliography" | null>(null);
+  const metadataDirty = Boolean(detail && editing && JSON.stringify(draft) !== JSON.stringify(draftFromDetail(detail)));
+  const bibliographyDirty = Boolean(detail && editingBibliography && JSON.stringify(bibliographyDraft) !== JSON.stringify(bibliographyDraftFromDetail(detail)));
+  const busy = saving || savingBibliography || restoringAi || suggestionsGenerating || suggestionsAccepting;
+
+  function leaveEditor(destination: "close" | "view" | "metadata" | "bibliography", discard = false) {
+    if (busy) return;
+    if (!discard && (metadataDirty || bibliographyDirty)) {
+      setPendingExit(destination);
+      return;
+    }
+    setPendingExit(null);
+    if (editing && detail) setDraft(draftFromDetail(detail));
+    if (editingBibliography && detail) setBibliographyDraft(bibliographyDraftFromDetail(detail));
+    setEditing(destination === "metadata");
+    setEditingBibliography(destination === "bibliography");
+    setNotice("");
+    setConflictNotice(false);
+    if (destination === "close") onClose();
+  }
+
+  useEffect(() => {
+    if (!metadataDirty && !bibliographyDirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [metadataDirty, bibliographyDirty]);
+
+  const dialogRef = useResourceDialog(() => leaveEditor("close"), busy, returnFocus);
 
   const groupedAuthorities = useMemo(() => {
     const map = new Map<string, LibraryAuthority>();
@@ -866,6 +895,7 @@ export function ResourceDetailsDialog({
     setSaving(true);
     setError(null);
     setNotice("");
+    setConflictNotice(false);
     const input: LibraryMetadataInput = {
       metadataVersion: detail.metadataVersion,
       materialType: draft.materialType,
@@ -883,20 +913,11 @@ export function ResourceDetailsDialog({
       setDraft(draftFromDetail(next));
       setBibliographyDraft(bibliographyDraftFromDetail(next));
       setEditing(false);
+      setPendingExit(null);
       onSaved(next);
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === "concurrent_change") {
-        try {
-          const latest = await api.getLibraryHoldingDetails(library.id, holding.file.id);
-          setDetail(latest);
-          setDraft(draftFromDetail(latest));
-          setBibliographyDraft(bibliographyDraftFromDetail(latest));
-          setEditing(false);
-          onSaved(latest);
-          setNotice(t("metadata.conflictRefreshed"));
-        } catch (refreshError) {
-          setError(refreshError);
-        }
+        setConflictNotice(true);
       } else {
         setError(caught);
       }
@@ -915,29 +936,20 @@ export function ResourceDetailsDialog({
     setSavingBibliography(true);
     setError(null);
     setNotice("");
+    setConflictNotice(false);
     try {
       const next = await api.updateLibraryHoldingBibliography(library.id, holding.file.id, input);
       setDetail(next);
       setDraft(draftFromDetail(next));
       setBibliographyDraft(bibliographyDraftFromDetail(next));
       setEditingBibliography(false);
+      setPendingExit(null);
       setSelectedRestoreFields(new Set());
       setNotice(t("metadata.bibliographySaved"));
       onSaved(next);
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === "concurrent_change") {
-        try {
-          const latest = await api.getLibraryHoldingDetails(library.id, holding.file.id);
-          setDetail(latest);
-          setDraft(draftFromDetail(latest));
-          setBibliographyDraft(bibliographyDraftFromDetail(latest));
-          setEditingBibliography(false);
-          setSelectedRestoreFields(new Set());
-          setNotice(t("metadata.conflictRefreshed"));
-          onSaved(latest);
-        } catch (refreshError) {
-          setError(refreshError);
-        }
+        setConflictNotice(true);
       } else {
         setError(caught);
       }
@@ -1036,13 +1048,20 @@ export function ResourceDetailsDialog({
             {detailTypeLabel && <span className="resource-details-type">{detailTypeLabel}</span>}
           </div>
         </div>
-        <button className="button button--quiet" type="button" onClick={onClose} disabled={saving || savingBibliography || restoringAi} aria-label={t("metadata.closeAria")}>{t("preview.close")}</button>
+        <button className="button button--quiet" type="button" onClick={() => leaveEditor("close")} disabled={busy} aria-label={t("metadata.closeAria")}>{t("preview.close")}</button>
       </header>
-      {loading ? <p role="status">{t("sharedLibrary.loading")}</p> : error !== null ? (
-        <div className="alert alert--error" role="alert">{describeError(error, language)}</div>
-      ) : detail && (
+      {loading ? <p role="status">{t("sharedLibrary.loading")}</p> : detail ? (
         <div className="resource-details-body">
+          {error !== null && <div className="alert alert--error" role="alert">{describeError(error, language)}</div>}
           {notice && <div className="alert alert--success" role="status">{notice}</div>}
+          {conflictNotice && <div className="alert alert--error" role="alert">{t("metadata.conflictDraftPreserved")}</div>}
+          {pendingExit && <div className="alert" role="alert" aria-label={t("metadata.unsavedTitle")}>
+            <p>{t("metadata.unsavedMessage")}</p>
+            <div className="resource-details-actions">
+              <button className="button button--quiet" type="button" onClick={() => setPendingExit(null)}>{t("metadata.keepEditing")}</button>
+              <button className="button" type="button" onClick={() => leaveEditor(pendingExit, true)}>{t("metadata.discardChanges")}</button>
+            </div>
+          </div>}
           {!editing && !editingBibliography ? (
             <>
               <div className="document-reading-actions">
@@ -1096,7 +1115,7 @@ export function ResourceDetailsDialog({
             <>
               <header className="resource-details-editor-header">
                 <h3>{t("metadata.coreFieldsTitle")}</h3>
-                {api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" onClick={() => { setEditing(false); setEditingBibliography(true); }}>{t("metadata.editPublicationFields")}</button>}
+                {api.updateLibraryHoldingBibliography && <button className="button button--small button--quiet" type="button" disabled={busy} onClick={() => leaveEditor("bibliography")}>{t("metadata.editPublicationFields")}</button>}
               </header>
               {renderSuggestionTools()}
               <MetadataEditor
@@ -1111,7 +1130,7 @@ export function ResourceDetailsDialog({
                 setAuthorityLabel={setAuthorityLabel}
                 onCreateAuthority={() => void createAuthority()}
                 onAuthorityLinked={linkAuthority}
-                onCancel={() => { setDraft(draftFromDetail(detail)); setEditing(false); setNotice(""); }}
+                onCancel={() => leaveEditor("view")}
                 onSave={() => void save()}
                 saving={saving}
                 t={t}
@@ -1122,13 +1141,13 @@ export function ResourceDetailsDialog({
               draft={bibliographyDraft}
               setDraft={setBibliographyDraft}
               saving={savingBibliography}
-              onCancel={() => { setBibliographyDraft(bibliographyDraftFromDetail(detail)); setEditingBibliography(false); setNotice(""); }}
+              onCancel={() => leaveEditor("view")}
               onSave={() => void saveBibliography()}
               t={t}
             />
           )}
         </div>
-      )}
+      ) : error !== null ? <div className="alert alert--error" role="alert">{describeError(error, language)}</div> : null}
     </dialog>
   );
 }

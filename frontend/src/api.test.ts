@@ -38,6 +38,48 @@ function assertBodylessRequestInit(init: RequestInit | undefined, method: string
   expect(headers.get("Accept")).toBe("application/json");
 }
 describe("ApiClient", () => {
+  it("reads catalogue AI states in bounded batches, including resources beyond the second page", async () => {
+    const fileIds = Array.from({ length: 205 }, (_, index) => `file-${index}`);
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (path) => {
+      const ids = new URL(String(path), "http://academiccloud.test").searchParams.get("fileIds")!.split(",");
+      expect(ids.length).toBeLessThanOrEqual(100);
+      return new Response(JSON.stringify({ states: ids.map((fileId) => ({ fileId, state: "not_started", job: null })) }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    });
+    const signal = new AbortController().signal;
+    const states = await new ApiClient({ fetcher }).getLatestLibraryMetadataSuggestionStates("library / one", [...fileIds, fileIds[0]!], signal);
+    expect(states.map((state) => state.fileId)).toEqual(fileIds);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher.mock.calls.map(([path]) => new URL(String(path), "http://academiccloud.test").searchParams.get("fileIds")!.split(",").length)).toEqual([100, 100, 5]);
+    expect(fetcher.mock.calls.every(([path, init]) => String(path).startsWith("/api/libraries/library%20%2F%20one/") && init?.signal === signal)).toBe(true);
+  });
+
+  it("stops AI state batches when catalogue discovery is cancelled", async () => {
+    const controller = new AbortController();
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => {
+      controller.abort();
+      return new Response(JSON.stringify({ states: [] }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    const request = new ApiClient({ fetcher }).getLatestLibraryMetadataSuggestionStates("library", Array.from({ length: 200 }, (_, index) => `file-${index}`), controller.signal);
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an incomplete AI state read instead of returning the successful first batch", async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ states: [{ fileId: "file-0", state: "queued", job: null }] }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "internal_error" }), { status: 500, headers: { "content-type": "application/json" } }));
+    await expect(new ApiClient({ fetcher }).getLatestLibraryMetadataSuggestionStates("library", Array.from({ length: 200 }, (_, index) => `file-${index}`))).rejects.toMatchObject({ status: 500 });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not send an invalid empty AI state batch", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    await expect(new ApiClient({ fetcher }).getLatestLibraryMetadataSuggestionStates("library", [])).resolves.toEqual([]);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("binds the browser fetch receiver for the default client", async () => {
     const original = globalThis.fetch;
     const receiver = globalThis;

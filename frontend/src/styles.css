@@ -400,6 +400,10 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
 .library-search-advanced summary { display: flex; align-items: center; cursor: pointer; list-style: none; }
 .library-search-advanced summary::-webkit-details-marker { display: none; }
 .library-search-advanced[open] summary { border-color: #98a49b; }
+.library-search-active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; margin-top: .7rem; }
+.library-search-filter-chip { display: inline-flex; align-items: center; gap: .5rem; max-width: 100%; padding: .4rem .65rem; border: 1px solid #d5dfd2; border-radius: 1rem; background: #edf1eb; color: var(--forest-deep); font: inherit; font-size: .8rem; text-align: left; cursor: pointer; }
+.library-search-filter-chip > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.library-search-filter-chip:hover { background: #dce6da; }
 .library-search-filter-grid {
   position: absolute;
   z-index: 12;

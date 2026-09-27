@@ -297,8 +297,7 @@ export function LibrarySearchField({
     });
   }
 
-  function clearSearch(): void {
-    setQuery("");
+  function clearFilters(): void {
     setMaterialClass("");
     setContributor("");
     setFilterLanguage("");
@@ -311,6 +310,26 @@ export function LibrarySearchField({
     setSeries("");
     setVolume("");
   }
+
+  function clearSearch(): void {
+    setQuery("");
+    clearFilters();
+  }
+
+  const activeFilters = [
+    { key: "materialClass", label: t("librarySearch.materialClass"), value: materialClass ? t(materialClassKey(materialClass)) : "", clear: () => setMaterialClass("") },
+    { key: "contributor", label: t("librarySearch.contributor"), value: contributor.trim(), clear: () => setContributor("") },
+    { key: "publisher", label: t("librarySearch.publisher"), value: publisher.trim(), clear: () => setPublisher("") },
+    { key: "language", label: t("librarySearch.language"), value: filterLanguage.trim(), clear: () => setFilterLanguage("") },
+    { key: "year", label: t("librarySearch.year"), value: year.trim(), clear: () => setYear("") },
+    { key: "editionType", label: t("librarySearch.editionType"), value: editionType ? t(editionTypeKey(editionType)) : "", clear: () => setEditionType("") },
+    { key: "dynasty", label: t("librarySearch.dynasty"), value: dynasty.trim(), clear: () => setDynasty("") },
+    { key: "reignTitle", label: t("librarySearch.reignTitle"), value: reignTitle.trim(), clear: () => setReignTitle("") },
+    { key: "editorialRole", label: t("librarySearch.editorialRole"), value: editorialRole ? t(contributorRoleKey(editorialRole)) : "", clear: () => setEditorialRole("") },
+    { key: "series", label: t("librarySearch.series"), value: series.trim(), clear: () => setSeries("") },
+    { key: "volume", label: t("librarySearch.volume"), value: volume.trim(), clear: () => setVolume("") },
+  ].filter((filter) => filter.value);
+  const advancedFilterCount = activeFilters.filter((filter) => filter.key !== "materialClass").length;
 
   return (
     <div className="library-search">
@@ -355,7 +374,7 @@ export function LibrarySearchField({
           </select>
         </label>
         <details className="library-search-advanced">
-          <summary>{t("librarySearch.advanced")}</summary>
+          <summary>{t("librarySearch.advanced")}{advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}</summary>
           <div className="library-search-filter-grid">
             <label>{t("librarySearch.contributor")}<input value={contributor} maxLength={128} onChange={(event) => setContributor(event.target.value)} /></label>
             <label>{t("librarySearch.publisher")}<input value={publisher} maxLength={128} onChange={(event) => setPublisher(event.target.value)} /></label>
@@ -370,6 +389,15 @@ export function LibrarySearchField({
           </div>
         </details>
       </div>
+      {hasFilters && <div className="library-search-active-filters">
+        {activeFilters.map((filter) => {
+          const label = `${filter.label}: ${filter.value}`;
+          return <button key={filter.key} type="button" className="library-search-filter-chip" aria-label={t("librarySearch.removeFilter", { filter: label })} onClick={filter.clear}>
+            <span>{label}</span><span aria-hidden="true">×</span>
+          </button>;
+        })}
+        <button type="button" className="button button--small button--quiet" onClick={clearFilters}>{t("librarySearch.clearFilters")}</button>
+      </div>}
       {active && (
         <div className="library-search-results">
           {visibleStatus === "loading" && <p className="muted" role="status">{t("librarySearch.loading")}</p>}

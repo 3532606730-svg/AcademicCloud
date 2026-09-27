@@ -1470,11 +1470,22 @@ export class ApiClient implements AcademicCloudApi {
     fileIds: string[],
     signal?: AbortSignal,
   ): Promise<MetadataCataloguingSummary[]> {
-    const query = new URLSearchParams({ fileIds: fileIds.join(",") });
-    return (await this.#request<{ states: MetadataCataloguingSummary[] }>(
-      `/api/libraries/${encodeURIComponent(libraryId)}/metadata/suggestion-states?${query.toString()}`,
-      signal ? { signal } : {},
-    )).states;
+    // Both catalogue discovery and active-job polling can exceed one page.
+    // Match the server's 100-resource authorization bound without request fan-out.
+    const ids = [...new Set(fileIds)];
+    const states: MetadataCataloguingSummary[] = [];
+    signal?.throwIfAborted();
+    for (let offset = 0; offset < ids.length; offset += 100) {
+      signal?.throwIfAborted();
+      const query = new URLSearchParams({ fileIds: ids.slice(offset, offset + 100).join(",") });
+      const page = await this.#request<{ states: MetadataCataloguingSummary[] }>(
+        `/api/libraries/${encodeURIComponent(libraryId)}/metadata/suggestion-states?${query.toString()}`,
+        signal ? { signal } : {},
+      );
+      signal?.throwIfAborted();
+      states.push(...page.states);
+    }
+    return states;
   }
 
   async getLibraryMetadataSuggestionJob(

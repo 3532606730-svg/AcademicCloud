@@ -75,6 +75,29 @@ function renderField(
 }
 
 describe("LibrarySearchField", () => {
+  it("keeps collapsed filters visible and clears them without losing the keyword", async () => {
+    const user = userEvent.setup();
+    const searchLibraryHoldings = vi.fn().mockResolvedValue({ results: [], nextCursor: null });
+    const input = renderField({ searchLibraryHoldings } as unknown as AcademicCloudApi);
+    await user.type(input, "history");
+    await user.click(screen.getByText(t("librarySearch.advanced")));
+    await user.type(screen.getByLabelText(t("librarySearch.year")), "1900");
+    await user.type(screen.getByLabelText(t("librarySearch.publisher")), "Press");
+    const summary = screen.getByText(`${t("librarySearch.advanced")} (2)`);
+    await user.click(summary);
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    const yearLabel = `${t("librarySearch.year")}: 1900`;
+    await user.click(screen.getByRole("button", { name: t("librarySearch.removeFilter", { filter: yearLabel }) }));
+    expect(input).toHaveValue("history");
+    expect(screen.getByText(`${t("librarySearch.advanced")} (1)`)).toBeInTheDocument();
+    await waitFor(() => expect(searchLibraryHoldings).toHaveBeenLastCalledWith(LIBRARY.id, "history", expect.any(AbortSignal), undefined, undefined, { publisher: "Press" }));
+    await user.click(screen.getByRole("button", { name: t("librarySearch.clearFilters") }));
+    expect(input).toHaveValue("history");
+    expect(screen.queryByRole("button", { name: t("librarySearch.clearFilters") })).not.toBeInTheDocument();
+    expect(screen.getByText(t("librarySearch.advanced"))).toBeInTheDocument();
+    await waitFor(() => expect(searchLibraryHoldings).toHaveBeenLastCalledWith(LIBRARY.id, "history", expect.any(AbortSignal)));
+  });
+
   it("debounces typing into one whole-library search and renders composed results", async () => {
     const user = userEvent.setup();
     const searchLibraryHoldings = vi.fn().mockResolvedValue({

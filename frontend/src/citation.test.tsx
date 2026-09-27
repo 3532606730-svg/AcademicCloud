@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -37,7 +37,14 @@ afterEach(() => {
 });
 
 function renderCitation(api: Partial<AcademicCloudApi>) {
-  render(<LanguageProvider><CitationDialog api={api as AcademicCloudApi} library={LIBRARY} holding={HOLDING} onClose={vi.fn()} /></LanguageProvider>);
+  return render(<LanguageProvider><CitationDialog api={api as AcademicCloudApi} library={LIBRARY} holding={HOLDING} onClose={vi.fn()} /></LanguageProvider>);
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
 }
 
 describe("CitationDialog", () => {
@@ -92,5 +99,64 @@ describe("CitationDialog", () => {
     await user.click(screen.getByRole("button", { name: "Generate citation" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("could not be generated");
     expect(generateLibraryCitation).not.toHaveBeenCalled();
+  });
+
+  it("discards a pending citation after its locator changes and keeps the newer result through out-of-order completion", async () => {
+    const first = deferred<CitationResult>();
+    const second = deferred<CitationResult>();
+    const generateLibraryCitation = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    renderCitation({ generateLibraryCitation });
+    const user = userEvent.setup();
+    const value = await screen.findByLabelText("Locator value");
+    await user.type(value, "15");
+    await user.click(screen.getByRole("button", { name: "Generate citation" }));
+    await user.clear(value);
+    await user.type(value, "88");
+    expect(screen.queryByText(RESULT.outputs.fullNote!)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Generate citation" }));
+    expect(generateLibraryCitation).toHaveBeenNthCalledWith(2, LIBRARY.id, HOLDING.file.id, {
+      style: "lishi-yanjiu", locators: [{ type: "page", value: "88" }],
+    });
+    const newer = { ...RESULT, outputs: { ...RESULT.outputs, fullNote: "page 88", shortNote: null, citation: "page 88" } } as CitationResult;
+    await act(async () => second.resolve(newer));
+    expect(screen.getByText("page 88")).toBeInTheDocument();
+    await act(async () => first.resolve(RESULT));
+    expect(screen.getByText("page 88")).toBeInTheDocument();
+    expect(screen.queryByText(RESULT.outputs.fullNote!)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("ignores an old failure after style changes and clears pending copy feedback when inputs change", async () => {
+    const pending = deferred<CitationResult>();
+    const copy = deferred<void>();
+    const writeText = vi.fn().mockReturnValue(copy.promise);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const generateLibraryCitation = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValueOnce(RESULT);
+    renderCitation({ generateLibraryCitation });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Generate citation" }));
+    await user.selectOptions(screen.getByLabelText("Citation style"), "wenshizhe");
+    await act(async () => pending.reject(new Error("old failure")));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Generate citation" }));
+    const section = (await screen.findByText("First full note")).closest("section")!;
+    await user.click(within(section).getByRole("button", { name: "Copy" }));
+    await user.click(screen.getByRole("button", { name: "Add locator" }));
+    await act(async () => copy.resolve());
+    expect(screen.queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("does not display a result from a previous holding after context changes", async () => {
+    const pending = deferred<CitationResult>();
+    const api = { generateLibraryCitation: vi.fn().mockReturnValue(pending.promise) } as unknown as AcademicCloudApi;
+    const onClose = vi.fn();
+    const view = render(<LanguageProvider><CitationDialog api={api as AcademicCloudApi} library={LIBRARY} holding={HOLDING} onClose={onClose} /></LanguageProvider>);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Generate citation" }));
+    view.rerender(<LanguageProvider><CitationDialog api={api as AcademicCloudApi} library={LIBRARY} holding={{ ...HOLDING, file: { ...HOLDING.file, id: "file-2" } }} onClose={onClose} /></LanguageProvider>);
+    await act(async () => pending.resolve(RESULT));
+    expect(screen.queryByText(RESULT.outputs.fullNote!)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate citation" })).toBeEnabled();
   });
 });
