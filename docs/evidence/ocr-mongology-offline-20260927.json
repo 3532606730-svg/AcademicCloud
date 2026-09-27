@@ -1,0 +1,478 @@
+{
+  "schema_version": 1,
+  "purpose": "runtime_and_synthetic_diagnostics_only",
+  "production_acceptance": false,
+  "accuracy_acceptance": false,
+  "limitations": [
+    "Synthetic text and two supplied fonts are not representative book gold data.",
+    "Synthetic glyph rendering coverage is not a script-support qualification.",
+    "CPU inference timings include model reload and input/output, not page throughput.",
+    "No PDF layout, production permissions, WSL/CUDA or recovery tested here."
+  ],
+  "runtime": {
+    "python": "3.12.14",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+      "torch": "2.12.1+cpu",
+      "Pillow": "12.2.0",
+      "PyMuPDF": "1.27.2.3",
+      "numpy": "2.4.6"
+    },
+    "device": "cpu",
+    "threads": 2,
+    "weights_only_load": true
+  },
+  "script_sha256": "ec3681b529404180462a3276c5f24e26b32f25d514d42d8c9fe602fc4ae235e4",
+  "engine_source_sha256": {
+    "src/mongology_ocr/__init__.py": "a222c557b93d0ab6eff594dfa376c56d10a83c59cea016ea125e9a962bd99502",
+    "src/mongology_ocr/annotations.py": "f04dec40e891341ab61648fea2b8e59166d6c8d39bfaeda28af97b4998d9605e",
+    "src/mongology_ocr/authentic_recombination.py": "ef27bba321de4d2350fd5f0128752328efa694d2788d62d987d6b796928b74a0",
+    "src/mongology_ocr/cli.py": "058cca9f023e5320558ac0ff87a710911766f839bcebe9cd0043c379e152b9cc",
+    "src/mongology_ocr/correction_analysis.py": "fd3d411ce978ae1ecf841aeb7e0fb48462e5b82d86e919eed5a537756984a2a6",
+    "src/mongology_ocr/correction_preview.py": "37cfc6a4ecc67c4a8e715342fbceca484742e38bccab3449c56e40223b6741dc",
+    "src/mongology_ocr/correction_training.py": "1090b222006fb7d24acefa750c8047f72cb57fdb05250e41caac6b567f6491f6",
+    "src/mongology_ocr/corrections.py": "5ec4f0468ece9a8b30debaefe8ec5dba858347a46c72fb8d3fd8db878fb4a825",
+    "src/mongology_ocr/database_interface.py": "0a6b5759dd4f6830d92108e5dae63a512ec23a2f86f7a0687cf6443fcf5032ec",
+    "src/mongology_ocr/dataset.py": "82c5aa2535e43fa05e79fb135a5bef889c73b1d99f59fe9ba55f628591bc1863",
+    "src/mongology_ocr/db.py": "27e5a80bbddb7ebad9e81bde1b49a5d86159606e6fafc8063ccfb78d63055068",
+    "src/mongology_ocr/han_parallel.py": "354e665aac1403215cd3f19063f044ce7e784b6a5236bbe3f4842f5348831d25",
+    "src/mongology_ocr/ingest.py": "843b2abb6024d4bdfe636844be28ac58bac50ca54cc096e4f433e3604853b9d0",
+    "src/mongology_ocr/inventory.py": "c3116ebc13977f68fd7e4191490c5c564b5f40742ca766900707f7143bae1597",
+    "src/mongology_ocr/layout.py": "cf31ffe289b30ed926225a8b9a00d00fa57c58efde27be0a37d75c5669a1f819",
+    "src/mongology_ocr/live_review.py": "6be255ee5647b47c30cc397288ba0ed0966371a202fe0b97e304f936215d80a0",
+    "src/mongology_ocr/metrics.py": "59f12125673a58aa378082fa916ae4e0679ce358b7fdc9a5ca08f4a3cbf5b546",
+    "src/mongology_ocr/model_testing.py": "ccb002cee62791b26e1c5396af97937dbcd00a6d95153ca6acbb8551f6b4db1e",
+    "src/mongology_ocr/obstacle_training.py": "da9935e4a378c132d9fc5ffae30690e36d06b96520d9bfb8112ed2dc8df89dd3",
+    "src/mongology_ocr/paddle_teacher.py": "d0399c631328b0a300eff95f922d29821250ff87d8d415ede3f3b527e7dcd0c8",
+    "src/mongology_ocr/pdf_fonts.py": "41c5c0ab02bd2e21f8b8e99b1a50f3af7463f4deb150e81d91dd38da6a222406",
+    "src/mongology_ocr/pdf_text.py": "11fcc2e30a71376b5f450117556d6031a505fa910cd0e19391852d9d37526217",
+    "src/mongology_ocr/predictions.py": "2777baa3e5d55b7436d614ba3d13915f7961d9a65f3a26fe7bfeba14337cf1de",
+    "src/mongology_ocr/preprocess.py": "ccda772b866e38af3315b5ad46bd13d82763f5ef6618912bce61e41b4c8a48d0",
+    "src/mongology_ocr/profiles.py": "9432b7bf75b19d54aa599b64d5b1c38f2efe999d03e2bfa230a4219338a1ef02",
+    "src/mongology_ocr/render.py": "2d83b5edbd19496a4daadccb087388f242ff9d68a0234c39caee370de384b8ad",
+    "src/mongology_ocr/reports.py": "f4203a0e30c056cdc5d92eff19b24372a775cc636c85ca731babbbb4a9688133",
+    "src/mongology_ocr/schema.py": "8af3763294930b86772c817f915d10a148bbe99cb83ec18b69f94bff64f69688",
+    "src/mongology_ocr/share_review.py": "58fb055dcfc7306344a3b773c77072bb3bec37c20178fd08771928897b17ca67",
+    "src/mongology_ocr/synthetic_chinese.py": "7a9767c3c6d7126c9d29333de0869a70aa6172ecb2108111d7a044e066b40cf1",
+    "src/mongology_ocr/synthetic_english.py": "3665bdabafc3509a95f4072a4c12af9e44e2639861dcc0f2d66dfd7106d0722b",
+    "src/mongology_ocr/synthetic_layout.py": "e6303b8976da73433184095810a19576075673b3f46a422c568caa9e77a2df6f",
+    "src/mongology_ocr/synthetic_special.py": "49d624f28548ed0b6fb5a6c5df729fc31bfde8584012e28a40a9df77fe0b821b",
+    "src/mongology_ocr/teacher_ocr.py": "51fb733bec0850190d5c7a583dfe44f830b89429834d5a0f65b5e15c7ba821b7",
+    "src/mongology_ocr/text_normalization.py": "bd6d67204765a2270a67adaa15cb9bcded20d38d27e590ffb095551aa976fb20",
+    "src/mongology_ocr/torch_training.py": "2223348847bdcc5721d6ccc0cfc93ba918ffed5a6c90e83c3e5619f0469143dc",
+    "src/mongology_ocr/training_quality.py": "75c7c374b149a8f21daf1c9caeb79538bdafc5810bae7aadc070de879b494b91",
+    "src/mongology_ocr/training_review.py": "21ce3a7c33afc3c4893ec0b77ba6e2de1f289bfc552ca58f11e9f608bc9b565c",
+    "src/mongology_ocr/utils.py": "e81b86c4feebba372ef99d630a7a1232d9749f7399f3f02a119d76baaadbfbbc"
+  },
+  "fonts": [
+    {
+      "name": "times.ttf",
+      "sha256": "931c5de5c70401d9324d5014c123802b4fb753000360ceb2f56c589403cd58c5"
+    },
+    {
+      "name": "arial.ttf",
+      "sha256": "b3658eadae55e682b5f69eb64c439c1ecc8f196c0bb8d4756d145d13bc86476a"
+    }
+  ],
+  "samples": [
+    {
+      "id": "synthetic-000",
+      "category": "basic_latin",
+      "reference": "The history of Central Asia.",
+      "font": "times.ttf",
+      "image_sha256": "0c3b45f112d07dc28ccff3905b307d461039a5ef5c4eec45251e42ccac5a5322"
+    },
+    {
+      "id": "synthetic-001",
+      "category": "basic_latin",
+      "reference": "Historia Tartarorum 1234.",
+      "font": "times.ttf",
+      "image_sha256": "e62505c410afcbd04eb42e57bcce20d041ec18ea956b709232bad1ea0a954796"
+    },
+    {
+      "id": "synthetic-002",
+      "category": "transcription",
+      "reference": "qaγan köke üge",
+      "font": "times.ttf",
+      "image_sha256": "b234d3bb380dc56be77b1726bd447bfc107ecf57017bfbbce9254573d86a7576"
+    },
+    {
+      "id": "synthetic-003",
+      "category": "transcription",
+      "reference": "š č Č ǰ ö ü Γ γ",
+      "font": "times.ttf",
+      "image_sha256": "0b4648d7e9f0f31adbae5f60a6f4cc541c2d877e7f7138d8b6ed0cccd579d3e5"
+    },
+    {
+      "id": "synthetic-004",
+      "category": "distinctions",
+      "reference": "I l 1 O 0 V v — ‘ ’",
+      "font": "times.ttf",
+      "image_sha256": "a9034cec3c57198cbe0cb59e52bf10edaa24cb349967fd9e2727a51be7edd1e2"
+    },
+    {
+      "id": "synthetic-005",
+      "category": "distinctions",
+      "reference": "ɣ Ɣ Г γ Γ",
+      "font": "times.ttf",
+      "image_sha256": "06f7fa5a33f0495deb6b33eecc96c2506736793e4334d695d4c4a3e52f44c0a0"
+    },
+    {
+      "id": "synthetic-006",
+      "category": "basic_latin",
+      "reference": "The history of Central Asia.",
+      "font": "arial.ttf",
+      "image_sha256": "cead7ae7058d608528fee70f2e96c221a9f253b2f903bf0d8178c53155e73ae4"
+    },
+    {
+      "id": "synthetic-007",
+      "category": "basic_latin",
+      "reference": "Historia Tartarorum 1234.",
+      "font": "arial.ttf",
+      "image_sha256": "478cba7f0c59575a11d7fc9d2ea1c8650ee52d464c4ae5ef32e70d21a08166f3"
+    },
+    {
+      "id": "synthetic-008",
+      "category": "transcription",
+      "reference": "qaγan köke üge",
+      "font": "arial.ttf",
+      "image_sha256": "848c9d35920f5e5c851944db2a15652c204970caa1572884db67be753f03fd87"
+    },
+    {
+      "id": "synthetic-009",
+      "category": "transcription",
+      "reference": "š č Č ǰ ö ü Γ γ",
+      "font": "arial.ttf",
+      "image_sha256": "51dc45b699672aa76e351c71e53fe17a45fce3e7581156121bbefe0282a84cb4"
+    },
+    {
+      "id": "synthetic-010",
+      "category": "distinctions",
+      "reference": "I l 1 O 0 V v — ‘ ’",
+      "font": "arial.ttf",
+      "image_sha256": "98ba44ce6d5628d83708666202bc150937e836e5f3495117d3eb73ad62fd840d"
+    },
+    {
+      "id": "synthetic-011",
+      "category": "distinctions",
+      "reference": "ɣ Ɣ Г γ Γ",
+      "font": "arial.ttf",
+      "image_sha256": "7f1e347ec78f31a2036d34c555dcb6cf679efd8bb5d8928f260cadb4da9ce606"
+    },
+    {
+      "id": "synthetic-012",
+      "category": "blank",
+      "reference": "",
+      "font": null,
+      "image_sha256": "b07a5b169dcdd2b42f4dcd835064e346ed9278d3190c7a0953a44f4bcb4d2e59"
+    }
+  ],
+  "models": [
+    {
+      "label": "mongolian_latin_v0_2",
+      "checkpoint_relative_path": "work/releases/mongolian_latin_v0_2_max_shareable/crnn_ctc_checkpoint.pt",
+      "checkpoint_bytes": 10604409,
+      "checkpoint_sha256": "7d8e196b1273931b74ff44a26dc982ffe7693999ad325bfd1f7ba4aad1257dd8",
+      "checkpoint_unchanged": true,
+      "inventory_characters": 158,
+      "inventory_sha256": "6b847a2c29d5fa92e0e5e0daa4c0ee2246e94b1beb9b0897f1ed7c58e48cc228",
+      "coverage": {
+        "transcription": {
+          "present": [
+            "ö",
+            "ü",
+            "Č",
+            "č",
+            "š",
+            "ǰ",
+            "Γ",
+            "γ"
+          ],
+          "missing": []
+        },
+        "original_variants": {
+          "present": [],
+          "missing": [
+            "Ɣ",
+            "ɣ",
+            "Г",
+            "ᵞ",
+            "—",
+            "‘",
+            "’"
+          ]
+        },
+        "traditional_mongolian_example": {
+          "present": [],
+          "missing": [
+            "ᠣ",
+            "ᠩ",
+            "ᠭ",
+            "ᠮ",
+            "ᠯ"
+          ]
+        },
+        "cyrillic_example": {
+          "present": [],
+          "missing": [
+            "М",
+            "г",
+            "л",
+            "н",
+            "о"
+          ]
+        }
+      },
+      "load_seconds": 0.0242,
+      "inference_seconds_including_reload": 0.2429,
+      "runtime_pass": true,
+      "predictions": [
+        {
+          "id": "synthetic-000",
+          "prediction": "The history of Central Asia.",
+          "confidence": 0.9785442930810592,
+          "reference_characters": 28,
+          "nfc_edit_distance": 0
+        },
+        {
+          "id": "synthetic-001",
+          "prediction": "Historia Tartarorum 1234.",
+          "confidence": 0.9743822316328684,
+          "reference_characters": 25,
+          "nfc_edit_distance": 0
+        },
+        {
+          "id": "synthetic-002",
+          "prediction": "qaγan köke üge",
+          "confidence": 0.9516207961475148,
+          "reference_characters": 14,
+          "nfc_edit_distance": 0
+        },
+        {
+          "id": "synthetic-003",
+          "prediction": "š č Čǰ ö ü Γ γ",
+          "confidence": 0.8750152868383071,
+          "reference_characters": 15,
+          "nfc_edit_distance": 1
+        },
+        {
+          "id": "synthetic-004",
+          "prediction": "I1 1 O 0 V vFʼ ʼ",
+          "confidence": 0.8239476938139308,
+          "reference_characters": 19,
+          "nfc_edit_distance": 7
+        },
+        {
+          "id": "synthetic-005",
+          "prediction": "Y Y Γ γ Γ",
+          "confidence": 0.8972273577343334,
+          "reference_characters": 9,
+          "nfc_edit_distance": 3
+        },
+        {
+          "id": "synthetic-006",
+          "prediction": "The history of CentraI Asia.",
+          "confidence": 0.9417380873973553,
+          "reference_characters": 28,
+          "nfc_edit_distance": 1
+        },
+        {
+          "id": "synthetic-007",
+          "prediction": "Historia Tartarorum 1234.",
+          "confidence": 0.9694165712908694,
+          "reference_characters": 25,
+          "nfc_edit_distance": 0
+        },
+        {
+          "id": "synthetic-008",
+          "prediction": "qaγan kÖke üge",
+          "confidence": 0.9755709328149494,
+          "reference_characters": 14,
+          "nfc_edit_distance": 1
+        },
+        {
+          "id": "synthetic-009",
+          "prediction": "Š č Čǰ ö ü Γ ",
+          "confidence": 0.9149138927459717,
+          "reference_characters": 15,
+          "nfc_edit_distance": 3
+        },
+        {
+          "id": "synthetic-010",
+          "prediction": "I I 1 O 0 V V -\"ʼ",
+          "confidence": 0.884543719391028,
+          "reference_characters": 19,
+          "nfc_edit_distance": 7
+        },
+        {
+          "id": "synthetic-011",
+          "prediction": "Y Y Γ γ Γ",
+          "confidence": 0.9011319369077683,
+          "reference_characters": 9,
+          "nfc_edit_distance": 3
+        },
+        {
+          "id": "synthetic-012",
+          "prediction": "",
+          "confidence": null,
+          "reference_characters": 0,
+          "nfc_edit_distance": 0
+        }
+      ]
+    },
+    {
+      "label": "latin_scholarly_managed_best",
+      "checkpoint_relative_path": "work/hystoria_tartarorum/models/latin_scholarly_managed_finetune_from_epoch9/best_crnn_ctc_checkpoint.pt",
+      "checkpoint_bytes": 21484381,
+      "checkpoint_sha256": "32426823c20ca7eb6e832b354f499c299c80db45621df283cf24d6fc2bc583f4",
+      "checkpoint_unchanged": true,
+      "inventory_characters": 116,
+      "inventory_sha256": "d4d049ef25b00d0a81a6b52e84fbc58a5154259e6599f2641dc83b8c15b47350",
+      "coverage": {
+        "transcription": {
+          "present": [
+            "ö",
+            "ü"
+          ],
+          "missing": [
+            "Č",
+            "č",
+            "š",
+            "ǰ",
+            "Γ",
+            "γ"
+          ]
+        },
+        "original_variants": {
+          "present": [
+            "—"
+          ],
+          "missing": [
+            "Ɣ",
+            "ɣ",
+            "Г",
+            "ᵞ",
+            "‘",
+            "’"
+          ]
+        },
+        "traditional_mongolian_example": {
+          "present": [],
+          "missing": [
+            "ᠣ",
+            "ᠩ",
+            "ᠭ",
+            "ᠮ",
+            "ᠯ"
+          ]
+        },
+        "cyrillic_example": {
+          "present": [],
+          "missing": [
+            "М",
+            "г",
+            "л",
+            "н",
+            "о"
+          ]
+        }
+      },
+      "load_seconds": 0.0328,
+      "inference_seconds_including_reload": 0.2766,
+      "runtime_pass": true,
+      "predictions": [
+        {
+          "id": "synthetic-000",
+          "prediction": " Thelisoy otCenal Asia.",
+          "confidence": 0.8676062785089016,
+          "reference_characters": 28,
+          "nfc_edit_distance": 9
+        },
+        {
+          "id": "synthetic-001",
+          "prediction": " Hisoria Tartarorum 1234.",
+          "confidence": 0.8571754828095436,
+          "reference_characters": 25,
+          "nfc_edit_distance": 2
+        },
+        {
+          "id": "synthetic-002",
+          "prediction": " oan koke uge",
+          "confidence": 0.8291256129741669,
+          "reference_characters": 14,
+          "nfc_edit_distance": 5
+        },
+        {
+          "id": "synthetic-003",
+          "prediction": "6CUonL U",
+          "confidence": 0.4397851191461086,
+          "reference_characters": 15,
+          "nfc_edit_distance": 14
+        },
+        {
+          "id": "synthetic-004",
+          "prediction": " II I  o V v. .",
+          "confidence": 0.707618776957194,
+          "reference_characters": 19,
+          "nfc_edit_distance": 11
+        },
+        {
+          "id": "synthetic-005",
+          "prediction": " V V  YI",
+          "confidence": 0.7292523175477982,
+          "reference_characters": 9,
+          "nfc_edit_distance": 6
+        },
+        {
+          "id": "synthetic-006",
+          "prediction": " The hstoy ot Centa psla.",
+          "confidence": 0.8261105197257009,
+          "reference_characters": 28,
+          "nfc_edit_distance": 8
+        },
+        {
+          "id": "synthetic-007",
+          "prediction": " fstoia Tatarorum 1234.",
+          "confidence": 0.8717996088358072,
+          "reference_characters": 25,
+          "nfc_edit_distance": 4
+        },
+        {
+          "id": "synthetic-008",
+          "prediction": " oavan koke uqe",
+          "confidence": 0.7711712700479171,
+          "reference_characters": 14,
+          "nfc_edit_distance": 6
+        },
+        {
+          "id": "synthetic-009",
+          "prediction": " 9 6Io 0 V",
+          "confidence": 0.6313089999285612,
+          "reference_characters": 15,
+          "nfc_edit_distance": 11
+        },
+        {
+          "id": "synthetic-010",
+          "prediction": " I 1 O o  — ' '",
+          "confidence": 0.7262645926740434,
+          "reference_characters": 19,
+          "nfc_edit_distance": 8
+        },
+        {
+          "id": "synthetic-011",
+          "prediction": " V V  V ",
+          "confidence": 0.8210518576882102,
+          "reference_characters": 9,
+          "nfc_edit_distance": 6
+        },
+        {
+          "id": "synthetic-012",
+          "prediction": "d",
+          "confidence": 0.12226860597729683,
+          "reference_characters": 0,
+          "nfc_edit_distance": 1
+        }
+      ]
+    }
+  ]
+}
