@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-09-25
+**Last reconciled:** 2026-09-27
 
 ## Product Direction
 
@@ -25,6 +25,10 @@ Source-Grounded Intelligence
 ```
 
 The current reliability interlock changes sequencing, not this model.
+
+## Reliable book intake priority — 2026-09-27
+
+The Owner prioritizes reliable book intake within the active vNext remediation. See the [reliable book intake plan](docs/architecture/reliable-book-intake.md): repair concrete export failures, make admission-to-catalogue handoff durable, recover per-resource processing independently of browser sessions, then compare field quality and review effort against adjudicated sources. ZIP export is a compatibility workflow; the proposed normal intake path uses the existing candidate review and authority model. Changes to task persistence, page selection, temporary evidence storage or provider provenance require their own ADR/contracts and release gates. Whole-corpus OCR and paid/external inference are not implicitly authorized. Reader completion remains valid; unfinished corpus/report work remains in the same task.
 
 ## Active vNext remediation interlock
 

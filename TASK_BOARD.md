@@ -1,6 +1,10 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-09-25. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
+**Last reconciled:** 2026-09-27. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
+
+## Current focus — reliable book intake
+
+Continue the same active vNext task with the [reliable book intake plan](docs/architecture/reliable-book-intake.md). The source-error retry correction is locally verified (31 focused tests and Compute types); production Bridge is unchanged. Next establish durable upload-to-job handoff and resumable resource results, with an ADR and migration/rollback plan before implementation. Field-quality comparison follows an independent truth set. Do not introduce paid API calls or source disclosure while their scope remains unconfirmed. The reader milestone below is completed history, not a competing next task.
 
 ## Reader usability hotfix — deployed
 

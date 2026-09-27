@@ -468,6 +468,15 @@ export async function createCatalogEvidencePackage(options: {
     }
   } catch (error: unknown) {
     if (error instanceof CatalogExportError) throw error;
+    // The PDF inspector wraps range transport failures in its own typed
+    // error. Preserve that distinction so the resilient exporter can retry
+    // a temporary source outage instead of reporting a broken PDF.
+    if (error instanceof PdfTextInspectionError) {
+      if (error.code === "source_unavailable") throw new CatalogExportError("source_unavailable");
+      if (error.code === "too_large" || error.code === "limit_exceeded") {
+        throw new CatalogExportError("limit_exceeded");
+      }
+    }
     throw new CatalogExportError("inspection_failed");
   }
   const pageCounts = new Map(evidence.map((entry) => [entry.resourceId, entry.pageCount]));

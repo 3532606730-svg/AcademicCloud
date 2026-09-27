@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-09-25. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
+**Last reconciled:** 2026-09-27. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
 ## Active work and authority
 
@@ -9,6 +9,12 @@
 The charter authorizes implementation beyond R01–R16, visual refinement, optimization, testing, integration/main publication, exact deployment and necessary production/Compute operations. Zero added infrastructure cost and zero billable GitHub usage remain gates. Preserve original bytes, source associations, stable identities, privacy and human authority.
 
 Historical September24 continuation recovered the active vNext tree instead of replaying the obsolete original checkout. The Owner requests `medium` effort for all subagents and a dedicated validation agent; root owns implementation, reconciliation and release preparation. The publication cadence remains one combined release after the local integrated batch.
+
+## Book intake reliability — current priority, local correction
+
+The Owner requests a thorough solution for reliable book intake. The Catalog exporter now preserves typed PDF source failures as source_unavailable, enabling the existing one-retry bound; size/limit failures stay nonretryable. Focused exporter/resilience/Bridge tests31/31, Compute typecheck and independent diff review PASS. This is a local candidate, not a deployed fix.
+
+The [reliable book intake plan](docs/architecture/reliable-book-intake.md) separates durable upload-to-job handoff, recoverable per-resource processing, evidence coverage and independently adjudicated field quality. Those architecture changes are proposed, not implemented. External AI API meaning, cost and source-disclosure scope remain unconfirmed; preserve zero-added-cost Local Compute. Recorded production identities below are September25 observations and were not re-probed in this correction.
 
 ## Reader usability hotfix — deployed
 

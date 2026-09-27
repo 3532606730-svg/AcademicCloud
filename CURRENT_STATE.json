@@ -1,5 +1,5 @@
 {
-  "lastReconciled": "2026-09-25",
+  "lastReconciled": "2026-09-27",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
@@ -334,5 +334,20 @@
     "docs/decisions/ADR-045-owned-reader-and-independent-research-workspace.md"
   ],
   "phase": "PHASE_B_EXECUTION",
-  "publicationCadence": "Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance."
+  "publicationCadence": "Owner2026-09-25: finish the consolidated non-OCR reader/workspace scope and deploy after one Codex in-app-browser smoke. No new prelaunch suites, migration backup, separate artifact integrity check or rollback preparation are requested for this release; preserve previous evidence. The single IAB smoke passed against the local built candidate and synthetic HTTP/Auth/SQLite fixture: real PDF paint, page1→7, preview footer add, page7 note/save, search16/results jump, two-document tabs with restored page7, full reload persistence, and1280 screenshot review. OSS rule save and both-origin live CORS contract passed. This is not yet production acceptance.",
+  "bookIntakeReliability": {
+    "requestedAt": "2026-09-27",
+    "plan": "docs/architecture/reliable-book-intake.md",
+    "sourceBaseline": "d0e2c79",
+    "localCorrection": "PDF source/size failure classification at Catalog export boundary",
+    "verification": {
+      "focusedTestsPassed": 31,
+      "focusedTestsFailed": 0,
+      "computeTypecheck": "PASS",
+      "independentDiffReview": "PASS"
+    },
+    "deployed": false,
+    "architectureStatus": "proposed; durable admission intent, resource recovery and adjudicated quality remain open",
+    "externalApiAuthorized": false
+  }
 }

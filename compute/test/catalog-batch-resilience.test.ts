@@ -182,3 +182,82 @@ test("caller cancellation is global and is never converted into a partial-succes
     (error: unknown) => error instanceof CatalogExportError && error.code === "source_unavailable",
   );
 });
+
+test("a transient source error from the PDF inspector retries only the affected resource", async () => {
+  const attempts = new Map<number, number>();
+  const result = await createResilientCatalogEvidencePackage({
+    request: requestDocument(),
+    createInspector: () => ({
+      inspect: async () => { throw new Error("whole object path forbidden"); },
+      inspectRange: async (source) => {
+        const attempt = (attempts.get(source.length) ?? 0) + 1;
+        attempts.set(source.length, attempt);
+        if (source.length === 101 && attempt === 1) {
+          throw new PdfTextInspectionError("source_unavailable", "page_text");
+        }
+        return inspection();
+      },
+    }),
+    endpointPolicy: ENDPOINT_POLICY,
+  });
+  assert.deepEqual([...attempts], [[100, 1], [101, 2], [102, 1]]);
+  assert.deepEqual(result.failedResources, []);
+  assert.ok(result.evidence.every((entry) => entry.inspection.status === "ready"));
+});
+
+for (const [failure, expectedCode, expectedAttempts] of [
+  ["source_unavailable", "source_unavailable", 2],
+  ["too_large", "limit_exceeded", 1],
+  ["limit_exceeded", "limit_exceeded", 1],
+  ["invalid_pdf", "inspection_failed", 1],
+  ["encrypted_pdf", "inspection_failed", 1],
+  ["ocr_engine_failure", "inspection_failed", 1],
+] as const) {
+  test(`PDF inspector ${failure} has bounded retries and preserves later resources`, async () => {
+    let attempts = 0;
+    const result = await createResilientCatalogEvidencePackage({
+      request: requestDocument([100, 101]),
+      createInspector: () => ({
+        inspect: async () => { throw new Error("whole object path forbidden"); },
+        inspectRange: async (source) => {
+          if (source.length === 100) {
+            attempts += 1;
+            throw new PdfTextInspectionError(failure, "page_text");
+          }
+          return inspection();
+        },
+      }),
+      endpointPolicy: ENDPOINT_POLICY,
+    });
+    assert.equal(attempts, expectedAttempts);
+    assert.deepEqual(result.failedResources, [{ resourceId: "resource-1", code: expectedCode }]);
+    assert.deepEqual(result.evidence[0]?.pages, []);
+    assert.equal(result.evidence[1]?.inspection.status, "ready");
+    assert.equal(result.manifest.resources[1]?.pageCount, 1);
+  });
+}
+
+test("cancellation during PDF inspection cannot start a source retry or return partial success", async () => {
+  const controller = new AbortController();
+  let attempts = 0;
+  await assert.rejects(
+    () => createResilientCatalogEvidencePackage({
+      request: requestDocument([100, 101, 102]),
+      createInspector: () => ({
+        inspect: async () => { throw new Error("whole object path forbidden"); },
+        inspectRange: async (source) => {
+          attempts += 1;
+          if (source.length === 101) {
+            controller.abort();
+            throw new PdfTextInspectionError("source_unavailable", "page_text");
+          }
+          return inspection();
+        },
+      }),
+      endpointPolicy: ENDPOINT_POLICY,
+      signal: controller.signal,
+    }),
+    (error: unknown) => error instanceof CatalogExportError && error.code === "source_unavailable",
+  );
+  assert.equal(attempts, 2, "completed first resource is followed only by the cancelled second resource");
+});
