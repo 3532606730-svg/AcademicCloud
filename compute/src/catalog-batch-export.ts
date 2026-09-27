@@ -33,6 +33,8 @@ const RANGE_TIMEOUT_MILLISECONDS = 45_000;
 const SOURCE_RENEWAL_MARGIN_MILLISECONDS = 60_000;
 const STAGED_FALLBACK_CHUNK_BYTES = 1024 * 1024;
 const STAGED_FALLBACK_TAIL_BYTES = 64 * 1024;
+/** Interactive batch exports must not turn a range timeout into a full-file download. */
+export const CATALOG_BATCH_STAGED_FALLBACK_MAX_BYTES = 128 * 1024 * 1024;
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 const FALLBACK_TIMEOUT_STAGES = new Set(["document_load", "page_load", "page_text", "metadata", "ocr_page_load"]);
 const SUPPORTED_CONTENT_DIGESTS = new Set(["md5", "sha1", "sha256", "sha512"]);
@@ -233,7 +235,19 @@ class CatalogHttpRangeSource implements PdfRangeSource {
       if (response.status !== 206) throw new CatalogExportError("source_unavailable");
       const contentRange = response.headers.get("content-range");
       if (contentRange !== `bytes ${begin}-${end - 1}/${this.length}`) throw new CatalogExportError("source_unavailable");
-      const bytes = new Uint8Array(await response.arrayBuffer());
+      let bytes: Uint8Array;
+      try {
+        // A successful fetch can still fail while the signed OSS body is being
+        // read. Treat that as a transient source failure and retry the same
+        // bounded range once instead of handing PDF.js a permanently missing
+        // chunk.
+        bytes = new Uint8Array(await response.arrayBuffer());
+      } catch {
+        if (signal?.aborted) throw new CatalogExportError("source_unavailable");
+        this.#authorization = undefined;
+        if (attempt === 0) continue;
+        throw new CatalogExportError("source_unavailable");
+      }
       if (bytes.byteLength !== end - begin) throw new CatalogExportError("source_unavailable");
       return bytes;
     }
@@ -297,8 +311,12 @@ async function inspectWithVerifiedStagedFile(options: {
   inspector: BoundedPdfTextSource;
   limits: Readonly<SuggestionLimits>;
   signal?: AbortSignal;
+  maximumBytes?: number;
 }): Promise<PdfTextInspection> {
   if (!options.inspector.inspectFile) throw new CatalogExportError("inspection_failed");
+  if (options.maximumBytes !== undefined && options.source.length > options.maximumBytes) {
+    throw new CatalogExportError("limit_exceeded");
+  }
   const policy = stagedPdfFallbackPolicy(options.source.length, options.limits);
   if (!options.checksumAlgorithm || !options.checksum || !SUPPORTED_CONTENT_DIGESTS.has(options.checksumAlgorithm)) {
     throw new CatalogExportError("identity_mismatch");
@@ -389,7 +407,7 @@ function zipEntries(entries: ReadonlyArray<{ path: string; bytes: Uint8Array }>)
     uncompressedTotal += entry.bytes.byteLength;
     if (uncompressedTotal > MAX_ZIP_UNCOMPRESSED_BYTES) throw new CatalogExportError("limit_exceeded");
     const path = Buffer.from(entry.path, "utf8");
-    const compressed = deflateRawSync(entry.bytes, { level: 9 });
+    const compressed = deflateRawSync(entry.bytes, { level: 1 });
     const checksum = crc32(entry.bytes);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0x0800, 6);
@@ -413,14 +431,14 @@ function zipEntries(entries: ReadonlyArray<{ path: string; bytes: Uint8Array }>)
   return result;
 }
 
-export async function createCatalogEvidencePackage(options: {
+export async function extractCatalogEvidence(options: {
   request: CatalogExportRequest;
   inspector: BoundedPdfTextSource;
   endpointPolicy?: CatalogEndpointPolicy;
   signal?: AbortSignal;
+  /** Bound the expensive whole-file fallback for interactive batch exports. */
+  stagedFallbackMaxBytes?: number;
 }): Promise<{
-  filename: string;
-  bytes: Uint8Array;
   manifest: CatalogBatchManifest;
   evidence: CatalogResourceEvidence[];
   fallbackResourceIds: string[];
@@ -446,6 +464,7 @@ export async function createCatalogEvidencePackage(options: {
           inspector: options.inspector,
           limits: SUGGESTION_LIMITS,
           ...(options.signal === undefined ? {} : { signal: options.signal }),
+          ...(options.stagedFallbackMaxBytes === undefined ? {} : { maximumBytes: options.stagedFallbackMaxBytes }),
         });
         fallbackResourceIds.push(resource.resourceId);
       }
@@ -484,6 +503,13 @@ export async function createCatalogEvidencePackage(options: {
     ...options.request.manifest,
     resources: options.request.manifest.resources.map((resource) => ({ ...resource, pageCount: pageCounts.get(resource.resourceId)! })),
   };
+  return { manifest, evidence, fallbackResourceIds };
+}
+
+export async function createCatalogEvidencePackage(
+  options: Parameters<typeof extractCatalogEvidence>[0],
+): Promise<Awaited<ReturnType<typeof extractCatalogEvidence>> & { filename: string; bytes: Uint8Array }> {
+  const { manifest, evidence, fallbackResourceIds } = await extractCatalogEvidence(options);
   const encoder = new TextEncoder();
   const entries = [
     { path: "manifest.json", bytes: encoder.encode(`${JSON.stringify(manifest, null, 2)}\n`) },

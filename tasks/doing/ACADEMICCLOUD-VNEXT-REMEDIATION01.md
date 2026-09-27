@@ -150,6 +150,8 @@ The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
 
+2026-09-27 catalog export performance correction: `extractCatalogEvidence` removes redundant per-resource ZIP assembly from the resilient review-package path; signed range body read failures retry the same bounded request once; final ZIP compression uses level 1. Focused Compute catalog exporter/resilience/Bridge tests 33/33 pass and Compute typecheck passes. This is a local candidate only; the unified deployment gate remains open.
+
 2026-09-27 OCR handoff integration: incoming commit parent is exact7bb7959; its four new paths cherry-picked without conflicts. Probe SHA256 matches the evidence JSON; both models contain13 synthetic predictions with accuracy/production acceptance false. Static script syntax, local Markdown references and diff whitespace checked; independent read-only integration review. Existing model/product suites were not rerun.
 
 2026-09-27: dedicated verifier ran catalog-batch-export, catalog-batch-resilience, catalog-bridge and catalog-bridge-resilience:31/31 pass, zero failures/skips. Compute typecheck and root diff-check pass. Added tests use PdfTextInspectionError, matching the actual inspector boundary; cover transient recovery, exhausted two-attempt bound, permanent invalid/encrypted/OCR/size failures, unaffected later resources and cancellation after one resource succeeded. Independent diff review found no material issue. No broad suite/build or deployed acceptance is claimed.

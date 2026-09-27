@@ -11,6 +11,7 @@ import { canonicalCatalogJson, type CatalogExportRequest } from "@academiccloud/
 import {
   CatalogExportError,
   createCatalogEndpointPolicy,
+  extractCatalogEvidence,
   createCatalogEvidencePackage,
   parseCatalogExportRequest,
   stagedPdfFallbackPolicy,
@@ -188,6 +189,75 @@ test("bounded exporter creates manifest plus native/OCR evidence only, without P
   assert.equal(Buffer.from(output.bytes).includes(Buffer.from("%PDF")), false);
   assert.equal([...files.keys()].some((path) => /\.(?:pdf|png|jpe?g)$/iu.test(path)), false);
   assert.deepEqual(output.fallbackResourceIds, []);
+});
+
+test("evidence-only extraction skips per-resource ZIP assembly", async () => {
+  const parsed = parseCatalogExportRequest(request(), TEST_ENDPOINT_POLICY);
+  const output = await extractCatalogEvidence({ request: parsed, inspector: new FixtureInspector(), endpointPolicy: TEST_ENDPOINT_POLICY });
+  assert.equal(output.manifest.resources[0]?.pageCount, 120);
+  assert.equal(output.evidence.length, 1);
+  assert.deepEqual(output.fallbackResourceIds, []);
+});
+
+test("interrupted signed range body retries the same bounded request", async () => {
+  const previous = globalThis.fetch;
+  let rangeCalls = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    assert.equal(init?.redirect, "error");
+    if (url.includes("/api/catalog-batches/")) {
+      return Response.json({ source: {
+        method: "GET", url: "https://files.ajtlab.top/catalog-fixture.pdf?sig=test",
+        expiresAt: "2099-01-01T00:00:00.000Z", sizeBytes: 100, mediaType: "application/pdf",
+      } });
+    }
+    rangeCalls += 1;
+    const headers = { "content-range": "bytes 0-4/100" };
+    if (rangeCalls === 1) {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) { controller.enqueue(new Uint8Array([1, 2])); controller.error(new Error("interrupted")); },
+      });
+      return new Response(body, { status: 206, headers });
+    }
+    return new Response(new Uint8Array([1, 2, 3, 4, 5]), { status: 206, headers });
+  };
+  try {
+    const parsed = parseCatalogExportRequest(request(), TEST_ENDPOINT_POLICY);
+    await createCatalogEvidencePackage({ request: parsed, inspector: new ReadingFixtureInspector(), endpointPolicy: TEST_ENDPOINT_POLICY });
+    assert.equal(rangeCalls, 2);
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+
+test("wrong Content-Range is terminal and never retries the bounded request", async () => {
+  const previous = globalThis.fetch;
+  let rangeCalls = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    assert.equal(init?.redirect, "error");
+    if (url.includes("/api/catalog-batches/")) {
+      return Response.json({ source: {
+        method: "GET", url: "https://files.ajtlab.top/catalog-fixture.pdf?sig=test",
+        expiresAt: "2099-01-01T00:00:00.000Z", sizeBytes: 100, mediaType: "application/pdf",
+      } });
+    }
+    rangeCalls += 1;
+    return new Response(new Uint8Array([1, 2, 3, 4, 5]), {
+      status: 206,
+      headers: { "content-range": "bytes 1-5/100" },
+    });
+  };
+  try {
+    const parsed = parseCatalogExportRequest(request(), TEST_ENDPOINT_POLICY);
+    await assert.rejects(
+      () => createCatalogEvidencePackage({ request: parsed, inspector: new ReadingFixtureInspector(), endpointPolicy: TEST_ENDPOINT_POLICY }),
+      (error: unknown) => error instanceof CatalogExportError && error.code === "source_unavailable",
+    );
+    assert.equal(rangeCalls, 1);
+  } finally {
+    globalThis.fetch = previous;
+  }
 });
 
 test("staged fallback keeps the diagnosed 922 MB resource inside the unchanged one-GiB envelope", () => {

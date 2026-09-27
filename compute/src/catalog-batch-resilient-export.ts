@@ -13,7 +13,8 @@ import {
 
 import {
   CatalogExportError,
-  createCatalogEvidencePackage,
+  CATALOG_BATCH_STAGED_FALLBACK_MAX_BYTES,
+  extractCatalogEvidence,
   type CatalogEndpointPolicy,
 } from "./catalog-batch-export.js";
 import type { BoundedPdfTextSource } from "./suggestion.js";
@@ -104,11 +105,12 @@ async function inspectOneResource(options: {
           ...options.request,
           manifest: { ...options.request.manifest, resources: [options.resource] },
         };
-        const result = await createCatalogEvidencePackage({
+        const result = await extractCatalogEvidence({
           request: singleRequest,
           inspector: options.inspector,
           endpointPolicy: options.endpointPolicy,
           signal: controller.signal,
+          stagedFallbackMaxBytes: CATALOG_BATCH_STAGED_FALLBACK_MAX_BYTES,
         });
         const evidence = result.evidence[0];
         const manifestResource = result.manifest.resources[0];
@@ -180,7 +182,7 @@ function zipEntries(entries: ReadonlyArray<{ path: string; bytes: Uint8Array }>)
     uncompressedTotal += entry.bytes.byteLength;
     if (uncompressedTotal > MAX_ZIP_UNCOMPRESSED_BYTES) throw new CatalogExportError("limit_exceeded");
     const path = Buffer.from(entry.path, "utf8");
-    const compressed = deflateRawSync(entry.bytes, { level: 9 });
+    const compressed = deflateRawSync(entry.bytes, { level: 1 });
     const checksum = crc32(entry.bytes);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0x0800, 6);

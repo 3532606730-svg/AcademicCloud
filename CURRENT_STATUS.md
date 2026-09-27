@@ -14,6 +14,8 @@ Historical September24 continuation recovered the active vNext tree instead of r
 
 The Owner requests a thorough solution for reliable book intake. The Catalog exporter now preserves typed PDF source failures as source_unavailable, enabling the existing one-retry bound; size/limit failures stay nonretryable. Focused exporter/resilience/Bridge tests31/31, Compute typecheck and independent diff review PASS. This is a local candidate, not a deployed fix.
 
+The follow-up export-performance correction is also local and not deployed. Evidence extraction is now separated from per-resource ZIP assembly, so the resilient batch path assembles one ZIP only after all resource evidence is collected. Signed range bodies that fail after a 206 response retry the same bounded range once. Final evidence ZIP compression uses the fast level-1 setting. The focused exporter/resilience/Bridge set is 33/33 with Compute typecheck PASS. Large staged-file fallback remains bounded by the caller's explicit maximum; no OCR or source-disclosure policy changed.
+
 The [reliable book intake plan](docs/architecture/reliable-book-intake.md) separates durable upload-to-job handoff, recoverable per-resource processing, evidence coverage and independently adjudicated field quality. Those architecture changes are proposed, not implemented. External AI API meaning, cost and source-disclosure scope remain unconfirmed; preserve zero-added-cost Local Compute. Recorded production identities below are September25 observations and were not re-probed in this correction.
 
 ## OCR planning handoff — integrated, execution still deferred
