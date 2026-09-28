@@ -506,6 +506,8 @@
       "automaticRetries": false,
       "actualOcrCalls": 0,
       "actualSourceDisclosure": false,
+      "localPreparation": "Two-engine offline preflight, 13 network-blocked mocks and independent Astra ultra review PASS; 21 frozen files and4 source PDFs hash-verified",
+      "trialScriptSha256": "dece241682f48afde985e8856c7745d43b3c7fbedf9faf64aff19e474a769ff3",
       "prerequisites": "Verify actual free balance/billing; resolve service agreements, credential grant and selected source disclosure before dispatch"
     },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
