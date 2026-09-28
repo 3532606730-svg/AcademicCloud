@@ -690,6 +690,39 @@ describe("ApiClient", () => {
     expect(fetcher.mock.calls[5]?.[0]).toBe("/api/libraries/library%20%2F%20one/holdings/file%20%2F%20one/metadata/suggestions/run-1/accept");
   });
 
+  it("uses bounded recovery reads and preserves the exact reviewed snapshot in one POST", async () => {
+    const items = [{ fileId: "file / one", sourceVersion: "source-version", status: "missing", job: null }];
+    const results = [{ fileId: "file / one", status: "queued", job: null }];
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ results }), { status: 202 }));
+    const api = new ApiClient({ fetcher });
+    const controller = new AbortController();
+    await expect(api.getLibraryMetadataRecovery("library / one", ["file / one"], controller.signal)).resolves.toEqual(items);
+    const snapshot = [{ fileId: "file / one", sourceVersion: "source-version", expectedJobId: null, expectedAttempts: null }];
+    await expect(api.recoverLibraryMetadata("library / one", snapshot)).resolves.toEqual(results);
+    expect(fetcher.mock.calls[0]).toEqual([
+      "/api/libraries/library%20%2F%20one/metadata/suggestion-recovery?fileIds=file+%2F+one",
+      expect.objectContaining({ signal: controller.signal }),
+    ]);
+    expect(fetcher.mock.calls[1]).toEqual([
+      "/api/libraries/library%20%2F%20one/metadata/suggestion-recovery",
+      expect.objectContaining({ method: "POST", credentials: "same-origin", body: JSON.stringify({ items: snapshot }) }),
+    ]);
+  });
+
+  it("rejects oversized, empty or duplicate recovery batches without implicit chunking or requests", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    const api = new ApiClient({ fetcher });
+    for (const ids of [[], ["duplicate", "duplicate"], Array.from({ length: 101 }, (_, index) => `file-${index}`)]) {
+      await expect(api.getLibraryMetadataRecovery("library", ids)).rejects.toMatchObject({ code: "invalid_request" });
+      await expect(api.recoverLibraryMetadata("library", ids.map((fileId) => ({
+        fileId, sourceVersion: "source-version", expectedJobId: null, expectedAttempts: null,
+      })))).rejects.toMatchObject({ code: "invalid_request" });
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("uses scoped Library recycle/list/restore contracts with opaque versions", async () => {
     const recycled = {
       version: "r".repeat(43),

@@ -1003,8 +1003,9 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
     padding: 0.35rem 0.25rem;
   }
 
-  /* Workspace must clear the fixed bottom navigation. */
-  .workspace { grid-column: 1; grid-row: 2; padding: 1.5rem 1rem calc(5.5rem + env(safe-area-inset-bottom)); }
+  /* Keep content above both fixed surfaces, including their actual wrapped
+     heights. Navigation measurement already includes the safe-area inset. */
+  .workspace { grid-column: 1; grid-row: 2; padding: 1.5rem 1rem calc(var(--mobile-navigation-height, calc(5.5rem + env(safe-area-inset-bottom))) + var(--mobile-activity-height, 0px) + 1.5rem); }
 
   .workspace-head { flex-direction: column; align-items: stretch; gap: 0.9rem; }
   .workspace-title { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.55rem; }
@@ -1070,7 +1071,7 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
      activities stack vertically so progress and controls stay touch-safe. */
   .activity-center {
     right: 0.75rem;
-    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    bottom: calc(var(--mobile-navigation-height, calc(5.5rem + env(safe-area-inset-bottom))) + 0.75rem);
     left: 0.75rem;
     width: auto;
     max-height: min(55vh, 28rem);
@@ -1361,6 +1362,9 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
 .batch-naming-item { border: 1px solid var(--line); border-radius: .55rem; padding: .8rem; }
 .batch-naming-select { display: flex; gap: .65rem; align-items: start; }
 .batch-naming-main { display: grid; gap: .4rem; min-width: 0; overflow-wrap: anywhere; }
+.metadata-recovery-modal { max-width: 46rem; }
+.metadata-recovery-list { display: grid; gap: .65rem; list-style: none; padding: 0; margin: 1rem 0; }
+.metadata-recovery-list .batch-naming-main > span { color: var(--muted); font-size: .9rem; }
 .batch-catalog-modal section { border-color: var(--line); }
 .batch-catalog-resource-list { border-color: var(--line); border-radius: .5rem; }
 .batch-catalog-resource-list label { min-height: 2rem; overflow-wrap: anywhere; }

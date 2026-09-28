@@ -342,6 +342,39 @@ export class SqliteSuggestionRepository implements SuggestionRepository {
     }));
   }
 
+  findFilesWithReviewEvidenceMany(ownerDomainId: string, libraryId: string, fileIds: string[]): string[] {
+    if (fileIds.length === 0) return [];
+    // Recovery must preserve evidence across the complete history, even when a
+    // newer filename-only run is now the latest state shown in the Library.
+    return this.database.prepare<[string, string, string], { file_id: string }>(`
+      SELECT DISTINCT runs.file_id
+      FROM scholarly_metadata_suggestion_runs AS runs
+      WHERE runs.owner_domain_id = ? AND runs.library_id = ?
+        AND runs.file_id IN (SELECT value FROM json_each(?))
+        AND (runs.status = 'accepted' OR runs.page_count IS NOT NULL
+          OR json_array_length(runs.page_indices) > 0 OR runs.window_complete = 1
+          OR EXISTS (
+            SELECT 1 FROM scholarly_metadata_suggestion_candidates AS candidates
+            WHERE candidates.owner_domain_id = runs.owner_domain_id AND candidates.run_id = runs.id
+              AND candidates.source_type <> 'filename' AND candidates.evidence_origin <> 'filename'
+          ) OR EXISTS (
+            SELECT 1 FROM scholarly_bibliographic_ai_runs AS ai_run
+            WHERE ai_run.owner_domain_id = runs.owner_domain_id AND ai_run.suggestion_run_id = runs.id
+              AND ai_run.status IN ('auto_apply', 'ambiguous')
+          ) OR EXISTS (
+            SELECT 1 FROM scholarly_bibliographic_field_authority AS authority
+            WHERE authority.owner_domain_id = runs.owner_domain_id
+              AND authority.record_id = runs.record_id
+              AND authority.authority_source = 'ai' AND authority.source_run_id = runs.id
+          ) OR EXISTS (
+            SELECT 1 FROM scholarly_bibliographic_collection_authority AS authority
+            WHERE authority.owner_domain_id = runs.owner_domain_id
+              AND authority.record_id = runs.record_id
+              AND authority.authority_source = 'ai' AND authority.source_run_id = runs.id
+          ))
+    `).all(ownerDomainId, libraryId, JSON.stringify(fileIds)).map((row) => row.file_id);
+  }
+
   listRuns(ownerDomainId: string, libraryId: string, fileId: string, limit: number): SuggestionRunRecord[] {
     const boundedLimit = Math.max(1, Math.min(Math.floor(limit), 100));
     return this.#listRuns.all({ ownerDomainId, libraryId, fileId, limit: boundedLimit }).map((row) => this.#toRun(row));

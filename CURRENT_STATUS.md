@@ -4,9 +4,13 @@
 
 ## Latest checkpoint — September28
 
+Current work after27a2b0d: ADR047 selected cataloguing recovery is locally verified, protecting active/successful jobs, human data and all historical review evidence. Backend59/59; frontend51 component/API/i18n plus final27 App/mobile scoped tests (earlier5 App overlap); types/build and independent review pass. Real local HTTP/Auth/SQLite browser checks at1440/390 pass preview, single submission and reload recovery. Mobile Activity no longer covers the last selection row. No deployment, migration or real-corpus mutation; Git checkpoint follows.
+
+Owner's latest next step: finish this recovery checkpoint, then assess and progress bounded OCR integration for book evidence and `我的研究` current-page recognition. Existing OCR remains deferred in code; the earlier planning-only stop no longer blocks this bounded next step. Source/page identity, private results, zero-cost Local Compute and separate deployment/quality gates remain mandatory; whole-document OCR and indexing/RAG are not included.
+
 Implementation checkpoint948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7 is published to codex/vnext-remediation-20260906, including the earlier UXcad1ecf and exportcae2899 commits. Fresh fetch verified clean active vNext HEAD equals that remote checkpoint. This documentation reconciliation follows on the same branch. Main remainsd0e2c79; production remains the recorded57b8723/schema39. No migration, deployment or real-corpus processing occurred in this continuation.
 
-Current verification:64 backend +37 Compute +30 frontend Workspace tests passed in separate targeted runs (131 combined, not a full suite); backend/Compute types and independent reviews pass. New admission jobs cannot be lost between admission commit and notification; optional enrichment/provider failures stay isolated. Large-file export retains1GiB support. Historical orphans, per-resource recovery, field quality, remaining UX/operations findings and normal-site combined-release acceptance remain open.
+Prior admission/export verification:64 backend +37 Compute +30 frontend Workspace tests passed in separate targeted runs (131 combined, not a full suite); backend/Compute types and independent reviews pass. New admission jobs cannot be lost between admission commit and notification; optional enrichment/provider failures stay isolated. Large-file export retains1GiB support. ADR047 now provides explicit selected orphan recovery locally; persistent ZIP/page recovery, field quality, remaining UX/operations findings and normal-site combined-release acceptance remain open.
 
 ## Active work and authority
 
@@ -26,7 +30,7 @@ The [reliable book intake plan](docs/architecture/reliable-book-intake.md) separ
 
 ## UX integration — verified local candidate
 
-UX commit25df223 was integrated as cad1ecf. Citation responses cannot overwrite changed parameters; metadata drafts are guarded; AI-state reads batch at100 IDs; active filters stay visible; mobile recent-reading and paginated progress are retained. Prior focused results were95 + App160 + Workspace29 + one isolated regression (285 unique tests across runs). September28 complete Workspace30/30 now closes the combined-run gap; frontend sources are unchanged since cad1ecf. Two TypeScript configurations, Vite build and prior synthetic desktop/mobile browser evidence pass. These changes are not yet deployed. Evidence: docs/evidence/live-ux-review-20260927.md and ignored output/vnext/workspace-complete-20260928.log.
+UX commit25df223 was integrated as cad1ecf. Citation responses cannot overwrite changed parameters; metadata drafts are guarded; AI-state reads batch at100 IDs; active filters stay visible; mobile recent-reading and paginated progress are retained. Prior focused results were95 + App160 + Workspace29 + one isolated regression (285 unique tests across runs). September28 complete Workspace30/30 closes the earlier combined-run gap. The newer recovery UI/mobile clearance changes and checks are recorded above. These changes are not yet deployed. Earlier evidence: docs/evidence/live-ux-review-20260927.md and ignored output/vnext/workspace-complete-20260928.log.
 
 ## OCR planning handoff — integrated, execution still deferred
 

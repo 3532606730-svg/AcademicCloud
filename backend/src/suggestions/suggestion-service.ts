@@ -51,6 +51,8 @@ import {
   type SuggestionRunSummary,
 } from "./suggestion.js";
 import type { SuggestionRunStateEvidence } from "./repositories.js";
+import { findCatalogInternalSourceExclusion } from "../catalog-batch/internal-resource-exclusions.js";
+import { requiresRecoverySourceReplacement } from "./recovery-source-exclusions.js";
 
 export type SuggestionErrorCode =
   | "not_found"
@@ -141,6 +143,26 @@ export type MetadataCataloguingState =
 export interface MetadataCataloguingSummary {
   fileId: string;
   state: MetadataCataloguingState;
+  job: DerivedJobSummary | null;
+}
+
+export type MetadataRecoveryStatus = "missing" | "retryable" | "active" | "succeeded"
+  | "review_available" | "source_changed" | "not_retryable" | "unsupported" | "requester_changed" | "excluded";
+export interface MetadataRecoveryPreviewItem {
+  fileId: string;
+  sourceVersion: string;
+  job: DerivedJobSummary | null;
+  status: MetadataRecoveryStatus;
+}
+export interface MetadataRecoveryInput {
+  fileId: string;
+  sourceVersion: string;
+  expectedJobId: string | null;
+  expectedAttempts: number | null;
+}
+export interface MetadataRecoveryResultItem {
+  fileId: string;
+  status: Exclude<MetadataRecoveryStatus, "missing" | "retryable"> | "queued" | "retried" | "stale";
   job: DerivedJobSummary | null;
 }
 
@@ -1013,6 +1035,89 @@ export class SuggestionService {
         throw new SuggestionError("not_found");
       }
       return publicDerivedJob(job);
+    });
+  }
+
+  #recoverySnapshots(repositories: RepositorySet, actor: AuthenticatedAccount, libraryId: string, fileIds: string[]) {
+    if (fileIds.length < 1 || fileIds.length > METADATA_CATALOGUING_BATCH_MAX_ITEMS
+      || fileIds.some((id) => typeof id !== "string" || !SAFE_FILE_ID.test(id)) || new Set(fileIds).size !== fileIds.length) {
+      throw new SuggestionError("invalid_input");
+    }
+    // Authorize the complete selection before considering outcomes or writes.
+    const contexts = fileIds.map((fileId) => {
+      const context = resolveHolding(actor, libraryId, fileId, repositories);
+      if (context.membership.role !== "manager") throw new SuggestionError("not_found");
+      return context;
+    });
+    const jobs = new Map(repositories.derivedJobs.findLatestMany("metadata_suggestion", libraryId, fileIds)
+      .map((job) => [job.resourceId, job]));
+    const reviewEvidenceFiles = new Set(repositories.suggestions.findFilesWithReviewEvidenceMany(
+      contexts[0]!.library.ownerDomainId, libraryId, fileIds,
+    ));
+    return contexts.map((context) => {
+      const fileId = context.file.id;
+      const sourceVersion = sourceFingerprint(context.file).value;
+      const job = jobs.get(fileId) ?? null;
+      let status: MetadataRecoveryStatus;
+      if (context.file.mediaType?.toLowerCase() !== PDF_MEDIA_TYPE) status = "unsupported";
+      else if (requiresRecoverySourceReplacement(context.file)
+        || findCatalogInternalSourceExclusion(fileId, { sourceFingerprint: sourceVersion })) status = "excluded";
+      else if (job?.state === "queued" || job?.state === "running") status = "active";
+      else if (job?.state === "succeeded") status = "succeeded";
+      else if (repositories.derivedJobs.hasSucceeded("metadata_suggestion", libraryId, fileId)
+        || repositories.metadata.findMetadata(context.library.ownerDomainId, context.holding.recordId)
+        || repositories.bibliography.findProfile(context.library.ownerDomainId, context.holding.recordId)
+        || repositories.bibliography.listFieldAuthorities(context.library.ownerDomainId, context.holding.recordId)
+          .some((authority) => authority.source === "human")
+        || reviewEvidenceFiles.has(fileId)) status = "review_available";
+      else if (!job) status = "missing";
+      else if (job.inputVersion !== sourceVersion
+        || job.idempotencyKey !== generationKey(libraryId, fileId, sourceVersion)) status = "source_changed";
+      else if (job.createdByAccountId !== actor.id) status = "requester_changed";
+      else if (job.state === "failed" && job.activeAttemptId && job.attempts < 100
+        && (job.errorCode === "compute_dispatch_failed" || job.errorCode === "compute_source_unavailable")) status = "retryable";
+      else status = "not_retryable";
+      return { fileId, sourceVersion, job, status };
+    });
+  }
+
+  previewRecovery(actor: AuthenticatedAccount, libraryId: string, fileIds: string[]): MetadataRecoveryPreviewItem[] {
+    return this.#persistence.runInTransaction((repositories) => this.#recoverySnapshots(repositories, actor, libraryId, fileIds)
+      .map(({ job, ...item }) => ({ ...item, job: job ? publicDerivedJob(job) : null })));
+  }
+
+  recoverSelected(actor: AuthenticatedAccount, libraryId: string, items: MetadataRecoveryInput[]): MetadataRecoveryResultItem[] {
+    if (items.length < 1 || items.length > METADATA_CATALOGUING_BATCH_MAX_ITEMS
+      || items.some((item) => !item || !VERSION_PATTERN.test(item.sourceVersion)
+        || item.expectedJobId !== null && !SAFE_FILE_ID.test(item.expectedJobId)
+        || (item.expectedJobId === null) !== (item.expectedAttempts === null)
+        || item.expectedAttempts !== null && (!Number.isSafeInteger(item.expectedAttempts) || item.expectedAttempts < 1))) {
+      throw new SuggestionError("invalid_input");
+    }
+    return this.#persistence.runInTransaction((repositories) => {
+      const snapshots = this.#recoverySnapshots(repositories, actor, libraryId, items.map((item) => item.fileId));
+      const now = this.#now();
+      return snapshots.map((snapshot, index): MetadataRecoveryResultItem => {
+        const expected = items[index]!;
+        const { fileId, job, status, sourceVersion } = snapshot;
+        const current = job ? publicDerivedJob(job) : null;
+        if (expected.sourceVersion !== sourceVersion || expected.expectedJobId !== (job?.id ?? null)
+          || expected.expectedAttempts !== (job?.attempts ?? null)) return { fileId, status: "stale", job: current };
+        if (status !== "missing" && status !== "retryable") return { fileId, status, job: current };
+        if (status === "retryable" && job?.activeAttemptId) {
+          const retried = repositories.derivedJobs.retry(job.id, job.activeAttemptId, this.#createId(), now,
+            new Date(now.getTime() + JOB_DEADLINE_MILLISECONDS));
+          if (!retried) throw new SuggestionError("concurrent_change");
+          return { fileId, status: "retried", job: publicDerivedJob(retried) };
+        }
+        const created = repositories.derivedJobs.create({
+          id: this.#createId(), kind: "metadata_suggestion", scopeId: libraryId, resourceId: fileId,
+          inputVersion: sourceVersion, idempotencyKey: generationKey(libraryId, fileId, sourceVersion),
+          attemptId: this.#createId(), createdByAccountId: actor.id, createdAt: now,
+          deadlineAt: new Date(now.getTime() + JOB_DEADLINE_MILLISECONDS), origin: "backfill", queuePriority: 100,
+        });
+        return { fileId, status: "queued", job: publicDerivedJob(created) };
+      });
     });
   }
 

@@ -9,6 +9,10 @@ import { runComputeWorker } from "../../../compute/src/worker.js";
 import type { BoundedPdfTextSource } from "../../../compute/src/suggestion.js";
 
 import { Argon2idPasswordHasher } from "../../src/auth/password-hasher.js";
+import { AuthService } from "../../src/auth/auth-service.js";
+import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
+import { createApp } from "../../src/platform/app.js";
+import { SuggestionService } from "../../src/suggestions/suggestion-service.js";
 import { openSqliteDatabase } from "../../src/persistence/sqlite/database.js";
 import { runMigrations } from "../../src/persistence/sqlite/migrations.js";
 import { SqlitePersistence } from "../../src/persistence/sqlite/persistence.js";
@@ -16,6 +20,7 @@ import { createApplication } from "../../src/platform/application.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
 import type { BrowserDownloadAuthorization, CreateDownloadAuthorizationInput } from "../../src/storage/storage-adapter.js";
 import { INITIAL_MIGRATIONS_DIRECTORY, RULESET_ADMISSIONS_DIRECTORY } from "../persistence/helpers.js";
+import { fixture as workspaceFixture, OWNER as WORKSPACE_OWNER, MEMBER as WORKSPACE_MEMBER, OTHER as WORKSPACE_OTHER } from "../workspace/helpers.js";
 
 const ORIGIN = "http://127.0.0.1";
 const PASSWORD = "suggestions-http-password-123";
@@ -359,4 +364,86 @@ test("suggestion HTTP routes enforce manager generation/acceptance and Member re
     rmSync(`${databasePath}-wal`, { force: true });
     rmSync(`${databasePath}-shm`, { force: true });
   }
+});
+
+test("selected recovery HTTP validates manager authority, origin, bounded JSON snapshots and durable queue-only results", async (context) => {
+  const f = workspaceFixture(context);
+  const library = f.persistence.repositories.libraries.findDefault()!;
+  f.file("recovery-missing", WORKSPACE_OWNER.id, "application/pdf", library.id);
+  f.file("recovery-private", WORKSPACE_OTHER.id);
+  const dispatcher = new CapturingDispatcher();
+  const service = new SuggestionService({ persistence: f.persistence, storage: f.storage,
+    metadata: new CanonicalMetadataService(f.persistence), dispatcher, coreBaseUrl: ORIGIN });
+  const app = await createApp({ logger: false, auth: {
+    service: new AuthService({ persistence: f.persistence, passwordHasher: {
+      hash: async (password) => `test:${password}`, verify: async (hash, password) => hash === `test:${password}`,
+    } }), appOrigin: ORIGIN, environment: "test",
+  }, suggestions: { service } });
+  try {
+    async function login(loginName: string) {
+      const response = await app.inject({ method: "POST", url: "/api/auth/login",
+        headers: { origin: ORIGIN, "content-type": "application/json" }, payload: { loginName, password: "workspace-password" } });
+      assert.equal(response.statusCode, 200);
+      const cookie = response.headers["set-cookie"];
+      return String(Array.isArray(cookie) ? cookie[0] : cookie).split(";")[0]!;
+    }
+    const ownerCookie = await login(WORKSPACE_OWNER.loginName);
+    const memberCookie = await login(WORKSPACE_MEMBER.loginName);
+    const headers = { origin: ORIGIN, cookie: ownerCookie, "content-type": "application/json" };
+    const url = `/api/libraries/${library.id}/metadata/suggestion-recovery`;
+    const jobs = () => f.database.prepare("SELECT * FROM derived_compute_jobs ORDER BY id").all();
+    const anonymous = await app.inject({ method: "GET", url: `${url}?fileIds=recovery-missing` });
+    assert.equal(anonymous.statusCode, 401);
+    const member = await app.inject({ method: "GET", url: `${url}?fileIds=recovery-missing`, headers: { cookie: memberCookie } });
+    assert.equal(member.statusCode, 404);
+    const preview = await app.inject({ method: "GET", url: `${url}?fileIds=recovery-missing`, headers });
+    assert.equal(preview.statusCode, 200);
+    const item = (preview.json() as { items: Array<{ fileId: string; sourceVersion: string; status: string; job: null }> }).items[0]!;
+    assert.equal(item.status, "missing");
+    const selected = { fileId: item.fileId, sourceVersion: item.sourceVersion, expectedJobId: null, expectedAttempts: null };
+    const payload = { items: [selected] };
+    assert.deepEqual(jobs(), []);
+
+    const memberPost = await app.inject({ method: "POST", url, headers: { ...headers, cookie: memberCookie }, payload });
+    assert.equal(memberPost.statusCode, 404);
+    const foreign = await app.inject({ method: "POST", url, headers,
+      payload: { items: [selected, { ...selected, fileId: "recovery-private" }] } });
+    assert.equal(foreign.statusCode, 404);
+    const noOrigin = await app.inject({ method: "POST", url,
+      headers: { cookie: ownerCookie, "content-type": "application/json" }, payload });
+    assert.equal(noOrigin.statusCode, 403);
+    const wrongOrigin = await app.inject({ method: "POST", url, headers: { ...headers, origin: "https://attacker.invalid" }, payload });
+    assert.equal(wrongOrigin.statusCode, 403);
+    const plain = await app.inject({ method: "POST", url, headers: { ...headers, "content-type": "text/plain" }, payload: JSON.stringify(payload) });
+    assert.equal(plain.statusCode, 415);
+    for (const query of ["", "?fileIds=recovery-missing,recovery-missing", "?fileIds=bad%2Fid", `?fileIds=${Array.from({ length: 101 }, (_, i) => `file-${i}`).join(",")}`]) {
+      assert.equal((await app.inject({ method: "GET", url: `${url}${query}`, headers })).statusCode, 400, query);
+    }
+    for (const invalid of [
+      { items: [] }, { items: [selected, selected] }, { items: [{ fileId: selected.fileId }] },
+      { items: [{ ...selected, sourceVersion: "bad" }] },
+      { items: [{ ...selected, expectedAttempts: -1 }] },
+      { items: [{ ...selected, expectedJobId: "job", expectedAttempts: null }] },
+      { items: Array.from({ length: 101 }, (_, i) => ({ ...selected, fileId: `file-${i}` })) },
+    ]) {
+      const response = await app.inject({ method: "POST", url, headers, payload: invalid });
+      assert.equal(response.statusCode, 400, response.body);
+    }
+    assert.deepEqual(jobs(), []);
+    assert.equal(dispatcher.jobs.length, 0);
+    const recovered = await app.inject({ method: "POST", url, headers, payload });
+    assert.equal(recovered.statusCode, 202);
+    const result = (recovered.json() as { results: Array<{ status: string; job: { id: string; state: string; attempts: number } }> }).results[0]!;
+    assert.equal(result.status, "queued");
+    assert.equal(result.job.state, "queued");
+    assert.equal(jobs().length, 1);
+    assert.equal(dispatcher.jobs.length, 0);
+    const replay = await app.inject({ method: "POST", url, headers, payload });
+    assert.equal(replay.statusCode, 202);
+    assert.equal(replay.json<{ results: Array<{ status: string }> }>().results[0]?.status, "stale");
+    assert.equal(f.persistence.repositories.derivedJobs.findById(result.job.id)?.attempts, 1);
+    const latest = await app.inject({ method: "GET", url: `/api/libraries/${library.id}/holdings/recovery-missing/metadata/suggestion-jobs/latest`, headers });
+    assert.equal(latest.statusCode, 200);
+    assert.equal(latest.json<{ job: { id: string } }>().job.id, result.job.id);
+  } finally { await app.close(); }
 });

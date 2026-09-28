@@ -4,7 +4,7 @@ import { parseDerivedComputeResult } from "@academiccloud/compute-contracts";
 import type { AuthenticatedAccount } from "../auth/auth-service.js";
 import { secureSecretEquals } from "../compute/github-actions-dispatcher.js";
 import type { MaterialType } from "../metadata/metadata.js";
-import { SuggestionError, type SuggestionAcceptanceInput, type SuggestionService } from "./suggestion-service.js";
+import { SuggestionError, type MetadataRecoveryInput, type SuggestionAcceptanceInput, type SuggestionService } from "./suggestion-service.js";
 
 const ID_PATTERN = "^[A-Za-z0-9_-]{1,128}$";
 const ID_PATTERN_REGEX = /^[A-Za-z0-9_-]{1,128}$/u;
@@ -146,6 +146,66 @@ export async function registerSuggestionHttp(
         };
       } catch (error: unknown) {
         return sendSuggestionError(reply, error);
+      }
+    },
+  );
+
+  app.get<{ Params: LibraryParams; Querystring: BatchPreviewQuery }>(
+    "/api/libraries/:libraryId/metadata/suggestion-recovery",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        params: { type: "object", required: ["libraryId"], properties: { libraryId: idSchema } },
+        querystring: {
+          type: "object", additionalProperties: false, required: ["fileIds"],
+          properties: { fileIds: { type: "string", minLength: 1, maxLength: 13_000 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return { items: service.previewRecovery(requireActor(request.authAccount), request.params.libraryId, request.query.fileIds.split(",")) };
+      } catch (error: unknown) {
+        return sendSuggestionError(reply, error);
+      }
+    },
+  );
+
+  app.post<{ Params: LibraryParams; Body: { items: MetadataRecoveryInput[] } }>(
+    "/api/libraries/:libraryId/metadata/suggestion-recovery",
+    {
+      preHandler: app.authenticate,
+      preValidation: requireJson,
+      bodyLimit: 64 * 1024,
+      schema: {
+        params: { type: "object", required: ["libraryId"], properties: { libraryId: idSchema } },
+        querystring: emptyQuerySchema,
+        body: {
+          type: "object", additionalProperties: false, required: ["items"],
+          properties: {
+            items: {
+              type: "array", minItems: 1, maxItems: 100,
+              items: {
+                type: "object", additionalProperties: false,
+                required: ["fileId", "sourceVersion", "expectedJobId", "expectedAttempts"],
+                properties: {
+                  fileId: idSchema,
+                  sourceVersion: metadataVersionSchema,
+                  expectedJobId: { anyOf: [idSchema, { type: "null" }] },
+                  expectedAttempts: { anyOf: [{ type: "integer", minimum: 1, maximum: Number.MAX_SAFE_INTEGER }, { type: "null" }] },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const results = service.recoverSelected(requireActor(request.authAccount), request.params.libraryId, request.body.items);
+        return reply.code(202).send({ results });
+      } catch (error: unknown) {
+        return sendSuggestionGenerationError(request, reply, error);
       }
     },
   );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import {
   ApiClient,
@@ -50,7 +50,7 @@ import {
 import { calculateFileMd5 } from "./md5.ts";
 import { isSameRecoveredFile } from "./recovery-identity.ts";
 import { displayFileBytes, formatSpeed, UploadProgressTracker } from "./upload-metrics.ts";
-import { ResourceDetailsDialog, BatchNamingDialog, BatchCatalogDialog, CitationDialog, WorkspaceDialog } from "./deferred-dialog.tsx";
+import { ResourceDetailsDialog, BatchNamingDialog, BatchCatalogDialog, MetadataRecoveryDialog, CitationDialog, WorkspaceDialog } from "./deferred-dialog.tsx";
 import type { WorkspaceResource } from "./workspace-api.ts";
 import { libraryHoldingDisplayTitle, libraryHoldingSecondaryLine } from "./library-display-title.ts";
 import { canPreviewFile } from "./preview-capability.ts";
@@ -813,6 +813,11 @@ function DriveView({
   const [citationRequest, setCitationRequest] = useState<CitationRequest | null>(null);
   const [batchNamingRequest, setBatchNamingRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
   const [batchCatalogRequest, setBatchCatalogRequest] = useState<{ library: LibrarySummary; holdings: LibraryHolding[] } | null>(null);
+  const [metadataRecoveryRequest, setMetadataRecoveryRequest] = useState<{
+    library: LibrarySummary;
+    holdings: LibraryHolding[];
+    returnFocus: HTMLElement;
+  } | null>(null);
   const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
   const [dropOverlay, setDropOverlay] = useState<DropOverlayState | null>(null);
@@ -831,6 +836,8 @@ function DriveView({
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const pendingInputRefs = useRef(new Map<string, HTMLInputElement>());
   const workspaceRef = useRef<HTMLElement>(null);
+  const navigationRef = useRef<HTMLElement>(null);
+  const activityCenterRef = useRef<HTMLElement>(null);
   const currentFolderId = path.at(-1)?.id ?? null;
 
   useEffect(() => {
@@ -2334,6 +2341,28 @@ function DriveView({
 
   const activityJobs = jobs.filter((job) => job.phase !== "abandoned");
   const activityCount = activityJobs.length + metadataActivities.length + downloadActivities.length;
+  const hasActivity = activityCount > 0;
+  useLayoutEffect(() => {
+    const workspace = workspaceRef.current;
+    const navigation = navigationRef.current;
+    const activity = activityCenterRef.current;
+    if (!workspace || !navigation) return;
+    // The mobile fixed dock can grow with wrapping, failed-task summaries or
+    // expansion. Reserve its measured height so every final row stays reachable.
+    const measure = () => {
+      workspace.style.setProperty("--mobile-navigation-height", `${navigation.getBoundingClientRect().height}px`);
+      workspace.style.setProperty("--mobile-activity-height", `${activity?.getBoundingClientRect().height ?? 0}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(navigation);
+    if (activity) observer?.observe(activity);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [hasActivity, activityExpanded]);
   const activityFailureCount = activityJobs.filter((job) => job.phase === "error").length
     + metadataActivities.filter((activity) => activity.state === "failed").length
     + downloadActivities.filter((activity) => activity.phase === "failed").length;
@@ -2353,7 +2382,7 @@ function DriveView({
 
   return (
     <>
-    <div className="app-shell" hidden={researchRequest !== null} inert={preview !== null || resourceDetailsRequest !== null || researchRequest !== null || citationRequest !== null || batchNamingRequest !== null || batchCatalogRequest !== null || moveRequest !== null || accountAdministrationOpen}>
+    <div className="app-shell" hidden={researchRequest !== null} inert={preview !== null || resourceDetailsRequest !== null || researchRequest !== null || citationRequest !== null || batchNamingRequest !== null || batchCatalogRequest !== null || metadataRecoveryRequest !== null || moveRequest !== null || accountAdministrationOpen}>
       <a className="skip-link" href="#main-content">{t("nav.skip")}</a>
       <header className="topbar">
         <div className="brand topbar-brand"><span>AC</span> AcademicCloud</div>
@@ -2374,7 +2403,7 @@ function DriveView({
         </div>
       </header>
 
-      <aside className="sidebar" aria-label={t("nav.primaryAria")}>
+      <aside ref={navigationRef} className="sidebar" aria-label={t("nav.primaryAria")}>
         <div className="brand sidebar-brand"><span>AC</span> AcademicCloud</div>
         <nav>
           <button className={view === "library" ? "nav-item is-active" : "nav-item"} aria-current={view === "library" ? "page" : undefined} onClick={() => goToView("library")}>
@@ -2535,6 +2564,14 @@ function DriveView({
                   && api.createCatalogBatchExportRequest !== undefined
                   && api.previewCatalogBatchResults !== undefined
                   && api.applyCatalogBatchResults !== undefined;
+                const metadataRecoveryAvailable = allSelectedAreHoldings
+                  && account.role === "owner"
+                  && library !== null
+                  && library.role === "manager"
+                  && selectedEntries.some((entry) => entry.scope === "library_holding"
+                    && entry.item.file.mediaType?.toLowerCase() === "application/pdf")
+                  && api.getLibraryMetadataRecovery !== undefined
+                  && api.recoverLibraryMetadata !== undefined;
                 const renderEntries = (folders: FolderEntry[], files: FileEntry[], displayHoldings: LibraryHolding[]) => (
                       <EntryTable
                         folders={folders}
@@ -2587,6 +2624,11 @@ function DriveView({
                         {...(batchCatalogAvailable ? { onBatchCatalog: () => setBatchCatalogRequest({
                           library: library!,
                           holdings: selectedEntries.map((entry) => (entry.scope === "library_holding" ? entry.item : entry.item)),
+                        }) } : {})}
+                        {...(metadataRecoveryAvailable ? { onMetadataRecovery: (trigger: HTMLElement) => setMetadataRecoveryRequest({
+                          library: library!,
+                          holdings: selectedEntries.flatMap((entry) => entry.scope === "library_holding" ? [entry.item] : []),
+                          returnFocus: trigger,
                         }) } : {})}
                       />
                 ) : null;
@@ -2643,7 +2685,7 @@ function DriveView({
           <button type="button" className="button button--small button--quiet" onClick={() => setMetadataStatusRevision((value) => value + 1)}>{t("activity.metadataStatusRetry")}</button>
         </div>}
         {activityCount > 0 && (
-          <section className={`activity-center${activityExpanded ? " is-expanded" : " is-collapsed"}`} aria-labelledby="activity-center-title" aria-live="polite">
+          <section ref={activityCenterRef} className={`activity-center${activityExpanded ? " is-expanded" : " is-collapsed"}`} aria-labelledby="activity-center-title" aria-live="polite">
             <div className="activity-center-heading">
               <div><h2 id="activity-center-title">{t("activity.title")}</h2><span>{t("activity.summary", { count: activityCount })}</span>{activityFailureCount > 0 && <span className="activity-failed-summary">{t("activity.failedSummary", { count: activityFailureCount })}</span>}</div>
               <button
@@ -3141,6 +3183,23 @@ function DriveView({
           onApplied={() => {
             setSelectedKeys(new Set());
             refresh();
+          }}
+        />
+      )}
+      {metadataRecoveryRequest && (
+        <MetadataRecoveryDialog
+          api={api}
+          library={metadataRecoveryRequest.library}
+          holdings={metadataRecoveryRequest.holdings}
+          returnFocus={metadataRecoveryRequest.returnFocus}
+          onClose={() => setMetadataRecoveryRequest(null)}
+          onSettled={(results) => {
+            for (const result of results ?? []) {
+              if (!result.job || !["queued", "retried", "active"].includes(result.status)) continue;
+              const holding = metadataRecoveryRequest.holdings.find((entry) => entry.file.id === result.fileId);
+              if (holding) recordMetadataActivity(metadataRecoveryRequest.library, holding, result.job);
+            }
+            setMetadataStatusRevision((value) => value + 1);
           }}
         />
       )}
@@ -4079,6 +4138,7 @@ function BulkToolbar({
   onFavoriteRemove,
   onBatchName,
   onBatchCatalog,
+  onMetadataRecovery,
 }: {
   mode: "library" | "favorites" | "recycle";
   selectedCount: number;
@@ -4092,6 +4152,7 @@ function BulkToolbar({
   onFavoriteRemove?: () => void;
   onBatchName?: () => void;
   onBatchCatalog?: () => void;
+  onMetadataRecovery?: (trigger: HTMLElement) => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -4105,6 +4166,7 @@ function BulkToolbar({
         )}
         {onBatchName && <button className="button button--small" type="button" disabled={busy} onClick={onBatchName}>{t("bulk.batchName")}</button>}
         {onBatchCatalog && <button className="button button--small" type="button" disabled={busy} onClick={onBatchCatalog}>{t("bulk.batchCatalog")}</button>}
+        {onMetadataRecovery && <button className="button button--small" type="button" disabled={busy} onClick={(event) => onMetadataRecovery(event.currentTarget)}>{t("bulk.metadataRecovery")}</button>}
         {onFavoriteAdd && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteAdd}>{t("bulk.favoriteAdd")}</button>}
         {onFavoriteRemove && <button className="button button--small" type="button" disabled={busy} onClick={onFavoriteRemove}>{t("bulk.favoriteRemove")}</button>}
         {onRestore && <button className="button button--small" type="button" disabled={busy} onClick={onRestore}>{t("bulk.restore")}</button>}

@@ -7,6 +7,7 @@ export interface DerivedJobRepository {
   findById(jobId: string): DerivedJobRecord | null;
   findByIdempotencyKey(idempotencyKey: string): DerivedJobRecord | null;
   findLatest(kind: "metadata_suggestion", scopeId: string, resourceId: string): DerivedJobRecord | null;
+  hasSucceeded(kind: "metadata_suggestion", scopeId: string, resourceId: string): boolean;
   findLatestMany(kind: "metadata_suggestion", scopeId: string, resourceIds: string[]): DerivedJobRecord[];
   listUndispatched(limit: number): DerivedJobRecord[];
   listLocalPullCandidates(limit: number): DerivedJobRecord[];

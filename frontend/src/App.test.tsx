@@ -2581,6 +2581,64 @@ describe("App", () => {
     expect(getLatestLibraryMetadataSuggestionStates).toHaveBeenCalledTimes(2);
   });
 
+  it("recovers only explicitly selected Library resources and discovers the queued job after reload", async () => {
+    const user = userEvent.setup();
+    const pdf = LIBRARY_HOLDINGS[0]!;
+    const text = LIBRARY_HOLDINGS[2]!;
+    const queuedJob = {
+      id: "recovered-job", kind: "metadata_suggestion" as const, resourceId: pdf.file.id,
+      state: "queued" as const, progress: 0, attempts: 1, resultRef: null, errorCode: null,
+      createdAt: new Date().toISOString(), startedAt: null, finishedAt: null,
+      deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+    };
+    let queued = false;
+    const getRecovery = vi.fn().mockResolvedValue([
+      { fileId: pdf.file.id, sourceVersion: "source-pdf", status: "missing", job: null },
+      { fileId: text.file.id, sourceVersion: "source-text", status: "unsupported", job: null },
+    ]);
+    const recover = vi.fn().mockImplementation(async () => {
+      queued = true;
+      return [{ fileId: pdf.file.id, status: "queued", job: queuedJob }];
+    });
+    const generate = vi.fn();
+    const states = vi.fn().mockImplementation(async () => queued
+      ? [{ fileId: pdf.file.id, state: "queued", job: queuedJob }]
+      : []);
+    const api = fakeApi({
+      getSession: vi.fn().mockResolvedValue(ACCOUNT),
+      listLibraryHoldings: vi.fn().mockResolvedValue([pdf, text]),
+      getLibraryMetadataRecovery: getRecovery,
+      recoverLibraryMetadata: recover,
+      generateLibraryMetadataSuggestions: generate,
+      getLatestLibraryMetadataSuggestionStates: states,
+    });
+    const view = render(<App api={api} />);
+    await user.click(await screen.findByRole("checkbox", { name: "Select book.pdf" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select notes.txt" }));
+    expect(getRecovery).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Recover AI cataloguing" }));
+    const dialog = await screen.findByRole("dialog", { name: "Recover AI cataloguing" });
+    expect(document.querySelector(".app-shell")).toHaveAttribute("inert");
+    await user.click(await within(dialog).findByRole("button", { name: "Queue 1 tasks" }));
+    expect(await within(dialog).findByText("Added to queue")).toBeInTheDocument();
+    expect(within(dialog).getByText("AI cataloguing is available for PDFs")).toBeInTheDocument();
+    expect(getRecovery).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, [pdf.file.id, text.file.id], expect.any(AbortSignal));
+    expect(recover).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, [
+      { fileId: pdf.file.id, sourceVersion: "source-pdf", expectedJobId: null, expectedAttempts: null },
+    ]);
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(document.querySelector(".app-shell")).not.toHaveAttribute("inert");
+    expect(await screen.findByText("AI cataloguing")).toBeInTheDocument();
+    expect(screen.getByText("Queued")).toBeInTheDocument();
+    view.unmount();
+    render(<App api={api} />);
+    expect(await screen.findByText("AI cataloguing")).toBeInTheDocument();
+    expect(screen.getByText("Queued")).toBeInTheDocument();
+    expect(recover).toHaveBeenCalledOnce();
+    expect(getRecovery).toHaveBeenCalledOnce();
+    expect(generate).not.toHaveBeenCalled();
+  });
+
   it("shows a normalized AI failure category and retries through the durable endpoint", async () => {
     const user = userEvent.setup();
     const failedJob = {
@@ -3324,6 +3382,8 @@ describe("resource-scope catalogue interactions", () => {
       getSession: vi.fn().mockResolvedValue(member),
       listLibraries: vi.fn().mockResolvedValue([memberLibrary]),
       listLibraryHoldings: vi.fn().mockResolvedValue([LIBRARY_HOLDINGS[0]]),
+      getLibraryMetadataRecovery: vi.fn(),
+      recoverLibraryMetadata: vi.fn(),
     });
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
@@ -3332,6 +3392,8 @@ describe("resource-scope catalogue interactions", () => {
     expect(within(toolbar).getByRole("button", { name: "Add favorites" })).toBeInTheDocument();
     expect(within(toolbar).queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
     expect(within(toolbar).queryByRole("button", { name: "Move" })).not.toBeInTheDocument();
+    expect(within(toolbar).queryByRole("button", { name: "Recover AI cataloguing" })).not.toBeInTheDocument();
+    expect(api.getLibraryMetadataRecovery).not.toHaveBeenCalled();
   });
 
   it("keeps Library Favorites on the composed catalogue title and Library Preview/Download routes", async () => {

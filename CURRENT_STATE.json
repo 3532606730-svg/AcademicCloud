@@ -117,7 +117,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Reader hotfix57b8723 deployed schema039; local UX/export/admission repairs and broader intake/corpus/report acceptance remain open",
+    "currentPhaseB": "Reader hotfix57b8723 deployed schema39; local UX/export/admission/selected recovery verified; bounded OCR integration next; coordinated release/corpus/report open",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -406,10 +406,27 @@
         "independentSourceReview": "PASS",
         "recovery": "fresh SQLite connection/reconstructed service with wake suppressed; not production restart",
         "deployed": false
+      },
+      "selectedRecovery": {
+        "date": "2026-09-28",
+        "backendPassed": 59,
+        "typesBuild": "PASS",
+        "independentReview": "PASS",
+        "browser": "PASS normal signed-in synthetic1440/390 selection, one POST each, reload Activity, source/human/private preservation, mobile final-row pointer access",
+        "deployed": false,
+        "frontendRuns": {
+          "componentApiI18n": 51,
+          "initialApp": 5,
+          "finalAppMobile": 27,
+          "note": "Overlapping scoped runs; not a full-suite sum"
+        },
+        "browserEvidence": "output/vnext/recovery-browser-20260928/verification.json",
+        "browserWorkerRunning": false,
+        "mobileActivityClearance": "Measured fixed dock heights; collapsed/expanded final-row ordinary pointer checks PASS"
       }
     },
     "deployed": false,
-    "architectureStatus": "ADR046 new-admission handoff locally implemented and verified; no migration; historical orphan repair/sourceId orchestration and R2-R4 remain open",
+    "architectureStatus": "ADR046 new admission and ADR047 selected historical recovery locally implemented; no migration; immutable-source orchestration/per-resource ZIP recovery/independent field quality remain open",
     "externalApiAuthorized": false,
     "implementationCheckpoint": "948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7"
   },
@@ -439,8 +456,8 @@
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
     "status": "local_repairs_published_remaining_intake_scope_open",
-    "intake": "R0 export and bounded R1 new-admission handoff locally verified; historical recovery/per-resource review/adjudicated quality open",
-    "ocr": "planning delivery integrated; production implementation deferred",
+    "intake": "R0 export, ADR046 admission and ADR047 selected recovery locally verified; private current-page OCR implementation, persistent ZIP recovery and field quality open",
+    "ocr": "Current-page and book-evidence integration assessment requested September28; existing code remains deferred",
     "ux": "cad1ecf integrated and locally verified; full Workspace30/30 September28; production pending",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false
@@ -450,5 +467,14 @@
     "reasoningEffort": "ultra",
     "ownerInstructionDate": "2026-09-27"
   },
-  "currentContinuationBoundary": "Existing-path repairs, zero added cost, authorized non-main checkpoints and coordinated releases only; current instruction does not authorize main merge or whole-document OCR"
+  "currentContinuationBoundary": "Existing-path repairs, zero added cost, authorized non-main checkpoints and coordinated releases only; current instruction does not authorize main merge or whole-document OCR",
+  "ocrIntegration": {
+    "ownerRequestedAt": "2026-09-28",
+    "scope": "After recovery checkpoint, assess and progress reliable bibliographic OCR evidence and private current-page OCR in My Research",
+    "status": "feasible_bounded_current_page_design_required",
+    "implementationEnabled": false,
+    "zeroAddedCost": true,
+    "wholeDocumentOcrAuthorized": false,
+    "runtimeEvidence": "September28 read-only V2 runtime/Paddle asset and exact det+rec hash checks pass; no new inference or engine quality acceptance"
+  }
 }

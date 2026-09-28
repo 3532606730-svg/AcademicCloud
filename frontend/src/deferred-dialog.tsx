@@ -52,6 +52,9 @@ export const CitationDialog = deferDialog<ComponentProps<typeof import("./citati
 export const BatchCatalogDialog = deferDialog<ComponentProps<typeof import("./batch-catalog.tsx").BatchCatalogDialog>>(
   () => import("./batch-catalog.tsx").then((module) => ({ default: module.BatchCatalogDialog })),
 );
+export const MetadataRecoveryDialog = deferDialog<ComponentProps<typeof import("./metadata-recovery.tsx").MetadataRecoveryDialog>>(
+  () => import("./metadata-recovery.tsx").then((module) => ({ default: module.MetadataRecoveryDialog })),
+);
 export const BatchNamingDialog = deferDialog<ComponentProps<typeof import("./batch-naming.tsx").BatchNamingDialog>>(
   () => import("./batch-naming.tsx").then((module) => ({ default: module.BatchNamingDialog })),
 );

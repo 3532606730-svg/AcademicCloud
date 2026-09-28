@@ -751,6 +751,32 @@ export interface MetadataCataloguingSummary {
   state: MetadataCataloguingState;
   job: DerivedMetadataJob | null;
 }
+export type MetadataRecoverySkipStatus =
+  | "active"
+  | "succeeded"
+  | "review_available"
+  | "source_changed"
+  | "not_retryable"
+  | "unsupported"
+  | "requester_changed"
+  | "excluded";
+export interface MetadataRecoveryItem {
+  fileId: string;
+  sourceVersion: string;
+  job: DerivedMetadataJob | null;
+  status: "missing" | "retryable" | MetadataRecoverySkipStatus;
+}
+export interface MetadataRecoveryInput {
+  fileId: string;
+  sourceVersion: string;
+  expectedJobId: string | null;
+  expectedAttempts: number | null;
+}
+export interface MetadataRecoveryResult {
+  fileId: string;
+  status: "queued" | "retried" | "stale" | MetadataRecoverySkipStatus;
+  job: DerivedMetadataJob | null;
+}
 export type LibraryMetadataWithoutVersion = Omit<LibraryMetadataInput, "metadataVersion">;
 export interface MetadataSuggestionAcceptInput {
   acceptedCandidateIds: string[];
@@ -948,6 +974,15 @@ export interface AcademicCloudApi {
   ): Promise<CitationResult>;
   /** Metadata suggestions are optional for compatibility with older API fakes. */
   generateLibraryMetadataSuggestions?(libraryId: string, fileId: string): Promise<DerivedMetadataJob>;
+  getLibraryMetadataRecovery?(
+    libraryId: string,
+    fileIds: string[],
+    signal?: AbortSignal,
+  ): Promise<MetadataRecoveryItem[]>;
+  recoverLibraryMetadata?(
+    libraryId: string,
+    items: MetadataRecoveryInput[],
+  ): Promise<MetadataRecoveryResult[]>;
   getLatestLibraryMetadataSuggestionJob?(
     libraryId: string,
     fileId: string,
@@ -1452,6 +1487,35 @@ export class ApiClient implements AcademicCloudApi {
       "POST",
     );
     return response.job;
+  }
+
+  async getLibraryMetadataRecovery(
+    libraryId: string,
+    fileIds: string[],
+    signal?: AbortSignal,
+  ): Promise<MetadataRecoveryItem[]> {
+    if (fileIds.length === 0 || fileIds.length > 100 || new Set(fileIds).size !== fileIds.length) {
+      throw new ApiError(400, "invalid_request");
+    }
+    const query = new URLSearchParams({ fileIds: fileIds.join(",") });
+    return (await this.#request<{ items: MetadataRecoveryItem[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/metadata/suggestion-recovery?${query.toString()}`,
+      signal ? { signal } : {},
+    )).items;
+  }
+
+  async recoverLibraryMetadata(
+    libraryId: string,
+    items: MetadataRecoveryInput[],
+  ): Promise<MetadataRecoveryResult[]> {
+    if (items.length === 0 || items.length > 100 || new Set(items.map((item) => item.fileId)).size !== items.length) {
+      throw new ApiError(400, "invalid_request");
+    }
+    return (await this.#jsonBody<{ results: MetadataRecoveryResult[] }>(
+      `/api/libraries/${encodeURIComponent(libraryId)}/metadata/suggestion-recovery`,
+      "POST",
+      { items },
+    )).results;
   }
 
   async getLatestLibraryMetadataSuggestionJob(

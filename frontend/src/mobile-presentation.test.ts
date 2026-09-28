@@ -118,7 +118,9 @@ describe("mobile presentation stylesheet", () => {
 
   it("places the responsive Activity Center above the mobile navigation", () => {
     const block = mobileBlock();
-    expect(ruleHas(block, ".activity-center {", /bottom:\s*calc\(5\.5rem \+ env\(safe-area-inset-bottom\)\)/)).toBe(true);
+    // Real viewport acceptance checks the measured dock clearance; the CSS
+    // contract now consumes navigation height instead of assuming 5.5rem.
+    expect(ruleHas(block, ".activity-center {", /bottom:\s*calc\(var\(--mobile-navigation-height,/)).toBe(true);
     expect(ruleHas(block, ".activity-center {", /left:\s*0\.75rem/)).toBe(true);
     expect(ruleHas(block, ".activity-center {", /right:\s*0\.75rem/)).toBe(true);
     expect(ruleHas(block, ".activity-center {", /max-height:\s*min\(55vh,\s*28rem\)/)).toBe(true);

@@ -132,6 +132,14 @@ export class SqliteDerivedJobRepository implements DerivedJobRepository {
     return row ? map(row) : null;
   }
 
+  hasSucceeded(kind: "metadata_suggestion", scopeId: string, resourceId: string): boolean {
+    return this.database.prepare<[string, string, string], { found: number }>(`
+      SELECT 1 AS found FROM derived_compute_jobs
+      WHERE kind = ? AND scope_id = ? AND resource_id = ? AND state = 'succeeded'
+      LIMIT 1
+    `).get(kind, scopeId, resourceId) !== undefined;
+  }
+
   findLatestMany(kind: "metadata_suggestion", scopeId: string, resourceIds: string[]): DerivedJobRecord[] {
     if (resourceIds.length === 0) return [];
     const rows = this.database.prepare<[string, string, string], JobRow>(`

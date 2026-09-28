@@ -31,6 +31,7 @@ export interface SuggestionRepository {
   findRun(ownerDomainId: string, runId: string): SuggestionRunRecord | null;
   findLatestRun(ownerDomainId: string, libraryId: string, fileId: string): SuggestionRunRecord | null;
   findLatestStateEvidenceMany(ownerDomainId: string, libraryId: string, fileIds: string[]): SuggestionRunStateEvidence[];
+  findFilesWithReviewEvidenceMany(ownerDomainId: string, libraryId: string, fileIds: string[]): string[];
   listRuns(ownerDomainId: string, libraryId: string, fileId: string, limit: number): SuggestionRunRecord[];
   updateStatus(
     ownerDomainId: string,

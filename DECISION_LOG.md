@@ -2,6 +2,14 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## 2026-09-28 — Current-page OCR becomes the next bounded integration step
+
+The Owner asks to finish selected cataloguing recovery, then assess and progress formal OCR integration for book-intake reliability and current-page recognition in `我的研究`. This supersedes the earlier blanket execution deferral only for that bounded path. Existing zero-cost Local Compute, immutable source/page identity, private research authority and the coordinated release gate remain. A concrete ADR must define task/result persistence, adapter provenance, qualification, migration and rollback before enablement. Current code still returns `ocr_deferred`; neither task metadata nor OCR text is newly persisted yet. Whole-document/corpus OCR, shared full-text publication, index/RAG and external model disclosure are not implied.
+
+## ADR-047 — Selected cataloguing recovery
+
+[ADR-047](docs/decisions/ADR-047-selected-cataloguing-recovery.md) defines manager-authorized selection preview and explicit queue-only submission. Source/job/attempt CAS in one transaction rejects stale or replayed snapshots; safe infrastructure failures alone permit retry. Active/successful jobs, all historical review evidence and human data are preserved; six exact damaged sources require replacement. No migration, provider/model change or automatic historical sweep. Local tests/review and responsive1440/390 browser verification pass; the coordinated production gate remains.
+
 ## 2026-09-24 — Source and private notes share the Research resource page
 
 Opening a PDF from `我的研究` now uses the full-height `/research` resource page: authorized native PDF on the left, private reading state, collections and page notes on the right; a narrow screen switches between source and notes. This uses the existing short-lived download authorization and private Workspace APIs without a new renderer, service or OCR execution. Reauthorization checks the same immutable source generation. The signed source link is marked stale shortly before expiry; page navigation reauthorizes it and the old new-tab link is withdrawn until reopened. Since the browser's native PDF viewer does not report its internal scroll page, creating an inline page note requires the researcher to confirm the PDF page explicitly. The source remains visible only to an authorized account and the note remains in that account's private overlay.

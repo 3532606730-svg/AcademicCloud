@@ -43,13 +43,17 @@ For each milestone: risk-appropriate tests, review, responsive visual verificati
 
 ## Relevant ADRs
 
-ADR-014, ADR-022, ADR-023, ADR-031–040, [ADR-041 — vNext review plans and search projection](../../docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md), ADR-042, [ADR-043 — source generations and page locations](../../docs/decisions/ADR-043-document-source-generations-and-page-locations.md) and [ADR-044 — private Workspace](../../docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md).
+ADR-014, ADR-022, ADR-023, ADR-031–040, [ADR-041 — vNext review plans and search projection](../../docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md), ADR-042, [ADR-043 — source generations and page locations](../../docs/decisions/ADR-043-document-source-generations-and-page-locations.md), [ADR-044 — private Workspace](../../docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md), ADR-045, [ADR-046 — transactional admission](../../docs/decisions/ADR-046-transactional-cataloguing-admission.md) and [ADR-047 — selected recovery](../../docs/decisions/ADR-047-selected-cataloguing-recovery.md).
 
 ## Relevant Modules / Files
 
 Backend catalog/library/metadata/suggestions/workspace/persistence; frontend Library/details/Batch/workspace/view context; Compute contracts/export/runtime; migrations 035–038; deployment/release scripts; regression CI; current-state documents.
 
 ## Current State
+
+September28 current continuation: ADR047 normal Library selection recovery is locally complete. All-history evidence, requester/source/attempt CAS, active/successful jobs, human authority, six damaged sources and100-attempt cap are protected. Backend59, frontend51/final27 scoped tests, types/build and independent reviews pass. Synthetic1440/390 normal-login preview→single submit→reload passes; mobile fixed Activity no longer covers final-row selection. Production unchanged; checkpoint publication follows.
+
+Owner now requests completing this recovery checkpoint and then formal OCR feasibility/integration for more reliable book cataloguing and current-page OCR in `我的研究`. This supersedes the earlier planning-only/deferred execution stop for that bounded path. Separate Core/private page-result and Compute/engine evaluations are underway. Actual OCR code remains deferred until new contracts, privacy, persistence, engine qualification and coordinated release gates are satisfied. No whole-document OCR, index/RAG or paid/external model is authorized by this request.
 
 September28 implementation948ba4d is checkpointed and published to the existing non-main vNext branch; fresh fetch verified clean active-local equality. UXcad1ecf/exportcae2899 are included. Documentation-only reconciliation follows. No main merge, production mutation, migration or corpus execution. Verified local scope and remaining gates are summarized in CURRENT_STATUS.md.
 
@@ -113,13 +117,13 @@ The runbook selects candidate migration/admission paths after protected environm
 
 ## Remaining
 
-Owner consolidated reader/workspace acceptance (2026-09-24, ADR-045):
-- [ ] Owned PDF.js Preview/Research reader with correct page jumps and rendered-page note attachment; direct Preview “放入我的研究”.
-- [ ] Independent `/research`, upper-left Library/Research switch, contextual rail without duplicate workspace navigation, closeable document tabs, recent positions and protected drafts.
-- [ ] Rotation, zoom, native-text copy/search/export, private highlights/list/clear, notes/save/font controls; scanning/OCR remains interface-only.
-- [ ] Durable private source-bound progress/highlights, cross-account isolation/CAS, compatible additive migration/rollback.
-- [ ] Exact PDF worker/resource publication, GET/Range CORS and CSP; browser-first performance with no added Core services/cost.
-- [ ] Proportionate focused verification, real desktop/mobile browser path, exact release/live acceptance and Git/state reconciliation.
+Owner consolidated reader/workspace acceptance (2026-09-24, ADR-045): completed by the September25 reader releases recorded above; retained here as history, not an open implementation list.
+- [x] Owned PDF.js Preview/Research reader with correct page jumps and rendered-page note attachment; direct Preview “放入我的研究”.
+- [x] Independent `/research`, upper-left Library/Research switch, contextual rail without duplicate workspace navigation, closeable document tabs, recent positions and protected drafts.
+- [x] Rotation, zoom, native-text copy/search/export, private highlights/list/clear, notes/save/font controls; scanning/OCR was interface-only in that release.
+- [x] Durable private source-bound progress/highlights, cross-account isolation/CAS, compatible additive migration/rollback.
+- [x] Exact PDF worker/resource publication, GET/Range CORS and CSP; browser-first performance with no added Core services/cost.
+- [x] Proportionate focused verification, real desktop/mobile browser path, exact release/live acceptance and Git/state reconciliation.
 
 
 - Catalog review recovery is locally implemented: account/Library-bound tab drafts survive a same-tab refresh, expire after 30 minutes, cap at four drafts and 32 MiB across the imported document, selections and results, and are cleared at sign-out. Resume obtains a fresh server Preview with acknowledgements cleared and completed items excluded. Focused refresh/expiry/quota tests and local signed-in browser acceptance pass; live acceptance remains open.
@@ -152,6 +156,8 @@ Production, GitHub and the existing signed-in Edge session are available; no app
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
+
+2026-09-28 selected recovery:59/59 backend service/HTTP regressions and backend types pass. Frontend51 component/API/i18n, initial5 App and final27 App/mobile scoped checks pass (overlap, not a full-suite sum); types/build/diff-check pass. Independent backend/frontend reviews closed historical-evidence shadowing,100-attempt exhaustion and source/transaction concerns. Real local HTTP/Auth/SQLite signed-in browser at1440x1000 and390x844 passes preview of7 items with2 eligible, one submission each and reload Activity recovery: exactly2POSTs,2created jobs,2retries, unchanged retained jobs/human fields/private notes. No worker/real-source/OCR execution. Mobile Activity overlap fixed using actual dock height and rechecked with ordinary pointer collapsed/expanded; parent reviewed screenshots. Evidence output/vnext/recovery-browser-20260928/verification.json; local server stopped. Separate OCR feasibility read-only checks confirm existing V2/Paddle pins/assets; no new inference/quality claim. Next implementation prerequisites are in the OCR plan.
 
 2026-09-28 reliable-intake checkpoint: ADR046 new-admission jobs persist atomically with Owner activation or Member approval. Optional filename extraction/provider work runs after commit; lost notifications recover through existing sweeps, repeated completion/status does not retry failed jobs or create work after rename. Complete contribution26/26 includes13 new transaction/source/audit/byte rollback, fresh-connection recovery, authority and failure-isolation regressions; existing suggestion/HTTP/state/application38/38, backend types and independent source/ADR review PASS. No migration, provider/model/contract changes or historical corpus scan. Exporter/resilience/Bridge37/37 and Compute types PASS after independent review removed the128MiB regression; parent reviewed final diff. Complete frontend Workspace30/30 closes the earlier isolated-only regression gap. These131 passing cases are the union of separate scoped runs, not one full-workspace suite. No production access or deployment this continuation.
 
@@ -227,4 +233,4 @@ Takeover live evidence: qualified3c864374 worker remains active PID51089 with ze
 
 ## Next Action
 
-Source-error correction and OCR planning handoff are checkpointed; continue the reliable-intake implementation sequence. ADR046 new-admission transaction checkpoint is locally verified; next define the remaining per-resource recovery contract and independently adjudicated quality pilot. Retain existing Local Pull and source authority; do not claim the unchanged Catalog fingerprint is immutable sourceId orchestration. External API scope remains a clarification, not permission to call a paid provider or disclose source material. Wait for intake and UX current-scope completion and all participating task handoffs, integrate and run proportionate applicable checks, then have one designated operator deploy the combined release with normal signed-in browser acceptance; do not replay successful corpus jobs. Existing reader, corpus and final-report obligations remain in this task.
+ADR047 local implementation and responsive-browser verification are complete. After checkpoint synchronization, follow the Owner's September28 OCR request. Read the current-page feasibility section in docs/architecture/ocr-product-plan.md: accept a bounded private task/result/source-page ADR with migration and old-worker rollback safety, add an explicit-page Compute adapter using existing Paddle, qualify supported pages and connect the normal Research Reader path. In parallel design the independently adjudicated book-evidence pilot; Reader OCR output alone is not canonical bibliography or a field-quality claim. Preserve Local Pull, source authority and the v11 validator. External paid APIs and source disclosure remain unauthorized. One designated operator performs the coordinated release only after applicable scopes/checks pass; preserve completed jobs and known damaged-source replacement requirements. Persistent ZIP recovery, corpus acceptance and final-report obligations remain in this task.
