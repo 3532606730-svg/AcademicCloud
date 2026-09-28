@@ -6,10 +6,11 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "cae2899b3cd69de0320c34329909f1246524b834",
-    "mainIntegration": "Last published main d0e2c79; local UX/export changes pending non-main publication; no current main merge authority",
-    "localSynchronized": false,
-    "localState": "Active vNext contains cad1ecf and cae2899 plus September28 repair in progress; remote equality not yet reverified"
+    "checkpoint": "948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7",
+    "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
+    "localSynchronized": true,
+    "localState": "September28 verified clean active vNext HEAD and freshly fetched non-main remote both equal 948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7; documentation-only reconciliation follows on the same branch. Original obsolete checkout is preserved.",
+    "lastVerifiedPublishedCheckpoint": "948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -360,7 +361,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Current intake scope, uploads/nginx/Compute diagnostics and remaining UX findings open; combined release and signed-in acceptance pending"
   ],
-  "next": "ADR046 new-admission handoff locally verified; continue historical intake recovery/per-resource review and independent field quality, then coordinated exact release and normal signed-in acceptance. Keep current57b8723/schema39 + Compute7e; no main merge or OCR activation.",
+  "next": "Published ADR046 new-admission and large-export fixes; continue historical intake recovery/per-resource review and independent field quality, then coordinated exact release and normal signed-in acceptance. Keep57b8723/schema39 + Compute7e; no main merge or OCR activation.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -409,7 +410,8 @@
     },
     "deployed": false,
     "architectureStatus": "ADR046 new-admission handoff locally implemented and verified; no migration; historical orphan repair/sourceId orchestration and R2-R4 remain open",
-    "externalApiAuthorized": false
+    "externalApiAuthorized": false,
+    "implementationCheckpoint": "948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7"
   },
   "ocrPlanningHandoff": {
     "date": "2026-09-27",
@@ -436,7 +438,7 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "waiting_for_participating_tasks",
+    "status": "local_repairs_published_remaining_intake_scope_open",
     "intake": "R0 export and bounded R1 new-admission handoff locally verified; historical recovery/per-resource review/adjudicated quality open",
     "ocr": "planning delivery integrated; production implementation deferred",
     "ux": "cad1ecf integrated and locally verified; full Workspace30/30 September28; production pending",

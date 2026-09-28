@@ -2,6 +2,12 @@
 
 **Last reconciled:** 2026-09-28. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
+## Latest checkpoint — September28
+
+Implementation checkpoint948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7 is published to codex/vnext-remediation-20260906, including the earlier UXcad1ecf and exportcae2899 commits. Fresh fetch verified clean active vNext HEAD equals that remote checkpoint. This documentation reconciliation follows on the same branch. Main remainsd0e2c79; production remains the recorded57b8723/schema39. No migration, deployment or real-corpus processing occurred in this continuation.
+
+Current verification:64 backend +37 Compute +30 frontend Workspace tests passed in separate targeted runs (131 combined, not a full suite); backend/Compute types and independent reviews pass. New admission jobs cannot be lost between admission commit and notification; optional enrichment/provider failures stay isolated. Large-file export retains1GiB support. Historical orphans, per-resource recovery, field quality, remaining UX/operations findings and normal-site combined-release acceptance remain open.
+
 ## Active work and authority
 
 [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) remains the sole active task. The current operating charter is AcademicCloud-Astra-Reassessment-Execution-Charter; the master handoff is historical context. Both documents were read completely and Phase A reassessment was delivered in chat without project writes. The Owner then explicitly stopped the preceding conversation and instructed immediate execution. **Phase B is active.**

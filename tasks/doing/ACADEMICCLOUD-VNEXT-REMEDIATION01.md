@@ -51,6 +51,9 @@ Backend catalog/library/metadata/suggestions/workspace/persistence; frontend Lib
 
 ## Current State
 
+September28 implementation948ba4d is checkpointed and published to the existing non-main vNext branch; fresh fetch verified clean active-local equality. UXcad1ecf/exportcae2899 are included. Documentation-only reconciliation follows. No main merge, production mutation, migration or corpus execution. Verified local scope and remaining gates are summarized in CURRENT_STATUS.md.
+
+
 Owner2026-09-27 unified deployment gate: collaborating AcademicCloud tasks work in isolated worktrees and coordinate file ownership. Wait until every participating task has completed its agreed current scope and the integrated applicable acceptance is green, then use one designated operator for one coordinated production deployment. No individual task may deploy independently. Ordinary non-main checkpoint publication remains allowed; this does not authorize new production scope.
 
 Coordination: OCR planning is delivered for its current scope. The task “实测 AcademicCloud 并梳理改进点” owns isolated worktree D:/Projects/AcademicCloud-ux-reliability, branch codex/ux-reliability-20260927 from29b5760; its citation.tsx, resource-details.tsx, api.ts/App.tsx and related focused frontend changes do not overlap current intake/Compute edits. It does not own Catalog/Compute/OCR contracts, migrations or integrated state. Exchange any future overlapping interface diff before editing. UX source25df223 is now integrated as cad1ecf and its scoped local checks are complete, including full Workspace30/30 on September28. Intake durable recovery/field quality and unified release acceptance remain unfinished; planning completion does not pass the release gate. All current subagents use GPT-6 Astra/ultra.
