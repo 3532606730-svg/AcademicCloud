@@ -361,7 +361,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Current intake scope, uploads/nginx/Compute diagnostics and remaining UX findings open; combined release and signed-in acceptance pending"
   ],
-  "next": "Published ADR046 new-admission and large-export fixes; continue historical intake recovery/per-resource review and independent field quality, then coordinated exact release and normal signed-in acceptance. Keep57b8723/schema39 + Compute7e; no main merge or OCR activation.",
+  "next": "Complete Owner-selected free OCR trial: resolve first-use service agreement, verify exact free balance and billing state, then resolve credentials/selected-page disclosure and run one frozen pilot per engine before the remaining pages (max8 submissions/engine, no retries). Member-owned connection UI follows measured assessment; intake/corpus and coordinated release remain open. Keep57b8723/schema39 + Compute7e; no main merge or product OCR activation.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -496,6 +496,18 @@
       "independentReview": "PASS: engine contract, isolated Compute helpers, provider assessment and tutorial requirements"
     },
     "ocrCostPolicy": "Reasonably priced OCR acceptable; evaluate quality first then decide budget; no numerical cap selected",
+    "initialFreeTrial": {
+      "ownerRequestedAt": "2026-09-28",
+      "status": "awaiting_owner_ocr_service_agreement",
+      "paidCallsAuthorized": false,
+      "postpaidActivationAuthorized": false,
+      "maxSubmissionsPerEngine": 8,
+      "pilotBeforeRemainingPages": true,
+      "automaticRetries": false,
+      "actualOcrCalls": 0,
+      "actualSourceDisclosure": false,
+      "prerequisites": "Verify actual free balance/billing; resolve service agreements, credential grant and selected source disclosure before dispatch"
+    },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
     "implementationCheckpoint": "be6f34b90189cf62a84520ac7424579967ee2567"

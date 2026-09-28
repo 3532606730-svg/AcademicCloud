@@ -4,6 +4,8 @@ Record only meaningful product, architecture, security, infrastructure, or workf
 
 ## 2026-09-28 — Online-first OCR evaluation and member-owned local execution
 
+The Owner's follow-up selects free quota for the first real trial. Verify the actual account balance and absence of paid fallback before bounded calls; do not buy packages or enable postpaid billing. Begin with one frozen page per engine and continue only after inspecting the result, with at most eight submissions per engine and no blind retry. This is evaluation authority, not product or whole-book enablement; later reasonable-cost evaluation and budget-after-quality remain unchanged.
+
 [ADR-048](docs/decisions/ADR-048-private-current-page-ocr.md) records the Owner's subsequent scenario-based direction: evaluate online APIs and provide one interface for members to connect their own online account or local engine, with simple tutorials in the dialog and no silent use of Owner credentials/compute. The Owner subsequently accepted reasonable OCR fees and chose effects-first evaluation before setting a budget; earlier zero-cost OCR selection is superseded only within this scope. Provider/schema/activation are not frozen; unconnected qualification helpers are retained, while unused queue/cache migration drafts are archived locally. Official costs and capabilities are assessed in docs/evaluation/online-ocr-options.md. Whole-book feasibility is an evaluation, not rollout or a measured accuracy claim. Existing bibliographic Local Pull, privacy, zero-new-infrastructure and zero-billable-GitHub constraints remain.
 
 ## 2026-09-28 — Current-page OCR becomes the next bounded integration step
