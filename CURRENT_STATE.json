@@ -9,8 +9,8 @@
     "checkpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "September28 verified clean active vNext HEAD equals freshly fetched non-main remote58d6da9; final documentation reconciliation follows on the same branch. Original obsolete checkout preserved.",
-    "lastVerifiedPublishedCheckpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f"
+    "localState": "Baselinef4977ca was verified published/synchronized; current online-OCR assessment and unconnected qualification checkpoint publication follow. Original obsolete checkout preserved.",
+    "lastVerifiedPublishedCheckpoint": "f4977cad7d839489c5030974829281c2d200a0c9"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -455,9 +455,9 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "selected_recovery_published_current_page_ocr_next",
+    "status": "selected_recovery_published_online_ocr_assessment_selection_pending",
     "intake": "R0 export, ADR046 admission and ADR047 selected recovery locally verified; private current-page OCR implementation, persistent ZIP recovery and field quality open",
-    "ocr": "Current-page and book-evidence integration assessment requested September28; existing code remains deferred",
+    "ocr": "Online assessment and internal adapter interface locally complete; member-owned connection UI with simple tutorials, persistence/pairing and actual recognition remain to implement",
     "ux": "cad1ecf integrated and locally verified; full Workspace30/30 September28; production pending",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false
@@ -471,10 +471,32 @@
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "After recovery checkpoint, assess and progress reliable bibliographic OCR evidence and private current-page OCR in My Research",
-    "status": "feasible_bounded_current_page_design_required",
+    "status": "member_owned_engine_interface_and_online_assessment",
     "implementationEnabled": false,
-    "zeroAddedCost": true,
+    "zeroAddedCost": false,
     "wholeDocumentOcrAuthorized": false,
-    "runtimeEvidence": "September28 read-only V2 runtime/Paddle asset and exact det+rec hash checks pass; no new inference or engine quality acceptance"
+    "runtimeEvidence": "September28 read-only V2/Paddle hashes verified; no model change, new inference or engine-quality acceptance",
+    "providerDecision": "Members connect their own online account or offline engine through common adapters; no default Owner credentials/quota/compute",
+    "assessment": "docs/evaluation/online-ocr-options.md",
+    "privateResultAdr": "docs/decisions/ADR-048-private-current-page-ocr.md",
+    "qualification": {
+      "code": "unconnected explicit-page/Paddle readerMode; scoped35 tests and independent review pass; types/build pass",
+      "references": 8,
+      "sources": 4,
+      "characters": 6719,
+      "humanVerified": false,
+      "inferenceRun": false,
+      "cloudApiCalled": false,
+      "migrationAdded": false,
+      "contractTestsPassed": 14,
+      "newContractBoundaryTests": 11,
+      "internalInterfaceImplemented": true,
+      "liveConnectorImplemented": false,
+      "tutorialDialogImplemented": false,
+      "independentReview": "PASS: engine contract, isolated Compute helpers, provider assessment and tutorial requirements"
+    },
+    "ocrCostPolicy": "Reasonably priced OCR acceptable; evaluate quality first then decide budget; no numerical cap selected",
+    "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
+    "otherCostGates": "Zero new infrastructure and billable GitHub unchanged"
   }
 }

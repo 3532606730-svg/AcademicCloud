@@ -127,7 +127,7 @@ export function isUsableNativeText(text: string): boolean {
   return isUsableBibliographicEvidence(text, "native_text");
 }
 
-class PdfRangeTransport extends PDFDataRangeTransport {
+export class PdfRangeTransport extends PDFDataRangeTransport {
   private requests: number;
   private fetchedBytes: number;
   private reservedBytes = 0;
@@ -230,7 +230,7 @@ class PdfRangeTransport extends PDFDataRangeTransport {
 
 const LOADING_TASK_DESTROY_TIMEOUT_MILLISECONDS = 1_000;
 
-async function destroyLoadingTask(task: ReturnType<typeof getDocument>): Promise<void> {
+export async function destroyLoadingTask(task: ReturnType<typeof getDocument>): Promise<void> {
   if (task.destroyed) return;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -270,7 +270,7 @@ export function pdfRangeAccessPolicy(
   };
 }
 
-async function withTimeout<T>(operation: Promise<T>, timeoutMilliseconds: number, signal?: AbortSignal): Promise<T> {
+export async function withTimeout<T>(operation: Promise<T>, timeoutMilliseconds: number, signal?: AbortSignal): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let abortHandler: (() => void) | undefined;
   const abortPromise = new Promise<never>((_, reject) => {
@@ -371,13 +371,14 @@ function mapOcrError(error: OcrError): PdfTextInspectionError {
   }
 }
 
-async function recognizeWithDeadline(options: {
+export async function recognizeWithDeadline(options: {
   ocr: OcrAdapter;
   imageBytes: Uint8Array;
   pageIndex: number;
   deadline: number;
   limits: Readonly<SuggestionLimits>;
   signal?: AbortSignal;
+  readerMode?: boolean;
 }) {
   const controller = new AbortController();
   let timedOut = false;
@@ -398,7 +399,7 @@ async function recognizeWithDeadline(options: {
   options.signal?.addEventListener("abort", onAbort, { once: true });
   try {
     return await options.ocr.recognizePage(
-      { imageBytes: options.imageBytes, pageIndex: options.pageIndex },
+      { imageBytes: options.imageBytes, pageIndex: options.pageIndex, ...(options.readerMode ? { readerMode: true } : {}) },
       controller.signal,
     );
   } catch (error: unknown) {
@@ -412,7 +413,7 @@ async function recognizeWithDeadline(options: {
   }
 }
 
-function renderedDimensions(
+export function renderedDimensions(
   page: { getViewport(options: { scale: number }): { width: number; height: number } },
   limits: Readonly<SuggestionLimits>,
 ): { viewport: ReturnType<typeof page.getViewport>; width: number; height: number; scale: number } {

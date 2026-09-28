@@ -11,5 +11,12 @@ process.stdout.write(`${JSON.stringify({ ready: true, engine })}\n`);
 const lines = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
 for await (const line of lines) {
   const request = JSON.parse(line);
-  process.stdout.write(`${JSON.stringify({ id: request.id, status: "recognized", text: "近代中国史研究\n王明 著", confidence: 93 })}\n`);
+  const result = request.pageIndex === 2
+    ? { status: "low_confidence", text: request.readerMode ? "uncertain text" : "", confidence: 30 }
+    : request.pageIndex === 3
+      ? { status: "recognized", text: "𠮷".repeat(16_384), confidence: 93 }
+      : request.pageIndex === 4
+        ? { status: "invented_state", text: "invalid", confidence: 93 }
+        : { status: "recognized", text: "近代中国史研究\n王明 著", confidence: 93 };
+  process.stdout.write(`${JSON.stringify({ id: request.id, ...result, ...(request.readerMode ? { truncated: false } : {}) })}\n`);
 }

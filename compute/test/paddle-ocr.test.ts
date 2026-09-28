@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { OcrError } from "../src/ocr.js";
 
 import {
   loadPaddleOcrConfig,
@@ -32,6 +33,32 @@ test("PaddleOCR sidecar keeps rendered bytes in memory and returns pinned bounde
   } finally {
     await adapter.close();
   }
+});
+
+test("Reader sidecar requests retain uncertain text and report truncation without relaxing bibliography", async () => {
+  const adapter = new PaddleOcrSidecarAdapter({
+    pythonPath: process.execPath, sidecarPath: "ignored-by-fixture",
+    detectionModelPath: "det-model", recognitionModelPath: "rec-model",
+    cachePath: join(tmpdir(), "academiccloud-paddlex"), device: "cpu", engineId: PADDLE_OCR_ENGINE_ID,
+    executableArguments: [fileURLToPath(new URL("./fixtures/fake-paddle-sidecar.mjs", import.meta.url))],
+  });
+  try {
+    const legacy = await adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 2 });
+    assert.equal(legacy.text, "");
+    assert.equal(legacy.status, "low_confidence");
+    const reader = await adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 2, readerMode: true });
+    assert.equal(reader.text, "uncertain text");
+    assert.equal(reader.status, "low_confidence");
+    assert.equal(reader.truncated, false);
+    await assert.rejects(adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 3 }),
+      (error: unknown) => error instanceof OcrError && error.code === "output_limit");
+    const bounded = await adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 3, readerMode: true });
+    assert.equal(bounded.text.length, 16_384);
+    assert.equal(bounded.text.isWellFormed(), true);
+    assert.equal(bounded.truncated, true);
+    await assert.rejects(adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 4, readerMode: true }),
+      (error: unknown) => error instanceof OcrError && error.code === "engine_failure");
+  } finally { await adapter.close(); }
 });
 
 test("production PaddleOCR resolves only release-local sidecar/models and rejects path overrides", () => {

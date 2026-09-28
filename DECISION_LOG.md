@@ -2,6 +2,10 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## 2026-09-28 — Online-first OCR evaluation and member-owned local execution
+
+[ADR-048](docs/decisions/ADR-048-private-current-page-ocr.md) records the Owner's subsequent scenario-based direction: evaluate online APIs and provide one interface for members to connect their own online account or local engine, with simple tutorials in the dialog and no silent use of Owner credentials/compute. The Owner subsequently accepted reasonable OCR fees and chose effects-first evaluation before setting a budget; earlier zero-cost OCR selection is superseded only within this scope. Provider/schema/activation are not frozen; unconnected qualification helpers are retained, while unused queue/cache migration drafts are archived locally. Official costs and capabilities are assessed in docs/evaluation/online-ocr-options.md. Whole-book feasibility is an evaluation, not rollout or a measured accuracy claim. Existing bibliographic Local Pull, privacy, zero-new-infrastructure and zero-billable-GitHub constraints remain.
+
 ## 2026-09-28 — Current-page OCR becomes the next bounded integration step
 
 The Owner asks to finish selected cataloguing recovery, then assess and progress formal OCR integration for book-intake reliability and current-page recognition in `我的研究`. This supersedes the earlier blanket execution deferral only for that bounded path. Existing zero-cost Local Compute, immutable source/page identity, private research authority and the coordinated release gate remain. A concrete ADR must define task/result persistence, adapter provenance, qualification, migration and rollback before enablement. Current code still returns `ocr_deferred`; neither task metadata nor OCR text is newly persisted yet. Whole-document/corpus OCR, shared full-text publication, index/RAG and external model disclosure are not implied.

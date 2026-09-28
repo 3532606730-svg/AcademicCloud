@@ -69,9 +69,11 @@ interface SidecarResult {
   status: "recognized" | "no_text" | "low_confidence" | "unsupported_script" | "failed";
   text?: string;
   confidence?: number | null;
+  truncated?: boolean;
 }
 
 interface Pending {
+  readerMode: boolean;
   resolve: (value: OcrRecognition) => void;
   reject: (error: OcrError) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -97,6 +99,7 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
     if (!Number.isSafeInteger(input.pageIndex) || input.pageIndex < 1 || input.imageBytes.byteLength < 1
       || input.imageBytes.byteLength > SUGGESTION_LIMITS.maxEncodedPageImageBytes) throw new OcrError("input_limit");
     await this.#ensureReady(signal);
+    if (signal?.aborted) throw new OcrError("aborted");
     if (!this.#child?.stdin.writable) throw new OcrError("engine_unavailable");
     const id = randomUUID();
     return new Promise<OcrRecognition>((resolve, reject) => {
@@ -116,9 +119,11 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
         finish(() => reject(new OcrError("timeout")));
         this.#terminate(new OcrError("timeout"));
       }, SUGGESTION_LIMITS.perPageOcrTimeoutMilliseconds);
-      this.#pending.set(id, { resolve, reject, timer, ...(signal === undefined ? {} : { signal, onAbort }) });
+      this.#pending.set(id, { resolve, reject, timer, readerMode: input.readerMode === true,
+        ...(signal === undefined ? {} : { signal, onAbort }) });
       signal?.addEventListener("abort", onAbort, { once: true });
-      const request = JSON.stringify({ id, pageIndex: input.pageIndex, imageBase64: Buffer.from(input.imageBytes).toString("base64") });
+      const request = JSON.stringify({ id, pageIndex: input.pageIndex, imageBase64: Buffer.from(input.imageBytes).toString("base64"),
+        ...(input.readerMode ? { readerMode: true } : {}) });
       this.#child!.stdin.write(`${request}\n`, "utf8", (error) => {
         if (error) finish(() => reject(new OcrError("engine_failure")));
       });
@@ -218,6 +223,7 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
     let message: SidecarResult | { ready: true; engine: string };
     try {
       message = JSON.parse(line) as SidecarResult | { ready: true; engine: string };
+      if (typeof message !== "object" || message === null || Array.isArray(message)) throw new Error("invalid sidecar result");
     } catch {
       this.#terminate(new OcrError("engine_failure"));
       return;
@@ -241,15 +247,29 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
       pending.reject(new OcrError("engine_failure"));
       return;
     }
-    const text = typeof message.text === "string" ? message.text.normalize("NFC").trim() : "";
+    if (!["recognized", "no_text", "low_confidence", "unsupported_script"].includes(message.status)
+      || typeof message.text !== "string"
+      || (message.truncated !== undefined && typeof message.truncated !== "boolean")
+      || (message.confidence !== null && (typeof message.confidence !== "number"
+        || !Number.isInteger(message.confidence) || message.confidence < 0 || message.confidence > 100))) {
+      pending.reject(new OcrError("engine_failure"));
+      return;
+    }
+    let text = typeof message.text === "string" ? message.text.normalize("NFC").trim() : "";
     const confidence = message.confidence === null ? null
       : typeof message.confidence === "number" && Number.isInteger(message.confidence) && message.confidence >= 0 && message.confidence <= 100
         ? message.confidence : null;
     if (text.length > SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage) {
-      pending.reject(new OcrError("output_limit"));
-      return;
+      if (!pending.readerMode) {
+        pending.reject(new OcrError("output_limit"));
+        return;
+      }
+      text = text.slice(0, SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage);
+      if (/[\uD800-\uDBFF]$/u.test(text)) text = text.slice(0, -1);
+      message.truncated = true;
     }
-    pending.resolve({ status: message.status, text, confidence, engine: this.#config.engineId });
+    pending.resolve({ status: message.status, text, confidence, engine: this.#config.engineId,
+      ...(message.truncated === undefined ? {} : { truncated: message.truncated }) });
   }
 
   #terminate(error: OcrError, kill = true): void {

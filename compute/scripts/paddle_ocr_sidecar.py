@@ -75,6 +75,7 @@ def main() -> int:
         identifier = ""
         try:
             request = json.loads(line)
+            reader_mode = request.get("readerMode") is True
             identifier = request.get("id", "")
             encoded = request.get("imageBase64", "")
             if not isinstance(identifier, str) or not isinstance(encoded, str):
@@ -105,11 +106,14 @@ def main() -> int:
                     weighted_score += float(score) * weight
                     score_weight += weight
             joined = "\n".join(texts).strip()
-            if len(joined) > MAX_TEXT_CHARACTERS:
+            truncated = len(joined) > MAX_TEXT_CHARACTERS
+            if truncated and not reader_mode:
                 raise ValueError("output limit")
             confidence = None if score_weight == 0 else max(0, min(100, round(100 * weighted_score / score_weight)))
             status = "no_text" if not joined else "low_confidence" if confidence is None or confidence < 55 else "recognized"
-            response = {"id": identifier, "status": status, "text": joined if status == "recognized" else "", "confidence": confidence}
+            response = {"id": identifier, "status": status, "text": joined[:MAX_TEXT_CHARACTERS] if reader_mode or status == "recognized" else "", "confidence": confidence}
+            if reader_mode:
+                response["truncated"] = truncated
         except Exception:
             response = {"id": identifier, "status": "failed"}
         print(json.dumps(response, ensure_ascii=False, separators=(",", ":")), flush=True)

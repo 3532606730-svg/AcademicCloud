@@ -29,6 +29,8 @@ export interface OcrPageInput {
   /** The rendered image remains process-local and is never persisted. */
   imageBytes: Uint8Array;
   pageIndex: number;
+  /** Explicit Reader requests retain low-score text and report output truncation. */
+  readerMode?: boolean;
 }
 
 export type OcrRecognitionStatus = "recognized" | "no_text" | "low_confidence" | "unsupported_script";
@@ -39,6 +41,7 @@ export interface OcrRecognition {
   /** Integer 0–100, or null when the engine found no scored words. */
   confidence: number | null;
   engine: string;
+  truncated?: boolean;
 }
 
 export interface OcrAdapter {
