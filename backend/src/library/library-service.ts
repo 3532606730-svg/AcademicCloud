@@ -184,6 +184,7 @@ export class LibraryService {
   readonly #now: () => Date;
   readonly #createId: () => string;
   #onHoldingAvailable: ((actor: AuthenticatedAccount, libraryId: string, fileId: string) => Promise<void>) | undefined;
+  #recordHoldingAdmission: ((repositories: RepositorySet, actor: AuthenticatedAccount, libraryId: string, fileId: string, now: Date) => void) | undefined;
 
   constructor(
     persistence: Persistence,
@@ -199,6 +200,11 @@ export class LibraryService {
 
   setHoldingAvailableListener(listener: (actor: AuthenticatedAccount, libraryId: string, fileId: string) => Promise<void>): void {
     this.#onHoldingAvailable = listener;
+  }
+
+  /** Persist optional work in the caller's admission transaction; never perform I/O here. */
+  setHoldingAdmissionRecorder(recorder: (repositories: RepositorySet, actor: AuthenticatedAccount, libraryId: string, fileId: string, now: Date) => void): void {
+    this.#recordHoldingAdmission = recorder;
   }
 
   recordAuditAttempt(
@@ -969,6 +975,9 @@ export class LibraryService {
           );
         }
         if (!updated) throw new LibraryError("conflict");
+        if (decision === "approve" && candidate.file.mediaType?.toLowerCase() === "application/pdf") {
+          this.#recordHoldingAdmission?.(repositories, actor, libraryId, candidate.file.id, now);
+        }
         recordAuditEvent(repositories, {
           action: decision === "approve" ? "libraries.contribution_approve" : "libraries.contribution_reject",
           actorKind: "account",
@@ -1000,8 +1009,8 @@ export class LibraryService {
     const listener = this.#onHoldingAvailable;
     queueMicrotask(() => {
       void listener(actor, libraryId, file.id).catch(() => {
-        // Bibliographic enrichment is best-effort and isolated: a failed job
-        // or dispatcher can never change the completed upload/admission.
+        // The job is already durable in the admission transaction. This is
+        // only a wake-up; the startup/periodic reconciler survives its loss.
       });
     });
   }
@@ -1165,6 +1174,9 @@ export class LibraryService {
       now,
     );
     if (!promoted) throw new LibraryError("conflict");
+    if (file.mediaType?.toLowerCase() === "application/pdf") {
+      this.#recordHoldingAdmission?.(repositories, actor, canonicalLibraryId, file.id, now);
+    }
     recordAuditEvent(repositories, {
       action: "libraries.resource_admit",
       actorKind: "account",

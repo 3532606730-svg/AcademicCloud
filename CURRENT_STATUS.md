@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-09-27. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
+**Last reconciled:** 2026-09-28. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
 ## Active work and authority
 
@@ -8,15 +8,19 @@
 
 The charter authorizes implementation beyond R01–R16, visual refinement, optimization, testing, integration/main publication, exact deployment and necessary production/Compute operations. Zero added infrastructure cost and zero billable GitHub usage remain gates. Preserve original bytes, source associations, stable identities, privacy and human authority.
 
-Historical September24 continuation recovered the active vNext tree instead of replaying the obsolete original checkout. The Owner requests `medium` effort for all subagents and a dedicated validation agent; root owns implementation, reconciliation and release preparation. The publication cadence remains one combined release after the local integrated batch.
+The September28 continuation uses the recovered active vNext tree, preserving the obsolete original checkout. The Owner now requests GPT-6 Astra/ultra for every subagent and a dedicated verifier. Root owns implementation, reconciliation and the coordinated release. Current instructions permit existing-path repairs and authorized non-main checkpoints; main merge and unrelated scope remain excluded despite broader historical charter wording above.
 
 ## Book intake reliability — current priority, local correction
 
 The Owner requests a thorough solution for reliable book intake. The Catalog exporter now preserves typed PDF source failures as source_unavailable, enabling the existing one-retry bound; size/limit failures stay nonretryable. Focused exporter/resilience/Bridge tests31/31, Compute typecheck and independent diff review PASS. This is a local candidate, not a deployed fix.
 
-The follow-up export-performance correction is also local and not deployed. Evidence extraction is now separated from per-resource ZIP assembly, so the resilient batch path assembles one ZIP only after all resource evidence is collected. Signed range bodies that fail after a 206 response retry the same bounded range once. Final evidence ZIP compression uses the fast level-1 setting. The focused exporter/resilience/Bridge set is 33/33 with Compute typecheck PASS. Large staged-file fallback remains bounded by the caller's explicit maximum; no OCR or source-disclosure policy changed.
+The follow-up export correction cae2899 is local and not deployed: evidence extraction avoids discarded per-resource ZIPs, signed range body failures retry once, and final ZIP compression uses level1. September28 independent review found an unintended 128MiB fallback cap; the corrected candidate restores the established 1GiB envelope. Exporter/resilience/Bridge37/37 and Compute typecheck PASS, including a 922MB eligibility regression without downloading that source, persistent-body-failure and cancellation bounds. This is a structural optimization, not a measured whole-book speedup.
 
-The [reliable book intake plan](docs/architecture/reliable-book-intake.md) separates durable upload-to-job handoff, recoverable per-resource processing, evidence coverage and independently adjudicated field quality. Those architecture changes are proposed, not implemented. External AI API meaning, cost and source-disclosure scope remain unconfirmed; preserve zero-added-cost Local Compute. Recorded production identities below are September25 observations and were not re-probed in this correction.
+The [reliable book intake plan](docs/architecture/reliable-book-intake.md) separates durable upload-to-job handoff, recoverable per-resource processing, evidence coverage and independently adjudicated field quality. ADR046 now implements the bounded new-admission handoff using the existing queue and schema; targeted rollback/recovery verification is complete locally: contribution26/26 (13 new regressions), existing suggestion/HTTP/startup38/38, backend typecheck and independent source/ADR review PASS. A fresh SQLite connection reconstructed the service and dispatched the same committed attempt with the wake suppressed; this is not a production process-kill test. Historical missing jobs, sourceId orchestration, per-resource recovery and independently adjudicated quality remain open. External AI API meaning, cost and source-disclosure scope remain unconfirmed; preserve zero-added-cost Local Compute. Recorded production identities below are September25 observations and were not re-probed in this correction.
+
+## UX integration — verified local candidate
+
+UX commit25df223 was integrated as cad1ecf. Citation responses cannot overwrite changed parameters; metadata drafts are guarded; AI-state reads batch at100 IDs; active filters stay visible; mobile recent-reading and paginated progress are retained. Prior focused results were95 + App160 + Workspace29 + one isolated regression (285 unique tests across runs). September28 complete Workspace30/30 now closes the combined-run gap; frontend sources are unchanged since cad1ecf. Two TypeScript configurations, Vite build and prior synthetic desktop/mobile browser evidence pass. These changes are not yet deployed. Evidence: docs/evidence/live-ux-review-20260927.md and ignored output/vnext/workspace-complete-20260928.log.
 
 ## OCR planning handoff — integrated, execution still deferred
 
@@ -42,7 +46,7 @@ September25 owned-reader release is deployed: exact Core/frontend d58ef44a244122
 
 Git publication: exact runtime d58ef44 was published to main/integration; fresh fetch verified local HEAD equals both. A final documentation-only checkpoint follows and does not change the deployed runtime.
 
-## Source and takeover evidence
+## Historical source and takeover evidence
 
 Active tree: D:/Projects/AcademicCloud-vnext, branch codex/vnext-remediation-20260906. The combined runtime970 plus documentation checkpoint **00a57507d1ea507c34712f543757121bf3558937** was atomically published to main/integration. Fresh fetch verified active local HEAD equals both remote heads; post-deployment documentation reconciliation follows. Takeover source5eeed4c remains historical.
 
@@ -133,15 +137,21 @@ The Owner has now explicitly deferred OCR execution while requesting a backend s
 
 Read-only evaluation of the separate local `mongology-academic-ocr` project found a 10.6 MB Mongolian Latin transcription line-recognition checkpoint and a structured JSONL export with page/line boxes, source checksum, model ID, confidence, provisional/verified status and review flags. Its reported 3.316% CER is on a controlled 700-line normalized mixed-book validation set, not unseen-book or traditional-script acceptance. Its release explicitly excludes traditional Mongolian script; vertical column layout proposals are not a trained vertical Mongolian recognizer. This engine is a possible later provider for Latin-transcription pages only. A future adapter would need to obtain authorized source bytes in Compute, bind page output to `resourceId + sourceId`, bound output and keep provisional text separate from verified notes. The reserved v1 response contains page text but no line geometry, so screenshot-style block overlays would require an explicit response-contract extension and separate review/edit persistence. No engine was run or integrated in this checkpoint.
 
-## Inherited corpus acceptance boundary
+## Latest recorded production inspection — September27
+
+The integrated [live UX inspection](docs/evidence/live-ux-review-20260927.md) re-observed Core/frontend57b8723/schema39, Compute V2 exact7e in NORMAL and queue0/0. Its aggregate at approximately17:24 HKT is192 active PDFs:94 succeeded,67 failed,31 without a job. Failures:38 timeout,15 invalid result,5 internal,4 source unavailable,3 limits,2 invalid PDF. Job success is not verified bibliographic quality. This is a prior report observation, not a fresh September28 production probe.
+
+The192 active-PDF denominator has not been reconciled by scholarly eligibility, internal-fixture exclusion or overlap with the12 Owner sources; do not combine it with the September23 identity-level102 source set. Six historical damaged sources still require replacement or an explicit unresolved gate. Browser5 resumable uploads and backend8 pending/3 completing/4 uploading have different scopes and do not establish missing UI rows. The report also confirms nginx workers writing rotated logs and insufficient Compute error diagnostics; both remain uncorrected.
+
+## Historical corpus acceptance boundary
 
 The dated September1 batch inventory contained 94 eligible PDFs: six already processed and 88 selected for batch-001. Its 82 output rows are one reviewed result and 81 raw UNKNOWN dispositions; three of the 81 are exact internal fixtures, leaving 78 scholarly UNKNOWN/未复核 rows whose notes explicitly propose no change. They are not 78 proven reviewable AI successes. The six omitted batch identities still match the September23 inventory byte length, source revision, checksum algorithm and checksum, so their existing `SOURCE_REPLACEMENT_REQUIRED` diagnosis remains valid and the same bytes should not be retried.
 
 The September23 privacy-safe read-only inventory contains 96 active eligible PDFs (93 scholarly resources and three internal fixtures), 6,176,353,166 bytes, no duplicate source-checksum group, SQLite integrity `ok`, and zero foreign-key violations. Raw job states are `failed=49`, `not_run=31`, `succeeded=16`; excluding the three failed internal fixtures gives 93 scholarly resources with `failed=46`, `not_run=31`, `succeeded=16`. The two identities added since September1 are Mongolia Today (succeeded) and Venice and the Mongols (failed). The previous “five remaining production PDFs” inference mixed inventories from different dates and is retired.
 
-All 12 Owner acceptance PDFs remain in the local staging directory with matching SHA-256 hashes (199,835,281 bytes total). Comparing Base64 MD5 and byte length against the production inventory matches three active resources exactly: Mongolia Today and Mongolia: politics, economics and society succeeded, while Venice and the Mongols failed with `compute_invalid_result`. The other nine Owner files have no exact active-PDF match. The current distinct scholarly-source set is therefore 93 + 12 − 3 = 102; the historical 105 count was an earlier snapshot, not a current acceptance denominator. A SHA-256-only production query returned 0/12 because production stores MD5 and cannot be used as a missing-file conclusion.
+All 12 Owner acceptance PDFs remain in the local staging directory with matching SHA-256 hashes (199,835,281 bytes total). Comparing Base64 MD5 and byte length against the production inventory matches three active resources exactly: Mongolia Today and Mongolia: politics, economics and society succeeded, while Venice and the Mongols failed with `compute_invalid_result`. The other nine Owner files have no exact active-PDF match. The September23 distinct scholarly-source set was therefore 93 + 12 − 3 = 102; neither that set nor the older105 count is a current acceptance denominator. A SHA-256-only production query returned 0/12 because production stores MD5 and cannot be used as a missing-file conclusion.
 
-This is not corpus acceptance. The 16 successful jobs must be preserved and classified from their existing results; known bad-source identities need replacement bytes or an explicit unresolved gate. Only unfinished/affected sources should proceed through normal signed-in website upload/retry after the final candidate Compute/Core qualification. The final gate requires one time-bound read-only inventory/queue/state projection plus normal-path browser acceptance and the 29-section report; the September9 snapshots and the old runtime do not prove zero failed/stuck/state mismatch.
+This is not corpus acceptance. The successful jobs in each dated snapshot must be preserved and classified from their existing results; known bad-source identities need replacement bytes or an explicit unresolved gate. Only unfinished/affected sources should proceed through normal signed-in website upload/retry after the final candidate Compute/Core qualification. The final gate requires one time-bound read-only inventory/queue/state projection plus normal-path browser acceptance and the 29-section report; the September9 snapshots and the old runtime do not prove zero failed/stuck/state mismatch.
 
 The six previously diagnosed replacement-required PDFs were checked against the historical 88-item request minus 82 result identities and the September23 inventory: all six still have identical byte length and MD5. None has an identified replacement among the 12 staged Owner files or name-matching alternates in the known local roots. The Owner has been asked whether usable copies exist; unchanged bad bytes will not be retried. Current source review also confirms `compute/` has not changed since deployed `7e2d1bf`; the new shared OCR contract is additive and only Core imports it for the disabled Reader endpoint. Exact970 Linux/host qualification and the combined release have now passed; the damaged-source boundary remains.
 ## Established evidence retained
@@ -154,14 +164,9 @@ The six previously diagnosed replacement-required PDFs were checked against the 
 - Six-width responsive screenshots and changed-path checks exist. Synthetic fixtures do not prove production or visual completeness.
 - At10,000 holdings/500 selected items, isolated Apply fell from121,268ms to1,150ms with persistence/object/audit equivalence. This is a synthetic service benchmark, not production latency.
 
-## Immediate execution order
+## Current execution order — September28
 
-1. Complete the bounded signed-in sanity check on deployed970. Keep green Linux/host qualification closed; the Owner requested no additional broad tests.
-2. Record publication/runtime/local synchronization precisely, then continue normal-path unfinished/affected corpus work, preserving successful jobs and requiring new bytes for the six damaged sources.
-3. Finish remaining Catalog/transfer/private-workspace product evidence and the29-section report without equating deployment with whole-charter acceptance.
-4. Keep field quality distinct from format/evidence qualification; OCR execution, full-corpus text indexing and RAG remain deferred.
-
-Fresh browser-to-loopback export was previously blocked by an automation boundary; recheck only when its normal user path is needed. Publication and exact-source tests now pass; remaining whole-product/corpus acceptance and report work stay explicit.
+ADR046 admission handoff is locally verified (64 backend tests/types and independent review); preserve this checkpoint; retain the verified UX patch and corrected export path. Next address historical missing/failed work through an explicit authorized recovery flow, per-resource result recovery and independently adjudicated field quality. Reconcile the September27 inventory before selecting affected resources; do not replay successful jobs or unchanged damaged bytes. Complete current intake scope and integration checks before one coordinated release and normal signed-in upload/retry/Catalog acceptance. Upload stalls, nginx reopen, safe Compute diagnostics and remaining UX findings in the September27 report remain open. OCR execution, paid providers, main merge and unrelated scope are outside the current continuation.
 
 ## Historical records
 

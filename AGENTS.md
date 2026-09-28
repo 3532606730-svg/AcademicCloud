@@ -14,13 +14,15 @@
 
 **Current reader continuation (2026-09-25):** Reader usability hotfix deployed 2026-09-25: exact Core/frontend 57b8723934446706440f7625fd02cd2262b4d712, schema/history39/001–039, no migrations/admissions/nginx/Compute changes. Core active/running PID1275345, zero restarts, readiness PASS; memory97,255,424 bytes is a cutover snapshot. Linux Node24.19.0/npm11.19.1 build/package PASS, 5164 manifest files, archive081338faae953d0f29e3de1946a93885a65ea2efd29075f80c680ec45e530068. Main/integration fast-forward published. Signed-in Codex IAB painted Mongolia Today page23/313 via new range transport; arrows23→24→23, focused reading, local-file controls and collapsed Library announcement visible. Library→Research restores active document. Local synthetic IAB additionally confirms ordinary local-file selection/render and390px no-overflow, PDF viewport top332px versus439px. Native directory picker/save/reuse was covered by tests but not end-to-end IAB; normal on-device permission is still user-selected. Authorization-renewal retention and progress CAS recovery have targeted tests; natural five-minute expiry is not claimed as live benchmark. No production note/highlight created for acceptance.
 
-**Current priority (2026-09-27):** the Owner requests a thorough reliability solution for book intake. The same vNext task continues. A local Catalog source-error classification fix passes31 targeted tests and Compute typecheck; no runtime changed. Read docs/architecture/reliable-book-intake.md for the proposed durable handoff, per-resource recovery and field-quality sequence. Proposed architectural/API changes are not implemented; preserve zero cost and source-disclosure boundaries until external API scope is clarified.
+**Current priority (2026-09-28):** continue reliable book intake in the same vNext task. UX cad1ecf is locally integrated; export follow-up restores the established1GiB envelope and passes37 focused tests/Compute types. ADR046 now records new admission jobs in the existing transaction, with64 backend tests/typecheck and independent source review passing, without a migration. Existing historical gaps, per-resource review recovery, independent field quality and unified deployment remain open. Read docs/architecture/reliable-book-intake.md and ADR046; no external API cost or source disclosure is authorized.
+
+**Current continuation boundary (2026-09-28):** recover facts from the active vNext checkout; preserve obsolete original/staging work. The current Owner instruction authorizes existing-product repair and coordinated evidence-gated releases, but does not authorize a main merge, unrelated provider/security changes, paid services or new whole-document OCR. This narrower current boundary takes precedence over the historical charter's broad authority above.
 
 ## Engineering Workflow
 
 Ordinary AcademicCloud engineering follows `.agents/skills/academiccloud-workflow/SKILL.md`. The repository is durable project memory. Product and architecture facts come from current code, Git, task cards, current-state documents, and accepted ADRs—not from chat memory.
 
-**Subagent effort (Owner instruction, 2026-09-24):** use `medium` reasoning effort for all delegated work unless the Owner changes this preference.
+**Subagent configuration (Owner instruction, 2026-09-27, reaffirmed September28):** use `gpt-6-astra` with `ultra` reasoning effort for all delegated work. This supersedes earlier Sol/medium settings. Root owns integration; maintain a dedicated verifier.
 
 ## Highest-Priority Rules
 
@@ -168,7 +170,7 @@ Do not use user-facing filenames as trusted physical storage keys.
 
 ## Working Method
 
-When delegating AcademicCloud work, use GPT-6 Sol with medium reasoning effort for every bot, including the dedicated verification agent. The Owner's September24 medium instruction supersedes the earlier high-effort setting. Delegate verification to that agent while the main agent continues implementation and release preparation.
+When delegating AcademicCloud work, use GPT-6 Astra with ultra reasoning effort for every subagent, including the dedicated verifier. The Owner's September27 instruction supersedes earlier model/effort preferences. Delegate verification while the main agent continues implementation and integration.
 
 Before changing code:
 1. Follow `.agents/skills/academiccloud-workflow/SKILL.md`.

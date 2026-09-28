@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-09-27
+**Last reconciled:** 2026-09-28
 
 ## Product Direction
 
@@ -31,6 +31,8 @@ The current reliability interlock changes sequencing, not this model.
 The Owner prioritizes reliable book intake within the active vNext remediation. See the [reliable book intake plan](docs/architecture/reliable-book-intake.md): repair concrete export failures, make admission-to-catalogue handoff durable, recover per-resource processing independently of browser sessions, then compare field quality and review effort against adjudicated sources. ZIP export is a compatibility workflow; the proposed normal intake path uses the existing candidate review and authority model. Changes to task persistence, page selection, temporary evidence storage or provider provenance require their own ADR/contracts and release gates. Whole-corpus OCR and paid/external inference are not implicitly authorized. Reader completion remains valid; unfinished corpus/report work remains in the same task.
 
 The [OCR planning handoff](docs/architecture/ocr-product-plan.md#8-与提升书籍录入可靠性的协作约定) is integrated as planning/evidence only. Intake remains first; OCR qualifications and page-result design may be coordinated independently, with shared interface review before implementation. Full-text persistence and production OCR remain separately gated; no parallel resource, permission or queue system is introduced.
+
+ADR046 implements the bounded first reliability step: record a new admission job in the existing activation/approval transaction, reuse the current queue and Catalog fingerprint, and recover through the existing dispatcher. No migration or new service. Historical missing work, immutable-source orchestration, per-resource review and field-quality acceptance remain separate next steps. Current continuation excludes main merge and new OCR execution; all delegated agents use GPT-6 Astra/ultra.
 
 ## Active vNext remediation interlock
 

@@ -205,6 +205,45 @@ test("a transient source error from the PDF inspector retries only the affected 
   assert.ok(result.evidence.every((entry) => entry.inspection.status === "ready"));
 });
 
+test("the 922 MB source remains eligible for staged fallback and preserves source failure classification", async () => {
+  const previous = globalThis.fetch;
+  let authorizationCalls = 0;
+  let rangeInspections = 0;
+  let fileInspections = 0;
+  globalThis.fetch = async (input) => {
+    const url = input instanceof Request ? input.url : String(input);
+    assert.equal(url, "https://cloud.ajtlab.top/api/catalog-batches/batch-resilient/resources/resource-1/source");
+    authorizationCalls += 1;
+    // Reach staged fallback without downloading or allocating the large source.
+    return new Response(null, { status: 503 });
+  };
+  try {
+    const result = await createResilientCatalogEvidencePackage({
+      request: requestDocument([922_469_003, 101]),
+      createInspector: () => ({
+        inspect: async () => { throw new Error("whole object path forbidden"); },
+        inspectRange: async (source) => {
+          if (source.length === 922_469_003) {
+            rangeInspections += 1;
+            throw new PdfTextInspectionError("timeout", "document_load");
+          }
+          return inspection();
+        },
+        inspectFile: async () => { fileInspections += 1; return inspection(); },
+      }),
+      endpointPolicy: ENDPOINT_POLICY,
+    });
+    assert.equal(authorizationCalls, 2, "both bounded resource attempts must enter the staged fallback");
+    assert.equal(rangeInspections, 2);
+    assert.equal(fileInspections, 0, "no source bytes were downloaded");
+    assert.deepEqual(result.failedResources, [{ resourceId: "resource-1", code: "source_unavailable" }]);
+    assert.equal(result.evidence[1]?.inspection.status, "ready");
+    assert.equal(result.manifest.resources[1]?.pageCount, 1);
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+
 for (const [failure, expectedCode, expectedAttempts] of [
   ["source_unavailable", "source_unavailable", 2],
   ["too_large", "limit_exceeded", 1],

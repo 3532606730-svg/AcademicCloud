@@ -1,15 +1,15 @@
 {
-  "lastReconciled": "2026-09-27",
+  "lastReconciled": "2026-09-28",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "57b8723934446706440f7625fd02cd2262b4d712",
-    "mainIntegration": "Runtime57b8723 published to both heads; final documentation reconciliation follows",
-    "localSynchronized": true,
-    "localState": "Active vNext checkout57b8723; fresh remote equality verification follows final docs publication"
+    "checkpoint": "cae2899b3cd69de0320c34329909f1246524b834",
+    "mainIntegration": "Last published main d0e2c79; local UX/export changes pending non-main publication; no current main merge authority",
+    "localSynchronized": false,
+    "localState": "Active vNext contains cad1ecf and cae2899 plus September28 repair in progress; remote equality not yet reverified"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -63,6 +63,17 @@
       "computeChanged": false,
       "log": "output/vnext/reader-hotfix-deployment.log",
       "liveBrowser": "Reader usability hotfix deployed 2026-09-25: exact Core/frontend 57b8723934446706440f7625fd02cd2262b4d712, schema/history39/001–039, no migrations/admissions/nginx/Compute changes. Core active/running PID1275345, zero restarts, readiness PASS; memory97,255,424 bytes is a cutover snapshot. Linux Node24.19.0/npm11.19.1 build/package PASS, 5164 manifest files, archive081338faae953d0f29e3de1946a93885a65ea2efd29075f80c680ec45e530068. Main/integration fast-forward published. Signed-in Codex IAB painted Mongolia Today page23/313 via new range transport; arrows23→24→23, focused reading, local-file controls and collapsed Library announcement visible. Library→Research restores active document. Local synthetic IAB additionally confirms ordinary local-file selection/render and390px no-overflow, PDF viewport top332px versus439px. Native directory picker/save/reuse was covered by tests but not end-to-end IAB; normal on-device permission is still user-selected. Authorization-renewal retention and progress CAS recovery have targeted tests; natural five-minute expiry is not claimed as live benchmark. No production note/highlight created for acceptance."
+    },
+    "latestInspectionReport": {
+      "observedAt": "2026-09-27",
+      "evidence": "docs/evidence/live-ux-review-20260927.md",
+      "coreFrontend": "57b8723",
+      "schemaVersion": 39,
+      "compute": "7e2d1bf",
+      "computeState": "AcademicCloudComputeV2 NORMAL enabled/active",
+      "queued": 0,
+      "running": 0,
+      "rootReprobed": false
     }
   },
   "candidate": {
@@ -105,7 +116,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Owned reader d58ef44 deployed schema039; remaining integrated corpus/report objectives remain open",
+    "currentPhaseB": "Reader hotfix57b8723 deployed schema039; local UX/export/admission repairs and broader intake/corpus/report acceptance remain open",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -191,49 +202,25 @@
       "evidence": "focused refresh, expiry, quota and sign-out tests 9/9 pass; signed-in synthetic browser import/Preview/refresh/resume/partial Apply/completed exclusion/sign-out pass; live Catalog acceptance pending"
     },
     "currentCorpusProjection": {
-      "observedAt": "2026-09-23",
-      "source": "privacy-safe read-only production inventory over academiccloud-prod",
-      "schemaMigrationHistory": "001-036",
-      "productionEligibleTotal": 96,
-      "interpretation": "93 production resources plus 3 exact internal fixtures",
+      "observedAt": "2026-09-27T17:24:00+08:00",
+      "source": "docs/evidence/live-ux-review-20260927.md; prior read-only report, not re-probed September28",
+      "activePdfTotal": 192,
       "jobStateCounts": {
-        "failed": 49,
-        "not_run": 31,
-        "succeeded": 16
+        "succeeded": 94,
+        "failed": 67,
+        "not_run": 31
       },
-      "scholarlyJobStateCountsExcludingFixtures": {
-        "failed": 46,
-        "not_run": 31,
-        "succeeded": 16
+      "failureCounts": {
+        "timeout": 38,
+        "invalidResult": 15,
+        "internalError": 5,
+        "sourceUnavailable": 4,
+        "limitExceeded": 3,
+        "invalidPdf": 2
       },
-      "distinctScholarlySourcesWithStagedOwnerFiles": 102,
-      "historicalBatch001": "2026-09-01: 94 eligible, 6 already processed, 88 in batch; 82 outputs = 1 reviewed + 81 raw UNKNOWN, of which 3 internal and 78 scholarly unreviewed/no-change; 6 unchanged corrupt sources require replacement",
-      "semanticStateCounts": {
-        "failed": 49,
-        "not_run": 23,
-        "extraction_only": 10,
-        "filename_inference_only": 5,
-        "applied": 1,
-        "ai_succeeded_reviewable": 8
-      },
-      "errorCounts": {
-        "compute_timeout": 35,
-        "compute_limit_exceeded": 2,
-        "compute_internal_error": 5,
-        "compute_invalid_pdf": 1,
-        "compute_invalid_result": 6
-      },
-      "databaseIntegrity": "ok",
-      "foreignKeyViolations": 0,
-      "ownerChecksumMatchesIncluded": false,
-      "acceptance": "not closed; failed, not-run and extraction-only states remain; no jobs rerun",
-      "ownerMd5Crosscheck": {
-        "stagedOwnerFiles": 12,
-        "exactByteMd5Matches": 3,
-        "noByteMd5Match": 9,
-        "sha256AlgorithmMatches": 0,
-        "note": "Production inventory stores MD5; 2 matched Owner jobs succeeded and Venice failed; remaining 9 have no exact active match; no resource mutation or retry performed"
-      }
+      "interpretation": "Raw active PDF/job aggregate, not a scholarly eligible or factual-quality denominator",
+      "identityReconciliation": "Pending current eligibility/internal-fixture/Owner-source overlap reconciliation; do not mix with September23 set102",
+      "accepted": false
     },
     "localRootSuite": {
       "command": "npm test",
@@ -303,6 +290,60 @@
     "readerHotfix": {
       "status": "DEPLOYED; changed-path live acceptance PASS",
       "scope": "Reader usability hotfix deployed 2026-09-25: exact Core/frontend 57b8723934446706440f7625fd02cd2262b4d712, schema/history39/001–039, no migrations/admissions/nginx/Compute changes. Core active/running PID1275345, zero restarts, readiness PASS; memory97,255,424 bytes is a cutover snapshot. Linux Node24.19.0/npm11.19.1 build/package PASS, 5164 manifest files, archive081338faae953d0f29e3de1946a93885a65ea2efd29075f80c680ec45e530068. Main/integration fast-forward published. Signed-in Codex IAB painted Mongolia Today page23/313 via new range transport; arrows23→24→23, focused reading, local-file controls and collapsed Library announcement visible. Library→Research restores active document. Local synthetic IAB additionally confirms ordinary local-file selection/render and390px no-overflow, PDF viewport top332px versus439px. Native directory picker/save/reuse was covered by tests but not end-to-end IAB; normal on-device permission is still user-selected. Authorization-renewal retention and progress CAS recovery have targeted tests; natural five-minute expiry is not claimed as live benchmark. No production note/highlight created for acceptance."
+    },
+    "historicalCorpusProjection20260923": {
+      "observedAt": "2026-09-23",
+      "source": "privacy-safe read-only production inventory over academiccloud-prod",
+      "schemaMigrationHistory": "001-036",
+      "productionEligibleTotal": 96,
+      "interpretation": "93 production resources plus 3 exact internal fixtures",
+      "jobStateCounts": {
+        "failed": 49,
+        "not_run": 31,
+        "succeeded": 16
+      },
+      "scholarlyJobStateCountsExcludingFixtures": {
+        "failed": 46,
+        "not_run": 31,
+        "succeeded": 16
+      },
+      "distinctScholarlySourcesWithStagedOwnerFiles": 102,
+      "historicalBatch001": "2026-09-01: 94 eligible, 6 already processed, 88 in batch; 82 outputs = 1 reviewed + 81 raw UNKNOWN, of which 3 internal and 78 scholarly unreviewed/no-change; 6 unchanged corrupt sources require replacement",
+      "semanticStateCounts": {
+        "failed": 49,
+        "not_run": 23,
+        "extraction_only": 10,
+        "filename_inference_only": 5,
+        "applied": 1,
+        "ai_succeeded_reviewable": 8
+      },
+      "errorCounts": {
+        "compute_timeout": 35,
+        "compute_limit_exceeded": 2,
+        "compute_internal_error": 5,
+        "compute_invalid_pdf": 1,
+        "compute_invalid_result": 6
+      },
+      "databaseIntegrity": "ok",
+      "foreignKeyViolations": 0,
+      "ownerChecksumMatchesIncluded": false,
+      "acceptance": "not closed; failed, not-run and extraction-only states remain; no jobs rerun",
+      "ownerMd5Crosscheck": {
+        "stagedOwnerFiles": 12,
+        "exactByteMd5Matches": 3,
+        "noByteMd5Match": 9,
+        "sha256AlgorithmMatches": 0,
+        "note": "Production inventory stores MD5; 2 matched Owner jobs succeeded and Venice failed; remaining 9 have no exact active match; no resource mutation or retry performed"
+      }
+    },
+    "uxSeptember28": {
+      "sourceCommit": "cad1ecf",
+      "workspacePassed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "evidence": "output/vnext/workspace-complete-20260928.log",
+      "priorTestUnion": 285,
+      "productionAcceptance": false
     }
   },
   "computeQualification": {
@@ -315,10 +356,11 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Historical Catalog export loopback restriction requires fresh normal-path recheck; local fixture browser access now works",
-    "Current scholarly corpus projection has 46 failed, 31 not_run and nine staged Owner PDFs without an exact byte/MD5 match; six unchanged corrupt sources need replacement bytes; final candidate runtime and source reconciliation remain open"
+    "Latest September27 report:192 active PDFs,94 succeeded/67 failed/31 no job; current source/eligibility/Owner overlap reconciliation and field-quality acceptance open",
+    "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
+    "Current intake scope, uploads/nginx/Compute diagnostics and remaining UX findings open; combined release and signed-in acceptance pending"
   ],
-  "next": "Reader checkpoint deployed and normal signed-in IAB changed paths passed. Preserve exactd58ef44 Core/frontend and7e Compute; finish outstanding current-corpus/report work when next selected; six unchanged damaged sources require replacement; OCR stays deferred.",
+  "next": "ADR046 new-admission handoff locally verified; continue historical intake recovery/per-resource review and independent field quality, then coordinated exact release and normal signed-in acceptance. Keep current57b8723/schema39 + Compute7e; no main merge or OCR activation.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -331,7 +373,8 @@
     "docs/evaluation/catalog-field-quality-and-abstention.md",
     "docs/architecture/bounded-page-aware-full-text-evaluation.md",
     "DECISION_LOG.md",
-    "docs/decisions/ADR-045-owned-reader-and-independent-research-workspace.md"
+    "docs/decisions/ADR-045-owned-reader-and-independent-research-workspace.md",
+    "docs/decisions/ADR-046-transactional-cataloguing-admission.md"
   ],
   "phase": "PHASE_B_EXECUTION",
   "publicationCadence": "Owner2026-09-27 unified deployment gate: collaborating AcademicCloud tasks work in isolated worktrees and coordinate file ownership. Wait until every participating task has completed its agreed current scope and the integrated applicable acceptance is green, then use one designated operator for one coordinated production deployment. No individual task may deploy independently. Ordinary non-main checkpoint publication remains allowed; this does not authorize new production scope.",
@@ -344,10 +387,28 @@
       "focusedTestsPassed": 31,
       "focusedTestsFailed": 0,
       "computeTypecheck": "PASS",
-      "independentDiffReview": "PASS"
+      "independentDiffReview": "PASS",
+      "exportFollowup": {
+        "focusedTestsPassed": 37,
+        "focusedTestsFailed": 0,
+        "computeTypecheck": "PASS",
+        "largeSourcePolicy": "established1GiB retained after rejecting new128MiB cap",
+        "deployed": false
+      },
+      "admission": {
+        "date": "2026-09-28",
+        "contributionPassed": 26,
+        "newRegressions": 13,
+        "existingSuggestionHttpStateApplicationPassed": 38,
+        "failed": 0,
+        "backendTypecheck": "PASS",
+        "independentSourceReview": "PASS",
+        "recovery": "fresh SQLite connection/reconstructed service with wake suppressed; not production restart",
+        "deployed": false
+      }
     },
     "deployed": false,
-    "architectureStatus": "proposed; durable admission intent, resource recovery and adjudicated quality remain open",
+    "architectureStatus": "ADR046 new-admission handoff locally implemented and verified; no migration; historical orphan repair/sourceId orchestration and R2-R4 remain open",
     "externalApiAuthorized": false
   },
   "ocrPlanningHandoff": {
@@ -376,10 +437,16 @@
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
     "status": "waiting_for_participating_tasks",
-    "intake": "R0 verified; durable handoff/recovery and adjudicated field quality open",
+    "intake": "R0 export and bounded R1 new-admission handoff locally verified; historical recovery/per-resource review/adjudicated quality open",
     "ocr": "planning delivery integrated; production implementation deferred",
-    "ux": "isolated codex/ux-reliability-20260927 from29b5760; fixes and verification in progress",
+    "ux": "cad1ecf integrated and locally verified; full Workspace30/30 September28; production pending",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false
-  }
+  },
+  "subagents": {
+    "model": "gpt-6-astra",
+    "reasoningEffort": "ultra",
+    "ownerInstructionDate": "2026-09-27"
+  },
+  "currentContinuationBoundary": "Existing-path repairs, zero added cost, authorized non-main checkpoints and coordinated releases only; current instruction does not authorize main merge or whole-document OCR"
 }

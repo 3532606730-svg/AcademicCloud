@@ -205,6 +205,15 @@ function sourceFingerprint(file: StoredFile): {
   };
 }
 
+function generationKey(libraryId: string, fileId: string, fingerprint: string): string {
+  return createHash("sha256")
+    .update(JSON.stringify([
+      "metadata_suggestion", SUGGESTION_RULESET_VERSION,
+      INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION, libraryId, fileId, fingerprint,
+    ]))
+    .digest("hex");
+}
+
 function publicRun(run: SuggestionRunRecord, repositories: RepositorySet): SuggestionRunSummary {
   const aiEvidence = repositories.bibliography.findAiRunEvidenceBySuggestionRun(run.ownerDomainId, run.id);
   let aiBibliography: SuggestionRunSummary["aiBibliography"];
@@ -1007,6 +1016,31 @@ export class SuggestionService {
     });
   }
 
+  /** Queue only: the supplied repositories belong to the Library admission transaction. */
+  recordAdmission(
+    repositories: RepositorySet,
+    actor: AuthenticatedAccount,
+    libraryId: string,
+    fileId: string,
+    now: Date,
+  ): void {
+    const context = resolveHolding(actor, libraryId, fileId, repositories);
+    if (context.membership.role !== "manager" || context.file.mediaType?.toLowerCase() !== PDF_MEDIA_TYPE) {
+      throw new SuggestionError("not_found");
+    }
+    const inputVersion = sourceFingerprint(context.file).value;
+    const idempotencyKey = generationKey(libraryId, fileId, inputVersion);
+    // Admission is not an explicit retry, including for terminal failures.
+    if (repositories.derivedJobs.findByIdempotencyKey(idempotencyKey)) return;
+    repositories.derivedJobs.create({
+      id: this.#createId(), kind: "metadata_suggestion", scopeId: libraryId,
+      resourceId: fileId, inputVersion, idempotencyKey, attemptId: this.#createId(),
+      createdByAccountId: actor.id, createdAt: now,
+      deadlineAt: new Date(now.getTime() + JOB_DEADLINE_MILLISECONDS),
+      origin: "admission", queuePriority: 10,
+    });
+  }
+
   async requestGeneration(
     actor: AuthenticatedAccount,
     libraryId: string,
@@ -1022,16 +1056,7 @@ export class SuggestionService {
         throw new SuggestionError("not_found");
       }
       const fingerprint = sourceFingerprint(context.file);
-      const idempotencyKey = createHash("sha256")
-        .update(JSON.stringify([
-          "metadata_suggestion",
-          SUGGESTION_RULESET_VERSION,
-          INTELLIGENT_BIBLIOGRAPHY_PIPELINE_VERSION,
-          libraryId,
-          fileId,
-          fingerprint.value,
-        ]))
-        .digest("hex");
+      const idempotencyKey = generationKey(libraryId, fileId, fingerprint.value);
       const existing = repositories.derivedJobs.findByIdempotencyKey(idempotencyKey);
       let job: DerivedJobRecord;
       let dispatch: boolean;
@@ -1121,6 +1146,34 @@ export class SuggestionService {
     for (const job of jobs) {
       if (!job.activeAttemptId) continue;
       try {
+        const current = this.#persistence.runInTransaction((repositories) => {
+          const queued = repositories.derivedJobs.findById(job.id);
+          if (!queued || queued.state !== "queued" || queued.providerJobId !== null
+            || queued.activeAttemptId !== job.activeAttemptId) return null;
+          try {
+            const actor = jobActor(queued, repositories);
+            if (!actor) throw new SuggestionError("not_found");
+            const context = resolveHolding(actor, queued.scopeId, queued.resourceId, repositories);
+            if (context.membership.role !== "manager") throw new SuggestionError("not_found");
+            if (context.file.mediaType?.toLowerCase() !== PDF_MEDIA_TYPE
+              || sourceFingerprint(context.file).value !== queued.inputVersion) throw new SuggestionError("stale");
+            return { job: queued, context };
+          } catch (error: unknown) {
+            if (!(error instanceof SuggestionError)) throw error;
+            repositories.derivedJobs.fail(queued.id, queued.activeAttemptId!,
+              error.code === "stale" ? "compute_source_stale" : "compute_authorization_changed", this.#now());
+            return null;
+          }
+        });
+        if (!current) continue;
+        try {
+          this.#persistence.runInTransaction((repositories) => {
+            this.#ensureLightweightRun(repositories, current.context, current.job, this.#now());
+          });
+        } catch {
+          // Filename hints are optional; a durable Compute job can complete
+          // without them. Never make enrichment an admission/dispatch gate.
+        }
         const receipt = await this.#dispatchJob(job);
         if (!receipt) continue;
         const recorded = this.#persistence.runInTransaction((repositories) => repositories.derivedJobs.recordDispatch(

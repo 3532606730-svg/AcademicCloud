@@ -102,8 +102,8 @@ class FixtureInspector implements BoundedPdfTextSource {
 
 class ReadingFixtureInspector implements BoundedPdfTextSource {
   inspect(_bytes: Uint8Array, _limits: Readonly<SuggestionLimits>): Promise<never> { throw new Error("whole object path forbidden"); }
-  async inspectRange(source: PdfRangeSource) {
-    await source.read(0, Math.min(5, source.length));
+  async inspectRange(source: PdfRangeSource, _limits: Readonly<SuggestionLimits>, signal?: AbortSignal) {
+    await source.read(0, Math.min(5, source.length), signal);
     return inspectionFixture();
   }
 }
@@ -229,6 +229,52 @@ test("interrupted signed range body retries the same bounded request", async () 
     globalThis.fetch = previous;
   }
 });
+
+for (const cancel of [false, true]) {
+  test(cancel
+    ? "caller cancellation during a signed range body suppresses retry"
+    : "persistently interrupted signed range bodies stop after two attempts", async () => {
+    const previous = globalThis.fetch;
+    const controller = new AbortController();
+    let authorizationCalls = 0;
+    let rangeCalls = 0;
+    globalThis.fetch = async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      assert.equal(init?.redirect, "error");
+      if (url.includes("/api/catalog-batches/")) {
+        authorizationCalls += 1;
+        return Response.json({ source: {
+          method: "GET", url: "https://files.ajtlab.top/catalog-fixture.pdf?sig=test",
+          expiresAt: "2099-01-01T00:00:00.000Z", sizeBytes: 100, mediaType: "application/pdf",
+        } });
+      }
+      rangeCalls += 1;
+      assert.equal(new Headers(init?.headers).get("range"), "bytes=0-4");
+      const body = new ReadableStream<Uint8Array>({
+        pull(stream) {
+          if (cancel) controller.abort();
+          stream.error(new Error("interrupted"));
+        },
+      });
+      return new Response(body, { status: 206, headers: { "content-range": "bytes 0-4/100" } });
+    };
+    try {
+      await assert.rejects(
+        () => createCatalogEvidencePackage({
+          request: parseCatalogExportRequest(request(), TEST_ENDPOINT_POLICY),
+          inspector: new ReadingFixtureInspector(),
+          endpointPolicy: TEST_ENDPOINT_POLICY,
+          signal: controller.signal,
+        }),
+        (error: unknown) => error instanceof CatalogExportError && error.code === "source_unavailable",
+      );
+      assert.equal(rangeCalls, cancel ? 1 : 2);
+      assert.equal(authorizationCalls, rangeCalls, "only the bounded retry renews source authorization");
+    } finally {
+      globalThis.fetch = previous;
+    }
+  });
+}
 
 test("wrong Content-Range is terminal and never retries the bounded request", async () => {
   const previous = globalThis.fetch;

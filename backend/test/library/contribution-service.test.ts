@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
+import type { DerivedComputeDispatchJob, DerivedComputeDispatcher } from "@academiccloud/compute-contracts";
 
 import type { AuthenticatedAccount } from "../../src/auth/auth-service.js";
+import { LocalPullComputeDispatcher } from "../../src/compute/local-pull-dispatcher.js";
 import { DriveError, DriveService } from "../../src/drive/drive-service.js";
 import { FavoriteService } from "../../src/favorites/favorite-service.js";
 import { LibraryError, LibraryService } from "../../src/library/library-service.js";
+import { CanonicalMetadataService } from "../../src/metadata/metadata-service.js";
+import { openSqlitePersistence } from "../../src/persistence/sqlite/persistence.js";
 import { ScholarlyRecordService } from "../../src/research/service.js";
 import { InMemoryStorageAdapter } from "../../src/storage/in-memory-storage-adapter.js";
+import { SuggestionService } from "../../src/suggestions/suggestion-service.js";
 import { multipartUploadVersion } from "../../src/transfer/multipart-transfer.js";
 import { createTestPersistence } from "../persistence/helpers.js";
 
@@ -483,3 +488,259 @@ test("duplicate canonical filename surfaces name_conflict at completion and stat
   assert.equal(persistence.repositories.multipartUploads!.findByFileId(OWNER.id, reserved.file.id), null);
   assert.equal(await storage.statObject(reserved.file.objectKey), null);
 });
+
+function admissionFixture(context: TestContext) {
+  const f = fixture(context);
+  const canonical = f.libraries.listLibraries(OWNER.id).find((library) => library.isDefault)!;
+  const dispatched: DerivedComputeDispatchJob[] = [];
+  const localPull = new LocalPullComputeDispatcher();
+  const dispatcher: DerivedComputeDispatcher = {
+    dispatch: async (job) => {
+      assert.equal(f.database.inTransaction, false, "provider work must begin after admission commits");
+      dispatched.push({ ...job });
+      return localPull.dispatch(job);
+    },
+  };
+  const createSuggestions = (persistence = f.persistence) => new SuggestionService({
+    persistence, storage: f.storage, metadata: new CanonicalMetadataService(persistence, () => NOW),
+    dispatcher, coreBaseUrl: "https://academiccloud.example", now: () => NOW,
+  });
+  const suggestions = createSuggestions();
+  const recorded: Array<{ actorId: string; fileId: string }> = [];
+  f.libraries.setHoldingAdmissionRecorder((repositories, actor, libraryId, fileId, now) => {
+    assert.equal(f.database.inTransaction, true);
+    assert.equal(repositories.libraries.findHoldingByFile(libraryId, fileId)?.file.state, "active");
+    assert.ok(repositories.files.findCurrentDocumentSource(fileId));
+    suggestions.recordAdmission(repositories, actor, libraryId, fileId, now);
+    recorded.push({ actorId: actor.id, fileId });
+  });
+  // Deliberately omit the latency-only wake: the durable sweep must suffice.
+  return { ...f, canonical, suggestions, createSuggestions, dispatched, recorded };
+}
+
+type AdmissionUploadPath = "single" | "multipart" | "status recovery";
+
+async function reserveAdmissionUpload(
+  f: ReturnType<typeof admissionFixture>,
+  actor: AuthenticatedAccount,
+  path: AdmissionUploadPath,
+  mediaType = "application/pdf",
+) {
+  const bytes = new Uint8Array(12).fill(37);
+  const input = {
+    folderId: null, displayName: `${actor.id}-${path}.${mediaType === "application/pdf" ? "pdf" : "txt"}`,
+    mediaType, sizeBytes: bytes.byteLength, checksum: { algorithm: "md5" as const, value: MD5 },
+  };
+  if (path === "single") {
+    const reserved = await f.drive.createUpload(actor.id, input);
+    f.storage.putObject({ objectKey: reserved.file.objectKey, sizeBytes: bytes.byteLength, etag: "etag", checksumAlgorithm: "md5", checksum: MD5, mediaType, modifiedAt: NOW }, bytes);
+    return { file: reserved.file, bytes, complete: () => f.libraries.completeDefaultUpload(actor, reserved.file.id) };
+  }
+  const reserved = await f.drive.createMultipartUpload(actor.id, input);
+  const transfer = f.persistence.repositories.multipartUploads!.findByFileId(actor.id, reserved.file.id)!;
+  f.storage.putMultipartPart(transfer.providerUploadId, 1, bytes, "etag-1");
+  if (path === "status recovery") {
+    // Model provider completion followed by loss of the Core response/process.
+    await f.storage.completeMultipartUpload({ objectKey: reserved.file.objectKey, uploadId: transfer.providerUploadId, parts: [{ partNumber: 1, etag: "etag-1" }] });
+  }
+  const complete = async () => {
+    if (path === "multipart") return f.libraries.completeDefaultMultipartUpload(actor, reserved.file.id, reserved.transfer.version);
+    const status = await f.libraries.getDefaultUploadStatus(actor, reserved.file.id);
+    assert.equal(status.kind, "complete");
+    return status.file;
+  };
+  return { file: reserved.file, bytes, complete };
+}
+
+for (const path of ["single", "multipart", "status recovery"] as const) {
+  test(`Owner ${path} admission persists its job atomically and a fresh SQLite service recovers the same attempt without a wake`, async (context) => {
+    const f = admissionFixture(context);
+    const upload = await reserveAdmissionUpload(f, OWNER, path);
+    await upload.complete();
+    const job = f.persistence.repositories.derivedJobs.findLatest("metadata_suggestion", f.canonical.id, upload.file.id)!;
+    assert.ok(job);
+    assert.equal(job.state, "queued");
+    assert.equal(job.origin, "admission");
+    assert.equal(job.queuePriority, 10);
+    assert.equal(job.createdByAccountId, OWNER.id);
+    assert.equal(job.attempts, 1);
+    assert.equal(job.providerJobId, null);
+    assert.deepEqual(f.recorded, [{ actorId: OWNER.id, fileId: upload.file.id }]);
+    assert.deepEqual(f.dispatched, []);
+    assert.equal(f.suggestions.getLatest(OWNER, f.canonical.id, upload.file.id), null, "filename extraction is outside admission");
+
+    const reopened = openSqlitePersistence(f.database.name);
+    try {
+      assert.deepEqual(reopened.repositories.derivedJobs.findById(job.id), job, "the committed intent is visible from a fresh connection");
+      const recovered = f.createSuggestions(reopened);
+      assert.equal(await recovered.reconcileUndispatchedJobs(), 1);
+      assert.equal(await recovered.reconcileUndispatchedJobs(), 0);
+      assert.deepEqual(f.dispatched.map(({ id, attemptId }) => ({ id, attemptId })), [{ id: job.id, attemptId: job.activeAttemptId }]);
+      const dispatched = reopened.repositories.derivedJobs.findById(job.id)!;
+      assert.equal(dispatched.provider, "local_pull");
+      assert.equal(dispatched.attempts, 1);
+      assert.equal(dispatched.activeAttemptId, job.activeAttemptId);
+    } finally {
+      reopened.close();
+    }
+  });
+
+  test(`Owner ${path} queue insertion failure rolls back activation, source, promotion and audit while preserving uploaded bytes`, async (context) => {
+    const f = admissionFixture(context);
+    const upload = await reserveAdmissionUpload(f, OWNER, path);
+    const auditCount = f.database.prepare<[], { count: number }>("SELECT count(*) AS count FROM governance_audit_events").get()!.count;
+    const jobs = f.persistence.repositories.derivedJobs;
+    const create = jobs.create.bind(jobs);
+    jobs.create = (input) => { create(input); throw new Error("injected durable queue insertion failure"); };
+    await assert.rejects(upload.complete, /injected durable queue insertion failure/);
+    jobs.create = create;
+
+    const pending = f.persistence.repositories.files.findById(OWNER.id, upload.file.id)!;
+    assert.equal(pending.state, "pending_upload");
+    assert.equal(pending.revision, upload.file.revision);
+    assert.equal(pending.activatedAt, null);
+    assert.equal(pending.ownerId, OWNER.id);
+    assert.equal(f.persistence.repositories.files.findCurrentDocumentSource(upload.file.id), null);
+    for (const table of ["derived_compute_jobs", "document_sources", "scholarly_records", "scholarly_artifacts", "scholarly_artifact_versions", "library_contributions", "library_ownership_promotions"]) {
+      assert.equal(f.database.prepare<[], { count: number }>(`SELECT count(*) AS count FROM ${table}`).get()!.count, 0, `${table} must roll back`);
+    }
+    assert.equal(f.database.prepare<[], { count: number }>("SELECT count(*) AS count FROM governance_audit_events").get()!.count, auditCount);
+    assert.deepEqual(await f.storage.readObject(upload.file.objectKey, 12), upload.bytes);
+    assert.deepEqual(f.dispatched, []);
+    assert.equal(f.libraries.listHoldings(MEMBER.id, f.canonical.id).length, 0);
+    if (path !== "single") assert.ok(f.persistence.repositories.multipartUploads!.findByFileId(OWNER.id, upload.file.id));
+
+    // Recovery uses the retained object; no browser re-upload is required.
+    if (path === "single") await upload.complete();
+    else assert.equal((await f.libraries.getDefaultUploadStatus(OWNER, upload.file.id)).kind, "complete");
+    assert.ok(f.persistence.repositories.derivedJobs.findLatest("metadata_suggestion", f.canonical.id, upload.file.id));
+  });
+}
+
+test("Member upload has no job before approval; failed queue insertion preserves its contribution, source, overlay and bytes", async (context) => {
+  const f = admissionFixture(context);
+  const upload = await reserveAdmissionUpload(f, MEMBER, "multipart");
+  await upload.complete();
+  assert.equal(f.persistence.repositories.derivedJobs.findLatest("metadata_suggestion", f.canonical.id, upload.file.id), null);
+  assert.deepEqual(f.recorded, []);
+  const favorites = new FavoriteService(f.persistence, () => NOW);
+  favorites.setFileFavorite(MEMBER.id, upload.file.id, true);
+  const contribution = f.libraries.listContributions(OWNER, f.canonical.id)[0]!;
+  const source = f.persistence.repositories.files.findCurrentDocumentSource(upload.file.id);
+  const auditCount = f.database.prepare<[], { count: number }>("SELECT count(*) AS count FROM governance_audit_events").get()!.count;
+  const create = f.persistence.repositories.derivedJobs.create.bind(f.persistence.repositories.derivedJobs);
+  f.persistence.repositories.derivedJobs.create = (input) => { create(input); throw new Error("injected review queue failure"); };
+  assert.throws(() => f.libraries.reviewContribution(OWNER, f.canonical.id, contribution.id, "approve"), /injected review queue failure/);
+  f.persistence.repositories.derivedJobs.create = create;
+  assert.deepEqual(f.libraries.listContributions(OWNER, f.canonical.id)[0], contribution);
+  assert.equal(f.persistence.repositories.files.findById(MEMBER.id, upload.file.id)?.state, "active");
+  assert.deepEqual(f.persistence.repositories.files.findCurrentDocumentSource(upload.file.id), source);
+  assert.equal(f.database.prepare<[], { count: number }>("SELECT count(*) AS count FROM library_ownership_promotions").get()!.count, 0);
+  assert.equal(f.database.prepare<[], { count: number }>("SELECT count(*) AS count FROM derived_compute_jobs").get()!.count, 0);
+  assert.equal(f.database.prepare<[], { count: number }>("SELECT count(*) AS count FROM governance_audit_events").get()!.count, auditCount);
+  assert.deepEqual(await f.storage.readObject(upload.file.objectKey, 12), upload.bytes);
+  assert.deepEqual(f.dispatched, []);
+
+  let wake: Promise<number> | undefined;
+  f.libraries.setHoldingAvailableListener(async () => { wake = f.suggestions.reconcileUndispatchedJobs(); await wake; });
+  f.libraries.reviewContribution(OWNER, f.canonical.id, contribution.id, "approve");
+  const admitted = f.persistence.repositories.derivedJobs.findLatest("metadata_suggestion", f.canonical.id, upload.file.id)!;
+  assert.equal(admitted.createdByAccountId, OWNER.id, "approval authority belongs to the reviewer, not the contributor");
+  assert.equal(admitted.origin, "admission");
+  assert.equal(admitted.providerJobId, null, "synchronous approval commits before the wake runs");
+  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  assert.ok(wake);
+  assert.equal(await wake, 1);
+  assert.equal(f.dispatched.length, 1);
+  assert.equal(favorites.listFavorites(MEMBER.id).libraryHoldings[0]?.holding.file.id, upload.file.id);
+  assert.deepEqual(f.persistence.repositories.files.findCurrentDocumentSource(upload.file.id), source);
+});
+
+test("non-PDF Owner admission does not record or dispatch an optional metadata job", async (context) => {
+  const f = admissionFixture(context);
+  const upload = await reserveAdmissionUpload(f, OWNER, "single", "text/plain");
+  await upload.complete();
+  assert.equal(f.libraries.listHoldings(MEMBER.id, f.canonical.id)[0]?.file.id, upload.file.id);
+  assert.deepEqual(f.recorded, []);
+  assert.equal(await f.suggestions.reconcileUndispatchedJobs(), 0);
+  assert.deepEqual(f.dispatched, []);
+});
+
+test("duplicate completion and status reads preserve a failed admission job even after rename; only explicit retry creates work", async (context) => {
+  const f = admissionFixture(context);
+  const upload = await reserveAdmissionUpload(f, OWNER, "multipart");
+  await upload.complete();
+  const jobs = f.persistence.repositories.derivedJobs;
+  const job = jobs.findLatest("metadata_suggestion", f.canonical.id, upload.file.id)!;
+  assert.ok(job.activeAttemptId);
+  const failed = jobs.fail(job.id, job.activeAttemptId, "compute_timeout", NOW)!;
+  f.persistence.runInTransaction((repositories) => f.suggestions.recordAdmission(repositories, OWNER, f.canonical.id, upload.file.id, NOW));
+  assert.deepEqual(jobs.findById(job.id), failed, "same-key admission must not retry a terminal job");
+  f.libraries.setHoldingAvailableListener(async () => { await f.suggestions.reconcileUndispatchedJobs(); });
+  for (const rename of [false, true]) {
+    if (rename) {
+      const current = f.persistence.repositories.files.findByDomainId(`library:${f.canonical.id}`, upload.file.id)!;
+      assert.ok(f.persistence.repositories.files.updateForDomain({ ...current, displayName: "renamed-source.pdf" }, "active", current.revision));
+    }
+    await upload.complete();
+    assert.equal((await f.libraries.getDefaultUploadStatus(OWNER, upload.file.id)).kind, "complete");
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.deepEqual(jobs.findById(job.id), failed);
+    assert.equal(f.database.prepare<[], { count: number }>("SELECT count(*) AS count FROM derived_compute_jobs").get()!.count, 1);
+    assert.deepEqual(f.dispatched, []);
+    assert.equal(f.recorded.length, 1);
+  }
+  const retried = await f.suggestions.requestGeneration(OWNER, f.canonical.id, upload.file.id);
+  assert.notEqual(retried.id, job.id, "explicit retry after rename records the new fingerprint");
+  assert.equal(retried.origin, "interactive");
+  assert.deepEqual(jobs.findById(job.id), failed);
+  assert.equal(f.dispatched.length, 1);
+});
+
+test("optional filename evidence failure cannot roll back admission or block durable dispatch", async (context) => {
+  const f = admissionFixture(context);
+  const upload = await reserveAdmissionUpload(f, OWNER, "single");
+  await upload.complete();
+  f.persistence.repositories.suggestions.createRun = () => { throw new Error("optional filename persistence unavailable"); };
+  assert.equal(await f.suggestions.reconcileUndispatchedJobs(), 1);
+  assert.equal(f.libraries.listHoldings(MEMBER.id, f.canonical.id)[0]?.file.id, upload.file.id);
+  assert.equal(f.suggestions.getLatest(OWNER, f.canonical.id, upload.file.id), null);
+  assert.equal(f.dispatched.length, 1);
+});
+
+for (const invalidation of ["disabled actor", "revoked manager", "changed source"] as const) {
+  test(`admission recovery refuses dispatch after ${invalidation}`, async (context) => {
+    const f = admissionFixture(context);
+    let libraryId = f.canonical.id;
+    let fileId: string;
+    if (invalidation === "revoked manager") {
+      const library = f.libraries.createLibrary(OWNER, "Revocable reviewer");
+      libraryId = library.id;
+      f.libraries.addMember(OWNER, library.id, MEMBER.id, "manager");
+      f.libraries.addMember(OWNER, library.id, OUTSIDER.id, "member");
+      const resource = addAccountHolding(f.database, OUTSIDER.id, "revoked-reviewer");
+      fileId = resource.fileId;
+      const contribution = f.libraries.submitContribution(OUTSIDER, library.id, resource.artifactId);
+      f.libraries.reviewContribution(MEMBER, library.id, contribution.id, "approve");
+      f.libraries.changeMemberRole(OWNER, library.id, MEMBER.id, "member");
+    } else {
+      const upload = await reserveAdmissionUpload(f, OWNER, "single");
+      fileId = upload.file.id;
+      await upload.complete();
+      if (invalidation === "disabled actor") assert.equal(f.persistence.repositories.accounts.updateState(OWNER.id, "active", "disabled", NOW), true);
+      else {
+        const current = f.persistence.repositories.files.findByDomainId(`library:${libraryId}`, fileId)!;
+        assert.ok(f.persistence.repositories.files.updateForDomain({ ...current, displayName: "changed-before-dispatch.pdf" }, "active", current.revision));
+      }
+    }
+    const job = f.persistence.repositories.derivedJobs.findLatest("metadata_suggestion", libraryId, fileId)!;
+    assert.equal(await f.suggestions.reconcileUndispatchedJobs(), 0);
+    const failed = f.persistence.repositories.derivedJobs.findById(job.id)!;
+    assert.equal(failed.state, "failed");
+    assert.equal(failed.errorCode, invalidation === "changed source" ? "compute_source_stale" : "compute_authorization_changed");
+    assert.equal(failed.activeAttemptId, job.activeAttemptId);
+    assert.equal(failed.attempts, 1);
+    assert.equal(failed.providerJobId, null);
+    assert.deepEqual(f.dispatched, []);
+  });
+}

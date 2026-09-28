@@ -78,8 +78,11 @@ export async function createApplication(
       dispatcher: computeRuntime.dispatcher,
       coreBaseUrl: computeRuntime.coreBaseUrl,
     });
-    libraryService.setHoldingAvailableListener(async (actor, libraryId, fileId) => {
-      await suggestionService.requestGeneration(actor, libraryId, fileId, { origin: "admission", queuePriority: 10 });
+    libraryService.setHoldingAdmissionRecorder((repositories, actor, libraryId, fileId, now) => {
+      suggestionService.recordAdmission(repositories, actor, libraryId, fileId, now);
+    });
+    libraryService.setHoldingAvailableListener(async () => {
+      await suggestionService.reconcileUndispatchedJobs();
     });
     const app = await createApp({
       logger: { level: config.logLevel },

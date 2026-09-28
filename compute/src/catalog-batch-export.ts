@@ -33,8 +33,6 @@ const RANGE_TIMEOUT_MILLISECONDS = 45_000;
 const SOURCE_RENEWAL_MARGIN_MILLISECONDS = 60_000;
 const STAGED_FALLBACK_CHUNK_BYTES = 1024 * 1024;
 const STAGED_FALLBACK_TAIL_BYTES = 64 * 1024;
-/** Interactive batch exports must not turn a range timeout into a full-file download. */
-export const CATALOG_BATCH_STAGED_FALLBACK_MAX_BYTES = 128 * 1024 * 1024;
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/u;
 const FALLBACK_TIMEOUT_STAGES = new Set(["document_load", "page_load", "page_text", "metadata", "ocr_page_load"]);
 const SUPPORTED_CONTENT_DIGESTS = new Set(["md5", "sha1", "sha256", "sha512"]);
@@ -311,12 +309,8 @@ async function inspectWithVerifiedStagedFile(options: {
   inspector: BoundedPdfTextSource;
   limits: Readonly<SuggestionLimits>;
   signal?: AbortSignal;
-  maximumBytes?: number;
 }): Promise<PdfTextInspection> {
   if (!options.inspector.inspectFile) throw new CatalogExportError("inspection_failed");
-  if (options.maximumBytes !== undefined && options.source.length > options.maximumBytes) {
-    throw new CatalogExportError("limit_exceeded");
-  }
   const policy = stagedPdfFallbackPolicy(options.source.length, options.limits);
   if (!options.checksumAlgorithm || !options.checksum || !SUPPORTED_CONTENT_DIGESTS.has(options.checksumAlgorithm)) {
     throw new CatalogExportError("identity_mismatch");
@@ -436,8 +430,6 @@ export async function extractCatalogEvidence(options: {
   inspector: BoundedPdfTextSource;
   endpointPolicy?: CatalogEndpointPolicy;
   signal?: AbortSignal;
-  /** Bound the expensive whole-file fallback for interactive batch exports. */
-  stagedFallbackMaxBytes?: number;
 }): Promise<{
   manifest: CatalogBatchManifest;
   evidence: CatalogResourceEvidence[];
@@ -464,7 +456,6 @@ export async function extractCatalogEvidence(options: {
           inspector: options.inspector,
           limits: SUGGESTION_LIMITS,
           ...(options.signal === undefined ? {} : { signal: options.signal }),
-          ...(options.stagedFallbackMaxBytes === undefined ? {} : { maximumBytes: options.stagedFallbackMaxBytes }),
         });
         fallbackResourceIds.push(resource.resourceId);
       }

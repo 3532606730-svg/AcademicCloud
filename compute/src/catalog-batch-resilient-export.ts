@@ -13,7 +13,6 @@ import {
 
 import {
   CatalogExportError,
-  CATALOG_BATCH_STAGED_FALLBACK_MAX_BYTES,
   extractCatalogEvidence,
   type CatalogEndpointPolicy,
 } from "./catalog-batch-export.js";
@@ -110,7 +109,6 @@ async function inspectOneResource(options: {
           inspector: options.inspector,
           endpointPolicy: options.endpointPolicy,
           signal: controller.signal,
-          stagedFallbackMaxBytes: CATALOG_BATCH_STAGED_FALLBACK_MAX_BYTES,
         });
         const evidence = result.evidence[0];
         const manifestResource = result.manifest.resources[0];
