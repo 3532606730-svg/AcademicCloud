@@ -6,11 +6,11 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7",
+    "checkpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "September28 verified clean active vNext HEAD and freshly fetched non-main remote both equal 948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7; documentation-only reconciliation follows on the same branch. Original obsolete checkout is preserved.",
-    "lastVerifiedPublishedCheckpoint": "948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7"
+    "localState": "September28 verified clean active vNext HEAD equals freshly fetched non-main remote58d6da9; final documentation reconciliation follows on the same branch. Original obsolete checkout preserved.",
+    "lastVerifiedPublishedCheckpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -428,7 +428,7 @@
     "deployed": false,
     "architectureStatus": "ADR046 new admission and ADR047 selected historical recovery locally implemented; no migration; immutable-source orchestration/per-resource ZIP recovery/independent field quality remain open",
     "externalApiAuthorized": false,
-    "implementationCheckpoint": "948ba4df7a09c2392baa4d4d22a5ffcd8d5291e7"
+    "implementationCheckpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f"
   },
   "ocrPlanningHandoff": {
     "date": "2026-09-27",
@@ -455,7 +455,7 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "local_repairs_published_remaining_intake_scope_open",
+    "status": "selected_recovery_published_current_page_ocr_next",
     "intake": "R0 export, ADR046 admission and ADR047 selected recovery locally verified; private current-page OCR implementation, persistent ZIP recovery and field quality open",
     "ocr": "Current-page and book-evidence integration assessment requested September28; existing code remains deferred",
     "ux": "cad1ecf integrated and locally verified; full Workspace30/30 September28; production pending",
