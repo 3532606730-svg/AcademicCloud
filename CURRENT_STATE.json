@@ -513,7 +513,7 @@
       "credentialBridgeSha256": "73cc33f92bd813a2d78be4d86f4ebd2a0ec5658812d40c90cfb820dc2488a826",
       "application": "AC-OCR-Trial-0928; restricted PP-OCRv6/PaddleOCR-VL permissions; created2026-09-28",
       "sourceDisclosureAuthorized": "Eight frozen page PNGs from four Owner books to Baidu PP-OCRv6/PaddleOCR-VL only",
-      "prerequisites": "Browser control restored2026-09-29; Owner must restore expired login with agreement checkbox, then verify actual free balance/no postpaid and reacquire this app's credentials in memory"
+      "prerequisites": "Edge control briefly restored2026-09-29 then disconnected from browser inventory at turn end. Reconnect the existing Edge session, restore expired login with agreement checkbox, then verify actual free balance/no postpaid and reacquire this app's credentials in memory"
     },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
