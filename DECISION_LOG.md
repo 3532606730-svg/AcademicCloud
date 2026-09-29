@@ -2,6 +2,10 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## 2026-09-29 — Prefer a suitable installed local OCR engine
+
+The Owner accepts the price direction of online high-accuracy OCR with positions, but prefers an already downloaded local engine when suitable. [ADR-048](docs/decisions/ADR-048-private-current-page-ocr.md) now records this selection rule: qualify the engine for the actual script/layout, use the requesting member's own device, and make online selection explicit. No automatic fallback to the Owner machine or a paid service is added. The current free-only eight-page trial and the requirement for simple tutorials inside the connection dialog remain. Position output is a separate capability to verify; it does not establish textual accuracy or correct reading order.
+
 ## 2026-09-28 — Online-first OCR evaluation and member-owned local execution
 
 The Owner's follow-up selects free quota for the first real trial. Verify the actual account balance and absence of paid fallback before bounded calls; do not buy packages or enable postpaid billing. Begin with one frozen page per engine and continue only after inspecting the result, with at most eight submissions per engine and no blind retry. This is evaluation authority, not product or whole-book enablement; later reasonable-cost evaluation and budget-after-quality remain unchanged.

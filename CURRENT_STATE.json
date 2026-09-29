@@ -1,5 +1,5 @@
 {
-  "lastReconciled": "2026-09-28",
+  "lastReconciled": "2026-09-29",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
@@ -8,9 +8,9 @@
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
     "checkpoint": "be6f34b90189cf62a84520ac7424579967ee2567",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
-    "localSynchronized": true,
-    "localState": "Implementationbe6f34b was published to the authorized non-main branch and clean active vNext HEAD verified equal to a fresh remote fetch. This final documentation-only reconciliation follows on the same branch; obsolete original checkout preserved.",
-    "lastVerifiedPublishedCheckpoint": "be6f34b90189cf62a84520ac7424579967ee2567"
+    "localSynchronized": false,
+    "localState": "September29 continuation includes local geometry and recovered trial handoff. Fresh remote fetch still7513236 while local contains5e4fa28 and pending changes; publication follows verification. Obsolete original checkout preserved.",
+    "lastVerifiedPublishedCheckpoint": "751323625829c886bfa80f2c057d5efca3108cb6"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -361,7 +361,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Current intake scope, uploads/nginx/Compute diagnostics and remaining UX findings open; combined release and signed-in acceptance pending"
   ],
-  "next": "Complete Owner-selected free OCR trial: resolve first-use service agreement, verify exact free balance and billing state, then resolve credentials/selected-page disclosure and run one frozen pilot per engine before the remaining pages (max8 submissions/engine, no retries). Member-owned connection UI follows measured assessment; intake/corpus and coordinated release remain open. Keep57b8723/schema39 + Compute7e; no main merge or product OCR activation.",
+  "next": "Complete Owner-selected free OCR trial after expired Baidu login is restored and exact free balance/billing are rechecked. Reuse existing restricted app, authorized eight real-book page images and final-reviewed script bd94cda; one frozen pilot per engine before remaining pages (max8 submissions/engine, no retries). Qualify opt-in local line positions independently while login is pending. Member-owned connection UI follows measured assessment; intake/corpus and coordinated release remain open. Keep57b8723/schema39 + Compute7e; no main merge or product OCR activation.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -476,11 +476,13 @@
     "zeroAddedCost": false,
     "wholeDocumentOcrAuthorized": false,
     "runtimeEvidence": "September28 read-only V2/Paddle hashes verified; no model change, new inference or engine-quality acceptance",
-    "providerDecision": "Members connect their own online account or offline engine through common adapters; no default Owner credentials/quota/compute",
+    "providerDecision": "Members connect their own online account or offline engine through common adapters; prefer a suitable installed engine on that member's own device, with explicitly selected online positions OCR an acceptable alternative; no silent Owner or cloud fallback",
     "assessment": "docs/evaluation/online-ocr-options.md",
     "privateResultAdr": "docs/decisions/ADR-048-private-current-page-ocr.md",
     "qualification": {
       "code": "unconnected explicit-page/Paddle readerMode; scoped35 tests and independent review pass; types/build pass",
+      "localGeometry": "September29 opt-in recognition-aligned line boxes with normalized image coordinates/final text UTF16 spans and actual PDF render frame; TypeScript44/44, Python7/7, Compute types/build and root review PASS",
+      "localGeometryIndependentReview": "Preliminary invariants supplied; final Astra ultra review interrupted by account usage limit, not complete",
       "references": 8,
       "sources": 4,
       "characters": 6719,
@@ -498,7 +500,7 @@
     "ocrCostPolicy": "Reasonably priced OCR acceptable; evaluate quality first then decide budget; no numerical cap selected",
     "initialFreeTrial": {
       "ownerRequestedAt": "2026-09-28",
-      "status": "awaiting_owner_ocr_service_agreement",
+      "status": "awaiting_expired_baidu_login_then_fresh_free_quota_verification",
       "paidCallsAuthorized": false,
       "postpaidActivationAuthorized": false,
       "maxSubmissionsPerEngine": 8,
@@ -506,9 +508,12 @@
       "automaticRetries": false,
       "actualOcrCalls": 0,
       "actualSourceDisclosure": false,
-      "localPreparation": "Two-engine offline preflight, 13 network-blocked mocks and independent Astra ultra review PASS; 21 frozen files and4 source PDFs hash-verified",
-      "trialScriptSha256": "dece241682f48afde985e8856c7745d43b3c7fbedf9faf64aff19e474a769ff3",
-      "prerequisites": "Verify actual free balance/billing; resolve service agreements, credential grant and selected source disclosure before dispatch"
+      "localPreparation": "Recovered final independent Astra ultra review and15 network-blocked checks for unchanged current bytes; two-engine offline preflight,21 frozen files and4 source PDFs verified; no service-quality result",
+      "trialScriptSha256": "bd94cda8860139369e0fd31a6a31da8948a365eb6ef5adc1d1da68722f3f42d3",
+      "credentialBridgeSha256": "73cc33f92bd813a2d78be4d86f4ebd2a0ec5658812d40c90cfb820dc2488a826",
+      "application": "AC-OCR-Trial-0928; restricted PP-OCRv6/PaddleOCR-VL permissions; created2026-09-28",
+      "sourceDisclosureAuthorized": "Eight frozen page PNGs from four Owner books to Baidu PP-OCRv6/PaddleOCR-VL only",
+      "prerequisites": "Browser control restored2026-09-29; Owner must restore expired login with agreement checkbox, then verify actual free balance/no postpaid and reacquire this app's credentials in memory"
     },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",

@@ -22,6 +22,7 @@ export interface RealisticPdfInfo {
 
 export interface RealisticPdfOptions {
   mediaBox?: string;
+  rotation?: 0 | 90 | 180 | 270;
   /** PDF trailer /Info dictionary (embedded PDF metadata). */
   info?: RealisticPdfInfo;
   /** Emit a /Encrypt trailer entry so PDF.js fails closed as encrypted. */
@@ -106,7 +107,7 @@ export function makeRealisticPdf(
           return lineIndex === 0 ? draw : `0 -18 Td ${draw}`;
         }).join(" ")} ET`;
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [${options.mediaBox ?? "0 0 612 792"}] /Resources << /Font << /F1 ${fontObject} 0 R >> >> /Contents ${contentObject} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [${options.mediaBox ?? "0 0 612 792"}]${options.rotation === undefined ? "" : ` /Rotate ${options.rotation}`} /Resources << /Font << /F1 ${fontObject} 0 R >> >> /Contents ${contentObject} 0 R >>`,
       `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
     );
   });

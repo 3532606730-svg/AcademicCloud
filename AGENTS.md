@@ -24,6 +24,8 @@
 
 ## Engineering Workflow
 
+**OCR selection preference (reconciled2026-09-29):** prefer an already installed suitable engine on the requesting member's own device. Online high-accuracy OCR with positions remains an acceptable explicit alternative; no silent Owner-compute or cloud fallback. Installation is not qualification. The bounded free-only trial remains the immediate online assessment; product/current-page and whole-book activation gates are unchanged (ADR048).
+
 Ordinary AcademicCloud engineering follows `.agents/skills/academiccloud-workflow/SKILL.md`. The repository is durable project memory. Product and architecture facts come from current code, Git, task cards, current-state documents, and accepted ADRs—not from chat memory.
 
 **Subagent configuration (Owner instruction, 2026-09-27, reaffirmed September28):** use `gpt-6-astra` with `ultra` reasoning effort for all delegated work. This supersedes earlier Sol/medium settings. Root owns integration; maintain a dedicated verifier.

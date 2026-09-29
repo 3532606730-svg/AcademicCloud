@@ -17,6 +17,7 @@ test("Reader OCR renders only the explicit middle page even when a native text l
     async recognizePage(input) {
       pages.push(input.pageIndex);
       assert.equal(input.readerMode, true);
+      assert.equal(input.includeGeometry, undefined);
       assert.deepEqual([...input.imageBytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
       return recognition();
     },
@@ -32,6 +33,8 @@ test("Reader OCR renders only the explicit middle page even when a native text l
   assert.equal(result.pageCount, 32);
   assert.equal(result.text, "A private page");
   assert.equal(result.truncated, false);
+  assert.equal(result.geometry, undefined);
+  assert.equal(result.renderedImage, undefined);
   assert.equal(result.rangeBytes, bytes.byteLength);
   assert.equal(result.rangeRequests, 1);
   assert.equal(reads.length, 1);
@@ -122,4 +125,40 @@ test("Reader rejects inconsistent empty recognized text and preserves typed sour
     (error: unknown) => error instanceof PdfTextInspectionError && error.code === "ocr_engine_failure");
   await assert.rejects(inspector.inspectRange({ length: 10, async read() { return new Uint8Array(9); } }, 1),
     (error: unknown) => error instanceof PdfTextInspectionError && error.code === "source_unavailable");
+});
+
+test("opt-in geometry records rotated bitmap dimensions and the actual PDF transform", async () => {
+  const inspector = new ExplicitPageOcrInspector({ async recognizePage(input) {
+    assert.equal(input.includeGeometry, true);
+    const png = Buffer.from(input.imageBytes);
+    const width = png.readUInt32BE(16), height = png.readUInt32BE(20);
+    return recognition({ text: " e\u0301\r\n𠮷 ", geometry: { status: "available", imageWidth: width, imageHeight: height,
+      lineBoxes: [{ start: 1, end: 3, x: 0.1, y: 0.1, width: 0.5, height: 0.2 },
+        { start: 5, end: 7, x: 0.1, y: 0.4, width: 0.5, height: 0.2 }] } });
+  } }, SUGGESTION_LIMITS, { includeGeometry: true });
+  const result = await inspector.inspect(makeRealisticPdf([""], { rotation: 90, mediaBox: "0 0 600.25 800.25" }), 1);
+  assert.equal(result.text, "é\n𠮷");
+  assert.equal(result.geometry?.status, "available");
+  assert.equal(result.renderedImage?.rotation, 90);
+  const rendered = result.renderedImage!;
+  assert.equal(rendered.width, Math.ceil(rendered.viewportWidth));
+  assert.equal(rendered.height, Math.ceil(rendered.viewportHeight));
+  assert.ok(rendered.width > rendered.height);
+  // PDF /Rotate 90 maps +Y to image +X and +X to image +Y.
+  assert.deepEqual(rendered.pdfToImageTransform, [0, result.renderScale, result.renderScale, 0, 0, 0]);
+  if (result.geometry?.status === "available") {
+    assert.equal(result.geometry.imageWidth, rendered.width);
+    assert.deepEqual(result.geometry.lineBoxes.map(({ start, end }) => result.text.slice(start, end)), ["é", "𠮷"]);
+  }
+});
+
+test("an incompatible geometry frame degrades only layout, keeping OCR text", async () => {
+  const inspector = new ExplicitPageOcrInspector({ async recognizePage() {
+    return recognition({ geometry: { status: "available", imageWidth: 10, imageHeight: 10,
+      lineBoxes: [{ start: 0, end: 14, x: 0, y: 0, width: 1, height: 1 }] } });
+  } }, SUGGESTION_LIMITS, { includeGeometry: true });
+  const result = await inspector.inspect(makeRealisticPdf([""]), 1);
+  assert.equal(result.text, "A private page");
+  assert.equal(result.geometry?.status, "invalid");
+  assert.ok(result.renderedImage);
 });

@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { SUGGESTION_LIMITS } from "./suggestion.js";
+import type { OcrLineGeometry } from "./ocr-geometry.js";
 
 export const TESSERACT_VERSION = "5.5.3" as const;
 export const TESSDATA_FAST_VERSION = "4.1.0" as const;
@@ -31,6 +32,8 @@ export interface OcrPageInput {
   pageIndex: number;
   /** Explicit Reader requests retain low-score text and report output truncation. */
   readerMode?: boolean;
+  /** Opt-in, Reader-only line boxes in the submitted image coordinate frame. */
+  includeGeometry?: boolean;
 }
 
 export type OcrRecognitionStatus = "recognized" | "no_text" | "low_confidence" | "unsupported_script";
@@ -42,6 +45,7 @@ export interface OcrRecognition {
   confidence: number | null;
   engine: string;
   truncated?: boolean;
+  geometry?: OcrLineGeometry;
 }
 
 export interface OcrAdapter {

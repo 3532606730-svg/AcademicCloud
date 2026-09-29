@@ -11,6 +11,13 @@ process.stdout.write(`${JSON.stringify({ ready: true, engine })}\n`);
 const lines = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
 for await (const line of lines) {
   const request = JSON.parse(line);
+  if (request.pageIndex === 5) {
+    process.stdout.write(`${JSON.stringify({ id: request.id, status: "recognized", text: " e\u0301\r\n𠮷 ", confidence: 91,
+      ...(request.includeGeometry ? { geometry: { status: "available", imageWidth: 100, imageHeight: 200,
+        lineBoxes: [{ start: 1, end: 3, x: 0, y: 0, width: 0.5, height: 0.2 },
+          { start: 5, end: 7, x: 0, y: 0.5, width: 0.5, height: 0.2 }] } } : {}) })}\n`);
+    continue;
+  }
   const result = request.pageIndex === 2
     ? { status: "low_confidence", text: request.readerMode ? "uncertain text" : "", confidence: 30 }
     : request.pageIndex === 3

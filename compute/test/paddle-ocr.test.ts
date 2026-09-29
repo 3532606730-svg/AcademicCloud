@@ -75,3 +75,28 @@ test("production PaddleOCR resolves only release-local sidecar/models and reject
   assert.throws(() => loadPaddleOcrConfig({ PADDLE_OCR_DEVICE: "cuda" }), /PADDLE_OCR_DEVICE/u);
   assert.throws(() => loadPaddleOcrConfig({ NODE_ENV: "production", PADDLE_OCR_PYTHON_PATH: "/tmp/python" }), /release-local/u);
 });
+
+test("Reader geometry is explicitly requested and survives sidecar text cleanup", async () => {
+  const adapter = new PaddleOcrSidecarAdapter({
+    pythonPath: process.execPath, sidecarPath: "ignored-by-fixture",
+    detectionModelPath: "det-model", recognitionModelPath: "rec-model",
+    cachePath: join(tmpdir(), "academiccloud-paddlex"), device: "cpu", engineId: PADDLE_OCR_ENGINE_ID,
+    executableArguments: [fileURLToPath(new URL("./fixtures/fake-paddle-sidecar.mjs", import.meta.url))],
+  });
+  try {
+    await assert.rejects(adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 5, includeGeometry: true }),
+      (error: unknown) => error instanceof OcrError && error.code === "input_limit");
+    const result = await adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 5, readerMode: true, includeGeometry: true });
+    assert.equal(result.text, "é\n𠮷");
+    assert.equal(result.geometry?.status, "available");
+    if (result.geometry?.status === "available") {
+      assert.deepEqual(result.geometry.lineBoxes.map(({ start, end }) => [start, end]), [[0, 1], [2, 4]]);
+    }
+    const legacy = await adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 5 });
+    assert.equal(legacy.geometry, undefined);
+    const missing = await adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 2, readerMode: true, includeGeometry: true });
+    assert.equal(missing.status, "low_confidence");
+    assert.equal(missing.text, "uncertain text");
+    assert.deepEqual(missing.geometry, { status: "unavailable" });
+  } finally { await adapter.close(); }
+});

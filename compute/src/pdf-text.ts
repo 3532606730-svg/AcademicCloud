@@ -379,6 +379,7 @@ export async function recognizeWithDeadline(options: {
   limits: Readonly<SuggestionLimits>;
   signal?: AbortSignal;
   readerMode?: boolean;
+  includeGeometry?: boolean;
 }) {
   const controller = new AbortController();
   let timedOut = false;
@@ -399,7 +400,8 @@ export async function recognizeWithDeadline(options: {
   options.signal?.addEventListener("abort", onAbort, { once: true });
   try {
     return await options.ocr.recognizePage(
-      { imageBytes: options.imageBytes, pageIndex: options.pageIndex, ...(options.readerMode ? { readerMode: true } : {}) },
+      { imageBytes: options.imageBytes, pageIndex: options.pageIndex, ...(options.readerMode ? { readerMode: true } : {}),
+        ...(options.includeGeometry ? { includeGeometry: true } : {}) },
       controller.signal,
     );
   } catch (error: unknown) {

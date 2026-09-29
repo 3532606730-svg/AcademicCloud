@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-09-28
+**Last reconciled:** 2026-09-29
 
 ## Product Direction
 
@@ -27,6 +27,8 @@ Source-Grounded Intelligence
 The current reliability interlock changes sequencing, not this model.
 
 ## Reliable book intake priority — 2026-09-27
+
+Owner preference reconciled2026-09-29: prioritize a suitable installed engine on the requesting member's own device, with explicitly selected online OCR (including positions) available as an alternative. Qualification and simple in-dialog setup remain required; installation does not prove accuracy. This selection rule does not enable product OCR or change the bounded free trial.
 
 Owner update2026-09-28: after selected cataloguing recovery (ADR047), assess and progress bounded OCR integration for reliable bibliographic evidence and current-page recognition in `我的研究`. This moves the current-page path from deferred planning to the next implementation assessment; whole-document OCR, shared full-text publication, indexing and RAG remain later. The later same-day steering chooses a common member-owned online/local engine connection interface with simple setup tutorials in its dialog (ADR048). Reasonable OCR fees are accepted; budget follows measured quality, with no numerical cap selected. Preserve source/page identity, private results, evidence-gated activation and zero-new-infrastructure/GitHub costs. No silent fallback to Owner credentials/compute; existing Owner bibliographic Local Compute remains unchanged.
 

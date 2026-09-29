@@ -2,6 +2,7 @@ import type { PDFPageProxy } from "pdfjs-dist";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import type { OcrAdapter, OcrRecognitionStatus } from "./ocr.js";
+import { prepareOcrGeometry, type OcrLineGeometry } from "./ocr-geometry.js";
 import {
   destroyLoadingTask,
   PdfRangeTransport,
@@ -22,6 +23,16 @@ export interface ExplicitPageOcrInspection {
   engine: string;
   truncated: boolean;
   renderScale: number;
+  /** Canvas pixels and the exact PDF.js transform used to render the OCR input. */
+  renderedImage?: {
+    width: number;
+    height: number;
+    viewportWidth: number;
+    viewportHeight: number;
+    rotation: number;
+    pdfToImageTransform: number[];
+  };
+  geometry?: OcrLineGeometry;
   rangeRequests: number;
   rangeBytes: number;
 }
@@ -41,6 +52,7 @@ export class ExplicitPageOcrInspector implements ExplicitPageOcrSource {
   constructor(
     private readonly ocr: OcrAdapter,
     private readonly limits: Readonly<SuggestionLimits> = SUGGESTION_LIMITS,
+    private readonly options: { includeGeometry?: boolean } = {},
   ) {}
 
   inspect(bytes: Uint8Array, physicalPage: number, signal?: AbortSignal): Promise<ExplicitPageOcrInspection> {
@@ -139,6 +151,7 @@ export class ExplicitPageOcrInspector implements ExplicitPageOcrSource {
         const recognition = await recognizeWithDeadline({
           ocr: this.ocr, imageBytes, pageIndex: physicalPage,
           deadline, limits: this.limits, signal: controller.signal, readerMode: true,
+          ...(this.options.includeGeometry ? { includeGeometry: true } : {}),
         });
         if (controller.signal.aborted) throw new PdfTextInspectionError("aborted");
         if (!["recognized", "no_text", "low_confidence", "unsupported_script"].includes(recognition.status)
@@ -150,9 +163,17 @@ export class ExplicitPageOcrInspector implements ExplicitPageOcrSource {
         }
         const cleaned = recognition.text.normalize("NFC").replace(/\r\n?/gu, "\n")
           .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/gu, "").trim();
-        const truncated = recognition.truncated === true || cleaned.length > this.limits.maxOcrOutputCharactersPerPage;
+        let truncated = recognition.truncated === true || cleaned.length > this.limits.maxOcrOutputCharactersPerPage;
         let text = cleaned.slice(0, this.limits.maxOcrOutputCharactersPerPage);
         if (/[\uD800-\uDBFF]$/u.test(text)) text = text.slice(0, -1);
+        const prepared = this.options.includeGeometry
+          ? prepareOcrGeometry(recognition.text, recognition.geometry, this.limits.maxOcrOutputCharactersPerPage, dimensions)
+          : undefined;
+        if (prepared) {
+          text = prepared.text;
+          truncated = recognition.truncated === true || prepared.truncated;
+        }
+        const viewport = dimensions.viewport as ReturnType<PDFPageProxy["getViewport"]>;
         if ((recognition.status === "recognized" && text.length === 0)
           || (recognition.status === "no_text" && text.length !== 0)) {
           throw new PdfTextInspectionError("ocr_engine_failure", "ocr");
@@ -161,6 +182,11 @@ export class ExplicitPageOcrInspector implements ExplicitPageOcrSource {
           physicalPage, pageCount: document.numPages, status: recognition.status,
           text, confidence: recognition.confidence, engine: recognition.engine, truncated,
           renderScale: dimensions.scale,
+          ...(prepared ? { geometry: prepared.geometry, renderedImage: {
+            width: dimensions.width, height: dimensions.height,
+            viewportWidth: viewport.width, viewportHeight: viewport.height, rotation: viewport.rotation,
+            pdfToImageTransform: [...viewport.transform],
+          } } : {}),
           rangeRequests: transport?.metrics.requests ?? 0,
           rangeBytes: transport?.metrics.fetchedBytes ?? input.bytes?.byteLength ?? 0,
         };

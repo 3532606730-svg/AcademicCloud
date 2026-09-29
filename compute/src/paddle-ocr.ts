@@ -12,6 +12,7 @@ import {
 } from "./bibliographic-intelligence.js";
 import { OcrError, type OcrAdapter, type OcrPageInput, type OcrRecognition } from "./ocr.js";
 import { SUGGESTION_LIMITS } from "./suggestion.js";
+import { prepareOcrGeometry } from "./ocr-geometry.js";
 
 // Candidate provenance is retained in the v20 SQLite column capped at 128
 // characters. Keep the complete pinned runtime/model revisions while using
@@ -70,10 +71,12 @@ interface SidecarResult {
   text?: string;
   confidence?: number | null;
   truncated?: boolean;
+  geometry?: unknown;
 }
 
 interface Pending {
   readerMode: boolean;
+  includeGeometry: boolean;
   resolve: (value: OcrRecognition) => void;
   reject: (error: OcrError) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -96,6 +99,7 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
   }
 
   async recognizePage(input: OcrPageInput, signal?: AbortSignal): Promise<OcrRecognition> {
+    if (input.includeGeometry && input.readerMode !== true) throw new OcrError("input_limit");
     if (!Number.isSafeInteger(input.pageIndex) || input.pageIndex < 1 || input.imageBytes.byteLength < 1
       || input.imageBytes.byteLength > SUGGESTION_LIMITS.maxEncodedPageImageBytes) throw new OcrError("input_limit");
     await this.#ensureReady(signal);
@@ -120,10 +124,11 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
         this.#terminate(new OcrError("timeout"));
       }, SUGGESTION_LIMITS.perPageOcrTimeoutMilliseconds);
       this.#pending.set(id, { resolve, reject, timer, readerMode: input.readerMode === true,
+        includeGeometry: input.includeGeometry === true,
         ...(signal === undefined ? {} : { signal, onAbort }) });
       signal?.addEventListener("abort", onAbort, { once: true });
       const request = JSON.stringify({ id, pageIndex: input.pageIndex, imageBase64: Buffer.from(input.imageBytes).toString("base64"),
-        ...(input.readerMode ? { readerMode: true } : {}) });
+        ...(input.readerMode ? { readerMode: true } : {}), ...(input.includeGeometry ? { includeGeometry: true } : {}) });
       this.#child!.stdin.write(`${request}\n`, "utf8", (error) => {
         if (error) finish(() => reject(new OcrError("engine_failure")));
       });
@@ -253,6 +258,12 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
       || (message.confidence !== null && (typeof message.confidence !== "number"
         || !Number.isInteger(message.confidence) || message.confidence < 0 || message.confidence > 100))) {
       pending.reject(new OcrError("engine_failure"));
+      return;
+    }
+    if (pending.includeGeometry) {
+      const prepared = prepareOcrGeometry(message.text, message.geometry, SUGGESTION_LIMITS.maxOcrOutputCharactersPerPage);
+      pending.resolve({ status: message.status, text: prepared.text, confidence: message.confidence!, engine: this.#config.engineId,
+        truncated: message.truncated === true || prepared.truncated, geometry: prepared.geometry });
       return;
     }
     let text = typeof message.text === "string" ? message.text.normalize("NFC").trim() : "";
