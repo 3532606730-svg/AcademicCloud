@@ -6,11 +6,11 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "be6f34b90189cf62a84520ac7424579967ee2567",
+    "checkpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
-    "localSynchronized": false,
-    "localState": "September29 continuation includes local geometry and recovered trial handoff. Fresh remote fetch still7513236 while local contains5e4fa28 and pending changes; publication follows verification. Obsolete original checkout preserved.",
-    "lastVerifiedPublishedCheckpoint": "751323625829c886bfa80f2c057d5efca3108cb6"
+    "localSynchronized": true,
+    "localState": "Implementationf3bb2b5, including recovered handoff5e4fa28, published to the authorized non-main branch. Fresh fetch verified clean active local HEAD equals remote f3bb2b5. Final documentation-only reconciliation follows; obsolete original checkout preserved.",
+    "lastVerifiedPublishedCheckpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -457,7 +457,7 @@
     "ownerInstructionDate": "2026-09-27",
     "status": "selected_recovery_published_online_ocr_assessment_selection_pending",
     "intake": "R0 export, ADR046 admission and ADR047 selected recovery locally verified; private current-page OCR implementation, persistent ZIP recovery and field quality open",
-    "ocr": "Online assessment and internal adapter interface locally complete; member-owned connection UI with simple tutorials, persistence/pairing and actual recognition remain to implement",
+    "ocr": "Online assessment, internal adapter and opt-in local line geometry locally tested; member-owned connection UI with simple tutorials, persistence/pairing and actual recognition remain to implement",
     "ux": "cad1ecf integrated and locally verified; full Workspace30/30 September28; production pending",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false
@@ -517,6 +517,6 @@
     },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
-    "implementationCheckpoint": "be6f34b90189cf62a84520ac7424579967ee2567"
+    "implementationCheckpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da"
   }
 }

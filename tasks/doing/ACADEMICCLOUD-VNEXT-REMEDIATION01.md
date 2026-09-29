@@ -163,6 +163,8 @@ The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
 
+Implementationf3bb2b537c6f53b886d670c1bff77eb81992e2da published to the authorized non-main vNext branch; fresh fetch verified clean active-local/remote equality. Includes the predecessor handoff5e4fa28. Final documentation reconciliation follows; no main merge or deployment.
+
 2026-09-29: `node --import tsx --test compute/test/ocr-geometry.test.ts compute/test/reader-ocr-inspector.test.ts compute/test/paddle-ocr.test.ts compute/test/pdf-text.test.ts` passes44/44. Bundled Python `-B compute/test/paddle-geometry.test.py` passes7/7 without Paddle/model imports. Compute typecheck/build and root diff review pass. Dedicated Astra ultra supplied review invariants but did not complete final review due to usage limits. Real source images were not submitted, no GPU inference ran, and no production service changed. Trial script/bridge hashes match recovered reviewed versions; no attempt ledger/result file exists.
 
 2026-09-28 free-quota trial preparation: two-engine offline preflight,13 network-blocked mocks and independent Astra ultra review PASS for the one-off ignored script (SHA256 dece241682f48afde985e8856c7745d43b3c7fbedf9faf64aff19e474a769ff3). Frozen21 files and4 source PDFs rehash PASS; local scoring self-check distinguishes failures from unattempted pages. Owner completed Baidu login; first-use OCR agreement remains pending, specific free balances not verified. Actual OCR calls0, source uploads0; no measured CER, billing activation or production changes. Details and commands: docs/evaluation/online-ocr-options.md and ignored output/vnext/ocr-online-trial-20260928.
