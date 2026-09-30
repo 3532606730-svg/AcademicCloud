@@ -1,5 +1,5 @@
 {
-  "lastReconciled": "2026-09-29",
+  "lastReconciled": "2026-10-01",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
@@ -9,8 +9,8 @@
     "checkpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Implementationf3bb2b5, including recovered handoff5e4fa28, published to the authorized non-main branch. Fresh fetch verified clean active local HEAD equals remote f3bb2b5. Final documentation-only reconciliation follows; obsolete original checkout preserved.",
-    "lastVerifiedPublishedCheckpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da"
+    "localState": "Implementationf3bb2b5 and prior documentatione602991 are published to the authorized non-main branch; current trial-evidence reconciliation follows. Obsolete original checkout preserved; source/runtime unchanged.",
+    "lastVerifiedPublishedCheckpoint": "e602991647343bdc9b160cb837b0ebe22f900a0c"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -361,7 +361,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Current intake scope, uploads/nginx/Compute diagnostics and remaining UX findings open; combined release and signed-in acceptance pending"
   ],
-  "next": "Complete Owner-selected free OCR trial after expired Baidu login is restored and exact free balance/billing are rechecked. Reuse existing restricted app, authorized eight real-book page images and final-reviewed script bd94cda; one frozen pilot per engine before remaining pages (max8 submissions/engine, no retries). Qualify opt-in local line positions independently while login is pending. Member-owned connection UI follows measured assessment; intake/corpus and coordinated release remain open. Keep57b8723/schema39 + Compute7e; no main merge or product OCR activation.",
+  "next": "Use completed free-trial evidence to implement member-owned connection profiles/transport, private source-bound result lifecycle and simple setup tutorials. Prefer a qualified installed member engine; online presets remain scenario-specific. Qualify real local geometry and normal Reader paths before the single coordinated product release. No main merge, paid activation or whole-book/corpus OCR.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -471,7 +471,7 @@
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "After recovery checkpoint, assess and progress reliable bibliographic OCR evidence and private current-page OCR in My Research",
-    "status": "member_owned_engine_interface_and_online_assessment",
+    "status": "free_trial_evaluated_member_connection_and_private_lifecycle_next",
     "implementationEnabled": false,
     "zeroAddedCost": false,
     "wholeDocumentOcrAuthorized": false,
@@ -482,41 +482,95 @@
     "qualification": {
       "code": "unconnected explicit-page/Paddle readerMode; scoped35 tests and independent review pass; types/build pass",
       "localGeometry": "September29 opt-in recognition-aligned line boxes with normalized image coordinates/final text UTF16 spans and actual PDF render frame; TypeScript44/44, Python7/7, Compute types/build and root review PASS",
-      "localGeometryIndependentReview": "Preliminary invariants supplied; final Astra ultra review interrupted by account usage limit, not complete",
+      "localGeometryIndependentReview": "PASS: final independent Astra ultra review of exact f3bb2b5 completed; supplied44 TypeScript/7 Python/types/build evidence inspected, not repeated. Real GPU/layout, Reader UI and packaging remain open.",
       "references": 8,
       "sources": 4,
       "characters": 6719,
       "humanVerified": false,
-      "inferenceRun": false,
-      "cloudApiCalled": false,
+      "inferenceRun": true,
+      "cloudApiCalled": true,
       "migrationAdded": false,
       "contractTestsPassed": 14,
       "newContractBoundaryTests": 11,
       "internalInterfaceImplemented": true,
       "liveConnectorImplemented": false,
       "tutorialDialogImplemented": false,
-      "independentReview": "PASS: engine contract, isolated Compute helpers, provider assessment and tutorial requirements"
+      "independentReview": "PASS: engine contract, isolated Compute helpers, provider assessment and tutorial requirements",
+      "localInferenceRun": false,
+      "sampleComplete": true,
+      "measuredChineseCer": {
+        "recognizedPages": 4,
+        "referenceCharacters": 1910,
+        "edits": 27,
+        "cer": 0.014136125654450262,
+        "humanVerifiedReference": false
+      },
+      "allPagesReturnedText": false,
+      "cloudTextCoverage": {
+        "ppocrv6": 7,
+        "paddleocrVlWithResultRecovery": 8
+      },
+      "commonRecognizedPageComparison": {
+        "pages": 7,
+        "referenceCharacters": 6552,
+        "ppEdits": 114,
+        "ppCer": 0.0173992673992674,
+        "vlEdits": 200,
+        "vlCer": 0.030525030525030524,
+        "vlExistingTaskRecoveryIncluded": true
+      }
     },
     "ocrCostPolicy": "Reasonably priced OCR acceptable; evaluate quality first then decide budget; no numerical cap selected",
     "initialFreeTrial": {
       "ownerRequestedAt": "2026-09-28",
-      "status": "awaiting_expired_baidu_login_then_fresh_free_quota_verification",
+      "status": "complete_with_original_failures_preserved_and_one_vl_result_recovery",
       "paidCallsAuthorized": false,
       "postpaidActivationAuthorized": false,
       "maxSubmissionsPerEngine": 8,
       "pilotBeforeRemainingPages": true,
       "automaticRetries": false,
-      "actualOcrCalls": 0,
-      "actualSourceDisclosure": false,
+      "actualOcrCalls": 16,
+      "actualSourceDisclosure": true,
       "localPreparation": "Recovered final independent Astra ultra review and15 network-blocked checks for unchanged current bytes; two-engine offline preflight,21 frozen files and4 source PDFs verified; no service-quality result",
       "trialScriptSha256": "bd94cda8860139369e0fd31a6a31da8948a365eb6ef5adc1d1da68722f3f42d3",
       "credentialBridgeSha256": "73cc33f92bd813a2d78be4d86f4ebd2a0ec5658812d40c90cfb820dc2488a826",
       "application": "AC-OCR-Trial-0928; restricted PP-OCRv6/PaddleOCR-VL permissions; created2026-09-28",
       "sourceDisclosureAuthorized": "Eight frozen page PNGs from four Owner books to Baidu PP-OCRv6/PaddleOCR-VL only",
-      "prerequisites": "Edge control briefly restored2026-09-29 then disconnected from browser inventory at turn end. Reconnect the existing Edge session, restore expired login with agreement checkbox, then verify actual free balance/no postpaid and reacquire this app's credentials in memory"
+      "prerequisites": "Met: existing restricted app/fixed source scope, Owner login, fresh visible free-only quotas; same-user memory handoff, browser-side credentials cleared, wrapper environment cleared on exit.",
+      "actualSubmittedByEngine": {
+        "ppocrv6": 8,
+        "paddleocr-vl": 8
+      },
+      "ppocrv6": "7 recognized/1 uncertain network outcome preserved; all8 reserved/submitted once, no resubmission.",
+      "paddleocrVl": "Originalpilot download403 retained; one existing-task query/GET recovered its output;7 new pages recognized. Recovered branch has8 outputs.",
+      "quotaEvidence": "output/vnext/ocr-online-trial-20260928/quota-before-resume-20260930.json",
+      "completedAtLocalDate": "2026-10-01",
+      "authRequests": 4,
+      "resumeDriverSha256": "e0f2586dd8ec81f67291535c0e10ab6a4e156b9f4dbb4972b2a3b17c67a3a935",
+      "resumeBridgeSha256": "722fe3104ec821cbed52e5ef28a9c99af145e30d69188af53f590633f6e91818",
+      "resumeVerification": "21/21 network-blocked mocks, independent GPT-6.1 Sol/xhigh review PASS; actual post-run17/17 read-only checks, original ledger/results-prefix SHA unchanged; no process/lock residue",
+      "vlResultRecovery": {
+        "queries": 1,
+        "resultDownloads": 1,
+        "sourceResubmissions": 0,
+        "originalFailurePreserved": true
+      },
+      "scoredReports": [
+        "output/vnext/ocr-online-trial-20260928/validation-ppocrv6-final-score.json",
+        "output/vnext/ocr-online-trial-20260928/validation-vl-recovered-final-score.json",
+        "output/vnext/ocr-online-trial-20260928/validation-vl-original-final-score.json",
+        "output/vnext/ocr-online-trial-20260928/validation-common-seven-comparison.json"
+      ],
+      "actualOcrCallsMeaning": "Submission attempts/reservations; one PP network outcome is uncertain, so this is not provider charged-call count."
     },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
     "implementationCheckpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da"
+  },
+  "subagentConfiguration": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "ownerChangedAt": "2026-09-30",
+    "supersedes": "gpt-6-astra/ultra"
   }
 }
