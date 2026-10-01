@@ -23,7 +23,7 @@ The evaluation record for each candidate page contains only:
 
 - `artifactVersionId` and immutable `sourceId`;
 - one-based physical PDF page number for product locations;
-- the existing zero-based Compute page index at the adapter boundary;
+- the existing one-based physical page number in Compute/Reader contracts; any lower-level renderer index remains an internal implementation detail;
 - source/evidence origin and a digest of the bounded test input;
 - measured bytes, peak memory, elapsed time, and whether the page was skipped.
 
@@ -43,8 +43,9 @@ The evaluation record for each candidate page contains only:
 
 - ADR-043 defines `DocumentLocation` as resource/source plus a one-based physical
   page and keeps source generations immutable.
-- The current Compute contract uses zero-based page indexes; any product adapter
-  must perform the conversion explicitly and test it.
+- The current Compute and Reader contracts use one-based physical pages, as
+  corrected in ADR-043; adapters must verify page identity and test any internal
+  renderer conversion explicitly.
 - Source replacement and recycle preserve authored notes but make a linked
   source unavailable; no automatic reattachment is allowed.
 - `pre-ocr-execution-plan.md` and ADR-031/037 keep heavy derived processing

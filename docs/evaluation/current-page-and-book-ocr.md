@@ -1,8 +1,8 @@
 # Current-page and whole-book OCR qualification
 
-Date: 2026-10-01. Status: frozen references and completed bounded real cloud trial; local engine quality and whole-book accuracy remain unmeasured. This document does not authorize whole-book or corpus processing.
+Date: 2026-10-01. Status: frozen references, completed bounded cloud trial and existing Owner-local same-pixel engine qualification; account connection, actual bounded Reader path and whole-book accuracy remain unverified. This document does not authorize whole-book or corpus processing.
 
-The existing pinned Paddle engine is a usable local computation substrate for an Owner-controlled OCR path. Its previous synthetic-image checks and its installed character inventory do not establish accuracy on academic books. The online versus own-device engine decision remains pending and is a separate qualification target; a successful Owner GPU run cannot certify either selected runtime.
+The existing pinned Paddle engine is usable for an explicitly connected Owner-local current-page path on this printed Chinese/English sample. Prefer an already installed qualified member-owned engine; online PP-OCRv6 remains the selected first online adapter, with better Chinese bibliographic sample results. Synthetic checks or installation alone do not establish academic-book accuracy, and one Owner GPU run does not qualify other members' devices or the full product path.
 
 ## Independent reference sample
 
@@ -38,7 +38,7 @@ The existing Mongology research assets are not a substitute for that missing pro
 
 The additional read-only Mongology audit also found that its retained 2,998-line whole-book export is bound to an `ocr_text_layer.db` manifest and `text_layer_line_crops`; that workflow used a PDF with a text layer. It cannot establish that segmentation and reading order work for a scan with no text layer. Its earlier image-layout report counts different units/coverage, so the two line totals cannot be converted into a character omission rate. Metrics must also match the exact exported checkpoint: a final-epoch score and an earlier selected-best checkpoint are not interchangeable. No new Mongology inference was performed for this assessment.
 
-An isolated GPU qualification process would run outside the production worker's concurrency-one scheduler. It therefore requires an explicitly coordinated idle window; no worker is stopped, reconfigured, or replaced for this evaluation. No new model download, paid compute, production job, or full-book processing is part of the sample.
+The isolated October1 GPU qualification ran in a monitored idle window outside the production worker's concurrency-one scheduler. No Catalog descendants appeared and no worker was stopped, reconfigured, or replaced. No new model download, paid compute, production job, or full-book processing was part of the sample.
 
 ## Reusable computation and remaining limits
 
@@ -56,7 +56,26 @@ For bibliographic reliability, OCR is only the evidence acquisition stage. The f
 
 ## Results and next evidence
 
-The authorized free trial is complete across September30/October1: eight submissions per engine, no resubmissions. PP returned7 pages and retained one uncertain network failure; VL returned all8 after one separately audited retrieval of its original pilot task. The original failed VL attempt remains intact. Common seven-page CER is PP114/6552=1.7399% versus VL200/6552=3.0525%. Chinese pages favor PP27/1910=1.4136% versus VL129/1910=6.7539%; English body favors VL18/4424=0.4069% versus PP78/4424=1.7631%. Copyright label/value ordering and publisher-logo omissions prevent a single universal recommendation. See the online evaluation for complete attempted/failure-inclusive metrics; these independent agent references are not human-certified or whole-book accuracy. There is no same-sample local baseline, coordinate-quality qualification or book-level accuracy estimate.
+The authorized free trial is complete across September30/October1: eight submissions per engine, no resubmissions. PP returned7 pages and retained one uncertain network failure; VL returned all8 after one separately audited retrieval of its original pilot task. The original failed VL attempt remains intact. Common seven-page CER is PP114/6552=1.7399% versus VL200/6552=3.0525%. Chinese pages favor PP27/1910=1.4136% versus VL129/1910=6.7539%; English body favors VL18/4424=0.4069% versus PP78/4424=1.7631%. Copyright label/value ordering and publisher-logo omissions prevent a single universal recommendation. See the online evaluation for complete attempted/failure-inclusive metrics; these independent agent references are not human-certified or whole-book accuracy. The new same-pixel local baseline follows; no book-level accuracy or annotated geometry IoU is claimed.
+
+## Owner local engine qualification — October1
+
+One sequential GPU session used the existing Python/Paddle runtime and exact PP-OCRv6 small detector/recognizer under release7e2d1bf, with the candidate repository geometry-capable sidecar. Both model hashes above were unchanged before/after; immutable releases, symlinks and active Catalog services were preserved. The child blocked network connect/send syscalls before loading the models. All eight frozen pages returned text without truncation and232 bounded recognition-aligned line rectangles. Common-contract whitelist projection passed for every result; four two-page overlay sheets were independently inspected by an agent. Copyright labels/column order and omitted publisher logos remain imperfect; this is line geometry, not character boxes or independently annotated ground truth.
+
+| Sample | Local small Paddle CER | Online PP-OCRv6 CER | Online VL CER with original-task recovery |
+|---|---:|---:|---:|
+| All eight local pages,6719 characters |85/6719=1.2651%|7 text results/1 uncertain network outcome|8 text results after one recovery|
+| Same seven successful pages,6552 characters |85/6552=1.2973%|114/6552=1.7399%|200/6552=3.0525%|
+| Chinese four pages,1910 characters |53/1910=2.7749%|27/1910=1.4136%|129/1910=6.7539%|
+| English body two pages,4424 characters |13/4424=0.2939%|78/4424=1.7631%|18/4424=0.4069%|
+
+Local body pages score16/5436=0.2943%; bibliographic pages69/1283=5.3780%. Full local sensitivity to the two uncertain reference positions is1.2353–1.2948%, not a statistical confidence interval. Cold start3533ms; requests255–1068ms; total session8023ms. Sampled sidecar RSS peak2115MiB; GPU total peak3085MiB versus baseline1005MiB. These one-session engine measurements exclude PDF/browser/Core transport and do not estimate whole-book throughput.
+
+The recognition dictionary has18,708 entries, including15,565 containing Han and zero traditional Mongolian codepoints. Traditional Mongolian remains unsupported by this profile.
+
+Important compatibility limit: the frozen comparison PNGs are1980–2300px wide and3300px high. All eight correctly fail the unchanged legacy Reader2000×2800/5.6Mpx geometry budget; common result-shape success does not relax that caller budget. The actual bounded Reader render/adapter must be qualified separately. No second inference/downscaled substitute was used for these scores. Account pairing, connector installation, private result lifecycle, tutorial UI and normal signed-in Reader acceptance remain open.
+
+Ignored local evidence: `output/vnext/owner-local-ocr-20261001/report.md`, runtime/session/results/score/comparison/geometry-normalization records and overlays. Raw OCR text and page images stay outside tracked documentation. This qualification supports continuing the Owner-local connector; it does not establish that the account is already connected or product OCR enabled.
 
 For local qualification, record exact code/model/runtime identities, effective render dimensions/scale, status, truncation, cold-start and per-page time, and peak resource usage. Retain every result and compare member-device engines using the same frozen references only within the authorized scope; distinguish a full-pipeline comparison from a same-pixel engine comparison.
 

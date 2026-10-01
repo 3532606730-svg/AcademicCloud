@@ -6,11 +6,11 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da",
+    "checkpoint": "548020724fe5e892280189aad301a0697f246606",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Base implementationf3bb2b5 and latest documentation09bec9c are published to the authorized non-main branch; current PP-OCRv6 adapter/model-selection checkpoint follows. Obsolete original checkout preserved; runtime unchanged.",
-    "lastVerifiedPublishedCheckpoint": "09bec9cfe4db6b2a62cafdc29e080f6e38184939"
+    "localState": "Published implementation5480207 was freshly fetched and verified equal in the clean active vNext checkout. Goal/local OCR documentation reconciliation follows; obsolete original checkout preserved and production runtime unchanged.",
+    "lastVerifiedPublishedCheckpoint": "548020724fe5e892280189aad301a0697f246606"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -361,7 +361,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Current intake scope, uploads/nginx/Compute diagnostics and remaining UX findings open; combined release and signed-in acceptance pending"
   ],
-  "next": "Use the locally verified PP-OCRv6 single-page adapter to implement member-owned connection profiles/transport, private source-bound result lifecycle and simple setup tutorials. Prefer a qualified installed member engine; VL remains a later English-body option. Qualify real source/geometry and normal Reader paths before the single coordinated product release. No main merge, paid activation or whole-book/corpus OCR.",
+  "next": "Implement the explicitly requested Owner/member-local connector, account pairing, private source/page result lifecycle and simple in-dialog tutorials. Existing Owner Paddle GPU passes the frozen same-pixel eight-page sample; qualify actual smaller bounded Reader frames and normal account paths separately. Retain online PP adapter, pending UX/export/admission/recovery release, independent per-book/page recovery, field quality, current corpus and final whole-product/report gates. No main merge, paid activation or whole-book/corpus OCR.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -471,11 +471,11 @@
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "After recovery checkpoint, assess and progress reliable bibliographic OCR evidence and private current-page OCR in My Research",
-    "status": "ppocrv6_internal_adapter_locally_verified_member_connection_and_private_lifecycle_next",
+    "status": "owner_local_engine_qualified_member_connector_private_lifecycle_reader_next",
     "implementationEnabled": false,
     "zeroAddedCost": false,
     "wholeDocumentOcrAuthorized": false,
-    "runtimeEvidence": "September28 read-only V2/Paddle hashes verified; no model change, new inference or engine-quality acceptance",
+    "runtimeEvidence": "October1 existing pinned Owner Paddle GPU:8/8 text,232 bounded line rectangles; frozen frames exceed actual Reader limits. Services/models/releases unchanged; no network/download or product enablement.",
     "providerDecision": "Members connect their own online account or offline engine through common adapters; prefer a suitable installed engine on that member's own device, with explicitly selected online positions OCR an acceptable alternative; no silent Owner or cloud fallback",
     "firstOnlineAdapter": {
       "selectedAt": "2026-10-01",
@@ -501,7 +501,7 @@
     "qualification": {
       "code": "unconnected explicit-page/Paddle readerMode; scoped35 tests and independent review pass; types/build pass",
       "localGeometry": "September29 opt-in recognition-aligned line boxes with normalized image coordinates/final text UTF16 spans and actual PDF render frame; TypeScript44/44, Python7/7, Compute types/build and root review PASS",
-      "localGeometryIndependentReview": "PASS: final independent Astra ultra review of exact f3bb2b5 completed; supplied44 TypeScript/7 Python/types/build evidence inspected, not repeated. Real GPU/layout, Reader UI and packaging remain open.",
+      "localGeometryIndependentReview": "PASS: independent Astra ultra review of exact f3bb2b5 completed using supplied44 TypeScript/7 Python/types/build evidence without rerunning. October1 real same-pixel engine/line qualification is recorded under ownerLocal; actual bounded Reader/UI/packaging remain open.",
       "references": 8,
       "sources": 4,
       "characters": 6719,
@@ -515,7 +515,7 @@
       "liveConnectorImplemented": false,
       "tutorialDialogImplemented": false,
       "independentReview": "PASS: engine contract, isolated Compute helpers, provider assessment and tutorial requirements",
-      "localInferenceRun": false,
+      "localInferenceRun": true,
       "sampleComplete": true,
       "measuredChineseCer": {
         "recognizedPages": 4,
@@ -537,6 +537,50 @@
         "vlEdits": 200,
         "vlCer": 0.030525030525030524,
         "vlExistingTaskRecoveryIncluded": true
+      },
+      "ownerLocal": {
+        "date": "2026-10-01",
+        "engine": "PP-OCRv6_small_det/rec",
+        "pages": 8,
+        "recognizedPages": 8,
+        "lineBoxes": 232,
+        "referenceCharacters": 6719,
+        "edits": 85,
+        "cer": 0.012650692067271915,
+        "body": {
+          "characters": 5436,
+          "edits": 16,
+          "cer": 0.0029433406916850625
+        },
+        "bibliographic": {
+          "characters": 1283,
+          "edits": 69,
+          "cer": 0.05378020265003897
+        },
+        "chinese": {
+          "characters": 1910,
+          "edits": 53,
+          "cer": 0.02774869109947644
+        },
+        "humanVerifiedReference": false,
+        "coldStartMs": 3533,
+        "perPageMsRange": [
+          255,
+          1068
+        ],
+        "sidecarRssPeakBytes": 2217824256,
+        "gpuTotalPeakMiB": 3085,
+        "gpuBaselineMiB": 1005,
+        "networkBlocked": true,
+        "modelDownloads": 0,
+        "productionServicesChanged": false,
+        "commonResultShapePassed": true,
+        "legacyReaderFrameAccepted": false,
+        "legacyReaderFrameRejection": "All8 frozen3300px frames exceed unchanged2000x2800/5.6Mpx budget",
+        "actualBoundedReaderAcceptance": false,
+        "accountConnected": false,
+        "traditionalMongolianSupported": false,
+        "evidence": "docs/evaluation/current-page-and-book-ocr.md#owner-local-engine-qualification--october1"
       }
     },
     "ocrCostPolicy": "Reasonably priced OCR acceptable; evaluate quality first then decide budget; no numerical cap selected",
@@ -584,7 +628,7 @@
     },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
-    "implementationCheckpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da"
+    "implementationCheckpoint": "548020724fe5e892280189aad301a0697f246606"
   },
   "subagentConfiguration": {
     "model": "gpt-6.1-sol",
