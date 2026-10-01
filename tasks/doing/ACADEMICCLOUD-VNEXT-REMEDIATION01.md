@@ -43,13 +43,15 @@ For each milestone: risk-appropriate tests, review, responsive visual verificati
 
 ## Relevant ADRs
 
-ADR-014, ADR-022, ADR-023, ADR-031–040, [ADR-041 — vNext review plans and search projection](../../docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md), ADR-042, [ADR-043 — source generations and page locations](../../docs/decisions/ADR-043-document-source-generations-and-page-locations.md), [ADR-044 — private Workspace](../../docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md), ADR-045, [ADR-046 — transactional admission](../../docs/decisions/ADR-046-transactional-cataloguing-admission.md) and [ADR-047 — selected recovery](../../docs/decisions/ADR-047-selected-cataloguing-recovery.md).
+ADR-014, ADR-022, ADR-023, ADR-031–040, [ADR-041 — vNext review plans and search projection](../../docs/decisions/ADR-041-vnext-review-plans-and-search-projection.md), ADR-042, [ADR-043 — source generations and page locations](../../docs/decisions/ADR-043-document-source-generations-and-page-locations.md), [ADR-044 — private Workspace](../../docs/decisions/ADR-044-private-workspace-collections-and-page-notes.md), ADR-045, [ADR-046 — transactional admission](../../docs/decisions/ADR-046-transactional-cataloguing-admission.md), [ADR-047 — selected recovery](../../docs/decisions/ADR-047-selected-cataloguing-recovery.md) and [ADR-048 — member-owned OCR/private pages](../../docs/decisions/ADR-048-private-current-page-ocr.md).
 
 ## Relevant Modules / Files
 
 Backend catalog/library/metadata/suggestions/workspace/persistence; frontend Library/details/Batch/workspace/view context; Compute contracts/export/runtime; migrations 035–038; deployment/release scripts; regression CI; current-state documents.
 
 ## Current State
+
+October1 Owner asks to choose and integrate the most suitable model for book intake. PP-OCRv6 is selected as the first online adapter for ordinary printed Chinese book pages; bounded internal implementation passes31 offline tests, Compute types/build and independent Sol/xhigh review. The native decoder's tolerance of corrupt pixels and an independently reproduced indexed-palette error are repaired and regression-covered before token/POST. This selection preserves member-owned/local preference, unchanged bibliographic authority, private source/page boundaries and the existing deferred product HTTP interface. No new live call, schema migration or runtime change is part of this adapter step.
 
 The authorized free trial is complete across September30/October1: eight submissions per engine, no resubmissions. PP returned7 pages and retained one uncertain network failure; VL returned all8 after one separately audited retrieval of its original pilot task. The original failed VL attempt remains intact. Common seven-page CER is PP114/6552=1.7399% versus VL200/6552=3.0525%. Chinese pages favor PP27/1910=1.4136% versus VL129/1910=6.7539%; English body favors VL18/4424=0.4069% versus PP78/4424=1.7631%. Copyright label/value ordering and publisher-logo omissions prevent a single universal recommendation. See the online evaluation for complete attempted/failure-inclusive metrics; these independent agent references are not human-certified or whole-book accuracy.
 
@@ -100,6 +102,8 @@ Deployed36c4 fixes scalar PDF/OCR line wrapping, ineligible evidence-page shadow
 New Mongolia Today normal upload automatically queued a job. Deliberate worker loss recovered via systemd and natural lease expiration into attempt2; no Core/search/PDF outage. The recovered attempt failed closed because thirteen contributors lacked explicit source role wording. The bounded follow-up omits those unsupported contributors while retaining strict type/enum/evidence rules; the real PDF passes offline with19 fields, UNKNOWN/ambiguous and no auto-promotion. Main is temporarily stopped for exact final seven-case qualification. Follow-up also repairs same-ID retry/idempotent-success UI state, labels the uncalibrated model score honestly, preserves safe Local Pull diagnostics, patches Vitest4.1.11, and synchronizes the lease test on real heartbeats.
 
 ## Completed
+
+- October1 selected first online OCR model for ordinary printed Chinese book intake: PP-OCRv6 internal single-page adapter and31 offline tests, Compute types/build and independent Sol/xhigh review PASS. No product/worker activation; member-owned/local preference and canonical bibliography authority preserved.
 
 | Finding / area | Local implementation and evidence |
 |---|---|
@@ -164,6 +168,8 @@ Production, GitHub and the existing signed-in Edge session are available; no app
 The Windows native-install problem is resolved by the pinned strict npm policy.
 
 ## Last Verification
+
+2026-10-01 PP-OCRv6 adapter: node --import tsx --test compute/test/baidu-ppocrv6.test.ts31/31, zero failures/skips; Compute typecheck/build exit0. Root read actual saved output and independently verified source SHA25696fb82d5b57785fe82ee7d57a2cf2288d2d2eda85303869f47fe399a3e922898/testbb07ea8da764f77569e913bcbb329ef0f63779945ea69d5ce3e7ef38b97a3b42. Independent Sol/xhigh reviewer reproduced malformed indexed PNG accepted before the fix; non-indexed subset plus regression now yields token0/POST0 and final PASS. Logs are ignored output/vnext/baidu-ppocrv6-{scoped-tests,typecheck,build}.log. No real OCR, credential use, product enablement, schema or deployment change.
 
 2026-10-01 completed free OCR trial: exact manual-resume e0f2586…a935,21 network-blocked mocks and independent GPT-6.1 Sol/xhigh review PASS; root executed once. Real post-run17 read-only checks PASS:8 submissions per engine, auth4, original entries/results-prefix hashes unchanged, one existing-task query/GET recovery, no process/lock residue. Fixed scoring reports retain all failed attempts and recovered branch; common7-page PP1.7399%/VL3.0525%. Real local GPU, coordinates, Reader/provider connection and production are not qualified by this trial.
 
@@ -251,4 +257,4 @@ Takeover live evidence: qualified3c864374 worker remains active PID51089 with ze
 
 ## Next Action
 
-The fixed free trial is complete; use its scenario-specific evidence in docs/evaluation/online-ocr-options.md. Next implement member-owned connection profiles/transport, private source/page result lifecycle and simple tutorials inside the connection dialog. Prefer qualified installed engines; PP is a provisional ordinary Chinese/bibliography candidate and VL an English-body alternative based on this sample, without a universal accuracy promise. Real local text/positions and normal signed-in Reader acceptance precede coordinated activation. Preserve source authority/canonical CAS and the unchanged bibliographic worker. Persistent ZIP/resource recovery, field-quality/corpus acceptance and the single combined release remain open; no main merge, paid activation, whole-book/corpus OCR, indexing or RAG.
+The selected PP-OCRv6 bounded single-page adapter is locally verified. Next implement member-owned connection profiles/transport, private source/page result lifecycle and simple tutorials inside the connection dialog. Prefer qualified installed engines; PP is the selected first online adapter for ordinary printed Chinese/bibliography pages and VL remains a later English-body alternative based on the fixed sample, without a universal accuracy promise. Real local text/positions and normal signed-in Reader acceptance precede coordinated activation. Preserve source authority/canonical CAS and the unchanged bibliographic worker. Persistent ZIP/resource recovery, field-quality/corpus acceptance and the single combined release remain open; no main merge, paid activation, whole-book/corpus OCR, indexing or RAG.

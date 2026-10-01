@@ -9,8 +9,8 @@
     "checkpoint": "f3bb2b537c6f53b886d670c1bff77eb81992e2da",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Implementationf3bb2b5 and prior documentatione602991 are published to the authorized non-main branch; current trial-evidence reconciliation follows. Obsolete original checkout preserved; source/runtime unchanged.",
-    "lastVerifiedPublishedCheckpoint": "e602991647343bdc9b160cb837b0ebe22f900a0c"
+    "localState": "Base implementationf3bb2b5 and latest documentation09bec9c are published to the authorized non-main branch; current PP-OCRv6 adapter/model-selection checkpoint follows. Obsolete original checkout preserved; runtime unchanged.",
+    "lastVerifiedPublishedCheckpoint": "09bec9cfe4db6b2a62cafdc29e080f6e38184939"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -361,7 +361,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Current intake scope, uploads/nginx/Compute diagnostics and remaining UX findings open; combined release and signed-in acceptance pending"
   ],
-  "next": "Use completed free-trial evidence to implement member-owned connection profiles/transport, private source-bound result lifecycle and simple setup tutorials. Prefer a qualified installed member engine; online presets remain scenario-specific. Qualify real local geometry and normal Reader paths before the single coordinated product release. No main merge, paid activation or whole-book/corpus OCR.",
+  "next": "Use the locally verified PP-OCRv6 single-page adapter to implement member-owned connection profiles/transport, private source-bound result lifecycle and simple setup tutorials. Prefer a qualified installed member engine; VL remains a later English-body option. Qualify real source/geometry and normal Reader paths before the single coordinated product release. No main merge, paid activation or whole-book/corpus OCR.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -455,28 +455,47 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "selected_recovery_published_online_ocr_assessment_selection_pending",
+    "status": "selected_recovery_and_ppocrv6_internal_adapter_locally_verified",
     "intake": "R0 export, ADR046 admission and ADR047 selected recovery locally verified; private current-page OCR implementation, persistent ZIP recovery and field quality open",
-    "ocr": "Online assessment, internal adapter and opt-in local line geometry locally tested; member-owned connection UI with simple tutorials, persistence/pairing and actual recognition remain to implement",
+    "ocr": "PP-OCRv6 internal single-page adapter31 offline tests/types/build/review PASS; opt-in local line geometry also locally tested. Member-owned connection UI/tutorials, persistence/pairing and actual Reader recognition remain to implement",
     "ux": "cad1ecf integrated and locally verified; full Workspace30/30 September28; production pending",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false
   },
   "subagents": {
-    "model": "gpt-6-astra",
-    "reasoningEffort": "ultra",
-    "ownerInstructionDate": "2026-09-27"
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "ownerInstructionDate": "2026-09-30"
   },
   "currentContinuationBoundary": "Existing-path repairs, zero added cost, authorized non-main checkpoints and coordinated releases only; current instruction does not authorize main merge or whole-document OCR",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "After recovery checkpoint, assess and progress reliable bibliographic OCR evidence and private current-page OCR in My Research",
-    "status": "free_trial_evaluated_member_connection_and_private_lifecycle_next",
+    "status": "ppocrv6_internal_adapter_locally_verified_member_connection_and_private_lifecycle_next",
     "implementationEnabled": false,
     "zeroAddedCost": false,
     "wholeDocumentOcrAuthorized": false,
     "runtimeEvidence": "September28 read-only V2/Paddle hashes verified; no model change, new inference or engine-quality acceptance",
     "providerDecision": "Members connect their own online account or offline engine through common adapters; prefer a suitable installed engine on that member's own device, with explicitly selected online positions OCR an acceptable alternative; no silent Owner or cloud fallback",
+    "firstOnlineAdapter": {
+      "selectedAt": "2026-10-01",
+      "engine": "baidu-pp-ocrv6",
+      "scope": "Ordinary printed Chinese title/copyright/body pages; one already-rendered static PNG",
+      "basis": "Fixed Chinese sample CER27/1910=1.4136% versus VL129/1910=6.7539%; agent references, not whole-book or human-certified accuracy",
+      "status": "locally_implemented_offline_verified_independent_review_pass",
+      "implementation": "compute/src/baidu-ppocrv6.ts",
+      "inputSubset": "Rendered static non-interlaced non-indexed PNG; at most8-bit channels; bounded ancillary subset",
+      "offlineTestsPassed": 31,
+      "typesAndBuild": "PASS",
+      "independentReview": "PASS GPT-6.1 Sol/xhigh; invalid palette reproduction repaired before credentials/POST",
+      "sourceSha256": "96fb82d5b57785fe82ee7d57a2cf2288d2d2eda85303869f47fe399a3e922898",
+      "testSha256": "bb07ea8da764f77569e913bcbb329ef0f63779945ea69d5ce3e7ef38b97a3b42",
+      "productEnabled": false,
+      "newLiveCalls": 0,
+      "modelWeightRevision": null,
+      "credentialTransport": "Member access-token resolver injected; no Owner/environment fallback",
+      "nextGate": "Member connection/private result/tutorial implementation, real source/position qualification and normal Reader acceptance"
+    },
     "assessment": "docs/evaluation/online-ocr-options.md",
     "privateResultAdr": "docs/decisions/ADR-048-private-current-page-ocr.md",
     "qualification": {

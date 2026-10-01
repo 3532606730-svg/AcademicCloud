@@ -24,6 +24,8 @@
 
 ## Engineering Workflow
 
+**First online OCR model (Owner continuation2026-10-01):** select Baidu PP-OCRv6 for ordinary printed Chinese book intake/title/copyright/body pages, using the fixed real-book trial and ADR048. The bounded single-page internal adapter is locally verified (31 offline tests, Compute types/build and independent Sol/xhigh review PASS); next implement member connection/private results/tutorials. VL remains an English-body alternative requiring later integration. Qualified member-installed local engines remain preferred, without transferring cloud accuracy claims to local weights. Member profiles/tutorials/private results and coordinated activation remain open; no new source disclosure, paid activation, whole-book execution or automatic Owner/cloud fallback follows from model selection.
+
 **OCR selection preference (reconciled2026-09-30):** prefer an already installed qualified engine on the requesting member's own device; the member may also explicitly download a suitable engine/model. If local hardware or language/layout support is insufficient, the member may explicitly connect their own online OCR account. Installation alone does not establish accuracy. Never silently fall back to Owner compute, credentials or quota, or switch a local request to cloud processing. The bounded free trial and product activation gates remain as defined in ADR048.
 
 Ordinary AcademicCloud engineering follows `.agents/skills/academiccloud-workflow/SKILL.md`. The repository is durable project memory. Product and architecture facts come from current code, Git, task cards, current-state documents, and accepted ADRs—not from chat memory.
