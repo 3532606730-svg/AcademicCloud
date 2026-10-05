@@ -735,7 +735,20 @@
       "evidence": "docs/evidence/paired-local-ocr-20261001.md",
       "productionEnabled": false
     },
-    "pendingPairedLocalImplementationCheckpoint": false
+    "pendingPairedLocalImplementationCheckpoint": false,
+    "ownerAccountActivation": {
+      "requestedAt": "2026-10-05",
+      "preference": "suitable_installed_local_first_own_online_only_if_local_unusable",
+      "directCoordinatedDeploymentAuthorized": true,
+      "operator": "root",
+      "phase": "PREPARING_EXACT_RELEASE_AND_COMPATIBLE_RECOVERY",
+      "candidateSourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
+      "peerScopeIntegrationRechecked": true,
+      "ownerNormalBrowserLoginConfirmed": true,
+      "connected": false,
+      "onlineFallbackActivated": false,
+      "productionCutoverCompleted": false
+    }
   },
   "subagentConfiguration": {
     "model": "gpt-6.1-sol",

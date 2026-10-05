@@ -2,6 +2,10 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## 2026-10-05 — Activate the Owner account with local OCR first
+
+The Owner explicitly requests local-first account OCR connection, their own online fallback only if local execution is unusable, and direct completed deployment without another approval question. Root remains the one coordinated Core40/Local Pull/Bridge operator under ADR048/049 and the September27 gate. Exact artifacts/compatible recovery precede cutover; normal signed-in actual bounded Reader/native recognition and saved-result reopening precede an account-connected claim. This executes the existing bounded scope; paid billing, whole-book OCR and shared Owner credentials/compute for other Members remain outside it.
+
 ## 2026-10-01 — Pair each account with its own current-page OCR device
 
 [ADR-049](docs/decisions/ADR-049-paired-local-current-page-ocr.md) implements the Owner's explicit local-account continuation after the existing engine qualification: one-time digest-backed pairing, outbound-only account-bound connector, bounded transient page images and private saved machine text with separate correction CAS. Additive schema040 preserves existing source/Workspace/Reader/catalog data. The shared Owner host requires cooperative native-resource exclusion across CatalogBridge, Local Pull and the member connector; current production7e lacks that contract, so activation must wait for its exact coordinated release. Online credential/billing integration, whole-book execution and shared full-text/RAG remain separate. No raw page image is persisted, machine output acquires no canonical authority, and no member borrows Owner credentials/compute implicitly.
