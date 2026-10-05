@@ -1,6 +1,6 @@
 # Paired local current-page OCR — October 1 verification
 
-Scope: ADR-049 candidate on `codex/vnext-remediation-20260906`, based on published documentation checkpoint `50121e91298737bfc50aa04982cc7df099beb0b3`. This is repository/local verification, not production activation or final vNext acceptance.
+Scope: ADR-049 implementation `5fb19382c1c614d2070afa3504c655e76ae456ce` on `codex/vnext-remediation-20260906`, based on documentation baseline `50121e91298737bfc50aa04982cc7df099beb0b3`. Implementation is published; fresh fetch verified clean active local/remote equality. This following documentation-only checkpoint records that publication. The evidence is repository/local verification, not production activation or final vNext acceptance.
 
 ## Implemented behavior
 

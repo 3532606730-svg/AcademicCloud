@@ -8,7 +8,7 @@ Local current-page OCR is implemented under [ADR-049](docs/decisions/ADR-049-pai
 
 Goal-tree reconciliation: vNext is the sole active root. Core/Library, account governance, source037, Workspace038 and Reader039 are deployed foundations. UX/export/admission/selected recovery and paired-local OCR are locally verified candidates awaiting the coordinated release. The open exits are real Owner Reader/native OCR acceptance and online member profiles, independent per-book/page recovery and persistent ZIP, adjudicated bibliographic field quality, current-corpus reconciliation/cleanup, normal signed-in performance and whole-product acceptance, and the required final report. The active task's Remaining section carries the executable inventory; TASK_BOARD/ROADMAP retain the later queue.
 
-The current paired-local candidate and [verification evidence](docs/evidence/paired-local-ocr-20261001.md) are pending the authorized non-main checkpoint/publication. Production remains the recorded57b8723/schema39; no new exact deployment or main merge is claimed.
+Implementation5fb19382c1c614d2070afa3504c655e76ae456ce and [verification evidence](docs/evidence/paired-local-ocr-20261001.md) are published to codex/vnext-remediation-20260906. Fresh fetch verified clean active local HEAD equals that remote source checkpoint. This documentation-only reconciliation records publication; production remains the recorded57b8723/schema39, with no new exact deployment or main merge.
 
 ## Historical OCR qualification and checkpoint records
 

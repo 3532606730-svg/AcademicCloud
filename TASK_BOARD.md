@@ -6,6 +6,8 @@
 
 October5 paired-local OCR candidate passes the final whole-project publication gate: CI1385pass/4Windows-symlink skips/0fail, all workspace types/build, schema40 compiled acceptance and zero production/complete dependency advisories. Independent reviews approve native-close, dependency and test repairs. Actual synthetic signed-in Reader/private history/tutorial/download paths and native9 process checks pass. [Evidence](docs/evidence/paired-local-ocr-20261001.md). Next exact cooperating runtime qualification and real Owner Reader/native acceptance within the coordinated release gate; online profiles, book/page recovery, field quality, corpus/report remain open. Production remains the recorded57b/schema39; existing7e cannot accept persistent Owner pairing.
 
+Implementation5fb19382c1c614d2070afa3504c655e76ae456ce is published to the authorized non-main branch with [skip ci]. Fresh fetch verified clean active local HEAD==remote HEAD; this documentation-only reconciliation records that source checkpoint. Production/schema/main and real Owner bounded Reader/native acceptance remain unchanged.
+
 ## Prior OCR qualification checkpoints
 
 The following checkpoint-era next-step descriptions are retained as history; the locally implemented ADR049 state above controls continuation.

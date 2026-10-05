@@ -6,11 +6,11 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "50121e91298737bfc50aa04982cc7df099beb0b3",
+    "checkpoint": "5fb19382c1c614d2070afa3504c655e76ae456ce",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
-    "localSynchronized": false,
-    "localState": "Published documentation50121e9 is the verified baseline; paired-local OCR implementation and evidence are locally verified and pending the authorized non-main checkpoint. The obsolete original checkout and production runtimes remain unchanged.",
-    "lastVerifiedPublishedCheckpoint": "50121e91298737bfc50aa04982cc7df099beb0b3"
+    "localSynchronized": true,
+    "localState": "Implementation5fb1938 published to the authorized non-main branch; fresh fetch verified clean active HEAD==remote HEAD on October5. This documentation-only reconciliation records that verified source checkpoint; obsolete original checkout and production runtimes remain unchanged.",
+    "lastVerifiedPublishedCheckpoint": "5fb19382c1c614d2070afa3504c655e76ae456ce"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -105,7 +105,7 @@
       "status": "LOCALLY_VERIFIED_NOT_DEPLOYED",
       "adr": "docs/decisions/ADR-049-paired-local-current-page-ocr.md",
       "evidence": "docs/evidence/paired-local-ocr-20261001.md",
-      "sourceCommit": null,
+      "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "schemaVersion": 40,
       "exactReleaseQualified": false,
       "productionEnabled": false
@@ -422,7 +422,8 @@
       },
       "evidence": "docs/evidence/paired-local-ocr-20261001.md",
       "logs": "output/vnext/prepublication-20261005/final-stable-*",
-      "productionChanged": false
+      "productionChanged": false,
+      "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce"
     }
   },
   "computeQualification": {
@@ -710,7 +711,7 @@
     },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
-    "implementationCheckpoint": "548020724fe5e892280189aad301a0697f246606",
+    "implementationCheckpoint": "5fb19382c1c614d2070afa3504c655e76ae456ce",
     "implementationEnabledMeaning": "Production activation only; the local candidate implements the paired single-page namespace.",
     "candidateImplementationEnabled": true,
     "pairedLocal": {
@@ -734,7 +735,7 @@
       "evidence": "docs/evidence/paired-local-ocr-20261001.md",
       "productionEnabled": false
     },
-    "pendingPairedLocalImplementationCheckpoint": true
+    "pendingPairedLocalImplementationCheckpoint": false
   },
   "subagentConfiguration": {
     "model": "gpt-6.1-sol",
