@@ -87,6 +87,9 @@ interface Pending {
 export class PaddleOcrSidecarAdapter implements OcrAdapter {
   readonly #config: PaddleOcrConfig;
   #child: ChildProcessWithoutNullStreams | undefined;
+  #childClosed: Promise<void> | undefined;
+  #closing: Promise<void> | undefined;
+  #terminating = false;
   #buffer = "";
   #ready: Promise<void> | undefined;
   #readyResolve: (() => void) | undefined;
@@ -136,18 +139,30 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
   }
 
   async close(): Promise<void> {
+    if (this.#closing) return this.#closing;
     const child = this.#child;
     if (!child) return;
-    const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
-    child.stdin.end();
-    const killTimer = setTimeout(() => child.kill("SIGKILL"), 1_000);
-    killTimer.unref();
-    await exited;
-    clearTimeout(killTimer);
-    this.#terminate(new OcrError("engine_failure"), false);
+    const closed = this.#childClosed!;
+    const closing = (async () => {
+      let killTimer: ReturnType<typeof setTimeout> | undefined;
+      if (!this.#terminating) {
+        child.stdin.end();
+        killTimer = setTimeout(() => child.kill("SIGKILL"), 1_000);
+        killTimer.unref();
+      }
+      // A kill request is not native cleanup. Retain the child until Node has
+      // acknowledged its closure, so callers cannot release a shared lease early.
+      await closed;
+      if (killTimer) clearTimeout(killTimer);
+    })();
+    this.#closing = closing;
+    try { await closing; } finally { if (this.#closing === closing) this.#closing = undefined; }
   }
 
   async #ensureReady(signal?: AbortSignal): Promise<void> {
+    if (this.#closing) await this.#closing;
+    if (this.#terminating) await this.#childClosed;
+    if (signal?.aborted) throw new OcrError("aborted");
     if (!this.#ready) this.#start();
     if (!this.#ready) throw new OcrError("engine_unavailable");
     if (signal?.aborted) throw new OcrError("aborted");
@@ -163,6 +178,8 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
   }
 
   #start(): void {
+    this.#buffer = "";
+    this.#startupDiagnosticBytes = 0;
     this.#ready = new Promise<void>((resolve, reject) => {
       this.#readyResolve = resolve;
       this.#readyReject = reject;
@@ -190,13 +207,22 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
       },
     });
     this.#child = child;
+    this.#childClosed = new Promise<void>((resolve) => child.once("close", () => {
+      this.#terminate(new OcrError("engine_failure"), false, child);
+      if (this.#child === child) {
+        this.#child = undefined;
+        this.#childClosed = undefined;
+        this.#terminating = false;
+      }
+      resolve();
+    }));
     child.stderr.on("data", (chunk: Buffer) => {
       // The hosted qualification uses only generated pages and may expose a
       // bounded initialization traceback so a real runtime mismatch is
       // actionable. Production never sets this flag, and diagnostics stop as
       // soon as the exact ready handshake succeeds; document text is therefore
       // never forwarded from the sidecar.
-      if (process.env.PADDLE_OCR_STARTUP_DIAGNOSTICS !== "1" || this.#readyResolve === undefined
+      if (this.#child !== child || this.#terminating || process.env.PADDLE_OCR_STARTUP_DIAGNOSTICS !== "1" || this.#readyResolve === undefined
         || this.#startupDiagnosticBytes >= 8_192) return;
       const text = chunk.toString("utf8")
         .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/gu, "")
@@ -204,9 +230,11 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
       this.#startupDiagnosticBytes += Buffer.byteLength(text, "utf8");
       process.stderr.write(text);
     });
-    child.stdout.on("data", (chunk: Buffer) => this.#onOutput(chunk));
-    child.once("error", () => this.#terminate(new OcrError("engine_unavailable")));
-    child.once("exit", () => this.#terminate(new OcrError("engine_failure"), false));
+    child.stdout.on("data", (chunk: Buffer) => {
+      if (this.#child === child && !this.#terminating) this.#onOutput(chunk);
+    });
+    child.once("error", () => this.#terminate(new OcrError("engine_unavailable"), true, child));
+    child.once("exit", () => this.#terminate(new OcrError("engine_failure"), false, child));
   }
 
   #onOutput(chunk: Buffer): void {
@@ -216,7 +244,7 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
       return;
     }
     let newline = this.#buffer.indexOf("\n");
-    while (newline >= 0) {
+    while (newline >= 0 && !this.#terminating) {
       const line = this.#buffer.slice(0, newline);
       this.#buffer = this.#buffer.slice(newline + 1);
       this.#handleLine(line);
@@ -283,9 +311,9 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
       ...(message.truncated === undefined ? {} : { truncated: message.truncated }) });
   }
 
-  #terminate(error: OcrError, kill = true): void {
-    const child = this.#child;
-    this.#child = undefined;
+  #terminate(error: OcrError, kill = true, child = this.#child): void {
+    if (!child || this.#child !== child) return;
+    this.#terminating = true;
     if (kill) child?.kill("SIGKILL");
     this.#readyReject?.(error);
     this.#ready = undefined;

@@ -11,6 +11,7 @@ User=academiccloud
 Group=academiccloud
 WorkingDirectory=/srv/academiccloud-compute/current/compute
 EnvironmentFile=/srv/academiccloud-compute/control/academiccloud-local-compute.env
+Environment=ACADEMICCLOUD_NATIVE_RESOURCE_GUARD_CONFIG=/srv/academiccloud-compute/control/native-resource-guard.json
 ExecStart=/srv/academiccloud-compute/current/runtime/node/bin/node /srv/academiccloud-compute/current/compute/dist/local-pull-main.js
 Restart=on-failure
 RestartSec=5s
@@ -41,7 +42,7 @@ CapabilityBoundingSet=
 AmbientCapabilities=
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 SystemCallArchitectures=native
-ReadWritePaths=/srv/academiccloud-compute/logs /srv/academiccloud-compute/tmp
+ReadWritePaths=/srv/academiccloud-compute/logs /srv/academiccloud-compute/tmp /srv/academiccloud-compute/coordination
 LimitCORE=0
 TasksMax=512
 MemoryHigh=6G

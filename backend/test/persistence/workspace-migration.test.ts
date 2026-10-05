@@ -29,7 +29,7 @@ test("038–039 only add overlay tables, preserves existing Core rows and retain
         'md5', 'AAAAAAAAAAAAAAAAAAAAAA==', 'active', 9, ?, ?, ?)`).run(now.toISOString(), now.toISOString(), now.toISOString());
     const tables = database.prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'schema_migrations' ORDER BY name").all();
     const snapshots = tables.map(({ name }) => ({ name, rows: database.prepare(`SELECT * FROM "${name.replaceAll('"', '""')}"`).all() }));
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).appliedVersions, [38, 39]);
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).appliedVersions, [38, 39, 40]);
     for (const snapshot of snapshots) assert.deepEqual(database.prepare(`SELECT * FROM "${snapshot.name.replaceAll('"', '""')}"`).all(), snapshot.rows, snapshot.name);
     assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
     const workspace = new WorkspaceService(persistence, new SqliteWorkspaceRepository(database), () => now);

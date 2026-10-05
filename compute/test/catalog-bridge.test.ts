@@ -8,6 +8,14 @@ import { canonicalCatalogJson, type CatalogExportRequest } from "@academiccloud/
 import { createCatalogBridgeServer, type CatalogBridgePackageFactory } from "../src/catalog-bridge.js";
 
 const ORIGIN = "https://cloud.ajtlab.top";
+test('configured shared native busy returns stable503 before exporter starts',async()=>{
+  let calls=0;
+  const server=createCatalogBridgeServer({allowedOrigins:[ORIGIN],nativeResourceGuard:{async acquire(){return null;}},packageFactory:async()=>{calls++;throw Error('unexpected export');}});
+  server.listen(0,'127.0.0.1');await once(server,'listening');const a=server.address();assert.ok(a&&typeof a==='object');
+  try{const response=await fetch(`http://127.0.0.1:${a.port}/v1/catalog/export`,{method:'POST',headers:{origin:ORIGIN,'content-type':'application/json','x-academiccloud-catalog-bridge':'1'},body:JSON.stringify(requestDocument())});
+    assert.equal(response.status,503);assert.deepEqual(await response.json(),{status:'failed',code:'busy'});assert.equal(calls,0);
+  }finally{await close(server);}
+});
 
 function requestDocument(): CatalogExportRequest {
   const manifest: CatalogExportRequest["manifest"] = {

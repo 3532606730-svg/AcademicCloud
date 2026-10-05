@@ -2,6 +2,10 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## 2026-10-01 — Pair each account with its own current-page OCR device
+
+[ADR-049](docs/decisions/ADR-049-paired-local-current-page-ocr.md) implements the Owner's explicit local-account continuation after the existing engine qualification: one-time digest-backed pairing, outbound-only account-bound connector, bounded transient page images and private saved machine text with separate correction CAS. Additive schema040 preserves existing source/Workspace/Reader/catalog data. The shared Owner host requires cooperative native-resource exclusion across CatalogBridge, Local Pull and the member connector; current production7e lacks that contract, so activation must wait for its exact coordinated release. Online credential/billing integration, whole-book execution and shared full-text/RAG remain separate. No raw page image is persisted, machine output acquires no canonical authority, and no member borrows Owner credentials/compute implicitly.
+
 ## 2026-09-29 — Prefer a suitable installed local OCR engine
 
 The Owner accepts the price direction of online high-accuracy OCR with positions, but prefers an already downloaded local engine when suitable. [ADR-048](docs/decisions/ADR-048-private-current-page-ocr.md) now records this selection rule: qualify the engine for the actual script/layout, use the requesting member's own device, and make online selection explicit. No automatic fallback to the Owner machine or a paid service is added. The current free-only eight-page trial and the requirement for simple tutorials inside the connection dialog remain. Position output is a separate capability to verify; it does not establish textual accuracy or correct reading order.

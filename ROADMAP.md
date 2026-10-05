@@ -1,6 +1,6 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-10-01
+**Last reconciled:** 2026-10-05
 
 ## Product Direction
 
@@ -28,7 +28,9 @@ The current reliability interlock changes sequencing, not this model.
 
 ## Reliable book intake priority — 2026-09-27
 
-October1 selection chooses PP-OCRv6 as the first online adapter for ordinary printed Chinese book pages. Bounded single-page transport and line/text/position mapping are locally implemented and verified (31 offline tests, types/build and independent review PASS); member profiles, private current-page results and in-dialog tutorials are next. The fixed trial does not qualify local weights, handwritten/vertical/special scripts or whole books. Qualified member-installed local engines retain priority; English-body VL integration remains later. Existing bibliographic Local Compute and coordinated-release gates are unchanged.
+October1 ADR049 local connection/result/tutorial slice is implemented, including a real downloadable connector and schema040 private persistence. Signed-in synthetic browser/actual Core transport and native process-cooperation checks pass; these do not combine the earlier oversized real-book engine scores with the new bounded Reader into a claimed real-account end-to-end result. Exact shared-host activation and real Owner Reader/native acceptance remain in the unified release gate. Online credentials/billing, book/page recovery, persistent ZIP, field-quality/corpus/report work remain open. No full-book rollout follows from this checkpoint.
+
+October1 selection chooses PP-OCRv6 as the first online adapter for ordinary printed Chinese book pages. Bounded single-page transport and line/text/position mapping are locally implemented and verified (31 offline tests, types/build and independent review PASS). ADR049 adds locally verified private current-page results and in-dialog local tutorials; online member credential/cost/disclosure profiles remain open. The fixed trial does not qualify local weights, handwritten/vertical/special scripts or whole books. Qualified member-installed local engines retain priority; English-body VL integration remains later. Existing bibliographic Local Compute and coordinated-release gates are unchanged.
 
 Owner preference reconciled2026-09-30: prioritize a qualified installed engine on the requesting member's own device. The member may explicitly download a suitable engine/model or, when local hardware or language/layout support is insufficient, connect their own online OCR account, including a provider offering positions. Qualification and simple in-dialog setup remain required; installation does not prove accuracy. Member work never silently falls back to Owner compute, credentials or quota, and a local request never silently switches to cloud processing. Product activation remains subject to ADR048.
 

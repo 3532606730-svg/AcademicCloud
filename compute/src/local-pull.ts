@@ -14,6 +14,7 @@ import {
   type WorkerSourceAuthorization,
 } from "./worker.js";
 import { boundedNetworkSignal, cancelledBy } from "./network.js";
+import { loadNativeResourceGuard, type NativeResourceGuard } from "./native-resource.js";
 
 const WORKER_ID = /^[A-Za-z0-9_.-]{1,128}$/u;
 const JOB_ID = /^[A-Za-z0-9_-]{1,128}$/u;
@@ -558,7 +559,39 @@ export async function runLocalPullIteration(
     leaseKeeperMode?: "process" | "inline";
     networkTimeouts?: Partial<LocalPullNetworkTimeouts>;
     runtimePool?: DemandDrivenComputeRuntimePool;
+    nativeResourceGuard?: NativeResourceGuard;
   } = {},
+): Promise<ComputeWorkerOutcome | null> {
+  if (config.mode === "PAUSED") return null;
+  const guard = options.nativeResourceGuard ?? await loadNativeResourceGuard();
+  if (!guard) return runUnlockedLocalPullIteration(config, options);
+  const lease = await guard.acquire(options.signal);
+  if (!lease) return null; // Never claim a Catalog job while another participant owns native resources.
+  try {
+    // A shared native lease must not be held during an idle long poll.
+    // The guarded worker uses immediate pulls and waits after releasing it.
+    return await runUnlockedLocalPullIteration({ ...config, waitMilliseconds: 0 }, { ...options,
+      signal: options.signal ? AbortSignal.any([options.signal, lease.signal]) : lease.signal });
+  } finally {
+    // The configured guard replaces idle warmth with explicit release safety.
+    // An unsuccessful close must retain the lease rather than advertise free resources.
+    await options.runtimePool?.invalidate();
+    await lease.release();
+  }
+}
+
+async function runUnlockedLocalPullIteration(
+  config: LocalPullWorkerConfig,
+  options: {
+    fetchImplementation?: typeof fetch;
+    inspector?: BoundedPdfTextSource;
+    reasoner?: BibliographicReasoner;
+    signal?: AbortSignal;
+    testHeartbeatDelayMilliseconds?: number;
+    leaseKeeperMode?: "process" | "inline";
+    networkTimeouts?: Partial<LocalPullNetworkTimeouts>;
+    runtimePool?: DemandDrivenComputeRuntimePool;
+  },
 ): Promise<ComputeWorkerOutcome | null> {
   if (config.mode === "PAUSED") return null;
   const fetchImplementation = options.fetchImplementation ?? fetch;
@@ -674,8 +707,10 @@ export async function runLocalPullWorker(
     }) => void;
     runtimeFactory?: () => ComputeWorkerRuntime;
     networkTimeouts?: Partial<LocalPullNetworkTimeouts>;
+    nativeResourceGuard?: NativeResourceGuard;
   } = {},
 ): Promise<void> {
+  const nativeResourceGuard = options.nativeResourceGuard ?? await loadNativeResourceGuard();
   const runtimePool = new DemandDrivenComputeRuntimePool(
     options.runtimeFactory ?? createDefaultComputeWorkerRuntime,
     config.idleTtlMilliseconds,
@@ -697,6 +732,7 @@ export async function runLocalPullWorker(
           ...(options.fetchImplementation === undefined ? {} : { fetchImplementation: options.fetchImplementation }),
           ...(options.signal === undefined ? {} : { signal: options.signal }),
           ...(options.networkTimeouts === undefined ? {} : { networkTimeouts: options.networkTimeouts }),
+          ...(nativeResourceGuard === undefined ? {} : { nativeResourceGuard }),
           runtimePool,
         });
         if (outcome) {
@@ -718,6 +754,8 @@ export async function runLocalPullWorker(
           if (outcome.result.state === "failed" && outcome.result.errorCode === "compute_internal_error") {
             await runtimePool.invalidate();
           }
+        } else if (nativeResourceGuard) {
+          await delay(2_000, options.signal);
         }
       } catch (error: unknown) {
         if (options.signal?.aborted) return;

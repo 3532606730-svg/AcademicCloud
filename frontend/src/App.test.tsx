@@ -3280,7 +3280,10 @@ describe("document preview session", () => {
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: "book.pdf" }));
     const shell = screen.getByRole("dialog", { name: "book.pdf" });
-    const frame = await within(shell).findByTitle("Preview of book.pdf");
+    // The lazy-loading iframe shares this title with the actual source reader.
+    // Capture the mounted reader before asserting that metadata keeps it alive.
+    const reader = await within(shell).findByTestId("pdf-reader");
+    expect(reader).toHaveAttribute("title", "Preview of book.pdf");
     await user.click(within(shell).getByRole("button", { name: "Resource details" }));
     await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
     await user.type(screen.getByLabelText("Canonical title"), "New canonical title");
@@ -3288,8 +3291,8 @@ describe("document preview session", () => {
     await waitFor(() => expect(api.updateLibraryHoldingMetadata).toHaveBeenCalled());
     await user.click(await screen.findByRole("button", { name: "Preview" }));
     expect(screen.getByRole("dialog", { name: "New canonical title" })).toBe(shell);
-    expect(shell.querySelector('[data-testid="pdf-reader"]')).toBe(frame);
-    expect(frame).toHaveAttribute("title", "Preview of New canonical title");
+    expect(shell.querySelector('[data-testid="pdf-reader"]')).toBe(reader);
+    expect(reader).toHaveAttribute("title", "Preview of New canonical title");
     expect(api.createLibraryDownload).toHaveBeenCalledTimes(1);
   });
 
@@ -3829,13 +3832,12 @@ describe("zero-descriptive-copy", () => {
     await waitFor(() => expect(createDownload).toHaveBeenLastCalledWith("file-1"));
   });
 
-  it("renders no runtime inline styles anywhere in the drive UI (production CSP)", async () => {
+  it("uses only measured CSSOM dock variables without textual inline styles (production CSP)", async () => {
     const user = userEvent.setup();
-    const createDownload = vi.fn().mockResolvedValue({
-      method: "GET",
-      url: "https://signed.invalid/preview",
-      expiresAt: "2026-08-13T00:05:00.000Z",
-    });
+    const setAttribute = vi.spyOn(Element.prototype, "setAttribute");
+    const cssText = vi.spyOn(CSSStyleDeclaration.prototype, "cssText", "set");
+    const setProperty = vi.spyOn(CSSStyleDeclaration.prototype, "setProperty");
+    const createDownload = vi.fn().mockRejectedValue(new ApiError(503, "download_unavailable"));
     const api = fakeApi({
       getSession: vi.fn().mockResolvedValue(ACCOUNT),
       listEntries: vi.fn().mockResolvedValue({ folder: null, folders: [FOLDER], files: [FILE] }),
@@ -3844,12 +3846,39 @@ describe("zero-descriptive-copy", () => {
     render(<App api={api} />);
     await screen.findByRole("heading", { name: "Library" });
 
+    const workspace = screen.getByRole("main");
+    const navigation = screen.getByRole("complementary", { name: "Primary navigation" });
+    const downloadMenu = await openRowMenu("paper.pdf");
+    await user.click(within(downloadMenu).getByRole("menuitem", { name: "Download" }));
+    const activity = await waitFor(() => {
+      const element = document.querySelector<HTMLElement>(".activity-center");
+      expect(element).not.toBeNull();
+      return element!;
+    });
+    vi.spyOn(navigation, "getBoundingClientRect").mockReturnValue({ ...navigation.getBoundingClientRect(), height: 96 });
+    vi.spyOn(activity, "getBoundingClientRect").mockReturnValue({ ...activity.getBoundingClientRect(), height: 180 });
+    fireEvent.resize(window);
+
     await user.click(screen.getByRole("button", { name: "Account menu" }));
     await openRowMenu("paper.pdf");
     const menu = await openRowMenu("Sources");
     await user.click(within(menu).getByRole("menuitem", { name: "Move" }));
     await screen.findByRole("dialog", { name: "Move “Sources”" });
-    expect(document.querySelectorAll("[style]")).toHaveLength(0);
+    // style-src 'self' blocks textual style attributes, while trusted CSSOM
+    // property writes remain allowed and serialize to an attribute in the DOM.
+    // Allow exactly the two measured dock heights; keep every other UI style
+    // in stylesheets and reject textual setAttribute/cssText injection.
+    expect(Array.from(document.querySelectorAll("[style]"))).toEqual([workspace]);
+    expect(Array.from(workspace.style)).toEqual(["--mobile-navigation-height", "--mobile-activity-height"]);
+    expect(workspace.style.getPropertyValue("--mobile-navigation-height")).toBe("96px");
+    expect(workspace.style.getPropertyValue("--mobile-activity-height")).toBe("180px");
+    expect(setProperty).toHaveBeenCalledWith("--mobile-navigation-height", "96px");
+    expect(setProperty).toHaveBeenCalledWith("--mobile-activity-height", "180px");
+    expect(setProperty.mock.calls.every(([name, value]) =>
+      ["--mobile-navigation-height", "--mobile-activity-height"].includes(name) && typeof value === "string" && /^\d+(?:\.\d+)?px$/u.test(value))).toBe(true);
+    expect(setProperty.mock.contexts.every((context) => context === workspace.style)).toBe(true);
+    expect(setAttribute.mock.calls.some(([name]) => name.toLowerCase() === "style")).toBe(false);
+    expect(cssText).not.toHaveBeenCalled();
   });
 });
 

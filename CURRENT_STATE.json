@@ -1,16 +1,16 @@
 {
-  "lastReconciled": "2026-10-01",
+  "lastReconciled": "2026-10-05",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "548020724fe5e892280189aad301a0697f246606",
+    "checkpoint": "50121e91298737bfc50aa04982cc7df099beb0b3",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
-    "localSynchronized": true,
-    "localState": "Published implementation5480207 was freshly fetched and verified equal in the clean active vNext checkout. Goal/local OCR documentation reconciliation follows; obsolete original checkout preserved and production runtime unchanged.",
-    "lastVerifiedPublishedCheckpoint": "548020724fe5e892280189aad301a0697f246606"
+    "localSynchronized": false,
+    "localState": "Published documentation50121e9 is the verified baseline; paired-local OCR implementation and evidence are locally verified and pending the authorized non-main checkpoint. The obsolete original checkout and production runtimes remain unchanged.",
+    "lastVerifiedPublishedCheckpoint": "50121e91298737bfc50aa04982cc7df099beb0b3"
   },
   "production": {
     "observedAt": "2026-09-25",
@@ -96,7 +96,20 @@
     "dependencyProductionAdvisories": 0,
     "sourceCommit": "57b8723934446706440f7625fd02cd2262b4d712",
     "archiveSha256": "081338faae953d0f29e3de1946a93885a65ea2efd29075f80c680ec45e530068",
-    "status": "DEPLOYED"
+    "status": "DEPLOYED",
+    "pendingSchemaVersion": 40,
+    "pendingMigrations": [
+      "040_private_local_ocr"
+    ],
+    "localOcr": {
+      "status": "LOCALLY_VERIFIED_NOT_DEPLOYED",
+      "adr": "docs/decisions/ADR-049-paired-local-current-page-ocr.md",
+      "evidence": "docs/evidence/paired-local-ocr-20261001.md",
+      "sourceCommit": null,
+      "schemaVersion": 40,
+      "exactReleaseQualified": false,
+      "productionEnabled": false
+    }
   },
   "verification": {
     "backend": "450/450 exact7e2d1bf Linux",
@@ -117,7 +130,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Reader hotfix57b8723 deployed schema39; local UX/export/admission/selected recovery verified; bounded OCR integration next; coordinated release/corpus/report open",
+    "currentPhaseB": "Reader hotfix57b8723 deployed schema39; UX/export/admission/selected recovery and paired-local OCR are locally verified candidates. Exact cooperating runtime release, real Owner bounded Reader acceptance, online connection, book/ZIP recovery, field quality, corpus and final report remain open.",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -345,13 +358,78 @@
       "evidence": "output/vnext/workspace-complete-20260928.log",
       "priorTestUnion": 285,
       "productionAcceptance": false
+    },
+    "pairedLocalOcr": {
+      "backendPrivate": "14/14 PASS; separate log redaction PASS",
+      "migrationStartup": "37/37 affected checks PASS",
+      "frontend": "Final seven related files67/67 PASS; separate App10 targeted PASS",
+      "compute": "39/39 related tests PASS; extracted PNG/online boundary31/31 PASS",
+      "nativeLinux": "9/9 real process tests PASS as existing academiccloud user",
+      "pythonWrapper": "3/3 mocks and installed WSL self-check PASS; no new native inference",
+      "deploymentTemplates": "13/13 PASS; exact candidate release/nginx runtime validation pending",
+      "typesBuild": "Backend/frontend/Compute PASS",
+      "compiledCompatibility": "Current schema40 PASS; exact old50121e9 Core with complete001–040 retains private rows and integrity/FK PASS",
+      "signedInLocalBrowser": "Actual Core/Auth/SQLite40 plus synthetic PDF/engine: recognize/save/reload, page-change cancellation, device revoke, cross-account non-disclosure,1440/390/focus and final ZIP download PASS",
+      "review": "October5 independent backend/Reader/native lifecycle/dependency/App-test reviews PASS. Paddle close repair23 targeted checks; Llama lifecycle+existing50/50; final App2/2 targeted. Final complete root CI1385pass/4Windows-symlink skips/0fail, types/build/compiled PASS and production/complete audits0.",
+      "evidence": "docs/evidence/paired-local-ocr-20261001.md",
+      "realOwnerAccountNativeAcceptance": false
+    },
+    "prepublication20261005": {
+      "status": "PASS_FOR_NON_MAIN_CHECKPOINT_NOT_PRODUCTION_RELEASE",
+      "rootTestCi": {
+        "passed": 1385,
+        "failed": 0,
+        "skipped": 4,
+        "total": 1389,
+        "backend": {
+          "passed": 535,
+          "skipped": 3
+        },
+        "frontend": {
+          "passed": 490,
+          "files": 35
+        },
+        "contracts": {
+          "passed": 14
+        },
+        "compute": {
+          "passed": 260,
+          "skipped": 1
+        },
+        "operations": {
+          "passed": 86
+        },
+        "skippedMeaning": "Windows symlink tests; real Linux native9 separately PASS; actual OCR engine qualification is excluded from ordinary deterministic CI."
+      },
+      "wholeWorkspaceTypecheck": "PASS",
+      "wholeWorkspaceBuild": "PASS",
+      "compiledAcceptance": "PASS schema40/restart persistence/private isolation/isolated synthetic restore/repeat initialization0",
+      "productionDependencyAdvisories": 0,
+      "completeDependencyAdvisories": 0,
+      "dependencyLockUpdates": [
+        "fastify5.12.5",
+        "fast-uri3.1.8",
+        "fast-uri4.2.1",
+        "ip-address10.7.3",
+        "dev-only undici8.11.2"
+      ],
+      "independentReview": "PASS: native cleanup, backend/Reader, dependency lock and final two App test repairs",
+      "actualLocalRuntime": {
+        "node": "24.16.0",
+        "windowsNpm": "11.13.0",
+        "repositoryPackageManager": "npm@11.19.1",
+        "exactProductionRuntimeQualified": false
+      },
+      "evidence": "docs/evidence/paired-local-ocr-20261001.md",
+      "logs": "output/vnext/prepublication-20261005/final-stable-*",
+      "productionChanged": false
     }
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",
     "historicalProductionB": "pass reviewable",
     "historicalProductionC": "two canonical_schema_invalid failures, no promotion",
-    "next": "preserve qualified active7e; next milestone changes only Core/frontend",
+    "next": "Preserve installed7e until one exact guard-aware Local Pull/Bridge/Core40 candidate and compatible rollback are qualified for the coordinated release; then accept real Owner bounded Reader/native OCR through normal signed-in paths.",
     "candidateOffline": "historical3c seven-case PASS; exact7e2d1bf immutable MongoliaToday smoke1/1 PASS in31062ms, OCRtrue,19 evidenced fields, UNKNOWN/ambiguous; unchanged v11/model/runtime; runtime smoke not factual precision measurement",
     "currentProductionC": "both normal-UI retries succeeded; UNKNOWN class,19/10 evidence fields, no canonical/source mutation",
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
@@ -361,7 +439,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Current intake scope, uploads/nginx/Compute diagnostics and remaining UX findings open; combined release and signed-in acceptance pending"
   ],
-  "next": "Implement the explicitly requested Owner/member-local connector, account pairing, private source/page result lifecycle and simple in-dialog tutorials. Existing Owner Paddle GPU passes the frozen same-pixel eight-page sample; qualify actual smaller bounded Reader frames and normal account paths separately. Retain online PP adapter, pending UX/export/admission/recovery release, independent per-book/page recovery, field quality, current corpus and final whole-product/report gates. No main merge, paid activation or whole-book/corpus OCR.",
+  "next": "Checkpoint/publish the locally verified ADR049 slice, then qualify one exact guard-aware Compute/Bridge/Core/frontend candidate within the unified release gate and accept actual Owner-account bounded Reader/native OCR. Continue online member profiles, independent book/page and persistent ZIP recovery, field quality, current corpus and whole-product/report gates. No main merge, paid activation or whole-book/corpus OCR.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -455,9 +533,9 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "selected_recovery_and_ppocrv6_internal_adapter_locally_verified",
-    "intake": "R0 export, ADR046 admission and ADR047 selected recovery locally verified; private current-page OCR implementation, persistent ZIP recovery and field quality open",
-    "ocr": "PP-OCRv6 internal single-page adapter31 offline tests/types/build/review PASS; opt-in local line geometry also locally tested. Member-owned connection UI/tutorials, persistence/pairing and actual Reader recognition remain to implement",
+    "status": "paired_local_ocr_and_selected_recovery_locally_verified_exact_integrated_activation_pending",
+    "intake": "R0 export, ADR046 admission, ADR047 selected recovery and ADR049 paired-local current-page OCR locally verified; real bounded Reader/native activation, persistent book/page/ZIP recovery and field quality open",
+    "ocr": "Local pairing/private results/tutorial/download and actual synthetic Reader transport implemented and verified. Exact cooperating Compute/Bridge release and real Owner signed-in Reader/native acceptance pending. Online PP internal adapter retains its separate31-test/review qualification; online profiles/activation open.",
     "ux": "cad1ecf integrated and locally verified; full Workspace30/30 September28; production pending",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false
@@ -471,7 +549,7 @@
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "After recovery checkpoint, assess and progress reliable bibliographic OCR evidence and private current-page OCR in My Research",
-    "status": "owner_local_engine_qualified_member_connector_private_lifecycle_reader_next",
+    "status": "paired_local_candidate_locally_verified_real_owner_reader_and_coordinated_activation_pending",
     "implementationEnabled": false,
     "zeroAddedCost": false,
     "wholeDocumentOcrAuthorized": false,
@@ -494,14 +572,17 @@
       "newLiveCalls": 0,
       "modelWeightRevision": null,
       "credentialTransport": "Member access-token resolver injected; no Owner/environment fallback",
-      "nextGate": "Member connection/private result/tutorial implementation, real source/position qualification and normal Reader acceptance"
+      "nextGate": "Online member-owned credential/cost/disclosure profile and actual source/position/Reader acceptance remain unimplemented; shared private lifecycle/tutorial substrate exists in the local candidate.",
+      "sourceSha256Checkpoint": "548020724fe5e892280189aad301a0697f246606",
+      "currentSourceSha256": "0cd24acf7f356dd53220b53d23552986bf1d3e3c139a8c75966f7256a4776146"
     },
     "assessment": "docs/evaluation/online-ocr-options.md",
     "privateResultAdr": "docs/decisions/ADR-048-private-current-page-ocr.md",
     "qualification": {
+      "meaning": "Historical isolated helper/trial qualification; current paired-local implementation and activation flags are under pairedLocal.",
       "code": "unconnected explicit-page/Paddle readerMode; scoped35 tests and independent review pass; types/build pass",
       "localGeometry": "September29 opt-in recognition-aligned line boxes with normalized image coordinates/final text UTF16 spans and actual PDF render frame; TypeScript44/44, Python7/7, Compute types/build and root review PASS",
-      "localGeometryIndependentReview": "PASS: independent Astra ultra review of exact f3bb2b5 completed using supplied44 TypeScript/7 Python/types/build evidence without rerunning. October1 real same-pixel engine/line qualification is recorded under ownerLocal; actual bounded Reader/UI/packaging remain open.",
+      "localGeometryIndependentReview": "Historical PASS: independent Astra ultra review of exact f3bb2b5 used supplied44 TypeScript/7 Python/types/build evidence without rerunning. Owner-local same-pixel qualification remains separate from the now-implemented paired-local bounded Reader/UI/packaging candidate and its pending real account/native acceptance.",
       "references": 8,
       "sources": 4,
       "characters": 6719,
@@ -581,7 +662,8 @@
         "accountConnected": false,
         "traditionalMongolianSupported": false,
         "evidence": "docs/evaluation/current-page-and-book-ocr.md#owner-local-engine-qualification--october1"
-      }
+      },
+      "scope": "Historical engine/geometry/free-trial checkpoints before the paired-local implementation; new candidate evidence is under pairedLocal."
     },
     "ocrCostPolicy": "Reasonably priced OCR acceptable; evaluate quality first then decide budget; no numerical cap selected",
     "initialFreeTrial": {
@@ -628,7 +710,31 @@
     },
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
-    "implementationCheckpoint": "548020724fe5e892280189aad301a0697f246606"
+    "implementationCheckpoint": "548020724fe5e892280189aad301a0697f246606",
+    "implementationEnabledMeaning": "Production activation only; the local candidate implements the paired single-page namespace.",
+    "candidateImplementationEnabled": true,
+    "pairedLocal": {
+      "contract": "compute-contracts/src/local-ocr.ts; /api/reader/local-ocr",
+      "adr": "docs/decisions/ADR-049-paired-local-current-page-ocr.md",
+      "status": "LOCALLY_VERIFIED_NOT_DEPLOYED",
+      "migrationAdded": "040_private_local_ocr candidate only",
+      "connectorImplemented": true,
+      "tutorialDialogImplemented": true,
+      "privateMachineHistoryAndCorrectionCasImplemented": true,
+      "actualBoundedReaderCaptureVerifiedWithSyntheticEngine": true,
+      "realOwnerAccountConnected": false,
+      "realNativeBoundedReaderAccepted": false,
+      "sharedHostCooperation": "Exact Local Pull and Bridge live contracts required; old production7e rejected. Native lease closes engines before explicit release; abnormal loss leaves durable busy marker.",
+      "connectorZip": {
+        "path": "frontend/public/local-ocr-connector.zip",
+        "bytes": 86228,
+        "sha256": "ed80700bfd402bb742dec87d15f6b2c44a2c078247cabc88bd15b254735c405a",
+        "realBrowserDownloadHashMatched": true
+      },
+      "evidence": "docs/evidence/paired-local-ocr-20261001.md",
+      "productionEnabled": false
+    },
+    "pendingPairedLocalImplementationCheckpoint": true
   },
   "subagentConfiguration": {
     "model": "gpt-6.1-sol",

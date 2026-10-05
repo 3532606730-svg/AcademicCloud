@@ -6,6 +6,7 @@ import { ApiError } from "./api.ts";
 import { LanguageProvider } from "./i18n-react.tsx";
 import { WorkspaceDialog } from "./workspace.tsx";
 import type { PageNote, ResearchCollection, TextHighlight, WorkspaceApi, WorkspacePage, WorkspaceResource } from "./workspace-api.ts";
+import { ocrApi } from "./local-ocr-test-fixture.ts";
 
 const RESOURCE: WorkspaceResource = { resourceId: "file-one", sourceId: "source-one", title: "Shared academic source", libraryId: "canonical-library", mediaType: "application/pdf" };
 const NOTE: PageNote = { id: "note-one", resourceId: RESOURCE.resourceId, sourceId: RESOURCE.sourceId, physicalPage: 7, locator: "葉三", body: "Private interpretation", revision: 1, createdAt: "2026-09-15T10:00:00Z", updatedAt: "2026-09-15T10:00:00Z", deletedAt: null };
@@ -41,6 +42,12 @@ beforeEach(() => window.localStorage.setItem("academiccloud.language", "en"));
 afterEach(() => window.localStorage.removeItem("academiccloud.language"));
 
 describe("private workspace", () => {
+  it("passes only the selected authorized resource/source and account to the optional local OCR reader module", async () => {
+    const f = fixture(); const localOcr = ocrApi();
+    renderWorkspace(f.api, { accountId: "member-one", localOcr, asPage: true, onAuthorizeReader: vi.fn().mockResolvedValue({ url: "https://example.test/source.pdf", download: vi.fn() }) });
+    await screen.findByTestId("pdf-reader");
+    expect(pdfReaderControl.props!.localOcr).toEqual({ api: localOcr, accountId: "member-one", resourceId: RESOURCE.resourceId, sourceId: RESOURCE.sourceId });
+  });
   it("reveals the thirteenth already loaded recent item without another request and opens its saved page", async () => {
     const user = userEvent.setup();
     const resources = Array.from({ length: 13 }, (_, index): WorkspaceResource => ({ ...RESOURCE, resourceId: `file-${index + 1}`, sourceId: `source-${index + 1}`, title: `Document ${index + 1}` }));

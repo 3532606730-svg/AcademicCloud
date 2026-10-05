@@ -5,6 +5,8 @@ import { cMapUrl, standardFontDataUrl, wasmUrl, iccUrl, workerUrl } from "./pdf-
 import { useLanguage } from "./i18n-react.tsx";
 import { remotePdfTransport } from "./remote-pdf-transport.ts";
 import { localPdfTransport } from "./local-pdf-transport.ts";
+import { captureOcrFrame, type PaintedOcrPage } from "./local-ocr-frame.ts";
+import { CurrentPageOcr, type ReaderLocalOcr } from "./local-ocr-ui.tsx";
 import "./pdf-reader.css";
 
 type PdfEngine = typeof import("pdfjs-dist");
@@ -55,6 +57,7 @@ export interface PdfReaderProps {
   onCreateHighlight?: (highlight: SelectionHighlight) => void | Promise<void>;
   onDeleteHighlight?: (highlight: PdfHighlight) => void | Promise<void>;
   onNewNote?: () => void;
+  localOcr?: ReaderLocalOcr | undefined;
 }
 
 const MAX_CANVAS_PIXELS = 12_000_000;
@@ -102,6 +105,10 @@ export function PdfReader(props: PdfReaderProps) {
   const [availableWidth, setAvailableWidth] = useState(0);
   const [zoom, setZoom] = useState<number | "width">("width");
   const [renderedScale, setRenderedScale] = useState(1);
+  const [paintedOcrPage, setPaintedOcrPage] = useState<PaintedOcrPage | null>(null);
+  const ocrSourceKey = props.localOcr ? `${props.localOcr.accountId}:${props.localOcr.resourceId}:${props.localOcr.sourceId}` : "";
+  const currentView = useRef({ url, localFile, page, rotation, zoom, availableWidth, retry, navigationPending, ocrSourceKey });
+  currentView.current = { url, localFile, page, rotation, zoom, availableWidth, retry, navigationPending, ocrSourceKey };
   const document = documentState?.url === url && documentState.localFile === localFile ? documentState.document : null;
   const pageCount = document?.numPages ?? null;
   const validPage = pageCount !== null && Number.isSafeInteger(page) && page >= 1 && page <= pageCount;
@@ -177,6 +184,7 @@ export function PdfReader(props: PdfReaderProps) {
     const host = surfaceRef.current;
     callbacks.current.onPageUnavailable?.();
     geometry.current = null;
+    setPaintedOcrPage(null);
     setSelection(null);
     if (!document || !documentState || !host || !availableWidth || !validPage) return;
     let cancelled = false;
@@ -184,6 +192,7 @@ export function PdfReader(props: PdfReaderProps) {
     let textLayer: TextLayer | undefined;
     let pdfPage: PDFPageProxy | undefined;
     let canvas: HTMLCanvasElement | undefined;
+    const snapshot = currentView.current;
     const sheet = window.document.createElement("div");
     sheet.className = "pdf-reader__sheet";
     setRendering(true);
@@ -232,7 +241,17 @@ export function PdfReader(props: PdfReaderProps) {
         });
         await renderTask.promise;
         if (cancelled) return;
-        geometry.current = { page, pdfPage, viewport, sheet };
+        const paintedGeometry = { page, pdfPage, viewport, sheet };
+        geometry.current = paintedGeometry;
+        const isCurrent = () => {
+          const selected = currentView.current;
+          return !cancelled && alive.current && geometry.current === paintedGeometry && !selected.navigationPending
+            && selected.url === snapshot.url && selected.localFile === snapshot.localFile && selected.page === snapshot.page
+            && selected.rotation === snapshot.rotation && selected.zoom === snapshot.zoom && selected.availableWidth === snapshot.availableWidth
+            && selected.retry === snapshot.retry && selected.ocrSourceKey === snapshot.ocrSourceKey;
+        };
+        const sourcePage = pdfPage;
+        setPaintedOcrPage({ isCurrent, capture: (signal) => captureOcrFrame(sourcePage, pageRotation, isCurrent, signal) });
         setGeometryVersion((value) => value + 1);
         setRenderedScale(scale);
         setRendering(false);
@@ -485,7 +504,7 @@ export function PdfReader(props: PdfReaderProps) {
         await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
       }
       if (isCancelled()) return;
-      if (!nonempty) { setToolMessage(zh ? "此范围没有可提取的 PDF 原生文字；扫描件 OCR 尚未启用" : "No native PDF text in this range; OCR is not enabled"); return; }
+      if (!nonempty) { setToolMessage(props.localOcr ? (zh ? "此范围没有可提取的 PDF 原生文字；扫描页可使用当前页OCR。" : "No native PDF text in this range; scanned pages can use current-page OCR.") : (zh ? "此范围没有可提取的 PDF 原生文字。" : "No native PDF text in this range.")); return; }
       if (mode === "export") {
         if (reachedLimit) { setToolMessage(zh ? "已达到本次文字或时间上限，请缩小页码范围后导出" : "Text or time limit reached; export a smaller page range"); return; }
         const objectUrl = URL.createObjectURL(new Blob(["\ufeff", chunks.join("\n")], { type: "text/plain;charset=utf-8" }));
@@ -505,6 +524,7 @@ export function PdfReader(props: PdfReaderProps) {
   const submitPage = (event: FormEvent) => { event.preventDefault(); goToPage(Number(pageDraft)); };
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.repeat || busy) return;
+    if ((event.target as HTMLElement).closest("dialog")) return;
     if ((event.target as HTMLElement).closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])")) return;
     if (event.key === "ArrowRight" || event.key === "ArrowLeft" || event.key === "PageDown" || event.key === "PageUp") {
       if (!window.getSelection()?.isCollapsed) return;
@@ -557,6 +577,7 @@ export function PdfReader(props: PdfReaderProps) {
         {props.highlights && <button type="button" aria-expanded={panel === "highlights"} onClick={() => setPanel((value) => value === "highlights" ? null : "highlights")}>{zh ? "高亮列表" : "Highlights"} ({props.highlights.length})</button>}
         {props.onNewNote && <button type="button" disabled={busy} onClick={props.onNewNote}>{zh ? "新建笔记" : "New note"}</button>}
       </div>
+      {props.localOcr && <CurrentPageOcr connection={props.localOcr} physicalPage={page} painted={!busy && !error && paintedOcrPage?.isCurrent() ? paintedOcrPage : null} />}
       {panel === "search" && <div className="pdf-reader__panel">
         <form className="pdf-reader__search-form" onSubmit={(event) => { event.preventDefault(); void readText("search"); }}>
           <input aria-label={zh ? "搜索 PDF 原生文字" : "Search native PDF text"} placeholder={zh ? "在原生文字中搜索" : "Search native text"} value={query} maxLength={200} onChange={(event) => setQuery(event.target.value)} />

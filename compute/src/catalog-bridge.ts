@@ -16,6 +16,7 @@ import {
 } from "./catalog-batch-resilient-export.js";
 import { PaddleOcrSidecarAdapter } from "./paddle-ocr.js";
 import { PdfJsFrontMatterInspector } from "./pdf-text.js";
+import { loadNativeResourceGuard, registerNativeCooperation, type NativeResourceGuard, type NativeResourceLease } from "./native-resource.js";
 
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 43_117;
@@ -54,6 +55,7 @@ export interface CatalogBridgeOptions {
   allowedOrigins?: readonly string[];
   endpointPolicy?: CatalogEndpointPolicy;
   packageFactory?: CatalogBridgePackageFactory;
+  nativeResourceGuard?: NativeResourceGuard;
 }
 
 interface CatalogBridgeStatus extends CatalogResilientProgress {
@@ -246,8 +248,17 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
       };
       request.once("aborted", abort);
       response.once("close", abortOnResponseClose);
+      let nativeLease: NativeResourceLease | undefined;
       try {
         const parsed = parseCatalogExportRequest(await readJsonBody(request), endpointPolicy);
+        const guard = options.nativeResourceGuard ?? await loadNativeResourceGuard();
+        if (guard) {
+          const acquired = await guard.acquire(abortController.signal);
+          if (!acquired) { sendFailure(response, 503, "busy", origin); return; }
+          nativeLease = acquired;
+          acquired.signal.addEventListener("abort", abort, { once: true });
+          if (acquired.signal.aborted) abort();
+        }
         progress = {
           status: "exporting",
           completedResources: 0,
@@ -289,6 +300,7 @@ export function createCatalogBridgeServer(options: CatalogBridgeOptions = {}): S
           sendFailure(response, 500, "inspection_failed", origin);
         }
       } finally {
+        if (nativeLease) { nativeLease.signal.removeEventListener("abort", abort); await nativeLease.release(); }
         request.removeListener("aborted", abort);
         response.removeListener("close", abortOnResponseClose);
         exportActive = false;
@@ -322,7 +334,9 @@ export function isCatalogBridgeEntrypoint(moduleUrl: string, argvEntry: string |
 }
 
 async function main(): Promise<void> {
+  const unregister = await registerNativeCooperation("catalogBridge");
   const server = await startCatalogBridge();
+  server.once("close", () => { void unregister(); });
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : configuredPort(process.env.ACADEMICCLOUD_CATALOG_BRIDGE_PORT);
   process.stdout.write(`${JSON.stringify({ status: "listening", host: DEFAULT_HOST, port })}\n`);

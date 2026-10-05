@@ -1,15 +1,109 @@
 import assert from "node:assert/strict";
+import childProcess, { type ChildProcessWithoutNullStreams } from "node:child_process";
+import { EventEmitter } from "node:events";
+import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { OcrError } from "../src/ocr.js";
+import { SUGGESTION_LIMITS } from "../src/suggestion.js";
 
 import {
   loadPaddleOcrConfig,
   PADDLE_OCR_ENGINE_ID,
   PaddleOcrSidecarAdapter,
 } from "../src/paddle-ocr.js";
+
+function controlledSidecar() {
+  const requests: { id: string }[] = [];
+  let requestReceived!: () => void;
+  const received = new Promise<void>((resolve) => { requestReceived = resolve; });
+  let kills = 0;
+  const child = Object.assign(new EventEmitter(), {
+    stdin: new PassThrough(), stdout: new PassThrough(), stderr: new PassThrough(),
+    kill() { kills++; return true; },
+  }) as unknown as ChildProcessWithoutNullStreams & { stdin: PassThrough; stdout: PassThrough; stderr: PassThrough };
+  child.stdin.on("data", (chunk: Buffer) => {
+    requests.push(JSON.parse(chunk.toString("utf8")) as { id: string });
+    requestReceived();
+  });
+  return { child, received, requests, get kills() { return kills; },
+    ready() { child.stdout.write(JSON.stringify({ ready: true, engine: PADDLE_OCR_ENGINE_ID }) + "\n"); },
+    exit() { child.emit("exit", null, "SIGKILL"); },
+    closed() { child.emit("close", null, "SIGKILL"); },
+  };
+}
+
+function controlledAdapter() {
+  return new PaddleOcrSidecarAdapter({ pythonPath: "/mock", sidecarPath: "/mock", detectionModelPath: "/mock",
+    recognitionModelPath: "/mock", cachePath: "/mock", device: "gpu", engineId: PADDLE_OCR_ENGINE_ID });
+}
+
+for (const trigger of ["abort", "timeout", "invalid_output"] as const) {
+  test(`Paddle ${trigger} retains native closure before concurrent and repeated close can return`, async (t) => {
+    const fixture = controlledSidecar();
+    t.mock.method(childProcess, "spawn", (() => fixture.child) as unknown as typeof childProcess.spawn);
+    syncBuiltinESMExports();
+    t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+    if (trigger === "timeout") t.mock.timers.enable({ apis: ["setTimeout"] });
+    const adapter = controlledAdapter();
+    const controller = new AbortController();
+    const recognition = adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 1 }, controller.signal);
+    const rejected = assert.rejects(recognition, (error: unknown) => error instanceof OcrError
+      && error.code === (trigger === "invalid_output" ? "engine_failure" : trigger === "abort" ? "aborted" : "timeout"));
+    fixture.ready();
+    await fixture.received;
+    if (trigger === "abort") controller.abort();
+    else if (trigger === "timeout") t.mock.timers.tick(SUGGESTION_LIMITS.perPageOcrTimeoutMilliseconds);
+    else fixture.child.stdout.write("not-json\n");
+    await rejected;
+    assert.equal(fixture.kills, 1);
+    let closed = 0;
+    const first = adapter.close().then(() => { closed++; });
+    const second = adapter.close().then(() => { closed++; });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(closed, 0, "issuing SIGKILL must not release native ownership");
+    fixture.exit();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(closed, 0, "wait for process and stdio closure acknowledgement");
+    fixture.closed();
+    await Promise.all([first, second]);
+    await adapter.close();
+    assert.equal(closed, 2);
+  });
+}
+
+test("Paddle restart waits for the old native child to close and ignores its late events", async (t) => {
+  const first = controlledSidecar(), second = controlledSidecar();
+  let starts = 0;
+  t.mock.method(childProcess, "spawn", (() => (++starts === 1 ? first : second).child) as unknown as typeof childProcess.spawn);
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const adapter = controlledAdapter();
+  const controller = new AbortController();
+  const recognition = adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 1 }, controller.signal);
+  const rejected = assert.rejects(recognition, (error: unknown) => error instanceof OcrError && error.code === "aborted");
+  first.ready(); await first.received; controller.abort(); await rejected;
+  const restarted = adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 2 });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(starts, 1);
+  first.exit();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(starts, 1, "exit without closed stdio must not overlap a replacement");
+  first.closed();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(starts, 2);
+  second.ready(); await second.received;
+  first.child.stdout.write("late-invalid-output\n");
+  first.child.emit("error", new Error("late old-child error"));
+  second.child.stdout.write(JSON.stringify({ id: second.requests[0]!.id, status: "recognized", text: "replacement", confidence: 90 }) + "\n");
+  assert.equal((await restarted).text, "replacement");
+  assert.equal(second.kills, 0);
+  const closing = adapter.close();
+  second.exit(); second.closed(); await closing;
+});
 
 test("PaddleOCR sidecar keeps rendered bytes in memory and returns pinned bounded recognition", async () => {
   const adapter = new PaddleOcrSidecarAdapter({

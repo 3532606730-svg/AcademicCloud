@@ -16,6 +16,30 @@ import { HttpPdfRangeSource, type ComputeWorkerRuntime } from "../src/worker.js"
 
 const MACHINE_SECRET = "local-machine-secret-that-is-long-enough";
 
+test('guarded idle worker uses immediate pulls and yields outside the native lease', async () => {
+  const controller = new AbortController();
+  let ownsLease = false, polls = 0, nativeStarts = 0;
+  await runLocalPullWorker({ coreBaseUrl: 'https://core.example', workerId: 'owner-laptop.wsl2',
+    machineSecret: MACHINE_SECRET, mode: 'NORMAL', waitMilliseconds: 20_000, idleTtlMilliseconds: 60_000 }, {
+    signal: controller.signal,
+    runtimeFactory: () => { nativeStarts++; throw Error('idle native start'); },
+    nativeResourceGuard: { async acquire() {
+      assert.equal(ownsLease, false); ownsLease = true;
+      return { signal: new AbortController().signal, async release() {
+        ownsLease = false;
+        setTimeout(() => { assert.equal(ownsLease, false); controller.abort(); }, 20);
+      } };
+    } },
+    fetchImplementation: async (_url, init) => {
+      assert.equal(ownsLease, true);
+      assert.equal(JSON.parse(String(init?.body)).waitMilliseconds, 0);
+      polls++;
+      return new Response(null, { status: 204 });
+    },
+  });
+  assert.equal(polls, 1); assert.equal(ownsLease, false); assert.equal(nativeStarts, 0);
+});
+
 async function independentHeartbeatServer(mode: "renew" | "unavailable", leaseMilliseconds = 150): Promise<{
   origin: string;
   stats(): Promise<number>;
@@ -140,6 +164,20 @@ test("Local Pull configuration is outbound-only and fails closed on malformed id
   assert.throws(() => parseLocalPullClaim({ ...claim(), lease: { expiresAt: new Date(Date.now() - 1).toISOString(), heartbeatAfterMilliseconds: 1_000 } }), /lease/u);
   assert.throws(() => parseLocalPullClaim({ ...claim(), job: { id: "../job", attemptId: "attempt-local", kind: "metadata_suggestion" } }), /identity/u);
   assert.throws(() => parseLocalPullClaim({ ...claim(), lease: { expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(), heartbeatAfterMilliseconds: 1_000 } }), /lease/u);
+});
+test("configured native resource busy prevents Local Pull claim and runtime startup",async()=>{
+  let calls=0;
+  const output=await runLocalPullIteration({coreBaseUrl:'https://core.example',workerId:'w',machineSecret:MACHINE_SECRET,mode:'NORMAL',waitMilliseconds:0,idleTtlMilliseconds:300000},
+    {nativeResourceGuard:{async acquire(){return null;}},fetchImplementation:async()=>{calls++;throw Error('unexpected claim');}});
+  assert.equal(output,null);assert.equal(calls,0);
+});
+test("guard lease is held until warm runtime cleanup on an empty claim",async()=>{
+  const order:string[]=[];const pool=new DemandDrivenComputeRuntimePool(()=>({inspector:{async inspect(){throw Error('unused');}},async close(){order.push('closed');}}),300000);
+  await pool.use(async()=>{});
+  const output=await runLocalPullIteration({coreBaseUrl:'https://core.example',workerId:'w',machineSecret:MACHINE_SECRET,mode:'NORMAL',waitMilliseconds:0,idleTtlMilliseconds:300000},
+    {runtimePool:pool,nativeResourceGuard:{async acquire(){order.push('acquire');return{signal:new AbortController().signal,async release(){order.push('release');}};}},
+      fetchImplementation:async()=>{order.push('poll');return new Response(null,{status:204});}});
+  assert.equal(output,null);assert.deepEqual(order,['acquire','poll','closed','release']);
 });
 
 function config(overrides: Partial<ReturnType<typeof loadLocalPullWorkerConfig>> = {}) {

@@ -3209,7 +3209,7 @@ function DriveView({
         onCitation={preview.resource ? (trigger) => setCitationRequest({ ...preview.resource!, returnFocus: trigger }) : undefined}
         onAddToResearch={api.workspace && preview.sourceId ? (trigger) => addResourceToResearch(preview.resourceId, trigger, preview.sourceId) : undefined}
         onResearch={api.workspace && preview.sourceId ? (trigger, physicalPage) => openResearch({ resourceId: preview.resourceId, sourceId: preview.sourceId!, ...(physicalPage ? { physicalPage } : {}), returnFocus: trigger }) : undefined} />}
-      {researchRequest && api.workspace && <WorkspaceDialog key={account.id} api={api.workspace} accountId={account.id}
+      {researchRequest && api.workspace && <WorkspaceDialog key={account.id} api={api.workspace} localOcr={api.localOcr} accountId={account.id}
         {...(researchRequest.resourceId ? { initialResourceId: researchRequest.resourceId } : {})}
         {...(researchRequest.sourceId ? { expectedSourceId: researchRequest.sourceId } : {})}
         {...(researchRequest.physicalPage ? { initialPhysicalPage: researchRequest.physicalPage } : {})}

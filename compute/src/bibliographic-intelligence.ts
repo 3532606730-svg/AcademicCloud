@@ -812,9 +812,18 @@ function normalizeSparseCanonical(value: unknown): unknown {
   };
 }
 
+interface LlamaServerProcess {
+  origin: string;
+  child: ReturnType<typeof spawn>;
+  exited: Promise<void>;
+  closed: Promise<void>;
+  retiring: boolean;
+}
+
 export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
   readonly #config: LlamaReasonerConfig;
-  #server: { origin: string; child: ReturnType<typeof spawn>; exited: Promise<void> } | undefined;
+  #server: LlamaServerProcess | undefined;
+  #closing: Promise<void> | undefined;
 
   constructor(config: LlamaReasonerConfig = loadLlamaReasonerConfig()) {
     this.#config = config;
@@ -886,19 +895,27 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
   }
 
   async close(): Promise<void> {
+    if (this.#closing) return this.#closing;
     const server = this.#server;
-    this.#server = undefined;
     if (!server) return;
-    server.child.kill("SIGKILL");
-    await server.exited;
+    this.#invalidateServer(server);
+    const closing = server.closed;
+    this.#closing = closing;
+    try { await closing; } finally { if (this.#closing === closing) this.#closing = undefined; }
   }
 
-  #invalidateServer(server: { origin: string; child: ReturnType<typeof spawn>; exited: Promise<void> }): void {
-    if (this.#server === server) this.#server = undefined;
+  #invalidateServer(server: LlamaServerProcess): void {
+    if (server.retiring) return;
+    // A kill request does not acknowledge native cleanup. Keep the retiring
+    // child visible to close()/restart until Node has observed its closure.
+    server.retiring = true;
     server.child.kill("SIGKILL");
   }
 
-  async #ensureServer(signal?: AbortSignal): Promise<{ origin: string; child: ReturnType<typeof spawn>; exited: Promise<void> }> {
+  async #ensureServer(signal?: AbortSignal): Promise<LlamaServerProcess> {
+    if (this.#closing) await this.#closing;
+    if (this.#server?.retiring) await this.#server.closed;
+    if (signal?.aborted) throw new BibliographicIntelligenceError("reasoner_timeout");
     if (this.#server) return this.#server;
     const port = await allocatePort();
     const origin = `http://127.0.0.1:${port}`;
@@ -915,20 +932,25 @@ export class LlamaServerBibliographicReasoner implements BibliographicReasoner {
       "--log-disable",
     ], { shell: false, stdio: ["ignore", "ignore", "pipe"], windowsHide: true, env: { PATH: process.env.PATH, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" } });
     child.stderr?.on("data", () => undefined);
-    const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
-    const server = { origin, child, exited };
-    this.#server = server;
-    void exited.then(() => {
-      if (this.#server === server) this.#server = undefined;
+    const exited = new Promise<void>((resolve) => {
+      child.once("exit", () => { server.retiring = true; resolve(); });
+      // Spawn failures emit error/close without necessarily emitting exit.
+      child.once("close", () => resolve());
     });
+    const closed = new Promise<void>((resolve) => child.once("close", () => {
+      if (this.#server === server) this.#server = undefined;
+      resolve();
+    }));
+    const server: LlamaServerProcess = { origin, child, exited, closed, retiring: false };
+    this.#server = server;
+    child.once("error", () => this.#invalidateServer(server));
     const startup = boundedAbort(SERVER_START_TIMEOUT_MILLISECONDS, signal);
     try {
       const outcome = await Promise.race([waitForServer(origin, startup.signal).then(() => true), exited.then(() => false)]);
       if (!outcome) throw new BibliographicIntelligenceError("reasoner_unavailable", "server_exited");
       return server;
     } catch (error: unknown) {
-      child.kill("SIGKILL");
-      this.#server = undefined;
+      this.#invalidateServer(server);
       if (startup.signal.aborted) throw new BibliographicIntelligenceError("reasoner_timeout");
       if (error instanceof BibliographicIntelligenceError) throw error;
       throw new BibliographicIntelligenceError("reasoner_unavailable");

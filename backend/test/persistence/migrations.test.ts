@@ -16,8 +16,8 @@ test("migrations apply once and retain their recorded version", (context) => {
     .all()
     .map((row) => row.version);
 
-  assert.deepEqual(secondRun, { appliedVersions: [], currentVersion: 39 });
-  assert.deepEqual(versions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]);
+  assert.deepEqual(secondRun, { appliedVersions: [], currentVersion: 40 });
+  assert.deepEqual(versions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]);
 });
 
 test("migrations reject changes to an already applied file", (context) => {
@@ -168,7 +168,7 @@ test("migration 004 upgrades existing lifecycle rows without changing their data
       NOW_FOR_MIGRATION,
     );
 
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).appliedVersions, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]);
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY).appliedVersions, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]);
     const row = database.prepare<[], {
       id: string;
       state: string;

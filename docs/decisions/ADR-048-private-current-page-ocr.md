@@ -1,6 +1,6 @@
 # ADR-048 — Scenario-based OCR execution and private current-page results
 
-Date: 2026-09-28; updated 2026-10-01. Status: Accepted member-owned connection, tutorial and isolation boundaries; PP-OCRv6 selected as the first online adapter for ordinary printed Chinese book pages. Connection profiles, persistence schema and product enablement remain open.
+Date: 2026-09-28; updated 2026-10-01. Status: Accepted member-owned connection, tutorial and isolation boundaries; PP-OCRv6 selected as the first online adapter for ordinary printed Chinese book pages. [ADR-049](ADR-049-paired-local-current-page-ocr.md) now defines the local paired-device/private-result implementation and schema; online profiles and coordinated product enablement remain open. The present-implementation paragraphs below retain their earlier qualification checkpoint and are superseded only where ADR049 explicitly implements the local slice.
 
 ## Decision and sequencing
 

@@ -351,7 +351,7 @@ test("migration 032 preserves immutable history and migrations 033-034 admit exa
     `);
     assert.throws(() => insertV9.run("9".repeat(64), NOW), /FOREIGN KEY constraint failed/u);
     assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), {
-      appliedVersions: [34, 35, 36, 37, 38, 39], currentVersion: 39,
+      appliedVersions: [34, 35, 36, 37, 38, 39, 40], currentVersion: 40,
     });
     insertV9.run("9".repeat(64), NOW);
     assert.equal(database.prepare<[], { count: number }>(`
@@ -393,7 +393,7 @@ test("migration 032 preserves immutable history and migrations 033-034 admit exa
     ).get()!.count, schemaHistoryBeforeAdmission);
     assert.equal(database.prepare<[], { version: number }>(
       "SELECT max(version) AS version FROM schema_migrations",
-    ).get()!.version, 39);
+    ).get()!.version, 40);
     insertV10.run("a".repeat(64), NOW);
     assert.deepEqual(database.prepare<[], { ruleset_version: string; prompt_version: string }>(`
       SELECT ruleset_version, prompt_version
@@ -428,7 +428,7 @@ test("migration 032 preserves immutable history and migrations 033-034 admit exa
     ).get()!.count, schemaHistoryBeforeAdmission);
     assert.equal(database.prepare<[], { version: number }>(
       "SELECT max(version) AS version FROM schema_migrations",
-    ).get()!.version, 39);
+    ).get()!.version, 40);
     insertV11.run("b".repeat(64), NOW);
     assert.deepEqual(database.prepare<[], { ruleset_version: string; prompt_version: string }>(`
       SELECT ruleset_version, prompt_version

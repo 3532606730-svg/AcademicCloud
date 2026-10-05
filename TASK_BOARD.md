@@ -1,10 +1,16 @@
 # AcademicCloud Task Board
 
-**Last reconciled:** 2026-10-01. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
+**Last reconciled:** 2026-10-05. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
 ## Current focus — reliable book intake
 
-October1 Owner-local qualification is complete on the existing installed Paddle GPU engine: 8/8 frozen pages, 232 line rectangles; CER 85/6719=1.2651% overall, 16/5436=0.2943% body and 69/1283=5.3780% bibliographic pages. References are unchanged independent agent transcriptions, not human-certified gold. No installation, cloud call, retry or production runtime change. The 3300 px comparison frames exceed current Reader 2000x2800/5.6M-pixel limits; normal bounded Reader-frame geometry, member pairing/profiles, private lifecycle and tutorials remain to implement/verify. Traditional Mongolian is unsupported. Latest published code 5480207; evidence output/vnext/owner-local-ocr-20261001/report.md. Product OCR remains disabled.
+October5 paired-local OCR candidate passes the final whole-project publication gate: CI1385pass/4Windows-symlink skips/0fail, all workspace types/build, schema40 compiled acceptance and zero production/complete dependency advisories. Independent reviews approve native-close, dependency and test repairs. Actual synthetic signed-in Reader/private history/tutorial/download paths and native9 process checks pass. [Evidence](docs/evidence/paired-local-ocr-20261001.md). Next exact cooperating runtime qualification and real Owner Reader/native acceptance within the coordinated release gate; online profiles, book/page recovery, field quality, corpus/report remain open. Production remains the recorded57b/schema39; existing7e cannot accept persistent Owner pairing.
+
+## Prior OCR qualification checkpoints
+
+The following checkpoint-era next-step descriptions are retained as history; the locally implemented ADR049 state above controls continuation.
+
+October1 Owner-local qualification is complete on the existing installed Paddle GPU engine: 8/8 frozen pages, 232 line rectangles; CER 85/6719=1.2651% overall, 16/5436=0.2943% body and 69/1283=5.3780% bibliographic pages. References are unchanged independent agent transcriptions, not human-certified gold. No installation, cloud call, retry or production runtime change. The 3300 px comparison frames exceed current Reader 2000x2800/5.6M-pixel limits; normal bounded Reader-frame geometry, member pairing/profiles, private lifecycle and tutorials remained open at that qualification checkpoint. Traditional Mongolian is unsupported. Published baseline5480207; evidence output/vnext/owner-local-ocr-20261001/report.md. Production OCR remains disabled.
 
 October1 first online model selection and adapter checkpoint: PP-OCRv6 is implemented as the bounded single-page adapter for ordinary printed Chinese book intake, under ADR048;31 offline tests, Compute types/build and independent Sol/xhigh review PASS. Next connect member profiles, private results and the tutorial dialog, preserving member-local preference and the existing bibliographic worker. Product activation, new calls/paid activation and whole-book execution are separate from this internal adapter checkpoint.
 
@@ -33,7 +39,7 @@ Historical reader milestone: ADR045 exactd58ef44 Core/frontend is deployed at sc
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — reader57b8723/schema39 deployed; UX/export/admission/selected recovery locally verified. Next member-owned current-page OCR connections/private lifecycle/tutorials and bounded Reader acceptance; persistent page/ZIP recovery, field quality, coordinated release/corpus/report open; six sources need replacement |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — reader57b8723/schema39 deployed; UX/export/admission/selected recovery and paired-local OCR040 locally verified. Next exact cooperating native release and real Owner Reader acceptance within the coordinated gate; online profiles, persistent page/ZIP recovery, field quality, corpus/report open; six sources need replacement |
 
 The current reassessment charter and Owner's2026-09-09 start instruction supersede the earlier read-only gate and narrow review scope. The active task contains the ordered Phase B milestones. The latest continuation authorizes scoped non-main checkpoints and one evidence-gated coordinated production release after participating scopes and integrated acceptance pass; one designated operator owns that release. It does not authorize main merge, independent task deployments or unrelated production/provider/security scope. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 

@@ -7,6 +7,7 @@ import { useModalDialog } from "./use-modal-dialog.ts";
 import { readViewPreference, writeViewPreference, useHistoryDialog } from "./view-context.ts";
 import { WorkspaceSwitch } from "./workspace-switch.tsx";
 import { PdfReader, type PdfHighlight } from "./pdf-reader.tsx";
+import type { LocalOcrApi } from "./local-ocr-api.ts";
 import { readerLocalKey, rememberReaderFile, restoreReaderFile, verifyReaderFile, type ReaderFilePicker, type ReaderSourceIdentity } from "./reader-local-source.ts";
 import type { RecoverableFileHandle } from "./file-source-recovery.ts";
 import { LocalLibraryFolder } from "./local-library-folder.tsx";
@@ -52,8 +53,9 @@ type Editor = { note: PageNote | null; resource: WorkspaceResource; initialPhysi
 type ReaderAuthorization = ReaderSourceIdentity & { url: string; expiresAt?: string; download: () => Promise<void> };
 type DocumentTab = { resource: WorkspaceResource; page: number };
 
-export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSourceId, initialPhysicalPage, returnFocus, onClose, onOpenResource, onAuthorizeReader, onRouteChange, onRegisterNavigationGuard, asPage = false }: {
+export function WorkspaceDialog({ api, localOcr, accountId, initialResourceId, expectedSourceId, initialPhysicalPage, returnFocus, onClose, onOpenResource, onAuthorizeReader, onRouteChange, onRegisterNavigationGuard, asPage = false }: {
   api: WorkspaceApi;
+  localOcr?: LocalOcrApi | undefined;
   accountId?: string;
   initialResourceId?: string;
   expectedSourceId?: string;
@@ -424,7 +426,7 @@ export function WorkspaceDialog({ api, accountId, initialResourceId, expectedSou
           <div className={readerResource ? `research-resource-layout research-resource-layout--${readerView}` : "research-resource-content"}>
           {readerResource && progressReady !== sourceKey && <div className="research-reader"><p className="research-reader-message" role="status">{c.readerLoading}</p></div>}
           {readerResource && onAuthorizeReader && progressReady === sourceKey && <ResearchReader key={`${readerResource.resourceId}:${readerResource.sourceId}`} resource={readerResource}
-            accountId={accountId} sourceControlsLocked={highlightBusy} onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={(page) => { setRenderedPage(null); setReaderPage(page); }}
+            accountId={accountId} localOcr={localOcr} sourceControlsLocked={highlightBusy} onAuthorize={onAuthorizeReader} page={readerPage} onPageChange={(page) => { setRenderedPage(null); setReaderPage(page); }}
             onPageRendered={rendered} onPageUnavailable={() => setRenderedPage(null)} navigationRef={readerNavigation}
             highlights={highlights} onCreateHighlight={async (draft) => {
               if (highlightBusy || !readerResource || draft.physicalPage !== renderedPage) throw new Error(c.readerLoading);
@@ -535,8 +537,9 @@ function ResearchFrame({ asPage, dialogRef, children }: {
   return <dialog ref={dialogRef} className="research-dialog" aria-labelledby="research-title">{children}</dialog>;
 }
 
-function ResearchReader({ resource, accountId, sourceControlsLocked, onAuthorize, page, onPageChange, onPageRendered, onPageUnavailable, navigationRef, highlights, onCreateHighlight, onDeleteHighlight, onNewNote }: {
+function ResearchReader({ resource, accountId, localOcr, sourceControlsLocked, onAuthorize, page, onPageChange, onPageRendered, onPageUnavailable, navigationRef, highlights, onCreateHighlight, onDeleteHighlight, onNewNote }: {
   accountId?: string | undefined;
+  localOcr?: LocalOcrApi | undefined;
   sourceControlsLocked: boolean;
   highlights: TextHighlight[];
   onCreateHighlight: (highlight: Omit<PdfHighlight, "id">) => Promise<void>;
@@ -711,6 +714,7 @@ function ResearchReader({ resource, accountId, sourceControlsLocked, onAuthorize
       {authorizing && !authorization && <p role="status" className="research-reader-message">{c.readerLoading}</p>}
       {error !== null && <div className="research-reader-message" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.readerSourceChanged : describeError(error, language)}</p><button className="button button--small" type="button" onClick={() => void authorize()}>{c.retryReader}</button></div>}
       {authorization && <PdfReader url={authorization.sizeBytes ? `${resource.resourceId}:${resource.sourceId}:${documentEpoch}` : authorization.url} remoteSource={authorization.sizeBytes ? { size: authorization.sizeBytes, getUrl: getRangeUrl } : undefined} localFile={localFile} title={resource.title} page={page} onPageChange={(next) => void goToPage(next)}
+        localOcr={localOcr && accountId ? { api: localOcr, accountId, resourceId: resource.resourceId, sourceId: resource.sourceId } : undefined}
         highlights={highlights} onCreateHighlight={onCreateHighlight} onDeleteHighlight={onDeleteHighlight} onNewNote={onNewNote}
         navigationPending={authorizing || localBusy} onRetry={() => { void authorize().then((ok) => { if (ok) setDocumentEpoch((value) => value + 1); }); }} onDocumentLoaded={(count) => { pageCount.current = count; }}
         onPageRendered={(next) => callbacks.current.onPageRendered(next)} onPageUnavailable={() => callbacks.current.onPageUnavailable()} />}

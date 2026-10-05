@@ -36,6 +36,8 @@ import type { WorkspaceService } from "../workspace/service.js";
 import { registerWorkspaceHttp } from "../workspace/http.js";
 import { registerReaderOcrHttp } from "../reader-ocr/http.js";
 import { UnavailableReaderOcrBackend } from "../reader-ocr/port.js";
+import { registerLocalOcrHttp } from "../local-ocr/http.js";
+import type { LocalOcrService } from "../local-ocr/service.js";
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -90,6 +92,26 @@ export const LOGGER_REDACT_PATHS = [
   "*.capabilityToken",
   "source.url",
   "*.source.url",
+  "body.pairingCode",
+  "pairingCode",
+  "*.pairingCode",
+  "body.deviceToken",
+  "deviceToken",
+  "*.deviceToken",
+  "body.imageBase64",
+  "imageBase64",
+  "*.imageBase64",
+  "body.probeResult",
+  "probeResult",
+  "*.probeResult",
+  "body.result",
+  "result",
+  "*.result",
+  "machine",
+  "*.machine",
+  "body.correctedText",
+  "correctedText",
+  "*.correctedText",
   "fields.policy",
   "fields.Signature",
   "fields.signature",
@@ -155,6 +177,7 @@ export interface CreateAppOptions {
   citations?: { service: CitationService };
   catalogBatch?: { service: CatalogBatchService };
   workspace?: { service: WorkspaceService };
+  localOcr?: { service: LocalOcrService };
   readinessCheck?: () => boolean;
 }
 
@@ -339,6 +362,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   if (options.workspace) {
     if (!options.auth) throw new Error("workspace routes require authentication composition");
     await registerWorkspaceHttp(app, options.workspace.service);
+  }
+
+  if (options.localOcr) {
+    if (!options.auth) throw new Error("local OCR routes require authentication composition");
+    await registerLocalOcrHttp(app, options.localOcr.service);
   }
 
   return app;

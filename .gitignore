@@ -12,3 +12,4 @@ coverage/
 output/
 database/*.sqlite
 database/*.sqlite-*
+compute/scripts/__pycache__/

@@ -1,5 +1,6 @@
 import { ERROR_MESSAGES } from "./i18n.ts";
 import { createWorkspaceApi, type WorkspaceApi } from "./workspace-api.ts";
+import { createLocalOcrApi, type LocalOcrApi } from "./local-ocr-api.ts";
 
 export interface Account {
   id: string;
@@ -913,6 +914,7 @@ type Fetcher = typeof fetch;
 
 export interface AcademicCloudApi {
   workspace?: WorkspaceApi;
+  localOcr?: LocalOcrApi;
   getSession(signal?: AbortSignal): Promise<Account>;
   login(loginName: string, password: string): Promise<Account>;
   registerMember(inviteToken: string, loginName: string, password: string): Promise<ManagedAccount>;
@@ -1055,6 +1057,7 @@ export interface AcademicCloudApi {
 
 export class ApiClient implements AcademicCloudApi {
   readonly workspace = createWorkspaceApi(<T>(path: string, init?: RequestInit) => this.#request<T>(path, init));
+  readonly localOcr = createLocalOcrApi(<T>(path: string, init?: RequestInit) => this.#request<T>(path, init));
   readonly #fetch: Fetcher;
   readonly #onUnauthorized: () => void;
 

@@ -382,7 +382,7 @@ try {
     redeployMigrationCount: redeployMigration.appliedVersions.length,
     redeployRulesetAdmissionCount: redeployRulesetAdmission.admitted.length,
   };
-  assert.equal(result.firstMigrationCount, 39);
+  assert.equal(result.firstMigrationCount, 40);
   assert.equal(result.firstRulesetAdmissionCount, 2);
   assert.equal(result.currentRulesetVersion, "l1-intelligent-library01-v11");
   assert.equal(result.provisionedLogin, "CompiledAcceptance");
