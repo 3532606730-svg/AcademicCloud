@@ -1,8 +1,10 @@
 # AcademicCloud Current Status
 
-**Last reconciled:** 2026-10-05. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
+**Last reconciled:** 2026-10-06. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
 ## Latest checkpoint — October5 coordinated deployment and Owner local OCR
+
+October6 one-time03:39 HKT continuation verified published documentation314d67d and clean active/fetched-remote equality. Bounded download controls saved exact synthetic HTTP and Blob files, although IAB missed the Blob event. Actual Reader OCR/native-page4 TXT files remain unobserved; no download/CSP defect is established. Two misleading bilingual Reader hints are corrected locally: exports are requested rather than claimed saved, and available current-page OCR is explained for scans. Existing Reader tests9/9 and frontend typecheck pass; this copy-only follow-up awaits its exact Core/frontend release. [Evidence](docs/evidence/paired-local-ocr-20261001.md#october6-bounded-export-follow-up).
 
 Owner October5 directed local-first connection and direct completed deployment without another approval question. Root completed the one coordinated release after participating OCR/UX delivery, exact runtime and compatible rollback gates passed. The installed local engine worked; online fallback was unnecessary. Main was not merged.
 
@@ -54,7 +56,7 @@ The charter authorizes implementation beyond R01–R16, visual refinement, optim
 
 The continuation uses the recovered active vNext tree, preserving the obsolete original checkout. Owner September30 now requires GPT-6.1 Sol/xhigh for every subagent and the dedicated verifier, superseding Astra/ultra. Root owns integration and the coordinated release. Current instructions permit existing-path repairs, bounded OCR integration and authorized non-main checkpoints; main merge and unrelated scope remain excluded.
 
-## Book intake reliability — current priority, local correction
+## Historical book intake qualification — included in October5 deployment
 
 The Owner requests a thorough solution for reliable book intake. The Catalog exporter now preserves typed PDF source failures as source_unavailable, enabling the existing one-retry bound; size/limit failures stay nonretryable. Focused exporter/resilience/Bridge tests31/31, Compute typecheck and independent diff review PASS. This is a local candidate, not a deployed fix.
 
@@ -181,7 +183,7 @@ At the September23 interface checkpoint, the Owner deferred product OCR executio
 
 Read-only evaluation of the separate local `mongology-academic-ocr` project found a 10.6 MB Mongolian Latin transcription line-recognition checkpoint and a structured JSONL export with page/line boxes, source checksum, model ID, confidence, provisional/verified status and review flags. Its reported 3.316% CER is on a controlled 700-line normalized mixed-book validation set, not unseen-book or traditional-script acceptance. Its release explicitly excludes traditional Mongolian script; vertical column layout proposals are not a trained vertical Mongolian recognizer. This engine is a possible later provider for Latin-transcription pages only. A future adapter would need to obtain authorized source bytes in Compute, bind page output to `resourceId + sourceId`, bound output and keep provisional text separate from verified notes. The reserved v1 response contains page text but no line geometry, so screenshot-style block overlays would require an explicit response-contract extension and separate review/edit persistence. No engine was run or integrated in this checkpoint.
 
-## Latest recorded production inspection — September27
+## Historical production inspection — September27
 
 The integrated [live UX inspection](docs/evidence/live-ux-review-20260927.md) re-observed Core/frontend57b8723/schema39, Compute V2 exact7e in NORMAL and queue0/0. Its aggregate at approximately17:24 HKT is192 active PDFs:94 succeeded,67 failed,31 without a job. Failures:38 timeout,15 invalid result,5 internal,4 source unavailable,3 limits,2 invalid PDF. Job success is not verified bibliographic quality. This is a prior report observation, not a fresh September28 production probe.
 
@@ -208,9 +210,9 @@ The six previously diagnosed replacement-required PDFs were checked against the 
 - Six-width responsive screenshots and changed-path checks exist. Synthetic fixtures do not prove production or visual completeness.
 - At10,000 holdings/500 selected items, isolated Apply fell from121,268ms to1,150ms with persistence/object/audit equivalence. This is a synthetic service benchmark, not production latency.
 
-## Current execution order — September28
+## Current execution order — October6
 
-ADR046 admission handoff, ADR047 selected recovery and ADR049 paired-local OCR are locally verified; preserve those checkpoints, the integrated UX patch and corrected export path. Qualify the exact cooperating runtime candidate and real Owner bounded Reader/native acceptance within the coordinated release gate. Online member profiles, per-resource recovery, independently adjudicated field quality and normal signed-in upload/retry/Catalog acceptance remain open. Do not replay successful jobs or unchanged damaged bytes. Whole-document/corpus OCR execution, paid activation, main merge and unrelated scope are outside the current continuation.
+Exact662a7a0 Core/frontend/Local Pull/Bridge and schema40 are deployed; real Owner bounded Reader/native recognition, private save and reload/reopen passed. Deployment evidence is published at314d67d with clean active local/fetched-remote equality verified. Continue the bounded TXT export investigation, then online member profiles, per-resource/book/page/ZIP recovery, independently adjudicated field quality and normal signed-in upload/retry/Catalog/performance/whole-product acceptance. Preserve accepted source and private machine history; do not replay completed cutover, successful jobs or unchanged damaged bytes. Whole-document/corpus OCR execution, paid activation, main merge and unrelated scope remain outside the continuation.
 
 ## Historical records
 

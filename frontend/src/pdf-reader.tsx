@@ -512,7 +512,7 @@ export function PdfReader(props: PdfReaderProps) {
         link.download = title.replace(/[\\/:*?"<>|]/g, "_") + "-" + start + "-" + end + ".txt";
         link.click(); window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       }
-      setToolMessage(mode === "export" ? (zh ? "所选页码范围的原生文字已导出" : "Native text from the selected range exported") : (reachedLimit ? (zh ? "已达到本次搜索上限，请缩小页码范围继续" : "Search limit reached; narrow the page range to continue") : (zh ? "搜索完成，共 " + found.length + " 处" : "Search complete: " + found.length + " matches")));
+      setToolMessage(mode === "export" ? (zh ? "已请求导出所选页码范围的原生文字，请检查浏览器下载。" : "Export requested for native text from the selected range. Check your browser downloads.") : (reachedLimit ? (zh ? "已达到本次搜索上限，请缩小页码范围继续" : "Search limit reached; narrow the page range to continue") : (zh ? "搜索完成，共 " + found.length + " 处" : "Search complete: " + found.length + " matches")));
     } catch { if (!isCancelled()) setToolMessage(zh ? "读取原生文字失败，请重试" : "Could not read native text; please retry"); }
     finally { if (!isCancelled()) setTextBusy(false); }
   };
@@ -587,7 +587,7 @@ export function PdfReader(props: PdfReaderProps) {
           <button type="button" disabled={!document || textBusy} onClick={() => void readText("export")}>{zh ? "导出文字" : "Export text"}</button>
           {textBusy && <button type="button" onClick={cancelTextOperation}>{zh ? "取消" : "Cancel"}</button>}
         </form>
-        <p className="pdf-reader__hint">{zh ? "按需读取 PDF 原生文字，每次最多 500 页；扫描件暂不识别。" : "Reads native PDF text on demand, up to 500 pages per operation. Scanned text is not recognized."}</p>
+        <p className="pdf-reader__hint">{props.localOcr ? (zh ? "本工具仅按需读取 PDF 原生文字，每次最多 500 页；扫描页可使用“当前页OCR”。" : "This tool reads only native PDF text on demand, up to 500 pages per operation. Scanned pages can use Current page OCR.") : (zh ? "按需读取 PDF 原生文字，每次最多 500 页；扫描件暂不识别。" : "Reads native PDF text on demand, up to 500 pages per operation. Scanned text is not recognized.")}</p>
         {results.length > 0 && <ol className="pdf-reader__results">{results.map((result, index) => <li key={index}><button type="button" onClick={() => goToPage(result.page)}><strong>{zh ? "第 " + result.page + " 页" : "Page " + result.page}</strong><span>{result.excerpt}</span></button></li>)}</ol>}
       </div>}
       {panel === "highlights" && <div className="pdf-reader__panel">

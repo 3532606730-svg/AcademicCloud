@@ -1,16 +1,16 @@
 {
-  "lastReconciled": "2026-10-05",
+  "lastReconciled": "2026-10-06",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "52978659894ad0031a93951795f9a5606e77c7c1",
+    "checkpoint": "314d67df17a196cff34e3805c4e7b3cd1402a871",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Clean active HEAD==fetched remote5297865 verified before activation. This documentation reconciliation records exact runtime662a7a0 deployment; its own checkpoint is established by subsequent Git commit/push/fetch equality. Obsolete original checkout preserved; no main merge.",
-    "lastVerifiedPublishedCheckpoint": "52978659894ad0031a93951795f9a5606e77c7c1"
+    "localState": "Deployment and Owner acceptance documentation314d67d published; fresh fetch verified clean active HEAD==intended remote on October6. Exact runtime remains662a7a0; following documentation records bounded continuation and retains obsolete original checkout. No main merge.",
+    "lastVerifiedPublishedCheckpoint": "314d67df17a196cff34e3805c4e7b3cd1402a871"
   },
   "production": {
     "observedAt": "2026-10-05",
@@ -525,6 +525,16 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "status": "DEPLOYED_OWNER_LOCAL_ACCEPTED",
         "statePointer": "production.pairedLocalOcrRelease"
+      },
+      "exportFollowup": {
+        "date": "2026-10-06",
+        "evidence": "output/vnext/owner-ocr-activation-20261005/export-download-diagnostic.json",
+        "status": "SYNTHETIC_FILES_PASS_BLOB_EVENT_UNOBSERVABLE_REAL_READER_FILES_NOT_OBSERVED",
+        "syntheticHttpAndBlobFilesVerified": true,
+        "blobDownloadEventObserved": false,
+        "actualReaderTxtFileObserved": false,
+        "actualNativeTextPage4FileObserved": false,
+        "diagnosis": "unlocated; no download/CSP logic change justified"
       }
     },
     "prepublication20261005": {
@@ -579,7 +589,15 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Older named verification records remain historical. Current exact runtime, migration, recovery and native activation are under production.pairedLocalOcrRelease; normal Owner current-page acceptance is under verification.pairedLocalOcr.ownerProductionAcceptance."
+    "recordMeaning": "Older named verification records remain historical. Current exact runtime, migration, recovery and native activation are under production.pairedLocalOcrRelease; normal Owner current-page acceptance is under verification.pairedLocalOcr.ownerProductionAcceptance.",
+    "readerCopy20261006": {
+      "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
+      "focusedReaderTestsPassed": 9,
+      "frontendTypecheck": "PASS",
+      "productionDeployed": false,
+      "liveExportAccepted": false,
+      "evidence": "output/vnext/owner-ocr-activation-20261005/export-download-diagnostic.json"
+    }
   },
   "computeQualification": {
     "historicalNuExtract3Offline": "4/4 pass",
@@ -595,7 +613,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Record/publish exact662a7a0 coordinated deployment and actual Owner normal Reader OCR acceptance. Continue bounded live TXT export/connector recovery verification, online member profiles, independent book/page and persistent ZIP recovery, field quality, current corpus and whole-product/report gates. Do not repeat completed pairing/cutover unless actual failure warrants recovery. No main merge, paid activation or whole-book/corpus OCR.",
+  "next": "Continue bounded live TXT export/connector recovery verification, online member profiles, independent book/page and persistent ZIP recovery, field quality, current corpus and normal-product/performance/whole-product/report gates. Exact662a7a0 release and actual Owner normal Reader OCR acceptance are recorded and published at314d67d; do not repeat completed pairing/cutover unless actual failure warrants recovery. No main merge, paid activation or whole-book/corpus OCR.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",

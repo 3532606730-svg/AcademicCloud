@@ -89,6 +89,12 @@ Final inspected screenshot: ignored output/vnext/owner-ocr-activation-20261005/o
 
 The signed source URL naturally expired during documentation and displayed normal reauthorization guidance. The detached connector does not have an autostart claim; computer/connector restart requires normal tutorial-guided pairing. TXT Blob export through IAB timed out without a local file, so actual live TXT export remains unverified. That bounded follow-up does not invalidate recognition/private save/reload/reopen.
 
+## October6 bounded export follow-up
+
+The one-time03:39 HKT continuation recovered the same deployed Reader and preserved the accepted result; no OCR request was replayed. Actual OCR TXT export and native-PDF text export for physicalpage4→4 did not produce an observed file in the normal Downloads directory. The page logged no error. The native-text UI nevertheless said the text was exported, so its observable status is corrected to export requested/check browser downloads. The native-text help also now points scanned pages to current-page OCR when that interface is available. These are two bilingual copy corrections, without download, CSP, server, model or persistence changes; existing Reader tests9/9 and frontend typecheck pass.
+
+A temporary loopback-only fixture used synthetic text and the product's same detached-anchor/one-second Blob URL lifetime. Both HTTP and Blob downloads actually saved the exact58-byte synthetic content. The IAB download event reported HTTP but missed Blob. Therefore event timeout alone is not download-failure evidence, and neither a general IAB Blob limitation nor a concrete application/CSP/lifecycle defect is established. Real product TXT acceptance remains open. The fixture was stopped and its tab closed; no real academic text was used in the control. Evidence: ignored output/vnext/owner-ocr-activation-20261005/export-download-diagnostic.json and reader-copy-{focused-tests,typecheck}.log.
+
 ## Remaining acceptance
 
 Exact coordinated schema40 activation and normal real Owner bounded Reader/native recognition/private save/reload/reopen are complete above. Earlier oversized3300px eight-page scores remain separate engine-quality evidence; synthetic cross-account/lifecycle/forced-loss checks remain their own qualification. Live TXT export observability after the IAB timeout/no local file remains a bounded follow-up.
