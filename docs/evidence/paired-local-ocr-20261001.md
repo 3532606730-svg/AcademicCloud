@@ -1,12 +1,12 @@
-# Paired local current-page OCR — October 1 verification
+# Paired local current-page OCR — October1 qualification and October5 activation
 
-Scope: ADR-049 implementation `5fb19382c1c614d2070afa3504c655e76ae456ce` on `codex/vnext-remediation-20260906`, based on documentation baseline `50121e91298737bfc50aa04982cc7df099beb0b3`. Implementation is published; fresh fetch verified clean active local/remote equality. This following documentation-only checkpoint records that publication. The evidence is repository/local verification, not production activation or final vNext acceptance.
+Scope: this record retains ADR-049 implementation5fb19382c1c614d2070afa3504c655e76ae456ce and October1–5 local/publication qualification, then records the exact662a7a0374df31df8b3ec429394cee8836160a5a October5 coordinated deployment and normal real Owner acceptance below. Earlier publication/local equality was verified at its source checkpoint. Real current-page activation is complete; final vNext/corpus/whole-product acceptance is not.
 
 ## Implemented behavior
 
 The signed-in account creates a one-use pairing code for its own outbound connector. The Reader captures the currently painted physical page within the existing PNG/frame budget. Core rechecks account, Library and source generation on each operation. Successful machine text, rectangles and frame provenance are private and immutable; a separate correction uses revision CAS. No member or Owner exception exposes another account's device or text. Images remain transient and bounded. Online connection is an information-only tab; no cloud credential or billing path is activated.
 
-The downloadable connector contains the CLI, three required Python helpers, configuration/tutorial and file hashes. Engine/model installation is separate. The native wrapper checks pinned package/model identities and denies native network activity before imports. On the Owner's shared machine, the connector requires exact cooperating Local Pull/Bridge markers and live process registrations. Idle polls release the native lease; native cleanup precedes an explicit release. Abnormal helper/parent loss leaves a durable busy marker and subsequent acquisitions fail closed. The deployment templates use the existing `academiccloud` user and a private writable coordination directory. Production's older Compute release cannot satisfy this contract.
+The downloadable connector contains the CLI, three required Python helpers, configuration/tutorial and file hashes. Engine/model installation is separate. The native wrapper checks pinned package/model identities and denies native network activity before imports. On the Owner's shared machine, the connector requires exact cooperating Local Pull/Bridge markers and live process registrations. Idle polls release the native lease; native cleanup precedes an explicit release. Abnormal helper/parent loss leaves a durable busy marker and subsequent acquisitions fail closed. The deployment templates use the existing `academiccloud` user and a private writable coordination directory. Before the October5 release, the older production Compute release could not satisfy this contract.
 
 ## Checks performed
 
@@ -61,8 +61,36 @@ The connector was rebuilt after the reasoner and dependency repairs and remains 
 
 The final whole-project publication gate passes: complete root test:ci exits0 with backend535pass/3Windows-symlink skips, frontend490/490 across35files, contracts14/14, Compute260pass/1Windows-symlink skip and operations86/86. Total1385pass/1389tests, zero failures. All workspace typecheck/build and schema40 compiled acceptance exit0. Compiled acceptance confirms restart persistence, Owner non-disclosure, isolated synthetic restore and repeat initialization with zero migrations/admissions. The final App file's two target cases were separately rechecked after its nullable CSSOM type guard; final typecheck/build cover that same file. Native, dependency and App repairs have independent bounded PASS reviews. Raw logs and intermediate failures are preserved under ignored `output/vnext/prepublication-20261005/`; final results use `final-stable-*` and `npm-audit-*-final.json`.
 
+## October5 exact coordinated release and real Owner acceptance
+
+The Owner directed completed local-first account work to be deployed without another approval question. Root was the sole coordinated operator after participating OCR/UX agreed scope and integrated qualification passed. The installed local engine worked; online fallback was unnecessary.
+
+| Gate | Actual result |
+|---|---|
+| Exact installed runtime | Core/frontend, Local Pull and Bridge662a7a0374df31df8b3ec429394cee8836160a5a; schema/history40/001–040;11 admissions including v11/prompt-v7 |
+| Artifact and compatible rollback | Old57b5164 files and new6625180 files fully verified against exact manifests; the unmodified complete old57b application against040 retained three synthetic pairing/device/result rows, including machine/correction data |
+| Frozen migration preservation |53 pre-existing tables captured;52 count/hash pairs unchanged, including scholarly_search_projection. Only dirty106→0 matched exact initializer[40]/admissions[]/refreshed106. Full old schema/39 history and exact040 new objects, integrity and FK0 passed; OCR tables initially empty |
+| Recovery evidence | Existing encrypted private backup published/read back at commit527070088417e960970d60f7946b79e074679503; ciphertext SHA-256 e4f421ff0628e9ebfc578475c380f58a356eddc5345ee57f7f02fea3d54539d1. No production restore or downmigration |
+| Cutover health | Core1493670 active/running, NRestarts0,79,360,000-byte memory snapshot; Local Pull3029/Bridge3248 exact662 active, zero restarts |
+| Native cooperation | Existing academiccloud user, private0700 coordination directory and0600 common guard JSON; same-guard/live-registration proof PASS |
+
+The initial strict guard stopped cutover when dirty-queue cleanup changed a captured table. Read-only code review and the frozen diff established the concrete changed fact: the initializer always drains derived search dirty markers, while projection/source/private tables were unchanged. The narrow receipt-accounted correction retained all other row/schema/history gates. Resume used the original baseline and receipt without replaying initialization. No general table exemption was introduced.
+
+Normal real Owner Codex IAB acceptance then followed the deployed website:
+
+1. Fresh Owner login → Library → 放入我的研究 restored Mongolia Today page23, then painted physical page4/313.
+2. The actual public connector ZIP downloaded as the local (4).zip:86,228 bytes, SHA-256 ed80700bfd402bb742dec87d15f6b2c44a2c078247cabc88bd15b254735c405a, matching the final identity above.
+3. Normal UI pairing sent the one-use code through stdin to the detached own-device connector. Its device token remains only in memory; no pairing code/token/credential is recorded here.
+4. 我的本机 Paddle OCR showed 在线. Actual bounded current-page inference saved a private immutable machine result:254 text units and15 normalized line rectangles, history2026/10/5 23:25:23.
+5. Initial-frame geometry was inspected in owner-current-page-geometry.png. Fresh /research reload restored page4/313; reopening the private OCR result retained identical254-unit text and the same machine history. No human correction or page note was created; Save correction remained disabled.
+6. Original engine order, including the Today/Mongolia title order, remains uncorrected machine evidence requiring source review. It is not automatically promoted to canonical bibliography or treated as human-certified accuracy. Raw images do not persist after reload, as required by the transient-frame contract.
+
+Final inspected screenshot: ignored output/vnext/owner-ocr-activation-20261005/owner-local-ocr-final.png. The initial geometry screenshot is retained in the same directory. Operational artifact/migration/native/compatible-runtime receipts remain there; private credential/pairing material is excluded from Git. No fresh online OCR call, paid activation, main merge or whole-book execution occurred.
+
+The signed source URL naturally expired during documentation and displayed normal reauthorization guidance. The detached connector does not have an autostart claim; computer/connector restart requires normal tutorial-guided pairing. TXT Blob export through IAB timed out without a local file, so actual live TXT export remains unverified. That bounded follow-up does not invalidate recognition/private save/reload/reopen.
+
 ## Remaining acceptance
 
-Production was not changed or freshly re-probed in this slice. Recorded Core/frontend57b8723 remains schema39; Compute7e2d1bf and Bridgeba0a74f remain the previous observed runtimes. Schema040 and the guard-aware exact releases must be qualified and installed together within the coordinated release gate, with nginx syntax validation, same-user directory/config provisioning and forced-loss/recovery evidence. Then the normal signed-in Owner website must pair the real installed engine and recognize actual bounded Reader pages. The earlier eight-page native measurement used oversized3300px frames and cannot substitute for that acceptance.
+Exact coordinated schema40 activation and normal real Owner bounded Reader/native recognition/private save/reload/reopen are complete above. Earlier oversized3300px eight-page scores remain separate engine-quality evidence; synthetic cross-account/lifecycle/forced-loss checks remain their own qualification. Live TXT export observability after the IAB timeout/no local file remains a bounded follow-up.
 
 Online member credentials/cost/disclosure, whole-book processing, persistent per-book/page/ZIP recovery, adjudicated bibliographic quality, current-corpus reconciliation and whole-product/final-report gates remain separate. No main merge, paid activation, new cloud source disclosure or whole-book/corpus OCR follows from this checkpoint.
