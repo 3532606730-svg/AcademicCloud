@@ -6,21 +6,22 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "925bd865f020e4474378948ed7735497fe7b8e32",
+    "checkpoint": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Source925 published,fresh fetched remote equality and clean active checkout verified before deployment; current documentation/frame-fix reconciliation is pending a later checkpoint.",
-    "lastVerifiedPublishedCheckpoint": "925bd865f020e4474378948ed7735497fe7b8e32"
+    "localState": "Runtime9840 was published and clean fetched-remote equality verified before deployment; this full-book evidence reconciliation awaits its own publication.",
+    "lastVerifiedPublishedCheckpoint": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
+    "checkpointMeaning": "Exact published source that built the current runtime; subsequent evidence-only checkpoint is Git HEAD, not a new deployed artifact."
   },
   "production": {
     "observedAt": "2026-10-06",
-    "coreFrontendCommit": "925bd865f020e4474378948ed7735497fe7b8e32",
+    "coreFrontendCommit": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
     "schemaVersion": 40,
     "migrationHistory": "001-040",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "October6 book release PID1504566 active/running,NRestarts0,health/ready and schema40 integrity/foreign keys PASS.80,420,864-byte memory is a snapshot.",
+    "health": "October6 frame-fit release PID1505822 active/running,NRestarts0; exact Linux/host qualification PASS; schema40/history001-040/11 admissions and native662 unchanged.",
     "catalogBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
     "catalogBridgeState": "October6 read-only observation: exact662 active/running PID3248 NRestarts0; unchanged selector/service; prior live native cooperation retained.",
     "computeDistro": "AcademicCloudComputeV2",
@@ -351,7 +352,7 @@
       "modelCalls": 0,
       "newCloudOcrCalls": 0,
       "hostedCiStarted": false,
-      "runtimeMeaning": "Exact immutable runtime source8f6c721; following documentation checkpoints do not change the deployed artifact."
+      "runtimeMeaning": "Historical immutable page-copy runtime source8f6c721; current Core/frontend is9840e7b. These dated copy-release receipts and acceptance remain preserved."
     },
     "wholeBookRelease": {
       "sourceCommit": "925bd865f020e4474378948ed7735497fe7b8e32",
@@ -365,7 +366,28 @@
       "nativeChanged": false,
       "newProductionBackupCreated": false,
       "rollbackUsed": false,
-      "evidence": "docs/evidence/private-book-ocr-20261006.md"
+      "evidence": "docs/evidence/private-book-ocr-20261006.md",
+      "runtimeMeaning": "Historical initial925bd86 release and its pre-submission cover-frame stop; superseded by wholeBookFrameFitRelease."
+    },
+    "wholeBookFrameFitRelease": {
+      "sourceCommit": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
+      "status": "DEPLOYED_NORMAL_OWNER_FULL_BOOK_AND_EXPORT_ACCEPTED",
+      "deployedAtLocalDate": "2026-10-06",
+      "schemaVersion": 40,
+      "migrationHistory": "001-040",
+      "rulesetAdmissionsTotal": 11,
+      "migrationsApplied": [],
+      "corePid": 1505822,
+      "active": true,
+      "subState": "running",
+      "nRestarts": 0,
+      "retainedNativeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
+      "nativeChanged": false,
+      "modelOrConfigurationChanged": false,
+      "newProductionBackupCreated": false,
+      "receipts": "output/vnext/book-ocr-frame-fit-20261006/",
+      "evidence": "docs/evidence/private-book-ocr-20261006.md",
+      "acceptanceStatePointer": "wholeBookOcr.verification"
     }
   },
   "candidate": {
@@ -421,7 +443,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "ADR-050 whole-book OCR candidate implementation and focused verification in progress; production Core/frontend8f6c721/native662/schema40 remains unchanged. Normal Owner full-book/export acceptance pending.",
+    "currentPhaseB": "Owner selected whole-book speed and off-site device execution, with durable page checkpoints. Reconcile an ADR before replacing browser ownership or per-page fresh native lifecycle. Preserve the accepted313-page private results, actual exports and original bytes; shared OCR publication and local PDF copies require distinct derived-artifact/permission contracts, not silent original replacement.",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -785,7 +807,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Initial paired-local migration/native activation and original Owner OCR remain dated history. Earlier Reader-copy22d80ef is under production.readerCopyRelease; current Core/frontend8f6c721 and normal copy acceptance are under production.productCopyRelease.",
+    "recordMeaning": "Initial paired-local migration/native activation and original Owner OCR remain dated history. Reader-copy22d80ef and product-copy8f6c721 keep their historical receipts; current9840e7b deployment is under production.wholeBookFrameFitRelease and its ongoing book acceptance under wholeBookOcr.verification.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -827,7 +849,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Implement ADR-050 user-started private whole-book local OCR with500-page/500-retained-result bounds, saved-page resume and page-framed exports; qualify and deploy directly without a new backup, then normal Owner book acceptance. No automatic corpus OCR/indexing/RAG, paid activation, Owner-engine borrowing or main merge.",
+  "next": "Owner selected whole-book speed and off-site device execution, with durable page checkpoints. Reconcile an ADR before replacing browser ownership or per-page fresh native lifecycle. Preserve the accepted313-page private results, actual exports and original bytes; shared OCR publication and local PDF copies require distinct derived-artifact/permission contracts, not silent original replacement.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -923,13 +945,13 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "core8f_product_copy_deployed_native662_and_owner_history_preserved",
-    "intake": "R0 export/ADR046 admission/ADR047 selected recovery/ADR049 paired-local initially deployed in662; non-frontend bytes retained in currentCore8f/native662. Original Owner OCR and current copy acceptance pass. Remaining normal intake/quality/recovery gates stay open.",
-    "ocr": "Exact cooperating Compute/Bridge and Core40 deployed; real Owner normal pairing, native bounded current-page OCR, private persistence/reload and line overlay accepted. Online PP internal adapter retains separate offline qualification; online member profiles/activation remain open.",
+    "status": "core9840_book_frame_fit_deployed_native662_owner_book_trial_running",
+    "intake": "R0 export/ADR046 admission/ADR047 selected recovery/ADR049 paired-local initially deployed in662; current9840e7b adds ADR050 private book progress/export and book-only frame fitting while native662 remains unchanged. Original Owner OCR/copy acceptance stays preserved; remaining intake/quality/recovery gates stay open.",
+    "ocr": "Exact cooperating Compute/Bridge and Core40 remain deployed; Owner current-page recognition/private persistence/line overlay are accepted. ADR050 normal Owner book run on9840e7b passes313-page processing/pause-refresh and actual TXT/JSONL acceptance; device-owned speed/off-site follow-up is selected. Online member profiles/activation remain separate.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
-    "currentCoreFrontendCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
+    "currentCoreFrontendCommit": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
     "currentLocalPullBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
   },
   "subagents": {
@@ -940,11 +962,12 @@
   "currentContinuationBoundary": "Owner October6 explicitly authorizes ADR-050 bounded browser-run whole-book OCR on account-owned local engines plus scholarly differentiation assessment and direct qualified deployment without a new backup. Other prior cost/privacy/provider/main boundaries remain.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
-    "scope": "After recovery checkpoint, assess and progress reliable bibliographic OCR evidence and private current-page OCR in My Research",
-    "status": "paired_local_deployed_owner_connected_native_current_page_accepted",
+    "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
+    "status": "paired_local_current_page_and_whole_book_export_accepted",
     "implementationEnabled": true,
     "zeroAddedCost": false,
-    "wholeDocumentOcrAuthorized": false,
+    "wholeDocumentOcrAuthorized": true,
+    "wholeDocumentOcrAuthority": "ADR050 explicit browser-run single-book local path, maximum500 physical pages and500 retained account results; no automatic corpus dispatch, online activation or indexing/RAG.",
     "runtimeEvidence": "October5 normal signed-in Mongolia Today physicalpage4/313 recognition with installed pinned Paddle:254UTF16 units,15lineboxes; private history persisted and exact text survived reload/reopen. October1 eight-page sample remains historical engine qualification; no full-book accuracy claim.",
     "providerDecision": "Members connect their own online account or offline engine through common adapters; prefer a suitable installed engine on that member's own device, with explicitly selected online positions OCR an acceptable alternative; no silent Owner or cloud fallback",
     "firstOnlineAdapter": {
@@ -1103,7 +1126,7 @@
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
     "implementationCheckpoint": "5fb19382c1c614d2070afa3504c655e76ae456ce",
-    "implementationEnabledMeaning": "Production activation of the separate paired current-page namespace only; online profiles/range/whole-book/indexing remain unavailable.",
+    "implementationEnabledMeaning": "Paired current-page and browser-run private313-page book/actual exports are accepted; Owner-selected device-owned background/performance follow-up requires its new ADR. Online profiles/unattended corpus queues/indexing remain separate.",
     "candidateImplementationEnabled": true,
     "pairedLocal": {
       "contract": "compute-contracts/src/local-ocr.ts; /api/reader/local-ocr",
@@ -1149,8 +1172,8 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "statePointer": "production.pairedLocalOcrRelease.native"
       },
-      "currentCoreFrontendCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
-      "followupAcceptanceStatePointer": "production.productCopyRelease.realOwnerBrowser"
+      "currentCoreFrontendCommit": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
+      "followupAcceptanceStatePointer": "wholeBookOcr.verification"
     }
   },
   "subagentConfiguration": {
@@ -1160,7 +1183,9 @@
     "supersedes": "gpt-6-astra/ultra"
   },
   "wholeBookOcr": {
-    "status": "COVER_FRAME_FIT_LOCALLY_VERIFIED_RELEASE_PENDING",
+    "status": "DEPLOYED_NORMAL_OWNER_FULL_BOOK_AND_EXPORT_ACCEPTED",
+    "sourceCommit": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
+    "productionEnabled": true,
     "adr": "docs/decisions/ADR-050-browser-run-private-book-ocr.md",
     "mode": "browser_run_private_saved_page_resume",
     "maximumBookPages": 500,
@@ -1172,11 +1197,32 @@
       "backendFocusedTests": 21,
       "frontendFocusedTests": 62,
       "frontendFiles": 8,
+      "distinctFocusedTestsPassed": 83,
       "typesBuild": "PASS",
       "independentReview": "PASS",
       "helperChecks": 3,
-      "liveBookAcceptance": "MongoliaToday313 opens normal Owner whole-book panel; firstpagePNG>2MiB stopped before engine submission. Existing1savedpage/2accountresults retained. Bounded frame fit repair in progress.",
-      "coverFrameFix": "Six new regressions PASS; bounded book-only resize, no engine/native/transport expansion; same independent review PASS."
+      "liveBookAcceptance": "Normal signed-in Owner MongoliaToday finished313/313 physical pages with0 missing,312 recognized and1 low-confidence page166 (confidence42), no truncation/no-text/unsupported-script. Actual TXT911,416bytes and JSONL2,548,698bytes passed source/page/end-marker and cross-format inspection. The original page4 result/time/raw254 units remained exact. New312 saved results span107.972minutes including pause; consecutive completion median19.335s/P9526.711s is end-to-end, not pure inference or accuracy. No human correction, canonical promotion or cloud OCR call.",
+      "lastObservedProcessedPages": 313,
+      "bookPhysicalPages": 313,
+      "pauseRefreshVerifiedAtProcessedPages": 5,
+      "accountResultsAtPauseRefresh": 6,
+      "originalPage4ResultPreserved": true,
+      "fullBookAcceptanceComplete": true,
+      "actualTxtDownloadAccepted": true,
+      "actualJsonlDownloadAccepted": true,
+      "wholeBookCer": null,
+      "historicalInitialTrial": "Initial925bd86 cover PNG>2MiB stopped before new engine submission; its1savedpage/2accountresults snapshot remains historical evidence.",
+      "coverFrameFix": "Deployed9840e7b; six new frame regressions, focused62 frontend tests and same independent review PASS; original2MiB/image bounds, native/model/configuration and schema unchanged.",
+      "releaseReceipts": "output/vnext/book-ocr-frame-fit-20261006/",
+      "accountResultsAfterBook": 314,
+      "reviewNeededPages": [
+        166
+      ],
+      "actualDownloadEvidence": "output/vnext/book-ocr-frame-fit-20261006/final-export-acceptance.json",
+      "newPages": 312,
+      "completionSpanMinutesIncludingPause": 107.97203333333333,
+      "medianCompletionGapSeconds": 19.335,
+      "p95CompletionGapSeconds": 26.711
     }
   }
 }
