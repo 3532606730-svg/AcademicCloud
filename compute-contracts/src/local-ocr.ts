@@ -1,4 +1,5 @@
 import type { OcrEngineCapabilities, OcrEnginePageResult } from "./ocr-engine.js";
+import type { LocalOcrTransportFeature } from './local-ocr-book.js';
 
 /** Account-private, explicitly paired device transport. Not the Catalog worker protocol. */
 export const LOCAL_OCR_ROOT = "/api/reader/local-ocr";
@@ -24,6 +25,7 @@ export interface LocalOcrDevice {
   id: string;
   label: string;
   capabilities: OcrEngineCapabilities;
+  transportFeatures: LocalOcrTransportFeature[];
   createdAt: string;
   lastSeenAt: string | null;
   tokenExpiresAt: string;
@@ -34,6 +36,7 @@ export interface LocalOcrPairing { pairingCode: string; expiresAt: string }
 export interface LocalOcrConnectInput {
   pairingCode: string;
   capabilities: OcrEngineCapabilities;
+  transportFeatures?: LocalOcrTransportFeature[];
   /** Engine-reported test, not a trusted identity or accuracy certification. */
   probeResult: OcrEnginePageResult;
 }

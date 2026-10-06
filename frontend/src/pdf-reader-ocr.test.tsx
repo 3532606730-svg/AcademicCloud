@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash, webcrypto } from "node:crypto";
 import { PdfReader, type PdfReaderProps } from "./pdf-reader.tsx";
 import { LanguageProvider } from "./i18n-react.tsx";
-import { OCR_BOOK_PROGRESS, OCR_JOB, OCR_RESULT, ocrApi } from "./local-ocr-test-fixture.ts";
-import type { LocalOcrResult } from "./local-ocr-api.ts";
+import { OCR_BOOK_DEVICE, OCR_BOOK_JOB, OCR_BOOK_PROGRESS, OCR_JOB, OCR_RESULT, ocrApi } from "./local-ocr-test-fixture.ts";
+import type { LocalOcrApi, LocalOcrResult } from "./local-ocr-api.ts";
 import { CurrentPageOcr } from "./local-ocr-ui.tsx";
 
 const engine = vi.hoisted(() => ({ render: vi.fn(), pages: [] as number[] }));
@@ -23,8 +23,7 @@ beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({} as never); HTMLElement.prototype.scrollTo = vi.fn();
 });
 afterEach(() => { vi.unstubAllGlobals(); window.localStorage.removeItem("academiccloud.language"); });
-function open() {
-  const api = ocrApi({ results: vi.fn().mockResolvedValue([]) });
+function open(api: LocalOcrApi = ocrApi({ results: vi.fn().mockResolvedValue([]) })) {
   const base: PdfReaderProps = { url: "/book.pdf", title: "Book", page: 2, onPageChange: vi.fn(), localOcr: { api, accountId: "member-one", resourceId: OCR_RESULT.resourceId, sourceId: OCR_RESULT.sourceId } };
   const ui = (props: PdfReaderProps) => <LanguageProvider><PdfReader {...props} /></LanguageProvider>;
   return { ...render(ui(base)), api, base, ui };
@@ -98,5 +97,22 @@ describe("actual Reader OCR paint boundary", () => {
     await waitFor(() => expect(api.results).toHaveBeenCalledTimes(2));
     expect(screen.getByRole("textbox", { name: "Corrected text" })).toHaveValue("My retained draft"); expect(screen.getByRole("combobox", { name: "Current page history (latest 20)" })).toHaveValue(OCR_RESULT.id);
     expect(api.correct).not.toHaveBeenCalled(); expect(api.create).not.toHaveBeenCalled();
+  });
+  it.each(["queued", "running"] as const)("restores %s background work, blocks current-page OCR, and preserves private history/drafts through pause", async (state) => {
+    const job = { ...OCR_BOOK_JOB, pageCount: 10, state }; const paused = { ...job, state: "paused" as const };
+    const api = ocrApi({ devices: vi.fn().mockResolvedValue([OCR_BOOK_DEVICE]), books: vi.fn().mockResolvedValue([job]), pauseBook: vi.fn().mockResolvedValue(paused) });
+    const view = open(api); await waitFor(() => expect(engine.render).toHaveBeenCalled());
+    await screen.findByText(state === "queued" ? "Background job queued; waiting for the selected connector." : "Your device is recognizing in the background. You can close the website.");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Current page OCR" })).toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /Private OCR results/ })); const draft = await screen.findByRole("textbox", { name: "Corrected text" });
+    fireEvent.change(draft, { target: { value: "My private draft during background OCR" } });
+    const newer = { ...OCR_RESULT, id: "later-machine-result", correctedText: null, machine: { ...OCR_RESULT.machine, text: "Later machine text" } };
+    vi.mocked(api.results).mockResolvedValue([newer, OCR_RESULT]); fireEvent.click(screen.getByRole("button", { name: "Whole-book OCR" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh saved progress" }));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Current page history (latest 20)" }).querySelectorAll("option")).toHaveLength(2));
+    expect(draft).toHaveValue("My private draft during background OCR"); expect(screen.getByRole("combobox", { name: "Current page history (latest 20)" })).toHaveValue(OCR_RESULT.id);
+    fireEvent.click(screen.getByRole("button", { name: "Pause book OCR" })); await ready(); expect(api.pauseBook).toHaveBeenCalledWith(job.id);
+    expect(draft).toHaveValue("My private draft during background OCR"); expect(api.correct).not.toHaveBeenCalled(); expect(api.create).not.toHaveBeenCalled(); expect(api.createBook).not.toHaveBeenCalled();
+    view.unmount(); expect(api.cancelBook).not.toHaveBeenCalled();
   });
 });

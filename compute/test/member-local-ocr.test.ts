@@ -110,3 +110,54 @@ test('busy resource after connection never polls a device claim',async()=>{
     resourceGuard:{async acquire(){acquired++;if(acquired===1)return{signal:new AbortController().signal,async release(){}};c.abort();return null;}},signal:c.signal,
     fetch:async(url)=>{calls++;assert.ok(String(url).endsWith('/connect'));return Response.json(connected);}});assert.equal(calls,1);
 });
+
+test('PDF-capable paired connector dispatches a durable book after releasing empty current-page guard, with unchanged engine caps',async()=>{
+  const c=new AbortController(),order:string[]=[],source=Buffer.from('%PDF-1.7\nsynthetic');let saved:number[]=[];let recognizes=0;
+  const expiry=new Date(Date.now()+89_000).toISOString();
+  const book={id:'book1',clientRequestId:'request1',deviceId:'device1',resourceId:'resource1',sourceId:'source1',pageCount:1,state:'running',errorCode:null,failedPhysicalPage:null,
+    createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60*60_000).toISOString(),leaseExpiresAt:expiry,savedPhysicalPages:[]};
+  await runMemberLocalConnector({coreOrigin:'https://core.example',pairingCode:'p'.repeat(32),engine:engine(async r=>result(r.requestId,LOCAL_OCR_PROBE_TEXT)),
+    resourceGuard:guard(order),signal:c.signal,pollDelayMs:1,
+    bookSessionFactory:()=>{order.push('bookSession');return{async capabilities(){return MEMBER_PADDLE_CAPABILITIES;},async recognize(r){recognizes++;return result(r.requestId);},async close(){order.push('bookClose');}};},
+    bookPdfFactory:async()=>({pageCount:1,async capture(){return{image:image(),imageWidth:100,imageHeight:80,rotation:0,renderMs:1};},async close(){order.push('pdfClose');}}),
+    onEvent:event=>{if(event.event==='member_ocr.book_completed')c.abort();},
+    fetch:async(url,init)=>{
+      const parsed=new URL(String(url));if(parsed.origin==='https://files.ajtlab.top'){assert.equal(init?.headers,undefined);return new Response(source);}
+      const path=parsed.pathname;const input=init?.body?JSON.parse(String(init.body)) as Record<string,unknown>:undefined;
+      if(path.endsWith('/connect')){assert.deepEqual(input?.transportFeatures,['pdf_book_v1']);assert.deepEqual(input?.capabilities,MEMBER_PADDLE_CAPABILITIES);return Response.json(connected);}
+      if(path.endsWith('/device/claim'))return Response.json({job:null});
+      if(path.endsWith('/book-claim'))return Response.json({job:{job:book,attemptId:'attempt1',leaseExpiresAt:expiry,pageCount:1,savedPhysicalPages:[],capabilities:MEMBER_PADDLE_CAPABILITIES}});
+      if(path.endsWith('/book-source'))return Response.json({resourceId:'resource1',sourceId:'source1',url:'https://files.ajtlab.top/object',expiresAt:new Date(Date.now()+299_000).toISOString(),sizeBytes:source.length,checksumAlgorithm:'md5',checksum:createHash('md5').update(source).digest('base64'),etag:null});
+      if(path.endsWith('/book-heartbeat'))return Response.json({active:true,leaseExpiresAt:new Date(Date.now()+89_000).toISOString(),savedPhysicalPages:saved});
+      if(path.endsWith('/book-page')){assert.equal((input?.result as OcrEnginePageResult).requestId,'book1-1');saved=[1];return Response.json({accepted:true,resultId:'result1',savedPhysicalPages:saved});}
+      if(path.endsWith('/book-finish'))return Response.json({job:{...book,state:'succeeded',savedPhysicalPages:saved}});
+      throw Error('unexpected endpoint');
+    }});
+  assert.equal(recognizes,1);assert.deepEqual(order,['acquire','release','acquire','release','acquire','bookSession','bookClose','release','pdfClose']);
+});
+
+
+test('connector fences a stopped uncertain book attempt until an explicit resume creates a different attempt',async()=>{
+  const c=new AbortController(),source=Buffer.from('%PDF-1.7\nsynthetic');let saved:number[]=[];let recognizes=0,claims=0,acks=0;
+  const expiry=new Date(Date.now()+89_000).toISOString();
+  const book={id:'book1',clientRequestId:'request1',deviceId:'device1',resourceId:'resource1',sourceId:'source1',pageCount:1,state:'running',errorCode:null,failedPhysicalPage:null,
+    createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60*60_000).toISOString(),leaseExpiresAt:expiry,savedPhysicalPages:[]};
+  await runMemberLocalConnector({coreOrigin:'https://core.example',pairingCode:'p'.repeat(32),engine:engine(async r=>result(r.requestId,LOCAL_OCR_PROBE_TEXT)),
+    resourceGuard:guard(),signal:c.signal,pollDelayMs:1,
+    bookSessionFactory:()=>({async capabilities(){return MEMBER_PADDLE_CAPABILITIES;},async recognize(r){recognizes++;return result(r.requestId);},async close(){}}),
+    bookPdfFactory:async()=>({pageCount:1,async capture(){return{image:image(),imageWidth:100,imageHeight:80,rotation:0,renderMs:1};},async close(){}}),
+    onEvent:event=>{if(event.event==='member_ocr.book_completed')c.abort();},
+    fetch:async(url,init)=>{
+      const parsed=new URL(String(url));if(parsed.origin==='https://files.ajtlab.top')return new Response(source);
+      const path=parsed.pathname,input=init?.body?JSON.parse(String(init.body)) as Record<string,unknown>:undefined;
+      if(path.endsWith('/connect'))return Response.json(connected);
+      if(path.endsWith('/device/claim'))return Response.json({job:null});
+      if(path.endsWith('/book-claim')){claims++;if(claims<4)assert.equal(recognizes,claims===1?0:1);return Response.json({job:{job:book,attemptId:claims<4?'attempt1':'attempt2',leaseExpiresAt:expiry,pageCount:1,savedPhysicalPages:[],capabilities:MEMBER_PADDLE_CAPABILITIES}});}
+      if(path.endsWith('/book-source'))return Response.json({resourceId:'resource1',sourceId:'source1',url:'https://files.ajtlab.top/object',expiresAt:new Date(Date.now()+299_000).toISOString(),sizeBytes:source.length,checksumAlgorithm:'md5',checksum:createHash('md5').update(source).digest('base64'),etag:null});
+      if(path.endsWith('/book-heartbeat'))return Response.json({active:true,leaseExpiresAt:new Date(Date.now()+89_000).toISOString(),savedPhysicalPages:saved});
+      if(path.endsWith('/book-page')){acks++;if(input?.attemptId==='attempt1')throw Error('network disconnected');saved=[1];return Response.json({accepted:true,resultId:'result1',savedPhysicalPages:saved});}
+      if(path.endsWith('/book-finish'))return Response.json({job:{...book,state:'succeeded',savedPhysicalPages:saved}});
+      throw Error('unexpected endpoint');
+    }});
+  assert.equal(claims,4);assert.equal(recognizes,2);assert.equal(acks,3);
+});

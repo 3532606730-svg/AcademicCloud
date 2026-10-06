@@ -365,3 +365,4 @@ import {
 export * from "./bibliography.js";
 export * from "./catalog-batch.js";
 export * from "./local-ocr.js";
+export * from "./local-ocr-book.js";

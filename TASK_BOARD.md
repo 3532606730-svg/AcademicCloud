@@ -1,12 +1,12 @@
 # AcademicCloud Task Board
 
-**Selected next implementation:** [ADR-051](docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md) device-owned persistent private book jobs, source grants, resumable page receipts and bounded warm Paddle slices. Normal close-browser/reopen/re-pair and actual speed acceptance precede one coordinated release; original/private/shared boundaries remain explicit.
+**Selected next implementation:** ADR-051 local implementation is qualified: backend95, frontend72 unique, Compute50, workspace types and independent review pass. Schema041-compatible prior-behavior3499940 Linux artifact qualification passes. Next is exact Core/frontend and standalone Member-kit release, then normal Owner background/pause/re-pair/actual-export acceptance. Retain Local Pull/Bridge662 and models; current production remains9840/schema40. Direct qualified deployment without a new production backup remains authorized. Searchable PDF and reviewed Library OCR remain separate derived contracts.
 
 **Last reconciled:** 2026-10-06. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
 ## Selected next step — whole-book OCR
 
-Owner October6 [ADR-050](docs/decisions/ADR-050-browser-run-private-book-ocr.md) is deployed on9840/native662/schema40. Normal Owner MongoliaToday313/313, original page4 preservation and actual TXT/JSONL313-page/end-marker acceptance pass; one low-confidence page166 needs human review, no whole-book CER is claimed. Next is Owner-selected speed/off-site device execution with durable checkpoints; freeze the ADR before changing browser ownership/native fresh-per-page policy. The existing500-page/500-result bounds remain. No automatic shared publication or original replacement.
+Owner October6 [ADR-050](docs/decisions/ADR-050-browser-run-private-book-ocr.md) is deployed on9840/native662/schema40. Normal Owner MongoliaToday313/313, original page4 preservation and actual TXT/JSONL313-page/end-marker acceptance pass; one low-confidence page166 needs human review, no whole-book CER is claimed. Next is Owner-selected speed/off-site device execution with durable checkpoints; ADR-051 freezes the new device ownership and bounded native-slice policy. The existing500-page/500-result bounds remain. No automatic shared publication or original replacement.
 
 ## Current focus — reliable book intake
 

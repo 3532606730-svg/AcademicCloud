@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { LOCAL_OCR_ROOT as ROOT, LOCAL_OCR_LIMITS as LIMIT, type LocalOcrBookQuery, type LocalOcrCompletion, type LocalOcrRequestInput } from '@academiccloud/compute-contracts';
+import type { LocalOcrBookStartInput, LocalOcrBookAttemptInput, LocalOcrBookHeartbeatInput, LocalOcrBookPageInput, LocalOcrBookFinishInput } from '@academiccloud/compute-contracts';
 import { LocalOcrError } from './model.js';
 import type { LocalOcrService } from './service.js';
 
@@ -21,8 +22,8 @@ function account(request: FastifyRequest): string {
   if (!request.authAccount) throw new Error('local OCR requires authentication');
   return request.authAccount.id;
 }
-function respond(reply: FastifyReply, work: () => unknown) {
-  try { return work(); } catch (error) {
+async function respond(reply: FastifyReply, work: () => unknown) {
+  try { return await work(); } catch (error) {
     if (!(error instanceof LocalOcrError)) throw error;
     const code = error.code;
     const status = code === 'not_found' ? 404 : code === 'invalid_request' ? 400
@@ -40,10 +41,11 @@ export async function registerLocalOcrHttp(app: FastifyInstance, service: LocalO
   app.post<{ Body: { label: string } }>(`${ROOT}/pairing`, { preHandler: app.authenticate, preValidation: requireJson, config: rate(10),
     schema: { body: { type: 'object', additionalProperties: false, required: ['label'], properties: { label: { type: 'string', minLength: 1, maxLength: 80 } } } } },
     (request, reply) => respond(reply, () => service.pairing(account(request), request.body.label)));
-  app.post<{ Body: { pairingCode: string; capabilities: unknown; probeResult: unknown } }>(`${ROOT}/connect`, {
+  app.post<{ Body: { pairingCode: string; capabilities: unknown; probeResult: unknown; transportFeatures?: unknown } }>(`${ROOT}/connect`, {
     preValidation: requireJson, config: rate(10), bodyLimit: 200_000,
     schema: { querystring: empty, body: { type: 'object', additionalProperties: false, required: ['pairingCode', 'capabilities', 'probeResult'], properties: {
       pairingCode: { type: 'string', maxLength: 128 }, capabilities: { type: 'object' }, probeResult: { type: 'object' },
+      transportFeatures: { type: 'array', maxItems: 1, uniqueItems: true, items: { enum: ['pdf_book_v1'] } },
     } } },
   }, (request, reply) => respond(reply, () => service.connect(request.body)));
   app.post<{ Params: { id: string } }>(`${ROOT}/devices/:id/revoke`, { preHandler: app.authenticate, preValidation: requireJson,
@@ -98,6 +100,36 @@ export async function registerLocalOcrHttp(app: FastifyInstance, service: LocalO
       jobId: id, attemptId: id, result: { type: 'object' }, errorCode: { enum: ['engine_busy', 'engine_failed', 'invalid_result'] },
     }, oneOf: [{ required: ['result'], not: { required: ['errorCode'] } }, { required: ['errorCode'], not: { required: ['result'] } }] } },
   }, (request, reply) => respond(reply, () => service.complete(token(request), request.body)));
+  const attempt = { type:'object', additionalProperties:false, required:['bookId','attemptId'], properties:{bookId:id,attemptId:id} } as const;
+  const pageCount = {type:'integer',minimum:1,maximum:500} as const;
+  app.get<{ Querystring: {resourceId?:string;sourceId?:string} }>(`${ROOT}/books`, {preHandler:app.authenticate,
+    schema:{querystring:{type:'object',additionalProperties:false,properties:{resourceId:id,sourceId:id}}}}, (request,reply) =>
+    respond(reply,() => {reply.header('cache-control','private, no-store');return {jobs:service.books(account(request),request.query)};}));
+  app.post<{ Body:LocalOcrBookStartInput }>(`${ROOT}/books`, {preHandler:app.authenticate,preValidation:requireJson,config:rate(10),
+    schema:{querystring:empty,body:{type:'object',additionalProperties:false,required:['clientRequestId','deviceId','resourceId','sourceId','pageCount'],
+      properties:{clientRequestId:id,deviceId:id,resourceId:id,sourceId:id,pageCount}}}}, (request,reply) => respond(reply,() => ({job:service.startBook(account(request),request.body)})));
+  app.get<{ Params:{id:string} }>(`${ROOT}/books/:id`,{preHandler:app.authenticate,schema:{params,querystring:empty}}, (request,reply) =>
+    respond(reply,() => {reply.header('cache-control','private, no-store');return {job:service.book(account(request),request.params.id)};}));
+  for (const action of ['pause','cancel'] as const) app.post<{Params:{id:string}}>(`${ROOT}/books/:id/${action}`,
+    {preHandler:app.authenticate,preValidation:requireJson,schema:{params,querystring:empty,body:empty}}, (request,reply) =>
+      respond(reply,() => ({job:service.controlBook(account(request),request.params.id,action)})));
+  app.post<{Params:{id:string};Body:{deviceId:string}}>(`${ROOT}/books/:id/resume`,{preHandler:app.authenticate,preValidation:requireJson,
+    schema:{params,querystring:empty,body:{type:'object',additionalProperties:false,required:['deviceId'],properties:{deviceId:id}}}}, (request,reply) =>
+      respond(reply,() => ({job:service.controlBook(account(request),request.params.id,'resume',request.body.deviceId)})));
+  app.get(`${ROOT}/device/book-claim`,{config:rate(120),schema:{querystring:empty}}, (request,reply) => respond(reply,() => ({job:service.claimBook(token(request))})));
+  app.post<{Body:LocalOcrBookHeartbeatInput}>(`${ROOT}/device/book-heartbeat`,{preValidation:requireJson,config:rate(120),schema:{querystring:empty,
+    body:{...attempt,properties:{...attempt.properties,pageCount}}}}, (request,reply) => respond(reply,() => service.heartbeatBook(token(request),request.body)));
+  app.post<{Body:LocalOcrBookAttemptInput}>(`${ROOT}/device/book-source`,{preValidation:requireJson,config:rate(20),schema:{querystring:empty,body:attempt}},
+    (request,reply) => respond(reply,() => {reply.header('cache-control','private, no-store');return service.sourceBook(token(request),request.body);}));
+  app.post<{Body:LocalOcrBookPageInput}>(`${ROOT}/device/book-page`,{preValidation:requireJson,config:rate(60),bodyLimit:maxBase64+204_096,
+    schema:{querystring:empty,body:{...attempt,required:[...attempt.required,'physicalPage','imageBase64','imageWidth','imageHeight','rotation','result'],
+      properties:{...attempt.properties,physicalPage:pageCount,imageBase64:{type:'string',minLength:44,maxLength:maxBase64},
+        imageWidth:{type:'integer',minimum:1,maximum:LIMIT.maxWidth},imageHeight:{type:'integer',minimum:1,maximum:LIMIT.maxHeight},rotation:{enum:[0,90,180,270]},result:{type:'object'}}}}},
+    (request,reply) => respond(reply,() => service.pageBook(token(request),request.body)));
+  app.post<{Body:LocalOcrBookFinishInput}>(`${ROOT}/device/book-finish`,{preValidation:requireJson,config:rate(20),schema:{querystring:empty,
+    body:{...attempt,properties:{...attempt.properties,pageCount,errorCode:{enum:['engine_busy','engine_failed','invalid_result']},failedPhysicalPage:pageCount},
+      oneOf:[{required:['pageCount'],not:{anyOf:[{required:['errorCode']},{required:['failedPhysicalPage']}]}},{required:['errorCode'],not:{required:['pageCount']}}]}}},
+    (request,reply) => respond(reply,() => ({job:service.finishBook(token(request),request.body)})));
   const sweep = setInterval(() => { try { service.sweep(); } catch { /* Per-request checks remain authoritative. */ } }, 15_000);
   sweep.unref();
   app.addHook('onClose', () => { clearInterval(sweep); service.close(); });

@@ -4,15 +4,20 @@ import test from 'node:test';
 
 const config = readFileSync(new URL('../../../deployment/nginx/academiccloud.conf', import.meta.url), 'utf8');
 
-test('the PNG transport has a narrow streaming proxy exception while ordinary JSON stays bounded', () => {
-  const location = /location = \/api\/reader\/local-ocr\/requests \{([\s\S]*?)\n    \}/u.exec(config)?.[1];
-  assert.ok(location);
-  assert.match(location, /client_max_body_size 3m;/u);
-  assert.match(location, /proxy_request_buffering off;/u);
-  assert.match(location, /proxy_http_version 1\.1;/u);
-  assert.match(location, /proxy_pass http:\/\/127\.0\.0\.1:3000;/u);
-  assert.match(location, /proxy_next_upstream off;/u);
-  assert.equal(config.match(/client_max_body_size 3m;/gu)?.length, 1);
+test('only current-page and device-book PNG transports have streaming proxy exceptions while ordinary JSON stays bounded', () => {
+  const paths = ['requests','device/book-page'];
+  for (const path of paths) {
+    const marker = `location = /api/reader/local-ocr/${path} {`;
+    const start = config.indexOf(marker);
+    assert.notEqual(start, -1);
+    const location = config.slice(start, config.indexOf('\n    }', start));
+    assert.match(location, /client_max_body_size 3m;/u);
+    assert.match(location, /proxy_request_buffering off;/u);
+    assert.match(location, /proxy_http_version 1\.1;/u);
+    assert.match(location, /proxy_pass http:\/\/127\.0\.0\.1:3000;/u);
+    assert.match(location, /proxy_next_upstream off;/u);
+  }
+  assert.equal(config.match(/client_max_body_size 3m;/gu)?.length, 2);
   assert.equal(config.match(/client_max_body_size 16k;/gu)?.length, 1);
   assert.doesNotMatch(/location \/api\/ \{([\s\S]*?)\n    \}/u.exec(config)?.[1] ?? '', /client_max_body_size/u);
 });

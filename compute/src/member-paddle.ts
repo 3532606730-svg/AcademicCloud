@@ -94,3 +94,68 @@ export class MemberPaddleAdapter implements OcrEngineAdapter {
   }
   async close():Promise<void>{this.#closed=true;this.#abort?.abort();try{await this.#operation;}catch{/* controlled operation already rejected */}}
 }
+
+/** One bounded book slice. Its caller owns the native lease until close resolves. */
+export class MemberPaddleSession implements OcrEngineAdapter {
+  #active = false;
+  #closed = false;
+  #failed = false;
+  #adapter: OcrAdapter | undefined;
+  #abort: AbortController | undefined;
+  #operation: Promise<OcrEnginePageResult> | undefined;
+  #closing: Promise<void> | undefined;
+  constructor(
+    private readonly config: MemberPaddleConfig,
+    private readonly factory: (config: PaddleOcrConfig, timing?: (phase: "startup" | "predict", milliseconds: number) => void) => OcrAdapter
+      = (config, timing) => new PaddleOcrSidecarAdapter(config, timing),
+    private readonly onTiming?: (phase: "startup" | "predict", milliseconds: number) => void,
+  ) {}
+  async capabilities(): Promise<OcrEngineCapabilities> { return structuredClone(MEMBER_PADDLE_CAPABILITIES); }
+  async recognize(request: OcrEnginePageRequest, options: { signal: AbortSignal }): Promise<OcrEnginePageResult> {
+    if (this.#closed || this.#failed) throw new MemberOcrError('engine_unavailable');
+    if (this.#active) throw new MemberOcrError('engine_busy');
+    if (options.signal.aborted) throw new MemberOcrError('aborted');
+    let input: OcrEnginePageRequest, dimensions: { width: number; height: number };
+    try { input = parseOcrEnginePageRequest(request, MEMBER_PADDLE_CAPABILITIES); dimensions = inspectRenderedPng(input.image); }
+    catch { throw new MemberOcrError('input_invalid'); }
+    if (!this.#adapter) {
+      try { this.#adapter = this.factory({ ...this.config, engineId: PADDLE_OCR_ENGINE_ID,
+        executableArguments: ['-I', fileURLToPath(new URL('../scripts/member_paddle_offline.py', import.meta.url))] }, this.onTiming); }
+      catch { this.#failed = true; throw new MemberOcrError('engine_unavailable'); }
+    }
+    const adapter = this.#adapter;
+    this.#active = true;
+    const abort = new AbortController(); this.#abort = abort;
+    const deadline = AbortSignal.timeout(90_000);
+    const signal = AbortSignal.any([options.signal, abort.signal, deadline]);
+    const operation = (async () => {
+      try {
+        const response = await adapter.recognizePage({ imageBytes: input.image, pageIndex: 1, readerMode: true, includeGeometry: true }, signal);
+        if (signal.aborted) throw new MemberOcrError(deadline.aborted ? 'timeout' : 'aborted');
+        const prepared = prepareOcrGeometry(response.text, response.geometry, OCR_ENGINE_MAX_TEXT_UNITS, dimensions);
+        const text = prepared.text || null;
+        try { return parseOcrEnginePageResult({ requestId: input.requestId, status: response.status, text,
+          truncated: text === null ? false : response.truncated === true || prepared.truncated, confidence: response.confidence,
+          provenance: { engineId: MEMBER_PADDLE_CAPABILITIES.engineId, engineVersion: MEMBER_PADDLE_CAPABILITIES.engineVersion, modelVersion: MEMBER_PADDLE_CAPABILITIES.modelVersion },
+          ...((prepared.geometry.status === 'available' || prepared.geometry.status === 'limited') ? { lineBoxes: prepared.geometry.lineBoxes } : {}),
+        }, { requestId: input.requestId, capabilities: MEMBER_PADDLE_CAPABILITIES }); }
+        catch { throw new MemberOcrError('invalid_result'); }
+      } catch (error) {
+        this.#failed = true;
+        if (error instanceof MemberOcrError) throw error;
+        throw new MemberOcrError(signal.aborted ? (deadline.aborted ? 'timeout' : 'aborted') : 'engine_failed');
+      } finally { this.#active = false; this.#abort = undefined; }
+    })();
+    this.#operation = operation;
+    try { return await operation; } finally { this.#operation = undefined; }
+  }
+  close(): Promise<void> {
+    if (this.#closing) return this.#closing;
+    this.#closed = true; this.#abort?.abort();
+    this.#closing = (async () => {
+      try { await this.#operation; } catch { /* Still await actual native closure below. */ }
+      await this.#adapter?.close?.();
+    })();
+    return this.#closing;
+  }
+}

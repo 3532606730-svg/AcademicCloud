@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLocalOcrApi } from "./local-ocr-api.ts";
-import { OCR_BOOK_PROGRESS, OCR_JOB, OCR_RESULT } from "./local-ocr-test-fixture.ts";
+import { OCR_BOOK_JOB, OCR_BOOK_PROGRESS, OCR_JOB, OCR_RESULT } from "./local-ocr-test-fixture.ts";
 import { ApiClient } from "./api.ts";
 
 describe("private local OCR HTTP client", () => {
@@ -27,5 +27,16 @@ describe("private local OCR HTTP client", () => {
     expect(api.bookExportUrl(book, "txt")).toBe("/api/reader/local-ocr/book-export?resourceId=book%26other%3D1&sourceId=source+%2F1&pageCount=313&format=txt");
     expect(api.bookExportUrl(book, "jsonl")).toMatch(/&format=jsonl$/);
     expect(request).toHaveBeenCalledTimes(1);
+  });
+  it("restores and explicitly controls device-owned jobs using session transport", async () => {
+    const request = vi.fn().mockResolvedValue({ jobs: [OCR_BOOK_JOB], job: OCR_BOOK_JOB }); const api = createLocalOcrApi(request); const abort = new AbortController();
+    expect(await api.books({ resourceId: "book&other=1", sourceId: "source /1", pageCount: 313 }, abort.signal)).toEqual([OCR_BOOK_JOB]);
+    expect(request).toHaveBeenLastCalledWith("/api/reader/local-ocr/books?resourceId=book%26other%3D1&sourceId=source+%2F1", { signal: abort.signal });
+    const input = { clientRequestId: "stable-key", deviceId: "new-device", resourceId: "book", sourceId: "source", pageCount: 313 };
+    await api.createBook(input); expect(request).toHaveBeenLastCalledWith("/api/reader/local-ocr/books", expect.objectContaining({ method: "POST", body: JSON.stringify(input) }));
+    await api.bookJob("book /1", abort.signal); expect(request).toHaveBeenLastCalledWith("/api/reader/local-ocr/books/book%20%2F1", { signal: abort.signal });
+    await api.pauseBook("book /1"); expect(request).toHaveBeenLastCalledWith("/api/reader/local-ocr/books/book%20%2F1/pause", expect.objectContaining({ method: "POST", body: "{}" }));
+    await api.resumeBook("book /1", "re-paired-device"); expect(request).toHaveBeenLastCalledWith("/api/reader/local-ocr/books/book%20%2F1/resume", expect.objectContaining({ method: "POST", body: JSON.stringify({ deviceId: "re-paired-device" }) }));
+    await api.cancelBook("book /1"); expect(request).toHaveBeenLastCalledWith("/api/reader/local-ocr/books/book%20%2F1/cancel", expect.objectContaining({ method: "POST", body: "{}" }));
   });
 });

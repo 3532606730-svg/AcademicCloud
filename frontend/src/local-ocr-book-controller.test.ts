@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LocalOcrBookController, bookOcrSummary, type BookOcrDocument } from "./local-ocr-book-controller.ts";
-import { OCR_BOOK_PROGRESS, OCR_DEVICE, OCR_FRAME, OCR_JOB, OCR_RESULT, ocrApi } from "./local-ocr-test-fixture.ts";
+import { LocalOcrBookController, bookOcrSummary, readBookOcrSnapshot, type BookOcrDocument } from "./local-ocr-book-controller.ts";
+import { OCR_BOOK_JOB, OCR_BOOK_PROGRESS, OCR_DEVICE, OCR_FRAME, OCR_JOB, OCR_RESULT, ocrApi } from "./local-ocr-test-fixture.ts";
 import type { LocalOcrBookProgress, LocalOcrResult } from "./local-ocr-api.ts";
 
 const input = { resourceId: OCR_RESULT.resourceId, sourceId: OCR_RESULT.sourceId, pageCount: 3 };
@@ -95,5 +95,15 @@ describe("sequential private book OCR", () => {
     });
     expect(await new LocalOcrBookController(f.api).run(input, OCR_DEVICE.id, f.document, vi.fn())).toMatchObject({ state: "completed" });
     expect(f.document.capture).toHaveBeenCalledTimes(1); expect(f.api.create).toHaveBeenCalledTimes(1); expect(f.api.create).toHaveBeenCalledWith(expect.objectContaining({ physicalPage: 1 }));
+  });
+  it("reconciles progress when the finished job and page metadata straddle the last commit", async () => {
+    const final = { ...OCR_BOOK_PROGRESS, pages: [1, 2, 3].map((physicalPage) => ({ ...OCR_BOOK_PROGRESS.pages[0]!, physicalPage })), quota: { used: 4, limit: 500, remaining: 496 } };
+    const api = ocrApi({ bookProgress: vi.fn().mockResolvedValueOnce(OCR_BOOK_PROGRESS).mockResolvedValue(final), books: vi.fn().mockResolvedValue([{ ...OCR_BOOK_JOB, state: "succeeded", savedPhysicalPages: [1, 2, 3] }]) });
+    const restored = await readBookOcrSnapshot(api, input); expect(restored.book).toEqual(final); expect(restored.job?.state).toBe("succeeded");
+    expect(api.bookProgress).toHaveBeenCalledTimes(2); expect(api.createBook).not.toHaveBeenCalled(); expect(api.resumeBook).not.toHaveBeenCalled(); expect(api.result).not.toHaveBeenCalled();
+  });
+  it.each([{ sourceId: "other-source" }, { savedPhysicalPages: [2, 501] }, { savedPhysicalPages: [2, 2] }])("rejects mismatched or invalid private job checkpoints %j", async (change) => {
+    const api = ocrApi({ books: vi.fn().mockResolvedValue([{ ...OCR_BOOK_JOB, ...change }]) });
+    await expect(readBookOcrSnapshot(api, input)).rejects.toThrow("invalid_result"); expect(api.createBook).not.toHaveBeenCalled(); expect(api.cancelBook).not.toHaveBeenCalled();
   });
 });

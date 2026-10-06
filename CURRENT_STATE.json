@@ -6,12 +6,12 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "ce0520aea3f418cc3fed0d305d8afd848e0d678a",
+    "checkpoint": "1700c5b18668cf93a24df961b3d332a2b0c97113",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "ce0520a push/fetch actual equality and clean worktree verified; subsequent ADR051 implementation reconciliation is separate.",
-    "lastVerifiedPublishedCheckpoint": "ce0520aea3f418cc3fed0d305d8afd848e0d678a",
-    "checkpointMeaning": "Published full-book evidence checkpoint; deployed artifact remains9840."
+    "localState": "1700c5b publication/fetch equality verified; current ADR051 implementation tree is pending checkpoint and exact release.",
+    "lastVerifiedPublishedCheckpoint": "1700c5b18668cf93a24df961b3d332a2b0c97113",
+    "checkpointMeaning": "ADR051 implementation authorization checkpoint; runtime remains9840/schema40 until qualified cutover."
   },
   "production": {
     "observedAt": "2026-10-06",
@@ -849,7 +849,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Implement accepted ADR051 device-owned durable private book jobs/source grants/idempotent receipts and bounded warm sessions; qualify source/privacy/quota/closure-before-release, then one exact release and normal close-browser/reopen/resume/speed acceptance. Preserve accepted313-page results/exports; no silent Library publication/original replacement.",
+  "next": "Qualify and deploy exact Core/frontend schema041 and standalone Member kit; retain Catalog/LocalPull/Bridge662, then normal Owner background start/close/reopen/pause/re-pair resume and actual export/timing acceptance. Preserve313-page accepted history; no new production backup, source replacement or automatic sharing.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1226,7 +1226,7 @@
     }
   },
   "backgroundBookOcr": {
-    "status": "ACCEPTED_FOR_IMPLEMENTATION_NOT_DEPLOYED",
+    "status": "LOCAL_QUALIFIED_RELEASE_AND_LIVE_ACCEPTANCE_PENDING",
     "adr": "docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md",
     "coreSchemaCandidate": 41,
     "transportFeature": "pdf_book_v1",
@@ -1239,6 +1239,20 @@
     "deviceTokenPersisted": false,
     "libraryPublicationEnabled": false,
     "localSearchablePdfEnabled": false,
-    "modelsAndPythonHashChanged": false
+    "modelsAndPythonHashChanged": false,
+    "retainedJobsPerAccount": 100,
+    "localVerification": {
+      "backend": 95,
+      "frontendUniqueTests": 72,
+      "frontendUniqueFiles": 7,
+      "compute": 50,
+      "allWorkspaceTypes": "PASS",
+      "independentReview": "PASS",
+      "schema041Sha256": "1b929cec40fd840695751437f97e11de1fff13bfd1b367f4120f8406892c125a",
+      "rollbackSourceCommit": "3499940efe8320eb5250a5b0c5ff47b274bfdbad",
+      "rollbackLinuxQualification": "PASS",
+      "newKitSha256": "baccd267a1646bd15bca82901e63375a292bb094a93b5fd57163cb8ff7e7ce95"
+    },
+    "retainedNativeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
   }
 }

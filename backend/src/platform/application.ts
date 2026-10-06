@@ -113,7 +113,7 @@ export async function createApplication(
       catalogBatch: { service: catalogBatchService },
       libraries: { service: libraryService },
       workspace: { service: new WorkspaceService(persistence, new SqliteWorkspaceRepository(database)) },
-      localOcr: { service: new LocalOcrService(persistence, new SqliteLocalOcrRepository(database), new SqliteWorkspaceRepository(database)) },
+      localOcr: { service: new LocalOcrService(persistence, new SqliteLocalOcrRepository(database), new SqliteWorkspaceRepository(database), undefined, storage) },
       readinessCheck: () => {
         assertRuntimeRulesetReady(database, runtimeRuleset);
         return persistence.isReady();

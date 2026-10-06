@@ -97,7 +97,7 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
   readonly #pending = new Map<string, Pending>();
   #startupDiagnosticBytes = 0;
 
-  constructor(config: PaddleOcrConfig = loadPaddleOcrConfig()) {
+  constructor(config: PaddleOcrConfig = loadPaddleOcrConfig(), private readonly onTiming?: (phase: "startup" | "predict", milliseconds: number) => void) {
     this.#config = config;
   }
 
@@ -105,11 +105,15 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
     if (input.includeGeometry && input.readerMode !== true) throw new OcrError("input_limit");
     if (!Number.isSafeInteger(input.pageIndex) || input.pageIndex < 1 || input.imageBytes.byteLength < 1
       || input.imageBytes.byteLength > SUGGESTION_LIMITS.maxEncodedPageImageBytes) throw new OcrError("input_limit");
+    const cold = !this.#ready;
+    const startup = performance.now();
     await this.#ensureReady(signal);
+    if (cold) this.#recordTiming("startup", performance.now() - startup);
     if (signal?.aborted) throw new OcrError("aborted");
     if (!this.#child?.stdin.writable) throw new OcrError("engine_unavailable");
     const id = randomUUID();
-    return new Promise<OcrRecognition>((resolve, reject) => {
+    const started = performance.now();
+    const operation = new Promise<OcrRecognition>((resolve, reject) => {
       const finish = (callback: () => void): void => {
         const pending = this.#pending.get(id);
         if (!pending) return;
@@ -136,6 +140,11 @@ export class PaddleOcrSidecarAdapter implements OcrAdapter {
         if (error) finish(() => reject(new OcrError("engine_failure")));
       });
     });
+    try { return await operation; } finally { this.#recordTiming("predict", performance.now() - started); }
+  }
+
+  #recordTiming(phase: "startup" | "predict", milliseconds: number): void {
+    try { this.onTiming?.(phase, milliseconds); } catch { /* Observability must not change recognition or cleanup. */ }
   }
 
   async close(): Promise<void> {

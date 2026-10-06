@@ -1,4 +1,4 @@
-import type { LocalOcrBookPage, LocalOcrBookQuery, LocalOcrDevice, LocalOcrResult } from '@academiccloud/compute-contracts';
+import type { LocalOcrBookJob, LocalOcrBookPage, LocalOcrBookQuery, LocalOcrDevice, LocalOcrResult, OcrEngineCapabilities } from '@academiccloud/compute-contracts';
 
 export class LocalOcrError extends Error {
   constructor(readonly code: 'invalid_request' | 'not_found' | 'pairing_invalid' | 'device_authentication_required'
@@ -12,6 +12,14 @@ export interface PairingRow {
 export interface DeviceRow extends Omit<LocalOcrDevice, 'online'> {
   accountId: string; tokenDigest: string; authRevision: number;
 }
+export interface BookJobRow extends Omit<LocalOcrBookJob, 'savedPhysicalPages'> {
+  accountId: string; authRevision: number; attemptId: string | null; decodedPageCount: number | null;
+  requestDigest: string;
+  capabilities: OcrEngineCapabilities;
+}
+export interface BookPageReceiptRow {
+  bookId: string; physicalPage: number; resultId: string; acceptedAttemptId: string; payloadDigest: string; createdAt: string;
+}
 export interface LocalOcrRepository {
   savePairing(pairing: PairingRow): void;
   pairing(digest: string): PairingRow | null;
@@ -24,8 +32,18 @@ export interface LocalOcrRepository {
   revokeDevice(accountId: string, id: string, now: string): void;
   countResults(accountId: string): number;
   bookPages(accountId: string, query: LocalOcrBookQuery): LocalOcrBookPage[];
+  savedPhysicalPages(accountId: string, query: LocalOcrBookQuery): number[];
   saveResult(accountId: string, result: LocalOcrResult): void;
   result(accountId: string, id: string): LocalOcrResult | null;
   results(accountId: string, resourceId: string, sourceId: string, physicalPage: number): LocalOcrResult[];
   correctResult(accountId: string, id: string, revision: number, correctedText: string, now: string): boolean;
+  bookJob(accountId: string, id: string): BookJobRow | null;
+  bookJobByClientRequest(accountId: string, clientRequestId: string): BookJobRow | null;
+  countBookJobs(accountId: string): number;
+  bookJobs(accountId: string, filter: { resourceId?: string; sourceId?: string }): BookJobRow[];
+  activeBookJobs(): BookJobRow[];
+  saveBookJob(job: BookJobRow): void;
+  updateBookJob(job: BookJobRow): void;
+  bookReceipt(bookId: string, physicalPage: number): BookPageReceiptRow | null;
+  saveBookReceipt(receipt: BookPageReceiptRow): void;
 }

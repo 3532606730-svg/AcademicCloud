@@ -36,10 +36,10 @@ test('040 preserves complete 039 data, validates startup history and keeps resul
     const exported = [...workspace.exportLines('ocr-owner')];
     const tables = database.prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'schema_migrations' ORDER BY name").all();
     const snapshots = tables.map(({ name }) => ({ name, rows: database.prepare(`SELECT * FROM "${name.replaceAll('"', '""')}"`).all() }));
-    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [40], currentVersion: 40 });
+    assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [40, 41], currentVersion: 41 });
     for (const snapshot of snapshots) assert.deepEqual(database.prepare(`SELECT * FROM "${snapshot.name.replaceAll('"', '""')}"`).all(), snapshot.rows, snapshot.name);
     assert.throws(() => assertMigrationsCurrent(database, dir), /Applied migration 40 is missing/);
-    assert.deepEqual(assertMigrationsCurrent(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [], currentVersion: 40 });
+    assert.deepEqual(assertMigrationsCurrent(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [], currentVersion: 41 });
     const repository = new SqliteLocalOcrRepository(database);
     const service = new LocalOcrService(persistence, repository, new SqliteWorkspaceRepository(database), () => now);
     const pairingCode = service.pairing('ocr-owner', 'My device').pairingCode;

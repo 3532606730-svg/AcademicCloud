@@ -129,6 +129,15 @@ test("PaddleOCR sidecar keeps rendered bytes in memory and returns pinned bounde
   }
 });
 
+test("timing consumer exceptions cannot change successful Paddle recognition or native cleanup", async () => {
+  const phases: string[] = [];
+  const adapter = new PaddleOcrSidecarAdapter({ pythonPath: process.execPath, sidecarPath: 'ignored-by-fixture', detectionModelPath: 'det-model',
+    recognitionModelPath: 'rec-model', cachePath: join(tmpdir(), 'academiccloud-paddlex'), device: 'cpu', engineId: PADDLE_OCR_ENGINE_ID,
+    executableArguments: [fileURLToPath(new URL('./fixtures/fake-paddle-sidecar.mjs', import.meta.url))] }, phase => { phases.push(phase); throw Error('observer failed'); });
+  try { assert.equal((await adapter.recognizePage({ imageBytes: new Uint8Array([1]), pageIndex: 1 })).status, 'recognized'); assert.deepEqual(phases, ['startup', 'predict']); }
+  finally { await adapter.close(); }
+});
+
 test("Reader sidecar requests retain uncertain text and report truncation without relaxing bibliography", async () => {
   const adapter = new PaddleOcrSidecarAdapter({
     pythonPath: process.execPath, sidecarPath: "ignored-by-fixture",

@@ -1,4 +1,4 @@
-import type { LocalOcrApi, LocalOcrBook, LocalOcrBookProgress, LocalOcrJob, LocalOcrResult } from "./local-ocr-api.ts";
+import type { LocalOcrApi, LocalOcrBook, LocalOcrBookJob, LocalOcrBookProgress, LocalOcrJob, LocalOcrResult } from "./local-ocr-api.ts";
 import type { LocalOcrFrame } from "./local-ocr-frame.ts";
 import { LocalOcrController } from "./local-ocr-controller.ts";
 
@@ -26,6 +26,33 @@ export function bookOcrSummary(book: LocalOcrBookProgress) {
     issues: book.pages.filter((page) => page.truncated || page.status === "low_confidence" || page.status === "unsupported_script"),
     noText: book.pages.filter((page) => page.status === "no_text").length,
   };
+}
+
+export const backgroundBookBusy = (job: LocalOcrBookJob | null) => job?.state === "queued" || job?.state === "running";
+
+export function validateBookJob(input: LocalOcrBook, job: LocalOcrBookJob): LocalOcrBookJob {
+  if (job.resourceId !== input.resourceId || job.sourceId !== input.sourceId || job.pageCount !== input.pageCount
+    || job.savedPhysicalPages.some((page) => !Number.isSafeInteger(page) || page < 1 || page > input.pageCount)
+    || new Set(job.savedPhysicalPages).size !== job.savedPhysicalPages.length) throw new Error("invalid_result");
+  return job;
+}
+
+/** Read-only restoration. A browser lifecycle event never mutates a device-owned job. */
+export async function readBookOcrSnapshot(api: LocalOcrApi, input: LocalOcrBook, signal?: AbortSignal) {
+  const [initial, jobs] = await Promise.all([api.bookProgress(input, signal), api.books(input, signal)]);
+  const validate = (value: LocalOcrBookProgress) => {
+    if (value.resourceId !== input.resourceId || value.sourceId !== input.sourceId || value.pageCount !== input.pageCount
+      || value.pages.some((page) => !Number.isSafeInteger(page.physicalPage) || page.physicalPage < 1 || page.physicalPage > input.pageCount)
+      || new Set(value.pages.map((page) => page.physicalPage)).size !== value.pages.length) throw new Error("invalid_result");
+    return value;
+  };
+  let book = validate(initial);
+  jobs.forEach((job) => validateBookJob(input, job));
+  // Prefer any live job over an older terminal record. The API returns newest-created first.
+  const job = jobs.find(backgroundBookBusy) ?? jobs[0] ?? null;
+  // The two endpoints can straddle a page commit. Reconcile once before stopping a completed job's poll.
+  if (job?.savedPhysicalPages.some((page) => !book.pages.some((saved) => saved.physicalPage === page))) book = validate(await api.bookProgress(input, signal));
+  return { book, job, jobs };
 }
 
 /** Browser-owned sequential execution; saved server results are the only durable checkpoints. */

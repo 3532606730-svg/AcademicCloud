@@ -6,6 +6,9 @@ import { LOCAL_OCR_ROOT, LOCAL_OCR_PROBE_REQUEST_ID, LOCAL_OCR_PROBE_TEXT, LOCAL
 import { MemberOcrError } from "./member-paddle.js";
 import { inspectRenderedPng } from "./rendered-png.js";
 import type { NativeResourceGuard } from "./native-resource.js";
+import { LOCAL_OCR_BOOK_FEATURE } from "@academiccloud/compute-contracts";
+import { parseMemberBookClaim, runMemberBookJob, type MemberBookOptions, type MemberBookEvent } from "./member-book-ocr.js";
+import type { BookPdfFactory } from "./member-book-pdf.js";
 
 const ID=/^[A-Za-z0-9_-]{1,128}$/u;
 export function exactMemberCoreOrigin(value:string):string {
@@ -47,7 +50,10 @@ export interface MemberConnectorOptions {
   resourceGuard:NativeResourceGuard;
   signal:AbortSignal;
   fetch?:typeof fetch;
-  onEvent?:(event:{event:string;code?:string})=>void;
+  onEvent?:(event:MemberBookEvent)=>void;
+  /** Only a PDF-capable connector advertises the separate transport feature. */
+  bookSessionFactory?: MemberBookOptions['sessionFactory'];
+  bookPdfFactory?: BookPdfFactory;
   /** Offline test control; does not permit concurrent requests or automatic retries. */
   pollDelayMs?:number;
   heartbeatMs?:number;
@@ -58,6 +64,9 @@ export async function runMemberLocalConnector(options:MemberConnectorOptions):Pr
   if(!/^[A-Za-z0-9_-]{16,256}$/u.test(options.pairingCode))throw new MemberOcrError('pairing_failed');
   const capabilities=parseOcrEngineCapabilities(await options.engine.capabilities());
   let token:string|undefined;let expires=0;
+  // A stopped or uncertain attempt must not be inferred again by idle polling.
+  // Explicit resume creates a new server attempt; re-pair uses a new device.
+  const attemptedBooks=new Map<string,string>();
   async function request(path:string,body:unknown|undefined,signal:AbortSignal):Promise<unknown>{
     try{
       const response=await fetcher(core+LOCAL_OCR_ROOT+path,{method:body===undefined?'GET':'POST',redirect:'error',
@@ -76,7 +85,8 @@ export async function runMemberLocalConnector(options:MemberConnectorOptions):Pr
     finally{await lease.release();}
     if(probe.status!=='recognized'||probe.truncated||probe.text?.replace(/\s+/gu,' ').trim()!==LOCAL_OCR_PROBE_TEXT)throw new MemberOcrError('engine_failed');
     parseOcrEnginePageResult(probe,{requestId:LOCAL_OCR_PROBE_REQUEST_ID,capabilities});
-    const connected=object(await request('/connect',{pairingCode:options.pairingCode,capabilities,probeResult:probe},options.signal)) as unknown as LocalOcrConnection;
+    const connected=object(await request('/connect',{pairingCode:options.pairingCode,capabilities,probeResult:probe,
+      ...(options.bookSessionFactory?{transportFeatures:[LOCAL_OCR_BOOK_FEATURE]}:{})},options.signal)) as unknown as LocalOcrConnection;
     if(typeof connected.deviceToken!=='string'||!/^[A-Za-z0-9_-]{32,512}$/u.test(connected.deviceToken))throw new MemberOcrError('protocol_invalid');
     expires=expiry(connected.tokenExpiresAt,LOCAL_OCR_LIMITS.tokenLifetimeMs);token=connected.deviceToken;
     options.onEvent?.({event:'member_ocr.connected'});
@@ -86,9 +96,27 @@ export async function runMemberLocalConnector(options:MemberConnectorOptions):Pr
       const controller=new AbortController();const idleSignal=AbortSignal.any([options.signal,lease.signal,controller.signal]);
       let job:LocalOcrDeviceJob|undefined;
       let waitBeforePoll=false;
+      let leaseReleased=false;
       try{
         const claimed=object(await request('/device/claim',undefined,idleSignal));
-        if(claimed.job===null){waitBeforePoll=true;continue;}
+        if(claimed.job===null){
+          if(options.bookSessionFactory){
+            const value=object(await request('/device/book-claim',undefined,idleSignal));
+            if(value.job!==null){
+              const book=parseMemberBookClaim(value.job,capabilities);
+              if(attemptedBooks.get(book.job.id)===book.attemptId){waitBeforePoll=true;continue;}
+              attemptedBooks.set(book.job.id,book.attemptId);
+              // The book owns later bounded slices; never nest a second guard
+              // acquisition inside this empty legacy-poll lease.
+              await lease.release();leaseReleased=true;
+              await runMemberBookJob(book,{request,resourceGuard:options.resourceGuard,sessionFactory:options.bookSessionFactory,
+                signal:AbortSignal.any([options.signal,AbortSignal.timeout(Math.max(1,Math.min(expires,Date.parse(book.job.expiresAt))-Date.now()))]),capabilities,
+                ...(options.fetch?{fetch:options.fetch}:{}),...(options.onEvent?{onEvent:options.onEvent}:{}),
+                ...(options.bookPdfFactory?{pdfFactory:options.bookPdfFactory}:{}),...(options.heartbeatMs?{heartbeatMs:options.heartbeatMs}:{})});
+            }
+          }
+          waitBeforePoll=true;continue;
+        }
         job=parseMemberDeviceJob(claimed.job,capabilities);
         const deadline=AbortSignal.timeout(Math.max(1,Math.min(90_000,Date.parse(job.leaseExpiresAt)-Date.now(),expires-Date.now())));
         const signal=AbortSignal.any([idleSignal,deadline]);
@@ -116,7 +144,7 @@ export async function runMemberLocalConnector(options:MemberConnectorOptions):Pr
         if(error instanceof MemberOcrError&&error.code==='access_revoked')throw error;
         options.onEvent?.({event:'member_ocr.request_failed',code:error instanceof MemberOcrError?error.code:'engine_failed'});
         waitBeforePoll=true;
-      }finally{controller.abort();await lease.release();if(waitBeforePoll)await delay(options.pollDelayMs??2000,options.signal);}
+      }finally{controller.abort();if(!leaseReleased)await lease.release();if(waitBeforePoll)await delay(options.pollDelayMs??2000,options.signal);}
     }
   }finally{token=undefined;await options.engine.close();}
 }

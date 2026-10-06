@@ -1,6 +1,6 @@
 import { stdin, stderr, stdout } from "node:process";
 import { createNativeResourceGuard } from "./native-resource.js";
-import { detectInstalledPaddle, loadMemberPaddleConfig, MemberOcrError, MemberPaddleAdapter, verifyMemberPaddleAssets } from "./member-paddle.js";
+import { detectInstalledPaddle, loadMemberPaddleConfig, MemberOcrError, MemberPaddleAdapter, MemberPaddleSession, verifyMemberPaddleAssets } from "./member-paddle.js";
 import { exactMemberCoreOrigin, runMemberLocalConnector } from "./member-local-ocr.js";
 
 export function parseMemberOcrFlags(args:readonly string[]):{core:string;config?:string;detectInstalled:boolean}{
@@ -36,6 +36,7 @@ async function main():Promise<void>{
   const controller=new AbortController();for(const signal of ['SIGINT','SIGTERM'] as const)process.once(signal,()=>controller.abort());
   const pairingCode=await readPairingCode(controller.signal);
   await runMemberLocalConnector({coreOrigin:flags.core,pairingCode,engine:new MemberPaddleAdapter(config),resourceGuard:guard,signal:controller.signal,
+    bookSessionFactory:onTiming=>new MemberPaddleSession(config,undefined,onTiming),
     onEvent:event=>stdout.write(JSON.stringify(event)+'\n')});
 }
 if(process.argv[1]&&/(?:^|[\\/])member-ocr-main\.(?:js|ts)$/u.test(process.argv[1])){

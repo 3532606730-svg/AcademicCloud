@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Writable } from 'node:stream';
 import type { TestContext } from 'node:test';
 import { LOCAL_OCR_PROBE_REQUEST_ID, LOCAL_OCR_PROBE_TEXT, LOCAL_OCR_ROOT as ROOT,
-  type OcrEngineCapabilities, type OcrEnginePageResult, type LocalOcrRequestInput, type LocalOcrDeviceJob, type LocalOcrConnection } from '@academiccloud/compute-contracts';
+  type OcrEngineCapabilities, type OcrEnginePageResult, type LocalOcrRequestInput, type LocalOcrDeviceJob, type LocalOcrConnection, type LocalOcrTransportFeature } from '@academiccloud/compute-contracts';
 import { AuthService } from '../../src/auth/auth-service.js';
 import { LocalOcrService } from '../../src/local-ocr/service.js';
 import { SqliteLocalOcrRepository } from '../../src/persistence/sqlite/local-ocr-repository.js';
@@ -31,7 +31,7 @@ export async function httpFixture(context: TestContext) {
   const f = fixture(context); let milliseconds = NOW.getTime();
   const now = () => new Date(milliseconds);
   const repository = new SqliteLocalOcrRepository(f.database);
-  const service = new LocalOcrService(f.persistence, repository, f.repository, now);
+  const service = new LocalOcrService(f.persistence, repository, f.repository, now, f.storage);
   const logs: string[] = [];
   const stream = new Writable({ write(chunk, _encoding, callback) { logs.push(chunk.toString()); callback(); } });
   const app = await createApp({ logger: { level: 'info', stream }, auth: { service: new AuthService({ persistence: f.persistence, now,
@@ -49,11 +49,11 @@ export async function httpFixture(context: TestContext) {
     method, url, headers: { cookie: cookies[account]!, origin: ORIGIN }, ...(payload === undefined ? {} : { payload: payload as object }) });
   const deviceRequest = (token: string, method: 'GET' | 'POST', path: string, payload?: unknown) => app.inject({
     method, url: `${ROOT}/device/${path}`, headers: { authorization: `Bearer ${token}`, origin: ORIGIN }, ...(payload === undefined ? {} : { payload: payload as object }) });
-  async function connect(account = MEMBER.id): Promise<LocalOcrConnection> {
+  async function connect(account = MEMBER.id, transportFeatures?: LocalOcrTransportFeature[]): Promise<LocalOcrConnection> {
     const pairing = await request(account, 'POST', `${ROOT}/pairing`, { label: 'My synthetic device' });
     assert.equal(pairing.statusCode, 200);
     const response = await app.inject({ method: 'POST', url: `${ROOT}/connect`, headers: { origin: ORIGIN }, payload: {
-      pairingCode: pairing.json().pairingCode, capabilities, probeResult: probe } });
+      pairingCode: pairing.json().pairingCode, capabilities, probeResult: probe, ...(transportFeatures === undefined ? {} : {transportFeatures}) } });
     assert.equal(response.statusCode, 200, response.body);
     const connection = response.json<LocalOcrConnection>();
     assert.equal((await deviceRequest(connection.deviceToken, 'GET', 'claim')).statusCode, 200);

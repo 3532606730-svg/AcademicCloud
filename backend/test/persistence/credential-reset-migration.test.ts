@@ -31,8 +31,8 @@ test("migration 017 applies append-only from v16 with immutable reset evidence a
         ('member-1', 'Member', 'hash', 'member', 'active', '2026-08-18T00:00:00.000Z', '2026-08-18T00:00:00.000Z')
     `).run();
 
-  assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40], currentVersion: 40 });
-  assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [], currentVersion: 40 });
+  assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41], currentVersion: 41 });
+  assert.deepEqual(runMigrations(database, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [], currentVersion: 41 });
     assert.deepEqual(
       database.prepare("SELECT kind, target_type FROM governance_audit_event_kinds WHERE kind LIKE '%credential_reset%' ORDER BY kind").all(),
       [

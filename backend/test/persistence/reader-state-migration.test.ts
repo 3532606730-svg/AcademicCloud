@@ -23,7 +23,7 @@ test("039 adds reader tables without changing existing data, and persists author
     db.prepare("INSERT INTO personal_reading_states (account_id, file_id, status, important, to_cite, revision, updated_at) VALUES ('owner', 'pdf', 'reading', 1, 0, 4, ?)").run(now.toISOString());
     const tables = db.prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name!='schema_migrations' ORDER BY name").all();
     const snapshots = tables.map(({ name }) => ({ name, rows: db.prepare('SELECT * FROM "' + name.replaceAll('"', '""') + '"').all() }));
-    assert.deepEqual(runMigrations(db, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [39, 40], currentVersion: 40 });
+    assert.deepEqual(runMigrations(db, INITIAL_MIGRATIONS_DIRECTORY), { appliedVersions: [39, 40, 41], currentVersion: 41 });
     for (const snapshot of snapshots) assert.deepEqual(db.prepare('SELECT * FROM "' + snapshot.name.replaceAll('"', '""') + '"').all(), snapshot.rows, snapshot.name);
     const service = new WorkspaceService(persistence, new SqliteWorkspaceRepository(db), () => now);
     service.saveProgress("owner", "pdf", { sourceId: source.sourceId, physicalPage: 14, revision: 0 });

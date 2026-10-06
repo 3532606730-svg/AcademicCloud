@@ -1,6 +1,6 @@
 # AcademicCloud Current Status
 
-**Selected continuation:** [ADR-051](docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md) implements Owner-selected speed/off-site private book jobs next. The first book and actual exports below are accepted history; new durable jobs/warm slices are not deployed. Local searchable-PDF and reviewed shared OCR are evaluated separately.
+**Selected continuation:** ADR-051 local implementation is qualified: backend95, frontend72 unique, Compute50, workspace types and independent review pass. Schema041-compatible prior-behavior3499940 Linux artifact qualification passes. Next is exact Core/frontend and standalone Member-kit release, then normal Owner background/pause/re-pair/actual-export acceptance. Retain Local Pull/Bridge662 and models; current production remains9840/schema40. Direct qualified deployment without a new production backup remains authorized. Searchable PDF and reviewed Library OCR remain separate derived contracts.
 
 **Last reconciled:** 2026-10-06. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
