@@ -6,21 +6,21 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f",
+    "checkpoint": "8f6c721261a13a6af06b643fb0e79586e21a7818",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Source22d80ef published to authorized non-main branch; fresh fetch verified clean active HEAD==intended remote before copy-only Core release. Following documentation records actual deployment and normal Owner acceptance; obsolete original checkout preserved. No main merge.",
-    "lastVerifiedPublishedCheckpoint": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f"
+    "localState": "Source8f6c721 published and fresh fetched-remote equality/clean active tree verified before deployment; following documentation records actual release/copy acceptance. No main merge.",
+    "lastVerifiedPublishedCheckpoint": "8f6c721261a13a6af06b643fb0e79586e21a7818"
   },
   "production": {
     "observedAt": "2026-10-06",
-    "coreFrontendCommit": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f",
+    "coreFrontendCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
     "schemaVersion": 40,
     "migrationHistory": "001-040",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Post-cutover PID1497222 active/running NRestarts0 health/ready PASS; exact process cwd.76,279,808-byte memory is a snapshot.",
+    "health": "Post-cutover PID1501370 active/running NRestarts0 health/ready PASS; exact process cwd.73,568,256-byte memory is a snapshot.",
     "catalogBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
     "catalogBridgeState": "October6 read-only observation: exact662 active/running PID3248 NRestarts0; unchanged selector/service; prior live native cooperation retained.",
     "computeDistro": "AcademicCloudComputeV2",
@@ -254,7 +254,104 @@
       "modelCalls": 0,
       "newCloudOcrCalls": 0,
       "hostedCiStarted": false,
-      "runtimeMeaning": "Exact immutable runtime source remains22d80ef; following documentation checkpoint does not change deployed artifact."
+      "runtimeMeaning": "Earlier October6 Reader-copy release22d80ef; superseded for current Core/frontend by production.productCopyRelease. Its immutable receipts remain historical."
+    },
+    "productCopyRelease": {
+      "sourceCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
+      "previousCoreFrontendCommit": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f",
+      "retainedLocalPullBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
+      "deployedAtLocalDate": "2026-10-06",
+      "status": "DEPLOYED_NORMAL_OWNER_COPY_ACCEPTED",
+      "scope": "Seven product files: defensive/repeated bilingual page copy; three existing test assertion files reconciled",
+      "archiveSha256": "ab70b82c6f7139889ce99306f3a90e2ecea9b6db858594ab6b1462e9648d45ce",
+      "manifestSha256": "2ffcb76b3a8f470c48a84777d8ff85e048de6f17d80fdde497aa236e5c1611f2",
+      "verifiedInstalledFiles": 5180,
+      "changedManifestPaths": 19,
+      "identicalNonFrontendEntries": 4963,
+      "core": {
+        "mainPid": 1501370,
+        "active": true,
+        "subState": "running",
+        "nRestarts": 0,
+        "memoryBytesAtCutover": 73568256
+      },
+      "schemaVersion": 40,
+      "migrationHistory": "001-040",
+      "migrationsApplied": [],
+      "rulesetAdmissionsAdded": [],
+      "rulesetAdmissionsTotal": 11,
+      "nginxEnvironmentUnitUnchanged": true,
+      "nativeSelectionAndServicesUnchanged": true,
+      "realOwnerBrowser": {
+        "normalSignedInRefresh": true,
+        "physicalPage": 4,
+        "pageCount": 313,
+        "simplifiedPrivateResultHintVisible": true,
+        "simplifiedSearchHintVisible": true,
+        "simplifiedTutorialVisible": true,
+        "connectorDownloadVisible": true,
+        "deviceOnline": true,
+        "onlineUnavailableStatusVisible": true,
+        "privateHistoryCount": 1,
+        "machineHistoryAtLocal": "2026-10-05T23:25:23+08:00",
+        "textUnits": 254,
+        "textExactlyPreserved": true,
+        "correctionSaveDisabled": true,
+        "newOcrRequests": 0,
+        "humanCorrectionCreated": false,
+        "actualTxtFileAccepted": false
+      },
+      "verification": {
+        "distinctFocusedTestsPassed": 152,
+        "frontendTypecheck": "PASS",
+        "independentSemanticReview": "PASS",
+        "independentHelperReview": "PASS",
+        "linuxAndHostArtifactVerification": "PASS"
+      },
+      "preparationRepair": "First host verifier could not write its receipt in root-owned staging. Precreated only the0600 academiccloud-owned receipt, validated it, then froze it root-owned0444; repeated only the concrete failed preparation. No selector cutover occurred on failure.",
+      "schemaEvidence": {
+        "path": "output/vnext/product-copy-20261006/post-cutover-schema.json",
+        "bytes": 185,
+        "sha256": "6736bbfa6a411b5873ccb555767bfefd29d47d974a57ae9fe4e7d43423c9e572"
+      },
+      "installedEvidence": {
+        "path": "output/vnext/product-copy-20261006/new-installed-verification.json",
+        "bytes": 202,
+        "sha256": "f197ffbbc2071e0f9978953fdefa1fc35ea9a6a656385cb7973192cfdbddf576"
+      },
+      "hostEvidence": {
+        "path": "output/vnext/product-copy-20261006/host-runtime-verification.json",
+        "bytes": 2481,
+        "sha256": "dc794f33a79635c6094ba72c74d2ef67a495fe2fa2d25f278ce98a7427185ced"
+      },
+      "failureEvidence": {
+        "path": "output/vnext/product-copy-20261006/core-host-qualification-first.log",
+        "bytes": 706,
+        "sha256": "b9ef35c085e4b8370284dc53cd3dfd1561dbaf6e8d4622b421a7bbed1b14dc18"
+      },
+      "helperEvidence": {
+        "path": "output/vnext/product-copy-20261006/deploy-product-copy.sh",
+        "bytes": 6742,
+        "sha256": "b32cab47b9261b1083c2d0bada92ab267e7bda0934ad1d29d8c9262df2c64426"
+      },
+      "screenshots": [
+        {
+          "path": "output/vnext/product-copy-20261006/private-result-live.png",
+          "bytes": 42995,
+          "sha256": "41eed008c1735373959688ec8a02a93f7a5bf9fb2747e8eeefb86c6f9141de8f"
+        },
+        {
+          "path": "output/vnext/product-copy-20261006/ocr-tutorial-live.png",
+          "bytes": 65116,
+          "sha256": "61fc07182c9fd9ef915f7c14e6ca205e0d72e360861847c4348aad3065907637"
+        }
+      ],
+      "rollbackUsed": false,
+      "backupOrRestoreRepeated": false,
+      "modelCalls": 0,
+      "newCloudOcrCalls": 0,
+      "hostedCiStarted": false,
+      "runtimeMeaning": "Exact immutable runtime source8f6c721; following documentation checkpoints do not change the deployed artifact."
     }
   },
   "candidate": {
@@ -275,8 +372,8 @@
       "exportRequest": 131072
     },
     "dependencyProductionAdvisories": 0,
-    "sourceCommit": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f",
-    "archiveSha256": "e601c8298fe24c56e51c184748521fa7fe4d575edf674ea25ad1ca3f3faafde8",
+    "sourceCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
+    "archiveSha256": "ab70b82c6f7139889ce99306f3a90e2ecea9b6db858594ab6b1462e9648d45ce",
     "status": "DEPLOYED",
     "pendingSchemaVersion": null,
     "pendingMigrations": [],
@@ -284,7 +381,7 @@
       "status": "DEPLOYED_OWNER_ACCEPTED",
       "adr": "docs/decisions/ADR-049-paired-local-current-page-ocr.md",
       "evidence": "docs/evidence/paired-local-ocr-20261001.md",
-      "sourceCommit": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f",
+      "sourceCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
       "schemaVersion": 40,
       "exactReleaseQualified": true,
       "productionEnabled": true,
@@ -310,7 +407,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Core/frontend22d80ef copy-only follow-up deployed; Local Pull/Bridge retain662; schema40 unchanged. Normal Owner refreshed Reader shows both hints and exact original254-unit private result/history. Actual TXT file, online profiles, independent book/page/ZIP recovery, field quality, corpus and normal-product/performance/whole-product/report gates remain open.",
+    "currentPhaseB": "Core/frontend8f6c721 page-copy follow-up deployed; native662 and schema40 retained. Normal Owner Reader/private OCR/tutorial/online-unavailable copy accepted; original254-unit history preserved. Actual TXT file, online profiles, book/page/ZIP recovery, field quality, corpus and remaining normal-product/performance/whole-product/report gates remain open.",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -609,7 +706,7 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "status": "DEPLOYED_OWNER_LOCAL_ACCEPTED",
         "statePointer": "production.pairedLocalOcrRelease",
-        "meaning": "October5 initial paired-local release; currentCore/frontend is production.readerCopyRelease, with all non-frontend artifact entries unchanged."
+        "meaning": "October5 initial paired-local662 release; currentCore/frontend is production.productCopyRelease, retaining all non-frontend artifact entries."
       },
       "exportFollowup": {
         "date": "2026-10-06",
@@ -674,7 +771,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Older named verification records remain historical. Initial paired-local migration/recovery/native activation is under production.pairedLocalOcrRelease; current Core/frontend copy release and its normal Owner preservation check are under production.readerCopyRelease. Original Owner current-page acceptance remains under verification.pairedLocalOcr.ownerProductionAcceptance.",
+    "recordMeaning": "Initial paired-local migration/native activation and original Owner OCR remain dated history. Earlier Reader-copy22d80ef is under production.readerCopyRelease; current Core/frontend8f6c721 and normal copy acceptance are under production.productCopyRelease.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -688,16 +785,18 @@
     },
     "productCopy20261006": {
       "date": "2026-10-06",
-      "status": "LOCAL_VERIFIED_RELEASE_PENDING",
+      "status": "DEPLOYED_NORMAL_OWNER_COPY_ACCEPTED",
       "scope": "Simplify defensive and repetitive page text in seven product files; three existing assertion files reconciled",
       "distinctFocusedTestsPassed": 152,
       "testScope": "13 complete files (149 tests) plus three filtered App tests",
       "frontendTypecheck": "PASS",
       "independentSemanticReview": "PASS",
       "behaviorChanged": false,
-      "productionDeployed": false,
-      "normalSignedInCopyAccepted": false,
-      "evidence": "output/vnext/product-copy-20261006/"
+      "productionDeployed": true,
+      "normalSignedInCopyAccepted": true,
+      "evidence": "output/vnext/product-copy-20261006/",
+      "sourceCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
+      "releaseStatePointer": "production.productCopyRelease"
     }
   },
   "computeQualification": {
@@ -810,13 +909,13 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "core22_reader_copy_deployed_native662_and_owner_history_preserved",
-    "intake": "R0 export, ADR046 admission, ADR047 selected recovery and ADR049 paired-local initially deployed in joint662, with unchanged non-frontend bytes in currentCore22d80ef/native662. Owner bounded Reader/native OCR and original-history preservation PASS. Persistent book/page/ZIP recovery, independent field quality and full normal intake acceptance remain open.",
+    "status": "core8f_product_copy_deployed_native662_and_owner_history_preserved",
+    "intake": "R0 export/ADR046 admission/ADR047 selected recovery/ADR049 paired-local initially deployed in662; non-frontend bytes retained in currentCore8f/native662. Original Owner OCR and current copy acceptance pass. Remaining normal intake/quality/recovery gates stay open.",
     "ocr": "Exact cooperating Compute/Bridge and Core40 deployed; real Owner normal pairing, native bounded current-page OCR, private persistence/reload and line overlay accepted. Online PP internal adapter retains separate offline qualification; online member profiles/activation remain open.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
-    "currentCoreFrontendCommit": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f",
+    "currentCoreFrontendCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
     "currentLocalPullBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
   },
   "subagents": {
@@ -1036,8 +1135,8 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "statePointer": "production.pairedLocalOcrRelease.native"
       },
-      "currentCoreFrontendCommit": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f",
-      "followupAcceptanceStatePointer": "production.readerCopyRelease.realOwnerBrowser"
+      "currentCoreFrontendCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
+      "followupAcceptanceStatePointer": "production.productCopyRelease.realOwnerBrowser"
     }
   },
   "subagentConfiguration": {

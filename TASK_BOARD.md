@@ -4,15 +4,15 @@
 
 ## Current focus — reliable book intake
 
-October6 page-copy simplification is locally verified (152 distinct focused tests/typecheck and independent semantic review); next exact Core/frontend release and normal signed-in copy acceptance. Current production identities are below; remaining product gates remain open.
+October6 page-copy simplification is deployed in Core/frontend8f6c721;152 distinct focused tests/typecheck, exact artifact gates and normal Owner private/search/tutorial copy acceptance pass. Native662/schema40 retained; actual TXT file and remaining product gates stay open. [Evidence](docs/evidence/product-copy-20261006.md).
 
-October6 current Core/frontend22d80ef and retained native662 are deployed; the copy-only follow-up and normal Owner private-history preservation pass. Actual TXT file acceptance remains open; synthetic HTTP and Blob files both saved despite the missed Blob event.
+Earlier October6 Core/frontend22d80ef and retained native662 were deployed; the copy-only follow-up and normal Owner private-history preservation pass. Actual TXT file acceptance remains open; synthetic HTTP and Blob files both saved despite the missed Blob event.
 
 October5 exact662a7a0374df31df8b3ec429394cee8836160a5a Core/frontend/Local Pull/Bridge established the original coordinated deployment at schema40/history001–040 with11 admissions. Participating OCR/UX scope, exact immutable artifacts, compatible old-Core40/private-row qualification, encrypted backup readback and frozen migration checks passed. Of53 old tables,52—including scholarly_search_projection—are identical; dirty106→0 matches the exact initializer receipt. No restore/downmigration or main merge. [Evidence](docs/evidence/paired-local-ocr-20261001.md).
 
 Normal real Owner-account pairing to the installed Paddle engine, actual bounded Mongolia Today page4 recognition/private save and reload/reopen passed:254 text units,15 normalized line rectangles and unchanged23:25:23 machine history. Public86,228-byte connector ZIP download/hash passed. Token remains in memory in the running detached connector; no autostart is claimed. TXT Blob export remains unverified after an IAB timeout/no local file and needs a bounded investigation. Online profiles, book/page/ZIP recovery, field quality, current corpus, other normal production paths and whole-product/report remain open.
 
-The earlier whole-project publication gate retains CI1385pass/4Windows-symlink skips/0fail, all workspace types/build, schema40 compiled acceptance, zero production/complete dependency advisories and independent reviews. Implementation5fb1938 publication/local equality is historical source evidence;662a7a0 was the October5 joint release, followed by the current Core/frontend22d80ef copy-only follow-up above. Owner direct-deployment authority was executed by the single coordinated root operator without another approval question.
+The earlier whole-project publication gate retains CI1385pass/4Windows-symlink skips/0fail, all workspace types/build, schema40 compiled acceptance, zero production/complete dependency advisories and independent reviews. Implementation5fb1938 publication/local equality is historical source evidence;662a7a0 was the October5 joint release, followed by Reader22d80ef and the current Core/frontend8f6c721 page-copy follow-up above. Owner direct-deployment authority was executed by the single coordinated root operator without another approval question.
 
 ## Prior OCR qualification checkpoints
 
@@ -47,7 +47,7 @@ Historical reader milestone: ADR045 exactd58ef44 Core/frontend is deployed at sc
 
 | Order | Task | State / next gate |
 |---:|---|---|
-| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — Core/frontend22d80ef, native662, schema40 deployed; Owner OCR/history and Reader-copy live acceptance PASS. Actual TXT files, remaining normal paths, online profiles, book/page/ZIP recovery, field quality/corpus/report open; six sources need replacement |
+| 1 | [ACADEMICCLOUD-VNEXT-REMEDIATION01](tasks/doing/ACADEMICCLOUD-VNEXT-REMEDIATION01.md) | PHASE B — Core/frontend8f6c721, native662, schema40 deployed; Owner OCR/history and simplified page-copy live acceptance PASS. Actual TXT files, remaining normal paths, online profiles, book/page/ZIP recovery, field quality/corpus/report open; six sources need replacement |
 
 The current reassessment charter and Owner's2026-09-09 start instruction supersede the earlier read-only gate and narrow review scope. The active task contains the ordered Phase B milestones. The latest continuation authorizes scoped non-main checkpoints and one evidence-gated coordinated production release after participating scopes and integrated acceptance pass; one designated operator owns that release. It does not authorize main merge, independent task deployments or unrelated production/provider/security scope. No finding is production RESOLVED before deployment and appropriate live verification. Zero added infrastructure cost and zero new billable GitHub usage remain required.
 
