@@ -4,6 +4,8 @@
 
 ## Latest checkpoint — October6 Reader copy follow-up
 
+Owner October6 requested simpler page text. The local follow-up removes repetitive disclaimers and internal process explanations across Reader/private OCR/tutorials, Library feedback, catalogue review/recovery and citation. Seven product source files contain copy-only changes; three existing assertion files are reconciled.152 distinct focused tests and frontend typecheck pass; independent semantic review passes. Required versions/pairing/restart, private own-device handling, actual offline/unavailable state, unverified evidence/uncalibrated scores and irreversible deletion remain clear. Exact Core/frontend release and normal signed-in copy acceptance are next; current runtime below is unchanged.
+
 The requested03:39 HKT one-time continuation ran and was retired. Core/frontend exact22d80efc72c2ffa6db3796dd11cb46dae81ae08f is deployed; Local Pull/Bridge retain662a7a0 and schema40/history001–040/11 admissions. Two bilingual Reader hints pass9 existing tests/typecheck, independent source/release review, exact Linux and host artifact qualification/full manifests. Only frontend HTML/hashed JS differs; all non-frontend entries are identical. Core1497222 and retained Local Pull3029/Bridge3248 are active/zero restarts. Normal Owner refresh shows both hints and retains the same254-unit private result/history with correction Save disabled. No OCR replay/migration/nginx/env/unit/native/model/restore change. Actual TXT file acceptance stays open. Source22d80ef was published and clean active/fetched-remote equality verified. [Evidence](docs/evidence/paired-local-ocr-20261001.md#october6-bounded-export-follow-up).
 
 ## October5 coordinated deployment and Owner local OCR

@@ -102,10 +102,10 @@ describe("describeError", () => {
 
   it("explains upload name conflicts without implying that a duplicate was created", () => {
     expect(translate("en", "upload.nameConflict", { name: "paper.pdf" })).toBe(
-      "“paper.pdf” was not uploaded because an active or pending file with the same name already exists in this folder. No duplicate was created.",
+      "“paper.pdf” was not uploaded: a file or unfinished upload with the same name already exists in this folder.",
     );
     expect(translate("zh-CN", "upload.nameConflict", { name: "paper.pdf" })).toBe(
-      "未上传“paper.pdf”：当前文件夹已有同名的有效文件或待处理上传，系统没有创建重复副本。",
+      "未上传“paper.pdf”：此文件夹已有同名文件或未完成上传。",
     );
   });
 

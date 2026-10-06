@@ -225,7 +225,7 @@ const TEXT = {
     source_unavailable: "One or more source files could not be authorized or read. Retry after checking connectivity.",
     identity_mismatch: "A source file changed during export. Refresh the batch before retrying.",
     limit_exceeded: "The export exceeded a safety limit. Reduce the batch size and retry.",
-    inspection_failed: "Local PDF/OCR inspection failed before a resilient package could be completed.",
+    inspection_failed: "Local PDF/OCR inspection failed; the evidence package could not be completed.",
     invalid_response: "Local Compute returned an invalid or oversized response.",
     rejected: "Local Compute rejected the export request.",
     failed: "Local evidence export failed.",
@@ -239,7 +239,7 @@ const TEXT = {
     source_unavailable: "一个或多个源文件暂时无法授权或读取，请检查网络后重试。",
     identity_mismatch: "导出期间源文件身份发生变化，请刷新批次后重试。",
     limit_exceeded: "本次导出超过安全限制，请缩小批次后重试。",
-    inspection_failed: "本地 PDF/OCR 检查异常，未能完成可恢复证据包。",
+    inspection_failed: "本地 PDF/OCR 检查失败，证据包未完成。",
     invalid_response: "Local Compute 返回了无效或过大的响应。",
     rejected: "Local Compute 拒绝了本次导出请求。",
     failed: "本地证据导出失败。",
@@ -255,15 +255,15 @@ export function localCatalogText(language: Language, key: LocalCatalogTextKey, c
 
 export function localCatalogProgressText(language: Language, progress: LocalCatalogProgress): string {
   return language === "zh-CN"
-    ? `正在处理 ${progress.completedResources}/${progress.totalResources} · 已隔离失败 ${progress.failedResources}`
-    : `Processing ${progress.completedResources}/${progress.totalResources} · isolated failures ${progress.failedResources}`;
+    ? `正在处理 ${progress.completedResources}/${progress.totalResources} · 失败 ${progress.failedResources}`
+    : `Processing ${progress.completedResources}/${progress.totalResources} · failed ${progress.failedResources}`;
 }
 
 export function localCatalogReadyText(language: Language, totalResources: number, failedResources: number): string {
   if (failedResources === 0) return localCatalogText(language, "ready", totalResources);
   return language === "zh-CN"
-    ? `证据包已下载（${totalResources} 项；${failedResources} 项检查失败，已隔离并要求按 UNKNOWN 处理）`
-    : `Evidence package downloaded (${totalResources} items; ${failedResources} inspection failures isolated and required to remain UNKNOWN)`;
+    ? `证据包已下载（${totalResources} 项；${failedResources} 项检查失败，需核对）`
+    : `Evidence package downloaded (${totalResources} items; ${failedResources} inspection failures need review)`;
 }
 
 export function localCatalogErrorText(language: Language, code: LocalCatalogBridgeErrorCode): string {

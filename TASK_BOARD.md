@@ -4,6 +4,8 @@
 
 ## Current focus — reliable book intake
 
+October6 page-copy simplification is locally verified (152 distinct focused tests/typecheck and independent semantic review); next exact Core/frontend release and normal signed-in copy acceptance. Current production identities are below; remaining product gates remain open.
+
 October6 current Core/frontend22d80ef and retained native662 are deployed; the copy-only follow-up and normal Owner private-history preservation pass. Actual TXT file acceptance remains open; synthetic HTTP and Blob files both saved despite the missed Blob event.
 
 October5 exact662a7a0374df31df8b3ec429394cee8836160a5a Core/frontend/Local Pull/Bridge established the original coordinated deployment at schema40/history001–040 with11 admissions. Participating OCR/UX scope, exact immutable artifacts, compatible old-Core40/private-row qualification, encrypted backup readback and frozen migration checks passed. Of53 old tables,52—including scholarly_search_projection—are identical; dirty106→0 matches the exact initializer receipt. No restore/downmigration or main merge. [Evidence](docs/evidence/paired-local-ocr-20261001.md).

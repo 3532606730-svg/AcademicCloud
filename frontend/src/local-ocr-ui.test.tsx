@@ -71,7 +71,7 @@ describe("private current-page OCR UI", () => {
     await waitFor(() => expect(api.devices).toHaveBeenCalled()); await userEvent.setup().click(screen.getByRole("button", { name: "Current page OCR" }));
     await screen.findByText(/Connection or OCR limit reached/); expect(api.create).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/Low confidence; review carefully/)).toHaveTextContent("Text truncated; result incomplete");
-    expect(screen.getByText("Boxes align only with original machine text. Corrections are not realigned.")).toBeInTheDocument();
+    expect(screen.getByText("Boxes align with the original machine text.")).toBeInTheDocument();
   });
   it("shows successful machine result geometry on the exact submitted frame and removes the frame after repaint", async () => {
     const fresh = { ...OCR_RESULT, correctedText: null }; const api = ocrApi({ results: vi.fn().mockResolvedValue([]), result: vi.fn().mockResolvedValue(fresh) }); const user = userEvent.setup(); const view = render(panel(api));
@@ -108,13 +108,13 @@ describe("OCR connection tutorial and focus", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument(); await screen.findByText("The connector package is not available on this site yet."); expect(screen.queryByRole("link", { name: "Download local connector" })).not.toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: "Device name" }), "My laptop"); await user.click(screen.getByRole("button", { name: "Generate pairing code" }));
     await screen.findByText("one-time-code"); expect(api.pairing).toHaveBeenCalledWith("My laptop"); expect(screen.getAllByText(/npm start/)[0]).toHaveTextContent(`npm start -- --core ${window.location.origin} --pair --detect-installed`); expect(screen.getAllByText(/npm start/)[1]).toHaveTextContent(`npm start -- --core ${window.location.origin} --pair --config /absolute/member-ocr.json`);
-    await user.click(screen.getByRole("button", { name: "My online account" })); expect(screen.getByText(/Online account connection is not implemented yet/)).toBeInTheDocument(); expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "My online account" })); expect(screen.getByText(/Online account connection is not available yet/)).toBeInTheDocument(); expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     await user.keyboard("{Escape}"); expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); expect(screen.getByRole("button", { name: "Connect" })).toHaveFocus();
   });
-  it("shows tested advisory device state and revokes only the selected own device", async () => {
+  it("shows device engine and online state and revokes only the selected own device", async () => {
     const api = ocrApi(); const user = userEvent.setup(); render(<Connection api={api} />); await user.click(screen.getByRole("button", { name: "Connect" }));
     const device = await screen.findByText("My computer"); const row = device.closest("li")!;
-    expect(within(row).getByText("Online")).toBeInTheDocument(); expect(within(row).getByText(/Passed device-reported synthetic test/)).toBeInTheDocument();
+    expect(within(row).getByText("Online")).toBeInTheDocument(); expect(within(row).getByText(`${OCR_DEVICE.capabilities.engineId} ${OCR_DEVICE.capabilities.engineVersion}`)).toBeInTheDocument();
     vi.mocked(api.devices).mockResolvedValue([{ ...OCR_DEVICE, revokedAt: "2026-10-01T00:00:00Z", online: false }]); await user.click(within(row).getByRole("button", { name: "Revoke" }));
     expect(api.revoke).toHaveBeenCalledWith(OCR_DEVICE.id); await screen.findByText("Revoked");
   });

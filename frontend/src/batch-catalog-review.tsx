@@ -93,8 +93,8 @@ function ReviewItem({ item, selected, busy, completed, onToggle }: { item: Catal
     <button type="button" className="button button--quiet button--small" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
       {expanded ? zh ? "收起字段" : "Collapse fields" : zh ? "核对字段与依据" : "Review fields and evidence"}</button>
     {expanded && <div className="catalog-review-expanded">
-      <p className="muted">{zh ? "外部结果尚未由服务器验证。" : "External results are not attested by the server."} {item.evidence.pages.length > 0 && (zh ? `所列页码（从 1 开始）：${item.evidence.pages.map((page) => page + 1).join("、")}。` : `Listed pages (1-based): ${item.evidence.pages.map((page) => page + 1).join(", ")}.`)}
-        {zh ? ` 模型自评 ${item.confidence}/100，不是正确概率。` : ` Model self-rating ${item.confidence}/100 is not a probability of correctness.`}</p>
+      <p className="muted">{zh ? "外部结果，依据未核验。" : "External results; evidence unverified."} {item.evidence.pages.length > 0 && (zh ? `依据页码：${item.evidence.pages.map((page) => page + 1).join("、")}。` : `Evidence pages: ${item.evidence.pages.map((page) => page + 1).join(", ")}.`)}
+        {zh ? ` 模型自评（未校准）：${item.confidence}/100。` : ` Model self-rating (uncalibrated): ${item.confidence}/100.`}</p>
       <FieldTable fields={showPreserved ? item.fields : changes} />
       <button className="button button--quiet button--small" type="button" aria-expanded={showPreserved} onClick={() => setShowPreserved(!showPreserved)}>
         {showPreserved ? zh ? "只看变化" : "Show changes only" : zh ? "查看保留与未变化的字段" : "Show preserved and unchanged fields"}</button>

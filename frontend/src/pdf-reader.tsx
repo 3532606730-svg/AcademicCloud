@@ -512,7 +512,7 @@ export function PdfReader(props: PdfReaderProps) {
         link.download = title.replace(/[\\/:*?"<>|]/g, "_") + "-" + start + "-" + end + ".txt";
         link.click(); window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       }
-      setToolMessage(mode === "export" ? (zh ? "已请求导出所选页码范围的原生文字，请检查浏览器下载。" : "Export requested for native text from the selected range. Check your browser downloads.") : (reachedLimit ? (zh ? "已达到本次搜索上限，请缩小页码范围继续" : "Search limit reached; narrow the page range to continue") : (zh ? "搜索完成，共 " + found.length + " 处" : "Search complete: " + found.length + " matches")));
+      setToolMessage(mode === "export" ? (zh ? "已请求导出，请检查浏览器下载。" : "Export requested. Check your browser downloads.") : (reachedLimit ? (zh ? "已达到本次搜索上限，请缩小页码范围继续" : "Search limit reached; narrow the page range to continue") : (zh ? "搜索完成，共 " + found.length + " 处" : "Search complete: " + found.length + " matches")));
     } catch { if (!isCancelled()) setToolMessage(zh ? "读取原生文字失败，请重试" : "Could not read native text; please retry"); }
     finally { if (!isCancelled()) setTextBusy(false); }
   };
@@ -587,11 +587,11 @@ export function PdfReader(props: PdfReaderProps) {
           <button type="button" disabled={!document || textBusy} onClick={() => void readText("export")}>{zh ? "导出文字" : "Export text"}</button>
           {textBusy && <button type="button" onClick={cancelTextOperation}>{zh ? "取消" : "Cancel"}</button>}
         </form>
-        <p className="pdf-reader__hint">{props.localOcr ? (zh ? "本工具仅按需读取 PDF 原生文字，每次最多 500 页；扫描页可使用“当前页OCR”。" : "This tool reads only native PDF text on demand, up to 500 pages per operation. Scanned pages can use Current page OCR.") : (zh ? "按需读取 PDF 原生文字，每次最多 500 页；扫描件暂不识别。" : "Reads native PDF text on demand, up to 500 pages per operation. Scanned text is not recognized.")}</p>
+        <p className="pdf-reader__hint">{props.localOcr ? (zh ? "搜索和导出适用于 PDF 原生文字，每次最多 500 页。扫描页请用“当前页OCR”。" : "Search and export native PDF text, up to 500 pages at a time. For scans, use Current page OCR.") : (zh ? "搜索和导出适用于 PDF 原生文字，每次最多 500 页。" : "Search and export native PDF text, up to 500 pages at a time.")}</p>
         {results.length > 0 && <ol className="pdf-reader__results">{results.map((result, index) => <li key={index}><button type="button" onClick={() => goToPage(result.page)}><strong>{zh ? "第 " + result.page + " 页" : "Page " + result.page}</strong><span>{result.excerpt}</span></button></li>)}</ol>}
       </div>}
       {panel === "highlights" && <div className="pdf-reader__panel">
-        <div className="pdf-reader__panel-heading"><strong>{zh ? "我的高亮" : "My highlights"}</strong>{props.onDeleteHighlight && (props.highlights?.length ?? 0) > 0 && <button type="button" disabled={saving} onClick={() => { if (window.confirm(zh ? "删除当前列表内的个人高亮？尚未加载的高亮、原文件和笔记不受影响。" : "Remove the highlights in this list? Unloaded highlights, source and notes are preserved.")) void removeHighlights(props.highlights ?? []); }}>{zh ? "清空列表高亮" : "Clear listed highlights"}</button>}</div>
+        <div className="pdf-reader__panel-heading"><strong>{zh ? "我的高亮" : "My highlights"}</strong>{props.onDeleteHighlight && (props.highlights?.length ?? 0) > 0 && <button type="button" disabled={saving} onClick={() => { if (window.confirm(zh ? "删除当前列表中的个人高亮？" : "Remove the personal highlights in this list?")) void removeHighlights(props.highlights ?? []); }}>{zh ? "清空列表高亮" : "Clear listed highlights"}</button>}</div>
         {!props.highlights?.length && <p className="pdf-reader__hint">{zh ? "选中原文后点击“高亮选文”。" : "Select native text and choose Highlight selection."}</p>}
         <ol className="pdf-reader__results">{props.highlights?.map((highlight) => <li key={highlight.id}><button type="button" onClick={() => goToPage(highlight.physicalPage)}><strong>{zh ? "第 " + highlight.physicalPage + " 页" : "Page " + highlight.physicalPage}</strong><span>{highlight.text}</span></button>{props.onDeleteHighlight && <button type="button" className="pdf-reader__delete" disabled={saving} onClick={() => void removeHighlights([highlight])} aria-label={zh ? "删除高亮" : "Remove highlight"}>×</button>}</li>)}</ol>
       </div>}

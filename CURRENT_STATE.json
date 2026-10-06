@@ -685,6 +685,19 @@
       "sourceCommit": "22d80efc72c2ffa6db3796dd11cb46dae81ae08f",
       "liveCopyAccepted": true,
       "releaseStatePointer": "production.readerCopyRelease"
+    },
+    "productCopy20261006": {
+      "date": "2026-10-06",
+      "status": "LOCAL_VERIFIED_RELEASE_PENDING",
+      "scope": "Simplify defensive and repetitive page text in seven product files; three existing assertion files reconciled",
+      "distinctFocusedTestsPassed": 152,
+      "testScope": "13 complete files (149 tests) plus three filtered App tests",
+      "frontendTypecheck": "PASS",
+      "independentSemanticReview": "PASS",
+      "behaviorChanged": false,
+      "productionDeployed": false,
+      "normalSignedInCopyAccepted": false,
+      "evidence": "output/vnext/product-copy-20261006/"
     }
   },
   "computeQualification": {

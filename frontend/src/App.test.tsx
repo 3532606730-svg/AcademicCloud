@@ -2297,9 +2297,7 @@ describe("App", () => {
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(2));
     checksumResolvers[0]!(FILE.checksum);
     await waitFor(() => expect(checksumFile).toHaveBeenCalledTimes(3));
-    expect(await screen.findByText(/was not uploaded because an active or pending file with the same name already exists in this folder/i)).toHaveTextContent(
-      "No duplicate was created.",
-    );
+    expect(await screen.findByText(/was not uploaded: a file or unfinished upload with the same name already exists in this folder/i)).toBeInTheDocument();
   });
 
   it("pausing a running upload releases its slot for the next queued file", async () => {
@@ -2687,9 +2685,9 @@ describe("App", () => {
       generateLibraryMetadataSuggestions: generate,
     });
     render(<App api={api} />);
-    expect(await screen.findByText("AI status could not be refreshed. Existing tasks are unchanged.")).toBeInTheDocument();
+    expect(await screen.findByText("AI status could not be refreshed.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Refresh AI status" }));
-    await waitFor(() => expect(screen.queryByText("AI status could not be refreshed. Existing tasks are unchanged.")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("AI status could not be refreshed.")).not.toBeInTheDocument());
     expect(states).toHaveBeenCalledTimes(2);
     expect(generate).not.toHaveBeenCalled();
   });
@@ -2718,11 +2716,11 @@ describe("App", () => {
       await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
       expect(states).toHaveBeenCalledTimes(2);
       expect(screen.getByText("Queued")).toBeInTheDocument();
-      expect(screen.getByText("AI status could not be refreshed. Existing tasks are unchanged.")).toBeInTheDocument();
+      expect(screen.getByText("AI status could not be refreshed.")).toBeInTheDocument();
       await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
       expect(states).toHaveBeenCalledTimes(3);
       expect(screen.getByText("Extraction complete — awaiting review and adoption")).toBeInTheDocument();
-      expect(screen.queryByText("AI status could not be refreshed. Existing tasks are unchanged.")).not.toBeInTheDocument();
+      expect(screen.queryByText("AI status could not be refreshed.")).not.toBeInTheDocument();
       await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
       expect(states).toHaveBeenCalledTimes(3);
       mounted.unmount();

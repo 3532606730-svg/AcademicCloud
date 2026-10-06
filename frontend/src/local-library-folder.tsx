@@ -19,7 +19,7 @@ export function LocalLibraryFolder({ accountId }: { accountId: string }) {
       const directory = await picker({ id: "academiccloud-library", mode: "readwrite" });
       setBusy(true);
       if (!await configureLocalLibrary(accountId, directory)) throw new Error(zh ? "浏览器未能记住目录，请使用普通下载。" : "Could not remember the folder. Use standard downloads.");
-      setName(directory.name); setMessage(zh ? "已关联资料夹。同一原件只存一份，资料库和我的研究共用；研究分组不会复制文件。" : "Folder linked. Library and Research share one local original; research groups do not copy files.");
+      setName(directory.name); setMessage(zh ? "已关联资料夹。" : "Folder linked.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") { setMessage(""); return; }
       setMessage(error instanceof Error ? error.message : (zh ? "目录关联失败，请重试。" : "Could not link folder."));
