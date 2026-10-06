@@ -1,4 +1,4 @@
-import type { LocalOcrDevice, LocalOcrResult } from '@academiccloud/compute-contracts';
+import type { LocalOcrBookPage, LocalOcrBookQuery, LocalOcrDevice, LocalOcrResult } from '@academiccloud/compute-contracts';
 
 export class LocalOcrError extends Error {
   constructor(readonly code: 'invalid_request' | 'not_found' | 'pairing_invalid' | 'device_authentication_required'
@@ -23,6 +23,7 @@ export interface LocalOcrRepository {
   touchDevice(id: string, now: string): void;
   revokeDevice(accountId: string, id: string, now: string): void;
   countResults(accountId: string): number;
+  bookPages(accountId: string, query: LocalOcrBookQuery): LocalOcrBookPage[];
   saveResult(accountId: string, result: LocalOcrResult): void;
   result(accountId: string, id: string): LocalOcrResult | null;
   results(accountId: string, resourceId: string, sourceId: string, physicalPage: number): LocalOcrResult[];

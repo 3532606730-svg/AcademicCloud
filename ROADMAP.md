@@ -1,6 +1,10 @@
 # AcademicCloud Roadmap
 
-**Last reconciled:** 2026-10-05
+**Last reconciled:** 2026-10-06
+
+## October6 authorized scholarly OCR step
+
+[ADR-050](docs/decisions/ADR-050-browser-run-private-book-ocr.md) selects bounded, user-started whole-book OCR on the member's own local engine. Saved page results, separate corrections, source/page provenance and structured export precede any later scholarly search/evidence workflow. The [scholarly workbench evaluation](docs/evaluation/scholarly-workbench-direction.md) records proposed directions separately from implementation authority. Automatic corpus OCR and indexing/RAG remain parked.
 
 ## Product Direction
 

@@ -1,7 +1,8 @@
-import { LOCAL_OCR_ROOT, type LocalOcrDevice, type LocalOcrJob, type LocalOcrPairing, type LocalOcrRequestInput, type LocalOcrResult } from "@academiccloud/compute-contracts";
+import { LOCAL_OCR_ROOT, type LocalOcrBookProgress, type LocalOcrDevice, type LocalOcrJob, type LocalOcrPairing, type LocalOcrRequestInput, type LocalOcrResult } from "@academiccloud/compute-contracts";
 
-export type { LocalOcrDevice, LocalOcrJob, LocalOcrResult } from "@academiccloud/compute-contracts";
+export type { LocalOcrBookProgress, LocalOcrDevice, LocalOcrJob, LocalOcrResult } from "@academiccloud/compute-contracts";
 export interface LocalOcrPage { resourceId: string; sourceId: string; physicalPage: number }
+export interface LocalOcrBook { resourceId: string; sourceId: string; pageCount: number }
 export interface LocalOcrApi {
   devices(signal?: AbortSignal): Promise<LocalOcrDevice[]>;
   pairing(label: string): Promise<LocalOcrPairing>;
@@ -12,12 +13,15 @@ export interface LocalOcrApi {
   results(page: LocalOcrPage, signal?: AbortSignal): Promise<LocalOcrResult[]>;
   result(id: string, signal?: AbortSignal): Promise<LocalOcrResult>;
   correct(id: string, revision: number, correctedText: string): Promise<LocalOcrResult>;
+  bookProgress(book: LocalOcrBook, signal?: AbortSignal): Promise<LocalOcrBookProgress>;
+  bookExportUrl(book: LocalOcrBook, format: "txt" | "jsonl"): string;
 }
 
 export function createLocalOcrApi(request: <T>(path: string, init?: RequestInit) => Promise<T>): LocalOcrApi {
   const enc = encodeURIComponent;
   const get = <T>(path: string, signal?: AbortSignal) => request<T>(LOCAL_OCR_ROOT + path, signal ? { signal } : {});
   const write = <T>(path: string, method: string, input: unknown) => request<T>(LOCAL_OCR_ROOT + path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+  const bookQuery = (book: LocalOcrBook) => new URLSearchParams({ resourceId: book.resourceId, sourceId: book.sourceId, pageCount: String(book.pageCount) });
   return {
     devices: (signal) => get<{ devices: LocalOcrDevice[] }>("/devices", signal).then((r) => r.devices),
     pairing: (label) => write<LocalOcrPairing>("/pairing", "POST", { label }),
@@ -28,5 +32,7 @@ export function createLocalOcrApi(request: <T>(path: string, init?: RequestInit)
     results: (page, signal) => get<{ items: LocalOcrResult[] }>(`/results?${new URLSearchParams({ resourceId: page.resourceId, sourceId: page.sourceId, physicalPage: String(page.physicalPage) })}`, signal).then((r) => r.items),
     result: (id, signal) => get<{ result: LocalOcrResult }>(`/results/${enc(id)}`, signal).then((r) => r.result),
     correct: (id, revision, correctedText) => write<{ result: LocalOcrResult }>(`/results/${enc(id)}`, "PATCH", { revision, correctedText }).then((r) => r.result),
+    bookProgress: (book, signal) => get<LocalOcrBookProgress>(`/book-progress?${bookQuery(book)}`, signal),
+    bookExportUrl: (book, format) => `${LOCAL_OCR_ROOT}/book-export?${bookQuery(book)}&format=${format}`,
   };
 }

@@ -2,6 +2,10 @@
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
+## 2026-10-06 — Add browser-run private whole-book OCR
+
+The Owner explicitly requests whole-book OCR and professional scholarly differentiation. [ADR-050](docs/decisions/ADR-050-browser-run-private-book-ocr.md) supersedes the narrow whole-book stop line while preserving per-account devices, source authority, private machine/corrected text and native bounds. Saved successful pages are durable checkpoints; the browser is required while running, with explicit pause/resume and no background-queue claim. Initial500-page/500-total-result limits remain. Page-framed private TXT/JSONL export supports scholarly provenance. Deployment is directly authorized after qualification, without a new backup; no indexing/RAG, paid activation, shared Owner engine or main merge follows.
+
 ## 2026-10-05 — Activate the Owner account with local OCR first
 
 The Owner explicitly requests local-first account OCR connection, their own online fallback only if local execution is unusable, and direct completed deployment without another approval question. Root completed the one coordinated exact662a7a0 Core40/Local Pull/Bridge release under ADR048/049 and the September27 gate after exact artifacts, compatible old-Core040/private-row qualification and encrypted backup readback passed. Normal real Owner bounded Reader/native recognition, private save and reload/reopen passed. The suitable installed Paddle engine worked; no online fallback/new cloud call, paid billing, whole-book OCR or main merge occurred. Member credentials/compute and human canonical authority remain separate.

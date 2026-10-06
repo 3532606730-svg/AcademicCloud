@@ -1,4 +1,4 @@
-import type { LocalOcrResult, OcrEngineCapabilities } from '@academiccloud/compute-contracts';
+import type { LocalOcrBookPage, LocalOcrBookQuery, LocalOcrResult, OcrEngineCapabilities } from '@academiccloud/compute-contracts';
 import type { DeviceRow, LocalOcrRepository, PairingRow } from '../../local-ocr/model.js';
 import type { SqliteDatabase } from './database.js';
 
@@ -50,6 +50,23 @@ export class SqliteLocalOcrRepository implements LocalOcrRepository {
   }
   countResults(accountId: string): number {
     return this.database.prepare<[string], { count: number }>('SELECT count(*) AS count FROM personal_local_ocr_results WHERE account_id = ?').get(accountId)!.count;
+  }
+  bookPages(accountId: string, query: LocalOcrBookQuery): LocalOcrBookPage[] {
+    type StoredPage = Omit<LocalOcrBookPage, 'truncated' | 'hasCorrection'> & { truncated: number; hasCorrection: number };
+    // Extract only summary scalars in SQLite. A book read must not parse all
+    // retained machine payloads or let a correction reorder machine history.
+    return this.database.prepare<[string, string, string, number], StoredPage>(`WITH ranked AS (
+      SELECT id AS resultId, physical_page AS physicalPage, rotation, created_at AS createdAt,
+        json_extract(machine_json, '$.status') AS status,
+        json_extract(machine_json, '$.truncated') AS truncated,
+        corrected_text IS NOT NULL AS hasCorrection,
+        ROW_NUMBER() OVER (PARTITION BY physical_page ORDER BY created_at DESC, id DESC) AS current_rank
+      FROM personal_local_ocr_results
+      WHERE account_id = ? AND file_id = ? AND source_id = ? AND physical_page <= ?
+    ) SELECT physicalPage, resultId, rotation, status, truncated, hasCorrection, createdAt
+      FROM ranked WHERE current_rank = 1 ORDER BY physicalPage`)
+      .all(accountId, query.resourceId, query.sourceId, query.pageCount)
+      .map((row) => ({ ...row, truncated: row.truncated === 1, hasCorrection: row.hasCorrection === 1 }));
   }
   saveResult(accountId: string, r: LocalOcrResult): void {
     this.database.prepare(`INSERT INTO personal_local_ocr_results (id, account_id, device_id, file_id, source_id, physical_page,

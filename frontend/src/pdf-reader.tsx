@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask, TextLayer } from "pdfjs-dist";
 import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
 import { cMapUrl, standardFontDataUrl, wasmUrl, iccUrl, workerUrl } from "./pdf-assets.ts";
@@ -7,6 +7,8 @@ import { remotePdfTransport } from "./remote-pdf-transport.ts";
 import { localPdfTransport } from "./local-pdf-transport.ts";
 import { captureOcrFrame, type PaintedOcrPage } from "./local-ocr-frame.ts";
 import { CurrentPageOcr, type ReaderLocalOcr } from "./local-ocr-ui.tsx";
+import { WholeBookOcr } from "./local-ocr-book-ui.tsx";
+import type { BookOcrDocument } from "./local-ocr-book-controller.ts";
 import "./pdf-reader.css";
 
 type PdfEngine = typeof import("pdfjs-dist");
@@ -106,10 +108,24 @@ export function PdfReader(props: PdfReaderProps) {
   const [zoom, setZoom] = useState<number | "width">("width");
   const [renderedScale, setRenderedScale] = useState(1);
   const [paintedOcrPage, setPaintedOcrPage] = useState<PaintedOcrPage | null>(null);
+  const [ocrRefresh, setOcrRefresh] = useState(0);
+  const [bookOcrBusy, setBookOcrBusy] = useState(false);
+  const [pageOcrBusy, setPageOcrBusy] = useState(false);
   const ocrSourceKey = props.localOcr ? `${props.localOcr.accountId}:${props.localOcr.resourceId}:${props.localOcr.sourceId}` : "";
   const currentView = useRef({ url, localFile, page, rotation, zoom, availableWidth, retry, navigationPending, ocrSourceKey });
   currentView.current = { url, localFile, page, rotation, zoom, availableWidth, retry, navigationPending, ocrSourceKey };
   const document = documentState?.url === url && documentState.localFile === localFile ? documentState.document : null;
+  const currentDocument = useRef(document); currentDocument.current = document;
+  const bookDocument = useMemo<BookOcrDocument | null>(() => {
+    if (!document) return null;
+    const isCurrent = () => alive.current && currentDocument.current === document && currentView.current.ocrSourceKey === ocrSourceKey;
+    return { isCurrent, capture: async (physicalPage, signal) => {
+      if (signal.aborted || !isCurrent()) throw new Error("ocr_frame_changed");
+      const pdfPage = await document.getPage(physicalPage);
+      try { return await captureOcrFrame(pdfPage, pdfPage.rotate, isCurrent, signal); }
+      finally { if (geometry.current?.pdfPage !== pdfPage) pdfPage.cleanup(); }
+    } };
+  }, [document, ocrSourceKey]);
   const pageCount = document?.numPages ?? null;
   const validPage = pageCount !== null && Number.isSafeInteger(page) && page >= 1 && page <= pageCount;
   const busy = !document || rendering || navigationPending;
@@ -577,7 +593,8 @@ export function PdfReader(props: PdfReaderProps) {
         {props.highlights && <button type="button" aria-expanded={panel === "highlights"} onClick={() => setPanel((value) => value === "highlights" ? null : "highlights")}>{zh ? "高亮列表" : "Highlights"} ({props.highlights.length})</button>}
         {props.onNewNote && <button type="button" disabled={busy} onClick={props.onNewNote}>{zh ? "新建笔记" : "New note"}</button>}
       </div>
-      {props.localOcr && <CurrentPageOcr connection={props.localOcr} physicalPage={page} painted={!busy && !error && paintedOcrPage?.isCurrent() ? paintedOcrPage : null} />}
+      {props.localOcr && <><CurrentPageOcr connection={props.localOcr} physicalPage={page} painted={!busy && !error && paintedOcrPage?.isCurrent() ? paintedOcrPage : null} refreshVersion={ocrRefresh} blocked={bookOcrBusy} onBusyChange={setPageOcrBusy} />
+        <WholeBookOcr connection={props.localOcr} document={bookDocument} pageCount={pageCount} blocked={pageOcrBusy} onBusyChange={setBookOcrBusy} onCheckpoint={() => setOcrRefresh((value) => value + 1)} onReview={(target) => { setOcrRefresh((value) => value + 1); goToPage(target); }} /></>}
       {panel === "search" && <div className="pdf-reader__panel">
         <form className="pdf-reader__search-form" onSubmit={(event) => { event.preventDefault(); void readText("search"); }}>
           <input aria-label={zh ? "搜索 PDF 原生文字" : "Search native PDF text"} placeholder={zh ? "在原生文字中搜索" : "Search native text"} value={query} maxLength={200} onChange={(event) => setQuery(event.target.value)} />

@@ -26,4 +26,6 @@
 .local-ocr__devices small { width: 100%; }
 .local-ocr__pairing { padding: 12px; background: var(--forest-soft, #eaf1f0); }
 .local-ocr__pairing code { user-select: all; overflow-wrap: anywhere; margin-right: 12px; }
+.local-ocr-book__pages { padding-left: 24px; }
+.local-ocr-book__pages li { margin: 6px 0; }
 @media (max-width: 600px) { .local-ocr__panel { padding: 8px 10px; max-height: 42dvh; } .local-ocr-dialog { padding: 14px; } .local-ocr__actions { gap: 6px; padding: 6px 8px; } }

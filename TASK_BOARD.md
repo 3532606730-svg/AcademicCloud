@@ -2,6 +2,10 @@
 
 **Last reconciled:** 2026-10-06. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
+## Selected next step — whole-book OCR
+
+Owner October6 explicitly selects [ADR-050](docs/decisions/ADR-050-browser-run-private-book-ocr.md) within the existing vNext task. Implement and qualify browser-run whole-book local OCR, saved-page resume/quality review and authenticated page-framed export, then one coordinated exact release and normal Owner book acceptance. Preserve500-page/500-retained-result bounds, per-account engines and source authority. Corpus automation/indexing/RAG, paid activation and main merge stay outside this step.
+
 ## Current focus — reliable book intake
 
 October6 page-copy simplification is deployed in Core/frontend8f6c721;152 distinct focused tests/typecheck, exact artifact gates and normal Owner private/search/tutorial copy acceptance pass. Native662/schema40 retained; actual TXT file and remaining product gates stay open. [Evidence](docs/evidence/product-copy-20261006.md).

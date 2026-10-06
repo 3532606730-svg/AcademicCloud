@@ -2,6 +2,10 @@
 
 **Last reconciled:** 2026-10-06. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
+## Current work — private whole-book OCR
+
+Owner October6 authorizes [ADR-050](docs/decisions/ADR-050-browser-run-private-book-ocr.md): explicit browser-run, per-account local OCR for books up to500 physical pages, with durable saved-page resume, bounded quota preflight, review flags and source-framed TXT/JSONL. Implementation/qualification and normal Owner book acceptance are in progress; no full-book accuracy or deployment is claimed. Production remains8f6c721/native662/schema40. Scholarly differentiation is assessed around traceable evidence, correction and interoperable research output.
+
 ## Latest checkpoint — October6 page-copy simplification
 
 Core/frontend exact8f6c721261a13a6af06b643fb0e79586e21a7818 is deployed; native662/schema40/history001–040/11 admissions retained. Seven product files simplify defensive/repeated bilingual text across Reader/private OCR/tutorials, Library feedback, catalogue review/recovery and citation.152 distinct focused tests/typecheck, independent review and exact Linux/host/full-manifest qualification pass.4963 non-frontend entries are identical; only19 frontend index/hashed-JS paths differ. Core1501370 is active/zero restarts. Normal signed-in Owner sees the shorter private/search/tutorial/online-unavailable copy and preserves original254-unit history. Actual TXT file acceptance remains open. First staging receipt EACCES was repaired by granting only its0600 file, validating and freezing0444 before release; no failed cutover, configuration/native/model/migration/restore change. [Evidence](docs/evidence/product-copy-20261006.md).

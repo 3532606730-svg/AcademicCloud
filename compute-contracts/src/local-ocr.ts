@@ -105,3 +105,27 @@ export interface LocalOcrResult {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Browser-declared book extent; Core does not decode or certify the PDF page count. */
+export interface LocalOcrBookQuery {
+  resourceId: string;
+  sourceId: string;
+  pageCount: number;
+}
+/** Latest retained machine result per physical page, without private text or image bytes. */
+export interface LocalOcrBookPage {
+  physicalPage: number;
+  resultId: string;
+  rotation: 0 | 90 | 180 | 270;
+  status: LocalOcrResult['machine']['status'];
+  truncated: boolean;
+  hasCorrection: boolean;
+  createdAt: string;
+}
+export interface LocalOcrBookProgress extends LocalOcrBookQuery {
+  pages: LocalOcrBookPage[];
+  quota: { used: number; limit: number; remaining: number };
+  /** Only the requesting account's active request for this exact source. */
+  activeJob: LocalOcrJob | null;
+  accountBusy: boolean;
+}

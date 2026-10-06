@@ -1,5 +1,6 @@
+import { Readable } from 'node:stream';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { LOCAL_OCR_ROOT as ROOT, LOCAL_OCR_LIMITS as LIMIT, type LocalOcrCompletion, type LocalOcrRequestInput } from '@academiccloud/compute-contracts';
+import { LOCAL_OCR_ROOT as ROOT, LOCAL_OCR_LIMITS as LIMIT, type LocalOcrBookQuery, type LocalOcrCompletion, type LocalOcrRequestInput } from '@academiccloud/compute-contracts';
 import { LocalOcrError } from './model.js';
 import type { LocalOcrService } from './service.js';
 
@@ -7,6 +8,8 @@ const id = { type: 'string', pattern: '^[A-Za-z0-9_-]{1,128}$' } as const;
 const params = { type: 'object', additionalProperties: false, required: ['id'], properties: { id } } as const;
 const empty = { type: 'object', additionalProperties: false, properties: {} } as const;
 const physicalPage = { type: 'integer', minimum: 1, maximum: 1_000_000 } as const;
+const bookQuery = { type: 'object', additionalProperties: false, required: ['resourceId', 'sourceId', 'pageCount'],
+  properties: { resourceId: id, sourceId: id, pageCount: { type: 'integer', minimum: 1, maximum: LIMIT.maxResultsPerAccount } } } as const;
 const maxBase64 = Math.ceil(LIMIT.maxImageBytes / 3) * 4;
 const rate = (max: number) => ({ rateLimit: { max, timeWindow: '1 minute' } });
 const token = (request: FastifyRequest): string => {
@@ -59,6 +62,23 @@ export async function registerLocalOcrHttp(app: FastifyInstance, service: LocalO
     (request, reply) => respond(reply, () => ({ job: service.status(account(request), request.params.id) })));
   app.post<{ Params: { id: string } }>(`${ROOT}/requests/:id/cancel`, { preHandler: app.authenticate, preValidation: requireJson, schema: { params, body: empty } },
     (request, reply) => respond(reply, () => ({ job: service.cancel(account(request), request.params.id) })));
+  app.get<{ Querystring: LocalOcrBookQuery }>(`${ROOT}/book-progress`, { preHandler: app.authenticate, schema: { querystring: bookQuery } },
+    (request, reply) => respond(reply, () => {
+      const progress = service.bookProgress(account(request), request.query);
+      reply.header('cache-control', 'private, no-store');
+      return progress;
+    }));
+  app.get<{ Querystring: LocalOcrBookQuery & { format: 'txt' | 'jsonl' } }>(`${ROOT}/book-export`, {
+    preHandler: app.authenticate, config: rate(10), schema: { querystring: { ...bookQuery,
+      required: [...bookQuery.required, 'format'], properties: { ...bookQuery.properties, format: { enum: ['txt', 'jsonl'] } } } },
+  }, (request, reply) => respond(reply, () => {
+    const { format, ...query } = request.query;
+    const lines = service.bookExport(account(request), query, format);
+    reply.header('content-type', format === 'txt' ? 'text/plain; charset=utf-8' : 'application/x-ndjson; charset=utf-8');
+    reply.header('content-disposition', `attachment; filename="academiccloud-private-ocr-book.${format}"`);
+    reply.header('cache-control', 'private, no-store');
+    return reply.send(Readable.from(lines, { objectMode: false, highWaterMark: 64 * 1024 }));
+  }));
   app.get<{ Querystring: { resourceId: string; sourceId: string; physicalPage: number } }>(`${ROOT}/results`, { preHandler: app.authenticate,
     schema: { querystring: { type: 'object', additionalProperties: false, required: ['resourceId', 'sourceId', 'physicalPage'], properties: { resourceId: id, sourceId: id, physicalPage } } } },
     (request, reply) => respond(reply, () => ({ items: service.results(account(request), request.query) })));

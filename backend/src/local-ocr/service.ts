@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { LOCAL_OCR_LIMITS as LIMIT, LOCAL_OCR_PROBE_REQUEST_ID, LOCAL_OCR_PROBE_TEXT,
   OCR_ENGINE_MAX_TEXT_UNITS, parseOcrEngineCapabilities, parseOcrEnginePageResult,
-  type LocalOcrCompletion, type LocalOcrConnection, type LocalOcrDevice, type LocalOcrDeviceJob,
+  type LocalOcrBookProgress, type LocalOcrBookQuery, type LocalOcrCompletion, type LocalOcrConnection, type LocalOcrDevice, type LocalOcrDeviceJob,
   type LocalOcrFailure, type LocalOcrJob, type LocalOcrRequestInput, type LocalOcrResult, type OcrEngineCapabilities } from '@academiccloud/compute-contracts';
 import type { Persistence } from '../persistence/contracts.js';
 import type { WorkspaceRepository } from '../workspace/model.js';
@@ -258,6 +258,60 @@ export class LocalOcrService {
       return r;
     });
     this.finish(p, 'succeeded', null, result.id); return { accepted: true, resultId: result.id };
+  }
+  bookProgress(accountId: string, query: LocalOcrBookQuery): LocalOcrBookProgress {
+    if (!Number.isSafeInteger(query.pageCount) || query.pageCount < 1 || query.pageCount > LIMIT.maxResultsPerAccount) throw new LocalOcrError('invalid_request');
+    this.sweep();
+    return this.persistence.runInTransaction(() => {
+      this.source(accountId, query.resourceId, query.sourceId);
+      const active = [...this.requests.values()].find((p) => p.accountId === accountId && this.active(p));
+      const activeJob = active?.job.resourceId === query.resourceId && active.job.sourceId === query.sourceId ? { ...active.job } : null;
+      const used = this.repository.countResults(accountId);
+      return { resourceId: query.resourceId, sourceId: query.sourceId, pageCount: query.pageCount,
+        pages: this.repository.bookPages(accountId, query), quota: { used, limit: LIMIT.maxResultsPerAccount, remaining: Math.max(0, LIMIT.maxResultsPerAccount - used) },
+        activeJob, accountBusy: active !== undefined };
+    });
+  }
+  /** Snapshot only page/result IDs; read and authorize one private payload at a time. */
+  bookExport(accountId: string, query: LocalOcrBookQuery, format: 'txt' | 'jsonl'): Iterable<string> {
+    if (format !== 'txt' && format !== 'jsonl') throw new LocalOcrError('invalid_request');
+    // Eager validation ensures a denied request receives an ordinary HTTP error
+    // before attachment headers. Subsequent denial destroys the partial stream.
+    const progress = this.bookProgress(accountId, query);
+    const revision = this.account(accountId).authRevision;
+    const pages = new Map(progress.pages.map((page) => [page.physicalPage, page.resultId]));
+    const source = { resourceId: progress.resourceId, sourceId: progress.sourceId, pageCount: progress.pageCount };
+    const authorize = () => {
+      if (this.account(accountId).authRevision !== revision) throw new LocalOcrError('not_found');
+      this.source(accountId, source.resourceId, source.sourceId);
+    };
+    const repository = this.repository;
+    return (function* (): Generator<string> {
+      authorize();
+      yield format === 'jsonl' ? JSON.stringify({ type: 'book', ...source, origin: 'client_rendered_unverified' }) + '\n'
+        : `AcademicCloud private OCR book export\nResource: ${source.resourceId}\nSource: ${source.sourceId}\nPhysical pages: ${source.pageCount}\nOrigin: client_rendered_unverified\n`;
+      for (let physicalPage = 1; physicalPage <= source.pageCount; physicalPage++) {
+        authorize();
+        const id = pages.get(physicalPage);
+        const r = id === undefined ? null : repository.result(accountId, id);
+        if (id !== undefined && (!r || r.resourceId !== source.resourceId || r.sourceId !== source.sourceId || r.physicalPage !== physicalPage)) throw new LocalOcrError('not_found');
+        if (!r) {
+          yield format === 'jsonl' ? JSON.stringify({ type: 'page', resourceId: source.resourceId, sourceId: source.sourceId, physicalPage, state: 'missing' }) + '\n'
+            : `\n=== Physical page ${physicalPage} ===\nStatus: missing\n`;
+          continue;
+        }
+        yield format === 'jsonl' ? JSON.stringify({ type: 'page', resourceId: source.resourceId, sourceId: source.sourceId,
+          physicalPage, state: 'saved', resultId: r.id, deviceId: r.deviceId, rotation: r.rotation,
+          status: r.machine.status, truncated: r.machine.truncated, origin: r.origin, provenance: r.machine.provenance,
+          imageSha256: r.imageSha256, imageWidth: r.imageWidth, imageHeight: r.imageHeight,
+          confidence: r.machine.confidence, lineBoxes: r.machine.lineBoxes ?? null,
+          rawText: r.machine.text, correctedText: r.correctedText, revision: r.revision, createdAt: r.createdAt, updatedAt: r.updatedAt }) + '\n'
+          : `\n=== Physical page ${physicalPage} ===\nResult: ${r.id}\nDevice: ${r.deviceId}\nRotation: ${r.rotation}\nFrame SHA-256: ${r.imageSha256}\nFrame dimensions: ${r.imageWidth}x${r.imageHeight}\nStatus: ${r.machine.status}\nTruncated: ${r.machine.truncated}\nRevision: ${r.revision}\nEngine: ${r.machine.provenance.engineId}\nEngine version: ${r.machine.provenance.engineVersion}\nModel version: ${r.machine.provenance.modelVersion ?? 'unspecified'}\nCreated: ${r.createdAt}\nUpdated: ${r.updatedAt}\nText kind: ${r.correctedText === null ? 'machine' : 'corrected'}\nText:\n${r.correctedText ?? r.machine.text ?? ''}\n${r.correctedText === null ? '' : `Raw machine text:\n${r.machine.text ?? ''}\n`}`;
+      }
+      authorize();
+      yield format === 'jsonl' ? JSON.stringify({ type: 'end', ...source, savedPages: pages.size, missingPages: source.pageCount - pages.size }) + '\n'
+        : `\n=== End of export ===\nSaved pages: ${pages.size}\nMissing pages: ${source.pageCount - pages.size}\n`;
+    })();
   }
   results(accountId: string, query: { resourceId: string; sourceId: string; physicalPage: number }): LocalOcrResult[] {
     this.source(accountId, query.resourceId, query.sourceId); physicalPage(query.physicalPage);

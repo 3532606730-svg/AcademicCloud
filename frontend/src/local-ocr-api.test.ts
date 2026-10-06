@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLocalOcrApi } from "./local-ocr-api.ts";
-import { OCR_JOB, OCR_RESULT } from "./local-ocr-test-fixture.ts";
+import { OCR_BOOK_PROGRESS, OCR_JOB, OCR_RESULT } from "./local-ocr-test-fixture.ts";
 import { ApiClient } from "./api.ts";
 
 describe("private local OCR HTTP client", () => {
@@ -18,5 +18,14 @@ describe("private local OCR HTTP client", () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ devices: [] }), { status: 200 }));
     const api = new ApiClient({ fetcher }); await api.localOcr.devices();
     expect(fetcher).toHaveBeenCalledWith("/api/reader/local-ocr/devices", expect.objectContaining({ credentials: "same-origin" }));
+  });
+  it("reads book progress with cancellation and exposes normal same-origin export links", async () => {
+    const request = vi.fn().mockResolvedValue(OCR_BOOK_PROGRESS); const api = createLocalOcrApi(request); const abort = new AbortController();
+    const book = { resourceId: "book&other=1", sourceId: "source /1", pageCount: 313 };
+    expect(await api.bookProgress(book, abort.signal)).toEqual(OCR_BOOK_PROGRESS);
+    expect(request).toHaveBeenLastCalledWith("/api/reader/local-ocr/book-progress?resourceId=book%26other%3D1&sourceId=source+%2F1&pageCount=313", { signal: abort.signal });
+    expect(api.bookExportUrl(book, "txt")).toBe("/api/reader/local-ocr/book-export?resourceId=book%26other%3D1&sourceId=source+%2F1&pageCount=313&format=txt");
+    expect(api.bookExportUrl(book, "jsonl")).toMatch(/&format=jsonl$/);
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });

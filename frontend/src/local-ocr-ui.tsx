@@ -46,7 +46,7 @@ async function copyText(text: string, zh: boolean, message: (value: string) => v
   catch { message(zh ? "剪贴板不可用，请选中文字后使用 Ctrl/Cmd+C。" : "Clipboard unavailable. Select the text and press Ctrl/Cmd+C."); }
 }
 
-export function CurrentPageOcr({ connection, physicalPage, painted }: { connection: ReaderLocalOcr; physicalPage: number; painted: PaintedOcrPage | null }) {
+export function CurrentPageOcr({ connection, physicalPage, painted, refreshVersion = 0, blocked = false, onBusyChange }: { connection: ReaderLocalOcr; physicalPage: number; painted: PaintedOcrPage | null; refreshVersion?: number; blocked?: boolean; onBusyChange?: ((value: boolean) => void) | undefined }) {
   const { language } = useLanguage(); const zh = language === "zh-CN";
   const { api, accountId, resourceId, sourceId } = connection;
   const page: LocalOcrPage = { resourceId, sourceId, physicalPage };
@@ -65,6 +65,8 @@ export function CurrentPageOcr({ connection, physicalPage, painted }: { connecti
   const [retainedKey, setRetainedKey] = useState(pageKey);
   const [frame, setFrame] = useState<{ resultId: string; value: LocalOcrFrame; painted: PaintedOcrPage } | null>(null);
   const [loading, setLoading] = useState(false);
+  useEffect(() => { onBusyChange?.(!!progress); return () => onBusyChange?.(false); }, [!!progress, onBusyChange]);
+  const historyContext = useRef({ api, pageKey });
   const historyRequest = useRef(0); const request = useRef(0);
   const drafts = useRef(new Map<string, CorrectionDraft>());
   const draftAccount = useRef(accountId);
@@ -94,20 +96,26 @@ export function CurrentPageOcr({ connection, physicalPage, painted }: { connecti
   }, [pageKey, painted]);
   useEffect(() => {
     const abort = new AbortController(); const epoch = ++historyRequest.current;
-    setHistory([]); setResult(null); setRetainedKey(pageKey); setMessage(""); setLoading(true);
+    const preserveSelection = historyContext.current.api === api && historyContext.current.pageKey === pageKey;
+    const selected = preserveSelection && result && matches(result, page) ? result : null;
+    historyContext.current = { api, pageKey };
+    if (!preserveSelection) { setHistory([]); setResult(null); }
+    setRetainedKey(pageKey); setMessage(""); setLoading(true);
     void api.results(page, abort.signal).then((items) => {
       if (abort.signal.aborted || epoch !== historyRequest.current || current.current.pageKey !== pageKey) return;
       const valid = items.filter((item) => matches(item, page)).slice(0, 20);
-      setHistory(valid); setResult(valid[0] ?? null);
+      const retained = selected ? valid.find((item) => item.id === selected.id) ?? selected : valid[0] ?? null;
+      setHistory(retained && !valid.some((item) => item.id === retained.id) ? [...valid.slice(0, 19), retained] : valid); setResult(retained);
     }).catch((error: unknown) => { if (!abort.signal.aborted && current.current.pageKey === pageKey) setMessage(ocrError(error, zh)); })
       .finally(() => { if (!abort.signal.aborted && current.current.pageKey === pageKey) setLoading(false); });
     return () => abort.abort();
-  }, [api, pageKey]);
+  }, [api, pageKey, refreshVersion]);
   const keep = (value: LocalOcrResult) => {
     if (!matches(value, page) || current.current.pageKey !== pageKey) return;
     setResult(value); setHistory((items) => [value, ...items.filter((item) => item.id !== value.id)].slice(0, 20));
   };
   const recognize = async () => {
+    if (blocked) return;
     setOpen(true); setMessage("");
     const device = deviceAccount === accountId ? devices.find((item) => item.id === deviceId && !item.revokedAt) : undefined;
     if (device && Date.parse(device.tokenExpiresAt) <= Date.now()) { setMessage(ocrError(new Error("device_unavailable"), zh)); return; }
@@ -135,7 +143,7 @@ export function CurrentPageOcr({ connection, physicalPage, painted }: { connecti
   const visibleResult = retainedKey === pageKey && result && matches(result, page) ? result : null;
   return <div className="local-ocr">
     <div className="local-ocr__actions">
-      <button type="button" className="pdf-reader__text-button" disabled={!painted || !!progress} onClick={() => { if (!selectedDevice) { setDialog(document.activeElement as HTMLElement); setOpen(true); } else void recognize(); }}>{zh ? "当前页OCR" : "Current page OCR"}</button>
+      <button type="button" className="pdf-reader__text-button" disabled={!painted || !!progress || blocked} onClick={() => { if (!selectedDevice) { setDialog(document.activeElement as HTMLElement); setOpen(true); } else void recognize(); }}>{zh ? "当前页OCR" : "Current page OCR"}</button>
       <button type="button" className="pdf-reader__text-button" onClick={(event) => setDialog(event.currentTarget)}>{zh ? "连接OCR" : "Connect OCR"}</button>
       <button type="button" className="pdf-reader__text-button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>{zh ? "私有OCR结果" : "Private OCR results"}{visibleHistory.length ? ` (${visibleHistory.length})` : ""}</button>
       {progress && <><span role="status">{progress.state === "capturing" ? (zh ? "正在生成当前页图像…" : "Rendering current page…") : progress.state === "queued" ? (zh ? "等待本地设备…" : "Waiting for your device…") : (zh ? "正在本地识别…" : "Recognizing locally…")}</span><button type="button" onClick={() => { request.current++; controller.current?.cancel(); setProgress(null); setMessage(zh ? "识别已取消。" : "OCR cancelled."); }}>{zh ? "取消识别" : "Cancel OCR"}</button></>}

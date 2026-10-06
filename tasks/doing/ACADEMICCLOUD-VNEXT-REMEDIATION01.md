@@ -8,7 +8,7 @@ Complete the Owner's reassessment charter on one integrated source line: recover
 
 ## Scope
 
-The 2026-09-06 Owner instruction accepts R01–R16 and authorizes implementation, architecture/product decisions, commits/push/main integration, production release, migrations/admissions, nginx/systemd, necessary Compute activation, real Catalog Apply and justified data/OSS corrections without repeated approval. It supersedes earlier no-write/no-deploy/no-Apply/model-decision stop lines. The later current continuation permits scoped non-main checkpoints and evidence-gated coordinated releases; it does not authorize main merge, paid activation or whole-book/corpus OCR. Use existing zero-additional-cost infrastructure. Preserve original bytes unless correction is intended, stable identities, source association, authorization and private overlays.
+The 2026-09-06 Owner instruction accepts R01–R16 and authorizes implementation, architecture/product decisions, commits/push/main integration, production release, migrations/admissions, nginx/systemd, necessary Compute activation, real Catalog Apply and justified data/OSS corrections without repeated approval. It supersedes earlier no-write/no-deploy/no-Apply/model-decision stop lines. The October6 continuation additionally authorizes ADR-050 browser-run private whole-book OCR and direct qualified deployment without a new backup; main merge, paid activation, automatic corpus OCR and indexing/RAG remain excluded. Use existing zero-additional-cost infrastructure. Preserve original bytes unless correction is intended, stable identities, source association, authorization and private overlays.
 
 ## Non-goals
 
@@ -50,6 +50,8 @@ ADR-014, ADR-022, ADR-023, ADR-031–040, [ADR-041 — vNext review plans and se
 Backend catalog/library/metadata/suggestions/workspace/local-ocr/persistence; frontend Library/details/Batch/workspace/Reader/local-ocr; Compute contracts/export/runtime/member connector/native lease; migrations035–040; deployment/release scripts; regression CI; current-state documents.
 
 ## Current State
+
+Owner October6 selects [ADR-050](../../docs/decisions/ADR-050-browser-run-private-book-ocr.md). Implementing explicit browser-run whole-book OCR, saved-page resume, quality review and source-framed exports; normal Owner full-book acceptance and exact deployment remain pending. Existing8f/native662/schema40 and accepted private history remain unchanged.
 
 Owner October6 requested removal of defensive page text. Core/frontend exact8f6c721261a13a6af06b643fb0e79586e21a7818 is deployed; native662/schema40/history001–040/11 admissions retained. Seven product files simplify defensive/repeated bilingual text across Reader/private OCR/tutorials, Library feedback, catalogue review/recovery and citation.152 distinct focused tests/typecheck, independent review and exact Linux/host/full-manifest qualification pass.4963 non-frontend entries are identical; only19 frontend index/hashed-JS paths differ. Core1501370 is active/zero restarts. Normal signed-in Owner sees the shorter private/search/tutorial/online-unavailable copy and preserves original254-unit history. Actual TXT file acceptance remains open. First staging receipt EACCES was repaired by granting only its0600 file, validating and freezing0444 before release; no failed cutover, configuration/native/model/migration/restore change. Evidence: [page copy](../../docs/evidence/product-copy-20261006.md).
 
@@ -307,4 +309,6 @@ Owner consolidated reader/workspace acceptance (2026-09-24, ADR-045): completed 
 
 ## Next Action
 
-Continue actual TXT file acceptance through an appropriate normal browser path without replaying OCR or inferring failure from an event timeout. Preserve accepted private history, memory-only connector/re-pairing and source reauthorization. Continue remaining normal production UX/export/admission/recovery, online member profiles, independent book/page/ZIP recovery, field quality, current corpus/source replacements and whole-product/report gates. Do not repeat completed cutover, successful jobs or unchanged damaged bytes. No main merge, paid activation, whole-book/corpus OCR, indexing or RAG.
+Implement/verify ADR-050, deploy the qualified exact Core/frontend through the sole root operator without a new backup, then perform normal signed-in Owner book acceptance. This supersedes the historical whole-book exclusion in older next-action prose below.
+
+Continue actual TXT file acceptance through an appropriate normal browser path without replaying OCR or inferring failure from an event timeout. Preserve accepted private history, memory-only connector/re-pairing and source reauthorization. Continue remaining normal production UX/export/admission/recovery, online member profiles, independent book/page/ZIP recovery, field quality, current corpus/source replacements and whole-product/report gates. Do not repeat completed cutover, successful jobs or unchanged damaged bytes. No main merge, paid activation, automatic corpus OCR, indexing or RAG. ADR-050 is the current explicit private whole-book exception.

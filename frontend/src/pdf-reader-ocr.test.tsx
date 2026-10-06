@@ -1,8 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash, webcrypto } from "node:crypto";
 import { PdfReader, type PdfReaderProps } from "./pdf-reader.tsx";
 import { LanguageProvider } from "./i18n-react.tsx";
-import { OCR_RESULT, ocrApi } from "./local-ocr-test-fixture.ts";
+import { OCR_BOOK_PROGRESS, OCR_JOB, OCR_RESULT, ocrApi } from "./local-ocr-test-fixture.ts";
+import type { LocalOcrResult } from "./local-ocr-api.ts";
+import { CurrentPageOcr } from "./local-ocr-ui.tsx";
 
 const engine = vi.hoisted(() => ({ render: vi.fn(), pages: [] as number[] }));
 vi.mock("pdfjs-dist", () => ({
@@ -60,5 +63,40 @@ describe("actual Reader OCR paint boundary", () => {
     const view = open(); await ready(); fireEvent.click(screen.getByRole("button", { name: "Connect OCR" }));
     const back = screen.getByRole("button", { name: "Back to reading" }); fireEvent.keyDown(back, { key: "ArrowRight" });
     expect(view.base.onPageChange).not.toHaveBeenCalled(); fireEvent.click(back); expect(screen.getByRole("button", { name: "Connect OCR" })).toHaveFocus();
+  });
+  it("processes missing physical pages with intrinsic rotation without changing the displayed page or its rotation", async () => {
+    vi.stubGlobal("crypto", webcrypto);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => {
+      const blob = new Blob(["png"], { type: "image/png" }); Object.defineProperty(blob, "arrayBuffer", { value: async () => new TextEncoder().encode("png").buffer }); callback(blob);
+    });
+    const view = open(); await ready(); fireEvent.click(screen.getByRole("button", { name: "Rotate right" })); await ready();
+    const book = { ...structuredClone(OCR_BOOK_PROGRESS), pageCount: 10 };
+    const results = new Map<string, LocalOcrResult>();
+    vi.mocked(view.api.bookProgress).mockImplementation(async () => structuredClone(book));
+    vi.mocked(view.api.create).mockImplementation(async (input) => {
+      const result = { ...OCR_RESULT, id: `result-${input.physicalPage}`, physicalPage: input.physicalPage, imageWidth: input.imageWidth, imageHeight: input.imageHeight, rotation: input.rotation, imageSha256: createHash("sha256").update("png").digest("hex"), correctedText: null };
+      results.set(result.id, result); return { ...OCR_JOB, id: `job-${input.physicalPage}`, physicalPage: input.physicalPage, resultId: result.id };
+    });
+    vi.mocked(view.api.result).mockImplementation(async (id) => {
+      const result = results.get(id)!; book.pages.push({ ...OCR_BOOK_PROGRESS.pages[0]!, physicalPage: result.physicalPage, resultId: id }); book.quota.used++; book.quota.remaining--; return result;
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Whole-book OCR" })); await screen.findByRole("button", { name: "Resume missing pages" });
+    fireEvent.click(screen.getByRole("button", { name: "Resume missing pages" })); await screen.findByText("All pages processed.");
+    expect(vi.mocked(view.api.create).mock.calls.map((call) => call[0].physicalPage)).toEqual([1, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(view.api.create).toHaveBeenCalledWith(expect.objectContaining({ physicalPage: 1, rotation: 90, imageWidth: 2000, imageHeight: 1500 }));
+    expect(view.base.onPageChange).not.toHaveBeenCalled(); expect(screen.getByRole("spinbutton", { name: "PDF page number" })).toHaveValue(2);
+    const frames = engine.render.mock.calls.map((call) => call[0] as { canvas: HTMLCanvasElement; background?: string }).filter((call) => call.background);
+    expect(frames).toHaveLength(9); expect(frames.every((frame) => frame.canvas.width === 0 && frame.canvas.height === 0)).toBe(true);
+  });
+  it("refreshes saved current-page history while preserving the selected result and unsaved correction draft", async () => {
+    const newer = { ...OCR_RESULT, id: "result-newer", correctedText: null, machine: { ...OCR_RESULT.machine, text: "New machine text" } };
+    const api = ocrApi(); const painted = { capture: vi.fn(), isCurrent: () => true };
+    const connection = { api, accountId: "member-one", resourceId: OCR_RESULT.resourceId, sourceId: OCR_RESULT.sourceId };
+    const ui = (refreshVersion: number) => <LanguageProvider><CurrentPageOcr connection={connection} physicalPage={2} painted={painted} refreshVersion={refreshVersion} /></LanguageProvider>;
+    const view = render(ui(0)); fireEvent.click(screen.getByRole("button", { name: /Private OCR results/ })); const input = await screen.findByRole("textbox", { name: "Corrected text" });
+    fireEvent.change(input, { target: { value: "My retained draft" } }); vi.mocked(api.results).mockResolvedValue([newer, OCR_RESULT]); view.rerender(ui(1));
+    await waitFor(() => expect(api.results).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("textbox", { name: "Corrected text" })).toHaveValue("My retained draft"); expect(screen.getByRole("combobox", { name: "Current page history (latest 20)" })).toHaveValue(OCR_RESULT.id);
+    expect(api.correct).not.toHaveBeenCalled(); expect(api.create).not.toHaveBeenCalled();
   });
 });

@@ -407,7 +407,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Core/frontend8f6c721 page-copy follow-up deployed; native662 and schema40 retained. Normal Owner Reader/private OCR/tutorial/online-unavailable copy accepted; original254-unit history preserved. Actual TXT file, online profiles, book/page/ZIP recovery, field quality, corpus and remaining normal-product/performance/whole-product/report gates remain open.",
+    "currentPhaseB": "ADR-050 whole-book OCR candidate implementation and focused verification in progress; production Core/frontend8f6c721/native662/schema40 remains unchanged. Normal Owner full-book/export acceptance pending.",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -813,7 +813,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Continue actual TXT file acceptance through an appropriate normal browser path without replaying OCR or treating event timeout as failure. Then remaining normal-product UX/export/admission/recovery, online member profiles, independent book/page/ZIP recovery, field quality, current corpus/source replacements and performance/whole-product/report gates. Do not repeat accepted pairing/cutover, successful jobs or unchanged damaged bytes. No main merge, paid activation or whole-book/corpus OCR.",
+  "next": "Implement ADR-050 user-started private whole-book local OCR with500-page/500-retained-result bounds, saved-page resume and page-framed exports; qualify and deploy directly without a new backup, then normal Owner book acceptance. No automatic corpus OCR/indexing/RAG, paid activation, Owner-engine borrowing or main merge.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -923,7 +923,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-09-30"
   },
-  "currentContinuationBoundary": "Existing-path repairs, zero added cost, authorized non-main checkpoints and coordinated releases only; current instruction does not authorize main merge or whole-document OCR",
+  "currentContinuationBoundary": "Owner October6 explicitly authorizes ADR-050 bounded browser-run whole-book OCR on account-owned local engines plus scholarly differentiation assessment and direct qualified deployment without a new backup. Other prior cost/privacy/provider/main boundaries remain.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "After recovery checkpoint, assess and progress reliable bibliographic OCR evidence and private current-page OCR in My Research",
@@ -1144,5 +1144,24 @@
     "reasoningEffort": "xhigh",
     "ownerChangedAt": "2026-09-30",
     "supersedes": "gpt-6-astra/ultra"
+  },
+  "wholeBookOcr": {
+    "status": "LOCALLY_VERIFIED_RELEASE_PENDING",
+    "adr": "docs/decisions/ADR-050-browser-run-private-book-ocr.md",
+    "mode": "browser_run_private_saved_page_resume",
+    "maximumBookPages": 500,
+    "retainedResultsPerAccount": 500,
+    "nativeChanged": false,
+    "schemaChanged": false,
+    "scope": "Own paired local engine only; no cloud fallback, shared Owner engine, automatic corpus OCR or indexing/RAG.",
+    "verification": {
+      "backendFocusedTests": 21,
+      "frontendFocusedTests": 56,
+      "frontendFiles": 8,
+      "typesBuild": "PASS",
+      "independentReview": "PASS",
+      "helperChecks": 3,
+      "liveBookAcceptance": "PENDING"
+    }
   }
 }
