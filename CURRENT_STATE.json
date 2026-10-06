@@ -6,12 +6,12 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
+    "checkpoint": "ce0520aea3f418cc3fed0d305d8afd848e0d678a",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Runtime9840 was published and clean fetched-remote equality verified before deployment; this full-book evidence reconciliation awaits its own publication.",
-    "lastVerifiedPublishedCheckpoint": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
-    "checkpointMeaning": "Exact published source that built the current runtime; subsequent evidence-only checkpoint is Git HEAD, not a new deployed artifact."
+    "localState": "ce0520a push/fetch actual equality and clean worktree verified; subsequent ADR051 implementation reconciliation is separate.",
+    "lastVerifiedPublishedCheckpoint": "ce0520aea3f418cc3fed0d305d8afd848e0d678a",
+    "checkpointMeaning": "Published full-book evidence checkpoint; deployed artifact remains9840."
   },
   "production": {
     "observedAt": "2026-10-06",
@@ -443,7 +443,7 @@
     },
     "checkpointReview": "bounded read-only review: no material deploy blocker",
     "remoteCI": "predecessor main34355914519/integration34354370164 PASS at5ee; new runs skipped to guarantee zero billable use",
-    "currentPhaseB": "Owner selected whole-book speed and off-site device execution, with durable page checkpoints. Reconcile an ADR before replacing browser ownership or per-page fresh native lifecycle. Preserve the accepted313-page private results, actual exports and original bytes; shared OCR publication and local PDF copies require distinct derived-artifact/permission contracts, not silent original replacement.",
+    "currentPhaseB": "Implement accepted ADR051 device-owned durable private book jobs/source grants/idempotent receipts and bounded warm sessions; qualify source/privacy/quota/closure-before-release, then one exact release and normal close-browser/reopen/resume/speed acceptance. Preserve accepted313-page results/exports; no silent Library publication/original replacement.",
     "frontendStartupBytes": {
       "before": 511320,
       "after": 425585
@@ -849,7 +849,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Owner selected whole-book speed and off-site device execution, with durable page checkpoints. Reconcile an ADR before replacing browser ownership or per-page fresh native lifecycle. Preserve the accepted313-page private results, actual exports and original bytes; shared OCR publication and local PDF copies require distinct derived-artifact/permission contracts, not silent original replacement.",
+  "next": "Implement accepted ADR051 device-owned durable private book jobs/source grants/idempotent receipts and bounded warm sessions; qualify source/privacy/quota/closure-before-release, then one exact release and normal close-browser/reopen/resume/speed acceptance. Preserve accepted313-page results/exports; no silent Library publication/original replacement.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1224,5 +1224,21 @@
       "medianCompletionGapSeconds": 19.335,
       "p95CompletionGapSeconds": 26.711
     }
+  },
+  "backgroundBookOcr": {
+    "status": "ACCEPTED_FOR_IMPLEMENTATION_NOT_DEPLOYED",
+    "adr": "docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md",
+    "coreSchemaCandidate": 41,
+    "transportFeature": "pdf_book_v1",
+    "warmSliceMaxPages": 8,
+    "warmSliceStartNextPageBeforeMs": 45000,
+    "postReleaseYieldMs": 2000,
+    "pageDeadlineMs": 90000,
+    "maximumBookPages": 500,
+    "retainedResultsPerAccount": 500,
+    "deviceTokenPersisted": false,
+    "libraryPublicationEnabled": false,
+    "localSearchablePdfEnabled": false,
+    "modelsAndPythonHashChanged": false
   }
 }

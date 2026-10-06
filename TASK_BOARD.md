@@ -1,5 +1,7 @@
 # AcademicCloud Task Board
 
+**Selected next implementation:** [ADR-051](docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md) device-owned persistent private book jobs, source grants, resumable page receipts and bounded warm Paddle slices. Normal close-browser/reopen/re-pair and actual speed acceptance precede one coordinated release; original/private/shared boundaries remain explicit.
+
 **Last reconciled:** 2026-10-06. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
 ## Selected next step — whole-book OCR

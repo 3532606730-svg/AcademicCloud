@@ -1,5 +1,7 @@
 # AcademicCloud Current Status
 
+**Selected continuation:** [ADR-051](docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md) implements Owner-selected speed/off-site private book jobs next. The first book and actual exports below are accepted history; new durable jobs/warm slices are not deployed. Local searchable-PDF and reviewed shared OCR are evaluated separately.
+
 **Last reconciled:** 2026-10-06. This file records concise current truth; CURRENT_STATE.json is the machine-readable pointer. The active task retains historical verification.
 
 ## Current work — private whole-book OCR

@@ -1,5 +1,7 @@
 # AcademicCloud Decision Log
 
+2026-10-06 — Accepted [ADR-051](docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md): actual312 new page completions span107.972minutes including pause, current browser ownership prevents off-site continuation by design. Owner selected device-owned durable private jobs/source grants/page receipts and bounded warm native slices; unchanged model/hash/deadline/guard, close-before-release and yield remain. Local searchable PDF and reviewed shared OCR are distinct derived/publication contracts.
+
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.
 
 ## 2026-10-06 — Add browser-run private whole-book OCR

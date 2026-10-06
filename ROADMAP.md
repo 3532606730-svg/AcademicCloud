@@ -1,5 +1,7 @@
 # AcademicCloud Roadmap
 
+**Owner-selected October6 continuation:** [ADR-051](docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md) follows accepted ADR050313-page/actualexports. Private device-owned background book jobs and bounded warm sessions are selected within the existing vNext task. Local searchable PDF and explicit reviewed Library OCR reuse are evaluated follow-ups; no automatic original replacement/private sharing/full-text indexing follows.
+
 **Last reconciled:** 2026-10-06
 
 ## October6 authorized scholarly OCR step
