@@ -1,10 +1,10 @@
 # ADR-050 — Browser-run private book OCR
 
-Date: 2026-10-06. Status: Accepted for implementation by the Owner's explicit request to add whole-book OCR. Production remains the exact ADR-049/copy release until this candidate passes qualification.
+Date: 2026-10-06. Status: Accepted for implementation by the Owner's explicit request to add whole-book OCR. Initial Core/frontend925bd86 is deployed at unchanged native662/schema40. The concrete cover-frame fitting follow-up is locally verified and awaits its exact release and normal book acceptance.
 
 ## Decision and scope
 
-Extend the existing paired-device OCR path to an explicitly started, sequential book run. The signed-in account uses its own online local device; there is no Owner-engine borrowing, cloud fallback, paid activation or corpus-wide dispatch. Core remains the authorization/control plane and the browser renders one bounded PNG at a time from the open PDF. Native models, leases, transport limits and the one-active-request-per-account rule remain unchanged. No new database migration, background worker or persistent page images are introduced.
+Extend the existing paired-device OCR path to an explicitly started, sequential book run. The signed-in account uses its own online local device; there is no Owner-engine borrowing, cloud fallback, paid activation or corpus-wide dispatch. Core remains the authorization/control plane and the browser renders one bounded PNG at a time from the open PDF. Native models, leases, transport limits and the one-active-request-per-account rule remain unchanged. No new database migration, background worker or persistent page images are introduced. A real cover-page trial exceeded the2MiB transport bound; candidate book capture fits oversized PNGs by bounded re-rendering at a smaller scale before any engine submission. Ordinary pages retain the original bounded size; the final frame digest/dimensions are stored as usual. This does not retry the engine or expand image/native limits.
 
 This is a browser-run workflow with durable successful-page checkpoints. It is not an unattended background batch queue: leaving the Reader or hiding the page pauses processing. Reopening the same immutable source loads saved page summaries and explicit resume processes missing pages. Core/browser restart may lose an in-flight request; uncertain failures stop, refresh saved progress and require manual resume. Existing short-lived request idempotency is not durable batch idempotency. Concurrent requests still fail closed.
 

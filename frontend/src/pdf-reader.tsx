@@ -122,7 +122,7 @@ export function PdfReader(props: PdfReaderProps) {
     return { isCurrent, capture: async (physicalPage, signal) => {
       if (signal.aborted || !isCurrent()) throw new Error("ocr_frame_changed");
       const pdfPage = await document.getPage(physicalPage);
-      try { return await captureOcrFrame(pdfPage, pdfPage.rotate, isCurrent, signal); }
+      try { return await captureOcrFrame(pdfPage, pdfPage.rotate, isCurrent, signal, true); }
       finally { if (geometry.current?.pdfPage !== pdfPage) pdfPage.cleanup(); }
     } };
   }, [document, ocrSourceKey]);

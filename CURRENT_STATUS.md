@@ -4,7 +4,7 @@
 
 ## Current work — private whole-book OCR
 
-Owner October6 authorizes [ADR-050](docs/decisions/ADR-050-browser-run-private-book-ocr.md): explicit browser-run, per-account local OCR for books up to500 physical pages, with durable saved-page resume, bounded quota preflight, review flags and source-framed TXT/JSONL. Implementation/qualification and normal Owner book acceptance are in progress; no full-book accuracy or deployment is claimed. Production remains8f6c721/native662/schema40. Scholarly differentiation is assessed around traceable evidence, correction and interoperable research output.
+Owner October6 ADR-050 implementation passes77 focused tests/types/build and independent review. Exact Core/frontend925bd865f020e4474378948ed7735497fe7b8e32 is deployed; native662/schema40 retained, no migration/new backup. Normal Owner MongoliaToday313 opens book progress and preserves its saved page; first cover PNG exceeds2MiB and stops before engine submission. A bounded book-only frame fitting repair is in progress; full-book/export acceptance remains open. [Evidence](docs/evidence/private-book-ocr-20261006.md).
 
 ## Latest checkpoint — October6 page-copy simplification
 

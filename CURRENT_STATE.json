@@ -6,21 +6,21 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "8f6c721261a13a6af06b643fb0e79586e21a7818",
+    "checkpoint": "925bd865f020e4474378948ed7735497fe7b8e32",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Source8f6c721 published and fresh fetched-remote equality/clean active tree verified before deployment; following documentation records actual release/copy acceptance. No main merge.",
-    "lastVerifiedPublishedCheckpoint": "8f6c721261a13a6af06b643fb0e79586e21a7818"
+    "localState": "Source925 published,fresh fetched remote equality and clean active checkout verified before deployment; current documentation/frame-fix reconciliation is pending a later checkpoint.",
+    "lastVerifiedPublishedCheckpoint": "925bd865f020e4474378948ed7735497fe7b8e32"
   },
   "production": {
     "observedAt": "2026-10-06",
-    "coreFrontendCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
+    "coreFrontendCommit": "925bd865f020e4474378948ed7735497fe7b8e32",
     "schemaVersion": 40,
     "migrationHistory": "001-040",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Post-cutover PID1501370 active/running NRestarts0 health/ready PASS; exact process cwd.73,568,256-byte memory is a snapshot.",
+    "health": "October6 book release PID1504566 active/running,NRestarts0,health/ready and schema40 integrity/foreign keys PASS.80,420,864-byte memory is a snapshot.",
     "catalogBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
     "catalogBridgeState": "October6 read-only observation: exact662 active/running PID3248 NRestarts0; unchanged selector/service; prior live native cooperation retained.",
     "computeDistro": "AcademicCloudComputeV2",
@@ -352,6 +352,20 @@
       "newCloudOcrCalls": 0,
       "hostedCiStarted": false,
       "runtimeMeaning": "Exact immutable runtime source8f6c721; following documentation checkpoints do not change the deployed artifact."
+    },
+    "wholeBookRelease": {
+      "sourceCommit": "925bd865f020e4474378948ed7735497fe7b8e32",
+      "status": "DEPLOYED_REAL_TRIAL_FRAME_STOP",
+      "schemaVersion": 40,
+      "migrationsApplied": [],
+      "archiveSha256": "a4b548d9e061ba3c93b5f83c96ee0ef8e0344f5a2a15b3cb25d6dddf4bdd79fb",
+      "manifestSha256": "656382a107732b60af60c166f67a5f5fbc2674d1e672126994ac92b58729158e",
+      "corePid": 1504566,
+      "nRestarts": 0,
+      "nativeChanged": false,
+      "newProductionBackupCreated": false,
+      "rollbackUsed": false,
+      "evidence": "docs/evidence/private-book-ocr-20261006.md"
     }
   },
   "candidate": {
@@ -1146,7 +1160,7 @@
     "supersedes": "gpt-6-astra/ultra"
   },
   "wholeBookOcr": {
-    "status": "LOCALLY_VERIFIED_RELEASE_PENDING",
+    "status": "COVER_FRAME_FIT_LOCALLY_VERIFIED_RELEASE_PENDING",
     "adr": "docs/decisions/ADR-050-browser-run-private-book-ocr.md",
     "mode": "browser_run_private_saved_page_resume",
     "maximumBookPages": 500,
@@ -1156,12 +1170,13 @@
     "scope": "Own paired local engine only; no cloud fallback, shared Owner engine, automatic corpus OCR or indexing/RAG.",
     "verification": {
       "backendFocusedTests": 21,
-      "frontendFocusedTests": 56,
+      "frontendFocusedTests": 62,
       "frontendFiles": 8,
       "typesBuild": "PASS",
       "independentReview": "PASS",
       "helperChecks": 3,
-      "liveBookAcceptance": "PENDING"
+      "liveBookAcceptance": "MongoliaToday313 opens normal Owner whole-book panel; firstpagePNG>2MiB stopped before engine submission. Existing1savedpage/2accountresults retained. Bounded frame fit repair in progress.",
+      "coverFrameFix": "Six new regressions PASS; bounded book-only resize, no engine/native/transport expansion; same independent review PASS."
     }
   }
 }
