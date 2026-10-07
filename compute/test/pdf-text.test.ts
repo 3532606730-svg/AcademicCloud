@@ -16,6 +16,7 @@ import {
 import { OcrError, type OcrAdapter, type OcrRecognition } from "../src/ocr.js";
 import { SUGGESTION_LIMITS, type SuggestionLimits } from "../src/suggestion.js";
 import { makeOversizedRealisticPdf, makeRealisticPdf } from "./fixtures/realistic-pdf.js";
+import { makeCcittBookPdf, assertCcittBodyPainted } from './fixtures/ccitt-book-pdf.js';
 
 function makePdf(pages: string[], mediaBox = "0 0 612 792"): Uint8Array {
   const objects: string[] = [
@@ -237,6 +238,30 @@ test("native text bypasses OCR while image-only and mixed bounded pages use fall
   assert.deepEqual(mixedInspection.pages.map((page) => page.evidenceOrigin), ["native_text", "ocr", "native_text"]);
   assert.equal(mixedInspection.nativePageCount, 2);
   assert.equal(mixedInspection.ocrPageCount, 1);
+});
+
+test('Catalog byte, range and file OCR fallback receives the visible CCITT scanned body', async () => {
+  const bytes = makeCcittBookPdf({ footer: false });
+  const directory = await mkdtemp(join(tmpdir(), 'academiccloud-ccitt-catalog-')), path = join(directory, 'synthetic.pdf');
+  try {
+    await writeFile(path, bytes);
+    for (const mode of ['bytes', 'range', 'file'] as const) {
+      let calls = 0;
+      const ocr: OcrAdapter = { async recognizePage(input) {
+        calls++;
+        const image = Buffer.from(input.imageBytes);
+        await assertCcittBodyPainted({ image, imageWidth: image.readUInt32BE(16), imageHeight: image.readUInt32BE(20) }, false);
+        return recognized('Synthetic scanned body evidence');
+      } };
+      const result = mode === 'bytes' ? await inspectPdfFrontMatter(bytes, ocr)
+        : mode === 'range' ? await inspectPdfFrontMatterRange({ length: bytes.length,
+          async read(begin, end) { return bytes.slice(begin, end); } }, ocr)
+        : await inspectPdfFrontMatterFile(path, bytes.length, ocr);
+      assert.equal(calls, 1, mode);
+      assert.equal(result.pages[0]?.evidenceOrigin, 'ocr', mode);
+      assert.equal(result.pages[0]?.text, 'Synthetic scanned body evidence', mode);
+    }
+  } finally { await unlink(path); await rmdir(directory); }
 });
 
 test("pages outside first 15 plus last 5 are never rendered or OCRed and short windows deduplicate", async () => {

@@ -6,6 +6,7 @@ import { createCanvas } from "@napi-rs/canvas";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { LOCAL_OCR_LIMITS, LOCAL_OCR_BOOK_LIMITS } from "@academiccloud/compute-contracts";
+import { localPdfAssetOptions } from './local-pdf-assets.js';
 
 const CHUNK = 1024 * 1024;
 const MAX_SOURCE = 1024 * 1024 * 1024;
@@ -36,8 +37,9 @@ export class LocalBookPdfDocument {
     // PDF.js' Node file stream supplies range chunks from this verified private
     // file. A URL from a grant never reaches the decoder or this worker.
     this.loading = getDocument({ url: pathToFileURL(path).href, rangeChunkSize: CHUNK,
+      ...await localPdfAssetOptions(),
       disableAutoFetch: true, disableStream: true, enableXfa: false, isImageDecoderSupported: false,
-      isOffscreenCanvasSupported: false, stopAtErrors: true, useSystemFonts: false, verbosity: 0 });
+      isOffscreenCanvasSupported: false, stopAtErrors: true, verbosity: 0 });
     this.document = await this.loading.promise;
     if (!Number.isSafeInteger(this.document.numPages) || this.document.numPages < 1 || this.document.numPages > LOCAL_OCR_BOOK_LIMITS.maxPhysicalPages) throw Error('invalid_source');
     return this.document.numPages;

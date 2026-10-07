@@ -1,5 +1,6 @@
 import type { PDFPageProxy } from "pdfjs-dist";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { localPdfAssetOptions } from './local-pdf-assets.js';
 
 import type { OcrAdapter, OcrRecognitionStatus } from "./ocr.js";
 import { prepareOcrGeometry, type OcrLineGeometry } from "./ocr-geometry.js";
@@ -112,6 +113,7 @@ export class ExplicitPageOcrInspector implements ExplicitPageOcrSource {
       }
       if (input.source) transport = new PdfRangeTransport(input.source, this.limits, controller.signal, prefix);
       loadingTask = getDocument({
+        ...await localPdfAssetOptions(),
         ...(input.bytes ? { data: new Uint8Array(input.bytes) }
           : { range: transport!, length: input.source!.length, rangeChunkSize: this.limits.rangeChunkBytes }),
         disableAutoFetch: true,
@@ -121,7 +123,6 @@ export class ExplicitPageOcrInspector implements ExplicitPageOcrSource {
         isImageDecoderSupported: false,
         isOffscreenCanvasSupported: false,
         stopAtErrors: true,
-        useSystemFonts: false,
         verbosity: 0,
       });
       const document = await withTimeout(loadingTask.promise, budget(), controller.signal);

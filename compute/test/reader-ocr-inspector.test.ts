@@ -6,6 +6,7 @@ import { PdfTextInspectionError } from "../src/pdf-text.js";
 import { ExplicitPageOcrInspector, ReaderOcrPageOutOfRangeError } from "../src/reader-ocr-inspector.js";
 import { SUGGESTION_LIMITS } from "../src/suggestion.js";
 import { makeRealisticPdf } from "./fixtures/realistic-pdf.js";
+import { makeCcittBookPdf, assertCcittBodyPainted } from './fixtures/ccitt-book-pdf.js';
 
 function recognition(overrides: Partial<OcrRecognition> = {}): OcrRecognition {
   return { status: "recognized", text: "A private page", confidence: 92, engine: "test-engine", ...overrides };
@@ -38,6 +39,22 @@ test("Reader OCR renders only the explicit middle page even when a native text l
   assert.equal(result.rangeBytes, bytes.byteLength);
   assert.equal(result.rangeRequests, 1);
   assert.equal(reads.length, 1);
+});
+
+test('explicit Reader OCR sends the CCITT body and separate native footer to the adapter', async () => {
+  let calls = 0;
+  const inspector = new ExplicitPageOcrInspector({ async recognizePage(input) {
+    calls++;
+    const image = Buffer.from(input.imageBytes);
+    await assertCcittBodyPainted({ image, imageWidth: image.readUInt32BE(16), imageHeight: image.readUInt32BE(20) });
+    return recognition();
+  } });
+  const bytes = makeCcittBookPdf();
+  const result = await inspector.inspectRange({ length: bytes.length,
+    async read(begin, end) { return bytes.slice(begin, end); } }, 1);
+  assert.equal(calls, 1);
+  assert.equal(result.status, 'recognized');
+  assert.equal(result.physicalPage, 1);
 });
 
 test("Reader OCR retains distinct blank, low-confidence, unsupported and truncated outcomes", async () => {

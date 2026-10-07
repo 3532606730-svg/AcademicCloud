@@ -2,16 +2,17 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, readFile, writeFile, unlink, rmdir } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, writeFile, rename, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Worker } from 'node:worker_threads';
 import test from 'node:test';
 import { makeRealisticPdf } from './fixtures/realistic-pdf.js';
 import { inspectRenderedPng } from '../src/rendered-png.js';
+import { makeCcittBookPdf, assertCcittBodyPainted } from './fixtures/ccitt-book-pdf.js';
 
-test('connector kit manifest contains its separately bundled PDF worker and the shipped worker opens a synthetic PDF', async () => {
+test('relocated standalone connector kit paints CCITT scans and fails before capture when local PDF assets are missing', async t => {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   await promisify(execFile)(process.execPath, ['compute/scripts/build-member-ocr-kit.mjs'], { cwd: root, windowsHide: true });
   const kit = join(root, 'output/vnext/member-local-ocr-connector/kit');
@@ -22,21 +23,61 @@ test('connector kit manifest contains its separately bundled PDF worker and the 
   const dependencies = JSON.parse(await readFile(join(kit, 'package.json'), 'utf8')) as { dependencies: Record<string, string> };
   assert.equal(dependencies.dependencies['pdfjs-dist'], '6.2.108'); assert.equal(dependencies.dependencies['@napi-rs/canvas'], '1.0.7');
   const directory = await mkdtemp(join(tmpdir(), 'academiccloud-kit-synthetic-')), path = join(directory, 'source.pdf');
-  const bytes = makeRealisticPdf(['']); await writeFile(path, bytes);
-  const worker = new Worker(join(kit, 'compute/dist/member-book-pdf-worker.js'), { stdout: true, stderr: true });
-  worker.stdout.resume(); worker.stderr.resume();
-  async function request(value: object): Promise<Record<string, unknown>> {
-    return await new Promise((resolve, reject) => {
-      const done = (message: unknown) => { cleanup(); resolve(message as Record<string, unknown>); };
-      const failed = (error: Error) => { cleanup(); reject(error); };
-      const timeout = setTimeout(() => failed(Error('shipped worker timeout')), 10_000);
-      const cleanup = () => { clearTimeout(timeout); worker.off('message', done); worker.off('error', failed); };
-      worker.once('message', done); worker.once('error', failed); worker.postMessage(value);
-    });
-  }
+  const standalone = join(directory, 'connector'), require = createRequire(import.meta.url);
+  const installed = (name: string) => dirname(require.resolve(`${name}/package.json`));
+  const pdfAssets = join(standalone, 'node_modules/pdfjs-dist');
   try {
-    assert.equal((await request({ type: 'open', id: 1, path, size: bytes.length })).pageCount, 1);
-    const frame = (await request({ type: 'page', id: 2, physicalPage: 1 })).frame as { image: Uint8Array; imageWidth: number; imageHeight: number };
-    assert.deepEqual(inspectRenderedPng(frame.image), { width: frame.imageWidth, height: frame.imageHeight });
-  } finally { await worker.terminate(); await unlink(path); await rmdir(directory); }
+    await cp(kit, standalone, { recursive: true });
+    // Simulate the documented pinned npm install without a network call, symlink,
+    // workspace ancestor or member OCR/model dependency.
+    for (const name of ['pdfjs-dist', '@napi-rs/canvas']) await cp(installed(name), join(standalone, 'node_modules', name), { recursive: true });
+    const canvas = JSON.parse(await readFile(join(installed('@napi-rs/canvas'), 'package.json'), 'utf8')) as { optionalDependencies: Record<string, string> };
+    for (const name of Object.keys(canvas.optionalDependencies)) {
+      let dependency: string; try { dependency = installed(name); } catch { continue; }
+      await cp(dependency, join(standalone, 'node_modules', name), { recursive: true });
+    }
+    async function shipped(requests: object[]): Promise<Array<Record<string, unknown>>> {
+      // A child process lets Windows unload the copied canvas DLL before cleanup.
+      // The real isolated PDF worker, not a test replacement, still handles pages.
+      const script = `
+        import { Worker } from 'node:worker_threads';
+        const worker = new Worker(process.argv[1], { stdout: true, stderr: true, execArgv: [] });
+        worker.stdout.resume(); worker.stderr.resume();
+        const results = [];
+        try {
+          for (const value of JSON.parse(process.argv[2])) {
+            const message = await new Promise((resolve, reject) => {
+              worker.once('message', resolve); worker.once('error', reject); worker.postMessage(value);
+            });
+            if (message.frame) message.frame.image = Buffer.from(message.frame.image).toString('base64');
+            results.push(message);
+          }
+          process.stdout.write(JSON.stringify(results));
+        } finally { await worker.terminate(); }
+      `;
+      const result = await promisify(execFile)(process.execPath,
+        ['--input-type=module', '-e', script, join(standalone, 'compute/dist/member-book-pdf-worker.js'), JSON.stringify(requests)],
+        { cwd: standalone, windowsHide: true, timeout: 15_000, maxBuffer: 2 * 1024 * 1024 });
+      return JSON.parse(result.stdout) as Array<Record<string, unknown>>;
+    }
+    await t.test('bundled worker uses its installed assets after relocation', async () => {
+      const bytes = makeCcittBookPdf(); await writeFile(path, bytes);
+      const responses = await shipped([{ type: 'open', id: 1, path, size: bytes.length }, { type: 'page', id: 2, physicalPage: 1 }]);
+      assert.equal(responses[0]?.pageCount, 1);
+      const captured = responses[1]?.frame as { image: string; imageWidth: number; imageHeight: number };
+      const frame = { ...captured, image: new Uint8Array(Buffer.from(captured.image, 'base64')) };
+      assert.deepEqual(inspectRenderedPng(frame.image), { width: frame.imageWidth, height: frame.imageHeight });
+      await assertCcittBodyPainted(frame);
+    });
+    for (const asset of ['wasm/jbig2.wasm', 'wasm/openjpeg.wasm', 'standard_fonts/LiberationSans-Regular.ttf', 'cmaps/Adobe-GB1-UCS2.bcmap']) {
+      await t.test(`missing ${asset} rejects even a simple PDF without returning a partial frame`, async () => {
+        const bytes = makeRealisticPdf(['']); await writeFile(path, bytes);
+        const assetPath = join(pdfAssets, asset); await rename(assetPath, assetPath + '.unavailable');
+        try {
+          assert.deepEqual(await shipped([{ type: 'open', id: 1, path, size: bytes.length }, { type: 'page', id: 2, physicalPage: 1 }]),
+            [{ id: 1, error: true }, { id: 2, error: true }]);
+        } finally { await rename(assetPath + '.unavailable', assetPath); }
+      });
+    }
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

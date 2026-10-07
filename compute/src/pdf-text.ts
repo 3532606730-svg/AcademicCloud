@@ -2,6 +2,7 @@ import type { PDFPageProxy } from "pdfjs-dist";
 import { getDocument, PDFDataRangeTransport } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { stat } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
+import { localPdfAssetOptions } from './local-pdf-assets.js';
 
 import { isUsableBibliographicEvidence } from "./evidence-usability.js";
 import { OcrError, TesseractCliOcrAdapter, type OcrAdapter } from "./ocr.js";
@@ -503,6 +504,7 @@ async function inspectPdf(options: {
       : undefined;
     rangeTransport = source ? new PdfRangeTransport(source, limits, signal, initialData) : undefined;
     loadingTask = getDocument({
+      ...await localPdfAssetOptions(),
       ...(bytes
         ? { data: new Uint8Array(bytes) }
         : source
@@ -515,7 +517,6 @@ async function inspectPdf(options: {
       isImageDecoderSupported: false,
       isOffscreenCanvasSupported: false,
       stopAtErrors: true,
-      useSystemFonts: false,
       verbosity: 0,
     });
     const document = await atInspectionStage("document_load", () => withTimeout(

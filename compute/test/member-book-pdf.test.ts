@@ -8,6 +8,7 @@ import { openBookPdf } from '../src/member-book-pdf.js';
 import { inspectRenderedPng } from '../src/rendered-png.js';
 import { LOCAL_OCR_LIMITS } from '@academiccloud/compute-contracts';
 import { makeRealisticPdf } from './fixtures/realistic-pdf.js';
+import { makeCcittBookPdf, assertCcittBodyPainted } from './fixtures/ccitt-book-pdf.js';
 
 async function source(bytes: Uint8Array) { const dir = await mkdtemp(join(tmpdir(), 'academiccloud-synthetic-book-')); const path = join(dir, 'source.pdf'); await writeFile(path, bytes); return { path, size: bytes.length, async close() { await unlink(path); await rmdir(dir); } }; }
 test('real isolated PDF session reuses document across pages, applies intrinsic rotation, returns bounded actual PNG and closes', async () => {
@@ -17,6 +18,15 @@ test('real isolated PDF session reuses document across pages, applies intrinsic 
     assert.equal(pdf.pageCount, 2);
     for (const page of [1, 2]) { const frame = await pdf.capture(page, new AbortController().signal); assert.equal(frame.rotation, 90); assert.deepEqual(inspectRenderedPng(frame.image), { width: frame.imageWidth, height: frame.imageHeight }); assert.ok(frame.imageWidth <= 2000); assert.ok(frame.imageHeight <= 2800); }
   } finally { await pdf.close(); await pdf.close(); await file.close(); }
+});
+test('CCITT scanned body and separate footer both survive real isolated PDF rendering', async () => {
+  const file = await source(makeCcittBookPdf());
+  const pdf = await openBookPdf(file.path, file.size, new AbortController().signal);
+  try {
+    const frame = await pdf.capture(1, new AbortController().signal);
+    assert.deepEqual(inspectRenderedPng(frame.image), { width: frame.imageWidth, height: frame.imageHeight });
+    await assertCcittBodyPainted(frame);
+  } finally { await pdf.close(); await file.close(); }
 });
 function noisyPdf(): Uint8Array {
   const width = 2000, height = 2800, pixels = Buffer.alloc(width * height);

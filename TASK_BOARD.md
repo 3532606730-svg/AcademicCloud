@@ -1,16 +1,16 @@
 # AcademicCloud Task Board
 
-**Selected next implementation:** ADR-051 local implementation is qualified: backend95, frontend72 unique, Compute50, workspace types and independent review pass. Schema041-compatible prior-behavior3499940 Linux artifact qualification passes. Next is exact Core/frontend and standalone Member-kit release, then normal Owner background/pause/re-pair/actual-export acceptance. Retain Local Pull/Bridge662 and models; current production remains9840/schema40. Direct qualified deployment without a new production backup remains authorized. Searchable PDF and reviewed Library OCR remain separate derived contracts.
+**Selected next implementation:** Owner October7 priority is to catalog every current Library book through normal signed-in UI workflows and verify real product outcomes while preserving source identity, human-edited fields, canonical metadata authority and successful evidence. ADR-051 exact Core/frontend `05bbfb641e31e22f6d9161988f411a442afda25b` is deployed at schema41/history001–041/11 admissions; Local Pull/Bridge remain exact662 and models/native settings are retained. Chinese nine-page pause/close/resume acceptance passes functionally. Fletcher structural export passes but body-image quality failed (`FAILED_BODY_MISSING`, 40 omitted CCITT images,6,026 raw UTF-16 units/107 boxes); speed is unqualified. A separate CPU PDF asset repair remains in progress. No automatic Library-wide OCR, cloud/paid OCR, shared OCR publication, searchable PDF or RAG is authorized by this priority.
 
-**Last reconciled:** 2026-10-06. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
+**Last reconciled:** 2026-10-07. This board selects executable work; runtime identities live in CURRENT_STATUS.md and CURRENT_STATE.json.
 
-## Selected next step — whole-book OCR
+## Selected next step — current Library book cataloguing
 
-Owner October6 [ADR-050](docs/decisions/ADR-050-browser-run-private-book-ocr.md) is deployed on9840/native662/schema40. Normal Owner MongoliaToday313/313, original page4 preservation and actual TXT/JSONL313-page/end-marker acceptance pass; one low-confidence page166 needs human review, no whole-book CER is claimed. Next is Owner-selected speed/off-site device execution with durable checkpoints; ADR-051 freezes the new device ownership and bounded native-slice policy. The existing500-page/500-result bounds remain. No automatic shared publication or original replacement.
+Deploy/repair OCR paths only behind evidence that the normal UI processes the actual page image content. Fletcher's 41-page export exposed missing PDF.js assets for40 CCITT body images; preserve the failed quality result and require the separate CPU asset fix to clear quality before using its outputs. Speed remains unqualified. In parallel, catalog every current Library book through normal product review/Apply, retaining human authority and canonical metadata rules. Chinese nine-page manual resume passed9/9 with the first eight saved records unchanged. Existing private-book bounds remain500 pages/500 results; do not infer automatic or shared corpus processing.
 
 ## Current focus — reliable book intake
 
-Earlier October6 page-copy simplification was deployed in Core/frontend8f6c721;152 distinct focused tests/typecheck, exact artifact gates and normal Owner private/search/tutorial copy acceptance pass. That runtime is superseded by9840e7b; its evidence and the retained native662/schema40 remain valid history. [Evidence](docs/evidence/product-copy-20261006.md).
+Current production: exact Core/frontend `05bbfb641e31e22f6d9161988f411a442afda25b`, schema41/history001–041,11 admissions; Local Pull/Bridge exact662. Migration041 applied once; all55 old tables and old rows/columns preserved, integrity `ok`, FK0, no production backup. Host activation shows active/running/NRestarts0. [Deployment and OCR evidence](docs/evidence/private-book-ocr-20261006.md).
 
 Earlier October6 Core/frontend22d80ef and retained native662 were deployed; the copy-only follow-up and normal Owner private-history preservation pass. Actual TXT file acceptance remains open; synthetic HTTP and Blob files both saved despite the missed Blob event.
 

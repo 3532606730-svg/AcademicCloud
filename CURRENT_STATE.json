@@ -1,31 +1,31 @@
 {
-  "lastReconciled": "2026-10-06",
+  "lastReconciled": "2026-10-07",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "1700c5b18668cf93a24df961b3d332a2b0c97113",
+    "checkpoint": "05bbfb641e31e22f6d9161988f411a442afda25b",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "1700c5b publication/fetch equality verified; current ADR051 implementation tree is pending checkpoint and exact release.",
-    "lastVerifiedPublishedCheckpoint": "1700c5b18668cf93a24df961b3d332a2b0c97113",
-    "checkpointMeaning": "ADR051 implementation authorization checkpoint; runtime remains9840/schema40 until qualified cutover."
+    "localState": "Exact ADR051 Core/frontend source05bbfb641e31e22f6d9161988f411a442afda25b is deployed; current documentation reconciliation is separate from runtime identity.",
+    "lastVerifiedPublishedCheckpoint": "05bbfb641e31e22f6d9161988f411a442afda25b",
+    "checkpointMeaning": "Exact ADR051 Core/frontend source is deployed at schema41; no Git publication or synchronization claim is made for this documentation reconciliation."
   },
   "production": {
-    "observedAt": "2026-10-06",
-    "coreFrontendCommit": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
-    "schemaVersion": 40,
-    "migrationHistory": "001-040",
+    "observedAt": "2026-10-07",
+    "coreFrontendCommit": "05bbfb641e31e22f6d9161988f411a442afda25b",
+    "schemaVersion": 41,
+    "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "October6 frame-fit release PID1505822 active/running,NRestarts0; exact Linux/host qualification PASS; schema40/history001-040/11 admissions and native662 unchanged.",
+    "health": "October6 ADR051 activation, confirmed active again October7: Core active/running,NRestarts0; migration041 applied; schema41/history001-041/11 admissions; integrity ok,FK0; all55 pre-existing tables and old rows/columns preserved; no production backup. Exact Local Pull/Bridge662 and model/native configuration retained.",
     "catalogBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
-    "catalogBridgeState": "October6 read-only observation: exact662 active/running PID3248 NRestarts0; unchanged selector/service; prior live native cooperation retained.",
+    "catalogBridgeState": "October7 read-only observation: retained662 active/running PID336 NRestarts0.",
     "computeDistro": "AcademicCloudComputeV2",
-    "mainInferenceState": "October6 read-only observation: exact662 NORMAL enabled/active PID3029 NRestarts0; unchanged selector/service/model/runtime.",
+    "mainInferenceState": "October7 read-only observation: retained662 active/running PID338 NRestarts0; models/runtime unchanged.",
     "vnextDeployed": true,
     "combinedRelease": {
       "log": "output/vnext/integrated-970-deployment.log",
@@ -945,13 +945,13 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "core9840_book_frame_fit_deployed_native662_owner_book_trial_running",
-    "intake": "R0 export/ADR046 admission/ADR047 selected recovery/ADR049 paired-local initially deployed in662; current9840e7b adds ADR050 private book progress/export and book-only frame fitting while native662 remains unchanged. Original Owner OCR/copy acceptance stays preserved; remaining intake/quality/recovery gates stay open.",
-    "ocr": "Exact cooperating Compute/Bridge and Core40 remain deployed; Owner current-page recognition/private persistence/line overlay are accepted. ADR050 normal Owner book run on9840e7b passes313-page processing/pause-refresh and actual TXT/JSONL acceptance; device-owned speed/off-site follow-up is selected. Online member profiles/activation remain separate.",
+    "status": "core05bbfb_schema41_ADR051_deployed_owner_book_functional_quality_gate_failed_current_library_cataloguing_priority",
+    "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
+    "ocr": "Exact Core/frontend05bbfb is deployed at schema41/history001-041/11 admissions; Local Pull/Bridge662 and model/native settings are retained. Chinese nine-page manual pause/close/resume passed functionally at9/9 with pages1-8 unchanged across all JSONL fields and only page9 added. Fletcher 41-page export is structurally complete but FAILED_BODY_MISSING:40 CCITT body images omitted because PDF.js assets were missing; only6026 raw UTF-16 units/107 line boxes. Speed is unqualified; separate CPU asset repair remains in progress.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
-    "currentCoreFrontendCommit": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
+    "currentCoreFrontendCommit": "05bbfb641e31e22f6d9161988f411a442afda25b",
     "currentLocalPullBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
   },
   "subagents": {
@@ -959,7 +959,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-09-30"
   },
-  "currentContinuationBoundary": "Owner October6 explicitly authorizes ADR-050 bounded browser-run whole-book OCR on account-owned local engines plus scholarly differentiation assessment and direct qualified deployment without a new backup. Other prior cost/privacy/provider/main boundaries remain.",
+  "currentContinuationBoundary": "Owner October7 prioritizes normal-UI real cataloguing and acceptance for every current Library book with human/canonical authority preserved. ADR051 deployed under existing cost/privacy/provider/main boundaries; Fletcher quality failed and speed is unqualified pending separate CPU PDF asset repair.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
@@ -1126,7 +1126,7 @@
     "setupTutorials": "Required inside connection dialog: simple online/local steps, official help, real test, cost/data location and failure recovery",
     "otherCostGates": "Zero new infrastructure and billable GitHub unchanged",
     "implementationCheckpoint": "5fb19382c1c614d2070afa3504c655e76ae456ce",
-    "implementationEnabledMeaning": "Paired current-page and browser-run private313-page book/actual exports are accepted; Owner-selected device-owned background/performance follow-up requires its new ADR. Online profiles/unattended corpus queues/indexing remain separate.",
+    "implementationEnabledMeaning": "Paired current-page and browser-run private313-page book/actual exports remain accepted history; ADR051 device-owned job path is deployed and functionally resumed, but Fletcher body-image quality failed and speed is unqualified. Current Owner priority is normal-UI cataloguing of every current Library book. Online profiles, automatic corpus sweep and indexing remain separate.",
     "candidateImplementationEnabled": true,
     "pairedLocal": {
       "contract": "compute-contracts/src/local-ocr.ts; /api/reader/local-ocr",
@@ -1172,7 +1172,7 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "statePointer": "production.pairedLocalOcrRelease.native"
       },
-      "currentCoreFrontendCommit": "9840e7ba142e6b26d8a6d50e0e028c9f6ad219b4",
+      "currentCoreFrontendCommit": "05bbfb641e31e22f6d9161988f411a442afda25b",
       "followupAcceptanceStatePointer": "wholeBookOcr.verification"
     }
   },
@@ -1226,8 +1226,16 @@
     }
   },
   "backgroundBookOcr": {
-    "status": "LOCAL_QUALIFIED_RELEASE_AND_LIVE_ACCEPTANCE_PENDING",
+    "status": "DEPLOYED_FUNCTIONAL_ACCEPTANCE_PASSED_FLETCHER_BODY_QUALITY_FAILED_SPEED_UNQUALIFIED",
+    "performanceQualified": false,
     "adr": "docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md",
+    "deployedSourceCommit": "05bbfb641e31e22f6d9161988f411a442afda25b",
+    "productionCoreSchemaVersion": 41,
+    "migrationHistory": "001-041",
+    "rulesetAdmissions": 11,
+    "coreHealth": "active/running; NRestarts0",
+    "migration041": "applied; all55 prior tables/old rows/columns preserved; new book tables empty; integrity ok; FK0; no production backup",
+    "retainedLocalPullBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
     "coreSchemaCandidate": 41,
     "transportFeature": "pdf_book_v1",
     "warmSliceMaxPages": 8,
@@ -1252,6 +1260,22 @@
       "rollbackSourceCommit": "3499940efe8320eb5250a5b0c5ff47b274bfdbad",
       "rollbackLinuxQualification": "PASS",
       "newKitSha256": "baccd267a1646bd15bca82901e63375a292bb094a93b5fd57163cb8ff7e7ce95"
+    },
+    "liveAcceptance": {
+      "chineseNinePageResume": "PASS_FUNCTIONALLY_9_OF_9",
+      "jsonlBefore": "C:/Users/35326/Downloads/academiccloud-private-ocr-book (3).jsonl",
+      "jsonlAfter": "C:/Users/35326/Downloads/academiccloud-private-ocr-book (4).jsonl",
+      "priorPages1To8AllFieldsDeepStrictEqual": true,
+      "newSavedPage": 9,
+      "receiptOmitsRawOcrContent": true,
+      "fletcherPageCount": 41,
+      "fletcherExportStructuralIntegrity": true,
+      "fletcherRenderQuality": "FAILED_BODY_MISSING",
+      "fletcherMissingCCITTImages": 40,
+      "fletcherRawTextUtf16Units": 6026,
+      "fletcherLineBoxes": 107,
+      "performanceQualified": false,
+      "cpuPdfAssetRepair": "in_progress_separate_task"
     },
     "retainedNativeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
   }
