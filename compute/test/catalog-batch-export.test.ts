@@ -199,6 +199,29 @@ test("evidence-only extraction skips per-resource ZIP assembly", async () => {
   assert.deepEqual(output.fallbackResourceIds, []);
 });
 
+test("Catalog exports first and last PDF pages as zero-based evidence without changing the inspector pages", async () => {
+  const inspection = inspectionFixture();
+  inspection.pageIndices = [1, 120];
+  inspection.pages[1]!.pageIndex = 120;
+  const originalInspection = structuredClone(inspection);
+  const inspector = new FixtureInspector();
+  inspector.inspectRange = async () => inspection;
+  const output = await createCatalogEvidencePackage({
+    request: request(), inspector, endpointPolicy: TEST_ENDPOINT_POLICY,
+  });
+  const resource = output.evidence[0]!;
+  assert.equal(resource.pageCount, 120);
+  assert.deepEqual(resource.pages.map(({ pageIndex, evidenceOrigin, ocrConfidence, text }) => ({
+    pageIndex, evidenceOrigin, ocrConfidence, text,
+  })), [
+    { pageIndex: 0, evidenceOrigin: "native_text", ocrConfidence: null, text: "学术书名\n作者" },
+    { pageIndex: 119, evidenceOrigin: "ocr", ocrConfidence: 92, text: "出版者 2026" },
+  ]);
+  const packagedResource = JSON.parse(unzip(output.bytes).get("resources/resource-fixture.json")!);
+  assert.deepEqual(packagedResource.pages, resource.pages);
+  assert.deepEqual(inspection, originalInspection, "the main PDF inspection contract remains one-based");
+});
+
 test("interrupted signed range body retries the same bounded request", async () => {
   const previous = globalThis.fetch;
   let rangeCalls = 0;

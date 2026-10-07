@@ -115,8 +115,9 @@ const ENDPOINT_POLICY = createCatalogEndpointPolicy(
 test("one bad PDF is isolated while the remaining resources still produce a reviewable ZIP", async () => {
   const progress: Array<[number, number, number]> = [];
   let inspectors = 0;
+  const request = requestDocument();
   const result = await createResilientCatalogEvidencePackage({
-    request: requestDocument(),
+    request,
     createInspector: () => { inspectors += 1; return new IsolatingInspector(); },
     endpointPolicy: ENDPOINT_POLICY,
     onProgress: (entry) => progress.push([entry.completedResources, entry.totalResources, entry.failedResources]),
@@ -128,9 +129,18 @@ test("one bad PDF is isolated while the remaining resources still produce a revi
   assert.equal(result.manifest.resources[0]?.pageCount, 1);
   assert.equal(result.manifest.resources[1]?.pageCount, null);
   assert.equal(result.manifest.resources[2]?.pageCount, 1);
-  assert.deepEqual(result.evidence[1]?.inspection, { status: "failed", failureCode: "inspection_failed" });
-  assert.equal(result.evidence[1]?.pages.length, 0);
-  assert.equal(result.evidence[1]?.embeddedMetadata && Object.keys(result.evidence[1].embeddedMetadata).length, 0);
+  assert.deepEqual(result.evidence.map((entry) => entry.pages.map((page) => page.pageIndex)), [[0], [], [0]]);
+  assert.deepEqual(result.evidence[1], {
+    schemaVersion: "academiccloud.catalog-evidence.v2",
+    resourceId: "resource-2",
+    sourceIdentity: request.manifest.resources[1]!.sourceIdentity,
+    currentFilename: "book-2.pdf",
+    pageCount: null,
+    embeddedMetadata: {},
+    pages: [],
+    complete: false,
+    inspection: { status: "failed", failureCode: "inspection_failed" },
+  });
   assert.equal(inspectors, 2, "the parser is replaced after a resource-level failure");
   assert.deepEqual(progress, [[0, 3, 0], [1, 3, 0], [2, 3, 1], [3, 3, 1]]);
 
@@ -142,6 +152,9 @@ test("one bad PDF is isolated while the remaining resources still produce a revi
     "resources/resource-2.json",
     "resources/resource-3.json",
   ]);
+  for (const evidence of result.evidence) {
+    assert.deepEqual(JSON.parse(files.get(`resources/${evidence.resourceId}.json`)!), evidence);
+  }
   const contract = JSON.parse(files.get("review-contract.json")!) as any;
   assert.equal(contract.schemaVersion, "academiccloud.catalog-review-contract.v2");
   assert.deepEqual(contract.summary, { totalResources: 3, readyResources: 2, failedResources: 1 });

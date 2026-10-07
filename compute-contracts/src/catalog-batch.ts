@@ -66,6 +66,7 @@ export interface CatalogExportRequest {
 }
 
 export interface CatalogEvidencePage {
+  /** Zero-based physical PDF page index. */
   pageIndex: number;
   pageClass: string;
   evidenceOrigin: "native_text" | "ocr";

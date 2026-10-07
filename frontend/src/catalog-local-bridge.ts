@@ -190,7 +190,7 @@ export async function exportCatalogEvidenceLocally(
 
   if (!response.ok) {
     const code = await failureCode(response, signal);
-    if (response.status === 409 && code === "busy") throw new LocalCatalogBridgeError("busy");
+    if ((response.status === 409 || response.status === 503) && code === "busy") throw new LocalCatalogBridgeError("busy");
     if (isServerFailureCode(code)) throw new LocalCatalogBridgeError(code);
     throw new LocalCatalogBridgeError("rejected");
   }
@@ -220,7 +220,7 @@ const TEXT = {
     generate: "Generate evidence package",
     ready: "Evidence package downloaded ({count})",
     unavailable: "Cannot reach Local Compute. Allow local network access if prompted, then retry.",
-    busy: "Local Compute is busy. Retry after the current export finishes.",
+    busy: "Local Compute is busy. Retry after the current task finishes.",
     invalid_request: "The local export request is no longer valid. Refresh the batch and retry.",
     source_unavailable: "One or more source files could not be authorized or read. Retry after checking connectivity.",
     identity_mismatch: "A source file changed during export. Refresh the batch before retrying.",

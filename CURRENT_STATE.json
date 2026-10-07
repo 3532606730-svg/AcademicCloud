@@ -6,27 +6,82 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "05bbfb641e31e22f6d9161988f411a442afda25b",
+    "checkpoint": "ae28096283e0a6745ba930761626ad2deb55c4e6",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Exact ADR051 Core/frontend source05bbfb641e31e22f6d9161988f411a442afda25b is deployed; current documentation reconciliation is separate from runtime identity.",
-    "lastVerifiedPublishedCheckpoint": "05bbfb641e31e22f6d9161988f411a442afda25b",
-    "checkpointMeaning": "Exact ADR051 Core/frontend source is deployed at schema41; no Git publication or synchronization claim is made for this documentation reconciliation."
+    "localState": "Exactae280 source published and fetched-remote/local HEAD equality verified before this documentation reconciliation; Core/frontend and both native services deployed at that identity.",
+    "lastVerifiedPublishedCheckpoint": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+    "checkpointMeaning": "Exact shared PDF decoder repair is deployed at schema41; no Git publication or synchronization claim is made for this documentation reconciliation."
   },
   "production": {
     "observedAt": "2026-10-07",
-    "coreFrontendCommit": "05bbfb641e31e22f6d9161988f411a442afda25b",
+    "coreFrontendCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
     "schemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "October6 ADR051 activation, confirmed active again October7: Core active/running,NRestarts0; migration041 applied; schema41/history001-041/11 admissions; integrity ok,FK0; all55 pre-existing tables and old rows/columns preserved; no production backup. Exact Local Pull/Bridge662 and model/native configuration retained.",
-    "catalogBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
-    "catalogBridgeState": "October7 read-only observation: retained662 active/running PID336 NRestarts0.",
+    "health": "October7 shared PDF decoder repair: exactae280 Core PID1523483 active/running,NRestarts0; schema41/history001-041/11 admissions; integrity ok,FK0. No migration,backup,restore or nginx/environment/unit change. Both native services also select exactae280; verified662 runtime/dependencies and model pins retained.",
+    "catalogBridgeCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+    "catalogBridgeState": "October7 after verified prior-boot lock recovery: exactae280 active/running PID2795 NRestarts0; snapshot only.",
     "computeDistro": "AcademicCloudComputeV2",
-    "mainInferenceState": "October7 read-only observation: retained662 active/running PID338 NRestarts0; models/runtime unchanged.",
+    "mainInferenceState": "October7 after verified prior-boot lock recovery: exactae280 Local Pull active/running PID2794 NRestarts0; real normal-UI catalogue runtime started; models/runtime unchanged. Snapshot only; catalogue completion not accepted.",
     "vnextDeployed": true,
+    "pdfAssetRepairRelease": {
+      "sourceCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+      "deployedAt": "2026-10-07",
+      "status": "DEPLOYED_QUALIFIED_CATALOGUING_STARTED",
+      "coreManifestEntries": 5185,
+      "unchangedCoreManifestEntries": 5184,
+      "onlyChangedCoreArtifact": "public Member connector ZIP",
+      "memberKitBytes": 119617,
+      "memberKitSha256": "7bdd23ff46206d5a9f5df21f010c0c5fdd4e73c015e499b60736806776d56908",
+      "nativeRuntimeDependencyBaselineCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
+      "nativeOldAndNewFullVerifiers": "PASS",
+      "installedPdfAssetsAndLiveCooperation": "PASS",
+      "migrationsApplied": [],
+      "modelsEnvironmentUnitsChanged": false,
+      "focusedChecks": 63,
+      "actualFletcherPage2CpuBodyRender": "PASS;1811x2800;475087PNGbytes;311498 dark body pixels;source hash unchanged;inference=false",
+      "nativeLockRecovery": {
+        "status": "ONE_TIME_VERIFIED_MANUAL_RECOVERY_PASS",
+        "priorMarker": "owned\\n;6bytes",
+        "markerMtime": 1791302575,
+        "bootTime": 1791342641,
+        "knownNativeProcessesAbsent": true,
+        "exclusiveOsLockAcquired": true,
+        "sameInodeRewriteAndFsync": true,
+        "filesDeleted": 0,
+        "automaticRecoveryImplemented": false,
+        "evidence": "output/vnext/pdf-assets-20261007/native-lock-recovery.log"
+      },
+      "currentLibraryProgress": "205 normal-UI holdings including192 PDFs;100/100/5 recovery previews;first2 missing jobs succeeded03:33:54/03:37:37UTC but are not counted as catalogued;extraction-only bamboo collection-heading mismatch was not applied;remaining24 missing and4 safe transport retries still eligible;separate source-reviewed pilot applied3/3;all-Library completion not accepted",
+      "reviewedCataloguePilot": {
+        "batchId": "adf2fc42-56b2-408c-ab08-d35a3e052a5a",
+        "normalUiExportZipBytes": 34948,
+        "readyEvidenceRecords": 3,
+        "extractionFailures": 0,
+        "resultsSchema": "academiccloud.catalog-results.v2",
+        "normalUiPreviewAndApply": "PASS_3_OF_3",
+        "appliedBibliography": [
+          "Fletcher: journal article,1986",
+          "Kinship:1972 University Microfilms facsimile;1953 University of New Mexico Press source edition",
+          "Venice:2026 English translated edition"
+        ],
+        "originalFilenamesSourceIdentitiesAndHumanFactsPreserved": true,
+        "remainingMetadata": "Fletcher journal container,volume46,issue1,pages11–50 saved and verified through ordinary metadata;full-Library remains open",
+        "allLibraryAccepted": false,
+        "applyEvidence": "output/vnext/pdf-assets-20261007/catalog-pilot3-apply.txt",
+        "applyScreenshot": "output/vnext/pdf-assets-20261007/catalog-pilot3-applied.png"
+      },
+      "pendingCoordinatedRelease": {
+        "status": "LOCAL_QUALIFIED_NOT_DEPLOYED_ROOT_PREPARING",
+        "busyMessageFix": "22 frontend tests,typecheck,independent review PASS",
+        "zeroBasedEvidenceExportBoundaryFix": "28 Compute tests,typecheck,independent review PASS",
+        "productionRemains": "ae28096283e0a6745ba930761626ad2deb55c4e6"
+      },
+      "evidence": "docs/evidence/device-owned-book-ocr-20261006.md"
+    },
     "combinedRelease": {
       "log": "output/vnext/integrated-970-deployment.log",
       "sourceGenerations": 135,
@@ -845,11 +900,11 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Latest September27 report:192 active PDFs,94 succeeded/67 failed/31 no job; current source/eligibility/Owner overlap reconciliation and field-quality acceptance open",
+    "October7 pre-batch inventory:205 normal-UI holdings including192 active PDFs;94 latest jobs succeeded/67 failed/31 absent. First2 recovered jobs now succeeded but are not counted as catalogued;separate reviewed normal-UI pilot applied3/3. All-book outcomes and field-quality acceptance remain open.",
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Qualify and deploy exact Core/frontend schema041 and standalone Member kit; retain Catalog/LocalPull/Bridge662, then normal Owner background start/close/reopen/pause/re-pair resume and actual export/timing acceptance. Preserve313-page accepted history; no new production backup, source replacement or automatic sharing.",
+  "next": "Root prepares one coordinated release for locally qualified busy-message and zero-based evidence-export fixes;production remains exactae280. Finish all-Library normal-UI catalogue review/recovery from205 holdings/192 PDFs,including24 missing jobs,4 safe transport retries and individually reviewed failures/extraction-only outcomes. First2 recovered jobs succeeded without catalogue acceptance;bamboo mismatch was not applied. Separate source-reviewed pilot applied3/3;Fletcher journal/issue/pages subsequently verified through ordinary metadata. Preserve successful evidence,source/human authority,old private OCR records and unresolved source gates.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -945,21 +1000,22 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "core05bbfb_schema41_ADR051_deployed_owner_book_functional_quality_gate_failed_current_library_cataloguing_priority",
+    "status": "ae280_deployed_first2_jobs_succeeded_pilot3_normal_ui_applied_local_fixes_await_coordinated_release_all_library_open",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
-    "ocr": "Exact Core/frontend05bbfb is deployed at schema41/history001-041/11 admissions; Local Pull/Bridge662 and model/native settings are retained. Chinese nine-page manual pause/close/resume passed functionally at9/9 with pages1-8 unchanged across all JSONL fields and only page9 added. Fletcher 41-page export is structurally complete but FAILED_BODY_MISSING:40 CCITT body images omitted because PDF.js assets were missing; only6026 raw UTF-16 units/107 line boxes. Speed is unqualified; separate CPU asset repair remains in progress.",
+    "ocr": "Exactae280 Core/frontend/Local Pull/Bridge deployed at schema41/history001-041/11 admissions. Shared decoder repair passes63 checks, actual Fletcher page2 CPU body rendering, exact Linux/host/native qualification and standalone kit smoke. Verified662 native runtime/dependencies/model pins retained. Chinese9/9 resume and313-page history remain; original Fletcher41-page FAILED_BODY_MISSING results retained. New native whole-book quality/speed remain unqualified.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
-    "currentCoreFrontendCommit": "05bbfb641e31e22f6d9161988f411a442afda25b",
-    "currentLocalPullBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
+    "currentCoreFrontendCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+    "currentLocalPullBridgeCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6"
   },
   "subagents": {
     "model": "gpt-6.1-sol",
     "reasoningEffort": "xhigh",
-    "ownerInstructionDate": "2026-09-30"
+    "ownerInstructionDate": "2026-09-30",
+    "additionalOwnerPermittedConfiguration": "gpt-6-astra/ultra as of2026-10-07"
   },
-  "currentContinuationBoundary": "Owner October7 prioritizes normal-UI real cataloguing and acceptance for every current Library book with human/canonical authority preserved. ADR051 deployed under existing cost/privacy/provider/main boundaries; Fletcher quality failed and speed is unqualified pending separate CPU PDF asset repair.",
+  "currentContinuationBoundary": "Owner October7 prioritizes normal-UI real cataloguing and acceptance for every current Library book with human/canonical authority preserved. Exactae280 shared decoder repair is deployed; verified one-time prior-boot lock recovery restored catalogue runtime start. Original Fletcher missing-body results remain failed; new native whole-book accuracy and speed remain unqualified. Existing cost/privacy/provider/main boundaries remain.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
@@ -1172,15 +1228,17 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "statePointer": "production.pairedLocalOcrRelease.native"
       },
-      "currentCoreFrontendCommit": "05bbfb641e31e22f6d9161988f411a442afda25b",
+      "currentCoreFrontendCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
       "followupAcceptanceStatePointer": "wholeBookOcr.verification"
     }
   },
   "subagentConfiguration": {
     "model": "gpt-6.1-sol",
     "reasoningEffort": "xhigh",
-    "ownerChangedAt": "2026-09-30",
-    "supersedes": "gpt-6-astra/ultra"
+    "ownerChangedAt": "2026-10-07",
+    "additionalPermittedModel": "gpt-6-astra",
+    "additionalPermittedReasoningEffort": "ultra",
+    "supersedes": "September30 blanket exclusion of Astra; latest Owner permits Astra/ultra"
   },
   "wholeBookOcr": {
     "status": "DEPLOYED_NORMAL_OWNER_FULL_BOOK_AND_EXPORT_ACCEPTED",
@@ -1226,16 +1284,16 @@
     }
   },
   "backgroundBookOcr": {
-    "status": "DEPLOYED_FUNCTIONAL_ACCEPTANCE_PASSED_FLETCHER_BODY_QUALITY_FAILED_SPEED_UNQUALIFIED",
+    "status": "SHARED_PDF_ASSET_REPAIR_DEPLOYED_OLD_FLETCHER_FAILURE_RETAINED_NEW_NATIVE_WHOLE_BOOK_QUALITY_SPEED_OPEN",
     "performanceQualified": false,
     "adr": "docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md",
-    "deployedSourceCommit": "05bbfb641e31e22f6d9161988f411a442afda25b",
+    "deployedSourceCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
     "productionCoreSchemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "coreHealth": "active/running; NRestarts0",
     "migration041": "applied; all55 prior tables/old rows/columns preserved; new book tables empty; integrity ok; FK0; no production backup",
-    "retainedLocalPullBridgeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
+    "currentLocalPullBridgeCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
     "coreSchemaCandidate": 41,
     "transportFeature": "pdf_book_v1",
     "warmSliceMaxPages": 8,
@@ -1275,8 +1333,10 @@
       "fletcherRawTextUtf16Units": 6026,
       "fletcherLineBoxes": 107,
       "performanceQualified": false,
-      "cpuPdfAssetRepair": "in_progress_separate_task"
+      "cpuPdfAssetRepair": "qualified_63_checks_actual_page2_cpu_body_render_and_deployed_exact_ae280",
+      "originalFailedPrivateResultsRetained": true,
+      "newNativeWholeBookQualityAccepted": false
     },
-    "retainedNativeCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
+    "nativeRuntimeDependencyBaselineCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
   }
 }

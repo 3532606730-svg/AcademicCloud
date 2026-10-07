@@ -48,12 +48,28 @@ describe("local catalog bridge client", () => {
     } satisfies Partial<LocalCatalogBridgeError>);
   });
 
-  it("classifies bridge concurrency as busy from a bounded error body", async () => {
+  it.each([409, 503])("classifies bridge concurrency as busy for HTTP %s with a valid error body", async (status) => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "failed", code: "busy" }), {
-      status: 409,
+      status,
       headers: { "Content-Type": "application/json" },
     }));
     await expect(exportCatalogEvidenceLocally(REQUEST, fetchImpl as typeof fetch)).rejects.toMatchObject({ code: "busy" });
+  });
+
+  it.each([
+    [503, "malformed JSON", "busy"],
+    [503, "missing failure status", JSON.stringify({ code: "busy" })],
+    [503, "different failure status", JSON.stringify({ status: "exporting", code: "busy" })],
+    [503, "array body", JSON.stringify([{ status: "failed", code: "busy" }])],
+    [503, "unrelated failure code", JSON.stringify({ status: "failed", code: "service_unavailable" })],
+    [503, "oversized error body", JSON.stringify({ status: "failed", code: "busy", detail: "x".repeat(4096) })],
+    [400, "unexpected HTTP status", JSON.stringify({ status: "failed", code: "busy" })],
+  ] as const)("keeps HTTP %s with %s rejected", async (status, _description, body) => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(body, {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }));
+    await expect(exportCatalogEvidenceLocally(REQUEST, fetchImpl as typeof fetch)).rejects.toMatchObject({ code: "rejected" });
   });
 
   it("rejects an unexpected filename or content type", async () => {

@@ -467,7 +467,9 @@ export async function extractCatalogEvidence(options: {
         pageCount: inspection.pageCount,
         embeddedMetadata: { ...inspection.embeddedMetadata },
         pages: inspection.pages.map((page) => ({
-          pageIndex: page.pageIndex,
+          // The PDF inspector uses PDF.js page numbers; Catalog evidence uses
+          // zero-based physical indices, matching results import and review.
+          pageIndex: page.pageIndex - 1,
           pageClass: classifySuggestionPage(page),
           evidenceOrigin: page.evidenceOrigin === "ocr" ? "ocr" : "native_text",
           ocrConfidence: page.evidenceOrigin === "ocr" ? page.ocrConfidence ?? null : null,
