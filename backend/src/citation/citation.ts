@@ -70,6 +70,9 @@ export interface NormalizedCslItem extends Record<string, unknown> {
   issued?: CslDate | undefined;
   edition?: string | undefined;
   volume?: string | undefined;
+  issue?: string | undefined;
+  page?: string | undefined;
+  "container-title"?: string | undefined;
   "collection-title"?: string | undefined;
   language?: string | undefined;
   ISBN?: string | undefined;

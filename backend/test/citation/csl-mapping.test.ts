@@ -73,3 +73,34 @@ test("citation mapping falls back explicitly when structured bibliography is abs
   assert.equal(projection.item.title, "备用题名");
   assert.equal(projection.item.genre, "Z");
 });
+
+test("journal metadata keeps its authorized container, issue and article extent separate from pinpoint locators", () => {
+  const value = detail();
+  value.metadata!.materialType = "article";
+  value.metadata!.canonicalTitle = "The Mongols: Ecological and Social Perspectives";
+  value.metadata!.subtitle = null;
+  value.metadata!.typeFields = { volumeStatement: "46", issueStatement: "1", locator: "11–50" };
+  value.metadata!.authorityLinks = [
+    { id: "unrelated", type: "work", canonicalLabel: "An unrelated source work", aliases: [], version: "s".repeat(43), role: "source_work" },
+    { id: "journal", type: "work", canonicalLabel: "Harvard Journal of Asiatic Studies", aliases: [], version: "j".repeat(43), role: "container_work" },
+  ];
+  value.bibliography!.materialClass = "journal_article";
+  value.bibliography!.contributors = [{ id: "author", label: "Joseph Fletcher", role: "author" }];
+  value.bibliography!.publication = { publicationDate: "1986-06" };
+  value.bibliography!.volume = undefined;
+  value.bibliography!.language = "en";
+  const { item } = metadataDetailToCsl(value);
+  assert.equal(item.type, "article-journal");
+  assert.equal(item["container-title"], "Harvard Journal of Asiatic Studies");
+  assert.equal(item.volume, "46");
+  assert.equal(item.issue, "1");
+  assert.equal(item.page, "11–50");
+  assert.deepEqual(item.issued, { "date-parts": [[1986, 6]] });
+  assert.deepEqual(item.author, [{ family: "Fletcher", given: "Joseph" }]);
+  value.bibliography!.volume = "47";
+  assert.equal(metadataDetailToCsl(value).item.volume, "47");
+  value.metadata!.authorityLinks = [];
+  value.metadata!.typeFields = {};
+  const missing = metadataDetailToCsl(value).item;
+  for (const field of ["container-title", "issue", "page"]) assert.equal(Object.hasOwn(missing, field), false);
+});

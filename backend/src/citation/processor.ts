@@ -8,7 +8,7 @@ const MINIMAL_LOCALE = `<?xml version="1.0" encoding="utf-8"?>
 <locale xmlns="http://purl.org/net/xbiblio/csl" xml:lang="en-US">
   <style-options punctuation-in-quote="false"/>
   <dates><date form="text"><date-part name="year"/></date><date form="numeric"><date-part name="year"/></date></dates>
-  <terms><term name="and">and</term><term name="et-al">et al.</term><term name="no date">n.d.</term><term name="page">page</term><term name="page" form="short">p.</term><term name="open-quote">“</term><term name="close-quote">”</term><term name="open-inner-quote">‘</term><term name="close-inner-quote">’</term></terms>
+  <terms><term name="and">and</term><term name="et-al">et al.</term><term name="no date">n.d.</term><term name="page">page</term><term name="page" form="short">p.</term><term name="volume">volume</term><term name="issue">issue</term><term name="open-quote">“</term><term name="close-quote">”</term><term name="open-inner-quote">‘</term><term name="close-inner-quote">’</term></terms>
 </locale>`;
 
 type LocatorLabels = Readonly<Record<CitationLocator["type"], (locator: CitationLocator) => string>>;
@@ -48,9 +48,11 @@ function folio(locator: CitationLocator): string {
   return `${locator.value}${locator.side === "recto" ? "a" : "b"}`;
 }
 
-function locatorText(style: CitationStyleId, locators: CitationLocator[]): string {
-  const labels = style === "chicago-notes-bibliography" ? CHICAGO_LOCATORS : CHINESE_LOCATORS;
-  return locators.map((locator) => labels[locator.type](locator)).join(style === "chicago-notes-bibliography" ? ", " : "，");
+function locatorText(style: CitationStyleId, locators: CitationLocator[], item: NormalizedCslItem): string {
+  const english = style === "chicago-notes-bibliography" || (item.type === "article-journal"
+    && style !== "gb-t-7714-2025" && /^en(?:-|$)/iu.test(item.language ?? ""));
+  const labels = english ? CHICAGO_LOCATORS : CHINESE_LOCATORS;
+  return locators.map((locator) => labels[locator.type](locator)).join(english ? ", " : "，");
 }
 
 function clean(value: string): string {
@@ -82,7 +84,7 @@ export function renderCitation(
     const engine = new CSL.Engine(system, citationStyleXml(style), style === "chicago-notes-bibliography" ? "en-US" : "zh-CN", true);
     engine.setOutputFormat("text");
     engine.updateItems([item.id]);
-    const locator = locatorText(style, locators);
+    const locator = locatorText(style, locators, item);
     const fullId = "academiccloud-full";
     const citationItem = { id: item.id, ...(locator ? { locator, label: "page" } : {}) };
     const first = engine.processCitationCluster(

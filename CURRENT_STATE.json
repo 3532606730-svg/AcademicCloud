@@ -6,12 +6,12 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+    "checkpoint": "ff2fee15a990a08e8f683834fe4b964f8a9363d0",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Exactae280 source published and fetched-remote/local HEAD equality verified before this documentation reconciliation; Core/frontend and both native services deployed at that identity.",
-    "lastVerifiedPublishedCheckpoint": "ae28096283e0a6745ba930761626ad2deb55c4e6",
-    "checkpointMeaning": "Exact shared PDF decoder repair is deployed at schema41; no Git publication or synchronization claim is made for this documentation reconciliation."
+    "localState": "Exactff2 busy-message and page-index fixes published and fetched-remote/local equality verified; runtime remains ae280. This citation follow-up has not yet been published.",
+    "lastVerifiedPublishedCheckpoint": "ff2fee15a990a08e8f683834fe4b964f8a9363d0",
+    "checkpointMeaning": "Latest verified source publication is distinct from the ae280 production release."
   },
   "production": {
     "observedAt": "2026-10-07",
@@ -78,7 +78,10 @@
         "status": "LOCAL_QUALIFIED_NOT_DEPLOYED_ROOT_PREPARING",
         "busyMessageFix": "22 frontend tests,typecheck,independent review PASS",
         "zeroBasedEvidenceExportBoundaryFix": "28 Compute tests,typecheck,independent review PASS",
-        "productionRemains": "ae28096283e0a6745ba930761626ad2deb55c4e6"
+        "productionRemains": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+        "citationRepair": "14 focused citation tests, backend types, metadata HTTP/auth/CAS regression and independent review PASS; all four styles; not yet deployed",
+        "liveCitationAcceptance": "FAILED_MISSING_JOURNAL_FIELDS; regenerate normal Fletcher citation after release",
+        "catalogueEvidence": "Current17 exported16ready/1failed and source review pending; historical82 source identity inventory identifies66 reusable candidates; neither group applied yet"
       },
       "evidence": "docs/evidence/device-owned-book-ocr-20261006.md"
     },
