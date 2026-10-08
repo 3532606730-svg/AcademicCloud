@@ -119,10 +119,17 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
     const listing = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings`, headers: headers(memberCookie) });
     assert.equal(listing.statusCode, 200);
     const listedHolding = listing.json<{ holdings: LibraryHoldingView[] }>().holdings[0]!;
+    assert.equal(listedHolding.catalogueDisplayTitle, "元代宰相制度研究（第一册） 中华书局1976点校本");
     assert.deepEqual(body.results[0]!.holding, listedHolding);
     const details = await app.inject({ method: "GET", url: `/api/libraries/${defaultLibrary.id}/holdings/${fileId}/details`, headers: headers(memberCookie) });
     assert.equal(details.statusCode, 200);
     assert.deepEqual(details.json<{ holding: LibraryHoldingView }>().holding, listedHolding);
+    assert.equal(details.json<{ displayTitle: string }>().displayTitle, listedHolding.catalogueDisplayTitle);
+    const favorite = await app.inject({ method: "PUT", url: `/api/favorites/files/${fileId}`, headers: headers(memberCookie) });
+    assert.equal(favorite.statusCode, 204);
+    const favorites = await app.inject({ method: "GET", url: "/api/favorites", headers: headers(memberCookie) });
+    assert.equal(favorites.statusCode, 200);
+    assert.deepEqual(favorites.json<{ libraryHoldings: Array<{ holding: LibraryHoldingView }> }>().libraryHoldings[0]?.holding, listedHolding);
 
     const filtered = await app.inject({
       method: "GET",
@@ -135,7 +142,7 @@ test("catalogue search HTTP route is authority-safe and query-bounded", async ()
       mediaType: "application/pdf",
       sizeBytes: 12,
       materialClass: "primary_source_modern_edition",
-      catalogueDisplayTitle: "元代宰相制度研究 中华书局1976点校本",
+      catalogueDisplayTitle: "元代宰相制度研究（第一册） 中华书局1976点校本",
       canonicalTitle: "元代宰相制度研究",
       authorLabels: ["张帆"],
       contributorLabels: ["顾颉刚"],

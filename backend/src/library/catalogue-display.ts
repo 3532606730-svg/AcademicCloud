@@ -22,6 +22,13 @@ const MODERN_SCHOLARLY_CLASSES: ReadonlySet<MaterialClass> = new Set([
   "catalogue_bibliography",
 ]);
 
+const CONTAINER_VOLUME_CLASSES: ReadonlySet<MaterialClass> = new Set([
+  "journal_article",
+  "book_chapter",
+  "conference_paper",
+  "review",
+]);
+
 const HISTORICAL_SOURCE_CLASSES: ReadonlySet<MaterialClass> = new Set([
   "primary_source_modern_edition",
   "traditional_book",
@@ -86,6 +93,7 @@ export interface CatalogueDisplayInput {
  */
 export interface CatalogueBibliography {
   materialClass: MaterialClass;
+  volume?: string | null | undefined;
   contributors: ReadonlyArray<{
     label: string;
     role: ContributorRole;
@@ -163,6 +171,21 @@ function mergeStatements(values: readonly (string | null | undefined)[]): string
 function editionTypeLabel(type: EditionType | null | undefined): string | undefined {
   if (!type || type === "unknown") return undefined;
   return EDITION_TYPE_LABELS[type];
+}
+
+function titleWithVolume(title: string, rawVolume: string | null | undefined): string {
+  const volume = rawVolume?.normalize("NFC").trim();
+  if (!volume) return title;
+  // Only a complete, delimited terminal value is already a volume label.
+  // A title substring (especially a single character) is not sufficient.
+  const brackets = [["（", "）"], ["(", ")"], ["[", "]"], ["【", "】"]] as const;
+  if (brackets.some(([open, close]) => {
+    if (!title.endsWith(close)) return false;
+    const start = title.lastIndexOf(open);
+    return start >= 0 && title.slice(start + open.length, -close.length).trim() === volume;
+  })) return title;
+  if (title.endsWith(volume) && /\s$/u.test(title.slice(0, -volume.length))) return title;
+  return `${title}（${volume}）`;
 }
 
 function sourceEditionStatement(profile: CatalogueBibliography): string | null {
@@ -244,23 +267,26 @@ export function composeCatalogueDisplay(input: CatalogueDisplayInput): Catalogue
       editionStatement: null,
     };
   }
+  const title = CONTAINER_VOLUME_CLASSES.has(profile.materialClass)
+    ? canonicalTitle
+    : titleWithVolume(canonicalTitle, profile.volume);
   if (MODERN_SCHOLARLY_CLASSES.has(profile.materialClass)) {
     const authors = unique(profile.contributors
       .filter((contributor) => contributor.role === "author")
       .map((contributor) => contributor.label));
     return {
-      title: authors.length > 0 ? `${authors.join("、")} ${canonicalTitle}` : canonicalTitle,
+      title: authors.length > 0 ? `${authors.join("、")} ${title}` : title,
       contributorLabels,
       secondaryContributorLabels: contributorLabels.filter((label) => !authors.includes(label)),
       editionStatement: carrierEditionStatement(profile),
     };
   }
   if (!HISTORICAL_SOURCE_CLASSES.has(profile.materialClass)) {
-    return { title: canonicalTitle, contributorLabels, secondaryContributorLabels: contributorLabels, editionStatement: null };
+    return { title, contributorLabels, secondaryContributorLabels: contributorLabels, editionStatement: null };
   }
   const editionStatement = historicalEditionStatement(profile);
   return {
-    title: editionStatement ? `${canonicalTitle} ${editionStatement}` : canonicalTitle,
+    title: editionStatement ? `${title} ${editionStatement}` : title,
     contributorLabels,
     secondaryContributorLabels: contributorLabels,
     editionStatement,

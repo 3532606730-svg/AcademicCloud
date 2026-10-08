@@ -34,6 +34,59 @@ test("modern scholarly display composes author and title with a space without mu
   assert.equal(bibliography.contributors[0]?.label, "杉山正明");
 });
 
+test("stored volumes distinguish the same historical work before its shared edition identity", () => {
+  const titles = ["上", "中", "下"].map((volume) => {
+    const bibliography = profile({
+      materialClass: "primary_source_modern_edition",
+      volume,
+      publication: { publisher: "風間書房" },
+      carrierEdition: { editionStatement: "原文・ローマ字転写・日本語訳・語学的注釈" },
+    });
+    const display = composeCatalogueDisplay({ canonicalTitle: "元朝秘史全釈", fallbackDisplayName: "scan.pdf", bibliography });
+    assert.equal(display.title, `元朝秘史全釈（${volume}） 風間書房原文・ローマ字転写・日本語訳・語学的注釈`);
+    assert.equal(display.editionStatement, "風間書房原文・ローマ字転写・日本語訳・語学的注釈");
+    assert.equal(bibliography.volume, volume);
+    return display.title;
+  });
+  assert.equal(new Set(titles).size, 3);
+});
+
+test("a supported volume does not require a class or imply an author or a guessed unit", () => {
+  for (const materialClass of ["scholarly_monograph", "traditional_book", "unknown", "other"] as const) {
+    const bibliography = profile({ materialClass, volume: " 上 ", contributors: [{ id: "c1", label: "作者", role: "author" }] });
+    const display = composeCatalogueDisplay({ canonicalTitle: "题名", fallbackDisplayName: "scan.pdf", bibliography });
+    assert.equal(display.title, materialClass === "scholarly_monograph" ? "作者 题名（上）" : "题名（上）");
+    assert.equal(bibliography.volume, " 上 ", "display normalization never modifies a stored fact");
+  }
+  assert.equal(composeCatalogueDisplay({ canonicalTitle: "题名", fallbackDisplayName: "scan.pdf", bibliography: profile({ volume: " " }) }).title, "题名");
+  assert.equal(composeCatalogueDisplay({ canonicalTitle: null, fallbackDisplayName: "original.pdf", bibliography: profile({ volume: "上" }) }).title, "original.pdf");
+});
+
+test("container volumes remain bibliographic facts without becoming article or chapter title parts", () => {
+  const canonicalTitle = "The Mongols: Ecological and Social Perspectives";
+  for (const materialClass of ["journal_article", "book_chapter", "conference_paper", "review"] as const) {
+    const bibliography = profile({
+      materialClass,
+      volume: "46",
+      contributors: [{ id: "author", label: "Joseph F. Fletcher", role: "author" }],
+    });
+    const display = composeCatalogueDisplay({ canonicalTitle, fallbackDisplayName: "scan.pdf", bibliography });
+    assert.equal(display.title, `Joseph F. Fletcher ${canonicalTitle}`, materialClass);
+    assert.equal(composeCatalogueFilename(display.title, "scan.pdf"), `Joseph F. Fletcher ${canonicalTitle}.pdf`, materialClass);
+    assert.equal(bibliography.volume, "46", "container volume stays available to metadata and citation projection");
+  }
+});
+
+test("volume deduplication recognizes only an exact delimited terminal title component", () => {
+  for (const canonicalTitle of ["题名（上）", "题名(上)", "题名[ 上 ]", "题名【上】", "题名 上"]) {
+    assert.equal(composeCatalogueDisplay({ canonicalTitle, fallbackDisplayName: "scan.pdf", bibliography: profile({ volume: "上" }) }).title, canonicalTitle);
+  }
+  for (const canonicalTitle of ["世上", "题名（上篇）", "上部题名", "题名（下）"]) {
+    assert.equal(composeCatalogueDisplay({ canonicalTitle, fallbackDisplayName: "scan.pdf", bibliography: profile({ volume: "上" }) }).title, `${canonicalTitle}（上）`);
+  }
+  assert.equal(composeCatalogueDisplay({ canonicalTitle: "某书", fallbackDisplayName: "scan.pdf", bibliography: profile({ volume: "第二册" }) }).title, "某书（第二册）");
+});
+
 test("modern edited and traditional-source displays keep carrier and source facts distinct", () => {
   const modern = composeCatalogueDisplay({
     canonicalTitle: "元史",
@@ -149,4 +202,25 @@ test("catalogue download filenames preserve only the authorized extension", () =
   assert.equal(bounded.length, 255);
   assert.equal(bounded.endsWith(".pdf"), true);
   assert.equal(new TextDecoder().decode(new TextEncoder().encode(bounded)), bounded);
+});
+
+test("download truncation retains early volume distinctions before long edition descriptions", () => {
+  const filenames = ["上", "中", "下"].map((volume) => {
+    const display = composeCatalogueDisplay({
+      canonicalTitle: "元朝秘史全釈",
+      fallbackDisplayName: "original.pdf",
+      bibliography: profile({
+        materialClass: "primary_source_modern_edition",
+        volume,
+        carrierEdition: { editionStatement: `版${"📚".repeat(200)}` },
+      }),
+    });
+    const filename = composeCatalogueFilename(display.title, "original.pdf");
+    assert.ok(filename.startsWith(`元朝秘史全釈（${volume}） `));
+    assert.ok(filename.length <= 255);
+    assert.ok(filename.endsWith(".pdf"));
+    assert.equal(new TextDecoder().decode(new TextEncoder().encode(filename)), filename, "no surrogate pair is split");
+    return filename;
+  });
+  assert.equal(new Set(filenames).size, 3);
 });

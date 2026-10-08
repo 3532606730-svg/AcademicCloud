@@ -1,31 +1,31 @@
 {
-  "lastReconciled": "2026-10-07",
+  "lastReconciled": "2026-10-08",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "ff2fee15a990a08e8f683834fe4b964f8a9363d0",
+    "checkpoint": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Exactff2 busy-message and page-index fixes published and fetched-remote/local equality verified; runtime remains ae280. This citation follow-up has not yet been published.",
-    "lastVerifiedPublishedCheckpoint": "ff2fee15a990a08e8f683834fe4b964f8a9363d0",
-    "checkpointMeaning": "Latest verified source publication is distinct from the ae280 production release."
+    "localState": "Exact1b7 published and freshly fetched remote/local equality verified before this reconciliation; current dirty documentation and stored-volume candidate follow-up are separate.",
+    "lastVerifiedPublishedCheckpoint": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+    "checkpointMeaning": "Latest verified source publication also identifies all three deployed runtime roles; later source-only corrections require their own release."
   },
   "production": {
-    "observedAt": "2026-10-07",
-    "coreFrontendCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+    "observedAt": "2026-10-08",
+    "coreFrontendCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
     "schemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "October7 shared PDF decoder repair: exactae280 Core PID1523483 active/running,NRestarts0; schema41/history001-041/11 admissions; integrity ok,FK0. No migration,backup,restore or nginx/environment/unit change. Both native services also select exactae280; verified662 runtime/dependencies and model pins retained.",
-    "catalogBridgeCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
-    "catalogBridgeState": "October7 after verified prior-boot lock recovery: exactae280 active/running PID2795 NRestarts0; snapshot only.",
+    "health": "Exact1b7 Core1561749 active/running,NRestarts0;schema41/history001-041/11 admissions,integrity ok,FK0; no migrations/backup/restore/configuration changes.",
+    "catalogBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+    "catalogBridgeState": "Exact1b7 Bridge10176 active/running,NRestarts0; snapshot.",
     "computeDistro": "AcademicCloudComputeV2",
-    "mainInferenceState": "October7 after verified prior-boot lock recovery: exactae280 Local Pull active/running PID2794 NRestarts0; real normal-UI catalogue runtime started; models/runtime unchanged. Snapshot only; catalogue completion not accepted.",
+    "mainInferenceState": "Exact1b7 Local Pull10175 active/running,NRestarts0; runtime/dependencies/models retained; snapshot.",
     "vnextDeployed": true,
     "pdfAssetRepairRelease": {
       "sourceCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
@@ -75,13 +75,13 @@
         "applyScreenshot": "output/vnext/pdf-assets-20261007/catalog-pilot3-applied.png"
       },
       "pendingCoordinatedRelease": {
-        "status": "LOCAL_QUALIFIED_NOT_DEPLOYED_ROOT_PREPARING",
+        "status": "HISTORICAL_PENDING_CHECKPOINT_SUPERSEDED_BY_catalogueCitationRelease",
         "busyMessageFix": "22 frontend tests,typecheck,independent review PASS",
         "zeroBasedEvidenceExportBoundaryFix": "28 Compute tests,typecheck,independent review PASS",
         "productionRemains": "ae28096283e0a6745ba930761626ad2deb55c4e6",
         "citationRepair": "14 focused citation tests, backend types, metadata HTTP/auth/CAS regression and independent review PASS; all four styles; not yet deployed",
-        "liveCitationAcceptance": "FAILED_MISSING_JOURNAL_FIELDS; regenerate normal Fletcher citation after release",
-        "catalogueEvidence": "Current17 exported16ready/1failed and source review pending; historical82 source identity inventory identifies66 reusable candidates; neither group applied yet"
+        "liveCitationAcceptance": "Historical omission; normal1b7 Fletcher citation passed October8",
+        "catalogueEvidence": "Current17 applied16/16; historical82/fresh84 remain separate."
       },
       "evidence": "docs/evidence/device-owned-book-ocr-20261006.md"
     },
@@ -410,7 +410,7 @@
       "modelCalls": 0,
       "newCloudOcrCalls": 0,
       "hostedCiStarted": false,
-      "runtimeMeaning": "Historical immutable page-copy runtime source8f6c721; current Core/frontend is9840e7b. These dated copy-release receipts and acceptance remain preserved."
+      "runtimeMeaning": "Historical immutable October6 copy release8f6c721; current runtime is production.catalogueCitationRelease. Dated receipts remain preserved."
     },
     "wholeBookRelease": {
       "sourceCommit": "925bd865f020e4474378948ed7735497fe7b8e32",
@@ -446,17 +446,57 @@
       "receipts": "output/vnext/book-ocr-frame-fit-20261006/",
       "evidence": "docs/evidence/private-book-ocr-20261006.md",
       "acceptanceStatePointer": "wholeBookOcr.verification"
+    },
+    "catalogueCitationRelease": {
+      "sourceCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+      "deployedAt": "2026-10-08",
+      "status": "DEPLOYED_QUALIFIED_JOURNAL_CITATION_ACCEPTED",
+      "coreManifestEntries": 5185,
+      "unchangedCoreManifestEntries": 5167,
+      "coreBytes": 43089894,
+      "archiveSha256": "5c218a26e73cf8f805ceb052337a4ae0c029d9cdb6d07892848d5875424c4200",
+      "manifestSha256": "3f2234ed4ad1f41899dbf82370bc53b368e05231e9c1c3c3b766d6b1cf657846",
+      "focusedChecks": {
+        "busyMapping": 22,
+        "exportBoundary": 28,
+        "citation": 14,
+        "metadataHttp": 1
+      },
+      "exactLinuxHostNativeVerifiers": "PASS",
+      "liveSameGuardCooperation": "PASS",
+      "corePid": 1561749,
+      "localPullPid": 10175,
+      "bridgePid": 10176,
+      "nRestarts": 0,
+      "migrationsApplied": [],
+      "newBackup": false,
+      "restore": false,
+      "modelRuntimeDependencyEnvironmentUnitChanged": false,
+      "memberKitRetainedFrom": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+      "normalFletcherCitation": "PASS_JOURNAL_VOLUME_ISSUE_FULL_ARTICLE_PAGES",
+      "freshExportPageIndexAcceptance": "OPEN",
+      "evidence": "docs/evidence/device-owned-book-ocr-20261006.md",
+      "receipts": "output/vnext/catalog-review-20261007/"
+    },
+    "storedVolumeCandidate": {
+      "status": "LOCAL_QUALIFIED_NOT_DEPLOYED",
+      "checks": 36,
+      "backendTypecheck": "PASS",
+      "rootSourceReview": "PASS",
+      "scope": "common display projection, explicit stored volume only; no schema/canonical/source mutation",
+      "containerVolumeTitleException": "journal_article/book_chapter/conference_paper/review; preserved bibliographic volume and citation"
     }
   },
   "candidate": {
-    "schemaVersion": 40,
+    "schemaVersion": 41,
     "migrations": [
       "035_library_search_projection",
       "036_bibliographic_contributor_collection_authority",
       "037_document_source_generations",
       "038_private_research_workspace",
       "039_private_reader_state",
-      "040_private_local_ocr"
+      "040_private_local_ocr",
+      "041_private_local_ocr_book_jobs"
     ],
     "catalogResults": "v2 explicit set/clear; v1 conservative compatibility",
     "catalogPlan": "actor/Library bound; 30 minutes; four plans; 32 MiB accounted aggregate",
@@ -466,10 +506,10 @@
       "exportRequest": 131072
     },
     "dependencyProductionAdvisories": 0,
-    "sourceCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
-    "archiveSha256": "ab70b82c6f7139889ce99306f3a90e2ecea9b6db858594ab6b1462e9648d45ce",
-    "status": "DEPLOYED",
-    "pendingSchemaVersion": null,
+    "sourceCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+    "archiveSha256": "5c218a26e73cf8f805ceb052337a4ae0c029d9cdb6d07892848d5875424c4200",
+    "status": "DEPLOYED_1b7_STORED_VOLUME_SOURCE_CANDIDATE_PENDING",
+    "pendingSchemaVersion": 41,
     "pendingMigrations": [],
     "localOcr": {
       "status": "DEPLOYED_OWNER_ACCEPTED",
@@ -480,7 +520,8 @@
       "exactReleaseQualified": true,
       "productionEnabled": true,
       "implementationSourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
-    }
+    },
+    "checkpointMeaning": "Current runtime pointer; nested localOcr/copy receipts retain their dated source identity. Stored-volume follow-up is local only."
   },
   "verification": {
     "backend": "450/450 exact7e2d1bf Linux",
@@ -865,7 +906,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Initial paired-local migration/native activation and original Owner OCR remain dated history. Reader-copy22d80ef and product-copy8f6c721 keep their historical receipts; current9840e7b deployment is under production.wholeBookFrameFitRelease and its ongoing book acceptance under wholeBookOcr.verification.",
+    "recordMeaning": "Initial paired-local/Reader-copy/product-copy/frame-fit acceptances remain dated history. Exact1b7 current coordinated runtime is production.catalogueCitationRelease; cataloguing progress is bookIntakeReliability.currentLibraryCatalogue. Whole-book quality and comparable speed remain open.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -907,7 +948,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Root prepares one coordinated release for locally qualified busy-message and zero-based evidence-export fixes;production remains exactae280. Finish all-Library normal-UI catalogue review/recovery from205 holdings/192 PDFs,including24 missing jobs,4 safe transport retries and individually reviewed failures/extraction-only outcomes. First2 recovered jobs succeeded without catalogue acceptance;bamboo mismatch was not applied. Separate source-reviewed pilot applied3/3;Fletcher journal/issue/pages subsequently verified through ordinary metadata. Preserve successful evidence,source/human authority,old private OCR records and unresolved source gates.",
+  "next": "Normal-UI fresh83 source-evidence export and independent catalogue review, including actual zero-based page-index acceptance. Prepare qualified Core-only stored-volume display release after36 focused checks/backend types/root review; retain exact1b7 native roles. Historical59/current16/pilot3 applied; cumulative78. Keep insufficient/titleless/author/stale/source-replacement gates explicit; no duplicate OCR execution or human/private authority bypass.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -975,7 +1016,55 @@
     "architectureStatus": "ADR046 admission and ADR047 selected recovery implementations are deployed in the integrated exact release; immutable-source orchestration/per-resource ZIP recovery/independent field quality and full normal-path intake acceptance remain open.",
     "externalApiAuthorized": false,
     "implementationCheckpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f",
-    "deploymentMeaning": "Integrated implementation bytes are in exact662a7a0 production release; historical local test scope is unchanged and the full real signed-in intake/recovery/quality acceptance is not thereby complete."
+    "deploymentMeaning": "Integrated implementation bytes are in exact662a7a0 production release; historical local test scope is unchanged and the full real signed-in intake/recovery/quality acceptance is not thereby complete.",
+    "currentLibraryCatalogue": {
+      "observedAt": "2026-10-08",
+      "normalUiHoldings": 205,
+      "activePdfs": 192,
+      "reviewedApplied": 78,
+      "pilotApplied": 3,
+      "current17": {
+        "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
+        "applied": 16,
+        "unknown": 1,
+        "allDifferencesReviewed": true,
+        "overwriteOrClearAcknowledgement": false,
+        "receipt": "output/vnext/catalog-review-20261007/current17-apply.txt"
+      },
+      "historical82": {
+        "batchId": "1cc64c06-506b-48de-82d2-e5a4ecd77bd3",
+        "documentSha256": "961594aa6767270fa34321e62bad507a539ee7826630f78cf5d21b16800efeba",
+        "reviewProposals": 61,
+        "documentUnknown": 21,
+        "serverReviewable": 60,
+        "applied": 59,
+        "normalApply": "PASS_59_OF_59",
+        "insufficientEvidence": 18,
+        "nonCatalogFixtures": 3,
+        "staleSource": 1,
+        "heldResourceId": "f7e29772-e603-47b7-9c2e-7c798d661192",
+        "titlelessBlockedResourceId": "6fb1ef17-e176-4dca-b13d-4fc31080dbeb",
+        "changedLegacyFields": 21,
+        "legacyAuthority": "unmarked;source-supported correction;authors/subtitles/volume preserved",
+        "humanOverwriteOrClearAcknowledgement": false,
+        "receipt": "output/vnext/catalog-review-20261007/historical82-apply.txt",
+        "screenshot": "output/vnext/catalog-review-20261007/historical82-applied.png"
+      },
+      "freshExportCandidates": 83,
+      "unchangedDamagedSources": 6,
+      "registeredFixtures": 3,
+      "allLibraryAccepted": false,
+      "additionalExactHistoricalFixture": {
+        "resourceId": "ef2899ca-3b80-4158-9d0d-eb5d1840b14a",
+        "revision": 1,
+        "sizeBytes": 60585,
+        "algorithm": "md5",
+        "checksum": "nGvsrceJt4osmEK0tBtRYg==",
+        "fingerprint": "DGmnbXJHAuPiV1OJI-7QiCdPRGs3giC88DQLHN3Yey0",
+        "applicationRegistryChanged": false,
+        "evidence": "tasks/done/INCIDENT-L1-AI-PRODUCTION01.md:181;tasks/done/QA-GOLDEN01.md:7"
+      }
+    }
   },
   "ocrPlanningHandoff": {
     "date": "2026-09-27",
@@ -1003,22 +1092,21 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "ae280_deployed_first2_jobs_succeeded_pilot3_normal_ui_applied_local_fixes_await_coordinated_release_all_library_open",
+    "status": "1b7_deployed_journal_citation_accepted_catalogue78_applied_fresh83_open",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
-    "ocr": "Exactae280 Core/frontend/Local Pull/Bridge deployed at schema41/history001-041/11 admissions. Shared decoder repair passes63 checks, actual Fletcher page2 CPU body rendering, exact Linux/host/native qualification and standalone kit smoke. Verified662 native runtime/dependencies/model pins retained. Chinese9/9 resume and313-page history remain; original Fletcher41-page FAILED_BODY_MISSING results retained. New native whole-book quality/speed remain unqualified.",
+    "ocr": "Exact1b7 Core/frontend/Local Pull/Bridge deployed at schema41; shared decoder repair retained with unchanged runtime/dependencies/model pins; citation/busy/export corrections qualified. Private9/9 resume and313-page history retained; old Fletcher body-missing failure intact, new native whole-book quality/speed open.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
-    "currentCoreFrontendCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
-    "currentLocalPullBridgeCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6"
+    "currentCoreFrontendCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+    "currentLocalPullBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc"
   },
   "subagents": {
     "model": "gpt-6.1-sol",
     "reasoningEffort": "xhigh",
-    "ownerInstructionDate": "2026-09-30",
-    "additionalOwnerPermittedConfiguration": "gpt-6-astra/ultra as of2026-10-07"
+    "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "Owner October7 prioritizes normal-UI real cataloguing and acceptance for every current Library book with human/canonical authority preserved. Exactae280 shared decoder repair is deployed; verified one-time prior-boot lock recovery restored catalogue runtime start. Original Fletcher missing-body results remain failed; new native whole-book accuracy and speed remain unqualified. Existing cost/privacy/provider/main boundaries remain.",
+  "currentContinuationBoundary": "Owner October8: all delegated work GPT-6.1 Sol/xhigh. Continue normal-UI all-current-Library cataloguing; exact1b7 release/journal citation acceptance complete. Cumulative78 reviewed applications; fresh83 and individual unresolved records remain open. Source/human/canonical/private-history authority and zero-cost/provider/main boundaries unchanged.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
@@ -1231,17 +1319,15 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "statePointer": "production.pairedLocalOcrRelease.native"
       },
-      "currentCoreFrontendCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+      "currentCoreFrontendCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
       "followupAcceptanceStatePointer": "wholeBookOcr.verification"
     }
   },
   "subagentConfiguration": {
     "model": "gpt-6.1-sol",
     "reasoningEffort": "xhigh",
-    "ownerChangedAt": "2026-10-07",
-    "additionalPermittedModel": "gpt-6-astra",
-    "additionalPermittedReasoningEffort": "ultra",
-    "supersedes": "September30 blanket exclusion of Astra; latest Owner permits Astra/ultra"
+    "ownerChangedAt": "2026-10-08",
+    "supersedes": "October7 Astra/ultra permission; no new Astra work"
   },
   "wholeBookOcr": {
     "status": "DEPLOYED_NORMAL_OWNER_FULL_BOOK_AND_EXPORT_ACCEPTED",
@@ -1290,13 +1376,13 @@
     "status": "SHARED_PDF_ASSET_REPAIR_DEPLOYED_OLD_FLETCHER_FAILURE_RETAINED_NEW_NATIVE_WHOLE_BOOK_QUALITY_SPEED_OPEN",
     "performanceQualified": false,
     "adr": "docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md",
-    "deployedSourceCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+    "deployedSourceCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
     "productionCoreSchemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "coreHealth": "active/running; NRestarts0",
     "migration041": "applied; all55 prior tables/old rows/columns preserved; new book tables empty; integrity ok; FK0; no production backup",
-    "currentLocalPullBridgeCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+    "currentLocalPullBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
     "coreSchemaCandidate": 41,
     "transportFeature": "pdf_book_v1",
     "warmSliceMaxPages": 8,

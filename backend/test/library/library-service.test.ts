@@ -154,6 +154,7 @@ test("Library holdings project ordered author labels without denormalizing canon
     materialClass: "scholarly_monograph",
     contributors: [{ id: "library-catalogue-author", label: "作者甲", role: "author" }],
     publication: { publisher: "学术出版社", publicationDate: "2026" },
+    volume: "上",
     language: "汉语",
     carrierEdition: {},
     sourceEdition: {},
@@ -161,7 +162,7 @@ test("Library holdings project ordered author labels without denormalizing canon
   const intelligent = libraries.listHoldings(OWNER.id, library.id)[0]!;
   assert.equal(intelligent.materialClass, "scholarly_monograph");
   assert.deepEqual(intelligent.contributorLabels, ["作者甲"]);
-  assert.equal(intelligent.catalogueDisplayTitle, "作者甲 书名");
+  assert.equal(intelligent.catalogueDisplayTitle, "作者甲 书名（上）");
 
   libraries.addMember(OWNER, library.id, MEMBER.id, "member");
   assert.deepEqual(libraries.listHoldings(MEMBER.id, library.id)[0]?.authorLabels, ["作者甲", "作者乙"]);
@@ -169,9 +170,16 @@ test("Library holdings project ordered author labels without denormalizing canon
   assert.match(download.url, /objects%2Faa%2F/);
   const contentDisposition = new URL(download.url).searchParams.get("response-content-disposition") ?? "";
   const utf8Filename = /filename\*=UTF-8''([^;]+)/u.exec(contentDisposition)?.[1] ?? "";
-  assert.equal(decodeURIComponent(utf8Filename), "作者甲 书名.pdf");
+  assert.equal(decodeURIComponent(utf8Filename), "作者甲 书名（上）.pdf");
   const preview = await libraries.createDownload(MEMBER.id, library.id, fileId, "inline");
   assert.match(preview.url, /inline/);
+  const stored = persistence.repositories.files.findByDomainId(`library:${library.id}`, fileId)!;
+  assert.equal(stored.displayName, "shared.pdf");
+  assert.equal(stored.objectKey, `objects/aa/${"b".repeat(62)}`);
+  const details = metadata.getDetails(MEMBER, library.id, fileId);
+  assert.equal(details.displayTitle, intelligent.catalogueDisplayTitle);
+  assert.equal(details.metadata?.canonicalTitle, "书名");
+  assert.equal(details.bibliography?.volume, "上");
 
   assert.throws(() => libraries.listHoldings("outsider", library.id), (error) => (
     error instanceof LibraryError && error.code === "not_found"

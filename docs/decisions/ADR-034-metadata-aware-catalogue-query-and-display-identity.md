@@ -46,11 +46,20 @@ become authoritative.
    positively classified historical or primary-source work uses canonical
    title plus a supported version identity assembled from distinct carrier,
    source-edition, editorial-role, and necessary publication facts. A generic
-   person value never becomes a historical-source author prefix.
+   person value never becomes a historical-source author prefix. A supported,
+   stored volume/part follows the canonical title, before any version identity,
+   so separate volumes remain distinguishable. Its value is displayed as stored
+   without guessing a unit; an identical, delimited terminal title component is
+   not repeated. For positively classified `journal_article`, `book_chapter`,
+   `conference_paper`, and `review` works, volume identifies the enclosing
+   container and is omitted from the composed work title. It remains an
+   independent bibliographic fact. This projection does not modify the
+   canonical title or volume.
 7. Missing structured components are omitted. An `unknown`, `other`, or
-   unprofiled work displays only its supported canonical title (or the safe
-   original display name when no canonical title exists); it never borrows a
-   legacy person field to guess the modern `author + title` format. No guessed
+   unprofiled work displays only its supported canonical title and any supported
+   stored volume/part (or the safe original display name when no canonical title
+   exists); it never borrows a legacy person field to guess the modern
+   `author + title` format. No guessed
    work class, dynasty, edition precision, contributor role, or placeholder is
    introduced into the composed label.
 8. The composed label may be projected into the browser attachment/download

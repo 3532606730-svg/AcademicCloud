@@ -153,7 +153,8 @@ test("authority-scoped search returns only accessible holdings across the whole 
   const byStructuredEdition = libraries.searchHoldings(MEMBER.id, library.id, "中华书局点校本", 50, null);
   assert.deepEqual(byStructuredEdition.results.map((item) => item.fileId), [bookA]);
   assert.equal(byStructuredEdition.results[0]?.materialClass, "primary_source_modern_edition");
-  assert.equal(byStructuredEdition.results[0]?.catalogueDisplayTitle, "元代宰相制度研究 中华书局1976点校本");
+  assert.equal(byStructuredEdition.results[0]?.catalogueDisplayTitle, "元代宰相制度研究（第一册） 中华书局1976点校本");
+  assert.equal(metadata.getDetails(MEMBER, library.id, bookA).displayTitle, byStructuredEdition.results[0]?.catalogueDisplayTitle);
 
   const filtered = libraries.searchHoldings(MEMBER.id, library.id, "", 50, null, {
     materialClass: "primary_source_modern_edition",
