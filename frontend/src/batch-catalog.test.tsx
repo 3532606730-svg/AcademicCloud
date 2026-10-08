@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,6 +38,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  cleanup();
   window.localStorage.removeItem("academiccloud.language");
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -255,7 +256,7 @@ describe("BatchCatalogDialog", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0]![1]?.body))).toEqual(request);
   });
 
-  it("passes the private Core request directly to Local Compute and downloads only the evidence ZIP", async () => {
+  it("passes the private Core request directly to Local Compute and offers only the evidence ZIP", async () => {
     const request = {
       schemaVersion: "academiccloud.catalog-export-request.v1",
       manifest: { batchId: "batch-1", resources: HOLDINGS.map((entry) => ({ resourceId: entry.file.id, currentFilename: entry.file.displayName })) },
@@ -264,10 +265,6 @@ describe("BatchCatalogDialog", () => {
     };
     const createCatalogBatchExportRequest = vi.fn().mockResolvedValue(request);
     const fetchMock = mockZipBridge();
-    let downloadedFilename = "";
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function click(this: HTMLAnchorElement) {
-      downloadedFilename = this.download;
-    });
     renderDialog({ createCatalogBatchExportRequest });
 
     const user = userEvent.setup();
@@ -283,8 +280,8 @@ describe("BatchCatalogDialog", () => {
       },
     });
     expect(JSON.parse(String(fetchMock.mock.calls[0]![1]?.body))).toEqual(request);
-    await waitFor(() => expect(downloadedFilename).toBe("academiccloud-catalog-batch-batch-1.zip"));
-    expect(await screen.findByRole("status")).toHaveTextContent("Evidence package downloaded (3)");
+    expect(await screen.findByRole("link", { name: "Download evidence package" })).toHaveAttribute("download", "academiccloud-catalog-batch-batch-1.zip");
+    expect(await screen.findByRole("status")).toHaveTextContent("Evidence package generated (3)");
   });
 
   it("shows an actionable local error without exposing the private request when Local Compute is unavailable", async () => {

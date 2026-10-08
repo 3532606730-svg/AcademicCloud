@@ -218,7 +218,8 @@ export async function exportCatalogEvidenceLocally(
 const TEXT = {
   en: {
     generate: "Generate evidence package",
-    ready: "Evidence package downloaded ({count})",
+    download: "Download evidence package",
+    ready: "Evidence package generated ({count})",
     unavailable: "Cannot reach Local Compute. Allow local network access if prompted, then retry.",
     busy: "Local Compute is busy. Retry after the current task finishes.",
     invalid_request: "The local export request is no longer valid. Refresh the batch and retry.",
@@ -232,7 +233,8 @@ const TEXT = {
   },
   "zh-CN": {
     generate: "生成证据包",
-    ready: "证据包已下载（{count} 项）",
+    download: "下载证据包",
+    ready: "证据包已生成（{count} 项）",
     unavailable: "无法连接本机 Local Compute。若浏览器询问本地网络权限，请允许后重试。",
     busy: "本机 Local Compute 正在处理另一批任务，请稍后重试。",
     invalid_request: "本地导出请求已失效，请刷新批次后重试。",
@@ -262,8 +264,8 @@ export function localCatalogProgressText(language: Language, progress: LocalCata
 export function localCatalogReadyText(language: Language, totalResources: number, failedResources: number): string {
   if (failedResources === 0) return localCatalogText(language, "ready", totalResources);
   return language === "zh-CN"
-    ? `证据包已下载（${totalResources} 项；${failedResources} 项检查失败，需核对）`
-    : `Evidence package downloaded (${totalResources} items; ${failedResources} inspection failures need review)`;
+    ? `证据包已生成（${totalResources} 项；${failedResources} 项检查失败，需核对）`
+    : `Evidence package generated (${totalResources} items; ${failedResources} inspection failures need review)`;
 }
 
 export function localCatalogErrorText(language: Language, code: LocalCatalogBridgeErrorCode): string {

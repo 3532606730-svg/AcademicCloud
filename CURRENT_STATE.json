@@ -1,17 +1,17 @@
 {
-  "lastReconciled": "2026-10-08",
+  "lastReconciled": "2026-10-09",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+    "checkpoint": "4efe6189ea11191b46c95bcf900fc5f8de1e97e6",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Exact1b7 published and freshly fetched remote/local equality verified before this reconciliation; current dirty documentation and stored-volume candidate follow-up are separate.",
-    "lastVerifiedPublishedCheckpoint": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
-    "checkpointMeaning": "Latest verified source publication also identifies all three deployed runtime roles; later source-only corrections require their own release."
+    "localState": "Exact4efe published and freshly fetched remote/local equality verified; pending frontend download candidate is separate. Runtime remains1b7.",
+    "lastVerifiedPublishedCheckpoint": "4efe6189ea11191b46c95bcf900fc5f8de1e97e6",
+    "checkpointMeaning": "Latest verified source publication is a qualified staged-only stored-volume candidate, distinct from deployed1b7."
   },
   "production": {
     "observedAt": "2026-10-08",
@@ -484,7 +484,11 @@
       "backendTypecheck": "PASS",
       "rootSourceReview": "PASS",
       "scope": "common display projection, explicit stored volume only; no schema/canonical/source mutation",
-      "containerVolumeTitleException": "journal_article/book_chapter/conference_paper/review; preserved bibliographic volume and citation"
+      "containerVolumeTitleException": "journal_article/book_chapter/conference_paper/review; preserved bibliographic volume and citation",
+      "sourceCommit": "4efe6189ea11191b46c95bcf900fc5f8de1e97e6",
+      "linuxQualification": "PASS;5185 entries/5183 unchanged;only display.js/map",
+      "uploadedStage": true,
+      "deployed": false
     }
   },
   "candidate": {
@@ -521,7 +525,15 @@
       "productionEnabled": true,
       "implementationSourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
     },
-    "checkpointMeaning": "Current runtime pointer; nested localOcr/copy receipts retain their dated source identity. Stored-volume follow-up is local only."
+    "checkpointMeaning": "Current runtime pointer; stored-volume4efe is published, Linux-qualified and staged only. Frontend download repair remains a separate local candidate.",
+    "catalogueEvidenceDownload": {
+      "status": "LOCAL_QUALIFIED_NOT_DEPLOYED",
+      "focusedTests": 52,
+      "frontendTypecheck": "PASS",
+      "independentReview": "PASS",
+      "scope": "one validated <=128MiB Blob, mounted download anchor, generated wording, scope/close/unmount cleanup",
+      "normalZipAcceptance": false
+    }
   },
   "verification": {
     "backend": "450/450 exact7e2d1bf Linux",
@@ -948,7 +960,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Normal-UI fresh83 source-evidence export and independent catalogue review, including actual zero-based page-index acceptance. Prepare qualified Core-only stored-volume display release after36 focused checks/backend types/root review; retain exact1b7 native roles. Historical59/current16/pilot3 applied; cumulative78. Keep insufficient/titleless/author/stale/source-replacement gates explicit; no duplicate OCR execution or human/private authority bypass.",
+  "next": "One integrated exact Core release for stored-volume display and retained evidence download, then normal actual fresh83 ZIP/page-index/volume acceptance and source review/Preview/Apply;12 non-PDF source inspections remain. Native1b7 unchanged; all-Library acceptance open.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1018,10 +1030,10 @@
     "implementationCheckpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f",
     "deploymentMeaning": "Integrated implementation bytes are in exact662a7a0 production release; historical local test scope is unchanged and the full real signed-in intake/recovery/quality acceptance is not thereby complete.",
     "currentLibraryCatalogue": {
-      "observedAt": "2026-10-08",
+      "observedAt": "2026-10-09",
       "normalUiHoldings": 205,
       "activePdfs": 192,
-      "reviewedApplied": 78,
+      "reviewedApplied": 79,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1063,6 +1075,35 @@
         "fingerprint": "DGmnbXJHAuPiV1OJI-7QiCdPRGs3giC88DQLHN3Yey0",
         "applicationRegistryChanged": false,
         "evidence": "tasks/done/INCIDENT-L1-AI-PRODUCTION01.md:181;tasks/done/QA-GOLDEN01.md:7"
+      },
+      "batchReviewedApplied": 78,
+      "fresh83Export": {
+        "uiProcessed": 83,
+        "uiInspectionFailures": 12,
+        "actualZipAccepted": false,
+        "sourceReviewAccepted": false,
+        "receipt": "output/vnext/catalog-review-20261007/fresh83-export-ui.txt"
+      },
+      "nonPdf": {
+        "inventory": 13,
+        "formats": {
+          "txt": 2,
+          "doc": 2,
+          "docx": 8,
+          "zip": 1
+        },
+        "normalSourceInspected": 1,
+        "normalManualSaved": 1,
+        "remaining": 12,
+        "title": "异域志",
+        "author": "周致中",
+        "materialClass": "traditional_book",
+        "language": "zh",
+        "bytes": 40381,
+        "sha256": "b2f770db7027ea20dbf993aa6cdcadbf0472a30544e1468a187d6e2a5d87f03a",
+        "encoding": "GB18030",
+        "receipt": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.txt",
+        "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
       }
     }
   },
@@ -1092,7 +1133,7 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "1b7_deployed_journal_citation_accepted_catalogue78_applied_fresh83_open",
+    "status": "1b7_deployed_catalogue79_applied_fresh83_zip_missing_integrated_candidate_qualified",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
     "ocr": "Exact1b7 Core/frontend/Local Pull/Bridge deployed at schema41; shared decoder repair retained with unchanged runtime/dependencies/model pins; citation/busy/export corrections qualified. Private9/9 resume and313-page history retained; old Fletcher body-missing failure intact, new native whole-book quality/speed open.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",

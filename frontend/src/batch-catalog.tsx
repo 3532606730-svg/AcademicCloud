@@ -73,13 +73,13 @@ async function loadUncataloguedPdfHoldings(
   return { holdings: selected, truncated };
 }
 
-function downloadBlob(filename: string, blob: Blob): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+interface EvidenceDownload {
+  filename: string;
+  blob: Blob;
+  url: string;
+  api: AcademicCloudApi;
+  libraryId: string;
+  accountId: string | undefined;
 }
 
 export function BatchCatalogDialog({
@@ -100,6 +100,7 @@ export function BatchCatalogDialog({
   const { language, t } = useLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
+  const evidenceDownloadRef = useRef<EvidenceDownload | null>(null);
   const closedRef = useRef(false);
   const [holdings, setHoldings] = useState<LibraryHolding[]>(() => boundedPdfHoldings(initialHoldings));
   const [resourceIds, setResourceIds] = useState<ReadonlySet<string>>(
@@ -112,12 +113,25 @@ export function BatchCatalogDialog({
   const [applyResults, setApplyResults] = useState<CatalogApplyResult[] | null>(null);
   const [exportStatus, setExportStatus] = useState<string>("");
   const [exportStatusKind, setExportStatusKind] = useState<"progress" | "success" | "warning">("progress");
+  const [evidenceDownload, setEvidenceDownload] = useState<EvidenceDownload | null>(null);
   const [localExportError, setLocalExportError] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [resultsDocument, setResultsDocument] = useState<unknown>(null);
   const [resumeDraft, setResumeDraft] = useState<CatalogReviewDraft | null>(() => getReviewDraft(reviewSession, library.id));
   const [refreshRecoveryAvailable, setRefreshRecoveryAvailable] = useState(true);
+  const accountId = reviewSession?.accountId;
+
+  function releaseEvidenceDownload(): void {
+    const previous = evidenceDownloadRef.current;
+    evidenceDownloadRef.current = null;
+    if (previous) URL.revokeObjectURL(previous.url);
+  }
+
+  function clearEvidenceDownload(): void {
+    releaseEvidenceDownload();
+    setEvidenceDownload(null);
+  }
 
   useEffect(() => {
     if (resultsDocument === null) return;
@@ -127,18 +141,31 @@ export function BatchCatalogDialog({
 
   useEffect(() => {
     closedRef.current = false;
-    dialogRef.current?.showModal();
+    setEvidenceDownload(null);
+    setExportStatus("");
+    setExportStatusKind("progress");
+    setLocalExportError("");
+    setBusy(false);
+    if (!dialogRef.current?.open) dialogRef.current?.showModal();
     return () => {
       closedRef.current = true;
       exportAbortRef.current?.abort();
+      exportAbortRef.current = null;
+      releaseEvidenceDownload();
     };
-  }, []);
+  }, [accountId, api, library.id]);
 
   const exportActive = busy && exportAbortRef.current !== null;
+  const currentDownload = evidenceDownload !== null && evidenceDownload.accountId === accountId
+    && evidenceDownload.api === api && evidenceDownload.libraryId === library.id ? evidenceDownload : null;
 
   function closeDialog(): void {
+    if (closedRef.current) return;
     closedRef.current = true;
     exportAbortRef.current?.abort();
+    exportAbortRef.current = null;
+    clearEvidenceDownload();
+    setExportStatus("");
     if (resultsDocument !== null) {
       saveReviewDraft(reviewSession, {
         libraryId: library.id,
@@ -174,24 +201,35 @@ export function BatchCatalogDialog({
   }
 
   async function exportRequest(): Promise<void> {
-    if (!api.createCatalogBatchExportRequest || resourceIds.size < 1 || resourceIds.size > MAX_BATCH_RESOURCES) return;
+    if (closedRef.current || !api.createCatalogBatchExportRequest || resourceIds.size < 1 || resourceIds.size > MAX_BATCH_RESOURCES) return;
     const controller = new AbortController();
     exportAbortRef.current?.abort();
     exportAbortRef.current = controller;
+    clearEvidenceDownload();
     setBusy(true); setError(null); setExportStatus(""); setExportStatusKind("progress"); setLocalExportError("");
     try {
       const request = await api.createCatalogBatchExportRequest(library.id, [...resourceIds]);
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || closedRef.current) return;
       const localPackage = await exportCatalogEvidenceLocally(request, fetch, controller.signal, (progress) => {
         if (controller.signal.aborted || closedRef.current) return;
         setExportStatusKind("progress");
         setExportStatus(localCatalogProgressText(language, progress));
       });
       if (controller.signal.aborted || closedRef.current) return;
-      downloadBlob(localPackage.filename, localPackage.blob);
+      const download = {
+        filename: localPackage.filename,
+        blob: localPackage.blob,
+        url: URL.createObjectURL(localPackage.blob),
+        api,
+        libraryId: library.id,
+        accountId,
+      };
+      evidenceDownloadRef.current = download;
+      setEvidenceDownload(download);
       setExportStatusKind(localPackage.failedResources > 0 ? "warning" : "success");
       setExportStatus(localCatalogReadyText(language, request.manifest.resources.length, localPackage.failedResources));
     } catch (caught: unknown) {
+      if (controller.signal.aborted || closedRef.current) return;
       if (caught instanceof LocalCatalogBridgeError) {
         if (caught.code === "cancelled" || closedRef.current) return;
         setExportStatus("");
@@ -200,8 +238,10 @@ export function BatchCatalogDialog({
         setError(caught);
       }
     } finally {
-      if (exportAbortRef.current === controller) exportAbortRef.current = null;
-      if (!closedRef.current) setBusy(false);
+      if (exportAbortRef.current === controller) {
+        exportAbortRef.current = null;
+        if (!closedRef.current) setBusy(false);
+      }
     }
   }
 
@@ -283,7 +323,7 @@ export function BatchCatalogDialog({
   }
 
   return (
-    <dialog ref={dialogRef} className="batch-naming-modal batch-catalog-modal" aria-labelledby="batch-catalog-title" onCancel={(event) => {
+    <dialog ref={dialogRef} className="batch-naming-modal batch-catalog-modal" aria-labelledby="batch-catalog-title" onClose={closeDialog} onCancel={(event) => {
       event.preventDefault();
       if (!busy || exportActive) closeDialog();
     }}>
@@ -336,6 +376,11 @@ export function BatchCatalogDialog({
           <div className={`alert ${exportStatusKind === "success" ? "alert--success" : "alert--warning"}`} role="status">
             {exportStatus}
           </div>
+        )}
+        {currentDownload && (
+          <a className="button button--quiet" href={currentDownload.url} download={currentDownload.filename} onClick={(event) => {
+            if (closedRef.current || evidenceDownloadRef.current !== currentDownload) event.preventDefault();
+          }}>{localCatalogText(language, "download")}</a>
         )}
       </section>
       <section aria-labelledby="batch-catalog-import-title">
