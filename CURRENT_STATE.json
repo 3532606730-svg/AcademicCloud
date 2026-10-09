@@ -6,23 +6,23 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+    "checkpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Source36f published; local/remote HEAD equality verified by root before these new unpublished documentation updates. Workspace PDF-only gate is locally checked/reviewed and undeployed; new exact candidate identity pending.",
-    "lastVerifiedPublishedCheckpoint": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
-    "checkpointMeaning": "Latest verified published source and current deployed Core/frontend36f; native1b7 retained. This documentation update is not a new Git checkpoint.",
-    "documentationChangesPublished": false
+    "localState": "Runtime source457a337 publication and local/fetched-remote equality were verified before this documentation reconciliation; exact Core/frontend457a337 remains deployed. Repository HEAD may include subsequent documentation checkpoints and is verified separately at publication.",
+    "lastVerifiedPublishedCheckpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
+    "checkpointMeaning": "Exact deployed Core/frontend source457a337 and retained native1b7; subsequent repository documentation checkpoints are identified by Git HEAD, not a new runtime release.",
+    "documentationPublicationMeaning": "Publication and local/fetched-remote equality are verified at the task-level Git checkpoint; lastVerifiedPublishedCheckpoint records the runtime-source verification preceding this documentation reconciliation."
   },
   "production": {
     "observedAt": "2026-10-09",
-    "coreFrontendCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+    "coreFrontendCommit": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "schemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Exact36f Core1566746 active/running,NRestarts0 cutover snapshot;schema41/history001-041/11 admissions,integrity ok,FK0; retained native1b7; no migration/new backup/restore/configuration changes.",
+    "health": "Core457a337/PID1571558 active/running,NRestarts0 cutover;schema41/history001-041/11 admissions,integrity ok,FK0,exact schema. Native1b7 unchanged; no migration/new production backup/restore/configuration/dependency/model change.",
     "catalogBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
     "catalogBridgeState": "Exact1b7 Bridge10176 active/running,NRestarts0; snapshot.",
     "computeDistro": "AcademicCloudComputeV2",
@@ -531,6 +531,46 @@
         "output/vnext/catalog-review-20261007/volume-live-36f17d2.png",
         "output/vnext/catalog-review-20261007/fletcher-title-live-36f17d2.txt"
       ]
+    },
+    "workspacePdfGateRelease": {
+      "sourceCommit": "457a337b61db85391bf58946cd43d7a0d86b7675",
+      "retainedLocalPullBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+      "deployedAt": "2026-10-09",
+      "status": "DEPLOYED_QUALIFIED_NORMAL_ZIP_WORKSPACE_AND_DETAILS_ACCEPTED",
+      "coreManifestEntries": 5185,
+      "coreBytes": 43092703,
+      "unchangedCoreManifestEntries": 5177,
+      "changedAddedRemovedUnionPaths": 15,
+      "onlyFrontendPathsChanged": true,
+      "backendDependenciesDatabaseDeploymentNativeByteIdentical": true,
+      "archiveSha256": "452653d42b8d5a6b5e3cbe96df9567abb5efe41f86c8b6366965911b23edeeee",
+      "manifestSha256": "313bde7415149f261679d37e6e1ae2965549cda6592abb6d09e54d34cd9bd889",
+      "completeRuntimeVerifierSha256": "1d1b9cbfc81aacb067488baa9ea59fbe64773506ef30ebdc4ecef125dd1a0b74",
+      "corePid": 1571558,
+      "nRestarts": 0,
+      "schemaVersion": 41,
+      "migrationCount": 41,
+      "rulesetAdmissions": 11,
+      "integrity": "ok",
+      "foreignKeyViolations": 0,
+      "migrationsApplied": [],
+      "newProductionBackup": false,
+      "restore": false,
+      "modelDependencyEnvironmentUnitChanged": false,
+      "focusedWorkspaceChecks": 38,
+      "frontendTypecheck": "PASS",
+      "independentSolSourceLifecyclePrivacyReview": "PASS",
+      "exactLinuxHostFullFileQualification": "PASS",
+      "normalZipWorkspace": "PASS_NO_INVALID_INPUT",
+      "normalOpenResourceFallback": "PASS_CORRECT_HUCKER_DETAILS",
+      "receipts": [
+        "output/vnext/catalog-review-20261007/core-scope-457a337.json",
+        "output/vnext/catalog-review-20261007/core-host-prepare-457a337.log",
+        "output/vnext/catalog-review-20261007/core-host-activate-457a337.log",
+        "output/vnext/catalog-review-20261007/nonpdf-workspace-live-457a337.txt",
+        "output/vnext/catalog-review-20261007/nonpdf-workspace-live-457a337.png",
+        "output/vnext/catalog-review-20261007/nonpdf-workspace-details-live-457a337.txt"
+      ]
     }
   },
   "candidate": {
@@ -552,9 +592,9 @@
       "exportRequest": 131072
     },
     "dependencyProductionAdvisories": 0,
-    "sourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
-    "archiveSha256": "1eaa53627e82a09f1387662a4e5a6ed27d5e94fb8d9958b38d2562acf340d9d0",
-    "status": "DEPLOYED_36f_LOCAL_WORKSPACE_GATE_CHECKED_EXACT_CANDIDATE_PENDING",
+    "sourceCommit": "457a337b61db85391bf58946cd43d7a0d86b7675",
+    "archiveSha256": "452653d42b8d5a6b5e3cbe96df9567abb5efe41f86c8b6366965911b23edeeee",
+    "status": "DEPLOYED_457a337_NORMAL_ZIP_WORKSPACE_ACCEPTED",
     "pendingSchemaVersion": 41,
     "pendingMigrations": [],
     "localOcr": {
@@ -567,18 +607,19 @@
       "productionEnabled": true,
       "implementationSourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
     },
-    "checkpointMeaning": "Current Core/frontend36f is deployed.4efe was staged only and never activated. Workspace PDF-only repair/release helpers are locally checked/reviewed; new exact candidate qualification is pending and activation awaits actual first12 ZIP delivery.",
+    "checkpointMeaning": "Current Core/frontend457a337 and native1b7/schema41 are deployed. Actual fresh12 package and normal ZIP Workspace/Details acceptance complete; fresh12 selected9/9 applied, notice held and2 unknown. Remaining71 exports and99 academic PDF outcomes are open.",
     "catalogueEvidenceDownload": {
-      "status": "DEPLOYED_NORMAL_ZIP_ACCEPTANCE_OPEN",
+      "status": "DEPLOYED_ACTUAL_NORMAL_ZIP_ACCEPTED",
       "focusedTests": 52,
       "frontendTypecheck": "PASS",
       "independentReview": "PASS",
       "scope": "one validated <=128MiB Blob, mounted download anchor, generated wording, scope/close/unmount cleanup",
-      "normalZipAcceptance": false,
-      "sourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a"
+      "normalZipAcceptance": true,
+      "sourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+      "normalAcceptedBatchId": "1ef729ab-6902-440b-9828-a3463757a9c8"
     },
     "workspaceNonPdfGate": {
-      "status": "LOCAL_CHECKS_AND_INDEPENDENT_REVIEW_PASS_NOT_DEPLOYED",
+      "status": "DEPLOYED_NORMAL_ZIP_WORKSPACE_ACCEPTED",
       "filesChanged": 2,
       "focusedChecks": 38,
       "newRegressions": 7,
@@ -588,9 +629,9 @@
       "releaseHelperIndependentReview": "PASS",
       "sourceKeyScope": "PDF-only progress lifecycle/context and highlight requests",
       "backendFailure": "highlights requirePdfSource; GET progress only requires resource",
-      "normalZipWorkspaceAcceptance": false,
-      "newExactReleaseIdentity": null,
-      "activationGate": "Save and verify actual normal Edge first12 evidence ZIP before activation."
+      "normalZipWorkspaceAcceptance": true,
+      "newExactReleaseIdentity": "457a337b61db85391bf58946cd43d7a0d86b7675",
+      "activationGate": "SATISFIED: actual normal fresh12 ZIP saved/verified before exact qualified457a337 activation; normal ZIP Workspace/Details then accepted."
     }
   },
   "verification": {
@@ -976,7 +1017,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Initial paired-local/Reader-copy/product-copy/frame-fit and1b7 catalogue/citation acceptances remain dated history. Current Core/frontend36f and retained native1b7 are in production.catalogueFollowupRelease; catalogue progress is bookIntakeReliability.currentLibraryCatalogue. Workspace PDF-only gate is local/reviewed and undeployed. Whole-book quality/comparable speed and actual fresh ZIP delivery remain open.",
+    "recordMeaning": "Initial paired-local/Reader-copy/product-copy/frame-fit/1b7 citation/36f volume acceptances remain dated history. Current Core457a337/native1b7/schema41 and normal ZIP Workspace/Details are production.workspacePdfGateRelease; actual fresh12 selected9/9 and academic200/101profiles/99unresolved are bookIntakeReliability.currentLibraryCatalogue. Whole-book quality/speed and all-Library acceptance remain open.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -1014,11 +1055,11 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Current scholarly denominator201=188PDF+13nonPDF after four exact fixtures; all13 non-PDF source/manual reviews complete.79 PDF profiles,109 unresolved (83fresh+20older+6unchanged damaged). Neither83-item export yielded accepted ZIP; handed-off Edge first12 has2/12,0fail snapshot and71 ungenerated; actual delivery/source review remains open.",
+    "Current academic denominator200=187PDF+13nonPDF after4 exact fixtures and1 exact non-scholarly source;205 total holdings preserved.101 profiles=88PDF+13nonPDF;99 academic PDFs unresolved (71unexported+1timeout+1noticeHOLD+20older+6damaged). Actual fresh12 package/parser/page identities and selected9/9 normal Apply passed; notice remains held at unsupported-type/default-book boundary and timeout has no evidence.",
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Continue handed-off normal Owner Edge first12 and verify actual ZIP, then bounded remaining71 source exports before source/page review/normal Preview/Apply. Workspace two-file PDF-only gate38/types/Sol review and release-helper review PASS; checkpoint/qualify exact candidate, activation waits for actual12 ZIP, then normal ZIP Workspace acceptance. Current Core36f/native1b7/schema41;13 non-PDF complete,91 this-round reviews plus1 earlier profile,109 PDFs unresolved.",
+  "next": "Continue71 unexported source-matched candidates in bounded normal-UI batches, verify actual ZIPs then independent source/page review and Preview/Apply. Current Core457a337/native1b7/schema41 and ZIP Workspace acceptance complete. Actual fresh12 selected9/9 applied; notice07f820d4 held without forced types/parser changes,第三册 timeout unknown, exact221db235 non-scholarly academic-scope exclusion only.100 current reviews+1 prior=101 profiles;99 academic PDFs unresolved; all-Library open. Current24 selected normal export retry is admitted but actual ZIP/source review/Apply is pending. After corpus organization, fix source-type inference, omission/authority semantics, article-container entry and export/recovery using these concrete receipts.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1091,7 +1132,7 @@
       "observedAt": "2026-10-09",
       "normalUiHoldings": 205,
       "activePdfs": 192,
-      "reviewedApplied": 91,
+      "reviewedApplied": 100,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1120,7 +1161,7 @@
         "receipt": "output/vnext/catalog-review-20261007/historical82-apply.txt",
         "screenshot": "output/vnext/catalog-review-20261007/historical82-applied.png"
       },
-      "freshExportCandidates": 83,
+      "freshExportCandidates": 71,
       "unchangedDamagedSources": 6,
       "registeredFixtures": 3,
       "allLibraryAccepted": false,
@@ -1134,7 +1175,7 @@
         "applicationRegistryChanged": false,
         "evidence": "tasks/done/INCIDENT-L1-AI-PRODUCTION01.md:181;tasks/done/QA-GOLDEN01.md:7"
       },
-      "batchReviewedApplied": 78,
+      "batchReviewedApplied": 87,
       "fresh83Export": {
         "actualZipAccepted": false,
         "sourceReviewAccepted": false,
@@ -1162,15 +1203,18 @@
           "selectedFrom": "remaining-export-ui-names.json indices0-11",
           "currentBatchCount": 12,
           "generationRequested": true,
-          "lastObservedProcessed": 2,
-          "lastObservedInspectionFailures": 0,
-          "status": "IN_PROGRESS_NORMAL_OWNER_EDGE_SNAPSHOT_NO_ACTUAL_ZIP_ACCEPTED",
+          "lastObservedProcessed": 12,
+          "lastObservedInspectionFailures": 1,
+          "status": "COMPLETED_ZIP_VERIFIED_NORMAL_SELECTED9_APPLIED_NOTICE_HELD_2_UNKNOWN",
           "tabId": 968988813,
           "tabHandedOff": true,
           "remainingUngenerated": 71,
-          "actualZipAccepted": false,
-          "sourceReviewAccepted": false,
-          "startReceipt": "output/vnext/catalog-review-20261007/fresh12-start-20261009.txt"
+          "actualZipAccepted": true,
+          "sourceReviewAccepted": true,
+          "startReceipt": "output/vnext/catalog-review-20261007/fresh12-start-20261009.txt",
+          "sourceReviewScope": "Supported selected9 applied;1 unsupported-type notice held;1 timeout unknown;1 exact non-scholarly excluded from academic acceptance.",
+          "packageAuditReceipt": "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
+          "normalApplyReceipt": "output/vnext/catalog-review-20261007/fresh12-applied9.txt"
         }
       },
       "nonPdf": {
@@ -1214,15 +1258,17 @@
           "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
         }
       },
-      "thisRoundReviewed": 91,
+      "thisRoundReviewed": 100,
       "earlierHumanPdfProfiles": 1,
-      "existingReviewedProfiles": 92,
-      "scholarlyHoldingsExcludingExactFixtures": 201,
-      "scholarlyPdfsExcludingExactFixtures": 188,
-      "reviewedPdfProfiles": 79,
-      "unresolvedScholarlyPdfs": 109,
+      "existingReviewedProfiles": 101,
+      "scholarlyHoldingsExcludingExactFixtures": 200,
+      "scholarlyPdfsExcludingExactFixtures": 187,
+      "reviewedPdfProfiles": 88,
+      "unresolvedScholarlyPdfs": 99,
       "unresolvedPdfBreakdown": {
-        "fresh": 83,
+        "freshNotYetExported": 71,
+        "freshTimeout": 1,
+        "freshNoticeHeld": 1,
         "older": 20,
         "unchangedDamaged": 6
       },
@@ -1237,6 +1283,135 @@
         "includedInThisRound78": false,
         "historical82StaleExportExcluded": true,
         "receipt": "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json"
+      },
+      "reviewedNonPdfProfiles": 13,
+      "scholarlyHoldings": 200,
+      "scholarlyPdfs": 187,
+      "holdingsExcludingOnlyExactFixtures": 201,
+      "pdfsExcludingOnlyExactFixtures": 188,
+      "initialFreshExportCandidates": 83,
+      "initialFreshScholarlyCandidates": 82,
+      "corpusOutcomesReceiptMeaning": "Pre-fresh12 source/profile snapshot; current counts add actual9/9 Apply and exclude exact non-scholarly221db235, without changing holdings/bytes/permissions.",
+      "scopeReconciliationEvidence": [
+        "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
+        "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
+        "output/vnext/catalog-review-20261007/fresh12-results-validation.json",
+        "output/vnext/catalog-review-20261007/fresh12-applied9.txt"
+      ],
+      "nonScholarlySourceExclusion": {
+        "resourceId": "221db235-e0d4-420e-9622-e5e562d73744",
+        "classification": "NON_SCHOLARLY_SOURCE",
+        "excludedFromAcademicAcceptanceOnly": true,
+        "originalHoldingPreserved": true,
+        "deletionPerformed": false,
+        "permissionsChanged": false,
+        "privateSourceDetailsRecorded": false,
+        "evidence": "output/vnext/catalog-review-20261007/fresh12-results.v2.json"
+      },
+      "fresh12": {
+        "batchId": "1ef729ab-6902-440b-9828-a3463757a9c8",
+        "actualNormalZipBytes": 136353,
+        "actualNormalZipSha256": "9b7f749796fd243f99030bbbdfd973b2face4034828567c0754df1c3e9df381c",
+        "actualNormalZipPath": "C:/Users/35326/Downloads/academiccloud-catalog-batch-1ef729ab-6902-440b-9828-a3463757a9c8.zip",
+        "sourceResources": 12,
+        "inspectionReady": 11,
+        "inspectionFailed": 1,
+        "actualSourceIdentitySizeFilenameMatches": 12,
+        "zeroBasedFirstLastPages": "PASS",
+        "sourceManifestSha256": "7ce655f86de353bd14d23fcaf7bca8c088cda46e948272a4bce746600dbe11c1",
+        "resultsDocumentBytes": 30639,
+        "resultsDocumentSha256": "b36757b1568f8267c184c1707605c67b58bc432e96a68915c9e38cd85e1f5b71",
+        "resultsReview": 10,
+        "resultsUnknown": 2,
+        "parserPreservedAllSetFields": true,
+        "normalPreviewReviewable": 10,
+        "normalPreviewInsufficient": 2,
+        "selectedForApply": 9,
+        "applied": 9,
+        "normalApply": "PASS_9_OF_9",
+        "appliedResourceIds": [
+          "098ab72f-cdd8-4de2-a2f4-92fc9b0e7b5a",
+          "0b1bac05-a083-4292-8013-03b9dae66805",
+          "10524288-b065-483f-929a-5124a99c520d",
+          "124a23bf-3792-4c75-b6fc-c239f5084335",
+          "14959bc8-20a2-4a65-82f6-1cd14ee1c94a",
+          "1856c891-e836-47c6-a8fd-bcb7093805af",
+          "1d898059-5ca9-4ee4-974a-7ef7bf6f57c9",
+          "1f3587d8-348e-425d-8567-5293fc70d9ee",
+          "2309e92e-5cc5-4ba9-b93e-b25810606bf5"
+        ],
+        "heldNotice": {
+          "resourceId": "07f820d4-1ae0-45c6-aba9-b5de9aefe4e2",
+          "reason": "Source is a submission notice; omitted materialType was inferred as book in Preview, unsupported by source; five existing types lack general-notice option.",
+          "applied": false,
+          "forcedBookOrArchive": false,
+          "parserOrMaterialTypeEnumChanged": false
+        },
+        "timeoutResource": {
+          "resourceId": "0a3952fd-9820-46ce-951f-e3dcbdaf83b7",
+          "inspectionFailureCode": "timeout",
+          "pagesAvailable": 0,
+          "bibliographicUnknown": true,
+          "applied": false
+        },
+        "nonScholarlySourceId": "221db235-e0d4-420e-9622-e5e562d73744",
+        "receipts": [
+          "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
+          "output/vnext/catalog-review-20261007/fresh12-results-validation.json",
+          "output/vnext/catalog-review-20261007/fresh12-preview.txt",
+          "output/vnext/catalog-review-20261007/fresh12-applied9.txt",
+          "output/vnext/catalog-review-20261007/fresh12-applied9.png"
+        ]
+      },
+      "postCatalogueImprovement": {
+        "ownerInstructionDate": "2026-10-09",
+        "order": "Finish current Library source review and normal catalogue recording first; then improve the catalogue system from the observed evidence.",
+        "implementationStarted": false,
+        "findings": [
+          "New metadata with other/unknown materialClass and omitted materialType falls back to book; source notice is held rather than misclassified.",
+          "Preview compares absent alternativeTitles/identifiers with normalized empty arrays, showing human set although Apply does not mark those empty arrays human.",
+          "Omitted default materialClass=unknown can receive human authority during Apply; actual patch omission and authority must be kept consistent.",
+          "Article container facts use existing typeFields.volumeStatement/locator and work/container_work authority; their entry point is hard to discover.",
+          "Evidence generation may return busy; retain actual completed download links and distinguish request admission from processing and delivery."
+        ],
+        "codeChanges": false,
+        "newSchemaOrTypeEnum": false,
+        "noHistoricalAuthorityRewrite": true
+      },
+      "natureJournalCompletion": {
+        "resourceId": "0b1bac05-a083-4292-8013-03b9dae66805",
+        "sourceZeroBasedPageIndices": [
+          0,
+          5
+        ],
+        "volumeStatement": "543",
+        "locator": "193–198",
+        "containerAuthority": {
+          "type": "work",
+          "role": "container_work",
+          "canonicalLabel": "Nature"
+        },
+        "normalDetailsSave": "PASS",
+        "normalCitationProjection": "PASS",
+        "countedAsAdditionalProfile": false,
+        "receipt": "output/vnext/catalog-review-20261007/nature-citation-fields-live.txt",
+        "screenshot": "output/vnext/catalog-review-20261007/nature-citation-fields-live.png"
+      },
+      "fresh24": {
+        "selectedFrom": "remaining-export-ui-names.json indices12-35; source-derived UI label used for B0402史集 第二卷.pdf",
+        "selected": 24,
+        "normalGenerateRequested": true,
+        "firstAttempt": "busy; no package or completed source review claimed",
+        "retry": "Normal UI retry admitted; initial processing0/24,0fail",
+        "actualZipAccepted": false,
+        "applied": 0,
+        "receipts": [
+          "output/vnext/catalog-review-20261007/fresh24-start-20261009.txt",
+          "output/vnext/catalog-review-20261007/fresh24-busy-20261009.txt",
+          "output/vnext/catalog-review-20261007/fresh24-retry-20261009.txt"
+        ],
+        "tabId": 968988813,
+        "tabHandedOff": true
       }
     }
   },
@@ -1266,13 +1441,13 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "36f_CORE_DEPLOYED_NATIVE1b7_91_CURRENT_REVIEWS_92_PROFILES_FRESH12_ZIP_PENDING_WORKSPACE_LOCAL_REVIEW_PASS",
+    "status": "457a337_DEPLOYED_ZIP_WORKSPACE_ACCEPTED_FRESH12_SELECTED9_APPLIED_101_PROFILES_99_ACADEMIC_PDFS_OPEN",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
-    "ocr": "Core/frontend36f and retained native1b7/schema41 deployed; decoder/runtime/dependencies/model pins retained. Private9/9 resume and313-page history preserved; old Fletcher body-missing failure intact, new native whole-book quality/speed open.",
+    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Decoder/runtime/dependency/model assets retained;9/9 selected source-reviewed fresh12 profiles applied. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
-    "currentCoreFrontendCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+    "currentCoreFrontendCommit": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "currentLocalPullBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc"
   },
   "subagents": {
@@ -1280,7 +1455,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "Owner October8 delegated GPT-6.1 Sol/xhigh. Core36f/native1b7/schema41 deployed;13 non-PDF source/manual saves plus independent review PASS,91 this-round reviews and1 prior human PDF=92 profiles.109 scholarly PDFs unresolved. Normal Edge first12 generation at2/12,0fail snapshot, actual ZIP pending,71 ungenerated; historical83 attempts are not resumable/accepted. Workspace two-file PDF-only gate38/types/independent Sol review and release-helper review PASS locally, exact candidate qualification/activation pending actual12 ZIP. Preserve source/human/private authority and zero-cost/provider/main boundaries.",
+  "currentContinuationBoundary": "Owner October8 GPT-6.1 Sol/xhigh. Core457a337/native1b7/schema41 deployed and normal ZIP Workspace/Details PASS.13 non-PDF reviews complete; fresh12 actual ZIP/hash/source/zero-page/parser PASS,10review/2unknown, notice held and9/9 normal Apply.100current reviews+1prior=101profiles. Academic200 excludes4exact fixtures and1exact non-scholarly source while205 holdings/bytes/permissions are preserved;99PDF unresolved (71unexported+1timeout+1noticeHOLD+20older+6damaged). No forced classification/parser/type-enum change, same-byte corrupt retry, private source disclosure, added cost or main merge. Owner October9 orders complete catalogue organization before catalogue improvements; the observed default-type/omission-authority/container-entry/export findings are recorded, with no new implementation or authority rewrite.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
@@ -1493,7 +1668,7 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "statePointer": "production.pairedLocalOcrRelease.native"
       },
-      "currentCoreFrontendCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+      "currentCoreFrontendCommit": "457a337b61db85391bf58946cd43d7a0d86b7675",
       "followupAcceptanceStatePointer": "wholeBookOcr.verification"
     }
   },
@@ -1550,7 +1725,7 @@
     "status": "SHARED_PDF_ASSET_REPAIR_DEPLOYED_OLD_FLETCHER_FAILURE_RETAINED_NEW_NATIVE_WHOLE_BOOK_QUALITY_SPEED_OPEN",
     "performanceQualified": false,
     "adr": "docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md",
-    "deployedSourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+    "deployedSourceCommit": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "productionCoreSchemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
