@@ -1132,7 +1132,7 @@
       "observedAt": "2026-10-09",
       "normalUiHoldings": 205,
       "activePdfs": 192,
-      "reviewedApplied": 100,
+      "reviewedApplied": 117,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1161,7 +1161,7 @@
         "receipt": "output/vnext/catalog-review-20261007/historical82-apply.txt",
         "screenshot": "output/vnext/catalog-review-20261007/historical82-applied.png"
       },
-      "freshExportCandidates": 71,
+      "freshExportCandidates": 47,
       "unchangedDamagedSources": 6,
       "registeredFixtures": 3,
       "allLibraryAccepted": false,
@@ -1175,7 +1175,7 @@
         "applicationRegistryChanged": false,
         "evidence": "tasks/done/INCIDENT-L1-AI-PRODUCTION01.md:181;tasks/done/QA-GOLDEN01.md:7"
       },
-      "batchReviewedApplied": 87,
+      "batchReviewedApplied": 104,
       "fresh83Export": {
         "actualZipAccepted": false,
         "sourceReviewAccepted": false,
@@ -1258,15 +1258,16 @@
           "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
         }
       },
-      "thisRoundReviewed": 100,
+      "thisRoundReviewed": 117,
       "earlierHumanPdfProfiles": 1,
-      "existingReviewedProfiles": 101,
+      "existingReviewedProfiles": 118,
       "scholarlyHoldingsExcludingExactFixtures": 200,
       "scholarlyPdfsExcludingExactFixtures": 187,
-      "reviewedPdfProfiles": 88,
-      "unresolvedScholarlyPdfs": 99,
+      "reviewedPdfProfiles": 105,
+      "unresolvedScholarlyPdfs": 82,
       "unresolvedPdfBreakdown": {
-        "freshNotYetExported": 71,
+        "freshNotYetExported": 47,
+        "fresh24Failed": 7,
         "freshTimeout": 1,
         "freshNoticeHeld": 1,
         "older": 20,
@@ -1291,7 +1292,7 @@
       "pdfsExcludingOnlyExactFixtures": 188,
       "initialFreshExportCandidates": 83,
       "initialFreshScholarlyCandidates": 82,
-      "corpusOutcomesReceiptMeaning": "Pre-fresh12 source/profile snapshot; current counts add actual9/9 Apply and exclude exact non-scholarly221db235, without changing holdings/bytes/permissions.",
+      "corpusOutcomesReceiptMeaning": "Pre-fresh12 source/profile snapshot; current counts add9/9 fresh12 and17/17 fresh24 normal Apply, excluding exact non-scholarly221db235 only from academic acceptance. Holdings/bytes/permissions preserved.",
       "scopeReconciliationEvidence": [
         "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
         "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
@@ -1372,11 +1373,30 @@
           "Preview compares absent alternativeTitles/identifiers with normalized empty arrays, showing human set although Apply does not mark those empty arrays human.",
           "Omitted default materialClass=unknown can receive human authority during Apply; actual patch omission and authority must be kept consistent.",
           "Article container facts use existing typeFields.volumeStatement/locator and work/container_work authority; their entry point is hard to discover.",
-          "Evidence generation may return busy; retain actual completed download links and distinguish request admission from processing and delivery."
+          "Evidence generation may return busy; retain actual completed download links and distinguish request admission from processing and delivery.",
+          "Pinned PDF.js6.2.108 groups contiguous chunks into one request; current PdfRangeTransport returns only one limited chunk. Synthetic request[4,16) expects12 bytes but gets4. Reproduced independently; causality to fresh24 failures is not yet proven.",
+          "Normal Philology Details retains copyright-only dateStatement and no publicationDate, but normal Historical Research citation renders2014 as issued year. Keep the supported copyright statement; correct citation date fallback after corpus organization."
         ],
         "codeChanges": false,
         "newSchemaOrTypeEnum": false,
-        "noHistoricalAuthorityRewrite": true
+        "noHistoricalAuthorityRewrite": true,
+        "rangeContractReproduction": {
+          "status": "REPRODUCED_PARTIAL_COALESCED_RANGE",
+          "requestedBytes": 12,
+          "receivedBytes": 4,
+          "syntheticOnly": true,
+          "productionChanged": false,
+          "receipt": "output/vnext/catalog-review-20261007/coalesced-range-repro.json"
+        },
+        "copyrightDateCitationReproduction": {
+          "resourceId": "2309e92e-5cc5-4ba9-b93e-b25810606bf5",
+          "normalDetailsPublicationDate": "unknown; copyright-only dateStatement retained",
+          "normalHistoricalResearchCitation": "2014 rendered as issued year",
+          "status": "REPRODUCED_DATE_SEMANTICS_MISMATCH",
+          "canonicalFieldsChanged": false,
+          "receipt": "output/vnext/catalog-review-20261007/philology-citation-live.txt",
+          "screenshot": "output/vnext/catalog-review-20261007/philology-citation-live.png"
+        }
       },
       "natureJournalCompletion": {
         "resourceId": "0b1bac05-a083-4292-8013-03b9dae66805",
@@ -1398,20 +1418,116 @@
         "screenshot": "output/vnext/catalog-review-20261007/nature-citation-fields-live.png"
       },
       "fresh24": {
-        "selectedFrom": "remaining-export-ui-names.json indices12-35; source-derived UI label used for B0402史集 第二卷.pdf",
         "selected": 24,
+        "batchId": "1d0438f4-cf74-4e49-99f7-d40e9a5ec432",
+        "firstAttempt": "busy; retry admitted and actual package completed",
+        "actualZipAccepted": true,
+        "actualNormalZipPath": "C:/Users/35326/Downloads/academiccloud-catalog-batch-1d0438f4-cf74-4e49-99f7-d40e9a5ec432.zip",
+        "actualNormalZipBytes": 242180,
+        "actualNormalZipSha256": "8c62a05784cab4d958990b27e7c2de5eabdec2ef974e4be06e305fb52a2510ad",
+        "sourceIdentitySizeFilenameMatches": 24,
+        "zeroBasedFirstLastPages": "PASS",
+        "inspectionReady": 17,
+        "inspectionFailed": 7,
+        "failureBreakdown": {
+          "limit_exceeded": 2,
+          "source_unavailable": 3,
+          "timeout": 2
+        },
+        "sourceManifestSha256": "efaec132b086313f3f4b919110a1992923a79ae01233e9f8c9904225282969bd",
+        "resultsDocumentBytes": 50598,
+        "resultsDocumentSha256": "713e48ad0af7874e21bab739fb293714047f2049e3a18743b1217ce89b87649c",
+        "parserPreservedAllSetFields": true,
+        "resultsReview": 17,
+        "resultsUnknown": 7,
+        "normalPreviewReviewable": 17,
+        "normalPreviewInsufficient": 7,
+        "selectedForApply": 17,
+        "applied": 17,
+        "normalApply": "PASS_17_OF_17",
+        "appliedResourceIds": [
+          "23aff663-86ec-4d35-bf10-61909d8a6632",
+          "26794dde-68a1-47f6-832b-43bfdf003bbd",
+          "2860e472-075e-4f43-9b32-78eef10cc5d6",
+          "28767404-5908-4b8a-a0d3-939ff5ff0bf1",
+          "327f0cb4-1add-405e-91de-0706c101a445",
+          "351a494d-f8ca-4963-bcec-451ee3e24c64",
+          "357542b7-23de-4d8b-bce5-7256b45afd03",
+          "420f029e-cf3a-471a-b68b-4f2a0aa26b09",
+          "422e083e-28a1-45a3-8003-0da41a9cda20",
+          "431e03bb-e7df-4b97-b76f-1ed4d5e75387",
+          "4a9c8dc3-f4bf-4f81-b38c-0d219f68289d",
+          "4b492f3f-bb91-49df-8ffe-767f1ce61147",
+          "4d2b7fd8-c3c1-4c78-b10d-0ab7c6cb9c9a",
+          "551d17a8-a002-4fce-b058-b8a1512359a7",
+          "55ef2e73-207a-451c-97ad-02da1c9d89a5",
+          "5a2104d2-27ac-4d11-a53b-ac5657d6f69e",
+          "60dade0d-8698-4b7c-8adf-6403ed7f2ee0"
+        ],
+        "normalVisualTitleVerifiedResource": "55ef2e73-207a-451c-97ad-02da1c9d89a5",
+        "sourceReview": "Root source/page review; delegate quota blocked, no independent delegate review claimed",
+        "failedResources": [
+          {
+            "resourceId": "2e1841fa-080b-4077-9e3e-5f53e37d79f1",
+            "failureCode": "limit_exceeded"
+          },
+          {
+            "resourceId": "38c7cad6-2f64-4b8c-bfa4-4163f88f6aaf",
+            "failureCode": "source_unavailable"
+          },
+          {
+            "resourceId": "404a055a-e73b-480e-913b-d7556583c2cd",
+            "failureCode": "source_unavailable"
+          },
+          {
+            "resourceId": "40912522-d2d6-4329-b04f-17f19b2b32a9",
+            "failureCode": "source_unavailable"
+          },
+          {
+            "resourceId": "53eb7a5c-e551-4c7b-bb86-52c2e678993e",
+            "failureCode": "timeout"
+          },
+          {
+            "resourceId": "5a701910-aac4-4492-859c-bc28997ea4b5",
+            "failureCode": "limit_exceeded"
+          },
+          {
+            "resourceId": "6022d952-cd3d-4528-9f84-cc6f9e6342f5",
+            "failureCode": "timeout"
+          }
+        ],
+        "receipts": [
+          "output/vnext/catalog-review-20261007/fresh24-package-audit.json",
+          "output/vnext/catalog-review-20261007/fresh24-results-validation.json",
+          "output/vnext/catalog-review-20261007/fresh24-preview.txt",
+          "output/vnext/catalog-review-20261007/fresh24-fields.txt",
+          "output/vnext/catalog-review-20261007/fresh24-applied17.txt",
+          "output/vnext/catalog-review-20261007/fresh24-applied17.png",
+          "output/vnext/catalog-review-20261007/marshall-normal-cover.png"
+        ]
+      },
+      "older20SourceRecheck": {
+        "historical": 19,
+        "current17InspectionFailure": 1,
+        "newlyApplyable": 0,
+        "receipt": "output/vnext/catalog-review-20261007/older20-second-review.json",
+        "needSourceEvidence": true,
+        "historicalEvidenceV1IndicesAreOneBased": true
+      },
+      "fresh47": {
+        "selected": 47,
+        "selectedFrom": "remaining-export-ui-names.json indices36-82; observed whitespace-normalized UI labels",
         "normalGenerateRequested": true,
-        "firstAttempt": "busy; no package or completed source review claimed",
-        "retry": "Normal UI retry admitted; initial processing0/24,0fail",
+        "firstAttempt": "Failed to fetch; no accepted source package claimed",
+        "retry": "Normal UI retry admitted; latest observed31/47,2fail",
         "actualZipAccepted": false,
         "applied": 0,
+        "tabId": 968988844,
+        "tabHandedOff": true,
         "receipts": [
-          "output/vnext/catalog-review-20261007/fresh24-start-20261009.txt",
-          "output/vnext/catalog-review-20261007/fresh24-busy-20261009.txt",
-          "output/vnext/catalog-review-20261007/fresh24-retry-20261009.txt"
-        ],
-        "tabId": 968988813,
-        "tabHandedOff": true
+          "output/vnext/catalog-review-20261007/fresh47-start-20261009.txt",
+          "output/vnext/catalog-review-20261007/fresh47-progress-20261009.txt"
+        ]
       }
     }
   },
