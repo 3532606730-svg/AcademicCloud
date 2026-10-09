@@ -6,22 +6,23 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "4efe6189ea11191b46c95bcf900fc5f8de1e97e6",
+    "checkpoint": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Exact4efe published and freshly fetched remote/local equality verified; pending frontend download candidate is separate. Runtime remains1b7.",
-    "lastVerifiedPublishedCheckpoint": "4efe6189ea11191b46c95bcf900fc5f8de1e97e6",
-    "checkpointMeaning": "Latest verified source publication is a qualified staged-only stored-volume candidate, distinct from deployed1b7."
+    "localState": "Source36f published; local/remote HEAD equality verified by root before these new unpublished documentation updates. Workspace PDF-only gate is locally checked/reviewed and undeployed; new exact candidate identity pending.",
+    "lastVerifiedPublishedCheckpoint": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+    "checkpointMeaning": "Latest verified published source and current deployed Core/frontend36f; native1b7 retained. This documentation update is not a new Git checkpoint.",
+    "documentationChangesPublished": false
   },
   "production": {
-    "observedAt": "2026-10-08",
-    "coreFrontendCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+    "observedAt": "2026-10-09",
+    "coreFrontendCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
     "schemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Exact1b7 Core1561749 active/running,NRestarts0;schema41/history001-041/11 admissions,integrity ok,FK0; no migrations/backup/restore/configuration changes.",
+    "health": "Exact36f Core1566746 active/running,NRestarts0 cutover snapshot;schema41/history001-041/11 admissions,integrity ok,FK0; retained native1b7; no migration/new backup/restore/configuration changes.",
     "catalogBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
     "catalogBridgeState": "Exact1b7 Bridge10176 active/running,NRestarts0; snapshot.",
     "computeDistro": "AcademicCloudComputeV2",
@@ -479,7 +480,7 @@
       "receipts": "output/vnext/catalog-review-20261007/"
     },
     "storedVolumeCandidate": {
-      "status": "LOCAL_QUALIFIED_NOT_DEPLOYED",
+      "status": "HISTORICAL_STAGED_ONLY_NEVER_DEPLOYED_SUPERSEDED_BY_36f",
       "checks": 36,
       "backendTypecheck": "PASS",
       "rootSourceReview": "PASS",
@@ -488,7 +489,48 @@
       "sourceCommit": "4efe6189ea11191b46c95bcf900fc5f8de1e97e6",
       "linuxQualification": "PASS;5185 entries/5183 unchanged;only display.js/map",
       "uploadedStage": true,
-      "deployed": false
+      "deployed": false,
+      "incorporatedInDeployedCoreCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a"
+    },
+    "catalogueFollowupRelease": {
+      "sourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+      "retainedLocalPullBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+      "deployedAt": "2026-10-09",
+      "status": "DEPLOYED_QUALIFIED_NORMAL_VOLUME_AND_ARTICLE_TITLE_ACCEPTED_ZIP_DELIVERY_OPEN",
+      "coreManifestEntries": 5185,
+      "coreBytes": 43092663,
+      "unchangedCoreManifestEntries": 5175,
+      "changedAddedRemovedUnionPaths": 17,
+      "archiveSha256": "1eaa53627e82a09f1387662a4e5a6ed27d5e94fb8d9958b38d2562acf340d9d0",
+      "manifestSha256": "ec7115f8842af0eab904ee3e98001b846d7517889a39aec750344b80806f80bb",
+      "completeRuntimeVerifierSha256": "7a8ba3c7f127dab9b2d39ed0dc414cae6b77562982f08b8dd40aed537560cbe2",
+      "exactLinuxHostAndRetainedNativeVerifiers": "PASS",
+      "corePid": 1566746,
+      "localPullPid": 10175,
+      "bridgePid": 10176,
+      "nRestarts": 0,
+      "migrationsApplied": [],
+      "newBackup": false,
+      "restore": false,
+      "modelDependencyEnvironmentUnitChanged": false,
+      "verification": {
+        "evidenceDownloadFocusedChecks": 52,
+        "frontendTypecheck": "PASS",
+        "volumeFocusedChecks": 36,
+        "backendTypecheck": "PASS",
+        "independentSolReview": "PASS",
+        "normalVolumeTitle": "PASS_UPPER_MIDDLE_LOWER",
+        "normalFletcherArticleTitle": "PASS_CONTAINER_VOLUME_46_OMITTED",
+        "actualFreshZipAcceptance": false
+      },
+      "receipts": [
+        "output/vnext/catalog-review-20261007/core-scope-36f17d2.json",
+        "output/vnext/catalog-review-20261007/core-host-prepare-36f17d2.log",
+        "output/vnext/catalog-review-20261007/core-host-activate-36f17d2.log",
+        "output/vnext/catalog-review-20261007/volume-live-36f17d2.txt",
+        "output/vnext/catalog-review-20261007/volume-live-36f17d2.png",
+        "output/vnext/catalog-review-20261007/fletcher-title-live-36f17d2.txt"
+      ]
     }
   },
   "candidate": {
@@ -510,9 +552,9 @@
       "exportRequest": 131072
     },
     "dependencyProductionAdvisories": 0,
-    "sourceCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
-    "archiveSha256": "5c218a26e73cf8f805ceb052337a4ae0c029d9cdb6d07892848d5875424c4200",
-    "status": "DEPLOYED_1b7_STORED_VOLUME_SOURCE_CANDIDATE_PENDING",
+    "sourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+    "archiveSha256": "1eaa53627e82a09f1387662a4e5a6ed27d5e94fb8d9958b38d2562acf340d9d0",
+    "status": "DEPLOYED_36f_LOCAL_WORKSPACE_GATE_CHECKED_EXACT_CANDIDATE_PENDING",
     "pendingSchemaVersion": 41,
     "pendingMigrations": [],
     "localOcr": {
@@ -525,14 +567,30 @@
       "productionEnabled": true,
       "implementationSourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
     },
-    "checkpointMeaning": "Current runtime pointer; stored-volume4efe is published, Linux-qualified and staged only. Frontend download repair remains a separate local candidate.",
+    "checkpointMeaning": "Current Core/frontend36f is deployed.4efe was staged only and never activated. Workspace PDF-only repair/release helpers are locally checked/reviewed; new exact candidate qualification is pending and activation awaits actual first12 ZIP delivery.",
     "catalogueEvidenceDownload": {
-      "status": "LOCAL_QUALIFIED_NOT_DEPLOYED",
+      "status": "DEPLOYED_NORMAL_ZIP_ACCEPTANCE_OPEN",
       "focusedTests": 52,
       "frontendTypecheck": "PASS",
       "independentReview": "PASS",
       "scope": "one validated <=128MiB Blob, mounted download anchor, generated wording, scope/close/unmount cleanup",
-      "normalZipAcceptance": false
+      "normalZipAcceptance": false,
+      "sourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a"
+    },
+    "workspaceNonPdfGate": {
+      "status": "LOCAL_CHECKS_AND_INDEPENDENT_REVIEW_PASS_NOT_DEPLOYED",
+      "filesChanged": 2,
+      "focusedChecks": 38,
+      "newRegressions": 7,
+      "regressionsFailedBeforeRepair": true,
+      "frontendTypecheck": "PASS",
+      "independentSolSourceLifecyclePrivacyReview": "PASS",
+      "releaseHelperIndependentReview": "PASS",
+      "sourceKeyScope": "PDF-only progress lifecycle/context and highlight requests",
+      "backendFailure": "highlights requirePdfSource; GET progress only requires resource",
+      "normalZipWorkspaceAcceptance": false,
+      "newExactReleaseIdentity": null,
+      "activationGate": "Save and verify actual normal Edge first12 evidence ZIP before activation."
     }
   },
   "verification": {
@@ -918,7 +976,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Initial paired-local/Reader-copy/product-copy/frame-fit acceptances remain dated history. Exact1b7 current coordinated runtime is production.catalogueCitationRelease; cataloguing progress is bookIntakeReliability.currentLibraryCatalogue. Whole-book quality and comparable speed remain open.",
+    "recordMeaning": "Initial paired-local/Reader-copy/product-copy/frame-fit and1b7 catalogue/citation acceptances remain dated history. Current Core/frontend36f and retained native1b7 are in production.catalogueFollowupRelease; catalogue progress is bookIntakeReliability.currentLibraryCatalogue. Workspace PDF-only gate is local/reviewed and undeployed. Whole-book quality/comparable speed and actual fresh ZIP delivery remain open.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -956,11 +1014,11 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "October7 pre-batch inventory:205 normal-UI holdings including192 active PDFs;94 latest jobs succeeded/67 failed/31 absent. First2 recovered jobs now succeeded but are not counted as catalogued;separate reviewed normal-UI pilot applied3/3. All-book outcomes and field-quality acceptance remain open.",
+    "Current scholarly denominator201=188PDF+13nonPDF after four exact fixtures; all13 non-PDF source/manual reviews complete.79 PDF profiles,109 unresolved (83fresh+20older+6unchanged damaged). Neither83-item export yielded accepted ZIP; handed-off Edge first12 has2/12,0fail snapshot and71 ungenerated; actual delivery/source review remains open.",
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "One integrated exact Core release for stored-volume display and retained evidence download, then normal actual fresh83 ZIP/page-index/volume acceptance and source review/Preview/Apply;12 non-PDF source inspections remain. Native1b7 unchanged; all-Library acceptance open.",
+  "next": "Continue handed-off normal Owner Edge first12 and verify actual ZIP, then bounded remaining71 source exports before source/page review/normal Preview/Apply. Workspace two-file PDF-only gate38/types/Sol review and release-helper review PASS; checkpoint/qualify exact candidate, activation waits for actual12 ZIP, then normal ZIP Workspace acceptance. Current Core36f/native1b7/schema41;13 non-PDF complete,91 this-round reviews plus1 earlier profile,109 PDFs unresolved.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1033,7 +1091,7 @@
       "observedAt": "2026-10-09",
       "normalUiHoldings": 205,
       "activePdfs": 192,
-      "reviewedApplied": 79,
+      "reviewedApplied": 91,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1078,11 +1136,42 @@
       },
       "batchReviewedApplied": 78,
       "fresh83Export": {
-        "uiProcessed": 83,
-        "uiInspectionFailures": 12,
         "actualZipAccepted": false,
         "sourceReviewAccepted": false,
-        "receipt": "output/vnext/catalog-review-20261007/fresh83-export-ui.txt"
+        "historicalAttempts": [
+          {
+            "phase": "BEFORE_RETAINED_DOWNLOAD_FIX",
+            "uiProcessed": 83,
+            "uiInspectionFailures": 12,
+            "actualZipAccepted": false,
+            "status": "UI_FINISHED_NO_SAVED_ZIP",
+            "receipt": "output/vnext/catalog-review-20261007/fresh83-export-ui.txt"
+          },
+          {
+            "sourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
+            "lastObservedProcessed": 31,
+            "total": 83,
+            "lastObservedInspectionFailures": 2,
+            "actualZipAccepted": false,
+            "status": "INTERRUPTED_IAB_CONTEXT_LOST_NO_NEW_DOWNLOADS_ZIP",
+            "resumable": false,
+            "startReceipt": "output/vnext/catalog-review-20261007/fresh83-export-retry-start.txt"
+          }
+        ],
+        "normalEdgeRecovery": {
+          "selectedFrom": "remaining-export-ui-names.json indices0-11",
+          "currentBatchCount": 12,
+          "generationRequested": true,
+          "lastObservedProcessed": 2,
+          "lastObservedInspectionFailures": 0,
+          "status": "IN_PROGRESS_NORMAL_OWNER_EDGE_SNAPSHOT_NO_ACTUAL_ZIP_ACCEPTED",
+          "tabId": 968988813,
+          "tabHandedOff": true,
+          "remainingUngenerated": 71,
+          "actualZipAccepted": false,
+          "sourceReviewAccepted": false,
+          "startReceipt": "output/vnext/catalog-review-20261007/fresh12-start-20261009.txt"
+        }
       },
       "nonPdf": {
         "inventory": 13,
@@ -1092,18 +1181,62 @@
           "docx": 8,
           "zip": 1
         },
-        "normalSourceInspected": 1,
-        "normalManualSaved": 1,
-        "remaining": 12,
-        "title": "异域志",
-        "author": "周致中",
-        "materialClass": "traditional_book",
-        "language": "zh",
-        "bytes": 40381,
-        "sha256": "b2f770db7027ea20dbf993aa6cdcadbf0472a30544e1468a187d6e2a5d87f03a",
-        "encoding": "GB18030",
-        "receipt": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.txt",
-        "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
+        "normalSourceInspected": 13,
+        "normalManualSaved": 13,
+        "remaining": 0,
+        "independentSolSourceIdentityHashSaveRoleEditionDateReview": "PASS",
+        "manualSavesReceipt": "output/vnext/catalog-review-20261007/nonpdf-review/manual-saves.json",
+        "manualSavesReceiptCount": 11,
+        "separateTxtSaveReceipts": [
+          "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.txt",
+          "output/vnext/catalog-review-20261007/nonpdf-xiyoulu-saved.txt"
+        ],
+        "downloadsReceipt": "output/vnext/catalog-review-20261007/nonpdf-downloads.json",
+        "downloadedSourceSha256Md5SizeMatches": 13,
+        "sourceIdentitiesBeforeAfterByteIdentical": true,
+        "sourceIdentityCommonSha256": "9514d567aaf966161ca31f85b2d8e283ef40753a3ec3158a6b0e0574bb949542",
+        "sourceIdentityReceipts": [
+          "output/vnext/catalog-review-20261007/nonpdf-source-identities-20261009.json",
+          "output/vnext/catalog-review-20261007/nonpdf-source-identities-after-20261009.json"
+        ],
+        "proposedAliasesSubtitlesApplied": false,
+        "sourceEdition1940IsCarrierPublication": false,
+        "huckerCarrierPublication": "1988-08 Taiwan facsimile; copyright1985 is separate",
+        "firstManualRecord": {
+          "title": "异域志",
+          "author": "周致中",
+          "materialClass": "traditional_book",
+          "language": "zh",
+          "bytes": 40381,
+          "sha256": "b2f770db7027ea20dbf993aa6cdcadbf0472a30544e1468a187d6e2a5d87f03a",
+          "encoding": "GB18030",
+          "receipt": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.txt",
+          "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
+        }
+      },
+      "thisRoundReviewed": 91,
+      "earlierHumanPdfProfiles": 1,
+      "existingReviewedProfiles": 92,
+      "scholarlyHoldingsExcludingExactFixtures": 201,
+      "scholarlyPdfsExcludingExactFixtures": 188,
+      "reviewedPdfProfiles": 79,
+      "unresolvedScholarlyPdfs": 109,
+      "unresolvedPdfBreakdown": {
+        "fresh": 83,
+        "older": 20,
+        "unchangedDamaged": 6
+      },
+      "exactFixturesExcluded": 4,
+      "corpusOutcomesReceipt": "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
+      "earlierHumanPdfProfile": {
+        "resourceId": "894cce4f-38be-4f7f-9f9f-a8eb379b5aef",
+        "title": "黑毡上的北魏皇帝",
+        "fileRevision": 2,
+        "humanPublicationYear": 2014,
+        "sameSourceBytes": true,
+        "includedInThisRound78": false,
+        "historical82StaleExportExcluded": true,
+        "receipt": "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json"
       }
     }
   },
@@ -1133,13 +1266,13 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "1b7_deployed_catalogue79_applied_fresh83_zip_missing_integrated_candidate_qualified",
+    "status": "36f_CORE_DEPLOYED_NATIVE1b7_91_CURRENT_REVIEWS_92_PROFILES_FRESH12_ZIP_PENDING_WORKSPACE_LOCAL_REVIEW_PASS",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
-    "ocr": "Exact1b7 Core/frontend/Local Pull/Bridge deployed at schema41; shared decoder repair retained with unchanged runtime/dependencies/model pins; citation/busy/export corrections qualified. Private9/9 resume and313-page history retained; old Fletcher body-missing failure intact, new native whole-book quality/speed open.",
+    "ocr": "Core/frontend36f and retained native1b7/schema41 deployed; decoder/runtime/dependencies/model pins retained. Private9/9 resume and313-page history preserved; old Fletcher body-missing failure intact, new native whole-book quality/speed open.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
-    "currentCoreFrontendCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+    "currentCoreFrontendCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
     "currentLocalPullBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc"
   },
   "subagents": {
@@ -1147,7 +1280,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "Owner October8: all delegated work GPT-6.1 Sol/xhigh. Continue normal-UI all-current-Library cataloguing; exact1b7 release/journal citation acceptance complete. Cumulative78 reviewed applications; fresh83 and individual unresolved records remain open. Source/human/canonical/private-history authority and zero-cost/provider/main boundaries unchanged.",
+  "currentContinuationBoundary": "Owner October8 delegated GPT-6.1 Sol/xhigh. Core36f/native1b7/schema41 deployed;13 non-PDF source/manual saves plus independent review PASS,91 this-round reviews and1 prior human PDF=92 profiles.109 scholarly PDFs unresolved. Normal Edge first12 generation at2/12,0fail snapshot, actual ZIP pending,71 ungenerated; historical83 attempts are not resumable/accepted. Workspace two-file PDF-only gate38/types/independent Sol review and release-helper review PASS locally, exact candidate qualification/activation pending actual12 ZIP. Preserve source/human/private authority and zero-cost/provider/main boundaries.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
@@ -1360,7 +1493,7 @@
         "sourceCommit": "662a7a0374df31df8b3ec429394cee8836160a5a",
         "statePointer": "production.pairedLocalOcrRelease.native"
       },
-      "currentCoreFrontendCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+      "currentCoreFrontendCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
       "followupAcceptanceStatePointer": "wholeBookOcr.verification"
     }
   },
@@ -1417,7 +1550,7 @@
     "status": "SHARED_PDF_ASSET_REPAIR_DEPLOYED_OLD_FLETCHER_FAILURE_RETAINED_NEW_NATIVE_WHOLE_BOOK_QUALITY_SPEED_OPEN",
     "performanceQualified": false,
     "adr": "docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md",
-    "deployedSourceCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
+    "deployedSourceCommit": "36f17d2ae4ff1fa0f69f616175d4fdc61028d71a",
     "productionCoreSchemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,

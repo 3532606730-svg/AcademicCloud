@@ -42,6 +42,90 @@ beforeEach(() => window.localStorage.setItem("academiccloud.language", "en"));
 afterEach(() => window.localStorage.removeItem("academiccloud.language"));
 
 describe("private workspace", () => {
+  it.each([
+    "application/zip",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+    "image/png",
+    null,
+  ])("keeps %s resources outside PDF progress and highlight requests", async (mediaType) => {
+    const user = userEvent.setup();
+    const nonPdf = { ...RESOURCE, title: "Non-PDF source", mediaType };
+    const progress = vi.fn().mockRejectedValue(new ApiError(400, "invalid_input"));
+    const highlights = vi.fn().mockRejectedValue(new ApiError(400, "invalid_input"));
+    const authorize = vi.fn();
+    const f = fixture({ progress, highlights, resource: vi.fn().mockResolvedValue({ resource: nonPdf, reading: null, collectionIds: [] }) });
+    const { onOpenResource } = renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+
+    await user.click(await screen.findByRole("button", { name: "Open resource" }));
+    expect(onOpenResource).toHaveBeenCalledWith(nonPdf, undefined);
+    expect(progress).not.toHaveBeenCalled();
+    expect(highlights).not.toHaveBeenCalled();
+    expect(authorize).not.toHaveBeenCalled();
+    expect(f.api.saveProgress).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("pdf-reader")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Write a page note" })).toBeDisabled();
+  });
+
+  it("preserves non-PDF reading flags, collection membership and prior-source authored notes", async () => {
+    const user = userEvent.setup();
+    const nonPdf = { ...RESOURCE, sourceId: "zip-source", title: "Research archive", mediaType: "application/zip" };
+    const reading = { resourceId: RESOURCE.resourceId, status: "queued" as const, important: true, toCite: false, revision: 4, updatedAt: NOTE.updatedAt };
+    const f = fixture({ resource: vi.fn().mockResolvedValue({ resource: nonPdf, reading, collectionIds: [COLLECTION.id] }), notes: vi.fn().mockResolvedValue(page([NOTE], [nonPdf])) });
+    renderWorkspace(f.api, { asPage: true, expectedSourceId: nonPdf.sourceId, onAuthorizeReader: vi.fn() });
+
+    await screen.findByText(NOTE.body);
+    expect(screen.getByText("Note belongs to an earlier file version")).toBeInTheDocument();
+    expect(screen.getByLabelText("Important")).toBeChecked();
+    expect(screen.getByLabelText(COLLECTION.name)).toBeChecked();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Reading status" }), "reading");
+    await waitFor(() => expect(f.api.saveReading).toHaveBeenCalledWith(RESOURCE.resourceId, { status: "reading", important: true, toCite: false, revision: 4 }));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Reading status" })).toHaveValue("reading"));
+    await user.click(screen.getByLabelText(COLLECTION.name));
+    await waitFor(() => expect(f.api.setCollectionItem).toHaveBeenCalledWith(COLLECTION, RESOURCE.resourceId, false));
+    expect(f.api.progress).not.toHaveBeenCalled();
+    expect(f.api.highlights).not.toHaveBeenCalled();
+    expect(f.api.createNote).not.toHaveBeenCalled();
+    expect(f.api.updateNote).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("cleans up PDF source requests and saves the pending page when switching to a non-PDF", async () => {
+    const user = userEvent.setup();
+    const nonPdf = { ...RESOURCE, resourceId: "archive-two", sourceId: "archive-source", title: "Research archive", mediaType: "application/zip" };
+    let finishHighlights!: (value: { items: TextHighlight[]; nextBeforeId: null }) => void;
+    const highlights = vi.fn().mockImplementationOnce(() => new Promise((resolve) => { finishHighlights = resolve; })).mockResolvedValue({ items: [], nextBeforeId: null });
+    const f = fixture({ highlights,
+      resource: vi.fn().mockImplementation(async (id) => ({ resource: id === nonPdf.resourceId ? nonPdf : RESOURCE, reading: null, collectionIds: [] })),
+      reading: vi.fn().mockResolvedValue(page([{ resourceId: nonPdf.resourceId, status: "queued", important: false, toCite: false, revision: 1, updatedAt: NOTE.updatedAt }], [nonPdf])),
+    });
+    const authorize = vi.fn().mockResolvedValue({ url: "https://example.test/source.pdf", download: vi.fn() });
+    renderWorkspace(f.api, { asPage: true, onAuthorizeReader: authorize });
+    await screen.findByTestId("pdf-reader");
+    const progressSignal = vi.mocked(f.api.progress).mock.calls[0]![1]!;
+    const highlightsSignal = highlights.mock.calls[0]![1] as AbortSignal;
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    await user.click(screen.getByRole("button", { name: "All research" }));
+    await user.click(await screen.findByRole("button", { name: nonPdf.title }));
+    await screen.findByRole("heading", { name: nonPdf.title });
+    await waitFor(() => expect(f.api.saveProgress).toHaveBeenCalledWith(RESOURCE.resourceId, { sourceId: RESOURCE.sourceId, physicalPage: 2, revision: 0 }));
+    expect(progressSignal.aborted).toBe(true);
+    expect(highlightsSignal.aborted).toBe(true);
+    await act(async () => finishHighlights({ items: [{ ...NOTE, id: "old-highlight", text: "Prior PDF selection", rects: [{ x: 0.1, y: 0.1, width: 0.2, height: 0.03 }], color: "yellow" }], nextBeforeId: null }));
+    expect(f.api.progress).toHaveBeenCalledTimes(1);
+    expect(highlights).toHaveBeenCalledTimes(1);
+    expect(authorize).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("pdf-reader")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: RESOURCE.title }));
+    await screen.findByTestId("pdf-reader");
+    expect(f.api.progress).toHaveBeenCalledTimes(2);
+    expect(highlights).toHaveBeenCalledTimes(2);
+    expect(authorize).toHaveBeenCalledTimes(2);
+    expect(pdfReaderControl.props!.highlights).toEqual([]);
+  });
+
   it("passes only the selected authorized resource/source and account to the optional local OCR reader module", async () => {
     const f = fixture(); const localOcr = ocrApi();
     renderWorkspace(f.api, { accountId: "member-one", localOcr, asPage: true, onAuthorizeReader: vi.fn().mockResolvedValue({ url: "https://example.test/source.pdf", download: vi.fn() }) });

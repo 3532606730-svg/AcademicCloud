@@ -227,7 +227,7 @@ export function WorkspaceDialog({ api, localOcr, accountId, initialResourceId, e
       return tabs.length < 12 ? [...tabs, { resource: current, page: 1 }] : tabs;
     });
   }, [resource, sourceMatches]);
-  const sourceKey = resource && sourceMatches ? resource.resource.resourceId + ":" + resource.resource.sourceId : null;
+  const sourceKey = resource?.resource.mediaType === "application/pdf" && sourceMatches ? resource.resource.resourceId + ":" + resource.resource.sourceId : null;
   const flushProgress = (context = progressContext.current) => {
     if (!context || context.failed || context.pendingPage === null) return;
     const nextPage = context.pendingPage; context.pendingPage = null;
