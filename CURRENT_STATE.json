@@ -1132,7 +1132,7 @@
       "observedAt": "2026-10-09",
       "normalUiHoldings": 205,
       "activePdfs": 192,
-      "reviewedApplied": 117,
+      "reviewedApplied": 118,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1161,7 +1161,7 @@
         "receipt": "output/vnext/catalog-review-20261007/historical82-apply.txt",
         "screenshot": "output/vnext/catalog-review-20261007/historical82-applied.png"
       },
-      "freshExportCandidates": 47,
+      "freshExportCandidates": 0,
       "unchangedDamagedSources": 6,
       "registeredFixtures": 3,
       "allLibraryAccepted": false,
@@ -1258,19 +1258,20 @@
           "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
         }
       },
-      "thisRoundReviewed": 117,
+      "thisRoundReviewed": 118,
       "earlierHumanPdfProfiles": 1,
-      "existingReviewedProfiles": 118,
-      "scholarlyHoldingsExcludingExactFixtures": 200,
-      "scholarlyPdfsExcludingExactFixtures": 187,
-      "reviewedPdfProfiles": 105,
-      "unresolvedScholarlyPdfs": 82,
+      "existingReviewedProfiles": 119,
+      "scholarlyHoldingsExcludingExactFixtures": 197,
+      "scholarlyPdfsExcludingExactFixtures": 184,
+      "reviewedPdfProfiles": 106,
+      "unresolvedScholarlyPdfs": 78,
       "unresolvedPdfBreakdown": {
-        "freshNotYetExported": 47,
+        "fresh47ReadyAcademicPendingReview": 42,
+        "fresh47Failed": 2,
         "fresh24Failed": 7,
         "freshTimeout": 1,
         "freshNoticeHeld": 1,
-        "older": 20,
+        "older": 19,
         "unchangedDamaged": 6
       },
       "exactFixturesExcluded": 4,
@@ -1286,13 +1287,13 @@
         "receipt": "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json"
       },
       "reviewedNonPdfProfiles": 13,
-      "scholarlyHoldings": 200,
-      "scholarlyPdfs": 187,
+      "scholarlyHoldings": 197,
+      "scholarlyPdfs": 184,
       "holdingsExcludingOnlyExactFixtures": 201,
       "pdfsExcludingOnlyExactFixtures": 188,
       "initialFreshExportCandidates": 83,
       "initialFreshScholarlyCandidates": 82,
-      "corpusOutcomesReceiptMeaning": "Pre-fresh12 source/profile snapshot; current counts add9/9 fresh12 and17/17 fresh24 normal Apply, excluding exact non-scholarly221db235 only from academic acceptance. Holdings/bytes/permissions preserved.",
+      "corpusOutcomesReceiptMeaning": "Pre-fresh12 source/profile snapshot; current counts add9 fresh12+17 fresh24 normal batch applications and1 older normal manual PDF. Four exact non-scholarly sources are excluded only from academic acceptance; holdings/bytes/permissions preserved.",
       "scopeReconciliationEvidence": [
         "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
         "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
@@ -1396,6 +1397,14 @@
           "canonicalFieldsChanged": false,
           "receipt": "output/vnext/catalog-review-20261007/philology-citation-live.txt",
           "screenshot": "output/vnext/catalog-review-20261007/philology-citation-live.png"
+        },
+        "readerSourceDownloadObservation": {
+          "resourceId": "6fb1ef17-e176-4dca-b13d-4fc31080dbeb",
+          "normalReader": "Page-load controls remained disabled during bounded inspection",
+          "normalDownload": "Microsoft Edge ERR_BLOCKED_BY_CLIENT on existing files.ajtlab.top",
+          "actualSourceFileAccepted": false,
+          "securitySettingsChanged": false,
+          "sourceReviewNotClaimed": true
         }
       },
       "natureJournalCompletion": {
@@ -1512,22 +1521,137 @@
         "newlyApplyable": 0,
         "receipt": "output/vnext/catalog-review-20261007/older20-second-review.json",
         "needSourceEvidence": true,
-        "historicalEvidenceV1IndicesAreOneBased": true
+        "historicalEvidenceV1IndicesAreOneBased": true,
+        "normalVisualManualSaved": 1,
+        "remaining": 19,
+        "followupReceipt": "output/vnext/catalog-review-20261007/older20-normal-manual-followup.json"
       },
       "fresh47": {
         "selected": 47,
         "selectedFrom": "remaining-export-ui-names.json indices36-82; observed whitespace-normalized UI labels",
         "normalGenerateRequested": true,
         "firstAttempt": "Failed to fetch; no accepted source package claimed",
-        "retry": "Normal UI retry admitted; latest observed31/47,2fail",
-        "actualZipAccepted": false,
+        "retry": "Normal UI retry admitted and package completed47/47;2 failed inspections retained",
+        "actualZipAccepted": true,
         "applied": 0,
         "tabId": 968988844,
         "tabHandedOff": true,
         "receipts": [
           "output/vnext/catalog-review-20261007/fresh47-start-20261009.txt",
-          "output/vnext/catalog-review-20261007/fresh47-progress-20261009.txt"
-        ]
+          "output/vnext/catalog-review-20261007/fresh47-progress-20261009.txt",
+          "output/vnext/catalog-review-20261007/fresh47-ready-20261009.txt",
+          "output/vnext/catalog-review-20261007/fresh47-package-audit.json"
+        ],
+        "batchId": "22230af1-b1e9-45e6-9fac-5b9642726598",
+        "actualNormalZipPath": "C:/Users/35326/Downloads/academiccloud-catalog-batch-22230af1-b1e9-45e6-9fac-5b9642726598.zip",
+        "actualNormalZipBytes": 594399,
+        "actualNormalZipSha256": "3e3b7604c7cf75c4486348ce8289bfaab431df6c4f36009c6af61fe5d1536b9e",
+        "sourceIdentitySizeFilenameMatches": 47,
+        "zeroBasedFirstLastPages": "PASS",
+        "inspectionReady": 45,
+        "inspectionFailed": 2,
+        "failedResources": [
+          {
+            "resourceId": "77a6a6b4-70a9-4065-beba-543702735fba",
+            "failureCode": "timeout"
+          },
+          {
+            "resourceId": "b0383b34-817a-4109-a801-91409385df7e",
+            "failureCode": "source_unavailable"
+          }
+        ],
+        "sourceReviewAccepted": false,
+        "normalApplyAccepted": false,
+        "additionalNonScholarlySources": [
+          "63991656-ad84-4e24-9d9b-787fe1e3ad27",
+          "9e8c4fd5-3593-400a-ab53-5d57b747935b",
+          "b6c33ae7-6eda-4e41-99a9-2f3d5bda7612"
+        ],
+        "academicReadyPendingReview": 42,
+        "delegateReview": "Three requested GPT-6.1 Sol/xhigh agents resumed after ordinary usage became available; read-only disjoint source-review parts in progress"
+      },
+      "totalNonScholarlySourceExclusions": 4,
+      "normalManualPdfFollowup": 1,
+      "additionalNonScholarlySourceExclusions": [
+        {
+          "resourceId": "63991656-ad84-4e24-9d9b-787fe1e3ad27",
+          "classification": "NON_SCHOLARLY_SOURCE",
+          "excludedFromAcademicAcceptanceOnly": true,
+          "originalHoldingPreserved": true,
+          "deletionPerformed": false,
+          "permissionsChanged": false,
+          "privateSourceDetailsRecorded": false,
+          "evidence": "output/vnext/catalog-review-20261007/fresh47-review-part-root.json"
+        },
+        {
+          "resourceId": "9e8c4fd5-3593-400a-ab53-5d57b747935b",
+          "classification": "NON_SCHOLARLY_SOURCE",
+          "excludedFromAcademicAcceptanceOnly": true,
+          "originalHoldingPreserved": true,
+          "deletionPerformed": false,
+          "permissionsChanged": false,
+          "privateSourceDetailsRecorded": false,
+          "evidence": "output/vnext/catalog-review-20261007/fresh47-review-part-root.json"
+        },
+        {
+          "resourceId": "b6c33ae7-6eda-4e41-99a9-2f3d5bda7612",
+          "classification": "NON_SCHOLARLY_SOURCE",
+          "excludedFromAcademicAcceptanceOnly": true,
+          "originalHoldingPreserved": true,
+          "deletionPerformed": false,
+          "permissionsChanged": false,
+          "privateSourceDetailsRecorded": false,
+          "evidence": "output/vnext/catalog-review-20261007/fresh47-review-part-root.json"
+        }
+      ],
+      "normalManualPdfSourceReviews": {
+        "applied": 1,
+        "entries": [
+          {
+            "resourceId": "f7e29772-e603-47b7-9c2e-7c798d661192",
+            "sourceIdentity": {
+              "sourceFingerprint": "C8IB7XoLKSwPfUs67KPrk-UMo8039AHC_hBj3rJaTis",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "56ardd8EMKb29SD88RyzCw=="
+            },
+            "normalSource": "Normal signed-in Reader; physical page4 title/responsibility/publisher/series and page162 imprint",
+            "physicalPagesOneBased": [
+              4,
+              162
+            ],
+            "canonicalTitle": "元代知識人と地域社會",
+            "materialType": "book",
+            "materialClass": "scholarly_monograph",
+            "contributors": [
+              {
+                "label": "森田憲司",
+                "role": "author",
+                "roleLabel": "著"
+              }
+            ],
+            "publication": {
+              "publisher": "汲古書院",
+              "place": "東京",
+              "publicationDate": "2004-03"
+            },
+            "series": "汲古叢書, 53",
+            "language": "ja",
+            "identifiers": [
+              {
+                "scheme": "isbn",
+                "value": "4-7629-2552-7"
+              }
+            ],
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "dayAndEditionNumberNotGuessed": true,
+            "receipt": "output/vnext/catalog-review-20261007/morita-normal-bibliography-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/morita-normal-bibliography-saved.png"
+          }
+        ],
+        "receipt": "output/vnext/catalog-review-20261007/older20-normal-manual-followup.json"
       }
     }
   },
