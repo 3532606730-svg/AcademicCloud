@@ -1,5 +1,5 @@
 {
-  "lastReconciled": "2026-10-09",
+  "lastReconciled": "2026-10-10",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
@@ -8,11 +8,12 @@
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
     "checkpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
-    "localSynchronized": true,
-    "localState": "Runtime source457a337 publication and local/fetched-remote equality were verified before this documentation reconciliation; exact Core/frontend457a337 remains deployed. Repository HEAD may include subsequent documentation checkpoints and is verified separately at publication.",
+    "localSynchronized": false,
+    "localState": "Runtime457a337 publication/equality is historical verified evidence. Current documentation checkpoint publication is pending after Git443 timeout; no current HEAD equality is claimed.",
     "lastVerifiedPublishedCheckpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "checkpointMeaning": "Exact deployed Core/frontend source457a337 and retained native1b7; subsequent repository documentation checkpoints are identified by Git HEAD, not a new runtime release.",
-    "documentationPublicationMeaning": "Publication and local/fetched-remote equality are verified at the task-level Git checkpoint; lastVerifiedPublishedCheckpoint records the runtime-source verification preceding this documentation reconciliation."
+    "documentationPublicationMeaning": "Verify Git publication and local/fetched-remote equality separately from exact runtime-source457a337; latest previous published documentation checkpoint is d1197104639b3d6866acd03d4e99175a4dcd3932.",
+    "documentationPublicationStatus": "PENDING_GIT_NETWORK_TIMEOUT"
   },
   "production": {
     "observedAt": "2026-10-09",
@@ -1017,7 +1018,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Initial paired-local/Reader-copy/product-copy/frame-fit/1b7 citation/36f volume acceptances remain dated history. Current Core457a337/native1b7/schema41 and normal ZIP Workspace/Details are production.workspacePdfGateRelease; actual fresh12 selected9/9 and academic200/101profiles/99unresolved are bookIntakeReliability.currentLibraryCatalogue. Whole-book quality/speed and all-Library acceptance remain open.",
+    "recordMeaning": "Runtime Core457a337/native1b7/schema41 is retained qualified deployment. Current catalogue evidence is169 source-reviewed profiles/197 academic holdings,28 unresolved;32+4+14 normal Apply and two existing HJAS container completions accepted. Prior dated receipts remain history. All-Library, native whole-book quality/speed and current documentation publication remain open.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -1055,11 +1056,12 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Current academic denominator200=187PDF+13nonPDF after4 exact fixtures and1 exact non-scholarly source;205 total holdings preserved.101 profiles=88PDF+13nonPDF;99 academic PDFs unresolved (71unexported+1timeout+1noticeHOLD+20older+6damaged). Actual fresh12 package/parser/page identities and selected9/9 normal Apply passed; notice remains held at unsupported-type/default-book boundary and timeout has no evidence.",
+    "Current catalogue:205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.154 normal batch+13 normal manual nonPDF+1 normal manual PDF=168 current reviews; one earlier human PDF gives169 reviewed profiles=156PDF+13nonPDF.28 academic PDFs remain unresolved:6 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not169 complete bibliographies. All-Library acceptance remains open.",
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
-    "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
+    "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open.",
+    "Current documentation publication remains pending after Git443 timeouts; actual local/remote HEAD equality has not been verified for the documentation checkpoints."
   ],
-  "next": "Continue71 unexported source-matched candidates in bounded normal-UI batches, verify actual ZIPs then independent source/page review and Preview/Apply. Current Core457a337/native1b7/schema41 and ZIP Workspace acceptance complete. Actual fresh12 selected9/9 applied; notice07f820d4 held without forced types/parser changes,第三册 timeout unknown, exact221db235 non-scholarly academic-scope exclusion only.100 current reviews+1 prior=101 profiles;99 academic PDFs unresolved; all-Library open. Current24 selected normal export retry is admitted but actual ZIP/source review/Apply is pending. After corpus organization, fix source-type inference, omission/authority semantics, article-container entry and export/recovery using these concrete receipts.",
+  "next": "Complete bounded original-page review for the remaining usable title/class uncertainties, retaining169 source-reviewed profiles and28 unresolved academic PDFs. Preserve actual failed-source evidence and the six replacement-byte gates; do not rerun unchanged failures or force book/class/date from filenames. Then implement the recorded catalogue repairs: omitted-field authority/Preview consistency, substantive-text detection, exact grouped PDF range delivery, copyright-date citation projection, article-container entry and export recovery. All-Library and native whole-book quality/speed acceptance remain open. Publish scoped documentation and verify actual local/fetched-remote equality when the Git route permits; retain Core457a337/native1b7/schema41.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1129,10 +1131,10 @@
     "implementationCheckpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f",
     "deploymentMeaning": "Integrated implementation bytes are in exact662a7a0 production release; historical local test scope is unchanged and the full real signed-in intake/recovery/quality acceptance is not thereby complete.",
     "currentLibraryCatalogue": {
-      "observedAt": "2026-10-09",
+      "observedAt": "2026-10-10",
       "normalUiHoldings": 205,
       "activePdfs": 192,
-      "reviewedApplied": 118,
+      "reviewedApplied": 168,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1175,7 +1177,7 @@
         "applicationRegistryChanged": false,
         "evidence": "tasks/done/INCIDENT-L1-AI-PRODUCTION01.md:181;tasks/done/QA-GOLDEN01.md:7"
       },
-      "batchReviewedApplied": 104,
+      "batchReviewedApplied": 154,
       "fresh83Export": {
         "actualZipAccepted": false,
         "sourceReviewAccepted": false,
@@ -1258,20 +1260,21 @@
           "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
         }
       },
-      "thisRoundReviewed": 118,
+      "thisRoundReviewed": 168,
       "earlierHumanPdfProfiles": 1,
-      "existingReviewedProfiles": 119,
+      "existingReviewedProfiles": 169,
       "scholarlyHoldingsExcludingExactFixtures": 197,
       "scholarlyPdfsExcludingExactFixtures": 184,
-      "reviewedPdfProfiles": 106,
-      "unresolvedScholarlyPdfs": 78,
+      "reviewedPdfProfiles": 156,
+      "unresolvedScholarlyPdfs": 28,
       "unresolvedPdfBreakdown": {
-        "fresh47ReadyAcademicPendingReview": 42,
+        "fresh47AcademicHeld": 6,
         "fresh47Failed": 2,
         "fresh24Failed": 7,
         "freshTimeout": 1,
         "freshNoticeHeld": 1,
-        "older": 19,
+        "olderReadyHeld": 4,
+        "olderInspectionFailed": 1,
         "unchangedDamaged": 6
       },
       "exactFixturesExcluded": 4,
@@ -1293,12 +1296,16 @@
       "pdfsExcludingOnlyExactFixtures": 188,
       "initialFreshExportCandidates": 83,
       "initialFreshScholarlyCandidates": 82,
-      "corpusOutcomesReceiptMeaning": "Pre-fresh12 source/profile snapshot; current counts add9 fresh12+17 fresh24 normal batch applications and1 older normal manual PDF. Four exact non-scholarly sources are excluded only from academic acceptance; holdings/bytes/permissions preserved.",
+      "corpusOutcomesReceiptMeaning": "Earlier snapshot retained as dated history. Current counts add9 fresh12+17 fresh24+36 fresh47+14 older19 normal batch applications and1 normal manual PDF. Reviewed means source-supported saved profiles with possible omissions, not complete bibliographies.",
       "scopeReconciliationEvidence": [
         "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
         "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
         "output/vnext/catalog-review-20261007/fresh12-results-validation.json",
-        "output/vnext/catalog-review-20261007/fresh12-applied9.txt"
+        "output/vnext/catalog-review-20261007/fresh12-applied9.txt",
+        "output/vnext/catalog-review-20261007/fresh47-applied32.txt",
+        "output/vnext/catalog-review-20261007/fresh47-rare4-applied.txt",
+        "output/vnext/catalog-review-20261007/older19-applied14.txt",
+        "output/vnext/catalog-review-20261007/older19-package-audit.json"
       ],
       "nonScholarlySourceExclusion": {
         "resourceId": "221db235-e0d4-420e-9622-e5e562d73744",
@@ -1376,7 +1383,9 @@
           "Article container facts use existing typeFields.volumeStatement/locator and work/container_work authority; their entry point is hard to discover.",
           "Evidence generation may return busy; retain actual completed download links and distinguish request admission from processing and delivery.",
           "Pinned PDF.js6.2.108 groups contiguous chunks into one request; current PdfRangeTransport returns only one limited chunk. Synthetic request[4,16) expects12 bytes but gets4. Reproduced independently; causality to fresh24 failures is not yet proven.",
-          "Normal Philology Details retains copyright-only dateStatement and no publicationDate, but normal Historical Research citation renders2014 as issued year. Keep the supported copyright statement; correct citation date fallback after corpus organization."
+          "Normal Philology Details retains copyright-only dateStatement and no publicationDate, but normal Historical Research citation renders2014 as issued year. Keep the supported copyright statement; correct citation date fallback after corpus organization.",
+          "Old19 0966c911 has20 ready pages containing only the same pdfFactory watermark; ready/text-present is not substantive bibliographic evidence. Selective OCR must not treat repeated tool watermarks as book body.",
+          "Preview generic role labels hide original responsibility scope (訂補/整理/英文摘要和目录翻译); retain underlying roles/roleLabel and improve presentation after source review."
         ],
         "codeChanges": false,
         "newSchemaOrTypeEnum": false,
@@ -1533,14 +1542,20 @@
         "firstAttempt": "Failed to fetch; no accepted source package claimed",
         "retry": "Normal UI retry admitted and package completed47/47;2 failed inspections retained",
         "actualZipAccepted": true,
-        "applied": 0,
+        "applied": 36,
         "tabId": 968988844,
         "tabHandedOff": true,
         "receipts": [
           "output/vnext/catalog-review-20261007/fresh47-start-20261009.txt",
           "output/vnext/catalog-review-20261007/fresh47-progress-20261009.txt",
           "output/vnext/catalog-review-20261007/fresh47-ready-20261009.txt",
-          "output/vnext/catalog-review-20261007/fresh47-package-audit.json"
+          "output/vnext/catalog-review-20261007/fresh47-package-audit.json",
+          "output/vnext/catalog-review-20261007/fresh47-results-validation.json",
+          "output/vnext/catalog-review-20261007/fresh47-preview-validation.json",
+          "output/vnext/catalog-review-20261007/fresh47-applied32.txt",
+          "output/vnext/catalog-review-20261007/fresh47-applied32.png",
+          "output/vnext/catalog-review-20261007/fresh47-rare4-applied.txt",
+          "output/vnext/catalog-review-20261007/fresh47-rare4-applied.jpg"
         ],
         "batchId": "22230af1-b1e9-45e6-9fac-5b9642726598",
         "actualNormalZipPath": "C:/Users/35326/Downloads/academiccloud-catalog-batch-22230af1-b1e9-45e6-9fac-5b9642726598.zip",
@@ -1560,15 +1575,112 @@
             "failureCode": "source_unavailable"
           }
         ],
-        "sourceReviewAccepted": false,
-        "normalApplyAccepted": false,
+        "sourceReviewAccepted": true,
+        "normalApplyAccepted": true,
         "additionalNonScholarlySources": [
           "63991656-ad84-4e24-9d9b-787fe1e3ad27",
           "9e8c4fd5-3593-400a-ab53-5d57b747935b",
           "b6c33ae7-6eda-4e41-99a9-2f3d5bda7612"
         ],
-        "academicReadyPendingReview": 42,
-        "delegateReview": "Three requested GPT-6.1 Sol/xhigh agents resumed after ordinary usage became available; read-only disjoint source-review parts in progress"
+        "academicReadyPendingReview": 0,
+        "delegateReview": "Three GPT-6.1 Sol/xhigh disjoint source reviews and A/B/C independent receipts complete; root reviewed integration and normal Preview/Apply. Subsequent delegated usage-limit failures do not create additional verdicts.",
+        "resultsReview": 32,
+        "resultsUnknown": 15,
+        "resultsDocumentBytes": 123036,
+        "resultsDocumentSha256": "0de54bbcbb368cea8d6e0d3372d4ac326a13b6d66bccf81dd08ff30bc42842fe",
+        "sourceManifestSha256": "c8e4a3885501782bef7cd97a3f61f7707c0d48f674d467d0d247adc138a95f78",
+        "parserPreservedAllSetFieldsAndValues": true,
+        "normalPreviewReviewable": 32,
+        "normalPreviewInsufficient": 15,
+        "normalPreviewSimpleFieldsMatched": 244,
+        "normalPreviewExpandedUiPages": [
+          25,
+          22
+        ],
+        "selectedForApply": 32,
+        "primaryApplied": 32,
+        "normalApply": "PASS_32_OF_32_PLUS_4_OF_4_VISUAL",
+        "appliedResourceIds": [
+          "67745e66-993a-49c8-9b07-3dcd60cbe900",
+          "6b6139f7-2776-4a5c-a246-74ed98e837a9",
+          "70e42971-13b1-4b5a-a9d4-312400f15949",
+          "721728fa-725a-4a44-8a85-e134282372ad",
+          "7390df99-607c-4e07-b727-d156a84d484f",
+          "7508dfdd-8215-4c2f-822a-f86f1504b1ea",
+          "75bc1897-ab16-43f5-a43d-933d08d29ad4",
+          "7c9a58df-f4c8-4588-8550-7d9f54ba057a",
+          "7eabd1d9-3598-4b99-8328-4a8becfe051c",
+          "86fe712f-1886-4ea1-9b62-0642997685e5",
+          "8aa787de-a331-44cb-ac82-c0a5cb36ec65",
+          "8f3cb605-889a-4b07-90bc-e08d771caa65",
+          "93e6e688-c091-49bf-9ab4-c2913acbf6a7",
+          "9401f060-0325-4ef1-a270-10f7ef162b39",
+          "963f4373-9b3c-4e5e-8447-c9cc084d3fdc",
+          "9ad13085-2d2e-4e4d-8cf6-a50738b758c0",
+          "a0946b49-f104-4840-a9eb-57a7a6b14e49",
+          "a4292f72-4161-4c5a-91d6-9ec3a3b2563a",
+          "a665ac58-d8e4-4725-98ce-71e914a688b5",
+          "b9ad57ad-600c-4526-949e-b179ae4e836b",
+          "bc0a9fb5-a402-46ce-817b-af8b34720509",
+          "c1463a93-3f8c-4946-91b1-5597d516c6fc",
+          "dcc54f39-37d0-4da5-a42b-673f69702378",
+          "e5592db6-5627-4c98-b710-73b0ca5ade9a",
+          "e85f0c61-d9ab-4200-96d1-ac2f08c1d46e",
+          "eacd72b1-8641-462c-8528-97617a934105",
+          "ef7a5738-35c6-410c-9be6-502450d46b77",
+          "f218bf4f-5746-4da0-8389-9f9add58fb64",
+          "f65f2984-0de9-471c-83c3-783e1b6b1051",
+          "f699cdb6-382f-4882-8813-796f8dfd6617",
+          "fb440a86-d21d-422b-b90d-fa344d013a95",
+          "fcd8dd71-a76e-4681-b4d3-6e6f23e6942a",
+          "871d233d-779b-4eb8-9f53-950282707227",
+          "9664fa89-d2fa-4829-8b83-2c998a555b67",
+          "9ff88c24-7610-4742-814b-fea2f4601c9c",
+          "da4e531d-528b-4fb7-8977-b3af3679f823"
+        ],
+        "academicHeld": 6,
+        "academicHeldResourceIds": [
+          "7bc500c1-ac97-44df-a349-2ac036e83b1c",
+          "c6fdaf0a-c1d5-4292-ac77-55a86ffeb854",
+          "d3ece10c-2944-4ba0-9056-dfd903b70595",
+          "e627883c-da35-4468-8c42-7dfc61a9ab9d",
+          "f7bce38d-49cf-4490-a137-edcd95a5ab54",
+          "f8300c72-6d70-431c-b297-853a4d7ee84c"
+        ],
+        "sourceOrTitleEvidenceHeld": 2,
+        "omittedMaterialClassHeldResourceIds": [
+          "d3ece10c-2944-4ba0-9056-dfd903b70595",
+          "f7bce38d-49cf-4490-a137-edcd95a5ab54",
+          "f8300c72-6d70-431c-b297-853a4d7ee84c"
+        ],
+        "completeJournalVolumeHeldResourceId": "7bc500c1-ac97-44df-a349-2ac036e83b1c",
+        "rareTitleSupplement": {
+          "resources": 47,
+          "review": 4,
+          "unknown": 43,
+          "sourceManifestSha256": "c8e4a3885501782bef7cd97a3f61f7707c0d48f674d467d0d247adc138a95f78",
+          "resultsSha256": "880bbcb98b0ba14e3c0b2f020b7a762b3e39851c105832a39677ca2246c5b253",
+          "bytes": 75771,
+          "actualVisualSourceEvidence": true,
+          "normalApply": "PASS_4_OF_4",
+          "applied": 4,
+          "appliedResourceIds": [
+            "871d233d-779b-4eb8-9f53-950282707227",
+            "9664fa89-d2fa-4829-8b83-2c998a555b67",
+            "9ff88c24-7610-4742-814b-fea2f4601c9c",
+            "da4e531d-528b-4fb7-8977-b3af3679f823"
+          ],
+          "notes": "Original-page glyph郘 and three distinct responsibility roles confirmed. First-volume date/ISBN from own colophon; second-volume publication omissions preserved. Prior32 proposals not resubmitted.",
+          "receipts": [
+            "output/vnext/catalog-review-20261007/original-page-review-rare-titles.json",
+            "output/vnext/catalog-review-20261007/fresh47-rare4-validation.json",
+            "output/vnext/catalog-review-20261007/fresh47-rare4-preview.txt",
+            "output/vnext/catalog-review-20261007/fresh47-rare4-field-tables.json",
+            "output/vnext/catalog-review-20261007/fresh47-rare4-applied.txt",
+            "output/vnext/catalog-review-20261007/fresh47-rare4-applied.jpg"
+          ]
+        },
+        "sourceReviewScope": "36 supported academic sources applied in32+4 normal submissions;6 ready academic holds,2 failures and3 exact non-scholarly scope exclusions preserved."
       },
       "totalNonScholarlySourceExclusions": 4,
       "normalManualPdfFollowup": 1,
@@ -1652,7 +1764,103 @@
           }
         ],
         "receipt": "output/vnext/catalog-review-20261007/older20-normal-manual-followup.json"
-      }
+      },
+      "older19NormalExport": {
+        "selected": 19,
+        "batchId": "772704c5-0e2f-405e-8e37-5eb7af288281",
+        "normalGenerateRequested": true,
+        "startObservedProcessed": 0,
+        "startObservedInspectionFailures": 0,
+        "status": "ACTUAL_ZIP_SOURCE_REVIEW_NORMAL_SELECTED14_APPLIED_4_READY_HOLD_1_FAILED",
+        "actualZipAccepted": true,
+        "sourceReviewAccepted": true,
+        "bytes": 228539,
+        "sha256": "41cb0bd7f59ba598cdcb9f01580ea5fd23603ca15c6e7fba0444ce07e309945f",
+        "actualZipPath": "C:/Users/35326/Downloads/academiccloud-catalog-batch-772704c5-0e2f-405e-8e37-5eb7af288281.zip",
+        "ready": 18,
+        "failed": 1,
+        "sourceManifestSha256": "be43df117e84f9a470ff336169dedbb068e5c1584a26d37a54c353af13188449",
+        "resultsDocumentSha256": "20bb5ee4bee5f503f0e57406dca82525576111e6d0e537a84b81c154b3940991",
+        "resultsDocumentBytes": 51415,
+        "resultsReview": 14,
+        "resultsUnknown": 5,
+        "applied": 14,
+        "normalApply": "PASS_14_OF_14",
+        "appliedResourceIds": [
+          "033879df-2e01-4454-beab-67af931a7166",
+          "08eb0acc-0e0f-4916-b79e-293ca11d8e93",
+          "24190ccd-4de4-414c-887b-580f42f9d0e8",
+          "30700893-14b6-4c50-92e1-8874a8677238",
+          "457a8773-ad27-4380-9c8b-217e775d5e04",
+          "4634300a-0c7c-4a1c-ac50-445eb0b64ec2",
+          "648f7c25-e611-4bf2-9582-8dc2e59b9397",
+          "6f2a7e77-f16b-4b8d-b8a0-22ade9d21cd8",
+          "798211e8-db61-4267-a8d2-b7c0e51e68c6",
+          "b5736805-abaf-4876-95b0-a423fc376e18",
+          "c161430a-910b-4f58-bc49-e9071387b664",
+          "e75a5b36-5b39-4f90-be97-e535bffae410",
+          "f429c23e-5a1a-4a20-8fe1-13807cec93a5",
+          "fe7ab5b5-6d0c-43ef-becd-80fb361a0041"
+        ],
+        "heldResources": [
+          {
+            "resourceId": "0966c911-557c-4a28-a047-1fc3e1a8426a",
+            "reason": "UNKNOWN：本件inspection虽ready且pageCount205，但实际全部20个证据页文字完全相同，仅为“PDF文件使用pdfFactory Pro试用版本创建/www.fineprint.cn”水印。没有可辨认的书内题名、责任、出版或资料类别，不将工具水印当学术题名，也不借filename/XMP补书。"
+          },
+          {
+            "resourceId": "25e3f758-874d-4672-be85-0553e5c61e80",
+            "reason": "UNKNOWN：本件实际inspection.status failed、failureCode inspection_failed、pageCount null、pages空。没有取得可核书内文字，不重复旧失败，不从filename/XMP或相邻资源生成题名、作者、出版或type/class。"
+          },
+          {
+            "resourceId": "5bd99fdd-5f01-4457-82e6-f09d2a73dbad",
+            "reason": "HOLD_TITLE：3页实际书名首词OCR为“回鹤式”，其他现有蒙古文题名页为空或严重乱码，无法可靠核定关键字及蒙古文题名，保持unknown/null/0。不从filename、XMP、旧v1或邻书修成另一个字。3页道布整理/转写/注释、巴·巴根校、民族出版社、1983年6月第1版及北京第1印、蒙文等清楚，可保留为未应用观察；由于题名未可确认，不生成半完整patch。统一书号不作ISBN。"
+          },
+          {
+            "resourceId": "6fb1ef17-e176-4dca-b13d-4fc31080dbeb",
+            "reason": "HOLD_TITLE_OCR：新v2确有实际页文，但页内题名关键字有异读，保持unknown。不得以历史文件名补成“中国民族志参考资料汇编”，不提出任何字段变更。"
+          },
+          {
+            "resourceId": "d429aca9-bb49-4ea1-b0fe-daa1497e3072",
+            "reason": "HOLD_INCOMPLETE_TITLE_EVIDENCE：实际为目录索引页，独立题名与责任/载体边界未确认；整体保持unknown，不用文件名把“中国善本书提要索引”写成人工权威。"
+          }
+        ],
+        "sourceReview": "Delegated parts A/B exist and root source review/normal Preview completed; no independent second-agent verdict claimed after usage-limit failures.",
+        "receipts": [
+          "output/vnext/catalog-review-20261007/older19-package-audit.json",
+          "output/vnext/catalog-review-20261007/older19-results-validation.json",
+          "output/vnext/catalog-review-20261007/older19-preview.txt",
+          "output/vnext/catalog-review-20261007/older19-field-tables.json",
+          "output/vnext/catalog-review-20261007/older19-applied14.txt",
+          "output/vnext/catalog-review-20261007/older19-applied14.jpg"
+        ]
+      },
+      "pendingJournalContainerCompletion": [],
+      "journalContainerCompletion": [
+        {
+          "resourceId": "86fe712f-1886-4ea1-9b62-0642997685e5",
+          "volumeStatement": "14",
+          "issueStatement": "1/2",
+          "locator": "1–104",
+          "receipt": "output/vnext/catalog-review-20261007/hjas1338-citation.txt",
+          "containerWork": "Harvard Journal of Asiatic Studies",
+          "role": "container_work",
+          "normalDetailsSave": "PASS",
+          "normalHistoricalResearchCitation": "PASS",
+          "countedAsAdditionalProfile": false
+        },
+        {
+          "resourceId": "f218bf4f-5746-4da0-8389-9f9add58fb64",
+          "volumeStatement": "12",
+          "issueStatement": "1/2",
+          "locator": "1–133",
+          "receipt": "output/vnext/catalog-review-20261007/hjas1362-citation.txt",
+          "containerWork": "Harvard Journal of Asiatic Studies",
+          "role": "container_work",
+          "normalDetailsSave": "PASS",
+          "normalHistoricalResearchCitation": "PASS",
+          "countedAsAdditionalProfile": false
+        }
+      ]
     }
   },
   "ocrPlanningHandoff": {
@@ -1681,9 +1889,9 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "457a337_DEPLOYED_ZIP_WORKSPACE_ACCEPTED_FRESH12_SELECTED9_APPLIED_101_PROFILES_99_ACADEMIC_PDFS_OPEN",
+    "status": "457a337_DEPLOYED_NATIVE1B7_RETAINED_169_SOURCE_REVIEWED_PROFILES_28_ACADEMIC_PDFS_OPEN",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
-    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Decoder/runtime/dependency/model assets retained;9/9 selected source-reviewed fresh12 profiles applied. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open.",
+    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Source-reviewed fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4 and older19 14/14 normal Apply accepted;169 profiles/197 academic holdings,28 unresolved. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
@@ -1695,7 +1903,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "Owner October8 GPT-6.1 Sol/xhigh. Core457a337/native1b7/schema41 deployed and normal ZIP Workspace/Details PASS.13 non-PDF reviews complete; fresh12 actual ZIP/hash/source/zero-page/parser PASS,10review/2unknown, notice held and9/9 normal Apply.100current reviews+1prior=101profiles. Academic200 excludes4exact fixtures and1exact non-scholarly source while205 holdings/bytes/permissions are preserved;99PDF unresolved (71unexported+1timeout+1noticeHOLD+20older+6damaged). No forced classification/parser/type-enum change, same-byte corrupt retry, private source disclosure, added cost or main merge. Owner October9 orders complete catalogue organization before catalogue improvements; the observed default-type/omission-authority/container-entry/export findings are recorded, with no new implementation or authority rewrite.",
+  "currentContinuationBoundary": "**Owner October9 sequencing (current October10 execution):** finish Library source review and normal recording before improving the system. Normal fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4 original-image supplement and older19 14/14 Apply are accepted. Old19 actual ZIP/identity/page audit passes18ready/1failed. Both Cleaves article containers were completed through normal Details; normal citation verifies HJAS14(1/2),1951,1–104 and12(1/2),1949,1–133. Original6fb Reader remained loading in the final bounded observation, so its title stays held. Sources, filenames and permissions remain preserved. No new runtime implementation has begun. **October10 Library and delivery state:**205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.154 normal batch+13 normal manual nonPDF+1 normal manual PDF=168 current reviews; one earlier human PDF gives169 reviewed profiles=156PDF+13nonPDF.28 academic PDFs remain unresolved:6 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not169 complete bibliographies. All-Library acceptance remains open. **Documentation publication:** current reconciliation is local; publication is pending after Git443 timeouts. Current local/remote HEAD equality is not claimed. Exact deployed Core457a337/native1b7 and schema41 remain unchanged; documentation HEAD is not a runtime release identity.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
