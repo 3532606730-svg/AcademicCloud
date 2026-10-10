@@ -1,6 +1,6 @@
 # Device-owned private book OCR — deployment evidence
 
-**Current October10 pointer:** Core457a337/native1b7/schema41 retained;169 source-supported profiles/197 academic holdings,28 unresolved.32+4+14 actual normal Apply and two HJAS container completions accepted. Publication pending; dated release sections below remain history. See the October10 checkpoint.
+**Current October10 pointer:** Core457a337/native1b7/schema41 retained;169 source-supported profiles/197 academic holdings,28 unresolved.32+4+14 actual normal Apply and two HJAS container completions accepted. Catalogue checkpoint5b89284 published and local/fetched-remote equality verified; dated release sections below remain history. See the October10 checkpoint.
 
 Date: 2026-10-06; updated2026-10-07. Status: **Exactae280 shared decoder repair deployed; first2 recovered jobs succeeded; separate source-reviewed normal-UI pilot applied3/3; current-Library catalogue acceptance remains open**. Authority: [ADR-051](../decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md). Current exact source is `ae28096283e0a6745ba930761626ad2deb55c4e6`, schema41/history001–041/11 admissions; native runtime/dependencies and model pins remain the verified662 baseline. The initial05bb deployment evidence below remains history. Earlier313-page browser-owned/actual-export acceptance and Chinese9/9 device resume remain valid. Original Fletcher41-page results failed body-render quality and are retained; fresh native whole-book accuracy and speed remain open.
 
@@ -195,6 +195,6 @@ Old19 unknowns:0966c911 all20 pages contain only the same pdfFactory watermark;5
 
 Both normal HJAS article Details saves and《历史研究》citations confirm container_work,volume14/12,issue1/2,1–104/1–133,1951/1949. These complete two already-counted profiles and add no profile counts. Responsibility-display scope and watermark substantive-text failure are recorded as later catalogue repair cases; runtime code/configuration/schema/model remain unchanged.
 
-**Documentation publication:** current reconciliation is local; publication is pending after Git443 timeouts. Current local/remote HEAD equality is not claimed. Exact deployed Core457a337/native1b7 and schema41 remain unchanged; documentation HEAD is not a runtime release identity.
+**Documentation publication:** catalogue checkpoint `5b89284bc4b391395096e4f0034423ce779d22e9` is published on the authorized non-main branch; a fresh SSH22 fetch verifies clean local/fetched-remote HEAD equality. Git443 failures remain history. Exact deployed Core457a337/native1b7 and schema41 are unchanged; this publication receipt is a subsequent documentation checkpoint.
 
 Receipts under output/vnext/catalog-review-20261007/:fresh47-applied32.txt/.png,fresh47-rare4-validation.json,fresh47-rare4-field-tables.json,fresh47-rare4-applied.txt/.jpg,older19-package-audit.json,older19-results-validation.json,older19-preview.txt,older19-field-tables.json,older19-applied14.txt/.jpg,hjas1338-citation.txt/.jpg,hjas1362-citation.txt/.jpg. Full-Library and native whole-book quality/speed acceptance remain open.

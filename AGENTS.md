@@ -8,7 +8,7 @@
 
 **Owner October9 sequencing (current October10 execution):** finish Library source review and normal recording before improving the system. Normal fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4 original-image supplement and older19 14/14 Apply are accepted. Old19 actual ZIP/identity/page audit passes18ready/1failed. Both Cleaves article containers were completed through normal Details; normal citation verifies HJAS14(1/2),1951,1–104 and12(1/2),1949,1–133. Original6fb Reader remained loading in the final bounded observation, so its title stays held. Sources, filenames and permissions remain preserved. No new runtime implementation has begun.
 
-**Documentation publication:** current reconciliation is local; publication is pending after Git443 timeouts. Current local/remote HEAD equality is not claimed. Exact deployed Core457a337/native1b7 and schema41 remain unchanged; documentation HEAD is not a runtime release identity.
+**Documentation publication:** catalogue checkpoint `5b89284bc4b391395096e4f0034423ce779d22e9` is published on the authorized non-main branch; a fresh SSH22 fetch verifies clean local/fetched-remote HEAD equality. Git443 failures remain history. Exact deployed Core457a337/native1b7 and schema41 are unchanged; this publication receipt is a subsequent documentation checkpoint.
 
 ## Project
 
