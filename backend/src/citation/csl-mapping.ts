@@ -217,7 +217,7 @@ export function metadataDetailToCsl(detail: MetadataDetail): {
     ...contributors,
     publisher: bibliography?.publication.publisher,
     "publisher-place": bibliography?.publication.place,
-    issued: parseDate(bibliography?.publication.publicationDate ?? metadata?.dateStatement ?? undefined),
+    issued: parseDate(bibliography?.publication.publicationDate),
     edition: carrierEdition(bibliography) ?? metadata?.typeFields.editionStatement,
     volume: bibliography?.volume ?? metadata?.typeFields.volumeStatement,
     issue: metadata?.typeFields.issueStatement,

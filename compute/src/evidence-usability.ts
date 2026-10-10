@@ -56,7 +56,13 @@ export function isUsableBibliographicEvidence(
   origin: Extract<EvidenceOrigin, "native_text" | "ocr" | "embedded_pdf_metadata">,
   options: { ocrConfidence?: number | null | undefined } = {},
 ): boolean {
-  const normalized = value.normalize("NFC").trim();
+  // Inspect a temporary substantive view. Converter notices remain in source
+  // evidence, but cannot make an otherwise scanned page skip bounded OCR.
+  const normalized = value.normalize("NFC")
+    .replace(/PDF\s*文件使用\s*["“]?pdfFactory(?:\s+Pro)?["”]?\s*试用版本创建/giu, "")
+    .replace(/PDF\s+created\s+with\s+pdfFactory(?:\s+Pro)?\s+trial\s+version/giu, "")
+    .replace(/(?:https?:\/\/)?www\.fineprint\.(?:cn|com)\b/giu, "")
+    .trim();
   if (!normalized || CONTROL_CHARACTERS.test(normalized) || REPLACEMENT_CHARACTER.test(normalized)
     || PRIVATE_USE_CHARACTER.test(normalized) || MOJIBAKE.test(normalized)) return false;
   const compact = compactCharacters(normalized);

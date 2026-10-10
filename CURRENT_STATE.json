@@ -9,11 +9,11 @@
     "checkpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Clean active vnext local/fetched-remote HEAD equality verified at published catalogue checkpoint 5b89284bc4b391395096e4f0034423ce779d22e9 via unchanged SSH22 credentials. This documentation receipt follows that verification; exact deployed runtime457a337/native1b7 is unchanged.",
-    "lastVerifiedPublishedCheckpoint": "5b89284bc4b391395096e4f0034423ce779d22e9",
+    "localState": "Previous documentation7e965b7 was published and clean active local/fetched-remote HEAD equality verified via unchanged SSH22. The following source repair checkpoint is published and verified separately; source.checkpoint remains deployed457a337/native1b7.",
+    "lastVerifiedPublishedCheckpoint": "7e965b7a095421197713b66d80efba25e832fb4b",
     "checkpointMeaning": "Exact deployed Core/frontend source457a337 and retained native1b7; subsequent repository documentation checkpoints are identified by Git HEAD, not a new runtime release.",
-    "documentationPublicationMeaning": "Publication and local/fetched-remote equality were verified at catalogue checkpoint5b89284; later documentation receipt commits require their own final push/fetch verification. source.checkpoint retains exact runtime457a337.",
-    "documentationPublicationStatus": "PUBLISHED_FETCHED_LOCAL_EQUAL_AT_5B89284"
+    "documentationPublicationMeaning": "Previous catalogue5b89284 and documentation7e965b7 publication/local equality are verified. Each later non-main source checkpoint requires its actual push/fetch evidence; repository HEAD is separate from exact deployed runtime457a337.",
+    "documentationPublicationStatus": "PREVIOUS_7E965B7_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
   },
   "production": {
     "observedAt": "2026-10-09",
@@ -1018,7 +1018,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Runtime Core457a337/native1b7/schema41 is retained qualified deployment. Current catalogue evidence is169 source-reviewed profiles/197 academic holdings,28 unresolved;32+4+14 normal Apply and two existing HJAS container completions accepted. Prior dated receipts remain history. All-Library and native whole-book quality/speed remain open; catalogue documentation checkpoint5b89284 is published with actual clean local/fetched-remote equality.",
+    "recordMeaning": "Runtime Core457a337/native1b7/schema41 remains retained production. Current catalogue is170 supported profiles/197 academic holdings,27 unresolved. The first repair group passes174 focused checks/builds locally and is not deployed. Full-Library/native whole-book quality/speed/exact release remain open.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -1044,6 +1044,39 @@
       "evidence": "output/vnext/product-copy-20261006/",
       "sourceCommit": "8f6c721261a13a6af06b643fb0e79586e21a7818",
       "releaseStatePointer": "production.productCopyRelease"
+    },
+    "catalogueRepair20261010": {
+      "status": "LOCAL_QUALIFIED_PENDING_EXACT_RELEASE",
+      "backendTests": 40,
+      "frontendTests": 10,
+      "pdfTests": 31,
+      "relatedComputeTests": 93,
+      "distinctFocusedTests": 189,
+      "typecheck": "PASS backend/frontend/Compute",
+      "build": "PASS backend/frontend/Compute",
+      "review": "Root bounded code/data-authority/cancellation review; no new independent agent verdict after usage-limit failures.",
+      "scope": [
+        "unknown/other broad-type gate",
+        "omitted-field Preview and Apply authority",
+        "empty-patch no-op",
+        "source responsibility labels",
+        "publication-only citation issued date",
+        "complete grouped PDF ranges with aggregate reservation/cancellation",
+        "converter-watermark substantive-text gate"
+      ],
+      "rawSourceBytesChanged": false,
+      "modelParserContractChanged": false,
+      "productionDeployed": false,
+      "newPaidCalls": 0,
+      "rangeRealFailureCausalityProven": false,
+      "remaining": [
+        "article-container entry",
+        "export/recovery",
+        "exact Linux/native artifact and memory qualification",
+        "coordinated deployment and normal signed-in regressions/retries"
+      ],
+      "evidence": "docs/evidence/device-owned-book-ocr-20261006.md#october10-first-catalogue-repair-group",
+      "readerPrivateBookTests": 15
     }
   },
   "computeQualification": {
@@ -1056,11 +1089,11 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Current catalogue:205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.154 normal batch+13 normal manual nonPDF+1 normal manual PDF=168 current reviews; one earlier human PDF gives169 reviewed profiles=156PDF+13nonPDF.28 academic PDFs remain unresolved:6 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not169 complete bibliographies. All-Library acceptance remains open.",
+    "Current catalogue:205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+1 normal manual PDF=169 current reviews; one earlier human PDF gives170 reviewed profiles=157PDF+13nonPDF.27 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not170 complete bibliographies. All-Library acceptance remains open.",
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Complete bounded original-page review for the remaining usable title/class uncertainties, retaining169 source-reviewed profiles and28 unresolved academic PDFs. Preserve actual failed-source evidence and the six replacement-byte gates; do not rerun unchanged failures or force book/class/date from filenames. Then implement the recorded catalogue repairs: omitted-field authority/Preview consistency, substantive-text detection, exact grouped PDF range delivery, copyright-date citation projection, article-container entry and export recovery. All-Library and native whole-book quality/speed acceptance remain open. Catalogue checkpoint5b89284 publication/local equality is verified; publish later scoped checkpoints with fresh equality verification; retain Core457a337/native1b7/schema41.",
+  "next": "Continue the recorded article-container entry and export/recovery repairs, then qualify the exact coordinated Core/frontend/Compute candidate and deploy under existing Owner authority.170 source-reviewed profiles/197 academic holdings leave27 unresolved PDFs. New grouped-range/substantive-text fixes are a changed technical fact for bounded retries only after native qualification/deployment; six identical damaged sources still require replacements. Preserve successful catalogue/OCR history and test normal signed-in outcomes before claiming resolution.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1133,7 +1166,7 @@
       "observedAt": "2026-10-10",
       "normalUiHoldings": 205,
       "activePdfs": 192,
-      "reviewedApplied": 168,
+      "reviewedApplied": 169,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1176,7 +1209,7 @@
         "applicationRegistryChanged": false,
         "evidence": "tasks/done/INCIDENT-L1-AI-PRODUCTION01.md:181;tasks/done/QA-GOLDEN01.md:7"
       },
-      "batchReviewedApplied": 154,
+      "batchReviewedApplied": 155,
       "fresh83Export": {
         "actualZipAccepted": false,
         "sourceReviewAccepted": false,
@@ -1259,15 +1292,15 @@
           "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
         }
       },
-      "thisRoundReviewed": 168,
+      "thisRoundReviewed": 169,
       "earlierHumanPdfProfiles": 1,
-      "existingReviewedProfiles": 169,
+      "existingReviewedProfiles": 170,
       "scholarlyHoldingsExcludingExactFixtures": 197,
       "scholarlyPdfsExcludingExactFixtures": 184,
-      "reviewedPdfProfiles": 156,
-      "unresolvedScholarlyPdfs": 28,
+      "reviewedPdfProfiles": 157,
+      "unresolvedScholarlyPdfs": 27,
       "unresolvedPdfBreakdown": {
-        "fresh47AcademicHeld": 6,
+        "fresh47AcademicHeld": 5,
         "fresh47Failed": 2,
         "fresh24Failed": 7,
         "freshTimeout": 1,
@@ -1295,7 +1328,7 @@
       "pdfsExcludingOnlyExactFixtures": 188,
       "initialFreshExportCandidates": 83,
       "initialFreshScholarlyCandidates": 82,
-      "corpusOutcomesReceiptMeaning": "Earlier snapshot retained as dated history. Current counts add9 fresh12+17 fresh24+36 fresh47+14 older19 normal batch applications and1 normal manual PDF. Reviewed means source-supported saved profiles with possible omissions, not complete bibliographies.",
+      "corpusOutcomesReceiptMeaning": "Earlier snapshots remain dated history. Current counts add9 fresh12+17 fresh24+37 fresh47+14 older19 normal batch applications and1 normal manual PDF.170 profiles have supported saved facts with possible omissions;27 unresolved PDFs are explicit, not a full-Library acceptance.",
       "scopeReconciliationEvidence": [
         "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
         "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
@@ -1541,7 +1574,7 @@
         "firstAttempt": "Failed to fetch; no accepted source package claimed",
         "retry": "Normal UI retry admitted and package completed47/47;2 failed inspections retained",
         "actualZipAccepted": true,
-        "applied": 36,
+        "applied": 37,
         "tabId": 968988844,
         "tabHandedOff": true,
         "receipts": [
@@ -1635,21 +1668,20 @@
           "871d233d-779b-4eb8-9f53-950282707227",
           "9664fa89-d2fa-4829-8b83-2c998a555b67",
           "9ff88c24-7610-4742-814b-fea2f4601c9c",
-          "da4e531d-528b-4fb7-8977-b3af3679f823"
+          "da4e531d-528b-4fb7-8977-b3af3679f823",
+          "f7bce38d-49cf-4490-a137-edcd95a5ab54"
         ],
-        "academicHeld": 6,
+        "academicHeld": 5,
         "academicHeldResourceIds": [
           "7bc500c1-ac97-44df-a349-2ac036e83b1c",
           "c6fdaf0a-c1d5-4292-ac77-55a86ffeb854",
           "d3ece10c-2944-4ba0-9056-dfd903b70595",
           "e627883c-da35-4468-8c42-7dfc61a9ab9d",
-          "f7bce38d-49cf-4490-a137-edcd95a5ab54",
           "f8300c72-6d70-431c-b297-853a4d7ee84c"
         ],
         "sourceOrTitleEvidenceHeld": 2,
         "omittedMaterialClassHeldResourceIds": [
           "d3ece10c-2944-4ba0-9056-dfd903b70595",
-          "f7bce38d-49cf-4490-a137-edcd95a5ab54",
           "f8300c72-6d70-431c-b297-853a4d7ee84c"
         ],
         "completeJournalVolumeHeldResourceId": "7bc500c1-ac97-44df-a349-2ac036e83b1c",
@@ -1679,7 +1711,57 @@
             "output/vnext/catalog-review-20261007/fresh47-rare4-applied.jpg"
           ]
         },
-        "sourceReviewScope": "36 supported academic sources applied in32+4 normal submissions;6 ready academic holds,2 failures and3 exact non-scholarly scope exclusions preserved."
+        "sourceReviewScope": "37 supported academic sources applied through32+4+1 normal submissions;5 ready academic holds,2 failures and3 exact non-scholarly scope exclusions preserved.",
+        "visualSourceSupplement": {
+          "status": "PASS",
+          "review": 1,
+          "unknown": 46,
+          "resourceId": "f7bce38d-49cf-4490-a137-edcd95a5ab54",
+          "sourceIdentity": {
+            "sourceFingerprint": "OzgcZ98P9NYX82XUSh1mvYtvsEua4Bug-zvYDH4R2IM",
+            "fileRevision": 1,
+            "checksumAlgorithm": "md5",
+            "checksum": "M5xK0mA/G+IMWAnuoYx86A=="
+          },
+          "sourceManifestSha256": "c8e4a3885501782bef7cd97a3f61f7707c0d48f674d467d0d247adc138a95f78",
+          "resultFile": "output/vnext/catalog-review-20261007/fresh47-visual1-results.v2.json",
+          "bytes": 57542,
+          "sha256": "7762583ce742b12195fe5235c1c027a510b2a8376ef599c534299bcfd0af98f8",
+          "set": {
+            "canonicalTitle": "湛然居士文集",
+            "materialType": "manuscript",
+            "materialClass": "traditional_book",
+            "volume": "三",
+            "language": "zh"
+          },
+          "sourcePageIndices": [
+            0,
+            5
+          ],
+          "originalImages": [
+            {
+              "path": "output/vnext/catalog-review-20261007/original-held-followup/f7b-page1.jpg",
+              "uiPhysicalPage": 1,
+              "zeroBasedPageIndex": 0,
+              "bytes": 74683,
+              "sha256": "e30eae9b0e33990e03c410dedb01e30ea58ca76c401f31b69de2359953b2286e"
+            },
+            {
+              "path": "output/vnext/catalog-review-20261007/original-held-followup/f7b-page6.jpg",
+              "uiPhysicalPage": 6,
+              "zeroBasedPageIndex": 5,
+              "bytes": 99833,
+              "sha256": "169005d3c26423c38628c5ba5f1b9425adef757d9ad847d24ac9f9f8101490bb"
+            }
+          ],
+          "parserPreservedAllFields": true,
+          "clearArraysEmpty": true,
+          "previousApplicationsNotResubmitted": true,
+          "normalApply": "PASS_1_OF_1",
+          "applied": 1,
+          "receipt": "output/vnext/catalog-review-20261007/fresh47-visual1-applied.txt",
+          "screenshot": "output/vnext/catalog-review-20261007/fresh47-visual1-applied.jpg"
+        }
       },
       "totalNonScholarlySourceExclusions": 4,
       "normalManualPdfFollowup": 1,
@@ -1859,7 +1941,24 @@
           "normalHistoricalResearchCitation": "PASS",
           "countedAsAdditionalProfile": false
         }
-      ]
+      ],
+      "originalHeldFollowup20261010": {
+        "supportedAndApplied": "f7bce38d-49cf-4490-a137-edcd95a5ab54",
+        "stillHeld": [
+          {
+            "resourceId": "5bd99fdd-5f01-4457-82e6-f09d2a73dbad",
+            "normalReader": "PDF暂时无法显示",
+            "receipt": "output/vnext/catalog-review-20261007/original-held-followup/5bd-reader-failed.jpg"
+          },
+          {
+            "resourceId": "e627883c-da35-4468-8c42-7dfc61a9ab9d",
+            "normalReader": "PDF暂时无法显示",
+            "receipt": "output/vnext/catalog-review-20261007/original-held-followup/e627-reader-observation.jpg"
+          }
+        ],
+        "unchanged6fbReaderNotRetried": true,
+        "unchangedDamagedNotRetried": true
+      }
     }
   },
   "ocrPlanningHandoff": {
@@ -1888,9 +1987,9 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "457a337_DEPLOYED_NATIVE1B7_RETAINED_169_SOURCE_REVIEWED_PROFILES_28_ACADEMIC_PDFS_OPEN",
+    "status": "457a337_RETAINED_170_PROFILES_27_OPEN_FIRST_CATALOGUE_REPAIRS_LOCAL_QUALIFIED",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
-    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Source-reviewed fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4 and older19 14/14 normal Apply accepted;169 profiles/197 academic holdings,28 unresolved. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open.",
+    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Source-reviewed fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4+1/1 and older19 14/14 normal Apply accepted;170 profiles/197 academic holdings,27 unresolved. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
@@ -1902,7 +2001,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "**Owner October9 sequencing (current October10 execution):** finish Library source review and normal recording before improving the system. Normal fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4 original-image supplement and older19 14/14 Apply are accepted. Old19 actual ZIP/identity/page audit passes18ready/1failed. Both Cleaves article containers were completed through normal Details; normal citation verifies HJAS14(1/2),1951,1–104 and12(1/2),1949,1–133. Original6fb Reader remained loading in the final bounded observation, so its title stays held. Sources, filenames and permissions remain preserved. No new runtime implementation has begun. **October10 Library and delivery state:**205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.154 normal batch+13 normal manual nonPDF+1 normal manual PDF=168 current reviews; one earlier human PDF gives169 reviewed profiles=156PDF+13nonPDF.28 academic PDFs remain unresolved:6 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not169 complete bibliographies. All-Library acceptance remains open. **Documentation publication:** catalogue checkpoint `5b89284bc4b391395096e4f0034423ce779d22e9` is published on the authorized non-main branch; a fresh SSH22 fetch verifies clean local/fetched-remote HEAD equality. Git443 failures remain history. Exact deployed Core457a337/native1b7 and schema41 are unchanged; this publication receipt is a subsequent documentation checkpoint.",
+  "currentContinuationBoundary": "The first source organization pass is complete:170 supported profiles and27 explicit unresolved outcomes. The first catalogue repair group passes189 focused checks and backend/frontend/Compute builds locally. Exact Linux/native qualification and one coordinated deployment remain pending; source bytes, schema41, model/contract pins and current production457a337/native1b7 remain unchanged. **October10 Library and delivery state:**205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+1 normal manual PDF=169 current reviews; one earlier human PDF gives170 reviewed profiles=157PDF+13nonPDF.27 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not170 complete bibliographies. All-Library acceptance remains open.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",

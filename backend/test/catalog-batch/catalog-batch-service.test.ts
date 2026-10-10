@@ -474,6 +474,77 @@ const confirmed = (item: { resourceId: string; previewVersion: string }) => ({
   acknowledgeEvidence: true as const, acknowledgeHumanConflict: true as const, acknowledgeClear: true as const,
 });
 
+test("new title-only and unknown/other-class suggestions cannot manufacture book type", async (context) => {
+  const state = fixture(context);
+  for (const materialClass of [undefined, "unknown", "other"]) {
+    const source = addHolding(state, `unclassified-${materialClass ?? "absent"}`, `unclassified-${materialClass ?? "absent"}.pdf`);
+    const document = await patchDocument(state, [source.resourceId], [{
+      set: { canonicalTitle: "来源明确的题名", ...(materialClass ? { materialClass } : {}) }, filenameStyle: "preserve_original",
+    }]);
+    const preview = state.service.preview(OWNER, state.library.id, document);
+    const item = preview.items[0]!;
+    assert.equal(item.category, "unknown");
+    assert.deepEqual(item.warnings, ["missing_required_material_type"]);
+    assert.equal(state.service.apply(OWNER, state.library.id, preview.planId, [confirmed(item)])[0]!.status, "invalid_input");
+    assert.equal(state.persistence.repositories.metadata.findMetadata(state.library.ownerDomainId, `record-${source.resourceId}`), null);
+    assert.equal(state.persistence.repositories.bibliography.findProfile(state.library.ownerDomainId, `record-${source.resourceId}`), null);
+  }
+});
+
+test("new profiles preserve omitted fields in Preview and do not human-lock empty storage defaults", async (context) => {
+  const state = fixture(context);
+  const source = addHolding(state, "minimal-source", "source.pdf");
+  const document = await patchDocument(state, [source.resourceId], [{
+    set: { canonicalTitle: "已核题名", materialType: "book" }, filenameStyle: "preserve_original",
+  }]);
+  const preview = state.service.preview(OWNER, state.library.id, document);
+  const item = preview.items[0]!;
+  for (const name of ["alternativeTitles", "identifiers", "contributors", "materialClass"]) {
+    const field = item.fields.find(entry => entry.field === name)!;
+    assert.equal(field.operation, "preserve", name);
+    assert.equal(field.proposedAuthority, "unchanged", name);
+  }
+  assert.equal(state.service.apply(OWNER, state.library.id, preview.planId, [confirmed(item)])[0]!.status, "applied");
+  const recordId = `record-${source.resourceId}`;
+  const profile = state.persistence.repositories.bibliography.findProfile(state.library.ownerDomainId, recordId)!;
+  assert.equal(profile.materialClass, "unknown");
+  assert.deepEqual(profile.contributors, []);
+  assert.deepEqual(state.persistence.repositories.bibliography.listFieldAuthorities(state.library.ownerDomainId, recordId)
+    .map(entry => [entry.fieldName, entry.source]), [["canonicalTitle", "human"]]);
+});
+
+test("a supplied known scholarly class can determine broad type without asserting omitted fields", async (context) => {
+  const state = fixture(context);
+  const source = addHolding(state, "known-class", "source.pdf");
+  const document = await patchDocument(state, [source.resourceId], [{
+    set: { canonicalTitle: "古籍题名", materialClass: "traditional_book" }, filenameStyle: "preserve_original",
+  }]);
+  const preview = state.service.preview(OWNER, state.library.id, document);
+  const item = preview.items[0]!;
+  assert.equal(item.fields.find(entry=>entry.field==="materialType")!.proposedValue, "manuscript");
+  assert.equal(state.service.apply(OWNER, state.library.id, preview.planId, [confirmed(item)])[0]!.status, "applied");
+  assert.equal(state.persistence.repositories.metadata.findMetadata(state.library.ownerDomainId, `record-${source.resourceId}`)!.materialType, "manuscript");
+  assert.deepEqual(state.persistence.repositories.bibliography.listFieldAuthorities(state.library.ownerDomainId, `record-${source.resourceId}`)
+    .map(entry=>entry.fieldName).sort(), ["canonicalTitle", "materialClass"]);
+});
+
+test("an empty patch on metadata-only records stays unchanged without creating a default bibliography", async (context) => {
+  const state = fixture(context);
+  const source = addHolding(state, "empty-existing", "source.pdf");
+  const recordId = `record-${source.resourceId}`;
+  const metadata = state.persistence.repositories.metadata.saveMetadata({recordId,ownerDomainId:state.library.ownerDomainId,
+    actorAccountId:OWNER.id,expectedRevision:null,now:NOW,materialType:"book",canonicalTitle:"既有题名",
+    alternativeTitles:[],identifiers:[],typeFields:{},authorityLinks:[]})!;
+  const document = await patchDocument(state,[source.resourceId],[{set:{},filenameStyle:"preserve_original"}]);
+  const preview = state.service.preview(OWNER,state.library.id,document);
+  assert.equal(preview.items[0]!.category,"unchanged");
+  assert.deepEqual(preview.items[0]!.metadataChanges,[]);
+  assert.equal(state.service.apply(OWNER,state.library.id,preview.planId,preview.items.map(confirmed))[0]!.status,"unchanged");
+  assert.deepEqual(state.persistence.repositories.metadata.findMetadata(state.library.ownerDomainId,recordId),metadata);
+  assert.equal(state.persistence.repositories.bibliography.findProfile(state.library.ownerDomainId,recordId),null);
+  assert.deepEqual(state.persistence.repositories.bibliography.listFieldAuthorities(state.library.ownerDomainId,recordId),[]);
+});
+
 test("v2 preserves every absent field and stable contributor/authority identities, and Preview exactly matches persistence", async (context) => {
   const state = fixture(context);
   const source = addHolding(state, "preserve-all", "original.pdf");
@@ -555,7 +626,7 @@ test("v2 source editions reach actual Preview/Apply filenames and publisher over
 test("external AUTO and confidence never bypass failed evidence; explicit human correction remains possible", async (context) => {
   const state = fixture(context);
   addHolding(state, "failed-extraction", "failed.pdf");
-  const document = await patchDocument(state, ["failed-extraction"], [{ set: { canonicalTitle: "人工核对的题名" } }]);
+  const document = await patchDocument(state, ["failed-extraction"], [{ set: { canonicalTitle: "人工核对的题名", materialType: "book" } }]);
   document.results[0]!.evidence = { executionState: "failed", pages: [] };
   document.results[0]!.confidence = 0;
   const preview = state.service.preview(OWNER, state.library.id, document);
@@ -574,7 +645,7 @@ test("plans are immutable, expire and evict predictably, reject unauthorized act
   let now = NOW;
   const state = fixture(context, () => now);
   addHolding(state, "plan-lifecycle", "before.pdf");
-  const document = await patchDocument(state, ["plan-lifecycle"], [{ set: { canonicalTitle: "Verified title" }, filenameStyle: "preserve_original" }]);
+  const document = await patchDocument(state, ["plan-lifecycle"], [{ set: { canonicalTitle: "Verified title", materialType: "book" }, filenameStyle: "preserve_original" }]);
   const preview = state.service.preview(OWNER, state.library.id, document);
   const originalSelection = confirmed(preview.items[0]!);
   preview.items[0]!.fields.find((field) => field.field === "canonicalTitle")!.proposedValue = "tampered";
@@ -598,7 +669,7 @@ test("Apply revalidates only selected rows, rolls back a failed item, and retrie
   const state = fixture(context);
   const ids = Array.from({ length: 12 }, (_, index) => `partial-${index}`);
   ids.forEach((id) => addHolding(state, id, `${id}.pdf`));
-  const document = await patchDocument(state, ids, ids.map((id) => ({ set: { canonicalTitle: `Title ${id}` } })));
+  const document = await patchDocument(state, ids, ids.map((id) => ({ set: { canonicalTitle: `Title ${id}`, materialType: "book" } })));
   const preview = state.service.preview(OWNER, state.library.id, document);
   const repository = state.persistence.repositories.metadata;
   const save = repository.saveMetadata.bind(repository);
@@ -628,7 +699,7 @@ test("Apply revalidates only selected rows, rolls back a failed item, and retrie
 test("authority-only changes after Preview invalidate the plan even if the displayed values and revisions remain unchanged", async (context) => {
   const state = fixture(context);
   addHolding(state, "authority-race", "before.pdf");
-  const document = await patchDocument(state, ["authority-race"], [{ set: { canonicalTitle: "Proposed" } }]);
+  const document = await patchDocument(state, ["authority-race"], [{ set: { canonicalTitle: "Proposed", materialType: "book" } }]);
   const preview = state.service.preview(OWNER, state.library.id, document);
   state.persistence.repositories.bibliography.setFieldAuthority({
     recordId: "record-authority-race", ownerDomainId: state.library.ownerDomainId, fieldName: "canonicalTitle", scopeKey: "",

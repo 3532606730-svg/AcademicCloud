@@ -64,6 +64,21 @@ function mockZipBridge(filename = "academiccloud-catalog-batch-batch-1.zip") {
 }
 
 describe("BatchCatalogDialog", () => {
+  it("shows source responsibility wording and scope instead of replacing it with a generic role", async () => {
+    const preview = structuredClone(PREVIEW);
+    preview.items[0]!.fields = [{ field: "contributors", currentValue: [], proposedValue: [
+      { label: "傅增湘", role: "reviser", roleLabel: "訂補" },
+      { label: "何京", role: "translator", roleLabel: "英文摘要和目录翻译" },
+      { label: "Author Name", role: "author" },
+    ], operation: "set", currentAuthority: "none", proposedAuthority: "human", evidenceState: "unverified", notes: null }];
+    renderDialog({ previewCatalogBatchResults: vi.fn().mockResolvedValue(preview) });
+    const user = userEvent.setup();
+    await user.upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File(["{}"], "results.json", {type:"application/json"}));
+    await user.click((await screen.findAllByRole("button", {name:"Review fields and evidence"}))[0]!);
+    const table = screen.getByRole("table", {name:"Field changes to apply"});
+    expect(within(table).getByText("傅增湘 · 訂補；何京 · 英文摘要和目录翻译；Author Name · Author")).toBeInTheDocument();
+  });
+
   it("retains completed results across partial retries and excludes completed rows from selection", async () => {
     const applyCatalogBatchResults = vi.fn()
       .mockResolvedValueOnce({ results: [{ resourceId: "auto", status: "applied" }, { resourceId: "review", status: "conflict" }] })

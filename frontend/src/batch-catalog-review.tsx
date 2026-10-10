@@ -43,7 +43,11 @@ function FieldTable({ fields }: { fields: CatalogFieldDiff[] }) {
     if (Array.isArray(input)) return input.length ? input.map((entry) => value(entry, field)).join("；") : "—";
     if (typeof input === "object") {
       const row = input as Record<string, unknown>;
-      if (typeof row.label === "string") return `${row.label}${typeof row.role === "string" ? ` · ${t(`contributorRole.${row.role}` as MessageKey)}` : ""}`;
+      if (typeof row.label === "string") {
+        const responsibility = typeof row.roleLabel === "string" && row.roleLabel.trim()
+          ? row.roleLabel : typeof row.role === "string" ? t(`contributorRole.${row.role}` as MessageKey) : "";
+        return `${row.label}${responsibility ? ` · ${responsibility}` : ""}`;
+      }
       if (typeof row.scheme === "string" && typeof row.value === "string") return `${row.scheme.toUpperCase()}: ${row.value}`;
       const entries = Object.entries(row).filter(([key]) => !["id", "authorityId", "ownerDomainId"].includes(key));
       return entries.length ? entries.map(([key, val]) => `${label(key)}: ${value(val, key)}`).join("；") : "—";
@@ -87,6 +91,7 @@ function ReviewItem({ item, selected, busy, completed, onToggle }: { item: Catal
       warning === "invalid_isbn_removed" || warning === "internal_test_resource_excluded" ? t(`batchCatalog.warning.${warning}`)
         : warning === "legacy_preserve_semantics" ? zh ? "旧格式中缺失或空值的字段将保留现值。" : "Missing or empty legacy fields preserve existing values."
           : warning === "missing_required_title" ? zh ? "缺少可用题名，请修正结果后重新导入。" : "A usable title is required; correct and reimport the results."
+            : warning === "missing_required_material_type" ? zh ? "资料类型未确定，请核对原页后补充。" : "Resource type is unresolved; check the source pages before completing it."
             : zh ? "外部证据需要人工核对。" : "External evidence requires human review."
     }</li>)}</ul>}
     {item.evidence.notes && item.evidence.notes !== item.notes && <p className="catalog-review-note">{item.evidence.notes}</p>}

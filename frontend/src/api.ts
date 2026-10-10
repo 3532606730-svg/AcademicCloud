@@ -529,7 +529,7 @@ export interface CatalogPreviewItem {
   collisionStatus: "none" | "exact_duplicate" | "name_collision";
   renameStatus: "proposed" | "no_rename" | "unchanged" | "exact_duplicate" | "name_collision";
   metadataChanges: string[];
-  warnings: Array<"internal_test_resource_excluded" | "invalid_isbn_removed" | "legacy_preserve_semantics" | "unverified_evidence" | "missing_required_title">;
+  warnings: Array<"internal_test_resource_excluded" | "invalid_isbn_removed" | "legacy_preserve_semantics" | "unverified_evidence" | "missing_required_title" | "missing_required_material_type">;
   category: CatalogPreviewCategory;
   previewVersion: string;
   fields: CatalogFieldDiff[];

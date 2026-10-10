@@ -184,6 +184,19 @@ test("native-text usability rejects script-neutral corruption evidence", () => {
   for (const text of invalid) assert.equal(isUsableNativeText(text), false, JSON.stringify(text));
 });
 
+test("converter trial notices alone are not scholarly text and do not hide usable book evidence", async () => {
+  const watermark = 'PDF\n \n文件使用\n \n"pdfFactory Pro"\n \n试用版本创建\n \nwww.fineprint.cn';
+  assert.equal(isUsableNativeText(watermark), false);
+  assert.equal(isUsableNativeText(`元代政治史研究\n${watermark}`), true);
+  assert.equal(isUsableNativeText("pdfFactory in digital document production"), true);
+  const ocr = new RecordingOcrAdapter(async () => recognized("Substantive scholarly title", 95));
+  const inspection = await inspectPdfFrontMatter(makeRealisticPdf(["PDF created with pdfFactory trial version"]), ocr);
+  assert.equal(ocr.calls.length, 1, JSON.stringify(inspection.pages));
+  assert.equal(inspection.pages[0]!.evidenceOrigin, "ocr");
+  assert.equal(inspection.pages[0]!.text, "Substantive scholarly title");
+  assert.equal(inspection.hasUsableEvidence, true);
+});
+
 test("recognized OCR still requires script-neutral bibliographic evidence usability", async () => {
   const ocr = new RecordingOcrAdapter(async () => recognized("ず之 fO v f 107の652 1987", 60));
   const inspection = await inspectPdfFrontMatter(makeRealisticPdf([""]), ocr);
@@ -389,16 +402,18 @@ test("range-backed inspector accepts an object larger than the whole-object comp
     length: bytes.byteLength,
     async read(begin: number, end: number): Promise<Uint8Array> {
       requests.push([begin, end]);
-      if (requests.length <= 8) console.log("R", requests.length, begin, end);
       return bytes.slice(begin, end);
     },
   };
-  await assert.rejects(
-    () => inspectPdfFrontMatterRange(source, new RecordingOcrAdapter(async () => recognized("unused")), limits({ timeoutMilliseconds: 250, totalRequestTimeoutMilliseconds: 250 })),
-    (error: unknown) => error instanceof PdfTextInspectionError && error.code !== "too_large",
-  );
+  const ocr = new RecordingOcrAdapter(async () => recognized("must not run"));
+  const inspection = await inspectPdfFrontMatterRange(source, ocr, limits({ timeoutMilliseconds: 5_000, totalRequestTimeoutMilliseconds: 10_000 }));
+  assert.equal(inspection.pageCount, 1);
+  assert.equal(inspection.hasUsableTextLayer, true);
+  assert.equal(inspection.pages[0]!.text, "Range-backed title evidence");
+  assert.equal(ocr.calls.length, 0);
   assert.ok(requests.length >= 1);
   assert.ok(requests.every(([begin, end]) => end > begin && end - begin <= SUGGESTION_LIMITS.rangeChunkBytes));
+  assert.ok(requests.reduce((sum,[begin,end])=>sum+end-begin,0) <= source.length);
 });
 
 test("range-backed document loading outlives the per-stage budget within the aggregate budget", async () => {

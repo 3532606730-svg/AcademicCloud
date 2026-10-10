@@ -132,6 +132,7 @@ export class PdfRangeTransport extends PDFDataRangeTransport {
   private requests: number;
   private fetchedBytes: number;
   private reservedBytes = 0;
+  private reservedRequests: number;
   private closed = false;
   private sourceFailed = false;
   private readonly maximumRequests: number;
@@ -151,6 +152,7 @@ export class PdfRangeTransport extends PDFDataRangeTransport {
     const policy = pdfRangeAccessPolicy(source.length, limits);
     this.maximumRequests = policy.maximumRequests;
     this.requests = initialData === undefined ? 0 : 1;
+    this.reservedRequests = this.requests;
     this.fetchedBytes = initialData?.byteLength ?? 0;
     if (initialData) this.reservedBytes = initialData.byteLength;
     if (signal?.aborted) this.sourceController.abort();
@@ -166,13 +168,14 @@ export class PdfRangeTransport extends PDFDataRangeTransport {
   }
 
   override requestDataRange(begin: number, end: number): void {
-    if (this.closed) return;
-    const boundedEnd = Math.min(end, begin + this.limits.rangeChunkBytes, this.length);
+    if (this.closed || this.sourceController.signal.aborted) return;
+    const boundedEnd = Math.min(end, this.length);
     const size = boundedEnd - begin;
+    const chunks = Math.ceil(size / this.limits.rangeChunkBytes);
     // The aggregate byte budget is reserved synchronously so concurrent PDF.js
     // requests can never collectively exceed the hard ceiling.
-    if (size <= 0
-      || this.requests >= this.maximumRequests
+    if (!Number.isSafeInteger(begin) || !Number.isSafeInteger(end) || begin < 0 || size <= 0
+      || this.reservedRequests + chunks > this.maximumRequests
       || this.reservedBytes + size > this.source.length) {
       // PDF.js has no public range-error callback. Delivering an empty chunk
       // makes the worker fail closed; the inspection wrapper maps that failure
@@ -180,19 +183,25 @@ export class PdfRangeTransport extends PDFDataRangeTransport {
       this.onDataRange(begin, new Uint8Array());
       return;
     }
-    this.requests += 1;
+    this.reservedRequests += chunks;
     this.reservedBytes += size;
-    void this.source.read(begin, boundedEnd, this.sourceController.signal).then((bytes) => {
-      if (this.closed) return;
-      if (bytes.byteLength !== size) {
-        this.sourceFailed = true;
-        this.onDataRange(begin, new Uint8Array());
-        return;
+    void (async () => {
+      // PDF.js can combine several chunks into one range reader. Deliver its
+      // complete span once, while keeping each provider read bounded.
+      const response = new Uint8Array(size);
+      for (let offset = begin; offset < boundedEnd; offset += this.limits.rangeChunkBytes) {
+        if (this.closed || this.sourceController.signal.aborted) return;
+        const chunkEnd = Math.min(offset + this.limits.rangeChunkBytes, boundedEnd);
+        this.requests += 1;
+        const bytes = await this.source.read(offset, chunkEnd, this.sourceController.signal);
+        if (this.closed || this.sourceController.signal.aborted) return;
+        if (bytes.byteLength !== chunkEnd - offset) throw new Error("PDF range length mismatch");
+        this.fetchedBytes += bytes.byteLength;
+        response.set(bytes, offset - begin);
       }
-      this.fetchedBytes += bytes.byteLength;
-      this.onDataRange(begin, bytes);
-    }).catch(() => {
-      if (this.closed) return;
+      this.onDataRange(begin, response);
+    })().catch(() => {
+      if (this.closed || this.sourceController.signal.aborted) return;
       this.sourceFailed = true;
       this.onDataRange(begin, new Uint8Array());
     });

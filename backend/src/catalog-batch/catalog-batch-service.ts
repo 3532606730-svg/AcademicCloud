@@ -73,7 +73,7 @@ interface ExportCapability {
 export type CatalogPreviewCategory = "auto" | "review" | "unknown" | "excluded" | "stale" | "collision" | "unchanged";
 export type CatalogCollisionStatus = "none" | "exact_duplicate" | "name_collision";
 export type CatalogRenameStatus = "proposed" | "no_rename" | "unchanged" | "exact_duplicate" | "name_collision";
-export type CatalogPreviewWarning = "internal_test_resource_excluded" | "invalid_isbn_removed" | "legacy_preserve_semantics" | "unverified_evidence" | "missing_required_title";
+export type CatalogPreviewWarning = "internal_test_resource_excluded" | "invalid_isbn_removed" | "legacy_preserve_semantics" | "unverified_evidence" | "missing_required_title" | "missing_required_material_type";
 
 export interface CatalogPreviewItem {
   resourceId: string;
@@ -623,7 +623,8 @@ export class CatalogBatchService {
       public: { ...reviewDetails, resourceId: result.resourceId, currentFilename, proposedFilename: null, canonicalTitle: null,
         responsibility: null, year: null, materialClass: null, disposition: result.disposition, confidence: result.confidence,
         notes: result.notes, identityMatch: true, collisionStatus: "none", renameStatus: "no_rename", metadataChanges: [],
-        warnings: ["missing_required_title"], category: "unknown", previewVersion: snapshotVersion },
+        warnings: [imported.patch?.clear.includes("canonicalTitle") || !(imported.patch?.set.canonicalTitle ?? currentMetadata?.canonicalTitle)
+          ? "missing_required_title" : "missing_required_material_type"], category: "unknown", previewVersion: snapshotVersion },
       library, holding, file, currentMetadata, currentBibliography, nextMetadata: null, nextBibliography: null, snapshotVersion,
     };
     const { metadata: nextMetadata, bibliography: nextBibliography, filename, fields } = compiled;
@@ -639,8 +640,12 @@ export class CatalogBatchService {
       }
     }
     const metadataChanges = [
-      ...changedMetadataLabels(metadataInput(currentMetadata), nextMetadata),
-      ...changedBibliographyLabels(currentBibliography, nextBibliography).map((entry) => `bibliography.${entry}`),
+      ...changedMetadataLabels(metadataInput(currentMetadata), nextMetadata)
+        .filter((entry) => fields.some((field) => field.field === entry && field.proposedAuthority === "human")),
+      ...changedBibliographyLabels(currentBibliography, nextBibliography)
+        .filter((entry) => fields.some((field) => (field.field === entry || field.field.startsWith(`${entry}.`))
+          && field.proposedAuthority === "human"))
+        .map((entry) => `bibliography.${entry}`),
     ];
     if (fields.some((field) => field.field === "contributors" && field.proposedAuthority === "human")
       && !metadataChanges.includes("bibliography.contributors")) metadataChanges.push("bibliography.contributors");
@@ -687,6 +692,7 @@ export class CatalogBatchService {
     const { library, holding, file, currentMetadata, currentBibliography, nextMetadata, nextBibliography } = plan;
     if (!library || !holding || !file || !nextMetadata || !nextBibliography) throw new CatalogBatchError("stale");
     const now = this.#now();
+    const acceptedFields = new Set(plan.public.fields.filter((field) => field.proposedAuthority === "human").map((field) => field.field));
     const legacyFields = changedLegacyFields(metadataInput(currentMetadata), nextMetadata);
     if (legacyFields.length > 0 || canonicalCatalogJson(metadataInput(currentMetadata)) !== canonicalCatalogJson(nextMetadata)) {
       const saved = repositories.metadata.saveMetadata({
@@ -698,7 +704,7 @@ export class CatalogBatchService {
         now,
       });
       if (!saved) throw new CatalogBatchError("conflict");
-      for (const fieldName of legacyFields) repositories.bibliography.setFieldAuthority({
+      for (const fieldName of legacyFields.filter((field) => acceptedFields.has(field))) repositories.bibliography.setFieldAuthority({
         recordId: holding.recordId, ownerDomainId: library.ownerDomainId, fieldName, scopeKey: "",
         source: "human", actorAccountId: actor.id, now,
       });
@@ -713,7 +719,8 @@ export class CatalogBatchService {
         now,
       });
       if (!saved) throw new CatalogBatchError("conflict");
-      for (const field of changedBibliographicFields(currentBibliography, saved)) repositories.bibliography.setFieldAuthority({
+      for (const field of changedBibliographicFields(currentBibliography, saved).filter((field) => acceptedFields.has(field.fieldName)
+        || field.fieldName.startsWith("contributor.") && acceptedFields.has("contributors"))) repositories.bibliography.setFieldAuthority({
         recordId: holding.recordId, ownerDomainId: library.ownerDomainId,
         fieldName: field.fieldName, scopeKey: field.scopeKey, source: "human", actorAccountId: actor.id, now,
       });

@@ -41,11 +41,13 @@ export function catalogBibliographyInput(profile: BibliographicProfile | null): 
     ...(volume === undefined ? {} : { volume }), ...(language === undefined ? {} : { language }), carrierEdition, sourceEdition });
 }
 
-function materialTypeFor(materialClass: string): MaterialType {
+function materialTypeFor(materialClass: string): MaterialType | null {
   if (["journal_article", "book_chapter", "conference_paper", "review"].includes(materialClass)) return "article";
   if (["traditional_book", "manuscript"].includes(materialClass)) return "manuscript";
   if (["inscription_epigraphy", "rubbing"].includes(materialClass)) return "inscription";
-  return materialClass === "archival_document" ? "archival_document" : "book";
+  if (materialClass === "archival_document") return "archival_document";
+  return ["scholarly_monograph", "edited_volume", "thesis_dissertation", "reference_work", "dictionary_lexicon",
+    "primary_source_modern_edition", "collected_documents", "catalogue_bibliography"].includes(materialClass) ? "book" : null;
 }
 
 function jsonEqual(left: unknown, right: unknown): boolean {
@@ -83,6 +85,7 @@ export function compileCatalogBibliography(options: {
   next.carrierEdition ??= {};
   next.sourceEdition ??= {};
   next.materialType ??= materialTypeFor(next.materialClass as string);
+  if (!next.materialType) return null;
 
   // Broad type edits cannot silently erase subtype-specific canonical facts.
   const unsupportedType = Boolean(currentMetadata && next.materialType !== currentMetadata.materialType
@@ -129,13 +132,15 @@ export function compileCatalogBibliography(options: {
     const equal = jsonEqual(oldValue, newValue);
     const adoptsContributorDecision = field === "contributors" && supplied
       && !authority.some((entry) => entry.fieldName === "contributors" && entry.source === "human");
-    // Inferred defaults on a new profile are also explicit rows in Preview.
+    // Required empty storage defaults are not an external assertion. A known
+    // scholarly class can determine broad type, but unknown/other cannot.
+    const hasIntent = supplied || field === "materialType" && !currentMetadata;
     const operation = field === "materialType" && unsupportedType ? "unsupported"
-      : !supplied && equal ? "preserve" : equal && !adoptsContributorDecision ? "unchanged"
+      : !hasIntent ? "preserve" : equal && !adoptsContributorDecision ? "unchanged"
       : currentAuthority === "human" ? "conflict" : patch.clear.includes(field) ? "clear" : "set";
     return {
       field, currentValue: oldValue, proposedValue: newValue, operation, currentAuthority,
-      proposedAuthority: field === "contributors" && !supplied || equal && !adoptsContributorDecision ? "unchanged" : "human", evidenceState: options.evidence.state,
+      proposedAuthority: !hasIntent || equal && !adoptsContributorDecision ? "unchanged" : "human", evidenceState: options.evidence.state,
       notes: field === "materialType" && unsupportedType ? "material_type_preserved_with_type_fields" : null,
     };
   });

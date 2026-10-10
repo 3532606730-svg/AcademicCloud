@@ -74,6 +74,23 @@ test("citation mapping falls back explicitly when structured bibliography is abs
   assert.equal(projection.item.genre, "Z");
 });
 
+test("citation issued dates use publication facts and preserve copyright, preface and source-date statements", () => {
+  for (const statement of ["Copyright © 2014 by the author", "2014年版权所有", "1993年整理序", "1956"]) {
+    const value = detail();
+    delete value.bibliography!.publication.publicationDate;
+    value.metadata!.dateStatement = statement;
+    const before = structuredClone(value);
+    assert.equal(Object.hasOwn(metadataDetailToCsl(value).item, "issued"), false, statement);
+    value.bibliography = null;
+    assert.equal(Object.hasOwn(metadataDetailToCsl(value).item, "issued"), false, `metadata-only:${statement}`);
+    value.bibliography = before.bibliography;
+    assert.deepEqual(value, before, "projection must not rewrite source facts");
+    value.bibliography!.publication.publicationDate = "1993-06";
+    assert.deepEqual(metadataDetailToCsl(value).item.issued, { "date-parts": [[1993, 6]] });
+    assert.equal(value.metadata!.dateStatement, statement);
+  }
+});
+
 test("journal metadata keeps its authorized container, issue and article extent separate from pinpoint locators", () => {
   const value = detail();
   value.metadata!.materialType = "article";
