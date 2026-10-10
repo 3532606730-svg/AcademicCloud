@@ -2,7 +2,11 @@
 
 **Owner-selected October6 continuation:** [ADR-051](docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md) follows accepted ADR050313-page/actualexports. Private device-owned background book jobs and bounded warm sessions are selected within the existing vNext task. Local searchable PDF and explicit reviewed Library OCR reuse are evaluated follow-ups; no automatic original replacement/private sharing/full-text indexing follows.
 
-**Last reconciled:** 2026-10-06
+**Last reconciled:** 2026-10-10
+
+## October10 catalogue organization gate
+
+Within the active vNext task, finish Library source organization and supported normal catalogue recording before improving the catalogue system.170 reviewed profiles and27 unresolved PDFs do not complete Library acceptance. Preserve candidate2607af8 and its local qualification; further implementation, exact release qualification and deployment follow the completed organization gate. Source replacements and supported material-type decisions remain explicit unresolved dependencies. The private OCR acceptance and later research directions below remain queued after this immediate work.
 
 ## October6 authorized scholarly OCR step
 

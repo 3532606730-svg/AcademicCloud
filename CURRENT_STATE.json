@@ -9,11 +9,11 @@
     "checkpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Previous documentation7e965b7 was published and clean active local/fetched-remote HEAD equality verified via unchanged SSH22. The following source repair checkpoint is published and verified separately; source.checkpoint remains deployed457a337/native1b7.",
-    "lastVerifiedPublishedCheckpoint": "7e965b7a095421197713b66d80efba25e832fb4b",
+    "localState": "Source candidate2607af8 was published; fresh SSH22 fetch verified clean active local/fetched-remote HEAD equality. Its189 local checks remain evidence, with no production deployment. This subsequent organization-order documentation checkpoint requires its own push/fetch evidence; source.checkpoint remains deployed457a337.",
+    "lastVerifiedPublishedCheckpoint": "2607af889d4a151651ac686121a5e257b221ab86",
     "checkpointMeaning": "Exact deployed Core/frontend source457a337 and retained native1b7; subsequent repository documentation checkpoints are identified by Git HEAD, not a new runtime release.",
-    "documentationPublicationMeaning": "Previous catalogue5b89284 and documentation7e965b7 publication/local equality are verified. Each later non-main source checkpoint requires its actual push/fetch evidence; repository HEAD is separate from exact deployed runtime457a337.",
-    "documentationPublicationStatus": "PREVIOUS_7E965B7_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
+    "documentationPublicationMeaning": "Catalogue and source candidate checkpoints through2607af8 have actual push/fetch and local equality evidence. Repository publication is separate from runtime deployment and from completion of Library organization.",
+    "documentationPublicationStatus": "PREVIOUS_2607AF8_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
   },
   "production": {
     "observedAt": "2026-10-09",
@@ -1046,7 +1046,7 @@
       "releaseStatePointer": "production.productCopyRelease"
     },
     "catalogueRepair20261010": {
-      "status": "LOCAL_QUALIFIED_PENDING_EXACT_RELEASE",
+      "status": "LOCAL_QUALIFIED_PRESERVED_PENDING_COMPLETE_ORGANIZATION",
       "backendTests": 40,
       "frontendTests": 10,
       "pdfTests": 31,
@@ -1076,7 +1076,15 @@
         "coordinated deployment and normal signed-in regressions/retries"
       ],
       "evidence": "docs/evidence/device-owned-book-ocr-20261006.md#october10-first-catalogue-repair-group",
-      "readerPrivateBookTests": 15
+      "readerPrivateBookTests": 15,
+      "organizationGate": {
+        "ownerInstructionDate": "2026-10-10",
+        "complete": false,
+        "candidateCommit": "2607af889d4a151651ac686121a5e257b221ab86",
+        "furtherImplementationDeferred": true,
+        "exactReleaseQualificationDeferred": true,
+        "deploymentDeferred": true
+      }
     }
   },
   "computeQualification": {
@@ -1093,7 +1101,7 @@
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Continue the recorded article-container entry and export/recovery repairs, then qualify the exact coordinated Core/frontend/Compute candidate and deploy under existing Owner authority.170 source-reviewed profiles/197 academic holdings leave27 unresolved PDFs. New grouped-range/substantive-text fixes are a changed technical fact for bounded retries only after native qualification/deployment; six identical damaged sources still require replacements. Preserve successful catalogue/OCR history and test normal signed-in outcomes before claiming resolution.",
+  "next": "Finish the remaining Library source organization and supported normal catalogue recording before improving the catalogue system.170 source-reviewed profiles/197 academic holdings leave27 unresolved PDFs; full-Library acceptance remains false. Review still-accessible original sources, keep unsupported facts omitted, and record exact unresolved source/type outcomes. Do not repeat successful Apply, failed unchanged Reader attempts or six damaged sources without replacement bytes. Candidate2607af8 remains preserved and undeployed; further implementation, exact release qualification and deployment follow the completed organization gate. Then consolidate the real cases into catalogue improvements and verify normal signed-in outcomes.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1987,7 +1995,7 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "457a337_RETAINED_170_PROFILES_27_OPEN_FIRST_CATALOGUE_REPAIRS_LOCAL_QUALIFIED",
+    "status": "457a337_RETAINED_170_PROFILES_27_OPEN_ORGANIZATION_FIRST_CANDIDATE_PRESERVED",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
     "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Source-reviewed fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4+1/1 and older19 14/14 normal Apply accepted;170 profiles/197 academic holdings,27 unresolved. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
@@ -2001,7 +2009,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "The first source organization pass is complete:170 supported profiles and27 explicit unresolved outcomes. The first catalogue repair group passes189 focused checks and backend/frontend/Compute builds locally. Exact Linux/native qualification and one coordinated deployment remain pending; source bytes, schema41, model/contract pins and current production457a337/native1b7 remain unchanged. **October10 Library and delivery state:**205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+1 normal manual PDF=169 current reviews; one earlier human PDF gives170 reviewed profiles=157PDF+13nonPDF.27 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not170 complete bibliographies. All-Library acceptance remains open.",
+  "currentContinuationBoundary": "Owner October10 repeats the organization-first gate: 170 supported profiles and 27 unresolved PDFs do not satisfy complete Library organization. Continue source review and normal catalogue recording first. Preserve source candidate2607af8 and its189 local checks as history; further catalogue improvements, exact release qualification and deployment are deferred until organization is complete. Current production457a337/native1b7, schema41, source bytes and model/contract pins remain unchanged. **October10 Library and delivery state:**205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+1 normal manual PDF=169 current reviews; one earlier human PDF gives170 reviewed profiles=157PDF+13nonPDF.27 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not170 complete bibliographies. All-Library acceptance remains open.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
