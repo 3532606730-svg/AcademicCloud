@@ -9,8 +9,8 @@
     "checkpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Organization-order checkpoint efcfeae was pushed and fresh SSH22 fetch verified clean active local/fetched-remote HEAD equality. Source candidate2607af8 remains preserved/undeployed. This subsequent source-progress documentation checkpoint requires its own publication evidence; runtime source.checkpoint remains457a337.",
-    "lastVerifiedPublishedCheckpoint": "efcfeae9a56743e6d48b725a71053e70e1e1ccd6",
+    "localState": "Persisted835a979 push/fetch/local equality is verified history. Current lower/third/fourth source-save and Owner-Recycle documentation checkpoint publication and fresh HEAD equality are verified separately by Git; these source records do not change production457a337/native1b7.",
+    "lastVerifiedPublishedCheckpoint": "835a979b0581a5636846128de60f178fae3c0d39",
     "checkpointMeaning": "Exact deployed Core/frontend source457a337 and retained native1b7; subsequent repository documentation checkpoints are identified by Git HEAD, not a new runtime release.",
     "documentationPublicationMeaning": "Catalogue and source candidate checkpoints through2607af8 have actual push/fetch and local equality evidence. Repository publication is separate from runtime deployment and from completion of Library organization.",
     "documentationPublicationStatus": "PREVIOUS_2607AF8_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
@@ -1018,7 +1018,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Runtime Core457a337/native1b7/schema41 remains retained.177 source-supported profiles/197 academic holdings leave20 unresolved. Candidate2607af8 retains189 local checks/builds and is undeployed; organization-first defers further implementation/exact qualification/deployment until complete organization. Full-Library/native whole-book quality/speed remain open.",
+    "recordMeaning": "Runtime Core457a337/native1b7/schema41 retained.180 profiles/188 active academic holdings leave8 unresolved after Owner Recycle9/9. Candidate2607af8 has189 historical local checks and remains undeployed; organization-first gates further implementation/qualification/deployment. No new AI accuracy/full-corpus/native whole-book speed acceptance.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -1085,6 +1085,29 @@
         "exactReleaseQualificationDeferred": true,
         "deploymentDeferred": true
       }
+    },
+    "ownerCatalogueCleanup20261011": {
+      "status": "PASS",
+      "reviewer": "GPT-6.1 Sol / xhigh independent read-only subagent",
+      "scope": "Current seven tracked documentation diffs, arithmetic, exact9 recoverable Recycle identities/normal UI, third/fourth original MD5/size/source images/normal saves; unchanged production and retained historical failures/gates",
+      "materialFindings": [],
+      "normalRecycle": 9,
+      "normalAdditionalPdfSaves": 3,
+      "sourceReviewedProfiles": 180,
+      "activeAcademicHoldings": 188,
+      "remainingUnresolvedPdfs": 8,
+      "fullLibraryAcceptance": false,
+      "codeChanges": false,
+      "testsOrBuildsRepeated": false,
+      "productionRelease": false,
+      "reviewEvidence": "Independent final review returned PASS; root JSON assertions, git diff --check and exact normal UI/source receipts pass.",
+      "remainingExactOriginalReview": {
+        "sources": 2,
+        "identityVerification": "PASS",
+        "materialClassVerdict": "HOLD for both",
+        "newlyResolved": 0,
+        "receipt": "bookIntakeReliability.currentLibraryCatalogue.remainingExactOriginalReview20261011"
+      }
     }
   },
   "computeQualification": {
@@ -1097,11 +1120,11 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Current catalogue:205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+8 normal manual PDF=176 current reviews; one earlier human PDF gives177 reviewed profiles=164PDF+13nonPDF.20 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,1 fresh24 failed,1 earlier timeout,1 notice HOLD,3 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not177 complete bibliographies. All-Library acceptance remains open.",
-    "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
+    "Current catalogue:180 source-supported profiles/188 active academic holdings;8 unresolved PDFs. Nine Owner-recycled sources are scope reduction, not successful catalogue acceptance.",
+    "Remaining8 sources need exact original/container/type support. Both third/fourth complete downloads are hash-bound and normally catalogued. Historical six damaged sources and3 further unparseable/missing-title sources are closed by Owner recoverable Recycle9/9.",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Finish the remaining Library source organization and supported normal catalogue recording before improving the catalogue system.177 source-reviewed profiles/197 academic holdings leave20 unresolved PDFs; full-Library acceptance remains false. Review still-accessible original sources, keep unsupported facts omitted, and record exact unresolved source/type outcomes. Do not repeat successful Apply, failed unchanged Reader attempts or six damaged sources without replacement bytes. Candidate2607af8 remains preserved and undeployed; further implementation, exact release qualification and deployment follow the completed organization gate. Then consolidate the real cases into catalogue improvements and verify normal signed-in outcomes.",
+  "next": "Continue the8 remaining active unresolved PDFs through normal source review and supported catalogue recording. Nine Owner-authorized damaged/missing-title sources are already in Recycle; do not repeat deletion. Both third/fourth normal downloads are complete, hash-bound and normally catalogued; retain their historical failures.180 profiles/188 active academic holdings keep full-Library acceptance false. Preserve candidate2607af8; catalogue-system improvements/exact qualification/deployment follow completed organization.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1172,9 +1195,9 @@
     "deploymentMeaning": "Integrated implementation bytes are in exact662a7a0 production release; historical local test scope is unchanged and the full real signed-in intake/recovery/quality acceptance is not thereby complete.",
     "currentLibraryCatalogue": {
       "observedAt": "2026-10-11",
-      "normalUiHoldings": 205,
-      "activePdfs": 192,
-      "reviewedApplied": 176,
+      "normalUiHoldings": 196,
+      "activePdfs": 183,
+      "reviewedApplied": 179,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1204,7 +1227,7 @@
         "screenshot": "output/vnext/catalog-review-20261007/historical82-applied.png"
       },
       "freshExportCandidates": 0,
-      "unchangedDamagedSources": 6,
+      "unchangedDamagedSources": 0,
       "registeredFixtures": 3,
       "allLibraryAccepted": false,
       "additionalExactHistoricalFixture": {
@@ -1300,22 +1323,22 @@
           "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
         }
       },
-      "thisRoundReviewed": 176,
+      "thisRoundReviewed": 179,
       "earlierHumanPdfProfiles": 1,
-      "existingReviewedProfiles": 177,
-      "scholarlyHoldingsExcludingExactFixtures": 197,
-      "scholarlyPdfsExcludingExactFixtures": 184,
-      "reviewedPdfProfiles": 164,
-      "unresolvedScholarlyPdfs": 20,
+      "existingReviewedProfiles": 180,
+      "scholarlyHoldingsExcludingExactFixtures": 188,
+      "scholarlyPdfsExcludingExactFixtures": 175,
+      "reviewedPdfProfiles": 167,
+      "unresolvedScholarlyPdfs": 8,
       "unresolvedPdfBreakdown": {
-        "fresh47AcademicHeld": 5,
-        "fresh47Failed": 2,
+        "fresh47AcademicHeld": 4,
+        "fresh47Failed": 0,
         "fresh24Failed": 1,
-        "freshTimeout": 1,
+        "freshTimeout": 0,
         "freshNoticeHeld": 1,
-        "olderReadyHeld": 3,
-        "olderInspectionFailed": 1,
-        "unchangedDamaged": 6
+        "olderReadyHeld": 2,
+        "olderInspectionFailed": 0,
+        "unchangedDamaged": 0
       },
       "exactFixturesExcluded": 4,
       "corpusOutcomesReceipt": "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
@@ -1330,13 +1353,13 @@
         "receipt": "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json"
       },
       "reviewedNonPdfProfiles": 13,
-      "scholarlyHoldings": 197,
-      "scholarlyPdfs": 184,
-      "holdingsExcludingOnlyExactFixtures": 201,
-      "pdfsExcludingOnlyExactFixtures": 188,
+      "scholarlyHoldings": 188,
+      "scholarlyPdfs": 175,
+      "holdingsExcludingOnlyExactFixtures": 192,
+      "pdfsExcludingOnlyExactFixtures": 179,
       "initialFreshExportCandidates": 83,
       "initialFreshScholarlyCandidates": 82,
-      "corpusOutcomesReceiptMeaning": "155 batch+13 normal manual nonPDF+8 normal manual PDF=176 this-round; one earlier human PDF gives177 source-supported profiles=164PDF+13nonPDF.20 unresolved PDFs remain. Six fresh24 failures have exact-original manual saves while historical7 extraction failures remain unchanged. Profiles have omissions; full Library acceptance remains false.",
+      "corpusOutcomesReceiptMeaning": "Historical October9 corpus receipt and batch outcomes retained. Current155 batch+13 normal manual nonPDF+11 normal manual PDF=179 this-round; one earlier human PDF gives180 source-supported profiles=167PDF+13nonPDF. Owner-recycled9 unresolved sources remain recoverable; active academic188=175PDF+13nonPDF leaves8 unresolved PDFs. Cleanup is Owner scope reduction, not successful AI/canonical acceptance. Full Library acceptance remains false.",
       "scopeReconciliationEvidence": [
         "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
         "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
@@ -1410,7 +1433,15 @@
           "output/vnext/catalog-review-20261007/fresh12-preview.txt",
           "output/vnext/catalog-review-20261007/fresh12-applied9.txt",
           "output/vnext/catalog-review-20261007/fresh12-applied9.png"
-        ]
+        ],
+        "normalManualResolution": {
+          "resourceIds": [
+            "0a3952fd-9820-46ce-951f-e3dcbdaf83b7"
+          ],
+          "applied": 1,
+          "originalTimeoutUnchanged": true,
+          "receipt": "output/vnext/catalog-review-20261007/third-normal-original-validation.json"
+        }
       },
       "postCatalogueImprovement": {
         "ownerInstructionDate": "2026-10-09",
@@ -1434,7 +1465,10 @@
           "Original title key glyph can be visually recovered despite bounded OCR mistranscription: exact 5bd source imprint reads 回鹘, and original role labels prevent editor/corrector collapse. Printing place must not become publication place; uniform book number is not ISBN.",
           "Original native-text watermark-only outcome is not a damaged-source verdict:0966 contains substantive scanned images. Source, extraction, canonical authority and normal save outcomes require separate states.",
           "Partial index and 上编 excerpts require an honest unknown broad material type. Record original supported observations separately without human-locking default book or borrowing publication facts.",
-          "A normal download event timeout may still produce a complete file; one exact checksum/size read established xy source arrival, then native parsers independently failed on its XRef/trailer. Do not repeat download or invent metadata from filename."
+          "A normal download event timeout may still produce a complete file; one exact checksum/size read established xy source arrival, then native parsers independently failed on its XRef/trailer. Do not repeat download or invent metadata from filename.",
+          "Normal Library display turns source responsibility labels 本卷主编/本卷副主编 into misleading edition suffixes 本卷主编本/本卷副主编本. Keep exact underlying roles/roleLabel, distinguish volume editor scope from series editor scope, and repair display projection only after organization. Regional volume + 下册 must remain present in the volume identity.",
+          "An All Pages filename may describe body-only OCR: exact Hucker497-page source omits title/imprint. Require independent exact-source coverage and separate complete-work authority; do not borrow publication facts from a different source. Normal transfer event timeout is distinct from source integrity; third605MB eventually completes and title pages support its own volume facts.",
+          "Fourth-volume rear cover has a four-volume set ISBN. Catalogue identity must retain identifier scope and volume identity instead of projecting a set ISBN as a unique part; no ISBN was written for the isolated fourth-volume record."
         ],
         "codeChanges": false,
         "newSchemaOrTypeEnum": false,
@@ -1800,10 +1834,22 @@
           "applied": 1,
           "receipt": "output/vnext/catalog-review-20261007/fresh47-visual1-applied.txt",
           "screenshot": "output/vnext/catalog-review-20261007/fresh47-visual1-applied.jpg"
+        },
+        "normalManualResolution": {
+          "resourceIds": [
+            "b0383b34-817a-4109-a801-91409385df7e",
+            "77a6a6b4-70a9-4065-beba-543702735fba"
+          ],
+          "applied": 2,
+          "originalFailuresUnchanged": true,
+          "receipts": [
+            "output/vnext/catalog-review-20261007/lower-normal-original-validation.json",
+            "output/vnext/catalog-review-20261007/fourth-normal-original-validation.json"
+          ]
         }
       },
       "totalNonScholarlySourceExclusions": 4,
-      "normalManualPdfFollowup": 8,
+      "normalManualPdfFollowup": 11,
       "additionalNonScholarlySourceExclusions": [
         {
           "resourceId": "63991656-ad84-4e24-9d9b-787fe1e3ad27",
@@ -1837,7 +1883,7 @@
         }
       ],
       "normalManualPdfSourceReviews": {
-        "applied": 8,
+        "applied": 11,
         "entries": [
           {
             "resourceId": "f7e29772-e603-47b7-9c2e-7c798d661192",
@@ -2428,6 +2474,306 @@
             "sourceBytesChanged": false,
             "independentSourceReview": "Root recovered the quota-interrupted exact original and reviewed source images; no independent final verdict is claimed.",
             "saveNetworkRecovery": "Initial normal save succeeded"
+          },
+          {
+            "status": "PASS",
+            "resourceId": "b0383b34-817a-4109-a801-91409385df7e",
+            "sourceIdentity": {
+              "sourceFingerprint": "jXzd60-EKEOW8ScejvuV3jZMOm24eF7JDi6Bf3kn5Q8",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "L4AlC6tuRZuwSJsFtLWyJA=="
+            },
+            "currentFilename": "（下册）元代北方金石碑先刻集成 宁夏甘肃(1).pdf",
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "source_unavailable"
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "normalDownload": {
+              "resourceId": "b0383b34-817a-4109-a801-91409385df7e",
+              "path": "C:/Users/35326/Downloads/（下册）元代北方金石碑先刻集成 宁夏甘肃(1).pdf",
+              "bytes": 226630193,
+              "md5": "L4AlC6tuRZuwSJsFtLWyJA==",
+              "sha256": "720b74e938f54ddc300859b055d559a91023d543a5a7dc2cffcfe6a3c37784bc",
+              "downloadClickedOnce": true,
+              "eventTimedOutButCompleteMatchingFilePresent": true
+            },
+            "originalPageCount": 235,
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/lower-originals-20261011/front-001.png",
+                "physicalPageOneBased": 1,
+                "bytes": 3655067,
+                "sha256": "a2b198e63e7a7f35a76569f99272e8b6dde52ef8e7b863de39b685074d73a1c7"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/lower-originals-20261011/front-002.png",
+                "physicalPageOneBased": 2,
+                "bytes": 1121008,
+                "sha256": "cc94c50731c6ddfc1555cc6c87cfb55498cf8b8babd1a4bfa6695356b2686df7"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/lower-originals-20261011/front-003.png",
+                "physicalPageOneBased": 3,
+                "bytes": 1002294,
+                "sha256": "274ac3156350cb515e4072a90ed0514d6a9073b4838d01581fd58ac8a84e11a3"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/lower-originals-20261011/tail-234.png",
+                "physicalPageOneBased": 234,
+                "bytes": 1363539,
+                "sha256": "e0489a8f45f9664af29f17e19d8b9aa2e124f3efeb66f0a9c3d3dfaaf5c7c672"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/lower-originals-20261011/tail-235.png",
+                "physicalPageOneBased": 235,
+                "bytes": 159711,
+                "sha256": "e712a9d30d3119f12559758d6e42ad58808bb08642d479461f892c6149c850b1"
+              }
+            ],
+            "canonicalTitle": "元代北方金石碑刻集成",
+            "materialType": "book",
+            "materialClass": "modern_edited_source",
+            "typeFields": {
+              "volumeStatement": "甘肃、宁夏卷 下册"
+            },
+            "language": "zh",
+            "contributors": [
+              {
+                "label": "俄军",
+                "role": "editor",
+                "roleLabel": "本卷主编"
+              },
+              {
+                "label": "王科社",
+                "role": "editor",
+                "roleLabel": "本卷副主编"
+              },
+              {
+                "label": "廖元琨",
+                "role": "editor",
+                "roleLabel": "本卷副主编"
+              }
+            ],
+            "publication": {
+              "publisher": "中华书局"
+            },
+            "volumeStatement": "甘肃、宁夏卷 下册",
+            "omissions": "No publication year/place/ISBN/edition/impression on inspected original pages; monument chronology and bibliography years are not publication facts. Overall series chief/deputy editors on the same title page are separate from the explicitly marked 本卷 editors and are omitted from this volume contributor list. Regional volume and 下册 belong to volume fields; not subtitle or a whole-series identity.",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/lower-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/lower-manual-saved.jpg",
+            "engineExtractionRetried": false,
+            "paidOrCloudCalls": false,
+            "sourceBytesChanged": false,
+            "downloadEventOutcome": "One event timed out15s, initially4,979,925-byte partial; later complete exact file proved by full streaming MD5/size. No second request.",
+            "browserPolicy": "Internal download-page URL was blocked by HTTP/HTTPS-only protocol policy; no workaround. Existing inbound file validation was the safe alternative.",
+            "rootOriginalReview": true
+          },
+          {
+            "resourceId": "0a3952fd-9820-46ce-951f-e3dcbdaf83b7",
+            "sourceIdentity": {
+              "sourceFingerprint": "gvidQYm6nsPC1cZyAn089xSv6J7C7n32W6bl15pCcec",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "BtqoIccPX/ubCBigUey1DA=="
+            },
+            "currentFilename": "第三册.pdf",
+            "status": "PASS normal title and bibliography saved",
+            "normalDownload": {
+              "path": "C:/Users/35326/Downloads/第三册.pdf",
+              "bytes": 605260137,
+              "md5": "BtqoIccPX/ubCBigUey1DA==",
+              "sha256": "d38681501b52f4dd5b0350cd135a356aeb982180d572515846b5807e8accfee2",
+              "resourceId": "0a3952fd-9820-46ce-951f-e3dcbdaf83b7",
+              "sourceIdentity": {
+                "sourceFingerprint": "gvidQYm6nsPC1cZyAn089xSv6J7C7n32W6bl15pCcec",
+                "fileRevision": 1,
+                "checksumAlgorithm": "md5",
+                "checksum": "BtqoIccPX/ubCBigUey1DA=="
+              },
+              "download": "Existing normal website download eventually completed; no duplicate request",
+              "catalogueApplied": false
+            },
+            "originalPageCount": 179,
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/third-originals-20261011/front-001.png",
+                "bytes": 1560132,
+                "sha256": "dd2bed8f40d31b96b4950f590dbf923ad73fde6fbff397795b3fb599587aa420"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/third-originals-20261011/front-002.png",
+                "bytes": 210257,
+                "sha256": "d6139e738a927a48e10695e15811edae4ca5579e2fdc3167db8892d07233ca23"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/third-originals-20261011/front-003.png",
+                "bytes": 143994,
+                "sha256": "8a40e30c97f78588b789f9830297521163dca8bc26883e243aa1602b6a2242fc"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/third-originals-20261011/front-005.png",
+                "bytes": 2191249,
+                "sha256": "99a97e0c97483d733474fee929543379735e05f6af4f12c97979e79336a79909"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/third-originals-20261011/tail-179.png",
+                "bytes": 757841,
+                "sha256": "50de32fd49cf76618f828903afc49066111895648a4052578996c73646dcbba9"
+              }
+            ],
+            "canonicalTitle": "元大都",
+            "subtitle": "1964～1974年考古报告",
+            "materialType": "book",
+            "materialClass": "monograph",
+            "typeFields": {
+              "volumeStatement": "叁"
+            },
+            "volumeStatement": "叁",
+            "language": "zh",
+            "contributors": [
+              {
+                "label": "中国社会科学院考古研究所",
+                "role": "author",
+                "roleLabel": "编著"
+              },
+              {
+                "label": "北京市文物管理处",
+                "role": "author",
+                "roleLabel": "编著"
+              }
+            ],
+            "publication": {
+              "publisher": "文物出版社",
+              "place": "北京",
+              "date": "2024"
+            },
+            "seriesStatement": "中国田野考古报告集·考古学专刊·丁种第113号",
+            "omissions": "No ISBN, publication month, edition or printing inferred from other volumes; 1964–1974 is report coverage, not publication date. Current volume explicitly III/叁 with colour plates; do not relabel it an entire merged report.",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "timeout"
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "receipt": "output/vnext/catalog-review-20261007/third-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/third-manual-saved.jpg",
+            "engineExtractionRetried": false,
+            "paidOrCloudCalls": false,
+            "sourceBytesChanged": false,
+            "rootOriginalReview": true
+          },
+          {
+            "resourceId": "77a6a6b4-70a9-4065-beba-543702735fba",
+            "sourceIdentity": {
+              "sourceFingerprint": "Im0EywKK2kCdzAK6VIiyI8w-bcuAA_imsM3nxR1bBtk",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "EYygmbOtsW/2skhSLMbuqw=="
+            },
+            "currentFilename": "第四册.pdf",
+            "status": "PASS normal title and bibliography saved",
+            "normalDownload": {
+              "path": "C:/Users/35326/Downloads/第四册.pdf",
+              "bytes": 481136392,
+              "md5": "EYygmbOtsW/2skhSLMbuqw==",
+              "sha256": "5a98186ec481d7d0c7301e0dc3199241a4d1daa328e3b9cfefff9605eff2d8ac",
+              "resourceId": "77a6a6b4-70a9-4065-beba-543702735fba",
+              "sourceIdentity": {
+                "sourceFingerprint": "Im0EywKK2kCdzAK6VIiyI8w-bcuAA_imsM3nxR1bBtk",
+                "fileRevision": 1,
+                "checksumAlgorithm": "md5",
+                "checksum": "EYygmbOtsW/2skhSLMbuqw=="
+              },
+              "download": "One normal bounded retry after original network timeout; transfer event timed out15s, complete file subsequently validated",
+              "catalogueApplied": false
+            },
+            "originalPageCount": 201,
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/fourth-originals-20261011/front-001.png",
+                "bytes": 1676862,
+                "sha256": "62331bf8d3b5b40ed05b0bf8d8f361b8e02d131cc420d8527da9b3ce66cd5c61"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/fourth-originals-20261011/front-002.png",
+                "bytes": 209337,
+                "sha256": "1e8c6b8e926beee6da287718f844c13d14a9080d50403feaeb54b22af9dead9f"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/fourth-originals-20261011/front-003.png",
+                "bytes": 146531,
+                "sha256": "19f2a50464c4209c496ede26786711512c6cd0b4ad720dec458b43b710dd5f9f"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/fourth-originals-20261011/front-004.png",
+                "bytes": 1303276,
+                "sha256": "c5054ae9b8f8187b3cbfcf8d6cdfc405134e1bf0b409eb983926e4f75b664e23"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/fourth-originals-20261011/tail-200.png",
+                "bytes": 905892,
+                "sha256": "fe3db2845fbcd04b8a6e7850e0d889e4f8d325fcdba5975b3a9e28f921ec7c5c"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/fourth-originals-20261011/tail-201.png",
+                "bytes": 1302844,
+                "sha256": "7c6f0d6baf8bf53e915f1c78b4ffb1a3403ccbf9fd73265a075d1ecbfb619bf9"
+              }
+            ],
+            "canonicalTitle": "元大都",
+            "subtitle": "1964～1974年考古报告",
+            "materialType": "book",
+            "materialClass": "monograph",
+            "typeFields": {
+              "volumeStatement": "肆"
+            },
+            "volumeStatement": "肆",
+            "language": "zh",
+            "contributors": [
+              {
+                "label": "中国社会科学院考古研究所",
+                "role": "author",
+                "roleLabel": "编著"
+              },
+              {
+                "label": "北京市文物管理处",
+                "role": "author",
+                "roleLabel": "编著"
+              }
+            ],
+            "publication": {
+              "publisher": "文物出版社",
+              "place": "北京",
+              "date": "2024"
+            },
+            "seriesStatement": "中国田野考古报告集·考古学专刊·丁种第113号",
+            "omissions": "No publication month/edition/printing inferred. Original rear cover ISBN978-7-5010-8057-1 is explicitly for 全四册; not stored as a unique single-volume identifier. 1964–1974 is report coverage, not publication date.",
+            "setIsbnSourceFact": {
+              "isbn": "9787501080571",
+              "scope": "全四册",
+              "canonicalIdentifierApplied": false
+            },
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "timeout"
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "receipt": "output/vnext/catalog-review-20261007/fourth-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/fourth-manual-saved.jpg",
+            "engineExtractionRetried": false,
+            "paidOrCloudCalls": false,
+            "sourceBytesChanged": false,
+            "rootOriginalReview": true
           }
         ],
         "receipt": "output/vnext/catalog-review-20261007/older20-normal-manual-followup.json"
@@ -2611,8 +2957,481 @@
             "output/vnext/catalog-review-20261007/5bd-normal-original-validation.json"
           ],
           "heldSourceReceipt": "output/vnext/catalog-review-20261007/original-held-download-validation-20261011.json",
-          "counts": "3 additional saves;20 unresolved/197 academic holdings; no new extractor request or deployment"
+          "counts": "6 additional exact-source normal saves;8 unresolved/188 active academic holdings after9 Owner-authorized recoverable removals; historical original failures/exports retained.",
+          "lowerVolumeSaved": "b0383b34-817a-4109-a801-91409385df7e",
+          "thirdVolumeSaved": "0a3952fd-9820-46ce-951f-e3dcbdaf83b7",
+          "fourthVolumeSaved": "77a6a6b4-70a9-4065-beba-543702735fba"
         }
+      },
+      "ownerSourceCleanup20261011": {
+        "ownerInstruction": "直接删除吧",
+        "questionContext": "Damaged files or missing title pages; request for replacement originals",
+        "status": "COMPLETE_NORMAL_RECOVERABLE_RECYCLE_9_OF_9",
+        "mechanism": "Normal product recoverable move to Recycle; no purge or local original deletion",
+        "targets": [
+          {
+            "resourceId": "04b21cf5-736e-45ed-acfa-e954caf46e58",
+            "currentFilename": "心史·下 [宋]郑思肖撰 （明崇祯本）.pdf",
+            "sizeBytes": 9666560,
+            "sourceIdentity": {
+              "sourceFingerprint": "PTutdIcMCIQzFy8VDV1_T-gHZGLoes6V0EmEJ-DfyrI",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "qQpSsPFYkJuVFEjdvY78gA=="
+            },
+            "reason": "Historical unchanged damaged source / SOURCE_REPLACEMENT_REQUIRED"
+          },
+          {
+            "resourceId": "2e3916d2-8c9c-4d66-98e1-aed2999aede8",
+            "currentFilename": "井中奇书考（上海文艺出版社 2001）.pdf",
+            "sizeBytes": 9797632,
+            "sourceIdentity": {
+              "sourceFingerprint": "cwG_-e8fQoqk6h3iXRXpEPC6_CQQPXC_3bGmQump2ww",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "CFf+HjdnNGmOiJWOmwnVGw=="
+            },
+            "reason": "Historical unchanged damaged source / SOURCE_REPLACEMENT_REQUIRED"
+          },
+          {
+            "resourceId": "3af74979-6a97-463c-a599-7984db02d8ea",
+            "currentFilename": "元朝秘史蒙古语文法讲义  附元朝秘史蒙古语辞典+小泽重男.pdf",
+            "sizeBytes": 10780672,
+            "sourceIdentity": {
+              "sourceFingerprint": "j6m1gL71uFUV3qhLm8nEbkBR1YenrTQF3tRzFo57NoE",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "CdNi3KZZRXUKLKA0kICu0w=="
+            },
+            "reason": "Historical unchanged damaged source / SOURCE_REPLACEMENT_REQUIRED"
+          },
+          {
+            "resourceId": "841aa79e-4228-4470-abd1-ad0187c5c489",
+            "currentFilename": "元代台宪文书汇编[洪金富点校]台北：乐学书局2003年.pdf",
+            "sizeBytes": 11042816,
+            "sourceIdentity": {
+              "sourceFingerprint": "k0dRtaWJRmysgF_e7IT3c2A1fV495J48WS1bo7HCN9k",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "zDfqYefSQGeJihhBUI+0qw=="
+            },
+            "reason": "Historical unchanged damaged source / SOURCE_REPLACEMENT_REQUIRED"
+          },
+          {
+            "resourceId": "84556d9b-96ba-4418-a61e-e3c29307801a",
+            "currentFilename": "中華文史叢書.099-100.東北文獻零拾·心史叢刊（合訂本）.pdf",
+            "sizeBytes": 7471104,
+            "sourceIdentity": {
+              "sourceFingerprint": "E9SclHcZV4lpnzRFqOL1UKO0-SfFwF7lcHWG3gOU6ro",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "t0ofx/7jVQrI0OiD0HfVXg=="
+            },
+            "reason": "Historical unchanged damaged source / SOURCE_REPLACEMENT_REQUIRED"
+          },
+          {
+            "resourceId": "bfed1bec-3aa2-42c6-a64d-8d1972ea090b",
+            "currentFilename": "心史·上 [宋]郑思肖撰 （明崇祯本）.pdf",
+            "sizeBytes": 9633792,
+            "sourceIdentity": {
+              "sourceFingerprint": "IeYBOcql0igfjhzKA1nRUG2WQvXu2RfJEbqjQaFSzaU",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "/aQkWn60CdT72zcGl6qkWg=="
+            },
+            "reason": "Historical unchanged damaged source / SOURCE_REPLACEMENT_REQUIRED"
+          },
+          {
+            "resourceId": "25e3f758-874d-4672-be85-0553e5c61e80",
+            "currentFilename": "《历史研究》西域研究论文辑.pdf",
+            "sourceIdentity": {
+              "sourceFingerprint": "jY3Vw-icdVEGznFHkK39CW3Ig-wmokG32WS5KBoKFks",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "rXUt++82AKZ1MibwoQxOGQ=="
+            },
+            "reason": "Exact downloaded original fails both pdfinfo and pdftoppm XRef/trailer parsing",
+            "sizeBytes": 8290304
+          },
+          {
+            "resourceId": "0966c911-557c-4a28-a047-1fc3e1a8426a",
+            "currentFilename": "元典章年代索引.pdf",
+            "sourceIdentity": {
+              "sourceFingerprint": "o9LT09I70BKy9sVc_h29FAx_KErqFXw4ykuId4NaP8w",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "d6WKQjEKpwO3ULfQJqeLWQ=="
+            },
+            "reason": "Exact original index/body and afterword inspected; title page absent; not classified damaged",
+            "sizeBytes": 8712036
+          },
+          {
+            "resourceId": "c6fdaf0a-c1d5-4292-ac77-55a86ffeb854",
+            "currentFilename": "Hucker Official Titles OCR Searchable_All Pages.pdf",
+            "sourceIdentity": {
+              "sourceFingerprint": "yvlsVQ2qdkEA5CGqeA_fB9KMrBYF_iEjrGRtEP5FjFc",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "YIOxi+5xrJo9l+U8Gg1gKQ=="
+            },
+            "reason": "Exact original contains dictionary body only; no exact work title/imprint; not classified damaged",
+            "sizeBytes": 11134053
+          }
+        ],
+        "before": {
+          "normalUiHoldings": 205,
+          "activePdfs": 192,
+          "scholarlyHoldings": 197,
+          "scholarlyPdfs": 184,
+          "reviewedProfiles": 178,
+          "unresolvedPdfs": 19
+        },
+        "notInScope": "Unread/network-blocked, uncertain broad type/container, incomplete downloads, or sources with supported exact titles remain active. No metadata inference or runtime deployment.",
+        "huckerOriginalReceipt": "output/vnext/catalog-review-20261007/hucker-ocr-normal-original-validation.json",
+        "completed": [
+          {
+            "resourceId": "c6fdaf0a-c1d5-4292-ac77-55a86ffeb854",
+            "status": "normal UI toast and empty exact search",
+            "receipt": "recycle-c6fd-after.txt"
+          },
+          {
+            "resourceId": "04b21cf5-736e-45ed-acfa-e954caf46e58",
+            "status": "Normal Recycle confirmed; exact search empty",
+            "receipt": "recycle-04b21cf5-after.txt"
+          },
+          {
+            "resourceId": "2e3916d2-8c9c-4d66-98e1-aed2999aede8",
+            "currentFilename": "井中奇书考（上海文艺出版社 2001）.pdf",
+            "displayTitle": "井中奇书考（上海文艺出版社 2001）.pdf",
+            "status": "Normal recoverable Recycle confirmed; exact search empty",
+            "receipt": "recycle-2e3916d2-after.txt"
+          },
+          {
+            "resourceId": "3af74979-6a97-463c-a599-7984db02d8ea",
+            "currentFilename": "元朝秘史蒙古语文法讲义  附元朝秘史蒙古语辞典+小泽重男.pdf",
+            "displayTitle": "元朝秘史蒙古语文法讲义 附元朝秘史蒙古语辞典+小泽重男.pdf",
+            "status": "Normal recoverable Recycle confirmed; exact search empty",
+            "receipt": "recycle-3af74979-after.txt"
+          },
+          {
+            "resourceId": "841aa79e-4228-4470-abd1-ad0187c5c489",
+            "currentFilename": "元代台宪文书汇编[洪金富点校]台北：乐学书局2003年.pdf",
+            "displayTitle": "元代台宪文书汇编[洪金富点校]台北：乐学书局2003年.pdf",
+            "status": "Normal recoverable Recycle confirmed; exact search empty",
+            "receipt": "recycle-841aa79e-after.txt"
+          },
+          {
+            "resourceId": "84556d9b-96ba-4418-a61e-e3c29307801a",
+            "status": "Normal Recycle confirmed; exact search empty",
+            "receipt": "recycle-84556d9b-after.txt"
+          },
+          {
+            "resourceId": "bfed1bec-3aa2-42c6-a64d-8d1972ea090b",
+            "currentFilename": "心史·上 [宋]郑思肖撰 （明崇祯本）.pdf",
+            "displayTitle": "心史·上（明崇祯本）",
+            "status": "Normal recoverable Recycle confirmed; exact search empty",
+            "receipt": "recycle-bfed1bec-after.txt"
+          },
+          {
+            "resourceId": "25e3f758-874d-4672-be85-0553e5c61e80",
+            "currentFilename": "《历史研究》西域研究论文辑.pdf",
+            "displayTitle": "《历史研究》西域研究论文辑.pdf",
+            "status": "Normal recoverable Recycle confirmed; exact search empty",
+            "receipt": "recycle-25e3f758-after.txt"
+          },
+          {
+            "resourceId": "0966c911-557c-4a28-a047-1fc3e1a8426a",
+            "currentFilename": "元典章年代索引.pdf",
+            "displayTitle": "元典章年代索引.pdf",
+            "status": "Normal recoverable Recycle confirmed; exact search empty",
+            "receipt": "recycle-0966c911-after.txt"
+          }
+        ],
+        "afterCleanupBeforeThirdSave": {
+          "normalUiHoldings": 196,
+          "activePdfs": 183,
+          "scholarlyHoldings": 188,
+          "scholarlyPdfs": 175,
+          "reviewedProfiles": 178,
+          "unresolvedPdfs": 10
+        },
+        "recycleReceipt": "output/vnext/catalog-review-20261007/owner-recycle-nine-confirmed.txt",
+        "screenshot": "output/vnext/catalog-review-20261007/owner-recycle-nine-confirmed.jpg",
+        "historicalDamagedSources": 6,
+        "permanentlyDeleted": 0,
+        "localOriginalsDeleted": 0,
+        "browserRecovery": "First old-tab confirm blocked control; closing the unedited working tab cancelled it. Fresh same-browser normal search proved unchanged source; recovered normal confirm/delete succeeded. No DB/internal endpoint or security workaround.",
+        "afterThirdSave": {
+          "reviewedProfiles": 179,
+          "unresolvedPdfs": 9
+        },
+        "afterFourthSave": {
+          "reviewedProfiles": 180,
+          "unresolvedPdfs": 8
+        }
+      },
+      "remainingExactOriginalReview20261011": {
+        "reviewer": "GPT-6.1 Sol / xhigh independent read-only subagent",
+        "sourceIdentityVerification": "PASS: full-file size/MD5 matched fresh47; root verified manifest identity and all reviewed image hashes",
+        "entries": [
+          {
+            "resourceId": "f8300c72-6d70-431c-b297-853a4d7ee84c",
+            "sourceIdentity": {
+              "sourceFingerprint": "alM9of7Ad8eHvvTxC2Hzi76LuzMnAsOeKGH3Omn5eE8",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "+sMM3rHan1uI2M60BgNE4g=="
+            },
+            "sizeBytes": 97181709,
+            "sha256": "e280efa7acdd8cf3b48bc342949a75fe2d6c77c2997a9d67050bf831d2ed90e5",
+            "pageCount": 512,
+            "reviewedPhysicalPagesOneBased": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              508,
+              509,
+              510,
+              511,
+              512
+            ],
+            "status": "HOLD_SPECIFIC_MATERIAL_CLASS_UNPROVEN",
+            "holdReason": "Contents and opening/final text are vertical Mongolian; without reliable semantic reading, the compiler authorship and title alone do not prove whether the resource is a research monograph, compiled collection, source edition or another specific class. The original Chinese imprint proves broad book type and edition facts but not the specific scholarly class.",
+            "sourceSupportedFields": [
+              {
+                "field": "title",
+                "value": "蒙古文学概要",
+                "physicalPages": [
+                  4
+                ],
+                "evidence": "Original Chinese title on imprint page"
+              },
+              {
+                "field": "subtitle",
+                "value": "十九世纪",
+                "physicalPages": [
+                  4
+                ],
+                "evidence": "Original parenthetical subtitle"
+              },
+              {
+                "field": "materialType",
+                "value": "book",
+                "physicalPages": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  511
+                ],
+                "evidence": "Original cover/title/imprint, first-edition/printing statement, own ISBN and bound-book contents. Broad type only; source-specific materialClass remains unproven."
+              },
+              {
+                "field": "language",
+                "value": "mn",
+                "physicalPages": [
+                  1,
+                  2,
+                  3,
+                  5,
+                  6,
+                  7,
+                  8,
+                  9,
+                  10,
+                  11,
+                  12,
+                  13,
+                  14,
+                  15,
+                  508,
+                  509,
+                  510
+                ],
+                "evidence": "Dominant vertical Mongolian script visibly confirmed; Chinese parallel imprint present. This does not claim reliable Mongolian semantic reading."
+              },
+              {
+                "field": "responsibilityStatement",
+                "value": "[蒙古] 策·达姆丁苏荣、戈·扎木苏荣扎卜 等编著；布和巴特尔 转写",
+                "physicalPages": [
+                  4
+                ],
+                "evidence": "Literal Chinese credit; preserve 编著/转写. No unnamed contributors, no invented translator or editor role."
+              },
+              {
+                "field": "publisher",
+                "value": "内蒙古人民出版社",
+                "physicalPages": [
+                  4
+                ],
+                "evidence": "Chinese original imprint 出版发行"
+              },
+              {
+                "field": "publicationPlace",
+                "value": "呼和浩特",
+                "physicalPages": [
+                  4
+                ],
+                "evidence": "Publisher address 呼和浩特市新城西街82号"
+              },
+              {
+                "field": "publicationDate",
+                "value": "1989-11",
+                "physicalPages": [
+                  4
+                ],
+                "evidence": "1989年11月第一版; belongs to this Chinese-imprint Mongolian edition, distinct from source edition and later impression"
+              },
+              {
+                "field": "editionStatement",
+                "value": "1989年11月第一版；1991年8月第1次印刷",
+                "physicalPages": [
+                  4
+                ],
+                "evidence": "Original imprint and direct 900dpi month crop verify 8"
+              },
+              {
+                "field": "ISBN",
+                "value": "7-204-00987-8",
+                "physicalPages": [
+                  4,
+                  511
+                ],
+                "evidence": "Own original ISBN. Following /I·90（民文） is a classification suffix, not part of ISBN."
+              },
+              {
+                "field": "sourceEditionStatement",
+                "value": "本书根据蒙古乌兰巴托1968年新蒙文版本转写出版。",
+                "physicalPages": [
+                  3
+                ],
+                "evidence": "Readable Chinese parallel statement; 1968 is source edition, not current-edition publication date."
+              }
+            ],
+            "unsupportedFields": [
+              "materialClass",
+              "series",
+              "DOI",
+              "complete unnamed contributor list",
+              "normalized single author/editor responsibility for 等编著",
+              "Mongolian title transcription",
+              "semantic contents synopsis"
+            ],
+            "report": "output/vnext/catalog-review-20261007/f830-d3-originals-20261011/f830-source-review.json",
+            "reportSha256": "42c9dc8de9ccb171ca9f4a9dd09ac480933e63c3f405a967c8faecb78dc25fb3",
+            "downloadReceipt": "output/vnext/catalog-review-20261007/f830-d3-originals-20261011/f830-download-receipt.json",
+            "canonicalWrites": 0,
+            "newlyResolved": 0
+          },
+          {
+            "resourceId": "d3ece10c-2944-4ba0-9056-dfd903b70595",
+            "sourceIdentity": {
+              "sourceFingerprint": "H9gSgn9vdSlqx-ytePGYwBT6TerBE3n4wV4ODeGIVrs",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "lTfwAHcQoe7kXQvKR2OkCQ=="
+            },
+            "sizeBytes": 8878308,
+            "sha256": "123dc417a8a770cf90f2d602d30febb5daf00be870446affbd0905f3059692a1",
+            "pageCount": 17,
+            "reviewedPhysicalPagesOneBased": [
+              1,
+              2,
+              16,
+              17
+            ],
+            "status": "HOLD_MATERIAL_CLASS_AND_CONTAINER_UNPROVEN",
+            "holdReason": "The inspected source carries no bibliographic identification of its own enclosing journal/book/proceedings. Page design and the earlier-version conference note cannot distinguish journal_article, book_chapter or conference_paper. Keep prior HOLD.",
+            "sourceSupportedFields": [
+              {
+                "field": "title",
+                "value": "Paul Pelliot and Mongolian Studies",
+                "physicalPages": [
+                  1,
+                  17
+                ],
+                "evidence": "Article title on p1; running title on p17"
+              },
+              {
+                "field": "contributors",
+                "value": [
+                  {
+                    "name": "Christopher P. Atwood",
+                    "role": "author"
+                  }
+                ],
+                "physicalPages": [
+                  2,
+                  16
+                ],
+                "evidence": "Running author header p2 and p16; end-of-article signature p16"
+              },
+              {
+                "field": "language",
+                "value": "en",
+                "physicalPages": [
+                  1,
+                  2,
+                  16,
+                  17
+                ],
+                "evidence": "English prose, title, notes and references directly visible"
+              },
+              {
+                "field": "materialType",
+                "value": "article",
+                "physicalPages": [
+                  1,
+                  2,
+                  16,
+                  17
+                ],
+                "evidence": "Self-contained scholarly paper with title, discussion, numbered footnotes, author signature and bibliography; p1 note identifies earlier version as this paper. Broad type only; not a supported specific materialClass."
+              }
+            ],
+            "unsupportedFields": [
+              "materialClass",
+              "containerTitle",
+              "publicationDate",
+              "publisher",
+              "publicationPlace",
+              "volumeStatement",
+              "issueStatement",
+              "DOI",
+              "ISSN",
+              "ISBN",
+              "editor",
+              "conference proceedings identity"
+            ],
+            "report": "output/vnext/catalog-review-20261007/f830-d3-originals-20261011/d3-source-review.json",
+            "reportSha256": "d61bfe4334562bf642909157f7e6ed9e0b5edcf715cfe4b5e37267ed75aa8863",
+            "downloadReceipt": "output/vnext/catalog-review-20261007/f830-d3-originals-20261011/d3-download-receipt.json",
+            "canonicalWrites": 0,
+            "newlyResolved": 0
+          }
+        ],
+        "newlyResolved": 0,
+        "canonicalWrites": 0,
+        "engineRequests": 0,
+        "downloadRequests": 2,
+        "existingReviewedProfiles": 180,
+        "unresolvedScholarlyPdfs": 8,
+        "allLibraryAccepted": false,
+        "interpretation": "New exact-original images corroborate source facts but do not resolve the specific material classes/container. Prior quota-interrupted work is history; this resumed review completed with both HOLD verdicts. f830 enlarged imprint confirms retained1991-08 printing; no publication-date correction or canonical write."
       }
     }
   },
@@ -2642,9 +3461,9 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "457a337_RETAINED_177_PROFILES_20_OPEN_ORGANIZATION_FIRST_CANDIDATE_PRESERVED",
+    "status": "457a337_RETAINED_180_PROFILES_8_OPEN_OWNER_RECYCLE_9_ORGANIZATION_FIRST",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
-    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Source-reviewed fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4+1/1 and older19 14/14 normal Apply accepted;177 profiles/197 academic holdings,20 unresolved. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open. Qaidu normal original-source/manual resolution1/1 is additional to the retained batch receipts. Poppe/numeric normal original-source manual resolutions2/2 add to Qaidu and retained batch receipts. Robinson normal download/original-page/manual save adds1/1.404a/Hess/5bd exact-original normal saves3/3; Hess citation PASS.",
+    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Source-reviewed fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4+1/1 and older19 14/14 normal Apply accepted;180 profiles/188 active academic holdings,8 unresolved. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open. Qaidu normal original-source/manual resolution1/1 is additional to the retained batch receipts. Poppe/numeric normal original-source manual resolutions2/2 add to Qaidu and retained batch receipts. Robinson normal download/original-page/manual save adds1/1.404a/Hess/5bd exact-original normal saves3/3; Hess citation PASS. Lower-volume exact-original normal save adds1/1. Third exact-original normal save1/1 and Owner-recoverable Recycle9/9; no runtime change. Fourth exact-original normal save1/1, with set ISBN kept source-only.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
@@ -2656,7 +3475,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "Owner October10 repeats the organization-first gate: 177 supported profiles and 20 unresolved PDFs do not satisfy complete Library organization. Continue source review and normal catalogue recording first. Preserve source candidate2607af8 and its189 local checks as history; further catalogue improvements, exact release qualification and deployment are deferred until organization is complete. Current production457a337/native1b7, schema41, source bytes and model/contract pins remain unchanged. **October11 Library and delivery state:**205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+8 normal manual PDF=176 current reviews; one earlier human PDF gives177 reviewed profiles=164PDF+13nonPDF.20 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,1 fresh24 failed,1 earlier timeout,1 notice HOLD,3 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not177 complete bibliographies. All-Library acceptance remains open.",
+  "currentContinuationBoundary": "Owner organization-first gate remains:180 supported profiles and8 unresolved PDFs do not complete Library organization. Continue remaining source review and normal recording. Owner October11 source cleanup is complete9/9 through recoverable normal UI Recycle. Preserve candidate2607af8 and its189 historical local checks; further implementation, exact release qualification and deployment remain deferred. Production457a337/native1b7/schema41 is unchanged. **October11 Library and delivery state:**196 active holdings=183PDF+13nonPDF after9 Owner-authorized recoverable removals. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves188=175PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+11 normal manual PDF=179 current reviews; one earlier human PDF gives180 reviewed profiles=167PDF+13nonPDF.8 academic PDFs remain unresolved:4 fresh47 HOLD,1 fresh24 failed,1 notice HOLD and2 older ready HOLD. These are source-supported profiles with omissions; deleting9 sources is scope reduction, not catalogue success. All-Library acceptance remains open.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
