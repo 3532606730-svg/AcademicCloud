@@ -6,7 +6,7 @@
 
 ## October10 catalogue organization gate
 
-Within the active vNext task, finish Library source organization and supported normal catalogue recording before improving the catalogue system.170 reviewed profiles and27 unresolved PDFs do not complete Library acceptance. Preserve candidate2607af8 and its local qualification; further implementation, exact release qualification and deployment follow the completed organization gate. Source replacements and supported material-type decisions remain explicit unresolved dependencies. The private OCR acceptance and later research directions below remain queued after this immediate work.
+Within the active vNext task, finish Library source organization and supported normal catalogue recording before improving the catalogue system.177 reviewed profiles and20 unresolved PDFs do not complete Library acceptance. Preserve candidate2607af8 and its local qualification; further implementation, exact release qualification and deployment follow the completed organization gate. Source replacements and supported material-type decisions remain explicit unresolved dependencies. The private OCR acceptance and later research directions below remain queued after this immediate work.
 
 ## October6 authorized scholarly OCR step
 

@@ -1,5 +1,5 @@
 {
-  "lastReconciled": "2026-10-10",
+  "lastReconciled": "2026-10-11",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
@@ -9,8 +9,8 @@
     "checkpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Source candidate2607af8 was published; fresh SSH22 fetch verified clean active local/fetched-remote HEAD equality. Its189 local checks remain evidence, with no production deployment. This subsequent organization-order documentation checkpoint requires its own push/fetch evidence; source.checkpoint remains deployed457a337.",
-    "lastVerifiedPublishedCheckpoint": "2607af889d4a151651ac686121a5e257b221ab86",
+    "localState": "Organization-order checkpoint efcfeae was pushed and fresh SSH22 fetch verified clean active local/fetched-remote HEAD equality. Source candidate2607af8 remains preserved/undeployed. This subsequent source-progress documentation checkpoint requires its own publication evidence; runtime source.checkpoint remains457a337.",
+    "lastVerifiedPublishedCheckpoint": "efcfeae9a56743e6d48b725a71053e70e1e1ccd6",
     "checkpointMeaning": "Exact deployed Core/frontend source457a337 and retained native1b7; subsequent repository documentation checkpoints are identified by Git HEAD, not a new runtime release.",
     "documentationPublicationMeaning": "Catalogue and source candidate checkpoints through2607af8 have actual push/fetch and local equality evidence. Repository publication is separate from runtime deployment and from completion of Library organization.",
     "documentationPublicationStatus": "PREVIOUS_2607AF8_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
@@ -1018,7 +1018,7 @@
       "sourceCommit": "5fb19382c1c614d2070afa3504c655e76ae456ce",
       "meaning": "Historical deterministic non-main implementation gate; exact production artifact and actual activation evidence are separately recorded under pairedLocalOcr.exactProductionRelease."
     },
-    "recordMeaning": "Runtime Core457a337/native1b7/schema41 remains retained production. Current catalogue is170 supported profiles/197 academic holdings,27 unresolved. The first repair group passes174 focused checks/builds locally and is not deployed. Full-Library/native whole-book quality/speed/exact release remain open.",
+    "recordMeaning": "Runtime Core457a337/native1b7/schema41 remains retained.177 source-supported profiles/197 academic holdings leave20 unresolved. Candidate2607af8 retains189 local checks/builds and is undeployed; organization-first defers further implementation/exact qualification/deployment until complete organization. Full-Library/native whole-book quality/speed remain open.",
     "readerCopy20261006": {
       "scope": "two bilingual Reader hints only; no download/CSP/server/model change",
       "focusedReaderTestsPassed": 9,
@@ -1097,11 +1097,11 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Current catalogue:205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+1 normal manual PDF=169 current reviews; one earlier human PDF gives170 reviewed profiles=157PDF+13nonPDF.27 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not170 complete bibliographies. All-Library acceptance remains open.",
+    "Current catalogue:205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+8 normal manual PDF=176 current reviews; one earlier human PDF gives177 reviewed profiles=164PDF+13nonPDF.20 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,1 fresh24 failed,1 earlier timeout,1 notice HOLD,3 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not177 complete bibliographies. All-Library acceptance remains open.",
     "Six historical unchanged damaged sources need replacement bytes or explicit unresolved acceptance; never retry identical corrupt sources",
     "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
   ],
-  "next": "Finish the remaining Library source organization and supported normal catalogue recording before improving the catalogue system.170 source-reviewed profiles/197 academic holdings leave27 unresolved PDFs; full-Library acceptance remains false. Review still-accessible original sources, keep unsupported facts omitted, and record exact unresolved source/type outcomes. Do not repeat successful Apply, failed unchanged Reader attempts or six damaged sources without replacement bytes. Candidate2607af8 remains preserved and undeployed; further implementation, exact release qualification and deployment follow the completed organization gate. Then consolidate the real cases into catalogue improvements and verify normal signed-in outcomes.",
+  "next": "Finish the remaining Library source organization and supported normal catalogue recording before improving the catalogue system.177 source-reviewed profiles/197 academic holdings leave20 unresolved PDFs; full-Library acceptance remains false. Review still-accessible original sources, keep unsupported facts omitted, and record exact unresolved source/type outcomes. Do not repeat successful Apply, failed unchanged Reader attempts or six damaged sources without replacement bytes. Candidate2607af8 remains preserved and undeployed; further implementation, exact release qualification and deployment follow the completed organization gate. Then consolidate the real cases into catalogue improvements and verify normal signed-in outcomes.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1171,10 +1171,10 @@
     "implementationCheckpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f",
     "deploymentMeaning": "Integrated implementation bytes are in exact662a7a0 production release; historical local test scope is unchanged and the full real signed-in intake/recovery/quality acceptance is not thereby complete.",
     "currentLibraryCatalogue": {
-      "observedAt": "2026-10-10",
+      "observedAt": "2026-10-11",
       "normalUiHoldings": 205,
       "activePdfs": 192,
-      "reviewedApplied": 169,
+      "reviewedApplied": 176,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1300,20 +1300,20 @@
           "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
         }
       },
-      "thisRoundReviewed": 169,
+      "thisRoundReviewed": 176,
       "earlierHumanPdfProfiles": 1,
-      "existingReviewedProfiles": 170,
+      "existingReviewedProfiles": 177,
       "scholarlyHoldingsExcludingExactFixtures": 197,
       "scholarlyPdfsExcludingExactFixtures": 184,
-      "reviewedPdfProfiles": 157,
-      "unresolvedScholarlyPdfs": 27,
+      "reviewedPdfProfiles": 164,
+      "unresolvedScholarlyPdfs": 20,
       "unresolvedPdfBreakdown": {
         "fresh47AcademicHeld": 5,
         "fresh47Failed": 2,
-        "fresh24Failed": 7,
+        "fresh24Failed": 1,
         "freshTimeout": 1,
         "freshNoticeHeld": 1,
-        "olderReadyHeld": 4,
+        "olderReadyHeld": 3,
         "olderInspectionFailed": 1,
         "unchangedDamaged": 6
       },
@@ -1336,7 +1336,7 @@
       "pdfsExcludingOnlyExactFixtures": 188,
       "initialFreshExportCandidates": 83,
       "initialFreshScholarlyCandidates": 82,
-      "corpusOutcomesReceiptMeaning": "Earlier snapshots remain dated history. Current counts add9 fresh12+17 fresh24+37 fresh47+14 older19 normal batch applications and1 normal manual PDF.170 profiles have supported saved facts with possible omissions;27 unresolved PDFs are explicit, not a full-Library acceptance.",
+      "corpusOutcomesReceiptMeaning": "155 batch+13 normal manual nonPDF+8 normal manual PDF=176 this-round; one earlier human PDF gives177 source-supported profiles=164PDF+13nonPDF.20 unresolved PDFs remain. Six fresh24 failures have exact-original manual saves while historical7 extraction failures remain unchanged. Profiles have omissions; full Library acceptance remains false.",
       "scopeReconciliationEvidence": [
         "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
         "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
@@ -1425,7 +1425,16 @@
           "Pinned PDF.js6.2.108 groups contiguous chunks into one request; current PdfRangeTransport returns only one limited chunk. Synthetic request[4,16) expects12 bytes but gets4. Reproduced independently; causality to fresh24 failures is not yet proven.",
           "Normal Philology Details retains copyright-only dateStatement and no publicationDate, but normal Historical Research citation renders2014 as issued year. Keep the supported copyright statement; correct citation date fallback after corpus organization.",
           "Old19 0966c911 has20 ready pages containing only the same pdfFactory watermark; ready/text-present is not substantive bibliographic evidence. Selective OCR must not treat repeated tool watermarks as book body.",
-          "Preview generic role labels hide original responsibility scope (訂補/整理/英文摘要和目录翻译); retain underlying roles/roleLabel and improve presentation after source review."
+          "Preview generic role labels hide original responsibility scope (訂補/整理/英文摘要和目录翻译); retain underlying roles/roleLabel and improve presentation after source review.",
+          "Normal original Reader can expose supported title/imprint/article boundaries after evidence export failed. Keep failed extraction history separate from manual source recovery, with physical page provenance and save confirmation.",
+          "A journal cover bundled with one article must not classify the file as an entire issue; printed article boundaries and carrier authority need explicit review. Poppe UI1/2/21 supports265–294 in CAJ5(4).",
+          "CIP responsibility qualifiers can apply only to one named contributor; series editors must not become book authors. Numeric DieMongolica supports Cerensodnom Hrsg.; Taube responsibility remains unspecified.",
+          "Network save failures are ambiguous until a fresh normal read; avoid blind POST retries. Persist full final states, since accessibility diff receipts can contain only no-change output.",
+          "Normal website download can succeed when Reader failed; native original rendering can resolve manual source review with exact checksum/size binding. Preview failure, source unavailability, evidence extraction and save transport are separate outcomes; Robinson normal download/manual save recovered one failed export without rerunning the extractor.",
+          "Original title key glyph can be visually recovered despite bounded OCR mistranscription: exact 5bd source imprint reads 回鹘, and original role labels prevent editor/corrector collapse. Printing place must not become publication place; uniform book number is not ISBN.",
+          "Original native-text watermark-only outcome is not a damaged-source verdict:0966 contains substantive scanned images. Source, extraction, canonical authority and normal save outcomes require separate states.",
+          "Partial index and 上编 excerpts require an honest unknown broad material type. Record original supported observations separately without human-locking default book or borrowing publication facts.",
+          "A normal download event timeout may still produce a complete file; one exact checksum/size read established xy source arrival, then native parsers independently failed on its XRef/trailer. Do not repeat download or invent metadata from filename."
         ],
         "codeChanges": false,
         "newSchemaOrTypeEnum": false,
@@ -1562,7 +1571,29 @@
           "output/vnext/catalog-review-20261007/fresh24-applied17.txt",
           "output/vnext/catalog-review-20261007/fresh24-applied17.png",
           "output/vnext/catalog-review-20261007/marshall-normal-cover.png"
-        ]
+        ],
+        "normalManualResolutions": {
+          "applied": 6,
+          "resourceIds": [
+            "2e1841fa-080b-4077-9e3e-5f53e37d79f1",
+            "38c7cad6-2f64-4b8c-bfa4-4163f88f6aaf",
+            "5a701910-aac4-4492-859c-bc28997ea4b5",
+            "40912522-d2d6-4329-b04f-17f19b2b32a9",
+            "404a055a-e73b-480e-913b-d7556583c2cd",
+            "6022d952-cd3d-4528-9f84-cc6f9e6342f5"
+          ],
+          "historicalInspectionFailures": 7,
+          "remainingUnresolvedFailures": 1,
+          "originalEvidenceHistoryChanged": false,
+          "receipts": [
+            "output/vnext/catalog-review-20261007/normal-originals-20261010-validation.json",
+            "output/vnext/catalog-review-20261007/poppe-normal-original-validation.json",
+            "output/vnext/catalog-review-20261007/5a701-normal-original-validation.json",
+            "output/vnext/catalog-review-20261007/4091-normal-original-validation.json",
+            "output/vnext/catalog-review-20261007/404a-normal-original-validation.json",
+            "output/vnext/catalog-review-20261007/604-normal-original-validation.json"
+          ]
+        }
       },
       "older20SourceRecheck": {
         "historical": 19,
@@ -1772,7 +1803,7 @@
         }
       },
       "totalNonScholarlySourceExclusions": 4,
-      "normalManualPdfFollowup": 1,
+      "normalManualPdfFollowup": 8,
       "additionalNonScholarlySourceExclusions": [
         {
           "resourceId": "63991656-ad84-4e24-9d9b-787fe1e3ad27",
@@ -1806,7 +1837,7 @@
         }
       ],
       "normalManualPdfSourceReviews": {
-        "applied": 1,
+        "applied": 8,
         "entries": [
           {
             "resourceId": "f7e29772-e603-47b7-9c2e-7c798d661192",
@@ -1850,6 +1881,553 @@
             "dayAndEditionNumberNotGuessed": true,
             "receipt": "output/vnext/catalog-review-20261007/morita-normal-bibliography-saved.txt",
             "screenshot": "output/vnext/catalog-review-20261007/morita-normal-bibliography-saved.png"
+          },
+          {
+            "resourceId": "2e1841fa-080b-4077-9e3e-5f53e37d79f1",
+            "sourceIdentity": {
+              "sourceFingerprint": "pkMLG7sF4zgb_LwvhU8JAELKEFB7yey4fEg7RG_0Ooo",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "7LZsxxKQ6qFtTQi9Aja94g=="
+            },
+            "currentFilename": "Qaidu and the Rise of the Independent Mongol State In Central Asia (Central Asia Research Forum) (Michal Biran) (z-library.sk, 1lib.sk, z-lib.sk).pdf",
+            "sourceEvidenceHistoryUnchanged": true,
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "limit_exceeded"
+            },
+            "normalReaderPageCount": 109,
+            "physicalPagesOneBased": [
+              1,
+              2
+            ],
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/qaidu-page1.jpg",
+                "physicalPageOneBased": 1,
+                "bytes": 77720,
+                "sha256": "a86a8969d008cec14e20f85fd70505520c45ba12e888edf487c92bb494c4f2e4"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/qaidu-page2.jpg",
+                "physicalPageOneBased": 2,
+                "bytes": 106755,
+                "sha256": "70c5777a86f7e597f2fec6ae7ecf47f5dc7b5cc972d461efb7d0946d50e5b77c"
+              }
+            ],
+            "canonicalTitle": "Qaidu and the Rise of the Independent Mongol State in Central Asia",
+            "materialType": "book",
+            "materialClass": "scholarly_monograph",
+            "contributors": [
+              {
+                "label": "Michal Biran",
+                "role": "author"
+              }
+            ],
+            "publication": {
+              "publisher": "Curzon Press",
+              "place": "Richmond, Surrey",
+              "publicationDate": "1997"
+            },
+            "dateStatement": "First Published in 1997",
+            "language": "en",
+            "identifiers": [
+              {
+                "scheme": "isbn",
+                "value": "0-7007-0631-3"
+              }
+            ],
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "sourceFacts": "UI1 original title/Michal Biran/Curzon; UI2 explicitly First Published in1997, publisher/address/ISBN and scholarly monograph contents.1997 publication date is not inferred solely from copyright. Series from filename, day, printing and later edition are omitted.",
+            "receipt": "output/vnext/catalog-review-20261007/qaidu-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/qaidu-manual-saved.jpg"
+          },
+          {
+            "status": "PASS",
+            "resourceId": "38c7cad6-2f64-4b8c-bfa4-4163f88f6aaf",
+            "sourceIdentity": {
+              "sourceFingerprint": "9s_mVhrPYdumYJJwVoKsdZnpYebxVFD7tqPRPjnySDE",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "9cdlY3a1x6uyF3ODp6aMwA=="
+            },
+            "currentFilename": "poppe_gedicht.pdf",
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "source_unavailable"
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "normalReaderPageCount": 21,
+            "physicalPagesOneBased": [
+              1,
+              2,
+              21
+            ],
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/poppe-page1-cover.jpg",
+                "physicalPageOneBased": 1,
+                "bytes": 80325,
+                "sha256": "0d3f7cdeb550099b9b878807d06bf55136bb13c08b0ccf1dc39de90ae25fc613"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/poppe-page2-readable.jpg",
+                "physicalPageOneBased": 2,
+                "bytes": 213264,
+                "sha256": "caf045af7c329da19bb8ad46e54380474694b14aa53a5bdeb0096e64cd370b54"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/poppe-page21-final.jpg",
+                "physicalPageOneBased": 21,
+                "bytes": 86850,
+                "sha256": "23fbd459d053ec36a6956fc88477024d845fdd1c8275a57c881c9a3697916dd4"
+              }
+            ],
+            "canonicalTitle": "Ein mongolisches Gedicht aus den Turfan-Funden",
+            "materialType": "article",
+            "materialClass": "journal_article",
+            "contributors": [
+              {
+                "label": "Nikolaus Poppe",
+                "role": "author"
+              }
+            ],
+            "publication": {
+              "publicationDate": "1960"
+            },
+            "dateStatement": "1960",
+            "language": "de",
+            "typeFields": {
+              "volumeStatement": "5",
+              "issueStatement": "4",
+              "locator": "265–294"
+            },
+            "container": {
+              "canonicalLabel": "Central Asiatic Journal",
+              "authorityType": "work",
+              "role": "container_work",
+              "createdThroughNormalDetails": true
+            },
+            "sourceFacts": "UI1 original journal cover VolumeV/Nr4/1960; UI2 original title/von/NikolausPoppe and contents start265, next Poucha paper295; UI21 final original image carries printed294 and NikolausPoppe. The file contains the article and its manuscript illustrations with journal cover, not the entire issue. Seattle is author affiliation, not publication place; publisher/distribution addresses and editorial board are omitted. Normal source render readiness was observed after the temporary loading frame.",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "normalCitation": "PASS HistoryResearch full note/reference:CentralAsiaticJournal5(4),1960,265–294",
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/poppe-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/poppe-manual-saved.jpg",
+            "citationReceipt": "output/vnext/catalog-review-20261007/poppe-citation.txt",
+            "citationScreenshot": "output/vnext/catalog-review-20261007/poppe-citation.jpg",
+            "engineExtractionRetried": false,
+            "sourceBytesChanged": false
+          },
+          {
+            "status": "PASS",
+            "resourceId": "5a701910-aac4-4492-859c-bc28997ea4b5",
+            "sourceIdentity": {
+              "sourceFingerprint": "60LnxQRtCh4FG9_9gGj4mwC8q13tS55CBdsjRyFcm5A",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "91uAZvBU8D+H0hmFtpcO7w=="
+            },
+            "currentFilename": "8859262..93.pdf",
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "limit_exceeded"
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "normalReaderPageCount": 146,
+            "physicalPagesOneBased": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/5a701-page1.jpg",
+                "physicalPageOneBased": 1,
+                "bytes": 76939,
+                "sha256": "1acafd8f45310848acb1db79aa8bc859df204b00a4cacc87d2edecdcca785687"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/5a701-page2-cip-readable.jpg",
+                "physicalPageOneBased": 2,
+                "bytes": 137662,
+                "sha256": "14ec715091825f36e084296bf1e205e754f73b5190cae6d14a3ef68fdfd6c9a5"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/5a701-page3.jpg",
+                "physicalPageOneBased": 3,
+                "bytes": 176953,
+                "sha256": "0800f9696dfff26f662f709c000406b8d61b4fdf227c74a4a56ef828e33abd64"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/5a701-page4-preface.jpg",
+                "physicalPageOneBased": 4,
+                "bytes": 272952,
+                "sha256": "3950ad00fa72223418276f885fb89cc128f2951dbb8e257358fab3401f648c4e"
+              }
+            ],
+            "canonicalTitle": "Die Mongolica der Berliner Turfansammlung",
+            "materialType": "book",
+            "materialClass": "modern_edited_source",
+            "contributors": [
+              {
+                "label": "Dalantai Cerensodnom",
+                "role": "editor",
+                "roleLabel": "Hrsg."
+              },
+              {
+                "label": "Manfred Taube",
+                "role": "other"
+              }
+            ],
+            "publication": {
+              "publisher": "Akademie Verlag",
+              "place": "Berlin",
+              "publicationDate": "1993"
+            },
+            "dateStatement": "1993",
+            "series": "Berliner Turfantexte; XVI",
+            "language": "de",
+            "identifiers": [
+              {
+                "scheme": "isbn",
+                "value": "3-05-001813-5"
+              }
+            ],
+            "sourceFacts": "Original UI1 title, both responsibility names and series XVI; UI2 CIP explicitly Berlin/Akad.Verl./1993, exact ISBN and Cerensodnom[Hrsg.]. UI3 contents and UI4 preface establish edited source/transcription/translation/commentary on Mongolian Turfan fragments. Series editors W.Sundermann/P.Zieme are not book contributors. Manfred Taube responsibility is not guessed as author/editor/translator; manuscript submission1987 and preface1992 are not publication dates.",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/5a701-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/5a701-manual-saved.jpg",
+            "saveNetworkRecovery": {
+              "firstBibliographyResponse": "Failed to fetch",
+              "freshNormalDetailsRead": "No structured bibliography present",
+              "oneBoundedRetry": "PASS visible server save confirmation",
+              "blindResubmit": false,
+              "persistedRecoverySnapshots": "Earlier recovery snapshots are diffs, not separate complete-state proof; final full saved state and original images are machine-verified."
+            },
+            "engineExtractionRetried": false,
+            "sourceBytesChanged": false
+          },
+          {
+            "status": "PASS",
+            "resourceId": "40912522-d2d6-4329-b04f-17f19b2b32a9",
+            "sourceIdentity": {
+              "sourceFingerprint": "5LS8lftnnl0_0scW6FT01T_Dlm6XNVBAr-iA3RtnZRE",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "AdgNAVVf5HUCDFkL3WNEEw=="
+            },
+            "currentFilename": "In the Shadow of the Mongol Empire Ming China and Eurasia (David M. Robinson) (z-library.sk, 1lib.sk....pdf",
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "source_unavailable"
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "normalDownload": {
+              "path": "C:/Users/35326/Downloads/In the Shadow of the Mongol Empire Ming China and Eurasia (David M. Robinson) (z-library.sk, 1lib.sk....pdf",
+              "bytes": 6195995,
+              "md5": "AdgNAVVf5HUCDFkL3WNEEw==",
+              "sha256": "73e810d78047e1dc26728fcb198a5480f8bbe12949d028be7412bae9101f5db7",
+              "normalWebsiteButton": true
+            },
+            "originalPageCount": 387,
+            "physicalPagesOneBased": [
+              2,
+              4,
+              5
+            ],
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/4091-original-002.png",
+                "physicalPageOneBased": 2,
+                "bytes": 129775,
+                "sha256": "515d0144325343ed8c423a0ebebf927a24c956f1cf5f17c2e9be584c67eba1f5"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/4091-original-004.png",
+                "physicalPageOneBased": 4,
+                "bytes": 34207,
+                "sha256": "194112093192c940358f152c2fa70ab1184d11d2b6321959a5116079a87cd708"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/original-held-followup/4091-original-005.png",
+                "physicalPageOneBased": 5,
+                "bytes": 164521,
+                "sha256": "d24852015c69022df37aff3a5b55a0c63408993f158c80cc20ffac797f808ece"
+              }
+            ],
+            "canonicalTitle": "In the Shadow of the Mongol Empire",
+            "subtitle": "Ming China and Eurasia",
+            "materialType": "book",
+            "materialClass": "scholarly_monograph",
+            "contributors": [
+              {
+                "label": "David M. Robinson",
+                "role": "author"
+              }
+            ],
+            "publication": {
+              "publisher": "Cambridge University Press",
+              "place": "Cambridge; New York",
+              "publicationDate": "2020"
+            },
+            "dateStatement": "First published 2020",
+            "language": "en",
+            "identifiers": [
+              {
+                "scheme": "isbn",
+                "value": "978-1-108-48244-8"
+              }
+            ],
+            "sourceFacts": "Downloaded original checksum and size match the exact manifest/source. Poppler physical page2 original synopsis supports research monograph; page4 actual title/subtitle/author/publisher; page5 explicit First published2020, CIP places/publisher and hardback ISBN. Colgate University is affiliation;2021 PDF creation metadata is not publication date. Paperback ISBN, printing/date and series omitted. Native Reader failure is distinct from source availability; normal download succeeded.",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/4091-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/4091-manual-saved.jpg",
+            "saveNetworkRecovery": {
+              "firstResponse": "Failed to fetch",
+              "freshNormalRead": "No structured bibliography present",
+              "oneNormalRetry": "PASS",
+              "fullStateReceipts": true
+            },
+            "engineExtractionRetried": false,
+            "paidOrCloudCalls": false,
+            "sourceBytesChanged": false
+          },
+          {
+            "status": "PASS",
+            "resourceId": "404a055a-e73b-480e-913b-d7556583c2cd",
+            "sourceIdentity": {
+              "sourceFingerprint": "sS4EbF3SeQ8Th54BIunXXgQr16cOfiTEyBHnAwTI5Oc",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "N1nEuMhzNWbbVaOOQgZ8JQ=="
+            },
+            "currentFilename": "元代人名大辞典+余大钧.pdf",
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "source_unavailable"
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "original": {
+              "path": "C:/Users/35326/Downloads/元代人名大辞典+余大钧.pdf",
+              "bytes": 14300835,
+              "md5": "N1nEuMhzNWbbVaOOQgZ8JQ==",
+              "sha256": "888d8f56ecc8906fa7421d562f7a1e7b91ec1959d989eec77156dc869b7acdc5",
+              "pageCount": 1030
+            },
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/404-source-review-20261011/404-page-0001.png",
+                "physicalPageOneBased": 1,
+                "bytes": 526785,
+                "sha256": "b708cec16d3911e595840b616189637758ed8186c713b4d0d14f2059fbc4d5cc"
+              }
+            ],
+            "canonicalTitle": "元代人名大辞典",
+            "materialType": "book",
+            "materialClass": "dictionary_lexicon",
+            "contributors": [
+              {
+                "label": "余大钧",
+                "role": "author",
+                "roleLabel": "撰"
+              },
+              {
+                "label": "余静",
+                "role": "other",
+                "roleLabel": "录入"
+              }
+            ],
+            "language": "zh",
+            "omissions": "Publication, identifiers and edition remain absent. References and PDF creation date are not imprint facts.",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/404a-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/404a-manual-saved.jpg",
+            "engineExtractionRetried": false,
+            "paidOrCloudCalls": false,
+            "sourceBytesChanged": false,
+            "independentSourceReview": "output/vnext/catalog-review-20261007/404-source-review-20261011/404-source-review.json",
+            "saveNetworkRecovery": "One bounded retry after fresh normal read proved no bibliography was saved"
+          },
+          {
+            "status": "PASS",
+            "resourceId": "6022d952-cd3d-4528-9f84-cc6f9e6342f5",
+            "sourceIdentity": {
+              "sourceFingerprint": "0erUDQTZlAFVEZd4Q6XsZPrHkS39ilbo_mB8XtOj0uE",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "IhtpWueZzdN3hZgjYybToQ=="
+            },
+            "currentFilename": "Hess_The_Manchu_Exegesis_of_the_Lunyu_1993_enhanced(1).pdf",
+            "oldInspection": {
+              "status": "failed",
+              "failureCode": "timeout"
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "original": {
+              "path": "C:/Users/35326/Downloads/Hess_The_Manchu_Exegesis_of_the_Lunyu_1993_enhanced(1).pdf",
+              "bytes": 11385572,
+              "md5": "IhtpWueZzdN3hZgjYybToQ==",
+              "sha256": "6c191ecaaca2278f21fa5640e94e56f72fa97a48467162070752b4f63eb75937",
+              "pageCount": 16
+            },
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/604-source-review-20261011/604-page-01.png",
+                "physicalPageOneBased": 1,
+                "bytes": 1311249,
+                "sha256": "19a0f9a86839d9e3345f9bc6f077ce37dab1a4fcf1c6edc70e7b9249abd89906"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/604-source-review-20261011/604-page-03.png",
+                "physicalPageOneBased": 3,
+                "bytes": 1718308,
+                "sha256": "09e6cb07722e763e7e4a8d747e8dcea472cf2c24b55392329cc6314694fb8dc1"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/604-source-review-20261011/604-page-16.png",
+                "physicalPageOneBased": 16,
+                "bytes": 1444060,
+                "sha256": "b316103092e603afbc26da3e10182dda81b80b681d20c9b7921e1b32b5b15527"
+              }
+            ],
+            "canonicalTitle": "The Manchu Exegesis of the Lúnyǔ",
+            "materialType": "article",
+            "materialClass": "journal_article",
+            "contributors": [
+              {
+                "label": "Laura E. Hess",
+                "role": "author"
+              }
+            ],
+            "language": "en",
+            "publication": {
+              "publicationDate": "1993"
+            },
+            "dateStatement": "1993",
+            "containerWork": "Journal of the American Oriental Society",
+            "typeFields": {
+              "volumeStatement": "113",
+              "issueStatement": "3",
+              "locator": "402–417"
+            },
+            "omissions": "Publisher/place/DOI/ISSN/edition remain absent. Affiliation, JSTOR download date and PDF creation metadata are not publication facts.",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/604-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/604-manual-saved.jpg",
+            "engineExtractionRetried": false,
+            "paidOrCloudCalls": false,
+            "sourceBytesChanged": false,
+            "independentSourceReview": "output/vnext/catalog-review-20261007/604-source-review-20261011/604-source-review.json",
+            "saveNetworkRecovery": "Initial normal save succeeded",
+            "normalCitation": "PASS actual《历史研究》output",
+            "citationReceipt": "output/vnext/catalog-review-20261007/604-citation.txt"
+          },
+          {
+            "status": "PASS",
+            "resourceId": "5bd99fdd-5f01-4457-82e6-f09d2a73dbad",
+            "sourceIdentity": {
+              "sourceFingerprint": "9cGL-cB3OT-sIqTW9F45YO_7Cx-KZs1BqZ5vueGPRF0",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "3mnNu2qUSa5xzHMmvQpSrw=="
+            },
+            "currentFilename": "回鹘式蒙古文文献汇编+道布.PDF",
+            "oldInspection": {
+              "status": "ready",
+              "failureCode": null
+            },
+            "sourceEvidenceHistoryUnchanged": true,
+            "original": {
+              "path": "C:/Users/35326/Downloads/道布 回鹘式蒙古文文献汇编.PDF",
+              "bytes": 15694157,
+              "md5": "3mnNu2qUSa5xzHMmvQpSrw==",
+              "sha256": "c9a2d0963ee08b3841107ebbe31654eae401c3f79c6de063f8f1891763ef1cea",
+              "pageCount": 725
+            },
+            "originalImages": [
+              {
+                "path": "output/vnext/catalog-review-20261007/old-held-originals-20261011/5bd99fdd/front-001.png",
+                "physicalPageOneBased": 1,
+                "bytes": 1050202,
+                "sha256": "a70c13556c2d7298f880029d5278234e81f02a5fc6c43f7383353c6accdb83c4"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/old-held-originals-20261011/5bd99fdd/front-003.png",
+                "physicalPageOneBased": 3,
+                "bytes": 29732,
+                "sha256": "0c408942a7e6db5f3de6d05e9e915c0e3c2d1f27f221b9e351ad5a5c7e933abd"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/old-held-originals-20261011/5bd99fdd/front-004.png",
+                "physicalPageOneBased": 4,
+                "bytes": 23776,
+                "sha256": "8d3c75ffc5819ee7a3bd8d6551623a2d198c277a3d7601c9cf50f9844061d731"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/old-held-originals-20261011/5bd99fdd/chinese-imprint-detail.png",
+                "physicalPageOneBased": 4,
+                "bytes": 5586,
+                "sha256": "d8c55289d8b6c41a2317542313d4bf24147bea55dcc542138b4b45f63b6759a9"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/old-held-originals-20261011/5bd99fdd/front-005.png",
+                "physicalPageOneBased": 5,
+                "bytes": 76845,
+                "sha256": "0bd849181e35be8ec1786488e4dd4f6918eaa5cc34d23144c6dba62aafa5c670"
+              },
+              {
+                "path": "output/vnext/catalog-review-20261007/old-held-originals-20261011/5bd99fdd/front-006.png",
+                "physicalPageOneBased": 6,
+                "bytes": 61061,
+                "sha256": "e47a0f860390b644beb21ec67d8c1a916ac36b1ee93b8926aa09bcb2a9737403"
+              }
+            ],
+            "canonicalTitle": "回鹘式蒙古文文献汇编",
+            "materialType": "book",
+            "materialClass": "modern_edited_source",
+            "contributors": [
+              {
+                "label": "道布",
+                "role": "reviser",
+                "roleLabel": "整理、转写、注释"
+              },
+              {
+                "label": "巴·巴根",
+                "role": "other",
+                "roleLabel": "校"
+              }
+            ],
+            "language": "mn",
+            "publication": {
+              "publisher": "民族出版社",
+              "publicationDate": "1983-06",
+              "editionNumber": "第1版",
+              "printing": "1983年6月北京第1次印刷"
+            },
+            "omissions": "No Mongolian-title transcription or publication place is inferred. Beijing belongs to the explicit printing statement; M11049(2)18 is not ISBN. Source title and modern edition/transcription/annotation responsibilities directly support the edited-source class.",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/5bd-manual-saved.txt",
+            "screenshot": "output/vnext/catalog-review-20261007/5bd-manual-saved.jpg",
+            "engineExtractionRetried": false,
+            "paidOrCloudCalls": false,
+            "sourceBytesChanged": false,
+            "independentSourceReview": "Root recovered the quota-interrupted exact original and reviewed source images; no independent final verdict is claimed.",
+            "saveNetworkRecovery": "Initial normal save succeeded"
           }
         ],
         "receipt": "output/vnext/catalog-review-20261007/older20-normal-manual-followup.json"
@@ -1921,7 +2499,16 @@
           "output/vnext/catalog-review-20261007/older19-field-tables.json",
           "output/vnext/catalog-review-20261007/older19-applied14.txt",
           "output/vnext/catalog-review-20261007/older19-applied14.jpg"
-        ]
+        ],
+        "normalManualResolution": {
+          "applied": 1,
+          "resourceIds": [
+            "5bd99fdd-5f01-4457-82e6-f09d2a73dbad"
+          ],
+          "receipt": "output/vnext/catalog-review-20261007/5bd-normal-original-validation.json",
+          "historicalFiveUnknownOutcomesUnchanged": true,
+          "remainingUnresolved": 4
+        }
       },
       "pendingJournalContainerCompletion": [],
       "journalContainerCompletion": [
@@ -1965,7 +2552,67 @@
           }
         ],
         "unchanged6fbReaderNotRetried": true,
-        "unchangedDamagedNotRetried": true
+        "unchangedDamagedNotRetried": true,
+        "historicalReaderObservationsRetained": true,
+        "resolvedLaterByExactOriginalDownload": [
+          "5bd99fdd-5f01-4457-82e6-f09d2a73dbad"
+        ]
+      },
+      "normalOriginalSourceFollowup20261010": {
+        "qaiduSaved": true,
+        "f830OriginalSource": {
+          "resourceId": "f8300c72-6d70-431c-b297-853a4d7ee84c",
+          "sourceIdentity": {
+            "sourceFingerprint": "alM9of7Ad8eHvvTxC2Hzi76LuzMnAsOeKGH3Omn5eE8",
+            "fileRevision": 1,
+            "checksumAlgorithm": "md5",
+            "checksum": "+sMM3rHan1uI2M60BgNE4g=="
+          },
+          "normalReaderPageCount": 512,
+          "physicalPagesOneBased": [
+            3,
+            4
+          ],
+          "originalImages": [
+            {
+              "path": "output/vnext/catalog-review-20261007/original-held-followup/f830-page3-edition.jpg",
+              "physicalPageOneBased": 3,
+              "bytes": 75977,
+              "sha256": "1a5b477ebbaeccd175e5b764481bd9d415a103804cc3a7b7afe9f421e2d87941"
+            },
+            {
+              "path": "output/vnext/catalog-review-20261007/original-held-followup/f830-page4-copyright.jpg",
+              "physicalPageOneBased": 4,
+              "bytes": 85795,
+              "sha256": "aa69f62c62cf1c8ddaef31e1e5584727188bc448ad6d5c241f623fbdb781d710"
+            }
+          ],
+          "supportedPublisher": "内蒙古人民出版社",
+          "supportedPublicationDate": "1989-11",
+          "supportedPrinting": "1991年8月第1次印刷",
+          "supportedEditionStatement": "根据蒙古乌兰巴托1968年新蒙文版本转写出版",
+          "canonicalWrite": false,
+          "status": "HOLD specific scholarly class remains unproven; publisher resolved from original image rather than appended acquisition metadata; unsaved manual editor cancelled"
+        },
+        "receipt": "output/vnext/catalog-review-20261007/normal-originals-20261010-validation.json",
+        "engineExtractionRetried": false,
+        "poppeSaved": true,
+        "numericSaved": true,
+        "robinsonSaved": true,
+        "additionalOriginals20261011": {
+          "saved": [
+            "404a055a-e73b-480e-913b-d7556583c2cd",
+            "6022d952-cd3d-4528-9f84-cc6f9e6342f5",
+            "5bd99fdd-5f01-4457-82e6-f09d2a73dbad"
+          ],
+          "receipts": [
+            "output/vnext/catalog-review-20261007/404a-normal-original-validation.json",
+            "output/vnext/catalog-review-20261007/604-normal-original-validation.json",
+            "output/vnext/catalog-review-20261007/5bd-normal-original-validation.json"
+          ],
+          "heldSourceReceipt": "output/vnext/catalog-review-20261007/original-held-download-validation-20261011.json",
+          "counts": "3 additional saves;20 unresolved/197 academic holdings; no new extractor request or deployment"
+        }
       }
     }
   },
@@ -1995,9 +2642,9 @@
   },
   "coordinatedRelease": {
     "ownerInstructionDate": "2026-09-27",
-    "status": "457a337_RETAINED_170_PROFILES_27_OPEN_ORGANIZATION_FIRST_CANDIDATE_PRESERVED",
+    "status": "457a337_RETAINED_177_PROFILES_20_OPEN_ORGANIZATION_FIRST_CANDIDATE_PRESERVED",
     "intake": "Current Owner priority: catalog every current Library book through normal signed-in UI and verify real outcomes, preserving human-edited fields, source identity, canonical authority and successful evidence. Preserve normal product review/Apply authority; no silent overwrite or false success.",
-    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Source-reviewed fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4+1/1 and older19 14/14 normal Apply accepted;170 profiles/197 academic holdings,27 unresolved. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open.",
+    "ocr": "Core/frontend457a337 and retained native1b7/schema41 deployed; normal ZIP Workspace/Details accepted. Source-reviewed fresh12 9/9, fresh24 17/17, fresh47 32/32 plus4/4+1/1 and older19 14/14 normal Apply accepted;177 profiles/197 academic holdings,20 unresolved. Original private9/9 and313-page histories remain; old Fletcher failure intact, new native whole-book quality/speed open. Qaidu normal original-source/manual resolution1/1 is additional to the retained batch receipts. Poppe/numeric normal original-source manual resolutions2/2 add to Qaidu and retained batch receipts. Robinson normal download/original-page/manual save adds1/1.404a/Hess/5bd exact-original normal saves3/3; Hess citation PASS.",
     "ux": "Integrated cad1ecf repairs included in exact662a7a0 deployment; historical Workspace30/30 qualification remains valid, whole-product live acceptance remains open.",
     "singleDeploymentOperatorRequired": true,
     "independentTaskDeploymentAllowed": false,
@@ -2009,7 +2656,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "Owner October10 repeats the organization-first gate: 170 supported profiles and 27 unresolved PDFs do not satisfy complete Library organization. Continue source review and normal catalogue recording first. Preserve source candidate2607af8 and its189 local checks as history; further catalogue improvements, exact release qualification and deployment are deferred until organization is complete. Current production457a337/native1b7, schema41, source bytes and model/contract pins remain unchanged. **October10 Library and delivery state:**205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+1 normal manual PDF=169 current reviews; one earlier human PDF gives170 reviewed profiles=157PDF+13nonPDF.27 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,7 fresh24 failed,1 earlier timeout,1 notice HOLD,4 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not170 complete bibliographies. All-Library acceptance remains open.",
+  "currentContinuationBoundary": "Owner October10 repeats the organization-first gate: 177 supported profiles and 20 unresolved PDFs do not satisfy complete Library organization. Continue source review and normal catalogue recording first. Preserve source candidate2607af8 and its189 local checks as history; further catalogue improvements, exact release qualification and deployment are deferred until organization is complete. Current production457a337/native1b7, schema41, source bytes and model/contract pins remain unchanged. **October11 Library and delivery state:**205 holdings=192PDF+13nonPDF remain intact. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves197=184PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+8 normal manual PDF=176 current reviews; one earlier human PDF gives177 reviewed profiles=164PDF+13nonPDF.20 academic PDFs remain unresolved:5 fresh47 HOLD,2 fresh47 failed,1 fresh24 failed,1 earlier timeout,1 notice HOLD,3 older ready HOLD,1 older inspection failure and6 unchanged damaged. These are source-supported profiles with omissions, not177 complete bibliographies. All-Library acceptance remains open.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",
