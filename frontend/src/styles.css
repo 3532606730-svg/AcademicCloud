@@ -256,7 +256,7 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
   font-weight: 650;
 }
 
-.workspace { position: relative; grid-column: 2; grid-row: 2; min-width: 0; padding: clamp(1.75rem, 3vw, 3rem); overflow-x: hidden; }
+.workspace { position: relative; grid-column: 2; grid-row: 2; min-width: 0; padding: clamp(1.75rem, 3vw, 3rem); overflow-x: clip; }
 
 .shared-library-panel { margin-top: 0.25rem; }
 .shared-library-member-list { display: grid; }
@@ -462,6 +462,9 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
 .entry-select:disabled + .entry-select-box { opacity: 0.45; }
 
 .bulk-toolbar {
+  position: sticky;
+  top: 4.5rem;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1061,7 +1064,7 @@ input[type="checkbox"], input[type="radio"] { min-height: 0; padding: 0; accent-
   .library-search-material select, .library-search-sort select, .library-search-advanced, .library-search-advanced summary { width: 100%; max-width: none; min-height: 2.75rem; }
   .library-search-filter-grid { position: static; width: 100%; grid-template-columns: minmax(0, 1fr); margin-top: 0.4rem; box-shadow: none; }
   .library-search-result { min-height: 2.75rem; padding: 0.7rem 0.9rem; }
-  .bulk-toolbar { position: sticky; z-index: 20; top: 0.35rem; align-items: stretch; flex-direction: column; }
+  .bulk-toolbar { top: 4.1rem; align-items: stretch; flex-direction: column; }
   .bulk-toolbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; }
   .bulk-toolbar .button { min-height: 2.75rem; }
   .row-menu { min-width: 11rem; }

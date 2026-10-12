@@ -43,10 +43,11 @@ function retainStart(key: string, value: PendingStart | null) {
   try { if (value) window.sessionStorage.setItem(key, JSON.stringify(value)); else window.sessionStorage.removeItem(key); } catch { /* The in-tab request retains its key in memory. */ }
 }
 
-export function WholeBookOcr({ connection, document: sourceDocument, pageCount, onReview, onCheckpoint, blocked = false, onBusyChange }: {
+export function WholeBookOcr({ connection, document: sourceDocument, pageCount, focusReading = false, onReview, onCheckpoint, blocked = false, onBusyChange }: {
   connection: ReaderLocalOcr; document: BookOcrDocument | null; pageCount: number | null;
   onReview: (physicalPage: number) => void; onCheckpoint?: (() => void) | undefined;
   blocked?: boolean; onBusyChange?: ((value: boolean) => void) | undefined;
+  focusReading?: boolean;
 }) {
   const { language } = useLanguage(); const zh = language === "zh-CN";
   const { api, accountId, resourceId, sourceId } = connection;
@@ -55,6 +56,7 @@ export function WholeBookOcr({ connection, document: sourceDocument, pageCount, 
   const current = useRef({ bookKey, sourceDocument }); current.current = { bookKey, sourceDocument };
   const controller = useRef<LocalOcrBookController | null>(null);
   const [open, setOpen] = useState(false);
+  useEffect(() => { if (focusReading) setOpen(false); }, [focusReading]);
   const [devices, setDevices] = useState<LocalOcrDevice[]>([]);
   const [deviceId, setDeviceId] = useState(""); const [deviceAccount, setDeviceAccount] = useState(accountId);
   const [dialog, setDialog] = useState<HTMLElement | null>(null);
@@ -188,6 +190,7 @@ export function WholeBookOcr({ connection, document: sourceDocument, pageCount, 
   return <div className="local-ocr local-ocr-book">
     <div className="local-ocr__actions"><button type="button" className="pdf-reader__text-button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>{zh ? "整书OCR" : "Whole-book OCR"}</button>{running && <span role="status">{status}</span>}</div>
     {open && <section className="local-ocr__panel" aria-label={zh ? "整书私有OCR" : "Private whole-book OCR"}>
+      <div className="local-ocr__panel-heading"><strong>{zh ? "整书OCR" : "Whole-book OCR"}</strong><button type="button" aria-label={zh ? "收起整书OCR" : "Collapse whole-book OCR"} onClick={() => setOpen(false)}>{zh ? "收起" : "Collapse"}</button></div>
       <p>{useBackground ? (zh ? "新版连接器在你自己的电脑上处理整书，关闭网站仍会继续。电脑和连接器须保持运行；重启后重新配对，再手动继续任务。" : "The updated connector processes the book on your own computer and continues after you close the website. Keep the computer and connector running; after a restart, pair again and resume the job manually.") : (zh ? "该连接器使用阅读器逐页识别。保持阅读器和连接器开启、设备唤醒；隐藏页面或离开阅读器会暂停。更新连接器可使用后台任务。" : "This connector uses the Reader to process pages. Keep the Reader and connector open and your device awake; hiding the page or leaving the Reader pauses OCR. Update the connector for background jobs.")}</p>
       {pageCount !== null && pageCount > 500 && <p role="status">{message("book_page_limit", zh)}</p>}
       <label>{zh ? "整书识别设备" : "Book OCR device"}<select value={deviceId} disabled={running || changing} onChange={(event) => setDeviceId(event.target.value)}><option value="">{zh ? "选择已配对设备" : "Choose a paired device"}</option>{selectedDevices.map((value) => <option key={value.id} value={value.id}>{value.label} · {value.online ? (zh ? "在线" : "Online") : (zh ? "离线" : "Offline")} · {supportsBook(value) ? (zh ? "后台整书" : "Background books") : (zh ? "需开启阅读器" : "Reader required")}</option>)}</select></label>

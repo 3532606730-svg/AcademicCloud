@@ -46,7 +46,7 @@ async function copyText(text: string, zh: boolean, message: (value: string) => v
   catch { message(zh ? "剪贴板不可用，请选中文字后使用 Ctrl/Cmd+C。" : "Clipboard unavailable. Select the text and press Ctrl/Cmd+C."); }
 }
 
-export function CurrentPageOcr({ connection, physicalPage, painted, refreshVersion = 0, blocked = false, onBusyChange }: { connection: ReaderLocalOcr; physicalPage: number; painted: PaintedOcrPage | null; refreshVersion?: number; blocked?: boolean; onBusyChange?: ((value: boolean) => void) | undefined }) {
+export function CurrentPageOcr({ connection, physicalPage, painted, focusReading = false, refreshVersion = 0, blocked = false, onBusyChange }: { connection: ReaderLocalOcr; physicalPage: number; painted: PaintedOcrPage | null; focusReading?: boolean; refreshVersion?: number; blocked?: boolean; onBusyChange?: ((value: boolean) => void) | undefined }) {
   const { language } = useLanguage(); const zh = language === "zh-CN";
   const { api, accountId, resourceId, sourceId } = connection;
   const page: LocalOcrPage = { resourceId, sourceId, physicalPage };
@@ -57,6 +57,7 @@ export function CurrentPageOcr({ connection, physicalPage, painted, refreshVersi
   const [deviceAccount, setDeviceAccount] = useState(accountId);
   const [deviceId, setDeviceId] = useState("");
   const [open, setOpen] = useState(false);
+  useEffect(() => { if (focusReading) setOpen(false); }, [focusReading]);
   const [dialog, setDialog] = useState<HTMLElement | null>(null);
   const [progress, setProgress] = useState<OcrProgress | null>(null);
   const [message, setMessage] = useState("");
@@ -149,7 +150,7 @@ export function CurrentPageOcr({ connection, physicalPage, painted, refreshVersi
       {progress && <><span role="status">{progress.state === "capturing" ? (zh ? "正在生成当前页图像…" : "Rendering current page…") : progress.state === "queued" ? (zh ? "等待本地设备…" : "Waiting for your device…") : (zh ? "正在本地识别…" : "Recognizing locally…")}</span><button type="button" onClick={() => { request.current++; controller.current?.cancel(); setProgress(null); setMessage(zh ? "识别已取消。" : "OCR cancelled."); }}>{zh ? "取消识别" : "Cancel OCR"}</button></>}
     </div>
     {open && <section className="local-ocr__panel" aria-label={zh ? "当前页私有OCR" : "Private current-page OCR"}>
-      <p>{zh ? `PDF 第 ${physicalPage} 页 · 使用你的设备识别` : `PDF page ${physicalPage} · OCR on your device`}</p>
+      <div className="local-ocr__panel-heading"><p>{zh ? `PDF 第 ${physicalPage} 页 · 使用你的设备识别` : `PDF page ${physicalPage} · OCR on your device`}</p><button type="button" aria-label={zh ? "收起当前页OCR" : "Collapse current-page OCR"} onClick={() => setOpen(false)}>{zh ? "收起" : "Collapse"}</button></div>
       {blocked && <p className="local-ocr__hint">{zh ? "整书识别正在运行，暂停后可识别当前页。" : "Book OCR is running. Pause it before starting current-page OCR."}</p>}
       <label>{zh ? "识别设备" : "OCR device"}<select value={deviceId} disabled={!!progress} onChange={(event) => setDeviceId(event.target.value)}><option value="">{zh ? "选择已配对设备" : "Choose a paired device"}</option>{visibleDevices.filter((device) => !device.revokedAt).map((device) => <option key={device.id} value={device.id}>{device.label} · {device.online ? (zh ? "在线" : "Online") : (zh ? "离线" : "Offline")}</option>)}</select></label>
       {message && <p role="status">{message}</p>}

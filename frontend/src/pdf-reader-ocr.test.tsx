@@ -30,6 +30,35 @@ function open(api: LocalOcrApi = ocrApi({ results: vi.fn().mockResolvedValue([])
 }
 async function ready() { await waitFor(() => expect(screen.getByRole("button", { name: "Current page OCR" })).toBeEnabled()); }
 describe("actual Reader OCR paint boundary", () => {
+  it("collapses open reading panels on focus entry, preserves the OCR draft and leaves background work active", async () => {
+    const job = { ...OCR_BOOK_JOB, pageCount: 10, state: "running" as const };
+    const api = ocrApi({ devices: vi.fn().mockResolvedValue([OCR_BOOK_DEVICE]), books: vi.fn().mockResolvedValue([job]) });
+    const view = open(api);
+    fireEvent.click(screen.getByRole("button", { name: /Private OCR results/ }));
+    const draft = await screen.findByRole("textbox", { name: "Corrected text" });
+    fireEvent.change(draft, { target: { value: "Unsaved OCR correction" } });
+    fireEvent.click(screen.getByRole("button", { name: "Whole-book OCR" }));
+    await screen.findByRole("button", { name: "Pause book OCR" });
+    fireEvent.click(screen.getByRole("button", { name: "Search / export" }));
+    expect(screen.getByRole("textbox", { name: "Search native PDF text" })).toBeInTheDocument();
+    view.rerender(view.ui({ ...view.base, focusReading: true }));
+    expect(screen.queryByRole("textbox", { name: "Corrected text" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pause book OCR" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Search native PDF text" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Private OCR results/ })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: "Whole-book OCR" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: "Current page OCR" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /Private OCR results/ }));
+    expect(await screen.findByRole("textbox", { name: "Corrected text" })).toHaveValue("Unsaved OCR correction");
+    fireEvent.click(screen.getByRole("button", { name: "Collapse current-page OCR" }));
+    expect(screen.queryByRole("textbox", { name: "Corrected text" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Whole-book OCR" }));
+    await screen.findByRole("button", { name: "Pause book OCR" });
+    fireEvent.click(screen.getByRole("button", { name: "Collapse whole-book OCR" }));
+    expect(screen.queryByRole("button", { name: "Pause book OCR" })).not.toBeInTheDocument();
+    expect(api.pauseBook).not.toHaveBeenCalled(); expect(api.cancelBook).not.toHaveBeenCalled();
+    expect(api.correct).not.toHaveBeenCalled(); expect(api.create).not.toHaveBeenCalled(); expect(api.createBook).not.toHaveBeenCalled();
+  });
   it("keeps OCR disabled while the page paint is pending, including paused navigation", async () => {
     let finish!: () => void; engine.render.mockImplementationOnce(() => ({ promise: new Promise<void>((resolve) => { finish = resolve; }), cancel: vi.fn() }));
     const view = open(); expect(screen.getByRole("button", { name: "Current page OCR" })).toBeDisabled();

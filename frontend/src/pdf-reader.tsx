@@ -60,6 +60,7 @@ export interface PdfReaderProps {
   onDeleteHighlight?: (highlight: PdfHighlight) => void | Promise<void>;
   onNewNote?: () => void;
   localOcr?: ReaderLocalOcr | undefined;
+  focusReading?: boolean;
 }
 
 const MAX_CANVAS_PIXELS = 12_000_000;
@@ -85,6 +86,7 @@ export function PdfReader(props: PdfReaderProps) {
   const [selection, setSelection] = useState<SelectionHighlight | null>(null);
   const [showHighlights, setShowHighlights] = useState(true);
   const [panel, setPanel] = useState<"search" | "highlights" | null>(null);
+  useEffect(() => { if (props.focusReading) setPanel(null); }, [props.focusReading]);
   const [toolMessage, setToolMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [pendingHighlight, setPendingHighlight] = useState<SelectionHighlight | null>(null);
@@ -593,8 +595,8 @@ export function PdfReader(props: PdfReaderProps) {
         {props.highlights && <button type="button" aria-expanded={panel === "highlights"} onClick={() => setPanel((value) => value === "highlights" ? null : "highlights")}>{zh ? "高亮列表" : "Highlights"} ({props.highlights.length})</button>}
         {props.onNewNote && <button type="button" disabled={busy} onClick={props.onNewNote}>{zh ? "新建笔记" : "New note"}</button>}
       </div>
-      {props.localOcr && <><CurrentPageOcr connection={props.localOcr} physicalPage={page} painted={!busy && !error && paintedOcrPage?.isCurrent() ? paintedOcrPage : null} refreshVersion={ocrRefresh} blocked={bookOcrBusy} onBusyChange={setPageOcrBusy} />
-        <WholeBookOcr connection={props.localOcr} document={bookDocument} pageCount={pageCount} blocked={pageOcrBusy} onBusyChange={setBookOcrBusy} onCheckpoint={() => setOcrRefresh((value) => value + 1)} onReview={(target) => { setOcrRefresh((value) => value + 1); goToPage(target); }} /></>}
+      {props.localOcr && <div className="pdf-reader__ocr"><CurrentPageOcr connection={props.localOcr} physicalPage={page} painted={!busy && !error && paintedOcrPage?.isCurrent() ? paintedOcrPage : null} focusReading={props.focusReading ?? false} refreshVersion={ocrRefresh} blocked={bookOcrBusy} onBusyChange={setPageOcrBusy} />
+        <WholeBookOcr connection={props.localOcr} document={bookDocument} pageCount={pageCount} focusReading={props.focusReading ?? false} blocked={pageOcrBusy} onBusyChange={setBookOcrBusy} onCheckpoint={() => setOcrRefresh((value) => value + 1)} onReview={(target) => { setOcrRefresh((value) => value + 1); goToPage(target); }} /></div>}
       {panel === "search" && <div className="pdf-reader__panel">
         <form className="pdf-reader__search-form" onSubmit={(event) => { event.preventDefault(); void readText("search"); }}>
           <input aria-label={zh ? "搜索 PDF 原生文字" : "Search native PDF text"} placeholder={zh ? "在原生文字中搜索" : "Search native text"} value={query} maxLength={200} onChange={(event) => setQuery(event.target.value)} />

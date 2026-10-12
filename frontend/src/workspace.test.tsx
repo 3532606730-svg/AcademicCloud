@@ -131,6 +131,11 @@ describe("private workspace", () => {
     renderWorkspace(f.api, { accountId: "member-one", localOcr, asPage: true, onAuthorizeReader: vi.fn().mockResolvedValue({ url: "https://example.test/source.pdf", download: vi.fn() }) });
     await screen.findByTestId("pdf-reader");
     expect(pdfReaderControl.props!.localOcr).toEqual({ api: localOcr, accountId: "member-one", resourceId: RESOURCE.resourceId, sourceId: RESOURCE.sourceId });
+    expect(pdfReaderControl.props!.focusReading).toBe(false);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Focus reading" }));
+    expect(pdfReaderControl.props!.focusReading).toBe(true);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Show sidebars" }));
+    expect(pdfReaderControl.props!.focusReading).toBe(false);
   });
   it("reveals the thirteenth already loaded recent item without another request and opens its saved page", async () => {
     const user = userEvent.setup();

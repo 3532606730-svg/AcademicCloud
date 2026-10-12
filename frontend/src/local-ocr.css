@@ -1,6 +1,10 @@
 .local-ocr { flex: 0 0 auto; min-width: 0; background: var(--paper, #fff); border-bottom: 1px solid var(--line, #ddd); }
 .local-ocr__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 12px; }
 .local-ocr__panel { max-height: min(48vh, 620px); overflow: auto; padding: 8px 16px 16px; font-size: .86rem; }
+.local-ocr__panel-heading { position: sticky; top: -8px; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; background: var(--paper, #fff); }
+.local-ocr__panel-heading p { margin: 0; }
+.pdf-reader__ocr { flex: 0 1 auto; min-height: 0; max-height: min(38dvh, 22rem); overflow: auto; }
+.pdf-reader__ocr .local-ocr__panel { max-height: none; overflow: visible; }
 .local-ocr__panel label, .local-ocr-dialog label { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; min-width: 0; }
 .local-ocr__panel textarea, .local-ocr__panel select, .local-ocr-dialog input { width: 100%; max-width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #bcc9c4; border-radius: 6px; color: inherit; background: #fff; }
 .local-ocr__panel textarea { resize: vertical; }
