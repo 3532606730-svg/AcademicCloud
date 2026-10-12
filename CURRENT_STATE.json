@@ -1,5 +1,5 @@
 {
-  "lastReconciled": "2026-10-11",
+  "lastReconciled": "2026-10-12",
   "activeTask": "ACADEMICCLOUD-VNEXT-REMEDIATION01",
   "authority": "Owner reassessment charter; predecessor explicitly stopped and start authorized 2026-09-09; broad evidence-gated Phase B, zero added cost",
   "source": {
@@ -9,8 +9,8 @@
     "checkpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Persisted835a979 push/fetch/local equality is verified history. Current lower/third/fourth source-save and Owner-Recycle documentation checkpoint publication and fresh HEAD equality are verified separately by Git; these source records do not change production457a337/native1b7.",
-    "lastVerifiedPublishedCheckpoint": "835a979b0581a5636846128de60f178fae3c0d39",
+    "localState": "Prior7c7fe77 push/fetch/clean local equality is verified history. CurrentOctober12 decision/source progress and subsequent implementation publication are separately verified by Git; deployed457a337/native1b7 are retained until qualified release.",
+    "lastVerifiedPublishedCheckpoint": "7c7fe77adebd0c5ff3e1d1814bf470577e5224ec",
     "checkpointMeaning": "Exact deployed Core/frontend source457a337 and retained native1b7; subsequent repository documentation checkpoints are identified by Git HEAD, not a new runtime release.",
     "documentationPublicationMeaning": "Catalogue and source candidate checkpoints through2607af8 have actual push/fetch and local equality evidence. Repository publication is separate from runtime deployment and from completion of Library organization.",
     "documentationPublicationStatus": "PREVIOUS_2607AF8_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
@@ -1046,7 +1046,7 @@
       "releaseStatePointer": "production.productCopyRelease"
     },
     "catalogueRepair20261010": {
-      "status": "LOCAL_QUALIFIED_PRESERVED_PENDING_COMPLETE_ORGANIZATION",
+      "status": "LOCAL_QUALIFIED_PRESERVED_OWNER_AUTHORIZES_REPAIR_WITH_6_HELD",
       "backendTests": 40,
       "frontendTests": 10,
       "pdfTests": 31,
@@ -1081,9 +1081,14 @@
         "ownerInstructionDate": "2026-10-10",
         "complete": false,
         "candidateCommit": "2607af889d4a151651ac686121a5e257b221ab86",
-        "furtherImplementationDeferred": true,
-        "exactReleaseQualificationDeferred": true,
-        "deploymentDeferred": true
+        "furtherImplementationDeferred": false,
+        "exactReleaseQualificationDeferred": false,
+        "deploymentDeferred": false,
+        "ownerContinuationDate": "2026-10-12",
+        "ownerDeferredHolds": 6,
+        "ownerAnswer": "保留这6项待确认，先修复编目系统",
+        "repairSequencingAuthorized": true,
+        "completionMeaning": "Full organization/corpus acceptance stays open; Owner explicitly removes it as a prerequisite for scoped repair."
       }
     },
     "ownerCatalogueCleanup20261011": {
@@ -1108,6 +1113,15 @@
         "newlyResolved": 0,
         "receipt": "bookIntakeReliability.currentLibraryCatalogue.remainingExactOriginalReview20261011"
       }
+    },
+    "normalCatalogueFollowup20261012": {
+      "status": "PASS_NORMAL_SAVES_2_OF_2",
+      "profiles": 182,
+      "unresolved": 6,
+      "scope": "Root exact original/page/primary-publication comparison,Owner classification,normal Details2/2,actual d3 citation failure recorded.",
+      "independentFinalReview": false,
+      "productionRelease": false,
+      "codeChanges": false
     }
   },
   "computeQualification": {
@@ -1120,11 +1134,10 @@
     "normalUpload": "automatic job creation and recovery preserved; attempt3 succeeded13:01:49.917Z exact3c86437 in57.929s with19 evidenced fields, UNKNOWN, no autoapply or canonical mutation; normal Details AI panel verified"
   },
   "blockers": [
-    "Current catalogue:180 source-supported profiles/188 active academic holdings;8 unresolved PDFs. Nine Owner-recycled sources are scope reduction, not successful catalogue acceptance.",
-    "Remaining8 sources need exact original/container/type support. Both third/fourth complete downloads are hash-bound and normally catalogued. Historical six damaged sources and3 further unparseable/missing-title sources are closed by Owner recoverable Recycle9/9.",
-    "Exact coordinated release and Owner local current-page OCR acceptance complete; remaining intake/per-book recovery, live export, field quality, corpus reconciliation, normal-product performance and whole-product/report acceptance remain open."
+    "Six active sources retain explicit HOLD by Owner choice; they no longer block scoped system repair.182 source-supported profiles/188 academic holdings; full-Library acceptance remainsfalse.",
+    "Exact Linux/Core/native artifact and bounded-memory qualification plus coordinated release/live acceptance remain required;189 old local checks do not qualify later edits."
   ],
-  "next": "Continue the8 remaining active unresolved PDFs through normal source review and supported catalogue recording. Nine Owner-authorized damaged/missing-title sources are already in Recycle; do not repeat deletion. Both third/fourth normal downloads are complete, hash-bound and normally catalogued; retain their historical failures.180 profiles/188 active academic holdings keep full-Library acceptance false. Preserve candidate2607af8; catalogue-system improvements/exact qualification/deployment follow completed organization.",
+  "next": "Repair the recorded catalogue defects from preserved candidate2607af8, beginning with source-preserving authority/Preview/PDF efficiency and article-container/citation/display recovery. OwnerOctober12 retains6 explicit HOLD and authorizes repair before their resolution. Keep182/188 profiles,full-Library acceptancefalse,original bytes/private state and frozen model/contracts. Qualify one exact coordinated release and normal signed-in regressions before direct authorized deployment; no main merge/paid calls.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -1194,10 +1207,10 @@
     "implementationCheckpoint": "58d6da9ea9f3b2cea48f9ed82fdceb23985ec20f",
     "deploymentMeaning": "Integrated implementation bytes are in exact662a7a0 production release; historical local test scope is unchanged and the full real signed-in intake/recovery/quality acceptance is not thereby complete.",
     "currentLibraryCatalogue": {
-      "observedAt": "2026-10-11",
+      "observedAt": "2026-10-12 normal source-save follow-up;196 active holdings from retainedOctober11 normal listing",
       "normalUiHoldings": 196,
       "activePdfs": 183,
-      "reviewedApplied": 179,
+      "reviewedApplied": 181,
       "pilotApplied": 3,
       "current17": {
         "batchId": "7476de99-8782-4607-a6c7-bc646d943ed1",
@@ -1323,15 +1336,15 @@
           "screenshot": "output/vnext/catalog-review-20261007/nonpdf-yiyuzhi-saved.png"
         }
       },
-      "thisRoundReviewed": 179,
+      "thisRoundReviewed": 181,
       "earlierHumanPdfProfiles": 1,
-      "existingReviewedProfiles": 180,
+      "existingReviewedProfiles": 182,
       "scholarlyHoldingsExcludingExactFixtures": 188,
       "scholarlyPdfsExcludingExactFixtures": 175,
-      "reviewedPdfProfiles": 167,
-      "unresolvedScholarlyPdfs": 8,
+      "reviewedPdfProfiles": 169,
+      "unresolvedScholarlyPdfs": 6,
       "unresolvedPdfBreakdown": {
-        "fresh47AcademicHeld": 4,
+        "fresh47AcademicHeld": 2,
         "fresh47Failed": 0,
         "fresh24Failed": 1,
         "freshTimeout": 0,
@@ -1359,7 +1372,7 @@
       "pdfsExcludingOnlyExactFixtures": 179,
       "initialFreshExportCandidates": 83,
       "initialFreshScholarlyCandidates": 82,
-      "corpusOutcomesReceiptMeaning": "Historical October9 corpus receipt and batch outcomes retained. Current155 batch+13 normal manual nonPDF+11 normal manual PDF=179 this-round; one earlier human PDF gives180 source-supported profiles=167PDF+13nonPDF. Owner-recycled9 unresolved sources remain recoverable; active academic188=175PDF+13nonPDF leaves8 unresolved PDFs. Cleanup is Owner scope reduction, not successful AI/canonical acceptance. Full Library acceptance remains false.",
+      "corpusOutcomesReceiptMeaning": "Historical October9 corpus receipt and batch outcomes retained. Current155 batch+13 normal manual nonPDF+11 normal manual PDF=179 this-round; one earlier human PDF gives180 source-supported profiles=167PDF+13nonPDF. Owner-recycled9 unresolved sources remain recoverable; active academic188=175PDF+13nonPDF leaves8 unresolved PDFs. Cleanup is Owner scope reduction, not successful AI/canonical acceptance. Full Library acceptance remains false. October12 adds2 normal exact-source saves(f830 Owner-confirmed literary history and d3 primary-publication matched paper), giving182/188 profiles and6 Owner-deferred HOLD; original export receipt remains dated history.",
       "scopeReconciliationEvidence": [
         "output/vnext/catalog-review-20261007/corpus-outcomes-20261009.json",
         "output/vnext/catalog-review-20261007/fresh12-package-audit.json",
@@ -1445,7 +1458,7 @@
       },
       "postCatalogueImprovement": {
         "ownerInstructionDate": "2026-10-09",
-        "order": "Finish current Library source review and normal catalogue recording first; then improve the catalogue system from the observed evidence.",
+        "order": "OwnerOctober12 retains6 pending sources and explicitly authorizes catalogue-system repair now; full-Library acceptance remainsfalse.",
         "implementationStarted": false,
         "findings": [
           "New metadata with other/unknown materialClass and omitted materialType falls back to book; source notice is held rather than misclassified.",
@@ -1468,7 +1481,9 @@
           "A normal download event timeout may still produce a complete file; one exact checksum/size read established xy source arrival, then native parsers independently failed on its XRef/trailer. Do not repeat download or invent metadata from filename.",
           "Normal Library display turns source responsibility labels 本卷主编/本卷副主编 into misleading edition suffixes 本卷主编本/本卷副主编本. Keep exact underlying roles/roleLabel, distinguish volume editor scope from series editor scope, and repair display projection only after organization. Regional volume + 下册 must remain present in the volume identity.",
           "An All Pages filename may describe body-only OCR: exact Hucker497-page source omits title/imprint. Require independent exact-source coverage and separate complete-work authority; do not borrow publication facts from a different source. Normal transfer event timeout is distinct from source integrity; third605MB eventually completes and title pages support its own volume facts.",
-          "Fourth-volume rear cover has a four-volume set ISBN. Catalogue identity must retain identifier scope and volume identity instead of projecting a set ISBN as a unique part; no ISBN was written for the isolated fourth-volume record."
+          "Fourth-volume rear cover has a four-volume set ISBN. Catalogue identity must retain identifier scope and volume identity instead of projecting a set ISBN as a unique part; no ISBN was written for the isolated fourth-volume record.",
+          "Normal d3 conference-paper citation omits its stored container_work and page span433–449 in Historical Research. Root reproduces actual citation; source facts stay distinct from rendering defect.",
+          "Whole-journal issue,book/index excerpts and a submission notice expose missing/unknown broad-type representation. Existing Details first-save defaultsbook and always submits a full contributor list; do not force these pending sources into unsupported types. New domain/schema changes require a separately recorded design rather than silently changing model/contract pins."
         ],
         "codeChanges": false,
         "newSchemaOrTypeEnum": false,
@@ -1497,7 +1512,15 @@
           "actualSourceFileAccepted": false,
           "securitySettingsChanged": false,
           "sourceReviewNotClaimed": true
-        }
+        },
+        "conferenceCitationReproduction": {
+          "status": "REPRODUCED_CONTAINER_AND_PAGE_OMISSION",
+          "style": "Historical Research",
+          "receipt": "output/vnext/catalog-review-20261007/d3-citation-20261012.txt",
+          "screenshot": "output/vnext/catalog-review-20261007/d3-citation-20261012.jpg",
+          "schemaOrCanonicalCauseNotClaimed": true
+        },
+        "ownerRepairAuthorized20261012": true
       },
       "natureJournalCompletion": {
         "resourceId": "0b1bac05-a083-4292-8013-03b9dae66805",
@@ -1838,18 +1861,22 @@
         "normalManualResolution": {
           "resourceIds": [
             "b0383b34-817a-4109-a801-91409385df7e",
-            "77a6a6b4-70a9-4065-beba-543702735fba"
+            "77a6a6b4-70a9-4065-beba-543702735fba",
+            "f8300c72-6d70-431c-b297-853a4d7ee84c",
+            "d3ece10c-2944-4ba0-9056-dfd903b70595"
           ],
-          "applied": 2,
+          "applied": 4,
           "originalFailuresUnchanged": true,
           "receipts": [
             "output/vnext/catalog-review-20261007/lower-normal-original-validation.json",
-            "output/vnext/catalog-review-20261007/fourth-normal-original-validation.json"
+            "output/vnext/catalog-review-20261007/fourth-normal-original-validation.json",
+            "output/vnext/catalog-review-20261007/f830-manual-saved-20261012.txt",
+            "output/vnext/catalog-review-20261007/d3-manual-saved-20261012.txt"
           ]
         }
       },
       "totalNonScholarlySourceExclusions": 4,
-      "normalManualPdfFollowup": 11,
+      "normalManualPdfFollowup": 13,
       "additionalNonScholarlySourceExclusions": [
         {
           "resourceId": "63991656-ad84-4e24-9d9b-787fe1e3ad27",
@@ -1883,7 +1910,7 @@
         }
       ],
       "normalManualPdfSourceReviews": {
-        "applied": 11,
+        "applied": 13,
         "entries": [
           {
             "resourceId": "f7e29772-e603-47b7-9c2e-7c798d661192",
@@ -2774,6 +2801,147 @@
             "paidOrCloudCalls": false,
             "sourceBytesChanged": false,
             "rootOriginalReview": true
+          },
+          {
+            "resourceId": "f8300c72-6d70-431c-b297-853a4d7ee84c",
+            "sourceIdentity": {
+              "sourceFingerprint": "alM9of7Ad8eHvvTxC2Hzi76LuzMnAsOeKGH3Omn5eE8",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "+sMM3rHan1uI2M60BgNE4g=="
+            },
+            "sizeBytes": 97181709,
+            "sourceSha256": "e280efa7acdd8cf3b48bc342949a75fe2d6c77c2997a9d67050bf831d2ed90e5",
+            "physicalPagesOneBased": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              511
+            ],
+            "canonicalTitle": "蒙古文学概要",
+            "materialType": "book",
+            "materialClass": "scholarly_monograph",
+            "language": "mn",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/f830-manual-saved-20261012.txt",
+            "receiptSha256": "5530adc94a8e88a8a7e350d51a8bc884a2f4c0cf21d888043053ee4461396d0d",
+            "screenshot": "output/vnext/catalog-review-20261007/f830-manual-saved-20261012.jpg",
+            "screenshotSha256": "6f50f3815e55fb5d90d3039be19be2068b563b30f97ec3d464ccf7a3c33db0fd",
+            "sourceReviewReport": "output/vnext/catalog-review-20261007/f830-d3-originals-20261011/f830-source-review.json",
+            "noEngineRequest": true,
+            "previousHeldReviewRetained": true,
+            "subtitle": "十九世纪",
+            "contributors": [
+              {
+                "label": "策·达姆丁苏荣",
+                "role": "author",
+                "roleLabel": "等编著"
+              },
+              {
+                "label": "戈·扎木苏荣扎卜",
+                "role": "author",
+                "roleLabel": "等编著"
+              },
+              {
+                "label": "布和巴特尔",
+                "role": "other",
+                "roleLabel": "转写"
+              }
+            ],
+            "publication": {
+              "publisher": "内蒙古人民出版社",
+              "place": "呼和浩特",
+              "publicationDate": "1989-11",
+              "editionNumber": "第1版",
+              "printing": "1991年8月第1次印刷"
+            },
+            "identifiers": [
+              {
+                "scheme": "isbn",
+                "value": "7-204-00987-8"
+              }
+            ],
+            "materialClassEvidence": "Owner answer文学史研究 on2026-10-12; exact original supports broad book and remaining fields. This is human classification, not independently read Mongolian contents or AI accuracy.",
+            "sourceEdition1968NotCurrentPublication": true,
+            "printingMonthRootConfirmedFromEnlargedOriginal": true,
+            "unnamedContributorsNotInvented": true
+          },
+          {
+            "resourceId": "d3ece10c-2944-4ba0-9056-dfd903b70595",
+            "sourceIdentity": {
+              "sourceFingerprint": "H9gSgn9vdSlqx-ytePGYwBT6TerBE3n4wV4ODeGIVrs",
+              "fileRevision": 1,
+              "checksumAlgorithm": "md5",
+              "checksum": "lTfwAHcQoe7kXQvKR2OkCQ=="
+            },
+            "sizeBytes": 8878308,
+            "sourceSha256": "123dc417a8a770cf90f2d602d30febb5daf00be870446affbd0905f3059692a1",
+            "physicalPagesOneBased": [
+              1,
+              2,
+              16,
+              17
+            ],
+            "canonicalTitle": "Paul Pelliot and Mongolian Studies",
+            "materialType": "article",
+            "materialClass": "conference_paper",
+            "language": "en",
+            "normalTitleSaved": true,
+            "normalBibliographySaved": true,
+            "filenamePreserved": true,
+            "receipt": "output/vnext/catalog-review-20261007/d3-manual-saved-20261012.txt",
+            "receiptSha256": "a784519389609e0ef8ee2b0cdc626ed584e72654b6bfa386c1e956f5362a2c39",
+            "screenshot": "output/vnext/catalog-review-20261007/d3-manual-saved-20261012.jpg",
+            "screenshotSha256": "60f88ae68e1817bd29627cbac8b87777b2f103bd083906727a677fd0d43a2bd8",
+            "sourceReviewReport": "output/vnext/catalog-review-20261007/f830-d3-originals-20261011/d3-source-review.json",
+            "noEngineRequest": true,
+            "previousHeldReviewRetained": true,
+            "contributors": [
+              {
+                "label": "Christopher P. Atwood",
+                "role": "author"
+              }
+            ],
+            "publication": {
+              "publicationDate": "2013"
+            },
+            "locator": "433–449",
+            "containerWork": "Paul Pelliot: de l’histoire à la légende",
+            "externalPrimaryEvidence": [
+              {
+                "url": "https://ealc.sas.upenn.edu/sites/default/files/bio/%5Buser-raw%5D/cv/%5Buser-last-login-mm%5D-%5Buser-last-login-yy%5D/0.cv_.English.pdf",
+                "kind": "Author CV on UPenn official website",
+                "access": "Root web search index provided the bibliographic entry; subsequent direct open was restricted and was not bypassed. Delegated preliminary reading is not an independent completed review.",
+                "supports": "Same author/title,2013,Paul Pelliot: de l’histoire à la légende,Drège/Zink,433–449; CV summary16pp is not adopted as scan length."
+              },
+              {
+                "url": "https://aibl.fr/publications/paul-pelliot-de-lhistoire-a-la-legende/",
+                "kind": "Original publishing institution",
+                "access": "Root directly opened official page",
+                "supports": "2013,Drège/Zink,conference volume and table-of-contents Christopher P. Atwood entry with exact article title."
+              },
+              {
+                "url": "https://www.peeters-leuven.be/detail.php?lang=fr&search_key=9782877542906&series_number_str=",
+                "kind": "Official distributor catalogue linked by AIBL",
+                "access": "Root followed actual Commander link",
+                "supports": "2013,Actes de colloque(AIBL),October2008 conference distinct from publication; whole-container ISBN retained as source-only."
+              }
+            ],
+            "exactMatchReason": "Original title/Atwood running author/434 and449 printed pages/17 physical pages and earlier-version2008 footnote match author publication record and AIBL contents. Start433 comes from author entry, not visible printing on original p1. References are not own imprint.",
+            "publisherPlaceAndContainerEditorsOmitted": true,
+            "noContainerIsbnAssignedToArticle": true,
+            "normalCitation": {
+              "status": "REPRODUCED_CONTAINER_AND_PAGE_OMISSION",
+              "style": "Historical Research",
+              "receipt": "output/vnext/catalog-review-20261007/d3-citation-20261012.txt",
+              "screenshot": "output/vnext/catalog-review-20261007/d3-citation-20261012.jpg",
+              "schemaOrCanonicalCauseNotClaimed": true
+            }
           }
         ],
         "receipt": "output/vnext/catalog-review-20261007/older20-normal-manual-followup.json"
@@ -3432,6 +3600,38 @@
         "unresolvedScholarlyPdfs": 8,
         "allLibraryAccepted": false,
         "interpretation": "New exact-original images corroborate source facts but do not resolve the specific material classes/container. Prior quota-interrupted work is history; this resumed review completed with both HOLD verdicts. f830 enlarged imprint confirms retained1991-08 printing; no publication-date correction or canonical write."
+      },
+      "normalOriginalSourceFollowup20261012": {
+        "applied": 2,
+        "resourceIds": [
+          "f8300c72-6d70-431c-b297-853a4d7ee84c",
+          "d3ece10c-2944-4ba0-9056-dfd903b70595"
+        ],
+        "ownerF830Classification": "文学史研究",
+        "rootPrimaryD3Verification": true,
+        "subagentFinalReview": "Not completed: requestedGPT-6.1Sol/xhigh follow-ups reached usage limit; root completed source/code/UI checks.",
+        "noNewDownloads": true,
+        "noEngineRequests": true,
+        "profiles": 182,
+        "unresolved": 6,
+        "allLibraryAccepted": false
+      },
+      "ownerDeferredHolds20261012": {
+        "ownerAnswer": "保留这6项待确认，先修复编目系统",
+        "resourceIds": [
+          "7bc500c1-ac97-44df-a349-2ac036e83b1c",
+          "e627883c-da35-4468-8c42-7dfc61a9ab9d",
+          "53eb7a5c-e551-4c7b-bb86-52c2e678993e",
+          "d429aca9-bb49-4ea1-b0fe-daa1497e3072",
+          "07f820d4-1ae0-45c6-aba9-b5de9aefe4e2",
+          "6fb1ef17-e176-4dca-b13d-4fc31080dbeb"
+        ],
+        "held": 6,
+        "activeHoldingsPreserved": true,
+        "academicDenominatorUnchanged": 188,
+        "canonicalDefaultsNotForced": true,
+        "fullLibraryAccepted": false,
+        "meaning": "Owner changes execution sequencing only. These6 stay unresolved, not deleted/excluded/counted as completed catalogue or AI successes."
       }
     }
   },
@@ -3475,7 +3675,7 @@
     "reasoningEffort": "xhigh",
     "ownerInstructionDate": "2026-10-08"
   },
-  "currentContinuationBoundary": "Owner organization-first gate remains:180 supported profiles and8 unresolved PDFs do not complete Library organization. Continue remaining source review and normal recording. Owner October11 source cleanup is complete9/9 through recoverable normal UI Recycle. Preserve candidate2607af8 and its189 historical local checks; further implementation, exact release qualification and deployment remain deferred. Production457a337/native1b7/schema41 is unchanged. **October11 Library and delivery state:**196 active holdings=183PDF+13nonPDF after9 Owner-authorized recoverable removals. Excluding4 exact fixtures and4 exact non-scholarly sources only from academic acceptance leaves188=175PDF+13nonPDF.155 normal batch+13 normal manual nonPDF+11 normal manual PDF=179 current reviews; one earlier human PDF gives180 reviewed profiles=167PDF+13nonPDF.8 academic PDFs remain unresolved:4 fresh47 HOLD,1 fresh24 failed,1 notice HOLD and2 older ready HOLD. These are source-supported profiles with omissions; deleting9 sources is scope reduction, not catalogue success. All-Library acceptance remains open.",
+  "currentContinuationBoundary": "Repair the recorded catalogue defects from preserved candidate2607af8, beginning with source-preserving authority/Preview/PDF efficiency and article-container/citation/display recovery. OwnerOctober12 retains6 explicit HOLD and authorizes repair before their resolution. Keep182/188 profiles,full-Library acceptancefalse,original bytes/private state and frozen model/contracts. Qualify one exact coordinated release and normal signed-in regressions before direct authorized deployment; no main merge/paid calls.",
   "ocrIntegration": {
     "ownerRequestedAt": "2026-09-28",
     "scope": "Private paired current-page OCR plus Owner-authorized ADR050 browser-run private book OCR; reliable bibliographic evidence and online member profiles retain separate gates",

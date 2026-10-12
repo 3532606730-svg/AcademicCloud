@@ -1,5 +1,9 @@
 # AcademicCloud Decision Log
 
+## 2026-10-12 — Retain six pending sources and resume catalogue repair
+
+Owner selects「保留这6项待确认，先修复编目系统」after normal corpus review reaches182/188 source-supported profiles. The six original resources stay active,unresolved and outside completed-profile counts; full-Library acceptance remainsfalse. This supersedes the October10 organization-first implementation/qualification/deployment deferral. Resume the locally qualified2607af8 repair substrate and observed source-preserving authority,PDF delivery,citation/display and export/recovery work inside the existing vNext task. One exact coordinated release still requires relevant verification and normal signed-in acceptance; earlier direct-deployment authority remains,no new backup/main merge/paid service. This is execution sequencing,not a new architecture/data-domain decision; new periodical/excerpt/document representation would need its own accepted design and migration consequences.
+
 2026-10-06 — Accepted [ADR-051](docs/decisions/ADR-051-device-owned-private-book-jobs-and-bounded-warm-ocr.md): actual312 new page completions span107.972minutes including pause, current browser ownership prevents off-site continuation by design. Owner selected device-owned durable private jobs/source grants/page receipts and bounded warm native slices; unchanged model/hash/deadline/guard, close-before-release and yield remain. Local searchable PDF and reviewed shared OCR are distinct derived/publication contracts.
 
 Record only meaningful product, architecture, security, infrastructure, or workflow decisions.

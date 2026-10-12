@@ -4,9 +4,9 @@
 
 **Last reconciled:** 2026-10-10
 
-## October10 catalogue organization gate
+## October12 catalogue repair continuation
 
-Within the active vNext task, finish Library source organization and supported normal catalogue recording before improving the catalogue system.180 reviewed profiles and8 unresolved PDFs do not complete Library acceptance. Preserve candidate2607af8 and its local qualification; further implementation, exact release qualification and deployment follow the completed organization gate. Owner-recycled source replacements are closed for the active corpus; remaining source access and supported material-type decisions remain explicit unresolved dependencies. The private OCR acceptance and later research directions below remain queued after this immediate work.
+Owner retains6 source/type/container/access HOLD and authorizes repair now after182/188 source-supported profiles. This supersedes the earlier organization-first deferral while leaving full-Library acceptance open. Resume preserved2607af8 repairs and real observed citation/display/recovery defects; qualify one exact coordinated release and normal paths. Unknown forms remain explicit pending data; no new type/schema/model contract is silently added.
 
 ## October6 authorized scholarly OCR step
 
