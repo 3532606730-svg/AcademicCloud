@@ -57,6 +57,8 @@ export interface MemberConnectorOptions {
   /** Offline test control; does not permit concurrent requests or automatic retries. */
   pollDelayMs?:number;
   heartbeatMs?:number;
+  /** CLI startup only: bounded wait before its synthetic probe; never retries inference. */
+  engineWaitMs?:number;
 }
 async function delay(ms:number,signal:AbortSignal):Promise<void>{if(signal.aborted)return;await new Promise<void>(resolve=>{const timer=setTimeout(done,ms);function done(){clearTimeout(timer);signal.removeEventListener('abort',done);resolve();}signal.addEventListener('abort',done,{once:true});});}
 export async function runMemberLocalConnector(options:MemberConnectorOptions):Promise<void>{
@@ -91,7 +93,19 @@ export async function runMemberLocalConnector(options:MemberConnectorOptions):Pr
     }catch(error){if(error instanceof MemberOcrError)throw error;throw new MemberOcrError(signal.aborted?'aborted':'network_failed');}
   }
   try{
-    const lease=await options.resourceGuard.acquire(options.signal);if(!lease)throw new MemberOcrError('engine_busy');
+    const waitMs=options.engineWaitMs??0;
+    if(!Number.isSafeInteger(waitMs)||waitMs<0||waitMs>120_000)throw new MemberOcrError('configuration_invalid');
+    const waitUntil=performance.now()+waitMs;
+    let lease=await options.resourceGuard.acquire(options.signal);
+    while(!lease&&performance.now()<waitUntil&&!options.signal.aborted){
+      options.onEvent?.({event:'member_ocr.busy'});
+      await delay(Math.min(options.pollDelayMs??2000,Math.max(0,waitUntil-performance.now())),options.signal);
+      if(options.signal.aborted||performance.now()>=waitUntil)break;
+      lease=await options.resourceGuard.acquire(options.signal);
+    }
+    if(options.signal.aborted){await lease?.release();throw new MemberOcrError('aborted');}
+    if(waitMs>0&&performance.now()>=waitUntil){await lease?.release();throw new MemberOcrError('engine_busy');}
+    if(!lease)throw new MemberOcrError('engine_busy');
     let probe:OcrEnginePageResult;
     try{probe=await options.engine.recognize({requestId:LOCAL_OCR_PROBE_REQUEST_ID,image:syntheticOcrProbe(),mimeType:'image/png',languageHints:['en']},
       {signal:AbortSignal.any([options.signal,lease.signal,AbortSignal.timeout(90_000)])});}

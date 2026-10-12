@@ -1,5 +1,5 @@
 import { stdin, stderr, stdout } from "node:process";
-import { createNativeResourceGuard } from "./native-resource.js";
+import { createNativeResourceGuard, verifyNativeCooperation } from "./native-resource.js";
 import { detectInstalledPaddle, loadMemberPaddleConfig, MemberOcrError, MemberPaddleAdapter, MemberPaddleSession, verifyMemberPaddleAssets } from "./member-paddle.js";
 import { exactMemberCoreOrigin, runMemberLocalConnector } from "./member-local-ocr.js";
 
@@ -32,10 +32,10 @@ async function main():Promise<void>{
   await verifyMemberPaddleAssets(config);
   const guard=createNativeResourceGuard(config.nativeResource);
   // Verify cooperation before accepting a human pairing code or loading an engine.
-  const preflight=await guard.acquire();if(!preflight)throw new MemberOcrError('engine_busy');await preflight.release();
+  await verifyNativeCooperation(config.nativeResource);
   const controller=new AbortController();for(const signal of ['SIGINT','SIGTERM'] as const)process.once(signal,()=>controller.abort());
   const pairingCode=await readPairingCode(controller.signal);
-  await runMemberLocalConnector({coreOrigin:flags.core,pairingCode,engine:new MemberPaddleAdapter(config),resourceGuard:guard,signal:controller.signal,
+  await runMemberLocalConnector({coreOrigin:flags.core,pairingCode,engine:new MemberPaddleAdapter(config),resourceGuard:guard,signal:controller.signal,engineWaitMs:120_000,
     bookSessionFactory:onTiming=>new MemberPaddleSession(config,undefined,onTiming),
     onEvent:event=>stdout.write(JSON.stringify(event)+'\n')});
 }

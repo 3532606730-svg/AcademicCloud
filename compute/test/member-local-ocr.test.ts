@@ -112,6 +112,49 @@ test('busy resource after connection never polls a device claim',async()=>{
     fetch:async(url)=>{calls++;assert.ok(String(url).endsWith('/connect'));return Response.json(connected);}});assert.equal(calls,1);
 });
 
+test('bounded startup wait does not infer or consume pairing until native ownership is available',async()=>{
+  const c=new AbortController();let acquisitions=0,probes=0,connects=0;
+  await runMemberLocalConnector({coreOrigin:'https://core.example',pairingCode:'p'.repeat(32),engineWaitMs:1000,pollDelayMs:1,
+    engine:engine(async r=>{probes++;assert.equal(acquisitions,3);return result(r.requestId,LOCAL_OCR_PROBE_TEXT);}),
+    resourceGuard:{async acquire(){acquisitions++;if(acquisitions<3){assert.equal(probes,0);assert.equal(connects,0);return null;}return{signal:new AbortController().signal,async release(){}};}},signal:c.signal,
+    fetch:async()=>{connects++;c.abort();return Response.json(connected);}});
+  assert.equal(probes,1);assert.equal(connects,1);
+});
+
+test('startup wait abort and deadline leave pairing untouched and do not retry a probe or unavailable guard',async()=>{
+  for(const mode of ['abort','deadline','unavailable']as const){
+    const c=new AbortController();let probes=0,calls=0;
+    await assert.rejects(runMemberLocalConnector({coreOrigin:'https://core.example',pairingCode:'p'.repeat(32),engineWaitMs:5,pollDelayMs:1,
+      engine:engine(async()=>{probes++;throw Error('must not infer');}),signal:c.signal,
+      resourceGuard:{async acquire(){if(mode==='abort')c.abort();if(mode==='unavailable')throw new MemberOcrError('engine_unavailable');return null;}},
+      fetch:async()=>{calls++;throw Error('must not consume pairing');}}),{message:mode==='abort'?'aborted':mode==='deadline'?'engine_busy':'engine_unavailable'});
+    assert.equal(probes,0);assert.equal(calls,0);
+  }
+});
+
+test('abort arriving with a granted startup lease releases it before any native probe',async()=>{
+  const c=new AbortController();let releases=0;
+  await assert.rejects(runMemberLocalConnector({coreOrigin:'https://core.example',pairingCode:'p'.repeat(32),engineWaitMs:1000,
+    engine:engine(async()=>{throw Error('must not probe');}),signal:c.signal,
+    resourceGuard:{async acquire(){c.abort();return{signal:new AbortController().signal,async release(){releases++;}};}},
+    fetch:async()=>{throw Error('must not pair');}}),{message:'aborted'});
+  assert.equal(releases,1);
+});
+
+test('startup deadline forbids a later acquire and releases a late grant without probe or pairing',async t=>{
+  for(const lateGrant of [false,true]){
+    const c=new AbortController();let clock=0,acquisitions=0,releases=0;
+    t.mock.method(performance,'now',()=>clock);
+    await assert.rejects(runMemberLocalConnector({coreOrigin:'https://core.example',pairingCode:'p'.repeat(32),engineWaitMs:5,pollDelayMs:1,
+      engine:engine(async()=>{throw Error('must not probe');}),signal:c.signal,
+      onEvent:()=>{clock=5;},
+      resourceGuard:{async acquire(){acquisitions++;if(!lateGrant)return null;clock=6;return{signal:new AbortController().signal,async release(){releases++;}};}},
+      fetch:async()=>{throw Error('must not pair');}}),{message:'engine_busy'});
+    assert.equal(acquisitions,1);assert.equal(releases,lateGrant?1:0);
+    t.mock.restoreAll();
+  }
+});
+
 test('PDF-capable paired connector dispatches a durable book after releasing empty current-page guard, with unchanged engine caps',async()=>{
   const c=new AbortController(),order:string[]=[],source=Buffer.from('%PDF-1.7\nsynthetic');let saved:number[]=[];let recognizes=0;
   const events:MemberBookEvent[]=[];

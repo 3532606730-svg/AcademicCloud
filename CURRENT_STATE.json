@@ -17,13 +17,13 @@
   },
   "production": {
     "observedAt": "2026-10-12",
-    "coreFrontendCommit": "f59471286952db56ed06be21079277c0f176622f",
+    "coreFrontendCommit": "c8df886cc0f226906d0ae2f52620d81abf308da9",
     "schemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Core1639960 active/running,NRestarts0,74452992bytes cutover;native61c453d retained;schema41/history001–041/11 admissions,integrity ok/FK0/exact schema,0 migrations.",
+    "health": "Core1641592 active/running,NRestarts0,80207872bytes cutover;schema41/history41/11 admissions,integrity ok/FK0/exact schema;no migration. Native61c retained/restarted after strict prior-boot recovery.",
     "catalogBridgeCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
     "catalogBridgeState": "61c453d active/running,MainPID554,NRestarts0 cutover snapshot",
     "computeDistro": "AcademicCloudComputeV2",
@@ -1168,7 +1168,7 @@
     "Six active sources retain explicit HOLD by Owner choice; they no longer block scoped system repair.182 source-supported profiles/188 academic holdings; full-Library acceptance remainsfalse.",
     "Exact Linux/Core/native artifact and bounded-memory qualification plus coordinated release/live acceptance remain required;189 old local checks do not qualify later edits."
   ],
-  "next": "Next focus: qualify and deploy the scoped Member OCR transport candidate through an exact Core public-kit-only release;retain native61c453d and frozen models/contracts. Update the Owner installed kit and verify normal signed-in download/own connection without replaying completed d3 OCR17/17 or other accepted pages. Then use content-free preparation and header/body/byte timings on a later unfinished authorized task to separate the28418ms pre-running and33577ms acknowledgement observations;headers duration includes upload/network/server and is not a Core-only metric. Keep6 HOLD/182 supported profiles,no paid activation/main merge or new production backup. Broader navigation/upload latency remains open.",
+  "next": "Next focus: qualify/publish the bounded startup-wait Member kit and exact Core public-ZIP-only update;retain native61c/models/contracts. Complete normal same-account pairing with the Windows foreground stdin held open,then remove the temporary maintenance holder and verify boot/device continuity. Do not replay accepted d3 OCR17/17 or other completed pages. Use the new content-free preparation/header/body/byte timings on a later unfinished authorized task;broader navigation/upload timing stays open. Keep6 HOLD/182 supported profiles,no paid activation/main merge/new production backup;manual lock recovery only for prior-boot markers after every existing closure/ownership/OS-lock gate.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -4134,16 +4134,21 @@
       "sourceCommit": "80ad0a768afda916c807b9ccce50b6b3e35f4855"
     },
     "ocrTransportOptimization": {
-      "status": "LOCAL_CANDIDATE",
+      "status": "DEPLOYED_PUBLIC_KIT_STARTUP_FOLLOWUP",
       "heartbeat": "single outstanding check per decoded-count input;no completed-response cache",
       "terminalYieldRemovedMs": 2000,
       "retained": "per-page authority;2-second periodic loop;8-page/45-second slices;native-close-before-release;identical receipt replay",
       "diagnostics": "fixed book endpoint labels,durations and byte counts only;no task IDs,URL,secret,image or OCR text",
-      "checks": 47,
+      "checks": 51,
       "computeTypesBuild": "PASS",
-      "productionKit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+      "productionKit": "c8df886cc0f226906d0ae2f52620d81abf308da9",
       "realCompletedPagesReplayed": 0,
-      "overallSpeedupMeasured": false
+      "overallSpeedupMeasured": false,
+      "ownerOnlineAcceptance": false,
+      "startupWaitCandidateMs": 120000,
+      "startupReview": "Sol/xhigh found late-grant deadline;root fixed with deterministic checks",
+      "nativeRecovery": "Two strict prior-boot recoveries,all native processes absent,exclusive same-inode lock,0600/single-link/owner checks,fsync;no unlink/current-boot recovery",
+      "foregroundHandoff": "Windows maintenance stdin held open;connector wrapper now retains stdin for its lifetime;no persistent service/token/autostart"
     }
   },
   "interfaceRepair": {
