@@ -6,24 +6,24 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "4838011bb0fac910298d4e86717884e1449f8a4a",
+    "checkpoint": "80ad0a768afda916c807b9ccce50b6b3e35f4855",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "4838011 actual push/fresh-fetch/clean active local equality verified before deployment receipt reconciliation.",
-    "lastVerifiedPublishedCheckpoint": "4838011bb0fac910298d4e86717884e1449f8a4a",
-    "checkpointMeaning": "Exact deployed Core4838011/native61c453d;subsequent documentation checkpoint is not a runtime release.",
+    "localState": "80ad0a7 push/fresh-fetch/clean active checkout equality verified before exact release;subsequent receipt-only checkpoint is verified separately by Git.",
+    "lastVerifiedPublishedCheckpoint": "80ad0a768afda916c807b9ccce50b6b3e35f4855",
+    "checkpointMeaning": "Exact deployed Core80ad0a7/native61c453d;subsequent documentation checkpoint is not a runtime release.",
     "documentationPublicationMeaning": "Catalogue and source candidate checkpoints through2607af8 have actual push/fetch and local equality evidence. Repository publication is separate from runtime deployment and from completion of Library organization.",
     "documentationPublicationStatus": "PREVIOUS_2607AF8_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
   },
   "production": {
     "observedAt": "2026-10-12",
-    "coreFrontendCommit": "4838011bb0fac910298d4e86717884e1449f8a4a",
+    "coreFrontendCommit": "80ad0a768afda916c807b9ccce50b6b3e35f4855",
     "schemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Core1635027 active/running,NRestarts0,75206656bytes cutover;native61c453d retained;schema41/history001-041/11 admissions,integrity ok/FK0/exact schema,0 migrations.",
+    "health": "Core1637449 active/running,NRestarts0,83726336bytes cutover;native61c453d retained;schema41/history001–041/11 admissions,integrity ok/FK0/exact schema,0 migrations.",
     "catalogBridgeCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
     "catalogBridgeState": "61c453d active/running,MainPID554,NRestarts0 cutover snapshot",
     "computeDistro": "AcademicCloudComputeV2",
@@ -573,7 +573,37 @@
         "output/vnext/catalog-review-20261007/nonpdf-workspace-details-live-457a337.txt"
       ]
     },
-    "localComputeCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4"
+    "localComputeCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
+    "ocrConnectionUiRelease": {
+      "sourceCommit": "80ad0a768afda916c807b9ccce50b6b3e35f4855",
+      "status": "DEPLOYED_NORMAL_OWNER_ACCEPTED",
+      "priorCore": "4838011bb0fac910298d4e86717884e1449f8a4a",
+      "nativeRetained": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
+      "memberKitRetained": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+      "archiveSha256": "3f31a3c9048db91964a81563c8b8ce7c56a28a8905015dc5926c82ddb1217ad3",
+      "manifestSha256": "76c65fd48b4f9b0fedc27380ddf03eabf20ae7dc3bd1ef1b33ebc491a39b5a07",
+      "manifestFiles": 5185,
+      "manifestBytes": 43104350,
+      "unchangedManifestFiles": 5177,
+      "changedUnionPaths": 15,
+      "scope": "FRONTEND_ONLY",
+      "focusedTests": 17,
+      "frontendTypesBuild": "PASS",
+      "exactLinuxHostQualification": "PASS",
+      "nativeChanged": false,
+      "migrations": 0,
+      "newProductionBackup": false,
+      "normalBrowser": {
+        "initialLoading": "PASS",
+        "noFalseInitialAbsence": "PASS",
+        "availableConnector": "PASS",
+        "occupiedSlotExplanation": "PASS",
+        "ownDeviceOnline": "PASS",
+        "retainedBook17PagesAfterReload": "PASS",
+        "script": "/assets/index-C1FI4p5F.js"
+      },
+      "evidence": "output/vnext/catalog-review-20261007/ocr-connection-live-80ad0a7.png"
+    }
   },
   "candidate": {
     "schemaVersion": 41,
@@ -1138,7 +1168,7 @@
     "Six active sources retain explicit HOLD by Owner choice; they no longer block scoped system repair.182 source-supported profiles/188 academic holdings; full-Library acceptance remainsfalse.",
     "Exact Linux/Core/native artifact and bounded-memory qualification plus coordinated release/live acceptance remain required;189 old local checks do not qualify later edits."
   ],
-  "next": "Next focus: qualify and directly deploy the scoped frontend connection-dialog repair, retaining native61c453d and installed Member kit ae280962. Normal Owner d3 book OCR17/17 and local TXT/JSONL exports are accepted;successive saved-page gap median3804ms. Prioritize the28418ms pre-running delay and33577ms total acknowledgement path before model/slice changes. Download alone is still unmeasured. Keep6 HOLD/182 source-supported profiles,frozen models/contracts,no paid calls or main merge;do not replay accepted OCR pages or repeat unchanged broad/native checks.",
+  "next": "Next focus: continue the measured vNext performance task from accepted Core80ad0a7/native61c453d. Normal own-device d3 OCR17/17 and local TXT/JSONL exports are complete;do not replay them. Isolate the28418ms pre-running phase and33577ms acknowledgement/network path before changing model/slice scheduling. Existing source connection2729ms and broader navigation/upload timing remain separate gaps. Keep6 HOLD/182 supported profiles,frozen models/contracts,no paid activation or main merge;repeat checks only for new changed risk.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -4087,13 +4117,21 @@
       "accuracyMeasured": false,
       "isolatedDownloadMeasured": false,
       "controlledSpeedupMeasured": false,
-      "evidence": "output/vnext/catalog-review-20261007/private-book-speed-summary-20261012.json"
+      "evidence": "output/vnext/catalog-review-20261007/private-book-speed-summary-20261012.json",
+      "jsonlVerification": {
+        "bytes": 146917,
+        "sha256": "29706b6497f028d46ecf78fb69167709e56196f2b67ceae3f0187390517d71fd",
+        "savedPages": 17,
+        "missingPages": 0,
+        "sourceAndPrivateOriginChecked": true
+      }
     },
     "connectionUiRepair": {
-      "status": "LOCAL_PASS_EXACT_RELEASE_PENDING",
+      "status": "DEPLOYED_NORMAL_OWNER_ACCEPTED",
       "focusedTests": 17,
       "typesBuild": "PASS",
-      "review": "ROOT_BOUNDED_NO_MATERIAL_FINDING;DELEGATED_QUOTA_UNAVAILABLE"
+      "review": "ROOT_BOUNDED_NO_MATERIAL_FINDING;DELEGATED_QUOTA_UNAVAILABLE",
+      "sourceCommit": "80ad0a768afda916c807b9ccce50b6b3e35f4855"
     }
   }
 }
