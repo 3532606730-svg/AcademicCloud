@@ -445,6 +445,21 @@ describe("Resource details", () => {
     expect(payload.typeFields.locator).toBe("11–20");
   });
 
+  it("shows saved article sources immediately while authority choices are still loading", async () => {
+    const initial = detail("article", { locator: "11–20" });
+    const work = { id: "work-container", type: "work" as const, canonicalLabel: "Saved Collected Papers", aliases: [], version: "w".repeat(43) };
+    initial.metadata!.authorityLinks.push({ ...work, role: "container_work" });
+    const { api } = renderDetails({ initial, api: { listLibraryAuthorities: vi.fn().mockImplementation(() => new Promise(() => {})) } });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
+    expect(screen.getByLabelText("Source journal / collected book")).toHaveValue(work.id);
+    expect(screen.getByRole("option", { name: work.canonicalLabel })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save metadata" }));
+    await waitFor(() => expect(api.updateLibraryHoldingMetadata).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.updateLibraryHoldingMetadata).mock.calls[0]![2].authorityLinks).toEqual(initial.metadata!.authorityLinks.map(({ id, role }) => ({ authorityId: id, role })));
+    expect(api.createLibraryAuthority).not.toHaveBeenCalled();
+  });
+
   it("creates a new source as a container work and retains its name after a failed creation", async () => {
     const work={id:"new-container",type:"work" as const,canonicalLabel:"New Collected Papers",aliases:[],version:"w".repeat(43)};
     const create=vi.fn().mockRejectedValueOnce(new ApiError(503,"service_unavailable")).mockResolvedValue(work);

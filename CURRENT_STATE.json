@@ -6,28 +6,28 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "457a337b61db85391bf58946cd43d7a0d86b7675",
+    "checkpoint": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Prior7c7fe77 push/fetch/clean local equality is verified history. CurrentOctober12 decision/source progress and subsequent implementation publication are separately verified by Git; deployed457a337/native1b7 are retained until qualified release.",
-    "lastVerifiedPublishedCheckpoint": "7c7fe77adebd0c5ff3e1d1814bf470577e5224ec",
-    "checkpointMeaning": "Exact deployed Core/frontend source457a337 and retained native1b7; subsequent repository documentation checkpoints are identified by Git HEAD, not a new runtime release.",
+    "localState": "61c453d actual push/fetch/clean local equality verified; active frontend performance follow-up is pending.",
+    "lastVerifiedPublishedCheckpoint": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
+    "checkpointMeaning": "Exact deployed Core/frontend/LocalPull/Bridge61c453d; later follow-up code publication is separate.",
     "documentationPublicationMeaning": "Catalogue and source candidate checkpoints through2607af8 have actual push/fetch and local equality evidence. Repository publication is separate from runtime deployment and from completion of Library organization.",
     "documentationPublicationStatus": "PREVIOUS_2607AF8_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
   },
   "production": {
-    "observedAt": "2026-10-09",
-    "coreFrontendCommit": "457a337b61db85391bf58946cd43d7a0d86b7675",
+    "observedAt": "2026-10-12",
+    "coreFrontendCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
     "schemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Core457a337/PID1571558 active/running,NRestarts0 cutover;schema41/history001-041/11 admissions,integrity ok,FK0,exact schema. Native1b7 unchanged; no migration/new production backup/restore/configuration/dependency/model change.",
-    "catalogBridgeCommit": "1b7f73cf376122a33b287a30d0707c4a1f4520fc",
-    "catalogBridgeState": "Exact1b7 Bridge10176 active/running,NRestarts0; snapshot.",
+    "health": "Core1633367/localPull553/Bridge554 active/running,NRestarts0;schema41/history001-041/11 admissions,integrity ok/FK0,exact schema;no migrations/backups/model/config change.",
+    "catalogBridgeCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
+    "catalogBridgeState": "61c453d active/running,MainPID554,NRestarts0 cutover snapshot",
     "computeDistro": "AcademicCloudComputeV2",
-    "mainInferenceState": "Exact1b7 Local Pull10175 active/running,NRestarts0; runtime/dependencies/models retained; snapshot.",
+    "mainInferenceState": "Exact61c453d LocalPull553 active/running,NRestarts0 cutover;unchanged pinned runtimes/dependencies/models.",
     "vnextDeployed": true,
     "pdfAssetRepairRelease": {
       "sourceCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
@@ -572,7 +572,8 @@
         "output/vnext/catalog-review-20261007/nonpdf-workspace-live-457a337.png",
         "output/vnext/catalog-review-20261007/nonpdf-workspace-details-live-457a337.txt"
       ]
-    }
+    },
+    "localComputeCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4"
   },
   "candidate": {
     "schemaVersion": 41,
@@ -1522,7 +1523,7 @@
         },
         "ownerRepairAuthorized20261012": true,
         "localRepair20261012": {
-          "status": "LOCAL_CHECKS_PASS_EXACT_RELEASE_PENDING",
+          "status": "QUALIFIED_DEPLOYED_NORMAL_CITATION_PASS",
           "citationDisplayChecks": 31,
           "detailsChecks": 38,
           "libraryMetadataChecks": 81,
@@ -1539,7 +1540,26 @@
           "horizontalOverflow": false,
           "rootReview": "scoped review; no completed independent agent verdict after usage limits",
           "schemaOrModelChanges": false,
-          "productionChanged": false
+          "productionChanged": true,
+          "sourceCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
+          "linuxChecks": {
+            "backend": 129,
+            "frontend": 48,
+            "compute": 302
+          }
+        },
+        "performanceFollowup20261012": {
+          "ownerReports": "all paths slow",
+          "scope": "existing vNext performance paths only",
+          "observedNormalApiTimings": "output/vnext/catalog-review-20261007/normal-ui-api-timings-61c453d.json",
+          "currentChange": "saved linked authorities immediately available while full choices load",
+          "productionChanged": false,
+          "localVerification": {
+            "detailsTests": 39,
+            "frontendTypesAndBuild": "PASS",
+            "rootReview": "saved links only; full authority refresh still wins; no new request or canonical rewrite",
+            "exactRelease": "pending frontend-only artifact verification"
+          }
         }
       },
       "natureJournalCompletion": {

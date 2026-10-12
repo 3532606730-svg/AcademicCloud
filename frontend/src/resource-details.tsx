@@ -548,9 +548,11 @@ export function ResourceDetailsDialog({
 
   const groupedAuthorities = useMemo(() => {
     const map = new Map<string, LibraryAuthority>();
+    for (const authority of detail?.metadata?.authorityLinks ?? []) map.set(authority.id, authority);
     for (const authority of authorities) map.set(authority.id, authority);
     return map;
-  }, [authorities]);
+  }, [authorities, detail?.metadata?.authorityLinks]);
+  const availableAuthorities = useMemo(() => [...groupedAuthorities.values()], [groupedAuthorities]);
 
   const detailsGeneration = useRef(0);
   async function loadDetails() {
@@ -1131,7 +1133,7 @@ export function ResourceDetailsDialog({
                 draft={draft}
                 setDraft={setDraft}
                 onTypeChange={updateType}
-                authorities={authorities}
+                authorities={availableAuthorities}
                 authoritiesById={groupedAuthorities}
                 authorityType={authorityType}
                 setAuthorityType={setAuthorityType}
