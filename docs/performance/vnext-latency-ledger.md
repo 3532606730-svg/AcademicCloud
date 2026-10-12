@@ -150,3 +150,17 @@ remain explicitly unmeasured and are not silently converted into estimates.
 - `output/vnext/metadata-only-search-benchmark.json`
 - `output/vnext/batch-list-benchmark.json`
 - `frontend/scripts/checksum-benchmark.ts`
+
+
+## October12 own-device private book observation
+
+Normal signed-in Edge,d3 17-page/8,878,308-byte source,Core4838011/native61c453d/installed Member kit ae280962:126144ms UI→observed completion and28418ms UI→observed book-running.17/17 saved pages survive normal Research reopen and TXT/JSONL download.
+
+| Phase | Count | Total ms | Median ms | Range ms |
+|---|---:|---:|---:|---:|
+| Render |17|5619|281|250–764|
+| Model startup |3|6655|2161|2117–2377|
+| Predict |17|12626|737|537–989|
+| Save acknowledgement |17|33577|1834|1345–5105|
+
+Successive saved-page gaps median3804ms/range3004–13670ms. The existing warm slices worked8+8+1. The larger measured waits are pre-running and acknowledgement/network activity;do not change model/concurrency/slice bounds to optimize an unproven bottleneck. Pre-running includes queue,cooperation,grant,download and PDF opening,so isolated download remains unknown. Observer timestamps may lag approximately200ms. Native phase durations are existing connector measurements. This is one actual sample,not an accuracy assessment or controlled speedup. Receipts:output/vnext/catalog-review-20261007/private-book-speed-{start,live,summary}-20261012.*.

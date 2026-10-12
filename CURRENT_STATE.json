@@ -1138,7 +1138,7 @@
     "Six active sources retain explicit HOLD by Owner choice; they no longer block scoped system repair.182 source-supported profiles/188 academic holdings; full-Library acceptance remainsfalse.",
     "Exact Linux/Core/native artifact and bounded-memory qualification plus coordinated release/live acceptance remain required;189 old local checks do not qualify later edits."
   ],
-  "next": "Repair the recorded catalogue defects from preserved candidate2607af8, beginning with source-preserving authority/Preview/PDF efficiency and article-container/citation/display recovery. OwnerOctober12 retains6 explicit HOLD and authorizes repair before their resolution. Keep182/188 profiles,full-Library acceptancefalse,original bytes/private state and frozen model/contracts. Qualify one exact coordinated release and normal signed-in regressions before direct authorized deployment; no main merge/paid calls.",
+  "next": "Next focus: qualify and directly deploy the scoped frontend connection-dialog repair, retaining native61c453d and installed Member kit ae280962. Normal Owner d3 book OCR17/17 and local TXT/JSONL exports are accepted;successive saved-page gap median3804ms. Prioritize the28418ms pre-running delay and33577ms total acknowledgement path before model/slice changes. Download alone is still unmeasured. Keep6 HOLD/182 source-supported profiles,frozen models/contracts,no paid calls or main merge;do not replay accepted OCR pages or repeat unchanged broad/native checks.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -4059,5 +4059,41 @@
       "newNativeWholeBookQualityAccepted": false
     },
     "nativeRuntimeDependencyBaselineCommit": "662a7a0374df31df8b3ec429394cee8836160a5a"
+  },
+  "productPerformance": {
+    "observedAt": "2026-10-12",
+    "privateBookSample": {
+      "status": "PASS_17_OF_17_NORMAL_OWNER_PATH",
+      "resourceId": "d3ece10c-2944-4ba0-9056-dfd903b70595",
+      "sourceBytes": 8878308,
+      "coreFrontend": "4838011bb0fac910298d4e86717884e1449f8a4a",
+      "nativeCompute": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
+      "installedMemberKit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+      "totalObservedMs": 126144,
+      "preRunningObservedMs": 28418,
+      "renderMedianMs": 281,
+      "predictMedianMs": 737,
+      "ackMedianMs": 1834,
+      "ackTotalMs": 33577,
+      "startupCount": 3,
+      "startupTotalMs": 6655,
+      "savedGapMedianMs": 3804,
+      "privateResults": {
+        "before": 364,
+        "after": 381
+      },
+      "normalReopen": "PASS",
+      "txtAndJsonlDownloaded": true,
+      "accuracyMeasured": false,
+      "isolatedDownloadMeasured": false,
+      "controlledSpeedupMeasured": false,
+      "evidence": "output/vnext/catalog-review-20261007/private-book-speed-summary-20261012.json"
+    },
+    "connectionUiRepair": {
+      "status": "LOCAL_PASS_EXACT_RELEASE_PENDING",
+      "focusedTests": 17,
+      "typesBuild": "PASS",
+      "review": "ROOT_BOUNDED_NO_MATERIAL_FINDING;DELEGATED_QUOTA_UNAVAILABLE"
+    }
   }
 }

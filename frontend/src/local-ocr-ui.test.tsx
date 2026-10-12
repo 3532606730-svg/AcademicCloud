@@ -105,7 +105,7 @@ describe("OCR connection tutorial and focus", () => {
   }
   it("creates a one-time code, explains stdin/config and hides a nonexistent download", async () => {
     const api = ocrApi(); const user = userEvent.setup(); render(<Connection api={api} />); await user.click(screen.getByRole("button", { name: "Connect" }));
-    expect(await screen.findByRole("dialog")).toBeInTheDocument(); await screen.findByText("The connector package is not available on this site yet."); expect(screen.queryByRole("link", { name: "Download local connector" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument(); await screen.findByText("The connector package is unavailable. Reopen this dialog later."); expect(screen.queryByRole("link", { name: "Download local connector" })).not.toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: "Device name" }), "My laptop"); await user.click(screen.getByRole("button", { name: "Generate pairing code" }));
     await screen.findByText("one-time-code"); expect(api.pairing).toHaveBeenCalledWith("My laptop"); expect(screen.getAllByText(/npm start/)[0]).toHaveTextContent(`npm start -- --core ${window.location.origin} --pair --detect-installed`); expect(screen.getAllByText(/npm start/)[1]).toHaveTextContent(`npm start -- --core ${window.location.origin} --pair --config /absolute/member-ocr.json`);
     await user.click(screen.getByRole("button", { name: "My online account" })); expect(screen.getByText(/Online account connection is not available yet/)).toBeInTheDocument(); expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
@@ -121,6 +121,42 @@ describe("OCR connection tutorial and focus", () => {
   it("shows a download only for an actual nonempty archive response", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 200, headers: { "Content-Type": "application/zip", "Content-Length": "512" } })); render(<Connection api={ocrApi()} />); await userEvent.setup().click(screen.getByRole("button", { name: "Connect" }));
     expect(await screen.findByRole("link", { name: "Download local connector" })).toHaveAttribute("href", "/local-ocr-connector.zip");
+  });
+  it("does not misreport pending checks as missing and recovers a failed device read before allowing pairing", async () => {
+    let finishKit!: (response: Response) => void;
+    let failDevices!: (reason: Error) => void;
+    vi.mocked(fetch).mockReturnValue(new Promise((resolve) => { finishKit = resolve; }));
+    const api = ocrApi({ devices: vi.fn().mockReturnValueOnce(new Promise((_, reject) => { failDevices = reject; })).mockResolvedValue([]) });
+    const user = userEvent.setup(); render(<Connection api={api} />); await user.click(screen.getByRole("button", { name: "Connect" }));
+    expect(screen.getByText("Checking the connector package…")).toBeInTheDocument();
+    expect(screen.getByText("Loading paired devices…")).toBeInTheDocument();
+    expect(screen.queryByText(/No devices yet|package is unavailable/)).not.toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: "Device name" }), "My laptop");
+    expect(screen.getByRole("button", { name: "Generate pairing code" })).toBeDisabled();
+    await act(async () => { failDevices(new ApiError(503, "request_failed")); finishKit(new Response(null, { headers: { "Content-Type": "application/zip", "Content-Length": "512" } })); });
+    await screen.findByRole("link", { name: "Download local connector" });
+    expect(screen.queryByText(/No devices yet/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reload devices" }));
+    await screen.findByText("No devices yet. Paired devices appear after passing the test.");
+    expect(screen.getByRole("button", { name: "Generate pairing code" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Generate pairing code" }));
+    await screen.findByText("one-time-code"); expect(api.pairing).toHaveBeenCalledTimes(1);
+  });
+  it("explains occupied offline slots and makes pairing available after an explicit own-device revocation", async () => {
+    const devices = [1, 2, 3].map((number) => ({ ...OCR_DEVICE, id: `device-${number}`, label: `Offline ${number}`, online: false }));
+    const expired = { ...OCR_DEVICE, id: "expired", label: "Expired", tokenExpiresAt: "2000-01-01T00:00:00Z" };
+    const revoked = { ...OCR_DEVICE, id: "revoked", label: "Already revoked", revokedAt: "2026-10-01T00:00:00Z" };
+    const api = ocrApi({ devices: vi.fn().mockResolvedValue([...devices, expired, revoked]) });
+    const user = userEvent.setup(); render(<Connection api={api} />); await user.click(screen.getByRole("button", { name: "Connect" }));
+    await screen.findByText(/All 3 device slots are in use/);
+    await user.type(screen.getByRole("textbox", { name: "Device name" }), "Replacement");
+    expect(screen.getByRole("button", { name: "Generate pairing code" })).toBeDisabled();
+    expect(api.pairing).not.toHaveBeenCalled();
+    vi.mocked(api.devices).mockResolvedValue([{ ...devices[0]!, revokedAt: "2026-10-12T00:00:00Z" }, ...devices.slice(1), expired, revoked]);
+    await user.click(within(screen.getByText("Offline 1").closest("li")!).getByRole("button", { name: "Revoke" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Generate pairing code" })).toBeEnabled());
+    expect(screen.queryByText(/All 3 device slots are in use/)).not.toBeInTheDocument();
+    expect(api.revoke).toHaveBeenCalledWith("device-1");
   });
   it("keeps keyboard focus within the dialog and restores it when returning", async () => {
     render(<Connection api={ocrApi()} />); const user = userEvent.setup(); await user.click(screen.getByRole("button", { name: "Connect" }));

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { LOCAL_OCR_BOOK_FEATURE, OCR_ENGINE_MAX_TEXT_UNITS } from "@academiccloud/compute-contracts";
+import { LOCAL_OCR_BOOK_FEATURE, LOCAL_OCR_LIMITS, OCR_ENGINE_MAX_TEXT_UNITS } from "@academiccloud/compute-contracts";
 import type { LocalOcrApi, LocalOcrDevice, LocalOcrPage, LocalOcrResult } from "./local-ocr-api.ts";
 import type { LocalOcrFrame, PaintedOcrPage } from "./local-ocr-frame.ts";
 import { LocalOcrController, type OcrProgress } from "./local-ocr-controller.ts";
@@ -211,22 +211,32 @@ export function OcrConnectionDialog({ api, returnFocus, onClose }: { api: LocalO
   const [devices, setDevices] = useState<LocalOcrDevice[]>([]); const [label, setLabel] = useState("");
   const [pairing, setPairing] = useState<{ pairingCode: string; expiresAt: string } | null>(null);
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
-  const [kit, setKit] = useState(false); const [now, setNow] = useState(Date.now());
+  const [kit, setKit] = useState<"loading" | "available" | "unavailable">("loading");
+  const [devicesState, setDevicesState] = useState<"loading" | "ready" | "failed">("loading");
+  const [now, setNow] = useState(Date.now());
   const dialogRef = useModalDialog(onClose, false, returnFocus); const alive = useRef(true);
-  const refresh = async (signal?: AbortSignal) => { try { const items = await api.devices(signal); if (alive.current && !signal?.aborted) setDevices(items); } catch (error) { if (alive.current && !signal?.aborted) setMessage(ocrError(error, zh)); } };
+  const refresh = async (signal?: AbortSignal) => {
+    try {
+      const items = await api.devices(signal);
+      if (alive.current && !signal?.aborted) { setDevices(items); setDevicesState("ready"); }
+    } catch (error) {
+      if (alive.current && !signal?.aborted) { setDevicesState("failed"); setMessage(ocrError(error, zh)); }
+    }
+  };
+  const deviceLimitReached = devices.filter((device) => !device.revokedAt && Date.parse(device.tokenExpiresAt) > now).length >= LOCAL_OCR_LIMITS.maxDevicesPerAccount;
   useEffect(() => {
     alive.current = true; const abort = new AbortController();
     void refresh(abort.signal);
     // A download link is shown only after checking the real static package.
     void fetch("/local-ocr-connector.zip", { method: "HEAD", credentials: "same-origin", signal: abort.signal }).then((response) => {
       const type = response.headers.get("Content-Type")?.split(";")[0]?.toLowerCase();
-      if (!abort.signal.aborted) setKit(response.ok && ["application/zip", "application/x-zip-compressed", "application/octet-stream"].includes(type ?? "") && Number(response.headers.get("Content-Length")) > 0);
-    }).catch(() => {});
+      if (!abort.signal.aborted) setKit(response.ok && ["application/zip", "application/x-zip-compressed", "application/octet-stream"].includes(type ?? "") && Number(response.headers.get("Content-Length")) > 0 ? "available" : "unavailable");
+    }).catch(() => { if (!abort.signal.aborted) setKit("unavailable"); });
     const timer = window.setInterval(() => { setNow(Date.now()); void refresh(abort.signal); }, 10_000);
     return () => { alive.current = false; abort.abort(); window.clearInterval(timer); };
   }, [api]);
   const pair = async (event: FormEvent) => {
-    event.preventDefault(); if (busy || !label.trim()) return;
+    event.preventDefault(); if (busy || !label.trim() || devicesState !== "ready" || deviceLimitReached) return;
     setBusy(true); setPairing(null); setMessage("");
     try { const value = await api.pairing(label.trim()); if (alive.current) { setPairing(value); setNow(Date.now()); } }
     catch (error) { if (alive.current) setMessage(ocrError(error, zh)); }
@@ -248,13 +258,17 @@ export function OcrConnectionDialog({ api, returnFocus, onClose }: { api: LocalO
       <ol><li>{zh ? "已有 Paddle 环境：直接连接。Linux/WSL 的 AcademicCloud 标准安装可以自动检测；其他安装使用配置文件指定自己的路径。" : "Already have Paddle installed: connect directly. The standard AcademicCloud installation on Linux/WSL supports detection; other installations use a configuration file with your own paths."}</li><li>{zh ? "尚未安装：按自己电脑的操作系统查看官方安装说明，安装并通过连接器测试。连接器与 OCR 引擎是两个独立安装项。" : "Not installed: follow official instructions for your computer's operating system, then pass the connector test. The connector and OCR engine are separate installations."} <a href="https://www.paddleocr.ai/main/quick_start.html" target="_blank" rel="noreferrer">PaddleOCR</a> · <a href="https://www.paddlepaddle.org.cn/install/quick" target="_blank" rel="noreferrer">PaddlePaddle</a></li><li>{zh ? "下载并解压连接器，在目录中安装依赖；运行后，把配对码粘贴到连接器提示中。配对码十分钟内有效、只能用一次；重新生成会使前一个码失效。" : "Download and extract the connector, install its dependencies, then paste the pairing code at its prompt. Codes expire in ten minutes and can be used once; generating a new code invalidates the previous one."}</li></ol>
       <p>{zh ? "首次使用请在运行引擎的 Linux/WSL 环境安装 Node.js 24。" : "Before first use, install Node.js 24 in the Linux/WSL environment running your engine."} <a href="https://nodejs.org/en/download" target="_blank" rel="noreferrer">{zh ? "Node.js 官方下载" : "Official Node.js download"}</a></p>
       <p>{zh ? "所需版本：PaddlePaddle 3.3.1、PaddleOCR 3.7.0，以及安装包指定的 PP-OCRv6 small 模型。配置和模型要求见安装包说明。" : "Required versions: PaddlePaddle 3.3.1, PaddleOCR 3.7.0 and the PP-OCRv6 small models specified by the package. See its instructions for configuration and model requirements."}</p>
-      {kit ? <a className="button" href="/local-ocr-connector.zip" download>{zh ? "下载本地连接器" : "Download local connector"}</a> : <p role="status">{zh ? "当前站点尚未提供连接器安装包。" : "The connector package is not available on this site yet."}</p>}
+      {kit === "available" ? <a className="button" href="/local-ocr-connector.zip" download>{zh ? "下载本地连接器" : "Download local connector"}</a> : <p role="status">{kit === "loading" ? (zh ? "正在检查连接器安装包…" : "Checking the connector package…") : (zh ? "连接器安装包暂不可用，请稍后重新打开。" : "The connector package is unavailable. Reopen this dialog later.")}</p>}
       <p>{zh ? "标准 Linux/WSL 安装：" : "Standard Linux/WSL installation:"}</p><pre>npm install{"\n"}npm start -- --core {origin} --pair --detect-installed</pre>
       <p>{zh ? "其他本地安装（用自己的配置文件完整路径替换 /absolute/member-ocr.json）：" : "Other local installations (replace /absolute/member-ocr.json with your configuration file's full path):"}</p><pre>npm start -- --core {origin} --pair --config /absolute/member-ocr.json</pre>
       <p>{zh ? "按安装包示例填写自己的 Python、侧车、模型和缓存路径。检查失败时按连接器提示修复。" : "Use the package example to configure your Python, sidecar, model and cache paths. Follow connector diagnostics if checks fail."}</p>
-      <form onSubmit={(event) => void pair(event)}><label>{zh ? "设备名称" : "Device name"}<input autoFocus required maxLength={80} value={label} disabled={busy} onChange={(event) => setLabel(event.target.value)} placeholder={zh ? "例如：我的笔记本" : "For example: My laptop"} /></label><button type="submit" disabled={busy || !label.trim() || devices.filter((device) => !device.revokedAt && Date.parse(device.tokenExpiresAt) > now).length >= 3}>{zh ? "生成配对码" : "Generate pairing code"}</button></form>
+      <form onSubmit={(event) => void pair(event)}><label>{zh ? "设备名称" : "Device name"}<input autoFocus required maxLength={80} value={label} disabled={busy} onChange={(event) => setLabel(event.target.value)} placeholder={zh ? "例如：我的笔记本" : "For example: My laptop"} /></label><button type="submit" disabled={busy || !label.trim() || devicesState !== "ready" || deviceLimitReached}>{zh ? "生成配对码" : "Generate pairing code"}</button></form>
+      {deviceLimitReached && <p>{zh ? `已连接 ${LOCAL_OCR_LIMITS.maxDevicesPerAccount} 台设备；重新配对前，请在下方撤销不再使用的旧连接。已保存的 OCR 结果会保留。` : `All ${LOCAL_OCR_LIMITS.maxDevicesPerAccount} device slots are in use. Revoke an unused connection below before pairing again. Saved OCR results are retained.`}</p>}
       {pairing && <div className="local-ocr__pairing"><p>{expired ? (zh ? "配对码已过期，请生成新码。" : "Pairing code expired. Generate a new one.") : (zh ? `有效至 ${new Date(pairing.expiresAt).toLocaleTimeString()}，粘贴到连接器的输入提示中。` : `Valid until ${new Date(pairing.expiresAt).toLocaleTimeString()}. Paste into the connector's input prompt.`)}</p>{!expired && <><code>{pairing.pairingCode}</code><button type="button" onClick={() => void copyText(pairing.pairingCode, zh, setMessage)}>{zh ? "复制配对码" : "Copy pairing code"}</button></>}</div>}
-      <h3>{zh ? "已配对设备" : "Paired devices"}</h3>{!devices.length && <p>{zh ? "暂无设备。配对并通过测试后会出现在这里。" : "No devices yet. Paired devices appear after passing the test."}</p>}
+      <h3>{zh ? "已配对设备" : "Paired devices"}</h3>
+      {devicesState === "loading" && <p role="status">{zh ? "正在读取设备…" : "Loading paired devices…"}</p>}
+      {devicesState === "ready" && !devices.length && <p>{zh ? "暂无设备。配对并通过测试后会出现在这里。" : "No devices yet. Paired devices appear after passing the test."}</p>}
+      {devicesState === "failed" && <button type="button" disabled={busy} onClick={() => { setMessage(""); setDevicesState("loading"); void refresh(); }}>{zh ? "重新读取设备" : "Reload devices"}</button>}
       <ul className="local-ocr__devices">{devices.map((device) => <li key={device.id}><strong>{device.label}</strong><span>{device.revokedAt ? (zh ? "已撤销" : "Revoked") : Date.parse(device.tokenExpiresAt) <= now ? (zh ? "连接已过期" : "Connection expired") : device.online ? (zh ? "在线" : "Online") : (zh ? "离线" : "Offline")}</span><small>{device.capabilities.engineId} {device.capabilities.engineVersion}</small><small>{device.transportFeatures?.includes(LOCAL_OCR_BOOK_FEATURE) ? (zh ? "支持后台整书" : "Background book jobs supported") : (zh ? "整书识别需开启阅读器" : "Book OCR requires the Reader to stay open")}</small>{device.lastSeenAt && <small>{zh ? "最近在线：" : "Last seen: "}{new Date(device.lastSeenAt).toLocaleString()}</small>}{!device.revokedAt && <button type="button" disabled={busy} onClick={() => void revoke(device.id)}>{zh ? "撤销" : "Revoke"}</button>}</li>)}</ul>
       <details><summary tabIndex={0}>{zh ? "连接与故障排查" : "Connection and troubleshooting"}</summary><p>{zh ? "后台整书任务可在关闭网站后继续，电脑和连接器须保持运行。电脑或连接器重启后重新配对，再到阅读器手动继续；连接器不会自动启动。旧连接器识别整书时须保持阅读器开启。手机可发起任务并查看结果，OCR在自己的配对电脑上运行。" : "Background book jobs continue after you close the website while your computer and connector stay running. After restarting the computer or connector, pair again and resume manually in the Reader; the connector does not start automatically. Older connectors require the Reader to stay open for book OCR. A phone can start jobs and view results; recognition runs on your own paired computer."}</p></details>
     </> : <><p>{zh ? "在线账户接入尚未开放。" : "Online account connection is not available yet."}</p><a href="https://ai.baidu.com/tech/ocr" target="_blank" rel="noreferrer">{zh ? "百度OCR官方介绍" : "Official Baidu OCR information"}</a></>}
