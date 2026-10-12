@@ -49,7 +49,7 @@ function folio(locator: CitationLocator): string {
 }
 
 function locatorText(style: CitationStyleId, locators: CitationLocator[], item: NormalizedCslItem): string {
-  const english = style === "chicago-notes-bibliography" || (item.type === "article-journal"
+  const english = style === "chicago-notes-bibliography" || (["article-journal", "chapter", "paper-conference"].includes(item.type)
     && style !== "gb-t-7714-2025" && /^en(?:-|$)/iu.test(item.language ?? ""));
   const labels = english ? CHICAGO_LOCATORS : CHINESE_LOCATORS;
   return locators.map((locator) => labels[locator.type](locator)).join(english ? ", " : "，");

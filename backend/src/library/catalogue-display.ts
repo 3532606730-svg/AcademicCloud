@@ -65,17 +65,22 @@ const EDITION_TYPE_LABELS: Readonly<Record<EditionType, string>> = {
   unknown: "版本未详",
 };
 
-const CONTRIBUTOR_ROLE_LABELS: Readonly<Partial<Record<ContributorRole, string>>> = {
-  editor: "编辑",
-  compiler: "编纂",
-  translator: "译注",
-  annotator: "校注",
-  collator: "汇校",
-  punctuator: "标点",
-  commentator: "笺证",
-  reviser: "整理",
-  selector: "辑校",
-  organizer: "整理",
+const ROLE_EDITION_LABELS: Readonly<Partial<Record<ContributorRole, string>>> = {
+  translator: "译本",
+  annotator: "校注本",
+  collator: "汇校本",
+  punctuator: "标点本",
+  commentator: "笺证本",
+  reviser: "整理本",
+  selector: "辑校本",
+  organizer: "整理本",
+};
+
+const PRECISE_ROLE_EDITIONS: Readonly<Record<string, string>> = {
+  译: "译本", 翻译: "译本", 译注: "译注本",
+  注: "注本", 注释: "注释本", 校注: "校注本", 点校: "点校本",
+  校勘: "校勘本", 汇校: "汇校本", 标点: "标点本", 笺证: "笺证本",
+  整理: "整理本", 辑校: "辑校本", 修订: "修订本",
 };
 
 export interface CatalogueDisplayInput {
@@ -210,10 +215,15 @@ function sourceEditionStatement(profile: CatalogueBibliography): string | null {
 
 function editorialRoleLabels(profile: CatalogueBibliography): string[] {
   return unique(profile.contributors.flatMap((contributor) => {
-    if (contributor.role === "author" || contributor.role === "other") return [];
-    return contributor.roleLabel
-      ? [contributor.roleLabel]
-      : [CONTRIBUTOR_ROLE_LABELS[contributor.role]];
+    const fallback = ROLE_EDITION_LABELS[contributor.role];
+    if (!fallback) return [];
+    // A scoped responsibility (volume editor, abstract translator, etc.) is
+    // not an edition statement. Only a recognized whole-work action qualifies.
+    const label = contributor.roleLabel?.normalize("NFC").trim();
+    const edition = label
+      ? Object.hasOwn(PRECISE_ROLE_EDITIONS, label) ? PRECISE_ROLE_EDITIONS[label] : undefined
+      : fallback;
+    return edition ? [edition] : [];
   }));
 }
 
@@ -226,7 +236,7 @@ function carrierEditionStatement(profile: CatalogueBibliography): string | null 
   } else {
     appendUnique(parts, profile.publication.publicationDate);
     const roles = editorialRoleLabels(profile);
-    for (const role of roles) appendUnique(parts, role.endsWith("本") ? role : `${role}本`);
+    for (const role of roles) appendUnique(parts, role);
     if (roles.length === 0) appendUnique(parts, editionTypeLabel(carrier.editionType));
   }
   appendUnique(parts, profile.publication.editionNumber);

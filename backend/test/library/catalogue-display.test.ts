@@ -194,6 +194,39 @@ test("historical display never treats a generic person field as modern authorshi
   assert.equal(historical.title.includes("亦邻真"), false);
 });
 
+test("volume and general editorial responsibilities never manufacture edition statements", () => {
+  for (const roleLabel of ["本卷主编", "本卷副主编", "Hrsg.", "Edited by"]) {
+    const bibliography = profile({
+      materialClass: "primary_source_modern_edition",
+      volume: "某地区 下册",
+      publication: { publisher: "示例出版社", publicationDate: "2000" },
+      contributors: [{ id: "editor", label: "编辑甲", role: "editor", roleLabel }],
+    });
+    const before = structuredClone(bibliography);
+    const display = composeCatalogueDisplay({ canonicalTitle: "史料集成", fallbackDisplayName: "scan.pdf", bibliography });
+    assert.equal(display.title, "史料集成（某地区 下册） 示例出版社2000");
+    assert.deepEqual(display.secondaryContributorLabels, ["编辑甲"]);
+    assert.deepEqual(bibliography, before, "source responsibility is preserved");
+  }
+});
+
+test("partial translation credits do not label the entire carrier as a translation or annotated edition", () => {
+  const bibliography = profile({
+    materialClass: "primary_source_modern_edition",
+    contributors: [{ id: "translator", label: "译者甲", role: "translator", roleLabel: "英文摘要和目录翻译" }],
+    publication: { publisher: "示例出版社" },
+  });
+  assert.equal(composeCatalogueDisplay({ canonicalTitle: "史料", fallbackDisplayName: "scan.pdf", bibliography }).title, "史料 示例出版社");
+  for (const roleLabel of ["constructor", "__proto__"]) {
+    bibliography.contributors[0]!.roleLabel = roleLabel;
+    assert.equal(composeCatalogueDisplay({ canonicalTitle: "史料", fallbackDisplayName: "scan.pdf", bibliography }).title, "史料 示例出版社");
+  }
+  bibliography.contributors[0]!.roleLabel = "翻译";
+  assert.equal(composeCatalogueDisplay({ canonicalTitle: "史料", fallbackDisplayName: "scan.pdf", bibliography }).title, "史料 示例出版社译本");
+  delete bibliography.contributors[0]!.roleLabel;
+  assert.equal(composeCatalogueDisplay({ canonicalTitle: "史料", fallbackDisplayName: "scan.pdf", bibliography }).title, "史料 示例出版社译本");
+});
+
 test("catalogue download filenames preserve only the authorized extension", () => {
   assert.equal(composeCatalogueFilename("杉山正明 モンゴル帝国の興亡", "scan.pdf"), "杉山正明 モンゴル帝国の興亡.pdf");
   assert.equal(composeCatalogueFilename("元朝秘史 明万历刻本.pdf", "scan.pdf"), "元朝秘史 明万历刻本.pdf");

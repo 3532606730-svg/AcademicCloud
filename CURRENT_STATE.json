@@ -1459,7 +1459,7 @@
       "postCatalogueImprovement": {
         "ownerInstructionDate": "2026-10-09",
         "order": "OwnerOctober12 retains6 pending sources and explicitly authorizes catalogue-system repair now; full-Library acceptance remainsfalse.",
-        "implementationStarted": false,
+        "implementationStarted": true,
         "findings": [
           "New metadata with other/unknown materialClass and omitted materialType falls back to book; source notice is held rather than misclassified.",
           "Preview compares absent alternativeTitles/identifiers with normalized empty arrays, showing human set although Apply does not mark those empty arrays human.",
@@ -1485,7 +1485,7 @@
           "Normal d3 conference-paper citation omits its stored container_work and page span433–449 in Historical Research. Root reproduces actual citation; source facts stay distinct from rendering defect.",
           "Whole-journal issue,book/index excerpts and a submission notice expose missing/unknown broad-type representation. Existing Details first-save defaultsbook and always submits a full contributor list; do not force these pending sources into unsupported types. New domain/schema changes require a separately recorded design rather than silently changing model/contract pins."
         ],
-        "codeChanges": false,
+        "codeChanges": true,
         "newSchemaOrTypeEnum": false,
         "noHistoricalAuthorityRewrite": true,
         "rangeContractReproduction": {
@@ -1520,7 +1520,27 @@
           "screenshot": "output/vnext/catalog-review-20261007/d3-citation-20261012.jpg",
           "schemaOrCanonicalCauseNotClaimed": true
         },
-        "ownerRepairAuthorized20261012": true
+        "ownerRepairAuthorized20261012": true,
+        "localRepair20261012": {
+          "status": "LOCAL_CHECKS_PASS_EXACT_RELEASE_PENDING",
+          "citationDisplayChecks": 31,
+          "detailsChecks": 38,
+          "libraryMetadataChecks": 81,
+          "types": [
+            "backend PASS",
+            "frontend PASS"
+          ],
+          "frontendBuild": "PASS",
+          "responsiveWidths": [
+            1440,
+            768,
+            390
+          ],
+          "horizontalOverflow": false,
+          "rootReview": "scoped review; no completed independent agent verdict after usage limits",
+          "schemaOrModelChanges": false,
+          "productionChanged": false
+        }
       },
       "natureJournalCompletion": {
         "resourceId": "0b1bac05-a083-4292-8013-03b9dae66805",

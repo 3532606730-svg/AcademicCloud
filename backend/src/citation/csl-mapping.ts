@@ -28,7 +28,7 @@ const GBT_GENRES: Readonly<Record<MaterialClass, string>> = {
   scholarly_monograph: "M",
   edited_volume: "M",
   journal_article: "J",
-  book_chapter: "A",
+  book_chapter: "M",
   thesis_dissertation: "D",
   conference_paper: "C",
   review: "J",

@@ -121,3 +121,20 @@ test("journal metadata keeps its authorized container, issue and article extent 
   const missing = metadataDetailToCsl(value).item;
   for (const field of ["container-title", "issue", "page"]) assert.equal(Object.hasOwn(missing, field), false);
 });
+
+test("book-part and conference citation genres preserve their source class and authorized container", () => {
+  for (const [materialClass, type, genre] of [["book_chapter", "chapter", "M"], ["conference_paper", "paper-conference", "C"]] as const) {
+    const value = detail();
+    value.metadata!.materialType = "article";
+    value.metadata!.typeFields = { locator: "11–20" };
+    value.metadata!.authorityLinks = [{ id:"container",type:"work",canonicalLabel:"示例文集",aliases:[],version:"c".repeat(43),role:"container_work" }];
+    value.bibliography!.materialClass = materialClass;
+    const before = structuredClone(value);
+    const { item } = metadataDetailToCsl(value);
+    assert.equal(item.type,type);
+    assert.equal(item.genre,genre);
+    assert.equal(item.page,"11–20");
+    assert.equal(item["container-title"],"示例文集");
+    assert.deepEqual(value,before);
+  }
+});

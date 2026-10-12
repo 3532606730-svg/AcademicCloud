@@ -86,8 +86,8 @@ test("all four style definitions are offline-pinned by exact revision and SHA-25
     assert.equal(actual, expectedCitationStyleHash(id));
     const descriptor = citationStyleDescriptor(id, "test-processor");
     assert.equal(descriptor.sha256, actual);
-    assert.equal(descriptor.verifiedAt, "2026-10-07");
-    assert.equal(descriptor.revision, "academiccloud-2026-10-07.1");
+    assert.equal(descriptor.verifiedAt, "2026-10-12");
+    assert.equal(descriptor.revision, "academiccloud-2026-10-12.1");
     assert.match(descriptor.source, /^https:\/\//u);
   }
 });
@@ -165,5 +165,50 @@ test("journal citations omit unavailable facts without substituting invented jou
     const result = renderCitation(style, partial, []);
     assert.match(result.outputs.bibliography, /A partial article/u);
     assert.doesNotMatch(result.outputs.bibliography, /undefined|null|\(\)|no\.|vol\.|pp\.|Harvard|1986|11–50/u);
+  }
+});
+
+test("collected-book parts retain their container and bibliography extent independently of a pinpoint", () => {
+  for (const type of ["chapter", "paper-conference"]) {
+    const item: NormalizedCslItem = {
+      id: "part", type, title: "An Example Essay", "title-short": "An Example Essay",
+      author: [{ family: "Smith", given: "Ann" }],
+      "container-title": "Collected Papers", page: "11–20", language: "en",
+      issued: { "date-parts": [[2000]] }, genre: type === "chapter" ? "M" : "C",
+    };
+    const before = structuredClone(item);
+    for (const style of CITATION_STYLES) {
+      const full = renderCitation(style, item, []);
+      const pinpoint = renderCitation(style, item, [{ type: "page", value: "14" }]);
+      assert.match(full.outputs.bibliography, /Collected Papers/u, `${style}:${type}`);
+      assert.equal(pinpoint.outputs.bibliography, full.outputs.bibliography);
+      assert.match(pinpoint.outputs.citation, /14/u);
+      if (style !== "gb-t-7714-2025") {
+        assert.match(full.outputs.fullNote!, /Collected Papers/u);
+        assert.match(full.outputs.fullNote!, /11–20/u);
+        assert.doesNotMatch(pinpoint.outputs.fullNote!, /11–20/u);
+        assert.doesNotMatch(pinpoint.outputs.shortNote!, /Collected Papers|2000/u);
+      }
+      if (style === "lishi-yanjiu" || style === "gb-t-7714-2025") assert.match(full.outputs.bibliography, /11–20/u);
+      if (style === "chicago-notes-bibliography") assert.doesNotMatch(full.outputs.bibliography, /11–20/u);
+    }
+    assert.deepEqual(item, before, "formatting never rewrites canonical facts");
+    assert.equal(renderCitation("lishi-yanjiu", item, []).outputs.fullNote, "Ann Smith, “An Example Essay,” in Collected Papers, 2000, pp. 11–20.");
+    assert.equal(renderCitation("gb-t-7714-2025", item, []).outputs.bibliography, `[1] Smith, Ann. An Example Essay[${item.genre}]//Collected Papers. 2000: 11–20.`);
+  }
+});
+
+test("Chinese chapters and incomplete conference papers omit unsupported container/editor/publication facts", () => {
+  const chinese: NormalizedCslItem = {
+    id: "chinese-part", type: "chapter", title: "示例论文", "title-short": "示例论文",
+    author: [{ literal: "作者甲" }], "container-title": "示例文集", page: "11–20", language: "zh",
+    publisher: "示例出版社", "publisher-place": "示例市", issued: { "date-parts": [[2000]] }, genre: "M",
+  };
+  assert.equal(renderCitation("lishi-yanjiu", chinese, []).outputs.fullNote, "作者甲：《示例论文》，《示例文集》，示例市：示例出版社，2000年，第11–20页。");
+  const partial: NormalizedCslItem = { id: "partial-part", type: "paper-conference", title: "An Example Essay", "title-short": "An Example Essay", author: [{ literal: "Author" }], language: "en", genre: "C" };
+  for (const style of CITATION_STYLES) {
+    const result = renderCitation(style, partial, []);
+    assert.match(result.outputs.bibliography, /An Example Essay/u);
+    assert.doesNotMatch(result.outputs.bibliography, /undefined|null|\(\)|Collected Papers|2000|11–20|edited by|ed\.|\/\/|\bIn\b|\bin\b/u);
   }
 });

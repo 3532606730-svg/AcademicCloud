@@ -412,6 +412,60 @@ describe("Resource details", () => {
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
+  it("requires an explicit publication form for a new title instead of silently saving a book", async () => {
+    const initial = { ...detail(), metadata: null };
+    const { api } = renderDetails({ initial });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
+    await user.type(screen.getByLabelText("Canonical title"), "A source-supported title");
+    expect(screen.getByLabelText("Material type")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Save metadata" })).toBeDisabled();
+    expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
+    await user.selectOptions(screen.getByLabelText("Material type"), "article");
+    await user.click(screen.getByRole("button", { name: "Save metadata" }));
+    await waitFor(() => expect(api.updateLibraryHoldingMetadata).toHaveBeenCalledWith(LIBRARY.id,HOLDING.file.id,expect.objectContaining({materialType:"article",canonicalTitle:"A source-supported title"})));
+  });
+
+  it("links an existing article container without creating a work or dropping other authority roles", async () => {
+    const initial = detail("article", { locator:"11–20" });
+    const work = { id:"work-container",type:"work" as const,canonicalLabel:"Collected Papers",aliases:[],version:"w".repeat(43) };
+    initial.metadata!.authorityLinks.push({ ...work,role:"series_work" });
+    const { api } = renderDetails({ initial,api:{listLibraryAuthorities:vi.fn().mockResolvedValue([work])} });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", {name:"Edit title and contributors"}));
+    await user.selectOptions(screen.getByLabelText("Source journal / collected book"),work.id);
+    await user.type(screen.getByLabelText("New journal / collected-book title"),work.canonicalLabel);
+    await user.click(screen.getByRole("button",{name:"Link source"}));
+    await user.click(screen.getByRole("button",{name:"Save metadata"}));
+    await waitFor(()=>expect(api.updateLibraryHoldingMetadata).toHaveBeenCalledTimes(1));
+    const payload=vi.mocked(api.updateLibraryHoldingMetadata).mock.calls[0]![2];
+    expect(payload.authorityLinks).toEqual(expect.arrayContaining([{authorityId:"authority-secret-id",role:"author"},{authorityId:work.id,role:"series_work"},{authorityId:work.id,role:"container_work"}]));
+    expect(payload.authorityLinks.filter(link=>link.role==="container_work")).toHaveLength(1);
+    expect(api.createLibraryAuthority).not.toHaveBeenCalled();
+    expect(payload.typeFields.locator).toBe("11–20");
+  });
+
+  it("creates a new source as a container work and retains its name after a failed creation", async () => {
+    const work={id:"new-container",type:"work" as const,canonicalLabel:"New Collected Papers",aliases:[],version:"w".repeat(43)};
+    const create=vi.fn().mockRejectedValueOnce(new ApiError(503,"service_unavailable")).mockResolvedValue(work);
+    const {api}=renderDetails({initial:detail("article",{}),api:{createLibraryAuthority:create}});
+    const user=userEvent.setup();
+    await user.click(await screen.findByRole("button",{name:"Edit title and contributors"}));
+    const input=screen.getByLabelText("New journal / collected-book title");
+    await user.type(input,work.canonicalLabel);
+    await user.click(screen.getByRole("button",{name:"Link source"}));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"Link source"})).toBeEnabled());
+    expect(input).toHaveValue(work.canonicalLabel);
+    expect(api.updateLibraryHoldingMetadata).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button",{name:"Link source"}));
+    await waitFor(()=>expect(input).toHaveValue(""));
+    expect(create).toHaveBeenLastCalledWith(LIBRARY.id,{type:"work",canonicalLabel:work.canonicalLabel,aliases:[]});
+    expect(screen.getByLabelText("Source journal / collected book")).toHaveValue(work.id);
+    await user.click(screen.getByRole("button",{name:"Save metadata"}));
+    await waitFor(()=>expect(api.updateLibraryHoldingMetadata).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.updateLibraryHoldingMetadata).mock.calls[0]![2].authorityLinks).toContainEqual({authorityId:work.id,role:"container_work"});
+  });
+
   it("edits structured carrier and historical-source bibliography without opening AI history", async () => {
     const initial: LibraryHoldingDetails = {
       ...detail(),

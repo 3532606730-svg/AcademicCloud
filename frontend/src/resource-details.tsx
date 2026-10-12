@@ -419,7 +419,7 @@ function useResourceDialog(onClose: () => void, disabled: boolean, returnFocus?:
 }
 
 function draftFromDetail(detail: LibraryHoldingDetails): {
-  materialType: MaterialType;
+  materialType: MaterialType | "";
   canonicalTitle: string;
   subtitle: string;
   alternativeTitles: string[];
@@ -430,7 +430,7 @@ function draftFromDetail(detail: LibraryHoldingDetails): {
 } {
   const metadata = detail.metadata;
   return {
-    materialType: metadata && isMaterialType(metadata.materialType) ? metadata.materialType : "book",
+    materialType: metadata && isMaterialType(metadata.materialType) ? metadata.materialType : "",
     canonicalTitle: metadata?.canonicalTitle ?? "",
     subtitle: metadata?.subtitle ?? "",
     alternativeTitles: metadata?.alternativeTitles ? [...metadata.alternativeTitles] : [],
@@ -735,7 +735,7 @@ export function ResourceDetailsDialog({
   }
 
   function metadataForSuggestionAcceptance(): MetadataSuggestionAcceptInput["metadata"] | undefined {
-    if (!detail) return undefined;
+    if (!detail || !isMaterialType(draft.materialType)) return undefined;
     return {
       materialType: draft.materialType,
       canonicalTitle: draft.canonicalTitle.trim(),
@@ -750,6 +750,10 @@ export function ResourceDetailsDialog({
 
   async function acceptSuggestions() {
     if (!api.acceptLibraryMetadataSuggestions || !detail || !suggestionRun || library.role !== "manager" || selectedSuggestionIds.size === 0) return;
+    if (editing && !isMaterialType(draft.materialType)) {
+      setNotice(t("metadata.chooseMaterialType"));
+      return;
+    }
     setSuggestionsAccepting(true);
     setSuggestionsError(null);
     setNotice("");
@@ -808,7 +812,7 @@ export function ResourceDetailsDialog({
   }
 
   function useSuggestionInEditor(candidate: MetadataSuggestionCandidate) {
-    if (!detail || !isMaterialType(draft.materialType)) return;
+    if (!detail) return;
     setEditing(true);
     if (candidate.fieldPath === "canonicalTitle") {
       setDraft((current) => ({ ...current, canonicalTitle: candidate.value }));
@@ -827,7 +831,7 @@ export function ResourceDetailsDialog({
           : { ...current, identifiers: [...current.identifiers, { scheme: candidate.identifierScheme!, value: candidate.value }] };
       });
     } else if (candidate.fieldPath === "typeField" && candidate.typeFieldName) {
-      const knownField = FIELDS_BY_TYPE[draft.materialType].some(({ key }) => key === candidate.typeFieldName);
+      const knownField = isMaterialType(draft.materialType) && FIELDS_BY_TYPE[draft.materialType].some(({ key }) => key === candidate.typeFieldName);
       if (knownField) setDraft((current) => ({ ...current, typeFields: { ...current.typeFields, [candidate.typeFieldName!]: candidate.value } }));
       else setNotice(t("metadata.suggestions.authorityReview"));
     } else if (candidate.fieldPath === "authority") {
@@ -849,7 +853,7 @@ export function ResourceDetailsDialog({
   }
 
   function updateType(next: MaterialType) {
-    if (next !== draft.materialType && FIELDS_BY_TYPE[draft.materialType].some(({ key }) => Boolean(draft.typeFields[key]?.trim()))) {
+    if (next !== draft.materialType && isMaterialType(draft.materialType) && FIELDS_BY_TYPE[draft.materialType].some(({ key }) => Boolean(draft.typeFields[key]?.trim()))) {
       setNotice(t("metadata.typeTransitionBlocked"));
       return;
     }
@@ -857,24 +861,29 @@ export function ResourceDetailsDialog({
     setNotice("");
   }
 
-  async function createAuthority() {
-    if (!authorityLabel.trim()) return;
+  async function createAuthority(containerLabel?: string): Promise<boolean> {
+    const label = (containerLabel ?? authorityLabel).trim();
+    if (!label) return false;
     setSaving(true);
     setError(null);
     try {
-      const authority = await api.createLibraryAuthority(library.id, { type: authorityType, canonicalLabel: authorityLabel, aliases: [] });
+      const authority = await api.createLibraryAuthority(library.id, { type: containerLabel === undefined ? authorityType : "work", canonicalLabel: label, aliases: [] });
       setAuthorities((current) => [...current, authority]);
-      const role = pendingAuthorityRole && ROLES_BY_TYPE[authority.type].includes(pendingAuthorityRole)
+      const role = containerLabel !== undefined ? "container_work" : pendingAuthorityRole && ROLES_BY_TYPE[authority.type].includes(pendingAuthorityRole)
         ? pendingAuthorityRole
         : ROLES_BY_TYPE[authority.type][0]!;
-      setDraft((current) => ({ ...current, authorityLinks: [...current.authorityLinks, { authorityId: authority.id, role }] }));
-      if (pendingAuthorityCandidateId) setSelectedSuggestionIds((current) => new Set(current).add(pendingAuthorityCandidateId));
-      setPendingAuthorityRole(null);
-      setPendingAuthorityCandidateId(null);
-      setAuthorityLabel("");
+      setDraft((current) => ({ ...current, authorityLinks: [...current.authorityLinks.filter((link) => containerLabel === undefined || link.role !== "container_work"), { authorityId: authority.id, role }] }));
+      if (containerLabel === undefined) {
+        if (pendingAuthorityCandidateId) setSelectedSuggestionIds((current) => new Set(current).add(pendingAuthorityCandidateId));
+        setPendingAuthorityRole(null);
+        setPendingAuthorityCandidateId(null);
+        setAuthorityLabel("");
+      }
       setNotice(t("metadata.authorityCreated"));
+      return true;
     } catch (caught) {
       setError(caught);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -891,7 +900,7 @@ export function ResourceDetailsDialog({
   }
 
   async function save() {
-    if (!detail || !draft.canonicalTitle.trim()) return;
+    if (!detail || !isMaterialType(draft.materialType) || !draft.canonicalTitle.trim()) return;
     setSaving(true);
     setError(null);
     setNotice("");
@@ -1015,7 +1024,7 @@ export function ResourceDetailsDialog({
         accepting={suggestionsAccepting}
         error={suggestionsError}
         manager={library.role === "manager" && Boolean(detail?.canEditMetadata)}
-        requiresEditor={!detail?.metadata && !editing}
+        requiresEditor={!detail?.metadata && (!editing || !isMaterialType(draft.materialType))}
         selectedIds={selectedSuggestionIds}
         onGenerate={() => void generateSuggestions()}
         onToggle={(candidateId) => setSelectedSuggestionIds((current) => {
@@ -1129,6 +1138,7 @@ export function ResourceDetailsDialog({
                 authorityLabel={authorityLabel}
                 setAuthorityLabel={setAuthorityLabel}
                 onCreateAuthority={() => void createAuthority()}
+                onCreateContainer={createAuthority}
                 onAuthorityLinked={linkAuthority}
                 onCancel={() => leaveEditor("view")}
                 onSave={() => void save()}
@@ -1569,6 +1579,7 @@ function MetadataEditor({
   authorityLabel,
   setAuthorityLabel,
   onCreateAuthority,
+  onCreateContainer,
   onAuthorityLinked,
   onCancel,
   onSave,
@@ -1585,13 +1596,16 @@ function MetadataEditor({
   authorityLabel: string;
   setAuthorityLabel: (value: string) => void;
   onCreateAuthority: () => void;
+  onCreateContainer: (label: string) => Promise<boolean>;
   onAuthorityLinked: (authority: LibraryAuthority) => void;
   onCancel: () => void;
   onSave: () => void;
   saving: boolean;
   t: ReturnType<typeof useLanguage>["t"];
 }) {
-  const fields = FIELDS_BY_TYPE[draft.materialType];
+  const [containerLabel, setContainerLabel] = useState("");
+  const containerLinks = draft.authorityLinks.filter((link) => link.role === "container_work");
+  const fields = isMaterialType(draft.materialType) ? FIELDS_BY_TYPE[draft.materialType] : [];
   function setField(key: keyof MetadataTypeFields, value: string) {
     setDraft((current) => ({ ...current, typeFields: { ...current.typeFields, [key]: value } }));
   }
@@ -1601,6 +1615,7 @@ function MetadataEditor({
         <legend>{t("metadata.details")}</legend>
         <label>{t("metadata.materialType")}
           <select value={draft.materialType} onChange={(event) => onTypeChange(event.target.value as MaterialType)}>
+            <option value="" disabled>{t("metadata.chooseMaterialType")}</option>
             {MATERIAL_TYPES.map((type) => <option key={type} value={type}>{t(materialLabelKey(type))}</option>)}
           </select>
         </label>
@@ -1614,6 +1629,32 @@ function MetadataEditor({
           <input value={draft.dateStatement} maxLength={128} onChange={(event) => setDraft((current) => ({ ...current, dateStatement: event.target.value }))} />
         </label>
       </fieldset>
+      {draft.materialType === "article" && <fieldset disabled={saving}>
+        <legend>{t("metadata.articleContainer")}</legend>
+        <select aria-label={t("metadata.articleContainer")} value={containerLinks.length === 1 ? containerLinks[0]!.authorityId : ""} onChange={(event) => {
+          const authorityId = event.target.value;
+          setDraft((current) => ({ ...current, authorityLinks: [
+            ...current.authorityLinks.filter((link) => link.role !== "container_work"),
+            ...(authorityId ? [{ authorityId, role: "container_work" as const }] : []),
+          ] }));
+        }}>
+          <option value="">{t("metadata.noArticleContainer")}</option>
+          {authorities.filter((authority) => authority.type === "work").map((authority) => <option key={authority.id} value={authority.id}>{authority.canonicalLabel}</option>)}
+        </select>
+        {containerLinks.length > 1 && <div>{containerLinks.map((link) => <span key={link.authorityId}>{authoritiesById.get(link.authorityId)?.canonicalLabel} </span>)}</div>}
+        {(draft.authorityLinks.length < 32 || containerLinks.length > 0) && <div className="metadata-authority-add">
+          <input aria-label={t("metadata.newArticleContainer")} maxLength={255} value={containerLabel} onChange={(event) => setContainerLabel(event.target.value)} />
+          <button className="button button--small" type="button" disabled={!containerLabel.trim()} onClick={() => {
+            const existing = authorities.find((authority) => authority.type === "work" && authority.canonicalLabel === containerLabel.trim());
+            if (existing) {
+              setDraft((current) => ({ ...current, authorityLinks: [...current.authorityLinks.filter((link) => link.role !== "container_work"), { authorityId: existing.id, role: "container_work" }] }));
+              setContainerLabel("");
+            } else {
+              void onCreateContainer(containerLabel).then((created) => { if (created) setContainerLabel(""); });
+            }
+          }}>{t("metadata.linkArticleContainer")}</button>
+        </div>}
+      </fieldset>}
       <fieldset>
         <legend>{t("metadata.alternativeTitles")}</legend>
         {draft.alternativeTitles.map((title, index) => <div className="metadata-repeat-row metadata-repeat-row--title" key={`alternative-${index}`}>
@@ -1668,7 +1709,7 @@ function MetadataEditor({
       </fieldset>
       <footer className="resource-details-actions">
         <button className="button button--quiet" type="button" onClick={onCancel} disabled={saving}>{t("metadata.cancel")}</button>
-        <button className="button button--primary" type="button" onClick={onSave} disabled={saving || !draft.canonicalTitle.trim()}>{saving ? t("metadata.saving") : t("metadata.save")}</button>
+        <button className="button button--primary" type="button" onClick={onSave} disabled={saving || !isMaterialType(draft.materialType) || !draft.canonicalTitle.trim()}>{saving ? t("metadata.saving") : t("metadata.save")}</button>
       </footer>
     </div>
   );
