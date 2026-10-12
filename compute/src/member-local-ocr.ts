@@ -20,11 +20,11 @@ export function syntheticOcrProbe():Uint8Array {
   context.fillStyle='#fff';context.fillRect(0,0,850,160);context.fillStyle='#000';context.font='44px sans-serif';context.fillText(LOCAL_OCR_PROBE_TEXT,30,90);
   return canvas.toBuffer('image/png');
 }
-async function jsonResponse(response:Response,maxBytes=3*1024*1024):Promise<unknown>{
+async function jsonResponse(response:Response,maxBytes=3*1024*1024):Promise<{value:unknown;sizeBytes:number}>{
   if(!response.body)throw new MemberOcrError('protocol_invalid');
   const reader=response.body.getReader();const parts:Uint8Array[]=[];let count=0;
   try{for(;;){const next=await reader.read();if(next.done)break;count+=next.value.length;if(count>maxBytes)throw new MemberOcrError('protocol_invalid');parts.push(next.value);}
-    return JSON.parse(Buffer.concat(parts).toString('utf8')) as unknown;
+    return {value:JSON.parse(Buffer.concat(parts).toString('utf8')) as unknown,sizeBytes:count};
   }catch{await reader.cancel().catch(()=>{});throw new MemberOcrError('protocol_invalid');}finally{reader.releaseLock();}
 }
 function object(value:unknown):Record<string,unknown>{if(typeof value!=='object'||value===null||Array.isArray(value))throw new MemberOcrError('protocol_invalid');return value as Record<string,unknown>;}
@@ -68,13 +68,26 @@ export async function runMemberLocalConnector(options:MemberConnectorOptions):Pr
   // Explicit resume creates a new server attempt; re-pair uses a new device.
   const attemptedBooks=new Map<string,string>();
   async function request(path:string,body:unknown|undefined,signal:AbortSignal):Promise<unknown>{
+    const encoded=body===undefined?undefined:JSON.stringify(body);
+    const started=performance.now();
     try{
       const response=await fetcher(core+LOCAL_OCR_ROOT+path,{method:body===undefined?'GET':'POST',redirect:'error',
         headers:{Origin:core,...(body===undefined?{}:{'content-type':'application/json'}),...(token?{authorization:`Bearer ${token}`}:{})},
-        ...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.any([signal,AbortSignal.timeout(10_000)])});
+        ...(encoded===undefined?{}:{body:encoded}),signal:AbortSignal.any([signal,AbortSignal.timeout(10_000)])});
+      const headersAt=performance.now();
       if(response.status===401||response.status===403){await response.body?.cancel();throw new MemberOcrError(token?'access_revoked':'pairing_failed');}
       if(!response.ok){await response.body?.cancel();throw new MemberOcrError('protocol_invalid');}
-      return await jsonResponse(response);
+      const parsed=await jsonResponse(response);
+      // Fixed endpoint labels and numeric durations/sizes only: no URL, token,
+      // task identity, image, OCR text or response body reaches diagnostics.
+      const operation=path.slice('/device/'.length);
+      if(['book-claim','book-source','book-heartbeat','book-page','book-finish'].includes(operation)&&path===`/device/${operation}`){
+        const finished=performance.now();
+        try{options.onEvent?.({event:'member_ocr.book_request_timing',operation:operation as NonNullable<MemberBookEvent['operation']>,
+          milliseconds:Math.round(finished-started),headersMilliseconds:Math.round(headersAt-started),bodyMilliseconds:Math.round(finished-headersAt),
+          requestBytes:encoded===undefined?0:Buffer.byteLength(encoded),responseBytes:parsed.sizeBytes});}catch{/* Diagnostics do not change acknowledgement authority. */}
+      }
+      return parsed.value;
     }catch(error){if(error instanceof MemberOcrError)throw error;throw new MemberOcrError(signal.aborted?'aborted':'network_failed');}
   }
   try{

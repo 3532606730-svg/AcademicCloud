@@ -8,7 +8,7 @@ import childProcess, { type ChildProcessWithoutNullStreams } from 'node:child_pr
 import { syncBuiltinESMExports } from 'node:module';
 import { PassThrough } from 'node:stream';
 import { LOCAL_OCR_BOOK_LIMITS, type LocalOcrBookClaim, type OcrEngineAdapter, type OcrEnginePageResult } from '@academiccloud/compute-contracts';
-import { runMemberBookJob, parseMemberBookClaim, type MemberBookOptions } from '../src/member-book-ocr.js';
+import { runMemberBookJob, parseMemberBookClaim, type MemberBookOptions, type MemberBookEvent } from '../src/member-book-ocr.js';
 import { MEMBER_PADDLE_CAPABILITIES, MemberOcrError, MemberPaddleSession, type MemberPaddleConfig } from '../src/member-paddle.js';
 import { PaddleOcrSidecarAdapter, PADDLE_OCR_ENGINE_ID } from '../src/paddle-ocr.js';
 
@@ -58,8 +58,122 @@ test('claim validates source/task state, declared bound, saved pages, lease and 
 test('book skips server checkpoints and uses eight-page slices, close-before-release, two-second yield and private cleanup', async () => {
   const f = fixture(); await runMemberBookJob(f.book, f.options);
   assert.deepEqual(f.captured, [1, 2, 3, 5, 6, 7, 8, 9, 10]); assert.equal(f.recognized.length, 9); assert.equal(f.submissions.length, 9);
-  assert.deepEqual(f.order, ['acquire', 'session', 'close', 'release', 'yield', 'acquire', 'session', 'close', 'release', 'yield', 'finish', 'pdfClose']);
+  assert.deepEqual(f.order, ['acquire', 'session', 'close', 'release', 'yield', 'acquire', 'session', 'close', 'release', 'finish', 'pdfClose']);
   await assert.rejects(stat(f.sourcePath));
+});
+
+test('last receipt closes the native slice and finishes without a terminal two-second sleep', async () => {
+  const f = fixture(claim(1, []));
+  f.options.delay = async () => { throw Error('no further native slice needs a yield'); };
+  await runMemberBookJob(f.book, f.options);
+  assert.deepEqual(f.order, ['acquire', 'session', 'close', 'release', 'finish', 'pdfClose']);
+});
+
+test('page authority check joins an outstanding periodic heartbeat, with no concurrent duplicate or stale cache', { timeout: 2000 }, async t => {
+  const f = fixture(claim(3, [])), request = f.options.request;
+  const started = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  let calls = 0, active = 0, peak = 0, heldAt = 0, inference = false;
+  t.after(() => { f.controller.abort(); release.resolve(); });
+  f.options.heartbeatMs = 1;
+  f.options.request = async (path, body, signal) => {
+    if (!path.endsWith('book-heartbeat')) return request(path, body, signal);
+    calls++; active++; peak = Math.max(peak, active);
+    try {
+      if (inference && heldAt === 0) { heldAt = calls; started.resolve(); await release.promise; }
+      return await request(path, body, signal);
+    } finally { active--; }
+  };
+  const create = f.options.sessionFactory;
+  f.options.sessionFactory = timing => {
+    const session = create(timing), recognize = session.recognize.bind(session);
+    session.recognize = async (input, options) => {
+      if (input.requestId === 'book1-1') {
+        inference = true;
+        await started.promise;
+        setImmediate(() => {
+          assert.equal(calls, heldAt); assert.equal(active, 1); assert.deepEqual(f.captured, [1]);
+          release.resolve();
+        });
+      }
+      return recognize(input, options);
+    };
+    return session;
+  };
+  const openPdf = f.options.pdfFactory!;
+  f.options.pdfFactory = async (...args) => {
+    const pdf = await openPdf(...args), capture = pdf.capture.bind(pdf);
+    pdf.capture = async (page, signal) => {
+      if (page === 2) assert.equal(calls, heldAt);
+      if (page === 3) assert.ok(calls > heldAt); // Completed checks are never cached.
+      return capture(page, signal);
+    };
+    return pdf;
+  };
+  await runMemberBookJob(f.book, f.options);
+  assert.equal(peak, 1);
+  assert.deepEqual(f.captured, [1, 2, 3]);
+});
+
+test('download-time heartbeat cannot substitute for decoded page-count registration', { timeout: 2000 }, async () => {
+  const f = fixture(claim(1, [])), request = f.options.request;
+  const started = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const bodies: Array<Record<string, unknown>> = [];
+  f.options.heartbeatMs = 1;
+  f.options.request = async (path, body, signal) => {
+    if (path.endsWith('book-heartbeat')) {
+      bodies.push(body as Record<string, unknown>);
+      if (bodies.length === 1) { started.resolve(); await release.promise; }
+    }
+    return request(path, body, signal);
+  };
+  f.options.fetch = async () => {
+    await started.promise;
+    setImmediate(() => { assert.equal(f.captured.length, 0); release.resolve(); });
+    return new Response(bytes);
+  };
+  await runMemberBookJob(f.book, f.options);
+  assert.equal(bodies[0]!.pageCount, undefined);
+  assert.equal(bodies[1]!.pageCount, 1);
+  assert.equal(f.submissions.length, 1);
+});
+
+test('a shared revoked heartbeat rejects all waiters before another page and releases only after native close', { timeout: 2000 }, async t => {
+  const f = fixture(claim(2, [])), request = f.options.request;
+  const started = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  let inference = false, held = false;
+  t.after(() => { f.controller.abort(); release.resolve(); });
+  f.options.heartbeatMs = 1;
+  f.options.request = async (path, body, signal) => {
+    if (path.endsWith('book-heartbeat') && inference && !held) {
+      held = true; started.resolve(); await release.promise;
+      throw new MemberOcrError('access_revoked');
+    }
+    return request(path, body, signal);
+  };
+  const create = f.options.sessionFactory;
+  f.options.sessionFactory = timing => {
+    const session = create(timing), recognize = session.recognize.bind(session);
+    session.recognize = async (input, options) => {
+      inference = true; await started.promise;
+      setImmediate(() => release.resolve());
+      return recognize(input, options);
+    };
+    return session;
+  };
+  await assert.rejects(runMemberBookJob(f.book, f.options), { message: 'access_revoked' });
+  assert.deepEqual(f.captured, [1]); assert.equal(f.submissions.length, 1);
+  assert.ok(f.order.indexOf('close') < f.order.indexOf('release'));
+  assert.equal(f.order.includes('finish'), false); assert.equal(f.owned, false);
+});
+
+test('content-free stage timing isolates preparation and never becomes checkpoint authority', async () => {
+  const f = fixture(claim(1, [])), events: MemberBookEvent[] = [];
+  f.options.onEvent = event => { events.push(event); if (event.event === 'member_ocr.book_timing') throw Error('broken metrics sink'); };
+  await runMemberBookJob(f.book, f.options);
+  const timings = events.filter(event => event.event === 'member_ocr.book_timing');
+  for (const phase of ['grant', 'download', 'open', 'heartbeat', 'native_wait', 'render', 'ack', 'finish']) assert.ok(timings.some(event => event.phase === phase), phase);
+  assert.ok(timings.every(event => Object.keys(event).sort().join(',') === 'event,milliseconds,phase' && Number.isInteger(event.milliseconds) && event.milliseconds! >= 0));
+  assert.equal(f.submissions.length, 1); assert.ok(f.order.includes('finish'));
 });
 test('uncertain page ack replays identical payload once after authority check, never captures or infers twice', async () => {
   const f = fixture(claim(1, [])); const request = f.options.request; let attempts = 0; const sent: string[] = [];

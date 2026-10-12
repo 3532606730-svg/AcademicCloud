@@ -7,6 +7,7 @@ import {MemberPaddleAdapter,MEMBER_PADDLE_CAPABILITIES,MemberOcrError,parseMembe
 import {exactMemberCoreOrigin,parseMemberDeviceJob,runMemberLocalConnector} from '../src/member-local-ocr.js';
 import {parseMemberOcrFlags} from '../src/member-ocr-main.js';
 import type {NativeResourceGuard} from '../src/native-resource.js';
+import type {MemberBookEvent} from '../src/member-book-ocr.js';
 const config:MemberPaddleConfig={pythonPath:'/python',sidecarPath:'/sidecar',detectionModelPath:'/det',recognitionModelPath:'/rec',cachePath:'/cache',device:'gpu',nativeResource:{pythonPath:'/python',lockPath:'/lock'}};
 function image(){const c=createCanvas(100,80);c.getContext('2d').fillRect(0,0,100,80);return c.toBuffer('image/png');}
 function result(id:string,text='sample'):OcrEnginePageResult{return{requestId:id,status:'recognized',text,truncated:false,confidence:90,provenance:{engineId:MEMBER_PADDLE_CAPABILITIES.engineId,engineVersion:MEMBER_PADDLE_CAPABILITIES.engineVersion,modelVersion:MEMBER_PADDLE_CAPABILITIES.modelVersion}};}
@@ -113,6 +114,7 @@ test('busy resource after connection never polls a device claim',async()=>{
 
 test('PDF-capable paired connector dispatches a durable book after releasing empty current-page guard, with unchanged engine caps',async()=>{
   const c=new AbortController(),order:string[]=[],source=Buffer.from('%PDF-1.7\nsynthetic');let saved:number[]=[];let recognizes=0;
+  const events:MemberBookEvent[]=[];
   const expiry=new Date(Date.now()+89_000).toISOString();
   const book={id:'book1',clientRequestId:'request1',deviceId:'device1',resourceId:'resource1',sourceId:'source1',pageCount:1,state:'running',errorCode:null,failedPhysicalPage:null,
     createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60*60_000).toISOString(),leaseExpiresAt:expiry,savedPhysicalPages:[]};
@@ -120,7 +122,7 @@ test('PDF-capable paired connector dispatches a durable book after releasing emp
     resourceGuard:guard(order),signal:c.signal,pollDelayMs:1,
     bookSessionFactory:()=>{order.push('bookSession');return{async capabilities(){return MEMBER_PADDLE_CAPABILITIES;},async recognize(r){recognizes++;return result(r.requestId);},async close(){order.push('bookClose');}};},
     bookPdfFactory:async()=>({pageCount:1,async capture(){return{image:image(),imageWidth:100,imageHeight:80,rotation:0,renderMs:1};},async close(){order.push('pdfClose');}}),
-    onEvent:event=>{if(event.event==='member_ocr.book_completed')c.abort();},
+    onEvent:event=>{events.push(event);if(event.event==='member_ocr.book_request_timing')throw Error('broken diagnostics');if(event.event==='member_ocr.book_completed')c.abort();},
     fetch:async(url,init)=>{
       const parsed=new URL(String(url));if(parsed.origin==='https://files.ajtlab.top'){assert.equal(init?.headers,undefined);return new Response(source);}
       const path=parsed.pathname;const input=init?.body?JSON.parse(String(init.body)) as Record<string,unknown>:undefined;
@@ -134,6 +136,14 @@ test('PDF-capable paired connector dispatches a durable book after releasing emp
       throw Error('unexpected endpoint');
     }});
   assert.equal(recognizes,1);assert.deepEqual(order,['acquire','release','acquire','release','acquire','bookSession','bookClose','release','pdfClose']);
+  const timings=events.filter(event=>event.event==='member_ocr.book_request_timing');
+  assert.ok(timings.some(event=>event.operation==='book-page'&&event.requestBytes!>0));
+  assert.ok(timings.some(event=>event.operation==='book-claim'&&event.requestBytes===0));
+  assert.ok(timings.every(event=>Object.keys(event).sort().join(',')==='bodyMilliseconds,event,headersMilliseconds,milliseconds,operation,requestBytes,responseBytes'));
+  assert.ok(timings.every(event=>[event.milliseconds,event.headersMilliseconds,event.bodyMilliseconds,event.requestBytes,event.responseBytes].every(value=>Number.isInteger(value)&&value!>=0)));
+  assert.equal(JSON.stringify(timings).includes(connected.deviceToken),false);
+  assert.equal(JSON.stringify(timings).includes('resource1'),false);
+  assert.equal(JSON.stringify(timings).includes('synthetic'),false);
 });
 
 

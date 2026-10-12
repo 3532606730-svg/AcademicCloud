@@ -1168,7 +1168,7 @@
     "Six active sources retain explicit HOLD by Owner choice; they no longer block scoped system repair.182 source-supported profiles/188 academic holdings; full-Library acceptance remainsfalse.",
     "Exact Linux/Core/native artifact and bounded-memory qualification plus coordinated release/live acceptance remain required;189 old local checks do not qualify later edits."
   ],
-  "next": "Next focus: continue the measured vNext performance task from accepted Coref594712/native61c453d. Normal own-device d3 OCR17/17 and local TXT/JSONL exports are complete;do not replay them. Isolate the28418ms pre-running phase and33577ms acknowledgement/network path before changing model/slice scheduling. Existing source connection2729ms and broader navigation/upload timing remain separate gaps. Keep6 HOLD/182 supported profiles,frozen models/contracts,no paid activation or main merge;repeat checks only for new changed risk.",
+  "next": "Next focus: qualify and deploy the scoped Member OCR transport candidate through an exact Core public-kit-only release;retain native61c453d and frozen models/contracts. Update the Owner installed kit and verify normal signed-in download/own connection without replaying completed d3 OCR17/17 or other accepted pages. Then use content-free preparation and header/body/byte timings on a later unfinished authorized task to separate the28418ms pre-running and33577ms acknowledgement observations;headers duration includes upload/network/server and is not a Core-only metric. Keep6 HOLD/182 supported profiles,no paid activation/main merge or new production backup. Broader navigation/upload latency remains open.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -4132,6 +4132,18 @@
       "typesBuild": "PASS",
       "review": "ROOT_BOUNDED_NO_MATERIAL_FINDING;DELEGATED_QUOTA_UNAVAILABLE",
       "sourceCommit": "80ad0a768afda916c807b9ccce50b6b3e35f4855"
+    },
+    "ocrTransportOptimization": {
+      "status": "LOCAL_CANDIDATE",
+      "heartbeat": "single outstanding check per decoded-count input;no completed-response cache",
+      "terminalYieldRemovedMs": 2000,
+      "retained": "per-page authority;2-second periodic loop;8-page/45-second slices;native-close-before-release;identical receipt replay",
+      "diagnostics": "fixed book endpoint labels,durations and byte counts only;no task IDs,URL,secret,image or OCR text",
+      "checks": 47,
+      "computeTypesBuild": "PASS",
+      "productionKit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
+      "realCompletedPagesReplayed": 0,
+      "overallSpeedupMeasured": false
     }
   },
   "interfaceRepair": {

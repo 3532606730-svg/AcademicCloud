@@ -9,7 +9,12 @@ import { inspectRenderedPng } from "./rendered-png.js";
 
 const ID = /^[A-Za-z0-9_-]{1,128}$/u;
 type DeviceRequest = (path: string, body: unknown | undefined, signal: AbortSignal) => Promise<unknown>;
-export interface MemberBookEvent { event: string; code?: string; phase?: 'render' | 'startup' | 'predict' | 'ack'; milliseconds?: number }
+type BookPhase = 'grant' | 'download' | 'open' | 'heartbeat' | 'native_wait' | 'yield' | 'finish' | 'render' | 'startup' | 'predict' | 'ack';
+export interface MemberBookEvent {
+  event: string; code?: string; phase?: BookPhase; milliseconds?: number;
+  operation?: 'book-claim' | 'book-source' | 'book-heartbeat' | 'book-page' | 'book-finish';
+  headersMilliseconds?: number; bodyMilliseconds?: number; requestBytes?: number; responseBytes?: number;
+}
 export interface MemberBookOptions {
   request: DeviceRequest;
   resourceGuard: NativeResourceGuard;
@@ -74,7 +79,7 @@ export async function runMemberBookJob(claim: LocalOcrBookClaim, options: Member
   let decodedCount: number | undefined, physicalPage: number | undefined;
   let source: PrivateBookSource | undefined, pdf: BookPdfSession | undefined;
   const saved = new Set(book.savedPhysicalPages);
-  const timings = (phase: 'render' | 'startup' | 'predict' | 'ack', milliseconds: number) => {
+  const timings = (phase: BookPhase, milliseconds: number) => {
     try { options.onEvent?.({ event: 'member_ocr.book_timing', phase, milliseconds: Math.round(milliseconds) }); }
     catch { /* A timing consumer is never recognition or checkpoint authority. */ }
   };
@@ -85,12 +90,29 @@ export async function runMemberBookJob(claim: LocalOcrBookClaim, options: Member
     heartbeatTimer = setTimeout(() => { heartbeatFailure = new MemberOcrError('access_revoked'); stop.abort(); }, expires - Date.now());
   };
   renewWatchdog(book.leaseExpiresAt);
+  let pendingHeartbeat: { pageCount: number | undefined; promise: Promise<void> } | undefined;
   async function heartbeat(): Promise<void> {
     ensureActive();
-    const state = object(await options.request('/device/book-heartbeat', { ...identity, ...(decodedCount === undefined ? {} : { pageCount: decodedCount }) }, signal));
-    if (state.active !== true) throw new MemberOcrError('access_revoked');
-    renewWatchdog(state.leaseExpiresAt);
-    for (const page of savedPages(state.savedPhysicalPages, book.pageCount)) saved.add(page);
+    const pageCount = decodedCount, pending = pendingHeartbeat;
+    if (pending) {
+      // Share only a currently outstanding authority check, never a cached result.
+      // A download-time check cannot replace registration of the decoded count.
+      await pending.promise;
+      ensureActive();
+      if (pending.pageCount === pageCount) return;
+      return heartbeat();
+    }
+    const started = performance.now();
+    const promise = (async () => {
+      const state = object(await options.request('/device/book-heartbeat', { ...identity, ...(pageCount === undefined ? {} : { pageCount }) }, signal));
+      if (state.active !== true) throw new MemberOcrError('access_revoked');
+      renewWatchdog(state.leaseExpiresAt);
+      for (const page of savedPages(state.savedPhysicalPages, book.pageCount)) saved.add(page);
+      timings('heartbeat', performance.now() - started);
+    })();
+    pendingHeartbeat = { pageCount, promise };
+    try { await promise; }
+    finally { if (pendingHeartbeat?.promise === promise) pendingHeartbeat = undefined; }
   }
   const heartbeats = (async () => {
     while (!heartbeatSignal.aborted) {
@@ -101,21 +123,34 @@ export async function runMemberBookJob(claim: LocalOcrBookClaim, options: Member
     }
   })();
   try {
+    let started = performance.now();
     const granted = await options.request('/device/book-source', identity, signal);
     ensureActive();
     const grant = validateBookSourceGrant(granted, book.job);
+    timings('grant', performance.now() - started);
+    started = performance.now();
     source = await downloadBookSource(grant, signal, options.fetch);
     ensureActive();
+    timings('download', performance.now() - started);
+    started = performance.now();
     pdf = await (options.pdfFactory ?? openBookPdf)(source.path, source.sizeBytes, signal);
     ensureActive();
     if (pdf.pageCount !== book.pageCount) throw new MemberOcrError('input_invalid');
     decodedCount = pdf.pageCount;
+    timings('open', performance.now() - started);
     await heartbeat();
     options.onEvent?.({ event: 'member_ocr.book_running' });
     while (saved.size < book.pageCount) {
       ensureActive();
+      const waitStart = performance.now();
       const lease = await options.resourceGuard.acquire(signal);
-      if (!lease) { options.onEvent?.({ event: 'member_ocr.busy' }); await delay(LOCAL_OCR_BOOK_LIMITS.sliceYieldMs, signal); continue; }
+      if (!lease) {
+        options.onEvent?.({ event: 'member_ocr.busy' });
+        await delay(LOCAL_OCR_BOOK_LIMITS.sliceYieldMs, signal);
+        timings('native_wait', performance.now() - waitStart);
+        continue;
+      }
+      timings('native_wait', performance.now() - waitStart);
       let session: OcrEngineAdapter | undefined;
       const sliceSignal = AbortSignal.any([signal, lease.signal]);
       const started = performance.now();
@@ -170,15 +205,21 @@ export async function runMemberBookJob(claim: LocalOcrBookClaim, options: Member
         await session?.close();
         await lease.release();
       }
-      await delay(LOCAL_OCR_BOOK_LIMITS.sliceYieldMs, signal);
+      if (saved.size < book.pageCount) {
+        const yieldStart = performance.now();
+        await delay(LOCAL_OCR_BOOK_LIMITS.sliceYieldMs, signal);
+        timings('yield', performance.now() - yieldStart);
+      }
     }
     // Join any outstanding heartbeat before committing terminal state. A late
     // heartbeat must not turn a successful finish into a false revoked event.
     heartbeatStop.abort(); await heartbeats;
     ensureActive();
+    const finishStart = performance.now();
     const finished = object(await options.request('/device/book-finish', { ...identity, pageCount: decodedCount }, signal));
     const job = object(finished.job);
     if (job.id !== book.job.id || job.state !== 'succeeded' || savedPages(job.savedPhysicalPages, book.pageCount).length !== book.pageCount) throw new MemberOcrError('protocol_invalid');
+    timings('finish', performance.now() - finishStart);
     options.onEvent?.({ event: 'member_ocr.book_completed' });
   } catch (error) {
     const failure = heartbeatFailure ?? error;
