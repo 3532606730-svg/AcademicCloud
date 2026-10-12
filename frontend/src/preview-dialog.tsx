@@ -8,7 +8,7 @@ import { PdfReader } from "./pdf-reader.tsx";
 
 export interface PreviewDocument {
   requestId: number;
-  file: { displayName: string; mediaType: string };
+  file: { displayName: string; mediaType: string; sizeBytes?: number };
   url: string | null;
   error: unknown;
   returnFocus: HTMLElement | null;
@@ -110,8 +110,9 @@ export function PreviewDialog({ preview, covered = false, onClose, onDownload, o
               {t("preview.loading")}
             </p>}
             {isPdf && readerUrl ? <PdfReader url={readerUrl.split("#")[0]!} title={preview.file.displayName} page={selectedPage}
+              remoteSource={preview.file.sizeBytes ? { size: preview.file.sizeBytes, getUrl: async () => readerUrl.split("#")[0]! } : undefined}
               onPageChange={(page) => void goToPage(page)} onPageRendered={(page) => { setRenderedPage(page); setLoaded(true); }}
-              onPageUnavailable={() => setRenderedPage(null)} onRetry={() => void goToPage(selectedPage, true)} navigationPending={navigationPending} /> : preview.url && (preview.file.mediaType.startsWith("image/") ? (
+              onPageUnavailable={() => setRenderedPage(null)} onRetry={() => void goToPage(selectedPage, true)} navigationPending={navigationPending} /> : !isPdf && preview.url && (preview.file.mediaType.startsWith("image/") ? (
               <img src={preview.url} onLoad={() => setLoaded(true)} onError={() => setImageFailed(true)}
                 alt={t("preview.imageAlt", { name: preview.file.displayName })} referrerPolicy="no-referrer" />
             ) : (

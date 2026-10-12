@@ -2823,6 +2823,38 @@ describe("document preview session", () => {
     });
   }
 
+  it("uses the authorized holding size for direct ranges without another signing call", async () => {
+    const signed = "https://signed.invalid/current.pdf#page=1";
+    const createLibraryDownload = vi.fn().mockResolvedValue(authorization(signed));
+    render(<App api={sessionApi({ createLibraryDownload })} />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+    await screen.findByRole("dialog", { name: "book.pdf" });
+    await waitFor(() => expect(pdfReaderControl.props?.remoteSource?.size).toBe(LIBRARY_HOLDINGS[0]!.file.sizeBytes));
+    expect(await pdfReaderControl.props!.remoteSource!.getUrl()).toBe("https://signed.invalid/current.pdf");
+    expect(createLibraryDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not start a temporary iframe download while a PDF authorization becomes ready", async () => {
+    const pending = deferredAuthorization();
+    const frames: Element[] = [];
+    const observer = new MutationObserver(records => {
+      for (const record of records) for (const node of record.addedNodes) {
+        if (node instanceof Element && node.tagName === "IFRAME") frames.push(node);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    try {
+      render(<App api={sessionApi({ createLibraryDownload: vi.fn().mockReturnValue(pending.promise) })} />);
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole("button", { name: "book.pdf" }));
+      await screen.findByRole("dialog", { name: "book.pdf" });
+      await act(async () => pending.resolve(authorization("https://signed.invalid/current.pdf")));
+      await screen.findByTestId("pdf-reader");
+      expect(frames).toHaveLength(0);
+    } finally { observer.disconnect(); }
+  });
+
   function researchApi(): WorkspaceApi {
     const resource = { resourceId: LIBRARY_HOLDINGS[0]!.file.id, sourceId: "research-source", title: "book.pdf", mediaType: "application/pdf", libraryId: DEFAULT_LIBRARY.id };
     const note = { id: "research-note", resourceId: resource.resourceId, sourceId: resource.sourceId, physicalPage: 7, locator: null,
@@ -3285,8 +3317,10 @@ describe("document preview session", () => {
     await user.click(within(shell).getByRole("button", { name: "Resource details" }));
     await user.click(await screen.findByRole("button", { name: "Edit title and contributors" }));
     await user.type(screen.getByLabelText("Canonical title"), "New canonical title");
+    await user.selectOptions(screen.getByLabelText("Material type"), "book");
     await user.click(screen.getByRole("button", { name: "Save metadata" }));
     await waitFor(() => expect(api.updateLibraryHoldingMetadata).toHaveBeenCalled());
+    expect(api.updateLibraryHoldingMetadata).toHaveBeenCalledWith(DEFAULT_LIBRARY.id, holding.file.id, expect.objectContaining({ materialType: "book" }));
     await user.click(await screen.findByRole("button", { name: "Preview" }));
     expect(screen.getByRole("dialog", { name: "New canonical title" })).toBe(shell);
     expect(shell.querySelector('[data-testid="pdf-reader"]')).toBe(reader);

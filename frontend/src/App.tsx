@@ -2184,7 +2184,7 @@ function DriveView({
     setPreview({
       requestId,
       resourceId: holding.file.id, sourceId: null,
-      file: { displayName: libraryHoldingDisplayTitle(holding, language), mediaType: holding.file.mediaType ?? "application/octet-stream" },
+      file: { displayName: libraryHoldingDisplayTitle(holding, language), mediaType: holding.file.mediaType ?? "application/octet-stream", sizeBytes: holding.file.sizeBytes },
       url: null, error: null, returnFocus: focus,
       download: () => downloadLibraryHolding(library, holding),
       retry: () => { void openLibraryPreview(library, holding, focus); },
