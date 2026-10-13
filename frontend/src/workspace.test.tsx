@@ -42,6 +42,64 @@ beforeEach(() => window.localStorage.setItem("academiccloud.language", "en"));
 afterEach(() => window.localStorage.removeItem("academiccloud.language"));
 
 describe("private workspace", () => {
+  it("publishes notes and document controls while the independent collection request is still pending", async () => {
+    let finish!: (value: ResearchCollection[]) => void;
+    const collections = vi.fn().mockReturnValue(new Promise<ResearchCollection[]>(resolve => { finish = resolve; }));
+    const f = fixture({ collections, notes: vi.fn().mockResolvedValue(page([NOTE])) });
+    renderWorkspace(f.api);
+    await screen.findByText(NOTE.body);
+    expect(screen.getByRole("combobox", { name: "Reading status" })).toBeEnabled();
+    expect(screen.queryByLabelText(COLLECTION.name)).not.toBeInTheDocument();
+    await act(async () => finish([COLLECTION]));
+    expect(await screen.findByLabelText(COLLECTION.name)).toBeEnabled();
+  });
+
+  it("keeps notes usable when collection loading fails and retries the independent list explicitly", async () => {
+    const user = userEvent.setup();
+    const collections = vi.fn().mockRejectedValueOnce(new ApiError(503, "service_unavailable")).mockResolvedValue([COLLECTION]);
+    const f = fixture({ collections, notes: vi.fn().mockResolvedValue(page([NOTE])) });
+    renderWorkspace(f.api);
+    await screen.findByText(NOTE.body);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Reading status" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByLabelText(COLLECTION.name)).toBeEnabled();
+    expect(collections).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("reuses the collection list across document, notes-filter and collection navigation", async () => {
+    const user = userEvent.setup();
+    const f = fixture({ notes: vi.fn().mockResolvedValue(page([NOTE])) });
+    renderWorkspace(f.api);
+    await screen.findByText(NOTE.body);
+    await user.click(screen.getByRole("button", { name: "Deleted notes" }));
+    await waitFor(() => expect(f.api.notes).toHaveBeenLastCalledWith({ resourceId: RESOURCE.resourceId, deleted: true }, expect.any(AbortSignal)));
+    await user.click(screen.getByRole("button", { name: "All research" }));
+    await user.click(screen.getByRole("button", { name: "Page notes" }));
+    await screen.findByText(NOTE.body);
+    await user.click(screen.getByRole("button", { name: "Collections" }));
+    await user.click(await screen.findByRole("button", { name: /^My research set/ }));
+    await waitFor(() => expect(f.api.collectionItems).toHaveBeenCalled());
+    expect(f.api.collections).toHaveBeenCalledTimes(1);
+    expect(f.api.resource).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["account", "api"])("discards a late collection response after changing the %s scope", async (change) => {
+    let finish!: (value: ResearchCollection[]) => void;
+    const old = fixture({ collections: vi.fn().mockReturnValue(new Promise<ResearchCollection[]>(resolve => { finish = resolve; })) });
+    const next = fixture({ collections: vi.fn().mockResolvedValue([{ ...COLLECTION, name: "Current account collection" }]) });
+    const onClose = vi.fn(), onOpenResource = vi.fn();
+    const renderScope = (api: WorkspaceApi, accountId: string) => <LanguageProvider><WorkspaceDialog api={api} accountId={accountId} initialResourceId={RESOURCE.resourceId} onClose={onClose} onOpenResource={onOpenResource} /></LanguageProvider>;
+    const view = render(renderScope(old.api, "first-account"));
+    await waitFor(() => expect(old.api.collections).toHaveBeenCalledOnce());
+    if (change === "account") vi.mocked(old.api.collections).mockResolvedValue([{ ...COLLECTION, name: "Current account collection" }]);
+    view.rerender(renderScope(change === "api" ? next.api : old.api, change === "account" ? "next-account" : "first-account"));
+    expect(await screen.findByLabelText("Current account collection")).toBeInTheDocument();
+    expect(vi.mocked(old.api.collections).mock.calls[0]![0]!.aborted).toBe(true);
+    await act(async () => finish([{ ...COLLECTION, name: "Prior private collection" }]));
+    expect(screen.queryByText("Prior private collection")).not.toBeInTheDocument();
+  });
   it.each([
     "application/zip",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -586,7 +644,7 @@ describe("private workspace", () => {
   it("reconciles a collection rename conflict without losing the name draft or retrying an obsolete revision", async () => {
     const user = userEvent.setup();
     const latest = { ...COLLECTION, name: "Current saved collection name", revision: 2 };
-    const collections = vi.fn().mockResolvedValueOnce([COLLECTION]).mockResolvedValueOnce([COLLECTION]).mockResolvedValue([latest]);
+    const collections = vi.fn().mockResolvedValueOnce([COLLECTION]).mockResolvedValue([latest]);
     const updateCollection = vi.fn().mockRejectedValueOnce(new ApiError(409, "concurrent_change")).mockResolvedValue({ ...latest, name: "My renamed collection", revision: 3 });
     const f = fixture({ collections, updateCollection }); renderWorkspace(f.api, { global: true });
     await user.click(screen.getByRole("button", { name: "Collections" }));

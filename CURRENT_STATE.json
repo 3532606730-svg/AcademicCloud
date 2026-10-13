@@ -1168,7 +1168,7 @@
     "Six active sources retain explicit HOLD by Owner choice; they no longer block scoped system repair.182 source-supported profiles/188 academic holdings; full-Library acceptance remainsfalse.",
     "Exact Linux/Core/native artifact and bounded-memory qualification plus coordinated release/live acceptance remain required;189 old local checks do not qualify later edits."
   ],
-  "next": "Next focus:website/public and installed-kit7933440 optimization is deployed;normal122596-byte ZIP download/hash and51 applicable checks are accepted. Publish this receipt-only checkpoint and fresh-fetch/local-sync. Owner reconnection remains blocked by confirmed Windows virtual-memory exhaustion;wait for the Owner to save/exit Victoria3 or free high-commit applications,then reconnect through ordinary same-account pairing. Do not repeat startups into known memory exhaustion,close user programs,alter global paging/WSL settings,or silently use paid/cloud OCR. If a prior-boot dirty marker remains,apply only the unchanged complete manual closure/ownership/exclusive-lock gates. No accepted d3/other completed-page replay. Later unfinished authorized tasks use the new content-free preparation/header/body/byte timings;broader navigation/upload latency and6 HOLD/182 supported profiles stay open.",
+  "next": "October13 bounded candidate passes60 frontend/13 diagnostic-kit checks,types/build and independent review. Prepare exact Linux kit and combined frontend/public-kit Core artifact, qualify/compare unchanged backend/schema/dependencies/deployment/native, then one coordinated release and normal signed-in navigation/download/tutorial acceptance. Retain7933440 until gates pass; no native model/schema/cloud/backup/main change or completed-page replay.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -4177,6 +4177,29 @@
         "pairingCodeVisibleInProof": false,
         "screenshot": "output/vnext/catalog-review-20261007/ocr-performance-release-7933440.png"
       }
+    },
+    "optimizationRound": {
+      "started": "2026-10-13",
+      "status": "CANDIDATE_VERIFIED_RELEASE_PENDING",
+      "sourceBaseline": "b2d172ca7f1f1849e74c38b6750686aec3320647",
+      "subagents": "GPT-6.1 Sol xhigh",
+      "resourceObservation": {
+        "freeVirtualMemoryKiB": 33913516,
+        "victoria3Present": false,
+        "pairedAccepted": false
+      },
+      "scope": "Existing resource diagnostics, OCR transport and frontend waiting; one coordinated release after verification",
+      "checks": {
+        "frontend": 60,
+        "computeDiagnosticKit": 13,
+        "typesBuild": "PASS",
+        "independentSolXhighReview": "PASS"
+      },
+      "changedPaths": [
+        "Workspace collection loading",
+        "standalone Windows host-memory diagnostic and kit tutorial"
+      ],
+      "transport": "Core unchanged; gzip requires actual byte/stage latency evidence before selection"
     }
   },
   "interfaceRepair": {

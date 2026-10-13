@@ -1,5 +1,11 @@
 # vNext latency ledger
 
+## October13 optimization round
+
+Normal signed-in7933440 Research navigation (overview → notes → reading) issued3 collection-list requests, alongside primary reading/notes requests. Content-free CDP receipts record collection durations634/520/2050ms and primary durations668/524/2055ms. These are one observation, not a speedup or proof that collections dominate network delay. Receipt:output/vnext/catalog-review-20261007/optimization-navigation-baseline-20261013.json. The candidate isolates collections from primary loading, reuses the account/API-scoped list across navigation, and preserves explicit refresh and conflict reconciliation; deferred/failure and stale-account/API-response tests pass.60 frontend checks/types and independent review pass; live post-release counts remain pending.
+
+The standalone Windows kit diagnostic uses PerfOS CommittedBytes/CommitLimit and separate AvailableBytes, with5-second subprocess deadline/4KiB cap/no shell-details logging.90% commit is a pressure signal, not model capacity or readiness; failed counters are unknown and Linux/WSL is unsupported. Microsoft distinguishes [commit and physical counters](https://learn.microsoft.com/en-us/windows/win32/memory/memory-performance-information) and documents [90% system-commit pagefile pressure](https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/how-to-determine-the-appropriate-page-file-size-for-64-bit-versions-of-windows). A real Windows candidate sample observed33,775,681,536 committed/68,381,425,664 limit/34,605,744,128 headroom/1,904,672,768 available physical bytes. This does not establish stable engine operation.13 diagnostic/relocated-kit checks/types/build pass, with unchanged engine/model/dependency/guard contracts. No completed OCR pages replayed.
+
 **Date:** 2026-09-24
 **Scope:** local evidence for `ACADEMICCLOUD-VNEXT-REMEDIATION01`; no production
 reads, object-storage benchmark, new service, or billable CI run.

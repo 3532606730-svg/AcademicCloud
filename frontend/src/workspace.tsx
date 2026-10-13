@@ -97,7 +97,20 @@ export function WorkspaceDialog({ api, localOcr, accountId, initialResourceId, e
 
   const [loadedResource, setResource] = useState<ResourceWorkspace | null>(null);
   const resource = loadedResource?.resource.resourceId === resourceId ? loadedResource : null;
-  const [collections, setCollections] = useState<ResearchCollection[]>([]);
+  const [collectionState, setCollectionState] = useState({ api, accountId, items: [] as ResearchCollection[], loading: true, error: null as unknown });
+  const collectionScope = useRef({ api, accountId }); collectionScope.current = { api, accountId };
+  const collectionScopeMatches = collectionState.api === api && collectionState.accountId === accountId;
+  const collections = collectionScopeMatches ? collectionState.items : [];
+  const collectionsLoading = !collectionScopeMatches || collectionState.loading;
+  const collectionsError = collectionScopeMatches ? collectionState.error : null;
+  const setCollections = (next: ResearchCollection[] | ((current: ResearchCollection[]) => ResearchCollection[])) => {
+    if (collectionScope.current.api !== api || collectionScope.current.accountId !== accountId) return;
+    setCollectionState((current) => {
+      if (collectionScope.current.api !== api || collectionScope.current.accountId !== accountId) return current;
+      const items = current.api === api && current.accountId === accountId ? current.items : [];
+      return { ...current, api, accountId, items: typeof next === "function" ? next(items) : next };
+    });
+  };
   const [notes, setNotes] = useState<WorkspacePage<PageNote> | null>(null);
   const [reading, setReading] = useState<WorkspacePage<ReadingState> | null>(null);
   const [items, setItems] = useState<WorkspacePage<CollectionItem> | null>(null);
@@ -143,6 +156,18 @@ export function WorkspaceDialog({ api, localOcr, accountId, initialResourceId, e
   }, [dirty, busy, highlightBusy]);
   useEffect(() => {
     const controller = new AbortController();
+    // Collections belong to the account, so changing the document or its
+    // notes filter does not reload them or delay independent research content.
+    setCollectionState((current) => ({ api, accountId, items: current.api === api && current.accountId === accountId ? current.items : [], loading: true, error: null }));
+    void api.collections(controller.signal).then((next) => {
+      if (!controller.signal.aborted) setCollectionState({ api, accountId, items: next, loading: false, error: null });
+    }, (caught) => {
+      if (!controller.signal.aborted) setCollectionState((current) => ({ ...current, loading: false, error: caught }));
+    });
+    return () => controller.abort();
+  }, [api, accountId, reload]);
+  useEffect(() => {
+    const controller = new AbortController();
     setLoading(true); setError(null); setNotes(null); setReading(null); setItems(null);
     // Revalidate the resource independently. Side-panel refreshes keep the
     // same reader mounted, while lost access or a changed source removes it.
@@ -155,20 +180,19 @@ export function WorkspaceDialog({ api, localOcr, accountId, initialResourceId, e
       if (!(caught instanceof ApiError && caught.status === 404)) setError(caught);
     }) : Promise.resolve();
     const load = async () => {
-      const [nextCollections, nextNotes, nextReading, nextItems] = await Promise.all([
-        api.collections(controller.signal),
+      const [nextNotes, nextReading, nextItems] = await Promise.all([
         tab === "notes" || resourceId ? api.notes({ ...(resourceId ? { resourceId } : {}), deleted }, controller.signal) : Promise.resolve(null),
         !resourceId && tab === "reading" ? api.reading(undefined, controller.signal) : Promise.resolve(null),
         !resourceId && tab === "collections" && collectionId ? api.collectionItems(collectionId, undefined, controller.signal) : Promise.resolve(null),
       ]);
       if (controller.signal.aborted) return;
-      setCollections(nextCollections); setNotes(nextNotes); setReading(nextReading); setItems(nextItems);
+      setNotes(nextNotes); setReading(nextReading); setItems(nextItems);
       await resourceLoad;
       if (!controller.signal.aborted) setLoading(false);
     };
     void load().catch((caught) => { if (!controller.signal.aborted) { setError(caught); setLoading(false); } });
     return () => controller.abort();
-  }, [api, resourceId, tab, collectionId, deleted, reload]);
+  }, [api, accountId, resourceId, tab, collectionId, deleted, reload]);
   const run = async (work: () => Promise<void>) => {
     if (busy) return;
     setBusy(true); setError(null); setNotice("");
@@ -416,6 +440,7 @@ export function WorkspaceDialog({ api, localOcr, accountId, initialResourceId, e
         <main className={`research-main${readerResource ? " research-main--reader" : ""}`}>
           {resourceId && <div className="research-document-heading"><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => showOverview()}>{c.all}</button><h3 title={resource?.resource.title}>{resource?.resource.title ?? (loading ? c.loading : c.unavailable)}</h3>{readerResource && <button type="button" className="button button--small button--quiet" aria-pressed={focusReading} disabled={locked} onClick={() => setFocusReading((value) => !value)}>{language === "zh-CN" ? (focusReading ? "显示侧栏" : "专注阅读") : (focusReading ? "Show sidebars" : "Focus reading")}</button>}{resource && sourceMatches && !readerResource && <button className="button button--small button--primary" type="button" disabled={locked} onClick={() => void open(resource.resource)}>{c.open}</button>}</div>}
           {!!error && <div className="research-error" role="alert"><p>{error instanceof ApiError && error.code === "concurrent_change" ? c.conflict : describeError(error, language)}</p><button className="button button--small" type="button" disabled={busy} onClick={refresh}>{c.retry}</button></div>}
+          {!!collectionsError && <div className="research-error" role="alert"><p>{describeError(collectionsError, language)}</p><button className="button button--small" type="button" disabled={busy} onClick={refresh}>{c.retry}</button></div>}
           {progressIssue && progressIssue.key === sourceKey && <div className="research-progress-issue" role="status"><span>{progressIssue.conflict ? (language === "zh-CN" ? "另一窗口已更新阅读位置。" : "Another window updated the reading position.") : (language === "zh-CN" ? "阅读位置暂未保存，可继续阅读后重试。" : "Reading position could not be saved. You can keep reading and retry.")}</span><button type="button" className="button button--small button--quiet" onClick={() => void resolveProgress(false)}>{language === "zh-CN" ? "继续当前页" : "Keep current page"}</button>{progressIssue.latest?.sourceId === resource?.resource.sourceId && <button type="button" className="button button--small button--quiet" onClick={() => void resolveProgress(true)}>{language === "zh-CN" ? "转到最新位置" : "Go to latest position"}</button>}</div>}
           {notice && <p role="status" className="research-notice">{notice}</p>}
           {loading && !readerResource && <p role="status" className="research-empty">{c.loading}</p>}
@@ -463,7 +488,7 @@ export function WorkspaceDialog({ api, localOcr, accountId, initialResourceId, e
             void run(async () => { const next = await api.saveReading(resourceId!, { status: resource.reading?.status ?? null, important: resource.reading?.important ?? false, toCite: resource.reading?.toCite ?? false, revision: resource.reading?.revision ?? 0, [flag]: checked }); setResource((r) => r ? { ...r, reading: next } : r); setNotice(c.saved); });
           }} />{c[flag]}</label>)}
         </div>
-        <fieldset className="research-collection-picks" disabled={locked}><legend>{c.collections}</legend>{collections.filter((entry) => !entry.archivedAt).map((collection) => <label className="research-check" key={collection.id}><input type="checkbox" checked={resource.collectionIds.includes(collection.id)} onChange={(e) => {
+        <fieldset className="research-collection-picks" disabled={locked || collectionsLoading || !!collectionsError}><legend>{c.collections}</legend>{collectionsLoading && <p role="status">{c.loading}</p>}{collections.filter((entry) => !entry.archivedAt).map((collection) => <label className="research-check" key={collection.id}><input type="checkbox" checked={resource.collectionIds.includes(collection.id)} onChange={(e) => {
           const included = e.target.checked;
           void run(async () => { await changeMembership(collection, resourceId!, included); setResource((r) => r ? { ...r, collectionIds: included ? [...r.collectionIds, collection.id] : r.collectionIds.filter((id) => id !== collection.id) } : r); setNotice(included ? c.added : c.removed); });
         }} />{collection.name}</label>)}</fieldset>
@@ -502,8 +527,9 @@ export function WorkspaceDialog({ api, localOcr, accountId, initialResourceId, e
           </div>
       {!resourceId && tab === "reading" && reading && <>{resourceCards(reading.items.filter((entry) => entry.status || entry.important || entry.toCite), reading.resources)}{reading.nextBeforeId && <button className="button" disabled={locked} type="button" onClick={() => void run(async () => { const next = await api.reading(reading.nextBeforeId!); setReading({ ...next, items: [...reading.items, ...next.items], resources: [...reading.resources, ...next.resources] }); })}>{c.more}</button>}</>}
           {!resourceId && tab === "collections" && <>
-        <div className="research-collections">{collections.map((collection) => <div className="research-collection" key={collection.id}><button className="research-collection-name" type="button" disabled={locked} aria-pressed={collectionId === collection.id} onClick={() => setCollectionId(collection.id)}>{collection.name}<span>{collection.itemCount}{collection.archivedAt ? ` · ${c.archived}` : ""}</span></button>
-          <button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => setEditingCollection(collection)} aria-label={`${c.editCollection}: ${collection.name}`}>{c.rename}</button><button className="button button--small button--quiet" type="button" disabled={locked} onClick={() => void run(async () => { await api.updateCollection(collection, collection.name, !collection.archivedAt); refresh(); })}>{collection.archivedAt ? c.restore : c.archive}</button></div>)}</div>
+        {collectionsLoading && <p role="status" className="research-empty">{c.loading}</p>}
+        <div className="research-collections">{collections.map((collection) => <div className="research-collection" key={collection.id}><button className="research-collection-name" type="button" disabled={locked || collectionsLoading || !!collectionsError} aria-pressed={collectionId === collection.id} onClick={() => setCollectionId(collection.id)}>{collection.name}<span>{collection.itemCount}{collection.archivedAt ? ` · ${c.archived}` : ""}</span></button>
+          <button className="button button--small button--quiet" type="button" disabled={locked || collectionsLoading || !!collectionsError} onClick={() => setEditingCollection(collection)} aria-label={`${c.editCollection}: ${collection.name}`}>{c.rename}</button><button className="button button--small button--quiet" type="button" disabled={locked || collectionsLoading || !!collectionsError} onClick={() => void run(async () => { await api.updateCollection(collection, collection.name, !collection.archivedAt); refresh(); })}>{collection.archivedAt ? c.restore : c.archive}</button></div>)}</div>
         {editingCollection && <form className="research-collection-form" onSubmit={(event) => { event.preventDefault(); void run(async () => {
           try { await api.updateCollection(editingCollection, editingCollection.name, !!editingCollection.archivedAt); }
           catch (caught) { if (caught instanceof ApiError && caught.code === "concurrent_change") setCollections(await api.collections()); throw caught; }

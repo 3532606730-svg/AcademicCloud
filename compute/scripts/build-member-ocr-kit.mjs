@@ -14,6 +14,8 @@ await build({entryPoints:[join(root,'compute/src/member-ocr-main.ts')],outfile:j
 await build({entryPoints:[join(root,'compute/src/member-book-pdf-worker.ts')],outfile:join(kit,'compute/dist/member-book-pdf-worker.js'),
   bundle:true,platform:'node',target:'node24',format:'esm',external:['@napi-rs/canvas','pdfjs-dist/*'],
   banner:{js:"import { createRequire as __kitCreateRequire } from 'node:module'; const require = __kitCreateRequire(import.meta.url);"},logLevel:'silent'});
+await build({entryPoints:[join(root,'compute/src/member-host-memory.ts')],outfile:join(kit,'compute/dist/member-host-memory.js'),
+  bundle:true,platform:'node',target:'node24',format:'esm',logLevel:'silent'});
 for(const name of ['paddle_ocr_sidecar.py','native_resource_lease.py','member_paddle_offline.py'])await copyFile(join(root,'compute/scripts',name),join(kit,'compute/scripts',name));
 await writeFile(join(kit,'package.json'),JSON.stringify({name:'academiccloud-member-local-ocr-connector',private:true,version:'0.2.0',type:'module',
   engines:{node:'>=24 <25'},scripts:{start:'node compute/dist/member-ocr-main.js'},dependencies:{'@napi-rs/canvas':'1.0.7','pdfjs-dist':'6.2.108'}},null,2));
@@ -28,6 +30,7 @@ await writeFile(join(kit,'README.md'),`# AcademicCloud 本机 OCR 连接器
 
 1. 安装 Node.js24（官方页面：https://nodejs.org/en/download），解压本包。
 2. 进入解压目录，运行 npm install。只安装固定版本画布和 PDF 渲染依赖，不下载 OCR 模型。
+   Windows 用户可先在 Windows PowerShell 中进入解压目录，运行 node compute/dist/member-host-memory.js。若提示虚拟内存占用达到90%，先保存并退出占用较大的程序，再检查。此命令只读取内存状态；它不启动引擎。请在Windows运行，WSL空闲内存不能代表Windows的可用虚拟内存。
 3. 在 AcademicCloud“我的研究”的 OCR 连接对话框创建连接码。
 4. 在 AcademicCloudComputeV2 的 WSL 终端，以既有 academiccloud 用户进入本包目录，运行：
 
@@ -52,7 +55,7 @@ await writeFile(join(kit,'README.md'),`# AcademicCloud 本机 OCR 连接器
 
 失去权限、连接码失效、缺少合作合同、引擎测试失败会显示受控错误代码；不要粘贴凭据或书页到日志。Catalog 忙碌时等待，不自动切换CPU/云端。整书使用私人临时文件并在停止后清理，每页确认保存后形成断点。关闭网站不会停止已开始的设备任务；本机与终端须持续运行并保持唤醒。关闭终端或 Ctrl+C 会停止本轮处理，等待原生引擎真正关闭后释放资源锁；已确认保存的页面保留。重启连接器或设备后须重新配对，并在网站手动继续、选择新连接。网站可暂停、取消任务或撤销设备；失败页面不自动重新识别。未校对机器文字与行框可能有漏字和表格读序问题；不支持传统蒙古文。结果保持私人，提供既有 TXT/JSONL 导出；本版不会生成可搜索 PDF 或替换线上原件。
 `);
-const names=['package.json','config.example.json','README.md','compute/dist/member-ocr-main.js','compute/dist/member-book-pdf-worker.js','compute/scripts/paddle_ocr_sidecar.py','compute/scripts/native_resource_lease.py','compute/scripts/member_paddle_offline.py'];
+const names=['package.json','config.example.json','README.md','compute/dist/member-ocr-main.js','compute/dist/member-book-pdf-worker.js','compute/dist/member-host-memory.js','compute/scripts/paddle_ocr_sidecar.py','compute/scripts/native_resource_lease.py','compute/scripts/member_paddle_offline.py'];
 const entries=[];const hashes={};
 for(const name of names){const bytes=await readFile(join(kit,name));entries.push({name,bytes});hashes[name]=createHash('sha256').update(bytes).digest('hex');}
 const manifest=Buffer.from(JSON.stringify({contract:'academiccloud.member-ocr-kit.v1',esbuild:version,files:hashes},null,2));

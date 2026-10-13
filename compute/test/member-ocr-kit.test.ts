@@ -6,7 +6,7 @@ import { cp, mkdtemp, readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { makeRealisticPdf } from './fixtures/realistic-pdf.js';
 import { inspectRenderedPng } from '../src/rendered-png.js';
@@ -18,7 +18,8 @@ test('relocated standalone connector kit paints CCITT scans and fails before cap
   const kit = join(root, 'output/vnext/member-local-ocr-connector/kit');
   const manifest = JSON.parse(await readFile(join(kit, 'SHA256SUMS.json'), 'utf8')) as { files: Record<string, string> };
   assert.ok(manifest.files['compute/dist/member-book-pdf-worker.js']);
-  assert.equal(Object.keys(manifest.files).length, 8);
+  assert.ok(manifest.files['compute/dist/member-host-memory.js']);
+  assert.equal(Object.keys(manifest.files).length, 9);
   for (const [name, hash] of Object.entries(manifest.files)) assert.equal(createHash('sha256').update(await readFile(join(kit, name))).digest('hex'), hash);
   const dependencies = JSON.parse(await readFile(join(kit, 'package.json'), 'utf8')) as { dependencies: Record<string, string> };
   assert.equal(dependencies.dependencies['pdfjs-dist'], '6.2.108'); assert.equal(dependencies.dependencies['@napi-rs/canvas'], '1.0.7');
@@ -36,6 +37,16 @@ test('relocated standalone connector kit paints CCITT scans and fails before cap
       let dependency: string; try { dependency = installed(name); } catch { continue; }
       await cp(dependency, join(standalone, 'node_modules', name), { recursive: true });
     }
+    await t.test('relocated diagnostic reads only host memory without importing an engine or PDF dependency', async () => {
+      // No model/config/credentials exist in this relocated synthetic kit.
+      const output = await promisify(execFile)(process.execPath, ['--input-type=module', '-e',
+        `import { checkWindowsHostMemory } from ${JSON.stringify(pathToFileURL(join(standalone, 'compute/dist/member-host-memory.js')).href)};
+         process.stdout.write(JSON.stringify(await checkWindowsHostMemory()));`],
+        { cwd: standalone, windowsHide: true, timeout: 10_000, maxBuffer: 4096 });
+      const result = JSON.parse(output.stdout) as { event: string; status: string };
+      assert.equal(result.event, 'member_ocr.host_memory');
+      assert.ok((process.platform === 'win32' ? ['observed', 'pressure', 'unknown'] : ['unsupported']).includes(result.status));
+    });
     async function shipped(requests: object[]): Promise<Array<Record<string, unknown>>> {
       // A child process lets Windows unload the copied canvas DLL before cleanup.
       // The real isolated PDF worker, not a test replacement, still handles pages.
