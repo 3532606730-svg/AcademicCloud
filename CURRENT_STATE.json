@@ -6,28 +6,28 @@
     "worktree": "D:/Projects/AcademicCloud-vnext",
     "branch": "codex/vnext-remediation-20260906",
     "baseCommit": "eb03dbd2fff86d4925193e7f7de69e30336e9993",
-    "checkpoint": "79334403daf269f38423da795ae38ab0ace9a1b6",
+    "checkpoint": "633e3fb4f1eb78bb0f4f7fd69d7fc8274f381983",
     "mainIntegration": "Remote main remains d0e2c7939af981da0c6b9e59a56cc44dfaf64935; no merge in this continuation",
     "localSynchronized": true,
-    "localState": "Exact7933440 push/fresh-fetch/clean active-local equality verified before the receipt-only reconciliation;default dirty checkout preserved.",
-    "lastVerifiedPublishedCheckpoint": "79334403daf269f38423da795ae38ab0ace9a1b6",
-    "checkpointMeaning": "Exact deployed Core/public and installed Member kit7933440;native61c retained. Later documentation checkpoint is not a runtime release.",
+    "localState": "Exact633e3fb push/fresh SSH22 fetch/clean active checkout equality verified;subsequent receipt-only documentation checkpoint is not a runtime release. Default dirty checkout preserved.",
+    "lastVerifiedPublishedCheckpoint": "633e3fb4f1eb78bb0f4f7fd69d7fc8274f381983",
+    "checkpointMeaning": "Exact deployed Core/frontend/public kit633e3fb. Native61c and installed Member7933440 retained with identical engine/worker bytes;later documentation checkpoints remain separate.",
     "documentationPublicationMeaning": "Catalogue and source candidate checkpoints through2607af8 have actual push/fetch and local equality evidence. Repository publication is separate from runtime deployment and from completion of Library organization.",
     "documentationPublicationStatus": "PREVIOUS_2607AF8_VERIFIED_SUBSEQUENT_CHECKPOINTS_VERIFIED_BY_GIT"
   },
   "production": {
     "observedAt": "2026-10-13",
-    "coreFrontendCommit": "79334403daf269f38423da795ae38ab0ace9a1b6",
+    "coreFrontendCommit": "633e3fb4f1eb78bb0f4f7fd69d7fc8274f381983",
     "schemaVersion": 41,
     "migrationHistory": "001-041",
     "rulesetAdmissions": 11,
     "runtimeRuleset": "l1-intelligent-library01-v11",
     "runtimePrompt": "l1-intelligent-library01-prompt-v7",
-    "health": "Core1642439 active/running,NRestarts0,78442496bytes cutover;schema41/history41/11 admissions,integrity ok/FK0/exact schema;no migration. Local WSL runtime is presently interrupted by host virtual-memory exhaustion;native selector61c retained.",
+    "health": "Core1646227 active/running,NRestarts0,80982016bytes cutover;schema41/history41/11 admissions,integrity ok/FK0/exact schema;0 migrations. Owner same-account connector re-pairing/synthetic probe and normal UI online acceptance pass after strict prior-boot recovery;no real page replay.",
     "catalogBridgeCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
-    "catalogBridgeState": "61c453d active/running,MainPID554,NRestarts0 cutover snapshot",
+    "catalogBridgeState": "Exact61c retained;MainPID327 active/running,NRestarts0 recovery snapshot",
     "computeDistro": "AcademicCloudComputeV2",
-    "mainInferenceState": "Exact61c453d LocalPull553 active/running,NRestarts0 cutover;unchanged pinned runtimes/dependencies/models.",
+    "mainInferenceState": "Exact61c LocalPull332 active/running,NRestarts0 recovery snapshot;unchanged native runtime/models/dependencies. Installed Member7933440 retained.",
     "vnextDeployed": true,
     "pdfAssetRepairRelease": {
       "sourceCommit": "ae28096283e0a6745ba930761626ad2deb55c4e6",
@@ -1166,9 +1166,9 @@
   },
   "blockers": [
     "Six active sources retain explicit HOLD by Owner choice; they no longer block scoped system repair.182 source-supported profiles/188 academic holdings; full-Library acceptance remainsfalse.",
-    "Exact Linux/Core/native artifact and bounded-memory qualification plus coordinated release/live acceptance remain required;189 old local checks do not qualify later edits."
+    "Broader upload/download/whole-product latency and OCR factual accuracy remain unqualified;current633e3fb bounded release gates are closed.6 HOLD sources retained by Owner choice."
   ],
-  "next": "October13 bounded candidate passes60 frontend/13 diagnostic-kit checks,types/build and independent review. Prepare exact Linux kit and combined frontend/public-kit Core artifact, qualify/compare unchanged backend/schema/dependencies/deployment/native, then one coordinated release and normal signed-in navigation/download/tutorial acceptance. Retain7933440 until gates pass; no native model/schema/cloud/backup/main change or completed-page replay.",
+  "next": "Continue bounded existing-product optimization using current content-free request/header/body/byte timings on genuinely unfinished authorized sources;do not replay already-complete Chinese9/d3/other pages. Core/frontend/public kit633e3fb and Owner connection are accepted;native61c/installed Member7933440/schema41/models/contracts remain.6 HOLD/182 profiles,broader navigation/upload timing and field-level accuracy remain open. Gzip transport is a measured-byte candidate only,not implemented or latency-qualified. No new paid/cloud/backup/main/automatic corpus scope.",
   "authoritativeRecords": [
     "CURRENT_STATUS.md",
     "TASK_BOARD.md",
@@ -4180,7 +4180,7 @@
     },
     "optimizationRound": {
       "started": "2026-10-13",
-      "status": "CANDIDATE_VERIFIED_RELEASE_PENDING",
+      "status": "DEPLOYED_NORMAL_PATH_ACCEPTED",
       "sourceBaseline": "b2d172ca7f1f1849e74c38b6750686aec3320647",
       "subagents": "GPT-6.1 Sol xhigh",
       "resourceObservation": {
@@ -4199,7 +4199,57 @@
         "Workspace collection loading",
         "standalone Windows host-memory diagnostic and kit tutorial"
       ],
-      "transport": "Core unchanged; gzip requires actual byte/stage latency evidence before selection"
+      "transport": "Core unchanged; gzip requires actual byte/stage latency evidence before selection",
+      "sourceCommit": "633e3fb4f1eb78bb0f4f7fd69d7fc8274f381983",
+      "manifestFiles": 5185,
+      "manifestBytes": 43114590,
+      "unchangedManifestFiles": 5176,
+      "changedUnionPaths": 16,
+      "archiveSha256": "b7c03d8155ad50d309149990628cd4ba876d46aae3407c9166e14a5a4f779ada",
+      "manifestSha256": "a060432909593a98d03f8d8b08b8b2c505b15b772f5fc6e5fa463faee36e87e8",
+      "kitBytes": 126997,
+      "kitSha256": "d65228e6398d8a19d524967bdbd03f43cf95cc670da3b3c35be07c0d9c981f5b",
+      "nativeCommit": "61c453dcf97b4e45cc575bb8f8ec6203fe3cbec4",
+      "installedMemberCommit": "79334403daf269f38423da795ae38ab0ace9a1b6",
+      "retainedMainSha256": "8d29d174af084f7e59bbfea9349dc90dafa848534aff3113874d5625c020342f",
+      "retainedWorkerSha256": "69a2f5b7346a579949699a43182ccea6f4a9e7922cfc004bc2e456d88a0fa801",
+      "normalNavigation": {
+        "actions": [
+          "overview",
+          "notes",
+          "reading"
+        ],
+        "extraCollectionsBefore": 3,
+        "extraCollectionsAfter": 0,
+        "primaryMillisecondsAfter": [
+          505,
+          502,
+          500
+        ],
+        "overallSpeedupMeasured": false,
+        "notesAndSourceRevalidated": true
+      },
+      "normalDownload": "PASS;126997bytes;(7).zip;exact hash and downloaded Windows command",
+      "ownerConnection": {
+        "status": "NORMAL_UI_ONLINE_ACCEPTED",
+        "syntheticProbe": "PASS",
+        "sameAccount": true,
+        "secretPersistence": false,
+        "autoStart": false,
+        "programsClosed": 0,
+        "manualPriorBootRecovery": "PASS;native closure/ownership/same-inode exclusive OS lock;0 deletions"
+      },
+      "existingBook": {
+        "pages": 9,
+        "savedPages": 9,
+        "privateAccountResults": 381,
+        "quota": 500,
+        "realPagesReplayed": 0,
+        "newRealPages": 0,
+        "canonicalWrites": 0
+      },
+      "evidence": "output/vnext/optimization-round-20261013/",
+      "screenshot": "output/vnext/optimization-round-20261013/live-optimization-online.png"
     }
   },
   "interfaceRepair": {
